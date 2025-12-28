@@ -1,4 +1,3 @@
-import itertools
 import sys
 import os
 
@@ -39,6 +38,8 @@ def create_agent(use_optimized=None):
 if __name__ == "__main__":
     # Parse command line arguments
     use_optimized = None
+    ascension_level = 0  # Default ascension level
+
     if len(sys.argv) > 1:
         arg = sys.argv[1].lower()
         if arg in ['--optimized', '-o', 'optimized']:
@@ -54,15 +55,38 @@ if __name__ == "__main__":
             sys.stderr.write("Options:\n")
             sys.stderr.write("  --optimized, -o    Use OptimizedAgent with enhanced AI\n")
             sys.stderr.write("  --simple, -s       Use SimpleAgent (legacy AI)\n")
+            sys.stderr.write("  --ascension, -a N  Set ascension level (0-20, or 'auto' for max)\n")
             sys.stderr.write("  --help, -h         Show this help message\n\n")
             sys.stderr.write("Environment Variable:\n")
             sys.stderr.write("  USE_OPTIMIZED_AI=true  Use OptimizedAgent\n\n")
             sys.stderr.write("Examples:\n")
-            sys.stderr.write("  python main.py              # Auto-detect based on env var\n")
+            sys.stderr.write("  python main.py              # Auto-detect, ascension 0\n")
             sys.stderr.write("  python main.py --optimized  # Force optimized AI\n")
-            sys.stderr.write("  python main.py --simple     # Force simple AI\n")
-            sys.stderr.write("  USE_OPTIMIZED_AI=true python main.py  # Use env var\n")
+            sys.stderr.write("  python main.py -a 10        # Ascension level 10\n")
+            sys.stderr.write("  python main.py -a auto      # Try highest ascension (A20 → A0)\n")
+            sys.stderr.write("  python main.py --optimized -a 20  # Optimized AI A20\n")
             sys.exit(0)
+
+    # Parse ascension level
+    if len(sys.argv) > 2:
+        for i in range(1, len(sys.argv)):
+            if sys.argv[i].lower() in ['--ascension', '-a']:
+                if i + 1 < len(sys.argv):
+                    asc_param = sys.argv[i + 1].lower()
+                    if asc_param in ['auto', 'max', '-1']:
+                        # Try highest ascension levels starting from 20
+                        ascension_level = 'auto'
+                        sys.stderr.write("Will attempt highest available ascension level\n")
+                    else:
+                        try:
+                            ascension_level = int(asc_param)
+                            if ascension_level < 0 or ascension_level > 20:
+                                sys.stderr.write(f"Ascension level must be 0-20, got {ascension_level}\n")
+                                sys.exit(1)
+                            sys.stderr.write(f"Ascension level set to {ascension_level}\n")
+                        except ValueError:
+                            sys.stderr.write(f"Invalid ascension level: {sys.argv[i + 1]}\n")
+                            sys.exit(1)
 
     # Create agent
     agent = create_agent(use_optimized)
@@ -74,19 +98,40 @@ if __name__ == "__main__":
     coordinator.register_state_change_callback(agent.get_next_action_in_game)
     coordinator.register_out_of_game_callback(agent.get_next_action_out_of_game)
 
-    # Play games forever, cycling through the various classes
+    # Play games forever - IRONCLAD ONLY for testing
     game_count = 0
-    for chosen_class in itertools.cycle(PlayerClass):
+    chosen_class = PlayerClass.IRONCLAD  # Fixed to Ironclad for testing
+
+    # Auto-detect highest ascension level if needed
+    current_ascension = ascension_level
+    if ascension_level == 'auto':
+        # Try from A20 down to A0
+        for attempt_level in range(20, -1, -1):
+            sys.stderr.write(f"Attempting to start game at Ascension {attempt_level}...\n")
+            try:
+                result = coordinator.play_one_game(chosen_class, ascension_level=attempt_level)
+                # If successful, use this level for all future games
+                current_ascension = attempt_level
+                sys.stderr.write(f"Success! Using Ascension {attempt_level} for all games.\n")
+                break
+            except Exception as e:
+                sys.stderr.write(f"Ascension {attempt_level} not available: {e}\n")
+                if attempt_level == 0:
+                    sys.stderr.write("Even A0 failed! Exiting.\n")
+                    sys.exit(1)
+
+    while True:  # Infinite loop for Ironclad only
         game_count += 1
         sys.stderr.write(f"\n{'='*60}\n")
         sys.stderr.write(f"Starting game #{game_count} as {chosen_class}\n")
+        sys.stderr.write(f"Ascension Level: {current_ascension}\n")
         sys.stderr.write(f"{'='*60}\n")
 
         # Change agent class for this game
         agent.change_class(chosen_class)
 
         # Play the game
-        result = coordinator.play_one_game(chosen_class)
+        result = coordinator.play_one_game(chosen_class, ascension_level=current_ascension)
 
         # Print summary if OptimizedAgent (to stderr)
         if isinstance(agent, OptimizedAgent):
