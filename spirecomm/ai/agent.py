@@ -8,6 +8,16 @@ from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
 from spirecomm.ai.priorities import *
 
+# Import optimized AI components
+try:
+    from spirecomm.ai.decision.base import DecisionContext
+    from spirecomm.ai.heuristics.card import SynergyCardEvaluator
+    from spirecomm.ai.heuristics.simulation import HeuristicCombatPlanner
+    from spirecomm.ai.heuristics.deck import DeckAnalyzer
+    OPTIMIZED_AI_AVAILABLE = True
+except ImportError:
+    OPTIMIZED_AI_AVAILABLE = False
+
 
 class SimpleAgent:
 
@@ -39,20 +49,31 @@ class SimpleAgent:
     def get_next_action_in_game(self, game_state):
         self.game = game_state
         #time.sleep(0.07)
-        if self.game.choice_available:
-            return self.handle_screen()
-        if self.game.proceed_available:
+        try:
+            if self.game.choice_available:
+                return self.handle_screen()
+            if self.game.proceed_available:
+                return ProceedAction()
+            if self.game.play_available:
+                if self.game.room_type == "MonsterRoomBoss" and len(self.game.get_real_potions()) > 0:
+                    potion_action = self.use_next_potion()
+                    if potion_action is not None:
+                        return potion_action
+                return self.get_play_card_action()
+            if self.game.end_available:
+                return EndTurnAction()
+            if self.game.cancel_available:
+                return CancelAction()
+        except Exception as e:
+            # Fallback to safe action on error
+            # Use stderr for error output to avoid interfering with Communication Mod
+            import sys
+            print(f"Error in get_next_action_in_game: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            if self.game.end_available:
+                return EndTurnAction()
             return ProceedAction()
-        if self.game.play_available:
-            if self.game.room_type == "MonsterRoomBoss" and len(self.game.get_real_potions()) > 0:
-                potion_action = self.use_next_potion()
-                if potion_action is not None:
-                    return potion_action
-            return self.get_play_card_action()
-        if self.game.end_available:
-            return EndTurnAction()
-        if self.game.cancel_available:
-            return CancelAction()
 
     def get_next_action_out_of_game(self):
         return StartGameAction(self.chosen_class)
@@ -273,4 +294,309 @@ class SimpleAgent:
                 return ChooseMapNodeAction(choice)
         # This should never happen
         return ChooseAction(0)
+
+
+class OptimizedAgent(SimpleAgent):
+    """
+    Enhanced agent with modular decision system.
+
+    This agent inherits from SimpleAgent for backward compatibility but uses
+    advanced heuristics for decision making. It features:
+    - Synergy-based card evaluation
+    - Beam search combat planning
+    - Adaptive strategy based on deck archetype
+    - Context-aware decision making
+
+    Usage:
+        agent = OptimizedAgent(chosen_class=PlayerClass.THE_SILENT)
+    """
+
+    def __init__(self, chosen_class=PlayerClass.THE_SILENT,
+                 use_optimized_combat=True,
+                 use_optimized_card_selection=True):
+        """
+        Initialize OptimizedAgent.
+
+        Args:
+            chosen_class: Player class to use
+            use_optimized_combat: Use enhanced combat planning (default: True)
+            use_optimized_card_selection: Use synergy-based card evaluation (default: True)
+        """
+        # Initialize parent class
+        super().__init__(chosen_class)
+
+        # Check if optimized components are available
+        if not OPTIMIZED_AI_AVAILABLE:
+            # Silent fallback - no print statements
+            use_optimized_combat = False
+            use_optimized_card_selection = False
+
+        # Configuration flags
+        self.use_optimized_combat = use_optimized_combat
+        self.use_optimized_card_selection = use_optimized_card_selection
+
+        # Initialize decision components if available
+        if OPTIMIZED_AI_AVAILABLE:
+            player_class_str = str(chosen_class).replace('PlayerClass.', '')
+
+            self.card_evaluator = SynergyCardEvaluator(player_class=player_class_str)
+            self.combat_planner = HeuristicCombatPlanner(card_evaluator=self.card_evaluator)
+            self.deck_analyzer = DeckAnalyzer()
+
+            # Track decision history for analysis
+            self.decision_history = []
+        else:
+            self.card_evaluator = None
+            self.combat_planner = None
+            self.deck_analyzer = None
+            self.decision_history = []
+
+    def get_play_card_action(self):
+        """
+        Override with optimized combat logic if enabled.
+
+        Returns:
+            PlayCardAction or EndTurnAction
+        """
+        try:
+            if self.use_optimized_combat and self.combat_planner and OPTIMIZED_AI_AVAILABLE:
+                return self._get_optimized_play_card_action()
+            else:
+                # Fall back to SimpleAgent logic
+                return super().get_play_card_action()
+        except Exception as e:
+            # On error, print and fall back to simple logic
+            import sys
+            print(f"Error in optimized combat: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            return super().get_play_card_action()
+
+    def _get_optimized_play_card_action(self):
+        """
+        Use optimized combat planning with lookahead.
+
+        Returns:
+            PlayCardAction or EndTurnAction
+        """
+        if not self.game.play_available:
+            return EndTurnAction()
+
+        try:
+            # Create decision context
+            context = DecisionContext(self.game)
+
+            # Get plan from combat planner
+            action_sequence = self.combat_planner.plan_turn(context)
+
+            if action_sequence:
+                # Record decision for analysis
+                self.decision_history.append({
+                    'type': 'combat',
+                    'action': action_sequence[0],
+                    'turn': context.turn,
+                    'floor': context.floor,
+                    'confidence': self.combat_planner.get_confidence(context)
+                })
+                return action_sequence[0]
+
+            # Fallback to simple logic if planner fails
+            return super().get_play_card_action()
+        except Exception as e:
+            import sys
+            print(f"Error in _get_optimized_play_card_action: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            return super().get_play_card_action()
+
+    def choose_card_reward(self):
+        """
+        Override with optimized card selection if enabled.
+
+        Returns:
+            CardRewardAction or CancelAction
+        """
+        if self.use_optimized_card_selection and self.card_evaluator and OPTIMIZED_AI_AVAILABLE:
+            return self._choose_card_reward_optimized()
+        else:
+            return super().choose_card_reward()
+
+    def _choose_card_reward_optimized(self):
+        """
+        Use synergy-based card selection.
+
+        Returns:
+            CardRewardAction or CancelAction
+        """
+        try:
+            reward_cards = self.game.screen.cards
+
+            if not reward_cards:
+                return CancelAction()
+
+            # Create decision context with error handling
+            try:
+                context = DecisionContext(self.game)
+            except Exception as e:
+                # If context creation fails, fall back to simple logic
+                import sys
+                print(f"Error creating DecisionContext: {e}", file=sys.stderr)
+                return super().choose_card_reward()
+
+            # Filter cards we would actually take
+            if self.game.screen.can_skip and not self.game.in_combat:
+                pickable_cards = [
+                    card for card in reward_cards
+                    if self.priorities.needs_more_copies(card, self.count_copies_in_deck(card))
+                ]
+            else:
+                pickable_cards = reward_cards
+
+            if not pickable_cards:
+                if self.game.screen.can_bowl:
+                    return CardRewardAction(bowl=True)
+                else:
+                    self.skipped_cards = True
+                    return CancelAction()
+
+            # Use synergy evaluator to rank cards
+            try:
+                best_card = self.card_evaluator.get_best_card(pickable_cards, context)
+            except Exception as e:
+                import sys
+                print(f"Error in card evaluator: {e}", file=sys.stderr)
+                # Fall back to simple logic
+                return super().choose_card_reward()
+
+            if best_card:
+                # Record decision
+                self.decision_history.append({
+                    'type': 'card_reward',
+                    'card': best_card.card_id,
+                    'floor': context.floor,
+                    'archetype': context.deck_archetype
+                })
+                return CardRewardAction(best_card)
+            else:
+                return CancelAction()
+        except Exception as e:
+            import sys
+            print(f"Error in _choose_card_reward_optimized: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            # Fall back to parent's logic
+            return super().choose_card_reward()
+
+    def use_next_potion(self):
+        """
+        Enhanced potion usage logic.
+
+        Uses potions not just in boss fights but also in:
+        - Elite fights when dangerous
+        - High-damage situations
+        - When potion provides high value
+
+        Returns:
+            PotionAction or None
+        """
+        potions = self.game.get_real_potions()
+
+        if not potions:
+            return None
+
+        # Always use potions in boss fights
+        if self.game.room_type == "MonsterRoomBoss":
+            return super().use_next_potion()
+
+        # Evaluate combat danger
+        context = DecisionContext(self.game) if OPTIMIZED_AI_AVAILABLE else None
+        danger_level = self._evaluate_combat_danger(context)
+
+        # Use potions in dangerous situations
+        if danger_level > 0.6:
+            for potion in potions:
+                if potion.can_use:
+                    if potion.requires_target:
+                        return PotionAction(True, potion=potion, target_monster=self.get_low_hp_target())
+                    else:
+                        return PotionAction(True, potion=potion)
+
+        return None
+
+    def _evaluate_combat_danger(self, context):
+        """
+        Evaluate how dangerous the current combat is (0-1).
+
+        Considers:
+        - Number of monsters
+        - Incoming damage
+        - Player HP percentage
+
+        Args:
+            context: DecisionContext (or None)
+
+        Returns:
+            Danger level 0-1
+        """
+        danger = 0.0
+
+        # Monster count
+        alive_monsters = [m for m in self.game.monsters if not m.is_gone and not m.half_dead]
+        danger += min(len(alive_monsters) * 0.15, 0.4)
+
+        # Incoming damage
+        incoming = self.get_incoming_damage()
+        if self.game.max_hp > 0:
+            danger += min(incoming / self.game.max_hp, 0.4)
+
+        # HP percentage
+        hp_pct = self.game.current_hp / max(self.game.max_hp, 1)
+        if hp_pct < 0.3:
+            danger += 0.3
+
+        # Elite or boss
+        if 'Elite' in self.game.room_type or 'Boss' in self.game.room_type:
+            danger += 0.2
+
+        return min(danger, 1.0)
+
+    def get_deck_stats(self):
+        """
+        Get statistics about current deck.
+
+        Returns:
+            Dictionary with deck metrics (if optimized components available)
+        """
+        if self.deck_analyzer and OPTIMIZED_AI_AVAILABLE:
+            try:
+                context = DecisionContext(self.game)
+                return self.deck_analyzer.get_deck_stats(context)
+            except Exception as e:
+                return {'error': str(e)}
+        else:
+            return {'error': 'Deck analyzer not available'}
+
+    def get_decision_summary(self):
+        """
+        Get summary of decisions made this game.
+
+        Returns:
+            Dictionary with decision statistics
+        """
+        if not self.decision_history:
+            return {'total_decisions': 0}
+
+        summary = {
+            'total_decisions': len(self.decision_history),
+            'combat_decisions': sum(1 for d in self.decision_history if d.get('type') == 'combat'),
+            'card_rewards': sum(1 for d in self.decision_history if d.get('type') == 'card_reward'),
+            'avg_confidence': 0
+        }
+
+        # Calculate average confidence for combat decisions
+        combat_confidences = [d.get('confidence', 0) for d in self.decision_history if d.get('type') == 'combat']
+        if combat_confidences:
+            summary['avg_confidence'] = sum(combat_confidences) / len(combat_confidences)
+
+        return summary
 
