@@ -16,32 +16,42 @@ from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 
 class SimulationState:
     """
-    Lightweight state representation for simulation.
+    Enhanced simulation state with complete combat tracking.
 
-    This is a simplified version of game state that can be quickly copied
-    and modified during simulation.
+    This is a lightweight version of game state that can be quickly copied
+    and modified during simulation, with accurate tracking of combat modifiers.
     """
 
     def __init__(self, context: DecisionContext):
         """Initialize simulation state from decision context."""
+        # Player state
         self.player_hp = context.game.current_hp
         self.player_block = context.game.player.block if hasattr(context.game.player, 'block') else 0
         self.player_energy = context.energy_available
+        self.player_strength = context.strength
 
-        # Simplified monster state
+        # Monster state (each monster tracked independently)
         self.monsters = []
-        for monster in context.monsters_alive:
-            self.monsters.append({
+        for i, monster in enumerate(context.monsters_alive):
+            monster_state = {
+                'name': monster.name,
                 'hp': monster.current_hp,
                 'max_hp': monster.max_hp,
                 'block': monster.block if hasattr(monster, 'block') else 0,
                 'intent': monster.intent if hasattr(monster, 'intent') else None,
                 'is_gone': monster.is_gone,
-                'half_dead': monster.half_dead
-            })
+                'half_dead': monster.half_dead,
+                'vulnerable': context.vulnerable_stacks.get(i, 0),  # Vulnerable stacks (by index)
+                'weak': context.weak_stacks.get(i, 0),  # Weak stacks (by index)
+                'frail': context.frail_stacks.get(i, 0),  # Frail stacks (by index)
+            }
+            self.monsters.append(monster_state)
 
-        # Cards played this turn (to avoid re-playing)
-        self.played_card_indices = set()
+        # Track what we've played
+        self.played_card_uuids = set()
+        self.energy_spent = 0
+        self.total_damage_dealt = 0
+        self.monsters_killed = 0
 
     def clone(self) -> 'SimulationState':
         """Create a deep copy of this state."""
@@ -49,8 +59,12 @@ class SimulationState:
         new_state.player_hp = self.player_hp
         new_state.player_block = self.player_block
         new_state.player_energy = self.player_energy
+        new_state.player_strength = self.player_strength
         new_state.monsters = [m.copy() for m in self.monsters]
-        new_state.played_card_indices = self.played_card_indices.copy()
+        new_state.played_card_uuids = self.played_card_uuids.copy()
+        new_state.energy_spent = self.energy_spent
+        new_state.total_damage_dealt = self.total_damage_dealt
+        new_state.monsters_killed = self.monsters_killed
         return new_state
 
 
@@ -71,62 +85,122 @@ class FastCombatSimulator:
         """
         self.card_evaluator = card_evaluator
 
-    def simulate_card_play(self, state: SimulationState, card: Card, target: Optional[Monster] = None) -> SimulationState:
+    def simulate_card_play(self, state: SimulationState, card: Card,
+                          target: Optional[Monster] = None,
+                          target_index: Optional[int] = None) -> SimulationState:
         """
-        Simulate playing a single card.
+        Simulate playing a single card with accurate damage calculation.
 
-        This is a simplified simulation that focuses on:
-        - Damage dealt
-        - Block gained
-        - Energy cost
+        This simulation accounts for:
+        - Actual card costs (cost_for_turn for Snecko Eye, etc.)
+        - Strength power bonus
+        - Vulnerable debuff (1.5x damage)
+        - Monster block
+        - AOE vs single-target
+        - Power effects (Demon Form, Inflame, etc.)
 
         Args:
             state: Current simulation state
             card: Card to play
             target: Target monster (if applicable)
+            target_index: Index of target in monsters list
 
         Returns:
             New simulation state after playing the card
         """
         new_state = state.clone()
 
-        # Deduct energy
+        # Use actual cost (for Snecko Eye and other cost modifiers)
         cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
         new_state.player_energy -= cost
+        new_state.energy_spent += cost
 
-        # Apply card effects
-        if hasattr(card, 'type') and str(card.type) == 'ATTACK':
-            # Calculate damage (simplified - no modifiers considered)
-            damage = card.damage if hasattr(card, 'damage') else 0
-            if hasattr(card, 'damage') and card.damage is None:
-                # Some cards have variable damage, use base value
-                damage = 6  # Conservative estimate
+        # Apply card effects based on type
+        card_type = str(card.type) if hasattr(card, 'type') else 'UNKNOWN'
 
-            # Apply to target
-            if target and new_state.monsters:
-                # Find target in monsters
-                for monster in new_state.monsters:
-                    if monster['hp'] == target.current_hp and not monster['is_gone']:
-                        # Apply damage to block first, then HP
-                        block_damage = min(damage, monster['block'])
-                        monster['block'] -= block_damage
-                        hp_damage = damage - block_damage
-                        monster['hp'] -= hp_damage
-
-                        # Mark as gone if dead
-                        if monster['hp'] <= 0:
-                            monster['is_gone'] = True
-                        break
-
-        elif hasattr(card, 'type') and str(card.type) == 'SKILL':
-            # Apply skill effects (simplified)
-            if hasattr(card, 'block') and card.block:
-                new_state.player_block += card.block
-
-            # Draw cards (simplified - just count them)
-            # In a full simulation, we'd simulate the actual draw
+        if card_type == 'ATTACK':
+            self._apply_attack(new_state, card, target, target_index if target_index is not None else -1)
+        elif card_type == 'SKILL':
+            self._apply_skill(new_state, card)
+        elif card_type == 'POWER':
+            self._apply_power(new_state, card)
 
         return new_state
+
+    def _apply_attack(self, state: SimulationState, card: Card,
+                     target: Optional[Monster], target_index: int):
+        """Apply attack card effects with proper damage calculation."""
+        base_damage = getattr(card, 'damage', 0)
+        if base_damage == 0 or not hasattr(card, 'damage'):
+            base_damage = 6  # Conservative estimate for cards without explicit damage
+
+        # Handle AOE attacks
+        if card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap']:
+            # AOE - apply to all monsters
+            for monster in state.monsters:
+                if monster['is_gone']:
+                    continue
+                damage = base_damage + state.player_strength
+                damage = self._apply_vulnerable_damage(damage, monster)
+                self._deal_damage_to_monster(state, monster, damage)
+        else:
+            # Single-target attack
+            if target_index is not None and target_index < len(state.monsters):
+                monster = state.monsters[target_index]
+                if not monster['is_gone']:
+                    damage = base_damage + state.player_strength
+                    damage = self._apply_vulnerable_damage(damage, monster)
+                    self._deal_damage_to_monster(state, monster, damage)
+
+                    # Bash applies vulnerable
+                    if card.card_id == 'Bash':
+                        monster['vulnerable'] += 2 if card.upgrades > 0 else 1
+
+    def _apply_vulnerable_damage(self, damage: int, monster: dict) -> int:
+        """Apply vulnerable multiplier (1.5x)."""
+        if monster.get('vulnerable', 0) > 0:
+            return int(damage * 1.5)
+        return damage
+
+    def _deal_damage_to_monster(self, state: SimulationState, monster: dict, damage: int):
+        """Deal damage to monster, accounting for block."""
+        # Damage block first
+        block_damage = min(damage, monster['block'])
+        monster['block'] -= block_damage
+
+        # Remaining damage to HP
+        hp_damage = damage - block_damage
+        monster['hp'] -= hp_damage
+        state.total_damage_dealt += hp_damage
+
+        # Check if killed
+        if monster['hp'] <= 0:
+            monster['is_gone'] = True
+            state.monsters_killed += 1
+
+    def _apply_skill(self, state: SimulationState, card: Card):
+        """Apply skill card effects."""
+        # Block skills
+        if hasattr(card, 'block') and card.block is not None:
+            state.player_block += card.block
+
+        # Draw cards - simplified (we don't simulate actual draws)
+        # Just account for the potential value in scoring
+        pass
+
+    def _apply_power(self, state: SimulationState, card: Card):
+        """Apply power card effects."""
+        card_id = card.card_id
+
+        # Demon Form - adds strength
+        if card_id == 'Demon Form':
+            state.player_strength += 2 if card.upgrades > 0 else 1
+
+        # Inflame - adds strength
+        elif card_id == 'Inflame':
+            state.player_strength += 2 if card.upgrades > 0 else 1
+
+        # Other powers can be added as needed
 
     def calculate_outcome_score(self, initial_state: SimulationState, final_state: SimulationState) -> float:
         """

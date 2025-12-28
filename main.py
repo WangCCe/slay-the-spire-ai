@@ -55,7 +55,7 @@ if __name__ == "__main__":
             sys.stderr.write("Options:\n")
             sys.stderr.write("  --optimized, -o    Use OptimizedAgent with enhanced AI\n")
             sys.stderr.write("  --simple, -s       Use SimpleAgent (legacy AI)\n")
-            sys.stderr.write("  --ascension, -a N  Set ascension level (0-20, or 'auto' for max)\n")
+            sys.stderr.write("  --ascension, -a N  Set ascension level (0-20, default: 20)\n")
             sys.stderr.write("  --help, -h         Show this help message\n\n")
             sys.stderr.write("Environment Variable:\n")
             sys.stderr.write("  USE_OPTIMIZED_AI=true  Use OptimizedAgent\n\n")
@@ -63,7 +63,7 @@ if __name__ == "__main__":
             sys.stderr.write("  python main.py              # Auto-detect, ascension 0\n")
             sys.stderr.write("  python main.py --optimized  # Force optimized AI\n")
             sys.stderr.write("  python main.py -a 10        # Ascension level 10\n")
-            sys.stderr.write("  python main.py -a auto      # Try highest ascension (A20 → A0)\n")
+            sys.stderr.write("  python main.py -a 20        # Ascension level 20\n")
             sys.stderr.write("  python main.py --optimized -a 20  # Optimized AI A20\n")
             sys.exit(0)
 
@@ -72,21 +72,15 @@ if __name__ == "__main__":
         for i in range(1, len(sys.argv)):
             if sys.argv[i].lower() in ['--ascension', '-a']:
                 if i + 1 < len(sys.argv):
-                    asc_param = sys.argv[i + 1].lower()
-                    if asc_param in ['auto', 'max', '-1']:
-                        # Try highest ascension levels starting from 20
-                        ascension_level = 'auto'
-                        sys.stderr.write("Will attempt highest available ascension level\n")
-                    else:
-                        try:
-                            ascension_level = int(asc_param)
-                            if ascension_level < 0 or ascension_level > 20:
-                                sys.stderr.write(f"Ascension level must be 0-20, got {ascension_level}\n")
-                                sys.exit(1)
-                            sys.stderr.write(f"Ascension level set to {ascension_level}\n")
-                        except ValueError:
-                            sys.stderr.write(f"Invalid ascension level: {sys.argv[i + 1]}\n")
+                    try:
+                        ascension_level = int(sys.argv[i + 1])
+                        if ascension_level < 0 or ascension_level > 20:
+                            sys.stderr.write(f"Ascension level must be 0-20, got {ascension_level}\n")
                             sys.exit(1)
+                        sys.stderr.write(f"Ascension level set to {ascension_level}\n")
+                    except ValueError:
+                        sys.stderr.write(f"Invalid ascension level: {sys.argv[i + 1]}\n")
+                        sys.stderr.write(f"Ascension must be a number (0-20), ignoring and using default\n")
 
     # Create agent
     agent = create_agent(use_optimized)
@@ -102,23 +96,10 @@ if __name__ == "__main__":
     game_count = 0
     chosen_class = PlayerClass.IRONCLAD  # Fixed to Ironclad for testing
 
-    # Auto-detect highest ascension level if needed
-    current_ascension = ascension_level
-    if ascension_level == 'auto':
-        # Try from A20 down to A0
-        for attempt_level in range(20, -1, -1):
-            sys.stderr.write(f"Attempting to start game at Ascension {attempt_level}...\n")
-            try:
-                result = coordinator.play_one_game(chosen_class, ascension_level=attempt_level)
-                # If successful, use this level for all future games
-                current_ascension = attempt_level
-                sys.stderr.write(f"Success! Using Ascension {attempt_level} for all games.\n")
-                break
-            except Exception as e:
-                sys.stderr.write(f"Ascension {attempt_level} not available: {e}\n")
-                if attempt_level == 0:
-                    sys.stderr.write("Even A0 failed! Exiting.\n")
-                    sys.exit(1)
+    # Set ascension level (default to 20 if not specified)
+    current_ascension = ascension_level if ascension_level is not None else 20
+    if not isinstance(current_ascension, int):
+        current_ascension = 20  # Force to integer if 'auto' was passed
 
     while True:  # Infinite loop for Ironclad only
         game_count += 1

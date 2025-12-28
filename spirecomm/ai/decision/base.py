@@ -70,6 +70,29 @@ class DecisionContext:
             if hasattr(c, 'is_playable') and c.is_playable
         ] if hasattr(game, 'hand') else []
 
+        # === 新增：遗物检测 ===
+        self.has_snecko_eye = self._has_relic("Snecko Eye")
+        self.has_burning_blood = self._has_relic("Burning Blood")
+        self.has_busted_clock = self._has_relic("Busted Clock")
+        self.has_orichalcum = self._has_relic("Orichalcum")
+        self.has_paper_crane = self._has_relic("Paper Crane")
+
+        # === 新增：玩家 Power 追踪 ===
+        self.strength = self._get_player_power_amount("Strength")
+        self.dexterity = self._get_player_power_amount("Dexterity")
+        self.vulnerable_stacks = {}  # monster_index -> stacks
+        self.weak_stacks = {}  # monster_index -> stacks
+        self.frail_stacks = {}  # monster_index -> stacks
+
+        # 为每个怪物初始化 debuff 追踪（使用索引作为 key）
+        for i, monster in enumerate(self.monsters_alive):
+            self.vulnerable_stacks[i] = self._get_monster_power_amount(monster, "Vulnerable")
+            self.weak_stacks[i] = self._get_monster_power_amount(monster, "Weak")
+            self.frail_stacks[i] = self._get_monster_power_amount(monster, "Frail")
+
+        # === 新增：战斗评估 ===
+        self.can_end_combat_this_turn = False  # 将由 CombatEndingDetector 计算
+
     def _calculate_incoming_damage(self) -> int:
         """Calculate total incoming damage from all monsters."""
         if not hasattr(self.game, 'monsters'):
@@ -168,6 +191,55 @@ class DecisionContext:
             synergies[key] = min(1.0, synergies[key])
 
         return synergies
+
+    def _has_relic(self, relic_id: str) -> bool:
+        """
+        Check if player has specific relic.
+
+        Args:
+            relic_id: The relic identifier (e.g., "Snecko Eye")
+
+        Returns:
+            True if player has this relic
+        """
+        if not hasattr(self.game, 'relics'):
+            return False
+        return any(r.relic_id == relic_id for r in self.game.relics)
+
+    def _get_player_power_amount(self, power_id: str) -> int:
+        """
+        Get amount of specific player power.
+
+        Args:
+            power_id: The power identifier (e.g., "Strength")
+
+        Returns:
+            Amount of the power, or 0 if not found
+        """
+        if not hasattr(self.game, 'player') or not hasattr(self.game.player, 'powers'):
+            return 0
+        for power in self.game.player.powers:
+            if power.power_id == power_id:
+                return power.amount if hasattr(power, 'amount') else 0
+        return 0
+
+    def _get_monster_power_amount(self, monster: Monster, power_id: str) -> int:
+        """
+        Get amount of specific monster power/debuff.
+
+        Args:
+            monster: The monster to check
+            power_id: The power identifier (e.g., "Vulnerable")
+
+        Returns:
+            Amount of the power, or 0 if not found
+        """
+        if not hasattr(monster, 'powers'):
+            return 0
+        for power in monster.powers:
+            if power.power_id == power_id:
+                return power.amount if hasattr(power, 'amount') else 0
+        return 0
 
     def __repr__(self) -> str:
         return (f"DecisionContext(hp={self.player_hp_pct:.2f}, energy={self.energy_available}, "

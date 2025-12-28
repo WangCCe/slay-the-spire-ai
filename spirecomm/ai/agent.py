@@ -369,6 +369,10 @@ class OptimizedAgent(SimpleAgent):
 
             # Track decision history for analysis
             self.decision_history = []
+
+            # === 新增：存储规划的动作序列 ===
+            self.current_action_sequence = []
+            self.current_action_index = 0
         else:
             self.card_evaluator = None
             self.combat_planner = None
@@ -377,6 +381,8 @@ class OptimizedAgent(SimpleAgent):
             self.deck_strategy = None
             self.map_router = None
             self.decision_history = []
+            self.current_action_sequence = []
+            self.current_action_index = 0
 
     def get_play_card_action(self):
         """
@@ -401,7 +407,9 @@ class OptimizedAgent(SimpleAgent):
 
     def _get_optimized_play_card_action(self):
         """
-        Use optimized combat planning with lookahead.
+        Use optimized combat planning with proper sequence execution.
+
+        关键改变：存储并执行完整序列，不只是第一张卡
 
         Returns:
             PlayCardAction or EndTurnAction
@@ -410,31 +418,74 @@ class OptimizedAgent(SimpleAgent):
             return EndTurnAction()
 
         try:
-            # Create decision context
-            context = DecisionContext(self.game)
+            # 如果有待执行的序列，继续执行
+            if self.current_action_sequence and self.current_action_index < len(self.current_action_sequence):
+                action = self.current_action_sequence[self.current_action_index]
+                self.current_action_index += 1
 
-            # Get plan from combat planner
+                # 验证动作仍然可执行
+                if isinstance(action, PlayCardAction):
+                    card_uuid = getattr(action.card, 'uuid', None) if action.card else None
+                    hand_uuids = [getattr(c, 'uuid', None) for c in self.game.hand if hasattr(c, 'uuid')]
+                    if card_uuid and card_uuid in hand_uuids:
+                        return action
+                    else:
+                        # 卡不在手上了（不应该发生），重置序列
+                        self.current_action_sequence = []
+                        self.current_action_index = 0
+
+            # 规划新序列
+            context = DecisionContext(self.game)
             action_sequence = self.combat_planner.plan_turn(context)
 
             if action_sequence:
-                # Record decision for analysis
+                # 存储序列用于执行
+                self.current_action_sequence = action_sequence
+                self.current_action_index = 0
+
+                # 记录决策用于分析
                 self.decision_history.append({
                     'type': 'combat',
-                    'action': action_sequence[0],
+                    'sequence': action_sequence,
                     'turn': context.turn,
                     'floor': context.floor,
                     'confidence': self.combat_planner.get_confidence(context)
                 })
+
+                # 返回第一个动作
                 return action_sequence[0]
 
-            # Fallback to simple logic if planner fails
-            return super().get_play_card_action()
+            # 没有规划的动作 - 结束回合
+            self.current_action_sequence = []
+            return EndTurnAction()
+
         except Exception as e:
             import sys
             print(f"Error in _get_optimized_play_card_action: {e}", file=sys.stderr)
             import traceback
             traceback.print_exc(file=sys.stderr)
+            self.current_action_sequence = []
             return super().get_play_card_action()
+
+    def get_next_action_in_game(self, game_state):
+        """
+        Override to detect turn changes and reset action sequence.
+
+        Args:
+            game_state: Current game state
+        """
+        # 检测回合变化
+        if hasattr(game_state, 'turn') and hasattr(self.game, 'turn'):
+            if game_state.turn != self.game.turn:
+                # 新回合 - 重置动作序列
+                self.current_action_sequence = []
+                self.current_action_index = 0
+
+        # 更新游戏状态
+        self.game = game_state
+
+        # 调用父类方法
+        return super().get_next_action_in_game(game_state)
 
     def choose_card_reward(self):
         """

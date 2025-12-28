@@ -19,7 +19,7 @@ class CardRarity(Enum):
 
 
 class Card:
-    def __init__(self, card_id, name, card_type, rarity, upgrades=0, has_target=False, cost=0, uuid="", misc=0, price=0, is_playable=False, exhausts=False):
+    def __init__(self, card_id, name, card_type, rarity, upgrades=0, has_target=False, cost=0, cost_for_turn=None, uuid="", misc=0, price=0, is_playable=False, exhausts=False):
         self.card_id = card_id
         self.name = name
         self.type = card_type
@@ -27,6 +27,7 @@ class Card:
         self.upgrades = upgrades
         self.has_target = has_target
         self.cost = cost
+        self.cost_for_turn = cost_for_turn if cost_for_turn is not None else cost  # Actual cost this turn (for Snecko Eye, etc.)
         self.uuid = uuid
         self.misc = misc
         self.price = price
@@ -43,6 +44,7 @@ class Card:
             upgrades=json_object["upgrades"],
             has_target=json_object["has_target"],
             cost=json_object["cost"],
+            cost_for_turn=json_object.get("costForTurn"),  # Actual cost this turn (modified by relics like Snecko Eye)
             uuid=json_object["uuid"],
             misc=json_object.get("misc", 0),
             price=json_object.get("price", 0),

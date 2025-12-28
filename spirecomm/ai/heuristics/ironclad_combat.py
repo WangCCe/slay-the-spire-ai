@@ -1,414 +1,366 @@
 """
 Ironclad-specific combat planner with expert strategy integration.
 
-Optimizes combat decisions for Ironclad's unique mechanics:
+Optimizes combat decisions for Ironclad's unique mechanics using beam search:
+- Combat ending detection (can we kill all this turn?)
 - Demon Form timing (play by turn 2-3)
 - Limit Break logic (Strength >= 5)
 - Corruption mode (all skills become 0 cost)
 - Vulnerable optimization (Bash before big attacks)
 - Reaper healing logic
 - Body Slam optimization
-- HP conservation in easy fights
+- Smart targeting (Bash on high HP, kill low HP, etc.)
 """
 
 import sys
-from typing import List
-from .simulation import CombatPlanner
+from typing import List, Tuple, Optional
+from .simulation import CombatPlanner, SimulationState, FastCombatSimulator
+from .combat_ending import CombatEndingDetector
 from ..decision.base import DecisionContext
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster
-from spirecomm.communication.action import Action
+from spirecomm.communication.action import Action, PlayCardAction
+from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 
 
 class IroncladCombatPlanner(CombatPlanner):
     """
-    Ironclad-specific combat planner based on expert strategies.
+    Ironclad-specific combat planner with beam search and expert strategies.
 
-    Key combat optimizations:
-    1. Powers first (Demon Form by turn 2-3)
-    2. Corruption mode: All skills priority
-    3. Vulnerable timing (Bash before big attacks)
-    4. Reaper healing in multi-enemy fights
-    5. Body Slam when block >= 20
-    6. HP conservation when safe
+    Key features:
+    1. Combat ending detection - don't over-defend when lethal is possible
+    2. Beam search - find optimal card sequences, not greedy single-card plays
+    3. Smart targeting - Bash high HP, kill low HP, AOE optimization
+    4. Ironclad-specific logic - Demon Form timing, Limit Break threshold, etc.
     """
 
-    def __init__(self, card_evaluator=None):
-        """Initialize Ironclad combat planner."""
-        self.card_evaluator = card_evaluator
-
-    def plan_turn(self, context: DecisionContext, playable_cards: List[Card]) -> List[Action]:
+    def __init__(self, card_evaluator=None, beam_width=10, max_depth=5):
         """
-        Plan optimal turn for Ironclad.
+        Initialize Ironclad combat planner.
 
-        Returns ordered list of actions to execute.
+        Args:
+            card_evaluator: Card evaluator for fallback
+            beam_width: Number of candidates to keep in beam search
+            max_depth: Maximum depth for beam search
         """
+        self.card_evaluator = card_evaluator or SynergyCardEvaluator()
+        self.simulator = FastCombatSimulator(self.card_evaluator)
+        self.beam_width = beam_width
+        self.max_depth = max_depth
+        self.combat_ending_detector = CombatEndingDetector()
+
+    def plan_turn(self, context: DecisionContext) -> List[Action]:
+        """
+        Plan optimal turn using Ironclad-specific strategies.
+
+        Returns:
+            List of actions to execute in order
+        """
+        playable_cards = context.playable_cards
+
         if not playable_cards:
             return []
 
-        # Score each card for current situation
-        scored_cards = []
-        for card in playable_cards:
-            score = self._get_combat_priority(card, context)
-            scored_cards.append((card, score))
+        # Step 1: Check for lethal (can we kill all monsters this turn?)
+        if self.combat_ending_detector.can_kill_all(context):
+            lethal_sequence = self.combat_ending_detector.find_lethal_sequence(context)
+            if lethal_sequence:
+                return lethal_sequence
 
-        # Sort by score (highest first)
-        scored_cards.sort(key=lambda x: x[1], reverse=True)
+        # Step 2: Determine adaptive parameters based on complexity
+        beam_width, max_depth = self._get_adaptive_parameters(context, playable_cards)
 
-        # Build action sequence
-        actions = []
-        for card, score in scored_cards:
-            if score > 0:  # Only play positive-score cards
-                target = self._choose_target(card, context)
-                # Create play card action
-                # (This will be converted to actual action by coordinator)
-                actions.append((card, target, score))
+        # Step 3: Use beam search to find optimal sequence
+        return self._beam_search_turn(context, playable_cards, beam_width, max_depth)
 
-        return actions
-
-    def _get_combat_priority(self, card: Card, context: DecisionContext) -> float:
+    def _get_adaptive_parameters(self, context: DecisionContext, playable_cards: List[Card]) -> Tuple[int, int]:
         """
-        Get combat priority score for a card.
+        Determine adaptive beam width and depth based on game complexity.
 
-        Priority hierarchy:
-        1. Powers (Demon Form highest early, Limit Break at high strength)
-        2. Corruption mode: All skills max priority
-        3. Draw cards (to find combo pieces)
-        4. Vulnerable application (Bash before big attacks)
-        5. Defensive cards (only when needed)
-        6. Offensive cards (Body Slam, Reaper, etc.)
+        Args:
+            context: Decision context
+            playable_cards: List of playable cards
+
+        Returns:
+            (beam_width, max_depth) tuple
         """
-        # Check if card is power, skill, or attack
-        card_type = str(card.type) if hasattr(card, 'type') else 'UNKNOWN'
+        num_playable = len(playable_cards)
+        num_monsters = len(context.monsters_alive)
 
-        # 1. POWERS - Highest priority (need time to pay off)
-        if card_type == 'POWER':
-            return self._get_power_priority(card, context)
+        # Calculate complexity score
+        complexity = num_playable * num_monsters
 
-        # 2. Check for Corruption mode
-        if self._is_corruption_active(context):
-            if card_type == 'SKILL':
-                # All skills are 0 cost with Corruption
-                return 900 + self._get_skill_base_value(card, context)
+        # Simple局面 (1-3 cards, 1-2 monsters)
+        if num_playable <= 3 and num_monsters <= 2:
+            return 8, 3
 
-        # 3. DRAW CARDS - High priority to find combo pieces
-        if self._is_draw_card(card):
-            return 800
+        # Medium局面 (4-6 cards, 2-3 monsters)
+        elif num_playable <= 6 and num_monsters <= 3:
+            return 12, 4
 
-        # 4. VULNERABLE APPLICATION - Before big attacks
-        if card.card_id == 'Bash':
-            if self._should_bash_now(context):
-                return 850
-            else:
-                return 50  # Save Bash for better timing
-
-        # 5. DEFENSIVE CARDS - Only when needed
-        if self._is_defensive_card(card):
-            if self._needs_block(context):
-                return self._get_defensive_priority(card, context)
-            else:
-                return 50  # Skip if safe
-
-        # 6. OFFENSIVE CARDS
-        if card_type == 'ATTACK':
-            return self._get_attack_priority(card, context)
-
-        # 7. OTHER SKILLS
-        if card_type == 'SKILL':
-            return self._get_skill_priority(card, context)
-
-        return 100  # Default low priority
-
-    def _get_power_priority(self, card: Card, context: DecisionContext) -> float:
-        """Get priority for power cards."""
-        card_id = card.card_id
-
-        # Demon Form - highest priority, must play early
-        if card_id == 'Demon Form':
-            turn = context.turn if hasattr(context, 'turn') else 1
-            if turn <= 3:
-                return 1000  # Must play immediately
-            # Check if already have one
-            demon_count = sum(1 for c in context.game.deck if c.card_id == 'Demon Form')
-            if demon_count == 0:
-                return 950
-            return 200  # Second Demon Form is low priority
-
-        # Limit Break - only when strength is high
-        if card_id == 'Limit Break':
-            strength = self._estimate_strength(context)
-            if strength >= 7:  # Upgraded Limit Break threshold
-                return 950
-            elif strength >= 5:  # Normal Limit Break threshold
-                return 800
-            else:
-                return 100  # Wait for more strength
-
-        # Corruption - very high priority
-        if card_id == 'Corruption':
-            return 950
-
-        # Spot Weakness - high if enemy intends to attack
-        if card_id == 'Spot Weakness':
-            if self._enemy_intends_to_attack(context):
-                return 850
-            return 200
-
-        # Other powers - moderate priority
-        return 600
-
-    def _get_attack_priority(self, card: Card, context: DecisionContext) -> float:
-        """Get priority for attack cards."""
-        card_id = card.card_id
-
-        # Reaper - amazing in multi-enemy fights with strength
-        if card_id == 'Reaper':
-            num_monsters = len(context.monsters_alive) if context.monsters_alive else 0
-            strength = self._estimate_strength(context)
-            if num_monsters >= 2 and strength >= 5:
-                return 950  # Perfect situation
-            elif num_monsters >= 2:
-                return 600  # Still good for healing
-            else:
-                return 200  # Not ideal for single enemy
-
-        # Body Slam - insane with high block
-        if card_id == 'Body Slam':
-            current_block = context.game.player.block if hasattr(context.game.player, 'block') else 0
-            if current_block >= 25:
-                return 950  # One-shot territory
-            elif current_block >= 15:
-                return 800  # Very good
-            elif current_block >= 10:
-                return 500  # Decent
-            else:
-                return 100  # Wait for more block
-
-        # Pommel Strike - draw + damage
-        if card_id == 'Pommel Strike':
-            return 750
-
-        # Other attacks - baseline
-        return 500
-
-    def _get_skill_priority(self, card: Card, context: DecisionContext) -> float:
-        """Get priority for skill cards."""
-        # Shrug It Off - excellent (block + draw)
-        if card.card_id == 'Shrug It Off':
-            return 850
-
-        # Disarm - powerful single-target defense
-        if card.card_id == 'Disarm':
-            if self._needs_defense(context):
-                return 800
-            return 200
-
-        # Metallicize - good in Act 1-2
-        if card.card_id == 'Metallicize':
-            if context.act <= 2:
-                return 700
-            return 300
-
-        return 400
-
-    def _get_defensive_priority(self, card: Card, context: DecisionContext) -> float:
-        """Get priority for defensive cards."""
-        incoming = context.incoming_damage if hasattr(context, 'incoming_damage') else 0
-        current_block = context.game.player.block if hasattr(context.game.player, 'block') else 0
-
-        # Iron Wave - attack + block
-        if card.card_id == 'Iron Wave':
-            return 750
-
-        # Entrench - double block (amazing with high block)
-        if card.card_id == 'Entrench':
-            if current_block >= 10:
-                return 900
-            return 400
-
-        # Pure defense cards
-        if incoming > current_block + 5:
-            return 700  # Need block badly
-        elif incoming > current_block:
-            return 500  # Need some block
+        # Complex局面 (7+ cards or 4+ monsters) - deeper search
         else:
-            return 200  # Already safe
+            return 15, 5
 
-    def _should_bash_now(self, context: DecisionContext) -> bool:
-        """Determine if Bash should be played now."""
-        # Check if we have follow-up attacks
-        if not hasattr(context.game, 'hand'):
-            return False
+    def _beam_search_turn(self, context: DecisionContext,
+                         playable_cards: List[Card],
+                         beam_width: int, max_depth: int) -> List[Action]:
+        """Use beam search to find best action sequence."""
+        initial_state = SimulationState(context)
 
-        attack_cards = [c for c in context.game.hand
-                       if hasattr(c, 'type') and str(c.type) == 'ATTACK'
-                       and c.card_id != 'Bash']
+        # Initialize beam with empty sequence
+        beam = [([], initial_state, 0)]  # (actions, state, energy_spent)
 
-        if not attack_cards:
-            return False  # No point in Bash without attacks
+        best_sequence = []
+        best_score = float('-inf')
 
-        # Find best target
-        target = self._find_highest_hp_monster(context)
+        for depth in range(max_depth):
+            new_candidates = []
 
-        if target:
-            # Check if target will survive to benefit from vulnerable
-            # (2 turns of vulnerable = full benefit)
-            estimated_damage = sum(self._estimate_card_damage(c, context) for c in attack_cards)
-            if estimated_damage < target.current_hp * 0.7:
-                return True  # Target won't die too fast
+            for sequence, state, energy_spent in beam:
+                # Try each remaining card
+                for card in playable_cards:
+                    card_uuid = card.uuid if hasattr(card, 'uuid') else id(card)
 
-        return False
+                    if card_uuid in state.played_card_uuids:
+                        continue
 
-    def _needs_block(self, context: DecisionContext) -> bool:
-        """Check if player needs block."""
-        incoming = context.incoming_damage if hasattr(context, 'incoming_damage') else 0
-        current_block = context.game.player.block if hasattr(context.game.player, 'block') else 0
+                    # Check energy
+                    cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
+                    if energy_spent + cost > context.energy_available:
+                        continue
 
-        return incoming > current_block + 5
+                    # Select target
+                    target, target_idx = self._choose_target_for_card(card, context, state)
 
-    def _needs_defense(self, context: DecisionContext) -> bool:
-        """Check if player needs defensive measures."""
-        incoming = context.incoming_damage if hasattr(context, 'incoming_damage') else 0
-        current_block = context.game.player.block if hasattr(context.game.player, 'block') else 0
-        hp_pct = context.player_hp_pct
+                    # Simulate
+                    new_state = self.simulator.simulate_card_play(
+                        state, card, target, target_idx
+                    )
+                    new_state.played_card_uuids.add(card_uuid)
 
-        # Need defense if: high incoming damage OR low HP
-        return (incoming > current_block) or (hp_pct < 0.4)
+                    # Create action
+                    if target:
+                        action = PlayCardAction(card=card, target_monster=target)
+                    else:
+                        action = PlayCardAction(card=card)
 
-    def _is_corruption_active(self, context: DecisionContext) -> bool:
-        """Check if Corruption power is active."""
-        if not hasattr(context.game, 'player') or not hasattr(context.game.player, 'powers'):
-            return False
+                    new_sequence = sequence + [action]
 
-        for power in context.game.player.powers:
-            if power.power_id == 'Corruption':
-                return True
+                    # Score
+                    score = self._score_sequence(new_sequence, initial_state, new_state, context)
 
-        return False
+                    new_candidates.append((new_sequence, new_state, energy_spent + cost, score))
+
+            if not new_candidates:
+                break
+
+            # Keep top candidates
+            new_candidates.sort(key=lambda x: x[3], reverse=True)
+            beam = new_candidates[:beam_width]
+
+            if beam:
+                best_sequence, best_state, best_energy, best_score = beam[0]
+
+        return best_sequence if best_sequence else self._fallback_plan(context, playable_cards)
+
+    def _choose_target_for_card(self, card: Card, context: DecisionContext,
+                                state: SimulationState) -> Tuple[Optional[Monster], Optional[int]]:
+        """Choose best target for card given current simulation state."""
+        if not state.monsters:
+            return None, None
+
+        card_id = card.card_id
+
+        # AOE cards - no targeting needed
+        if card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap']:
+            return None, None
+
+        # Bash - highest HP (maximize vulnerable duration)
+        if card_id == 'Bash':
+            highest_hp_idx = max(enumerate(state.monsters),
+                               key=lambda x: x[1]['hp'] if not x[1]['is_gone'] else 0)
+            # Return actual monster object for action creation
+            if highest_hp_idx[0] < len(context.monsters_alive):
+                return context.monsters_alive[highest_hp_idx[0]], highest_hp_idx[0]
+
+        # Body Slam - lowest HP (finish off weakened enemies)
+        if card_id == 'Body Slam':
+            lowest_hp_idx = min(enumerate(state.monsters),
+                              key=lambda x: x[1]['hp'] if not x[1]['is_gone'] else 999)
+            if lowest_hp_idx[0] < len(context.monsters_alive):
+                return context.monsters_alive[lowest_hp_idx[0]], lowest_hp_idx[0]
+
+        # Standard attacks - lowest HP target that's not already vulnerable
+        if hasattr(card, 'type') and str(card.type) == 'ATTACK':
+            # Prefer non-vulnerable targets if damage is similar
+            non_vulnerable = [(i, m) for i, m in enumerate(state.monsters)
+                            if not m['is_gone'] and m.get('vulnerable', 0) == 0]
+            if non_vulnerable:
+                lowest_idx = min(non_vulnerable, key=lambda x: x[1]['hp'])
+                if lowest_idx[0] < len(context.monsters_alive):
+                    return context.monsters_alive[lowest_idx[0]], lowest_idx[0]
+
+            # Otherwise lowest HP
+            lowest_hp_idx = min(enumerate(state.monsters),
+                              key=lambda x: x[1]['hp'] if not x[1]['is_gone'] else 999)
+            if lowest_hp_idx[0] < len(context.monsters_alive):
+                return context.monsters_alive[lowest_hp_idx[0]], lowest_hp_idx[0]
+
+        # Default - first alive monster
+        for i, m in enumerate(state.monsters):
+            if not m['is_gone']:
+                if i < len(context.monsters_alive):
+                    return context.monsters_alive[i], i
+
+        return None, None
+
+    def _score_sequence(self, sequence: List[Action], initial_state: SimulationState,
+                       final_state: SimulationState, context: DecisionContext) -> float:
+        """
+        Score an action sequence.
+
+        Priorities:
+        1. Killing monsters (highest priority)
+        2. Damage dealt
+        3. Block gained (only when needed)
+        4. Energy efficiency
+        5. Strategic value (powers, draw cards)
+        """
+        score = 0.0
+
+        # 1. Monsters killed (huge bonus)
+        kills = final_state.monsters_killed
+        score += kills * 200
+
+        # 2. Damage dealt
+        damage = final_state.total_damage_dealt
+        score += damage * 3
+
+        # 3. Block (only valuable when taking damage)
+        block_gained = final_state.player_block - initial_state.player_block
+        incoming_damage = context.incoming_damage
+
+        if incoming_damage > initial_state.player_block:
+            # Need block - value it highly
+            score += min(block_gained, incoming_damage) * 5
+        else:
+            # Already safe - minimal value
+            score += block_gained * 0.5
+
+        # 4. Energy efficiency
+        energy_used = final_state.energy_spent
+        score += energy_used * 2
+
+        # 5. Strategic bonus for card types
+        for action in sequence:
+            if isinstance(action, PlayCardAction):
+                card = action.card
+                card_id = card.card_id
+
+                # Powers are valuable early
+                if card_id == 'Demon Form' and context.turn <= 3:
+                    score += 50
+
+                # Draw cards help consistency
+                if self._is_draw_card(card):
+                    score += 15
+
+                # Limit Break with high strength
+                if card_id == 'Limit Break' and context.strength >= 5:
+                    score += 40
+
+                # Bash before big attacks
+                if card_id == 'Bash':
+                    # Check if we have big attacks remaining
+                    big_attack_pending = any(
+                        c.card_id not in ['Bash', 'Strike_R', 'Defend_R']
+                        and hasattr(c, 'damage') and c.damage > 10
+                        for c in context.playable_cards
+                        if c.uuid != card.uuid
+                    )
+                    if big_attack_pending:
+                        score += 25
+
+        return score
 
     def _is_draw_card(self, card: Card) -> bool:
-        """Check if card draws other cards."""
-        draw_keywords = ['draw', 'battle trance', 'pommel strike', 'shrug it off']
-        card_id_lower = card.card_id.lower()
+        """Check if card draws cards."""
+        draw_keywords = ['draw', 'pommel strike', 'shrug it off', 'battle trance']
+        card_lower = card.card_id.lower()
+        return any(kw in card_lower for kw in draw_keywords)
 
-        for keyword in draw_keywords:
-            if keyword in card_id_lower:
-                return True
+    def _fallback_plan(self, context: DecisionContext,
+                       playable_cards: List[Card]) -> List[Action]:
+        """Fallback to priority-based selection if beam search fails."""
+        # Score each card
+        scored_cards = []
+        for card in playable_cards:
+            score = self._get_card_priority(card, context)
+            scored_cards.append((card, score))
 
-        # Check card description for "draw"
-        if hasattr(card, 'description'):
-            desc_lower = card.description.lower()
-            if 'draw' in desc_lower:
-                return True
+        # Sort and return best
+        scored_cards.sort(key=lambda x: x[1], reverse=True)
 
-        return False
+        if scored_cards and scored_cards[0][1] > 0:
+            best_card = scored_cards[0][0]
+            if best_card.has_target and context.monsters_alive:
+                target, _ = self._choose_target_for_card(best_card, context, SimulationState(context))
+                return [PlayCardAction(card=best_card, target_monster=target)]
+            else:
+                return [PlayCardAction(card=best_card)]
 
-    def _is_defensive_card(self, card: Card) -> bool:
-        """Check if card is primarily defensive."""
-        defensive_keywords = [
-            'defend', 'block', 'iron wave', 'flame barrier', 'impervious',
-            'entrench', 'sentinel', 'ghostly armor', 'shrug it off',
-        ]
+        return []
 
-        card_id_lower = card.card_id.lower()
+    def _get_card_priority(self, card: Card, context: DecisionContext) -> float:
+        """Get priority score for a card (simplified version of existing logic)."""
+        card_type = str(card.type) if hasattr(card, 'type') else 'UNKNOWN'
 
-        for keyword in defensive_keywords:
-            if keyword in card_id_lower:
-                return True
-
-        return False
-
-    def _get_skill_base_value(self, card: Card, context: DecisionContext) -> float:
-        """Get base value of skill (for Corruption mode)."""
-        # Shrug It Off is best
-        if card.card_id == 'Shrug It Off':
-            return 50
-
-        # Block cards
-        if self._is_defensive_card(card):
-            return 40
+        # Powers first
+        if card_type == 'POWER':
+            if card.card_id == 'Demon Form' and context.turn <= 3:
+                return 1000
+            return 600 if context.turn <= 3 else 400
 
         # Draw cards
         if self._is_draw_card(card):
-            return 45
+            return 800
 
-        return 30
-
-    def _choose_target(self, card: Card, context: DecisionContext):
-        """Choose target for card."""
-        if not context.monsters_alive:
-            return None
-
-        # Bash: highest HP (maximize vulnerable duration)
+        # Bash before attacks
         if card.card_id == 'Bash':
-            return self._find_highest_hp_monster(context)
+            return 850 if self._should_bash_now(context) else 100
 
-        # Body Slam: lowest HP (efficient kills)
-        if card.card_id == 'Body Slam':
-            return self._find_lowest_hp_monster(context)
+        # Attacks
+        if card_type == 'ATTACK':
+            if card.card_id == 'Reaper' and len(context.monsters_alive) >= 2:
+                return 900 if context.strength >= 5 else 700
+            if card.card_id == 'Body Slam' and context.game.player.block >= 20:
+                return 950
+            return 700
 
-        # Reaper: highest HP (most healing)
-        if card.card_id == 'Reaper':
-            return self._find_highest_hp_monster(context)
+        # Defense (only if needed)
+        if self._is_defensive_card(card):
+            return 700 if context.incoming_damage > context.game.player.block else 200
 
-        # AOE: doesn't matter
-        if card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap']:
-            return None  # AOE doesn't need targeting
+        return 400
 
-        # Standard attacks: lowest HP
-        if hasattr(card, 'type') and str(card.type) == 'ATTACK':
-            return self._find_lowest_hp_monster(context)
+    def _should_bash_now(self, context: DecisionContext) -> bool:
+        """Check if Bash should be played now."""
+        # Bash is good if we have big attacks to follow up
+        big_attacks = [
+            c for c in context.playable_cards
+            if c.card_id != 'Bash' and hasattr(c, 'type') and str(c.type) == 'ATTACK'
+            and hasattr(c, 'damage') and c.damage > 10
+        ]
+        return len(big_attacks) > 0
 
-        # Debuffs: highest HP
-        return self._find_highest_hp_monster(context)
-
-    def _find_lowest_hp_monster(self, context: DecisionContext) -> Monster:
-        """Find monster with lowest HP."""
-        if not context.monsters_alive:
-            return None
-
-        return min(context.monsters_alive, key=lambda m: m.current_hp)
-
-    def _find_highest_hp_monster(self, context: DecisionContext) -> Monster:
-        """Find monster with highest HP."""
-        if not context.monsters_alive:
-            return None
-
-        return max(context.monsters_alive, key=lambda m: m.current_hp)
-
-    def _estimate_strength(self, context: DecisionContext) -> int:
-        """Estimate current strength."""
-        if not hasattr(context.game, 'player'):
-            return 0
-
-        # Base strength from powers
-        strength = 0
-
-        if hasattr(context.game.player, 'powers'):
-            for power in context.game.player.powers:
-                if power.amount:
-                    strength += power.amount
-
-        return strength
-
-    def _estimate_card_damage(self, card: Card, context: DecisionContext) -> int:
-        """Estimate damage of a card."""
-        if hasattr(card, 'damage'):
-            return card.damage
-        return 0
-
-    def _enemy_intends_to_attack(self, context: DecisionContext) -> bool:
-        """Check if any enemy intends to attack (for Spot Weakness)."""
-        if not context.monsters_alive:
-            return False
-
-        for monster in context.monsters_alive:
-            if hasattr(monster, 'intent') and hasattr(monster.intent, '__str__'):
-                intent_str = str(monster.intent).upper()
-                if 'ATTACK' in intent_str or 'ATTACK_' in intent_str:
-                    return True
-
-        return False
+    def _is_defensive_card(self, card: Card) -> bool:
+        """Check if card is defensive."""
+        if hasattr(card, 'block') and card.block:
+            return True
+        defensive_keywords = ['defend', 'iron wave', 'flame barrier']
+        card_lower = card.card_id.lower()
+        return any(kw in card_lower for kw in defensive_keywords)
 
     def get_confidence(self, context: DecisionContext) -> float:
         """
@@ -438,5 +390,8 @@ class IroncladCombatPlanner(CombatPlanner):
         if context.act == 1:
             confidence += 0.1
 
-        return max(0.0, min(1.0, confidence))
+        # Higher with lethal detected
+        if self.combat_ending_detector.can_kill_all(context):
+            confidence += 0.2
 
+        return max(0.0, min(1.0, confidence))
