@@ -18,6 +18,13 @@ try:
 except ImportError:
     OPTIMIZED_AI_AVAILABLE = False
 
+# Import tracker separately (always available, no dependencies)
+try:
+    from spirecomm.ai.tracker import GameTracker
+except ImportError:
+    GameTracker = None
+
+
 
 class SimpleAgent:
 
@@ -335,6 +342,16 @@ class OptimizedAgent(SimpleAgent):
         self.use_optimized_combat = use_optimized_combat
         self.use_optimized_card_selection = use_optimized_card_selection
 
+        # Initialize game tracker
+        if GameTracker is not None:
+            self.game_tracker = GameTracker()
+            self.game_tracker.player_class = str(chosen_class).replace('PlayerClass.', '')
+        else:
+            self.game_tracker = None
+        self._in_combat = False
+        self._last_relics = set()
+        self._last_turn = 0
+
         # Initialize decision components if available
         if OPTIMIZED_AI_AVAILABLE:
             player_class_str = str(chosen_class).replace('PlayerClass.', '')
@@ -443,14 +460,30 @@ class OptimizedAgent(SimpleAgent):
                 self.current_action_sequence = action_sequence
                 self.current_action_index = 0
 
+                # 计算置信度
+                confidence = 0.5  # 默认值
+                if self.combat_planner and hasattr(self.combat_planner, 'get_confidence'):
+                    try:
+                        confidence = self.combat_planner.get_confidence(context)
+                    except:
+                        pass
+
                 # 记录决策用于分析
                 self.decision_history.append({
                     'type': 'combat',
                     'sequence': action_sequence,
                     'turn': context.turn,
                     'floor': context.floor,
-                    'confidence': self.combat_planner.get_confidence(context)
+                    'confidence': confidence
                 })
+
+                # 记录到 game_tracker
+                if self.game_tracker:
+                    self.game_tracker.record_decision(
+                        decision_type='combat',
+                        confidence=confidence,
+                        used_fallback=False
+                    )
 
                 # 返回第一个动作
                 return action_sequence[0]
@@ -469,7 +502,7 @@ class OptimizedAgent(SimpleAgent):
 
     def get_next_action_in_game(self, game_state):
         """
-        Override to detect turn changes and reset action sequence.
+        Override to detect turn changes, combat events, and track statistics.
 
         Args:
             game_state: Current game state
@@ -480,6 +513,48 @@ class OptimizedAgent(SimpleAgent):
                 # 新回合 - 重置动作序列
                 self.current_action_sequence = []
                 self.current_action_index = 0
+
+        # Track game statistics if available
+        if self.game_tracker and hasattr(game_state, 'in_combat'):
+            try:
+                # 检测战斗状态变化
+                current_in_combat = game_state.in_combat
+
+                if current_in_combat and not self._in_combat:
+                    # 战斗开始
+                    room_type = "monster"
+                    if hasattr(game_state, 'room_type'):
+                        rt = str(game_state.room_type)
+                        if "Elite" in rt:
+                            room_type = "elite"
+                        elif "Boss" in rt:
+                            room_type = "boss"
+
+                    self.game_tracker.start_combat(
+                        floor=game_state.floor if hasattr(game_state, 'floor') else 0,
+                        act=game_state.act if hasattr(game_state, 'act') else 1,
+                        room_type=room_type
+                    )
+                    self._in_combat = True
+                elif not current_in_combat and self._in_combat:
+                    # 战斗结束
+                    self.game_tracker.end_combat(
+                        hp_remaining=game_state.current_hp if hasattr(game_state, 'current_hp') else 80,
+                        max_hp=game_state.max_hp if hasattr(game_state, 'max_hp') else 80
+                    )
+                    self._in_combat = False
+
+                # 检测遗物获得
+                if hasattr(game_state, 'relics'):
+                    current_relics = set(r.relic_id if hasattr(r, 'relic_id') else str(r) for r in game_state.relics)
+                    new_relics = current_relics - self._last_relics
+                    for relic_id in new_relics:
+                        self.game_tracker.record_relic(relic_id)
+                    self._last_relics = current_relics
+            except Exception as e:
+                # Silently fail on tracking errors to not break the game
+                import sys
+                print(f"Error in game tracking: {e}", file=sys.stderr)
 
         # 更新游戏状态
         self.game = game_state
@@ -535,6 +610,19 @@ class OptimizedAgent(SimpleAgent):
                     return CardRewardAction(bowl=True)
                 else:
                     self.skipped_cards = True
+                    # Track skipped card choice
+                    if self.game_tracker:
+                        self.game_tracker.record_card_choice(
+                            chosen=None,
+                            skipped=len(reward_cards),
+                            available=[c.card_id for c in reward_cards]
+                        )
+                        # 记录跳过决策
+                        self.game_tracker.record_decision(
+                            decision_type='reward',
+                            confidence=0.5,  # 跳过卡牌的置信度较低
+                            used_fallback=False
+                        )
                     return CancelAction()
 
             # Use synergy evaluator to rank cards
@@ -547,6 +635,14 @@ class OptimizedAgent(SimpleAgent):
                 return super().choose_card_reward()
 
             if best_card:
+                # Track card choice
+                if self.game_tracker:
+                    self.game_tracker.record_card_choice(
+                        chosen=best_card.card_id,
+                        skipped=len(reward_cards) - 1,
+                        available=[c.card_id for c in reward_cards]
+                    )
+
                 # Record decision
                 self.decision_history.append({
                     'type': 'card_reward',
@@ -554,6 +650,15 @@ class OptimizedAgent(SimpleAgent):
                     'floor': context.floor,
                     'archetype': context.deck_archetype
                 })
+
+                # Record to game_tracker
+                if self.game_tracker:
+                    self.game_tracker.record_decision(
+                        decision_type='reward',
+                        confidence=0.8,  # 卡牌选择默认置信度
+                        used_fallback=False
+                    )
+
                 return CardRewardAction(best_card)
             else:
                 return CancelAction()
@@ -584,7 +689,10 @@ class OptimizedAgent(SimpleAgent):
 
         # Always use potions in boss fights
         if self.game.room_type == "MonsterRoomBoss":
-            return super().use_next_potion()
+            potion_action = super().use_next_potion()
+            if potion_action and self.game_tracker:
+                self.game_tracker.record_potion_use()
+            return potion_action
 
         # Evaluate combat danger
         context = DecisionContext(self.game) if OPTIMIZED_AI_AVAILABLE else None
@@ -595,9 +703,15 @@ class OptimizedAgent(SimpleAgent):
             for potion in potions:
                 if potion.can_use:
                     if potion.requires_target:
-                        return PotionAction(True, potion=potion, target_monster=self.get_low_hp_target())
+                        potion_action = PotionAction(True, potion=potion, target_monster=self.get_low_hp_target())
                     else:
-                        return PotionAction(True, potion=potion)
+                        potion_action = PotionAction(True, potion=potion)
+
+                    # Track potion use
+                    if potion_action and self.game_tracker:
+                        self.game_tracker.record_potion_use()
+
+                    return potion_action
 
         return None
 

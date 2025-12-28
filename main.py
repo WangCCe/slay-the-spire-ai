@@ -5,6 +5,14 @@ from spirecomm.communication.coordinator import Coordinator
 from spirecomm.ai.agent import SimpleAgent, OptimizedAgent, OPTIMIZED_AI_AVAILABLE
 from spirecomm.spire.character import PlayerClass
 
+# Import statistics components
+try:
+    from spirecomm.ai.statistics import GameStatistics
+    STATISTICS_AVAILABLE = True
+except ImportError:
+    STATISTICS_AVAILABLE = False
+    sys.stderr.write("Warning: Statistics tracking not available\n")
+
 
 def create_agent(use_optimized=None):
     """
@@ -85,6 +93,20 @@ if __name__ == "__main__":
     # Create agent
     agent = create_agent(use_optimized)
 
+    # Setup statistics tracking if available
+    statistics = None
+    debug_log = None
+    if STATISTICS_AVAILABLE:
+        statistics = GameStatistics()
+        sys.stderr.write(f"Statistics tracking enabled\n")
+        sys.stderr.write(f"  Logging to: {statistics.log_file}\n")
+        sys.stderr.write(f"  CSV export: {statistics.csv_file}\n")
+
+        # Also open debug log file
+        debug_log_path = "ai_debug.log"
+        debug_log = open(debug_log_path, 'a', encoding='utf-8')
+        debug_log.write(f"\n{'='*60}\n")
+
     # Setup coordinator
     coordinator = Coordinator()
     coordinator.signal_ready()
@@ -108,11 +130,94 @@ if __name__ == "__main__":
         sys.stderr.write(f"Ascension Level: {current_ascension}\n")
         sys.stderr.write(f"{'='*60}\n")
 
+        # Reset game tracker for OptimizedAgent
+        if isinstance(agent, OptimizedAgent) and hasattr(agent, 'game_tracker'):
+            try:
+                from spirecomm.ai.tracker import GameTracker
+                agent.game_tracker = GameTracker()
+                agent.game_tracker.player_class = str(chosen_class).replace('PlayerClass.', '')
+                agent.game_tracker.ascension_level = current_ascension
+            except Exception as e:
+                sys.stderr.write(f"Warning: Could not reset game tracker: {e}\n")
+
         # Change agent class for this game
         agent.change_class(chosen_class)
 
         # Play the game
         result = coordinator.play_one_game(chosen_class, ascension_level=current_ascension)
+
+        # Record game result if statistics available
+        if statistics:
+            try:
+                debug_msg = f"\n[DEBUG] Attempting to save statistics...\n"
+                debug_msg += f"[DEBUG] agent type: {type(agent).__name__}\n"
+                debug_msg += f"[DEBUG] is OptimizedAgent: {isinstance(agent, OptimizedAgent)}\n"
+
+                sys.stderr.write(debug_msg)
+                if debug_log:
+                    debug_log.write(debug_msg)
+                    debug_log.flush()
+
+                # Only OptimizedAgent has game_tracker
+                if isinstance(agent, OptimizedAgent) and hasattr(agent, 'game_tracker') and agent.game_tracker:
+                    debug_msg2 = f"[DEBUG] game_tracker found, saving...\n"
+                    debug_msg2 += f"[DEBUG] result: {result}\n"
+                    debug_msg2 += f"[DEBUG] coordinator has last_game_state: {hasattr(coordinator, 'last_game_state')}\n"
+
+                    sys.stderr.write(debug_msg2)
+                    if debug_log:
+                        debug_log.write(debug_msg2)
+                        debug_log.flush()
+
+                    # Record game over state
+                    if hasattr(coordinator, 'last_game_state') and coordinator.last_game_state is not None:
+                        agent.game_tracker.record_game_over(result, coordinator.last_game_state)
+                        if debug_log:
+                            debug_log.write(f"[DEBUG] Recorded game over via last_game_state\n")
+                            debug_log.flush()
+                    else:
+                        # Fallback: record with minimal info
+                        debug_msg3 = f"[DEBUG] No last_game_state, using fallback\n"
+                        sys.stderr.write(debug_msg3)
+                        if debug_log:
+                            debug_log.write(debug_msg3)
+                            debug_log.flush()
+
+                        agent.game_tracker.victory = result
+                        agent.game_tracker.final_floor = agent.game.floor if hasattr(agent.game, 'floor') else 0
+                        agent.game_tracker.final_act = agent.game.act if hasattr(agent.game, 'act') else 1
+
+                    # Save to statistics
+                    statistics.record_game(agent.game_tracker)
+                    if debug_log:
+                        debug_log.write(f"[DEBUG] Saved to statistics\n")
+                        debug_log.flush()
+
+                    # Print simple confirmation
+                    result_str = "WIN" if result else "LOSS"
+                    floor = agent.game_tracker.final_floor
+                    act = agent.game_tracker.final_act
+                    confirm_msg = f"\nGame #{game_count} saved: {result_str} at Act {act} Floor {floor}\n"
+                    sys.stderr.write(confirm_msg)
+                    if debug_log:
+                        debug_log.write(confirm_msg)
+                        debug_log.flush()
+                else:
+                    debug_msg4 = f"[DEBUG] No game_tracker to save (not OptimizedAgent or tracker is None)\n"
+                    sys.stderr.write(debug_msg4)
+                    if debug_log:
+                        debug_log.write(debug_msg4)
+                        debug_log.flush()
+            except Exception as e:
+                error_msg = f"Error saving statistics: {e}\n"
+                sys.stderr.write(error_msg)
+                if debug_log:
+                    debug_log.write(error_msg)
+                    debug_log.flush()
+                import traceback
+                traceback.print_exc()
+                if debug_log:
+                    traceback.print_exc(file=debug_log)
 
         # Print summary if OptimizedAgent (to stderr)
         if isinstance(agent, OptimizedAgent):
