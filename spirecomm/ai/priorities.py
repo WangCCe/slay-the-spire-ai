@@ -458,34 +458,39 @@ class SilentPriority(Priority):
 class IroncladPriority(Priority):
 
     CARD_PRIORITY_LIST = [
+        # === ACT 1 PRIORITY CARDS (High impact early game) ===
+        "Bash",  # Vulnerable is crucial in Act 1
+        "Shrug It Off",  # Block + draw, efficient
+        "Iron Wave",  # Block + attack, very efficient
+        "Pommel Strike",  # Cheap, removes bad cards
+        "Headbutt",  # Card advantage, returns key cards
+        "Perfected Strike",  # Efficient damage
+        "Battle Trance",  # Card draw for consistency
+        "Anger",  # Adds damage, costs 1
+        "Strike_R",  # Keep some strikes early game
+        "Defend_R",  # Keep some defends early game
+
+        # === HIGH IMPACT CARDS ===
         "Apotheosis",
         "Ghostly",
-        "Perfected Strike",
         "Whirlwind",
-        "Battle Trance",
-        "Demon Form",
         "Rage",
         "Offering",
         "Impervious",
         "Immolate",
-        "Limit Break",
         "Flame Barrier",
         "Master of Strategy",
-        "Inflame",
         "Disarm",
-        "Shrug It Off",
         "Double Tap",
         "Thunderclap",
         "Metallicize",
-        "Pommel Strike",
-        "Shockwave",
-        "Uppercut",
-        "J.A.X.",
         "PanicButton",
         "Flash of Steel",
         "Flex",
-        "Anger",
-        "Skip",
+
+        # === MID-TIER CARDS ===
+        "Uppercut",
+        "J.A.X.",
         "Secret Weapon",
         "Finesse",
         "Mayhem",
@@ -503,7 +508,6 @@ class IroncladPriority(Priority):
         "Feed",
         "Fiend Fire",
         "Twin Strike",
-        "Headbutt",
         "Seeing Red",
         "Combust",
         "Clash",
@@ -517,23 +521,19 @@ class IroncladPriority(Priority):
         "Bite",
         "Carnage",
         "Clothesline",
-        "Bash",
         "Bandage Up",
         "Panacea",
         "Reckless Charge",
         "Infernal Blade",
         "Spot Weakness",
-        "Strike_R",
         "Shiv",
         "Havoc",
         "RitualDagger",
         "Dropkick",
         "Feel No Pain",
         "Swift Strike",
-        "Corruption",
         "Magnetism",
         "Bloodletting",
-        "Iron Wave",
         "Armaments",
         "Mind Blast",
         "AscendersBane",
@@ -553,7 +553,6 @@ class IroncladPriority(Priority):
         "Purity",
         "Dual Wield",
         "Wild Strike",
-        "Defend_R",
         "Body Slam",
         "Sever Soul",
         "Burning Pact",
@@ -575,6 +574,20 @@ class IroncladPriority(Priority):
         "Jack Of All Trades",
         "Searing Blow",
         "Blood for Blood",
+
+        # === SKIP MARKER ===
+        "Skip",
+
+        # === LATE GAME/ARCHITECTURE-SPECIFIC (Lower priority for Act 1) ===
+        # Strength build (need investment)
+        "Demon Form",  # Too slow without support
+        "Inflame",  # Good but not early priority
+        "Limit Break",  # Requires Strength >= 5
+        "Corruption",  # Requires exhaust synergies
+
+        # Very low priority cards
+        "Flame of Life",
+        # === VERY LOW PRIORITY/CURSES ===
         "Berserk",
         "Entrench",
         "Forethought",
@@ -591,7 +604,7 @@ class IroncladPriority(Priority):
         "Necronomicurse",
         "Pain",
         "Normality",
-        "Pride"
+        "Pride",
     ]
 
     DEFENSIVE_CARDS = [
@@ -755,26 +768,35 @@ class IroncladPriority(Priority):
     ]
 
     MAX_COPIES = {
+        # === ACT 1 ESSENTIALS (Limit copies) ===
+        "Bash": 1,  # Vulnerable is key, but only need 1-2
+        "Iron Wave": 2,  # Excellent early, okay to have 2
+        "Shrug It Off": 3,  # Block + draw is great
+        "Pommel Strike": 1,  # Card removal is valuable
+        "Headbutt": 2,  # Card advantage
+        "Perfected Strike": 2,  # Efficient damage
+        "Battle Trance": 2,  # Draw is consistency
+        "Anger": 2,  # Adds attacks to deck
+        "Strike_R": 4,  # Keep some strikes early
+        "Defend_R": 4,  # Keep some defends early
+
+        # === HIGH IMPACT CARDS ===
         "Offering": 2,
         "Impervious": 99,
         "Apotheosis": 1,
         "Ghostly": 99,
-        "Perfected Strike": 99,
         "Whirlwind": 2,
-        "Battle Trance": 2,
-        "Demon Form": 1,
+        "Demon Form": 1,  # Only need 1, too slow
         "Immolate": 1,
         "Rage": 2,
-        "Limit Break": 3,
+        "Limit Break": 1,  # Reduced from 3 - rarely need more than 1
         "Flame Barrier": 2,
         "Master of Strategy": 99,
-        "Inflame": 1,
+        "Inflame": 2,  # Increased from 1 - good for Strength builds
         "Disarm": 2,
-        "Shrug It Off": 3,
         "Double Tap": 1,
         "Thunderclap": 1,
         "Metallicize": 1,
-        "Pommel Strike": 1,
         "Shockwave": 1,
         "Uppercut": 1,
         "J.A.X.": 1,

@@ -56,22 +56,33 @@ class IroncladCombatPlanner(CombatPlanner):
         Returns:
             List of actions to execute in order
         """
+        import sys
         playable_cards = context.playable_cards
 
         if not playable_cards:
             return []
 
+        # Log turn start
+        sys.stderr.write(f"\n[COMBAT] Turn {context.turn}, Floor {context.floor}, Act {context.act}\n")
+        sys.stderr.write(f"[COMBAT] Playable cards: {len(playable_cards)}, Energy: {context.energy_available}\n")
+        sys.stderr.write(f"[COMBAT] Monsters: {len(context.monsters_alive)}, HP: {context.player_hp_pct:.1%}\n")
+
         # Step 1: Check for lethal (can we kill all monsters this turn?)
         if self.combat_ending_detector.can_kill_all(context):
+            sys.stderr.write("[COMBAT] Lethal detected!\n")
             lethal_sequence = self.combat_ending_detector.find_lethal_sequence(context)
             if lethal_sequence:
+                sys.stderr.write(f"[COMBAT] Lethal sequence: {len(lethal_sequence)} cards\n")
                 return lethal_sequence
 
         # Step 2: Determine adaptive parameters based on complexity
         beam_width, max_depth = self._get_adaptive_parameters(context, playable_cards)
+        sys.stderr.write(f"[COMBAT] Beam search: width={beam_width}, depth={max_depth}\n")
 
         # Step 3: Use beam search to find optimal sequence
-        return self._beam_search_turn(context, playable_cards, beam_width, max_depth)
+        sequence = self._beam_search_turn(context, playable_cards, beam_width, max_depth)
+        sys.stderr.write(f"[COMBAT] Best sequence: {len(sequence)} cards\n")
+        return sequence
 
     def _get_adaptive_parameters(self, context: DecisionContext, playable_cards: List[Card]) -> Tuple[int, int]:
         """

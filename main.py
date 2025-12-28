@@ -14,33 +14,40 @@ except ImportError:
     sys.stderr.write("Warning: Statistics tracking not available\n")
 
 
-def create_agent(use_optimized=None):
+def create_agent(use_optimized=None, player_class=None):
     """
     Create an agent instance.
 
     Args:
         use_optimized: Force use of optimized agent (True), simple agent (False),
                       or auto-detect (None)
+        player_class: Player class to determine if optimized AI should be used
 
     Returns:
         Agent instance (SimpleAgent or OptimizedAgent)
     """
-    # Check environment variable if not specified
+    # Auto-enable optimized AI for Ironclad
     if use_optimized is None:
-        use_optimized = os.getenv("USE_OPTIMIZED_AI", "false").lower() == "true"
+        if player_class == PlayerClass.IRONCLAD:
+            use_optimized = True
+            sys.stderr.write("Auto-enabling OptimizedAgent for Ironclad\n")
+        else:
+            use_optimized = os.getenv("USE_OPTIMIZED_AI", "false").lower() == "true"
 
     # Try to use OptimizedAgent if requested
     if use_optimized:
         if OPTIMIZED_AI_AVAILABLE:
-            sys.stderr.write("Using OptimizedAgent with enhanced AI\n")
-            return OptimizedAgent()
+            class_name = player_class.name if player_class else "Unknown"
+            sys.stderr.write(f"Using OptimizedAgent with enhanced AI for {class_name}\n")
+            return OptimizedAgent(chosen_class=player_class) if player_class else OptimizedAgent()
         else:
             sys.stderr.write("Warning: OptimizedAgent requested but components not available\n")
             sys.stderr.write("Falling back to SimpleAgent\n")
-            return SimpleAgent()
+            return SimpleAgent(chosen_class=player_class) if player_class else SimpleAgent()
     else:
-        sys.stderr.write("Using SimpleAgent (legacy AI)\n")
-        return SimpleAgent()
+        class_name = player_class.name if player_class else "Unknown"
+        sys.stderr.write(f"Using SimpleAgent (legacy AI) for {class_name}\n")
+        return SimpleAgent(chosen_class=player_class) if player_class else SimpleAgent()
 
 
 if __name__ == "__main__":
@@ -90,8 +97,11 @@ if __name__ == "__main__":
                         sys.stderr.write(f"Invalid ascension level: {sys.argv[i + 1]}\n")
                         sys.stderr.write(f"Ascension must be a number (0-20), ignoring and using default\n")
 
-    # Create agent
-    agent = create_agent(use_optimized)
+    # Define player class before creating agent
+    chosen_class = PlayerClass.IRONCLAD  # Fixed to Ironclad for testing
+
+    # Create agent with player class for auto-detection
+    agent = create_agent(use_optimized, player_class=chosen_class)
 
     # Setup statistics tracking if available
     statistics = None
@@ -116,7 +126,6 @@ if __name__ == "__main__":
 
     # Play games forever - IRONCLAD ONLY for testing
     game_count = 0
-    chosen_class = PlayerClass.IRONCLAD  # Fixed to Ironclad for testing
 
     # Set ascension level (default to 20 if not specified)
     current_ascension = ascension_level if ascension_level is not None else 20
