@@ -339,9 +339,33 @@ class OptimizedAgent(SimpleAgent):
         if OPTIMIZED_AI_AVAILABLE:
             player_class_str = str(chosen_class).replace('PlayerClass.', '')
 
-            self.card_evaluator = SynergyCardEvaluator(player_class=player_class_str)
-            self.combat_planner = HeuristicCombatPlanner(card_evaluator=self.card_evaluator)
-            self.deck_analyzer = DeckAnalyzer()
+            # Use class-specific components for Ironclad
+            if player_class_str == 'IRONCLAD':
+                from spirecomm.ai.heuristics.ironclad_evaluator import IroncladCardEvaluator
+                from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
+                from spirecomm.ai.heuristics.ironclad_archetype import IroncladArchetypeManager
+                from spirecomm.ai.heuristics.ironclad_deck import IroncladDeckStrategy
+                from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter
+
+                self.card_evaluator = IroncladCardEvaluator(player_class=player_class_str)
+                self.combat_planner = IroncladCombatPlanner(card_evaluator=self.card_evaluator)
+                self.archetype_manager = IroncladArchetypeManager()
+                self.deck_strategy = IroncladDeckStrategy()
+                self.map_router = AdaptiveMapRouter(player_class=player_class_str)
+                self.deck_analyzer = DeckAnalyzer()  # Keep for compatibility
+            else:
+                # Use generic components for other classes
+                self.card_evaluator = SynergyCardEvaluator(player_class=player_class_str)
+                self.combat_planner = HeuristicCombatPlanner(
+                    card_evaluator=self.card_evaluator,
+                    player_class=player_class_str
+                )
+                self.deck_analyzer = DeckAnalyzer()
+                self.archetype_manager = None
+                self.deck_strategy = None
+                # All classes get map router
+                from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter
+                self.map_router = AdaptiveMapRouter(player_class=player_class_str)
 
             # Track decision history for analysis
             self.decision_history = []
@@ -349,6 +373,9 @@ class OptimizedAgent(SimpleAgent):
             self.card_evaluator = None
             self.combat_planner = None
             self.deck_analyzer = None
+            self.archetype_manager = None
+            self.deck_strategy = None
+            self.map_router = None
             self.decision_history = []
 
     def get_play_card_action(self):

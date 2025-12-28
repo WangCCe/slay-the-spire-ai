@@ -183,7 +183,7 @@ class HeuristicCombatPlanner(CombatPlanner):
     """
 
     def __init__(self, card_evaluator: SynergyCardEvaluator = None,
-                 beam_width: int = 10, max_depth: int = 4):
+                 beam_width: int = 10, max_depth: int = 4, player_class: str = None):
         """
         Initialize the combat planner.
 
@@ -191,11 +191,13 @@ class HeuristicCombatPlanner(CombatPlanner):
             card_evaluator: Card evaluator for value calculations
             beam_width: Number of candidates to keep at each depth
             max_depth: Maximum number of cards to lookahead
+            player_class: Player class for class-specific logic
         """
         self.card_evaluator = card_evaluator or SynergyCardEvaluator()
         self.simulator = FastCombatSimulator(self.card_evaluator)
         self.beam_width = beam_width
         self.max_depth = max_depth
+        self.player_class = player_class
 
     def plan_turn(self, context: DecisionContext) -> List[Action]:
         """
