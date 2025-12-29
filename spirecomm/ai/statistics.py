@@ -12,24 +12,52 @@ from typing import List, Dict, Any
 from spirecomm.ai.tracker import GameTracker
 
 
-# AI Version tracking - UPDATE THIS when making significant changes
-AI_VERSION = "0.6.0-optimized-v2"
-# v2 changes:
-# - Reduced elite priority (150→80) to avoid early elite fights
-# - Removed Demon Form forced play logic (A20 trap card)
-# - Demoted Demon Form priority (top 20→~60)
-# - Kept Reaper, Limit Break, Spot Weakness promotions
+def get_ai_version() -> str:
+    """Get AI version from git tags or fallback to default.
+    
+    Uses git tag if available, otherwise returns default version.
+    This avoids manual version updates and ensures version matches git tag.
+    """
+    try:
+        # Try to get the most recent tag
+        tag = subprocess.check_output(
+            ['git', 'describe', '--tags', '--abbrev=0'],
+            stderr=subprocess.DEVNULL
+        ).decode('utf-8').strip()
+        
+        # If tag exists, use it
+        if tag:
+            return tag
+    except:
+        pass
+    
+    # Fallback to default version if git tag not available
+    return "0.6.0-optimized-v2"
 
 
 def get_git_commit() -> str:
-    """Get current git commit hash for version tracking."""
+    """Get current git commit hash for version tracking.
+    
+    Enhanced to handle more edge cases and provide better error information.
+    """
     try:
+        # First check if we're in a git repository
+        subprocess.check_output(
+            ['git', 'rev-parse', '--is-inside-work-tree'],
+            stderr=subprocess.DEVNULL
+        )
+        
+        # If we are in a git repo, get the commit hash
         return subprocess.check_output(
             ['git', 'rev-parse', '--short', 'HEAD'],
             stderr=subprocess.DEVNULL
         ).decode('utf-8').strip()
     except:
         return "unknown"
+
+
+# Auto-detect AI version from git tags
+AI_VERSION = get_ai_version()
 
 
 class GameStatistics:
