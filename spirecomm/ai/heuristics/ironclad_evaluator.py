@@ -37,6 +37,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         'Disarm': 82,        # Powerful single-target defense
         'Headbutt': 88,      # Retrieval + damage + synergy
         'Perfected Strike': 85,  # Core attack card, excellent scaling
+        'Iron Wave': 75,     # From default → tier 2 (excellent block+damage hybrid)
     }
 
     DEMOTED_CARDS = {

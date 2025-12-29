@@ -338,6 +338,16 @@ class IroncladCombatPlanner(CombatPlanner):
                     if big_attack_pending:
                         score += 25
 
+                # Iron Wave - excellent block+damage hybrid
+                if card_id == 'Iron Wave':
+                    # Value both the block and damage aspects
+                    if hasattr(card, 'block') and card.block > 0:
+                        score += card.block * 3  # Value block
+                    if hasattr(card, 'damage') and card.damage > 0:
+                        score += card.damage * 1.5  # Value damage
+                    # Bonus for hybrid nature
+                    score += 15
+
         return score
 
     def _is_draw_card(self, card: Card) -> bool:
@@ -371,10 +381,25 @@ class IroncladCombatPlanner(CombatPlanner):
     def _get_card_priority(self, card: Card, context: DecisionContext) -> float:
         """Get priority score for a card (simplified version of existing logic)."""
         card_type = str(card.type) if hasattr(card, 'type') else 'UNKNOWN'
+        card_id = card.card_id
+        
+        # Check if fighting Gremlins or other weak monsters that require aggressive play
+        aggressive_mode = False
+        for monster in context.monsters_alive:
+            monster_info = self._get_monster_info(monster)
+            strategy = monster_info.get("recommended_strategy", "balanced")
+            if strategy in ["aggressive", "priority_aggressive", "kill_quickly", "focus_down"]:
+                aggressive_mode = True
+                break
+        
+        # Check if all monsters are weak (low threat)
+        all_weak = all(self._get_monster_info(m).get("threat_level", 2) <= 1 for m in context.monsters_alive)
+        if all_weak:
+            aggressive_mode = True
 
         # Powers first
         if card_type == 'POWER':
-            if card.card_id == 'Demon Form' and context.turn <= 3:
+            if card_id == 'Demon Form' and context.turn <= 3:
                 return 1000
             return 600 if context.turn <= 3 else 400
 
@@ -383,22 +408,49 @@ class IroncladCombatPlanner(CombatPlanner):
             return 800
 
         # Bash before attacks
-        if card.card_id == 'Bash':
+        if card_id == 'Bash':
             return 850 if self._should_bash_now(context) else 100
 
-        # Attacks
-        if card_type == 'ATTACK':
-            if card.card_id == 'Reaper' and len(context.monsters_alive) >= 2:
-                return 900 if context.strength >= 5 else 700
-            if card.card_id == 'Body Slam' and context.game.player.block >= 20:
-                return 950
-            return 700
+        # Special hybrid cards (block + damage) - Iron Wave
+        if card_id == 'Iron Wave':
+            # Iron Wave is excellent hybrid card - value it highly
+            # Always good, but even better when we need block
+            if context.incoming_damage > context.game.player.block:
+                return 850  # High priority when we need block
+            return 750  # Still good when we don't need block
 
-        # Defense (only if needed)
+        # Attacks - prioritize more in aggressive mode
+        if card_type == 'ATTACK':
+            base_attack_priority = 700
+            
+            # Increase attack priority for aggressive mode against Gremlins
+            if aggressive_mode:
+                base_attack_priority = 900
+            
+            if card_id == 'Reaper' and len(context.monsters_alive) >= 2:
+                return 900 if context.strength >= 5 else base_attack_priority
+            if card_id == 'Body Slam' and context.game.player.block >= 20:
+                return 950
+            return base_attack_priority
+
+        # Other defense cards - decrease priority for aggressive mode
         if self._is_defensive_card(card):
+            # In aggressive mode, only use defense cards if incoming damage is very high
+            if aggressive_mode:
+                # Only use defense if incoming damage is extremely high
+                if context.incoming_damage > context.game.current_hp * 0.8:
+                    return 600
+                # Otherwise, lower defense priority
+                return 100
+            # Normal mode - use defense when needed
             return 700 if context.incoming_damage > context.game.player.block else 200
 
         return 400
+        
+    def _get_monster_info(self, monster):
+        """Get monster info from database."""
+        from .monster_database import get_monster_info
+        return get_monster_info(monster.monster_id)
 
     def _should_bash_now(self, context: DecisionContext) -> bool:
         """Check if Bash should be played now."""

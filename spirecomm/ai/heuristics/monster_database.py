@@ -18,11 +18,17 @@ MONSTER_DATABASE = {
         "special_abilities": ["none"],
         "recommended_strategy": "focus_down"
     },
+    "Gremlin": {
+        "threat_level": 1,
+        "attacks": ["single_target"],
+        "special_abilities": ["none"],
+        "recommended_strategy": "aggressive"
+    },
     "Gremlin Looter": {
         "threat_level": 1,
         "attacks": ["single_target"],
         "special_abilities": ["steal_gold"],
-        "recommended_strategy": "priority_target"
+        "recommended_strategy": "priority_aggressive"
     },
     "Gremlin Nob": {
         "threat_level": 3,
@@ -35,6 +41,12 @@ MONSTER_DATABASE = {
         "attacks": ["single_target", "summon"],
         "special_abilities": ["summon_gremlins"],
         "recommended_strategy": "priority_target"
+    },
+    "Gremlin Wizard": {
+        "threat_level": 2,
+        "attacks": ["single_target", "AOE"],
+        "special_abilities": ["debuff"],
+        "recommended_strategy": "aggressive"
     },
     "Fungi Beast": {
         "threat_level": 2,
