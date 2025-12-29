@@ -76,13 +76,13 @@ MONSTER_DATABASE = {
         "threat_level": 4,
         "attacks": ["single_target", "heavy_damage"],
         "special_abilities": ["delay_attack"],
-        "recommended_strategy": "prepare_defense"
+        "recommended_strategy": "kill_quickly"  # 速战速决，避免蓄力后的高伤害
     },
     "Hexaghost": {
         "threat_level": 3,
         "attacks": ["single_target", "AOE"],
         "special_abilities": ["phase_change"],
-        "recommended_strategy": "kill_quickly"
+        "recommended_strategy": "kill_quickly"  # 速战速决，避免进入高伤害阶段
     },
     # Elite monsters
     "Slaver Blue": {
