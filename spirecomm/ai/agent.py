@@ -181,13 +181,24 @@ class SimpleAgent:
         elif self.game.screen_type == ScreenType.CARD_REWARD:
             return self.choose_card_reward()
         elif self.game.screen_type == ScreenType.COMBAT_REWARD:
-            for reward_item in self.game.screen.rewards:
+            import sys
+            rewards = self.game.screen.rewards if hasattr(self.game.screen, 'rewards') else []
+            sys.stderr.write(f"[COMBAT_REWARD] Floor {self.game.floor if hasattr(self.game, 'floor') else '?'}: {len(rewards)} rewards, skipped_cards={self.skipped_cards}\n")
+
+            for i, reward_item in enumerate(rewards):
+                skip_potion = reward_item.reward_type == RewardType.POTION and self.game.are_potions_full()
+                skip_card = reward_item.reward_type == RewardType.CARD and self.skipped_cards
+                sys.stderr.write(f"  [{i}] type={reward_item.reward_type}, skip_potion={skip_potion}, skip_card={skip_card}\n")
+
+            for reward_item in rewards:
                 if reward_item.reward_type == RewardType.POTION and self.game.are_potions_full():
                     continue
                 elif reward_item.reward_type == RewardType.CARD and self.skipped_cards:
                     continue
                 else:
+                    sys.stderr.write(f"[COMBAT_REWARD] Taking reward: {reward_item.reward_type}\n")
                     return CombatRewardAction(reward_item)
+            sys.stderr.write(f"[COMBAT_REWARD] Proceeding (all rewards skipped)\n")
             self.skipped_cards = False
             return ProceedAction()
         elif self.game.screen_type == ScreenType.MAP:
@@ -197,14 +208,63 @@ class SimpleAgent:
             best_boss_relic = self.priorities.get_best_boss_relic(relics)
             return BossRewardAction(best_boss_relic)
         elif self.game.screen_type == ScreenType.SHOP_SCREEN:
-            if self.game.screen.purge_available and self.game.gold >= self.game.screen.purge_cost:
+            # Smart shop decision making
+            gold = self.game.gold
+            screen = self.game.screen
+            
+            # Calculate deck stats for better decision making
+            deck_size = len(self.game.deck) if hasattr(self.game, 'deck') else 0
+            
+            # Priority 1: Purge (card removal) if needed and affordable
+            purge_cost = screen.purge_cost if screen.purge_available else float('inf')
+            if screen.purge_available and gold >= purge_cost:
+                # Only purge if deck is large enough or has low-value cards
+                if deck_size >= 15:
+                    # Count bad cards that should be removed
+                    bad_cards = [c for c in self.game.deck if c.card_id in ['Strike_R', 'Defend_R', 'Bash']]
+                    if len(bad_cards) >= 2:
+                        return ChooseAction(name="purge")
+            
+            # Priority 2: Buy cards that are good for the deck
+            if hasattr(self.priorities, 'get_sorted_cards'):
+                # Get sorted cards by priority
+                sorted_cards = self.priorities.get_sorted_cards(screen.cards)
+                for card in sorted_cards:
+                    # Only buy if affordable and not skipping
+                    if gold >= card.price and not self.priorities.should_skip(card):
+                        # Check if we can afford it after considering purge
+                        if not screen.purge_available or gold - card.price >= purge_cost:
+                            return BuyCardAction(card)
+            else:
+                # Fallback to original logic
+                for card in screen.cards:
+                    if gold >= card.price and not self.priorities.should_skip(card):
+                        return BuyCardAction(card)
+            
+            # Priority 3: Buy useful relics (consider price and value)
+            # Only buy relics if we have enough gold left (keep some for purge/cards if needed)
+            for relic in screen.relics:
+                # Skip expensive relics that might prevent more important purchases
+                if gold >= relic.price and relic.price <= gold * 0.7:  # Don't spend all gold on relics
+                    # Prioritize useful relics for Ironclad
+                    useful_relics = ['Burning Blood', 'Barricade', 'Demon Form', 'Limit Break', 'Juggernaut', 'Runic Pyramid', 'Sundial', 'Twin Daggers', 'Cloak Clasp', 'Gremlin Horn']
+                    if relic.name in useful_relics or gold >= relic.price + 50:  # Keep some gold reserve
+                        return BuyRelicAction(relic)
+            
+            # Priority 4: Buy potions if needed and affordable
+            if not self.game.are_potions_full():
+                for potion in screen.potions:
+                    if gold >= potion.price:
+                        # Prioritize useful potions
+                        useful_potions = ['Healing Potion', 'Strength Potion', 'Fire Potion', 'Ice Potion', 'Block Potion', 'Strawberry']
+                        if potion.name in useful_potions:
+                            return BuyPotionAction(potion)
+            
+            # Priority 5: Purge as last resort if we have extra gold
+            if screen.purge_available and gold >= purge_cost:
                 return ChooseAction(name="purge")
-            for card in self.game.screen.cards:
-                if self.game.gold >= card.price and not self.priorities.should_skip(card):
-                    return BuyCardAction(card)
-            for relic in self.game.screen.relics:
-                if self.game.gold >= relic.price:
-                    return BuyRelicAction(relic)
+            
+            # No good purchases available
             return CancelAction()
         elif self.game.screen_type == ScreenType.GRID:
             if not self.game.choice_available:
@@ -253,16 +313,30 @@ class SimpleAgent:
 
     def choose_card_reward(self):
         reward_cards = self.game.screen.cards
-        if self.game.screen.can_skip and not self.game.in_combat:
+        import sys
+        can_skip = self.game.screen.can_skip if hasattr(self.game.screen, 'can_skip') else False
+        in_combat = self.game.in_combat if hasattr(self.game, 'in_combat') else False
+        sys.stderr.write(f"[CARD_REWARD] Floor {self.game.floor if hasattr(self.game, 'floor') else '?'}: {len(reward_cards)} cards, can_skip={can_skip}, in_combat={in_combat}\n")
+
+        for i, card in enumerate(reward_cards):
+            count = self.count_copies_in_deck(card)
+            needs = self.priorities.needs_more_copies(card, count) if can_skip and not in_combat else True
+            sys.stderr.write(f"  [{i}] {card.card_id} (copies={count}, needs_more={needs})\n")
+
+        if can_skip and not in_combat:
             pickable_cards = [card for card in reward_cards if self.priorities.needs_more_copies(card, self.count_copies_in_deck(card))]
         else:
             pickable_cards = reward_cards
+
         if len(pickable_cards) > 0:
             potential_pick = self.priorities.get_best_card(pickable_cards)
+            sys.stderr.write(f"[CARD_REWARD] Choosing: {potential_pick.card_id if potential_pick else 'None'}\n")
             return CardRewardAction(potential_pick)
-        elif self.game.screen.can_bowl:
+        elif hasattr(self.game.screen, 'can_bowl') and self.game.screen.can_bowl:
+            sys.stderr.write(f"[CARD_REWARD] Using bowl\n")
             return CardRewardAction(bowl=True)
         else:
+            sys.stderr.write(f"[CARD_REWARD] Skipping all cards\n")
             self.skipped_cards = True
             return CancelAction()
 
@@ -671,18 +745,18 @@ class OptimizedAgent(SimpleAgent):
                     except:
                         scored_cards.append((card, 50))  # Default score
 
-                # Filter for high priority cards (score >= 75)
+                # Filter for high priority cards (score >= 65, reduced from 75 to reduce skipping)
                 high_priority_cards = [
                     (card, card_score) for card, card_score in scored_cards
-                    if card_score >= 75
+                    if card_score >= 65
                 ]
 
                 if high_priority_cards:
-                    sys.stderr.write(f"[REWARD] Deck size {deck_size}, being selective (score >= 75)\n")
+                    sys.stderr.write(f"[REWARD] Deck size {deck_size}, being selective (score >= 65)\n")
                     pickable_cards = [card for card, _ in high_priority_cards]
                 else:
                     # No good cards - skip to keep deck lean
-                    sys.stderr.write(f"[REWARD] Deck too large ({deck_size}) and no good cards (score >= 75) - skipping\n")
+                    sys.stderr.write(f"[REWARD] Deck too large ({deck_size}) and no good cards (score >= 65) - skipping\n")
                     if self.game.screen.can_bowl:
                         return CardRewardAction(bowl=True)
                     else:
@@ -748,6 +822,7 @@ class OptimizedAgent(SimpleAgent):
         - Elite fights when dangerous
         - High-damage situations
         - When potion provides high value
+        - Based on potion type and current needs
 
         Returns:
             PotionAction or None
@@ -757,31 +832,81 @@ class OptimizedAgent(SimpleAgent):
         if not potions:
             return None
 
-        # Always use potions in boss fights
-        if self.game.room_type == "MonsterRoomBoss":
+        # Calculate current needs
+        hp_pct = self.game.current_hp / max(self.game.max_hp, 1)
+        incoming_damage = self.get_incoming_damage()
+        alive_monsters = [m for m in self.game.monsters if not m.is_gone and not m.half_dead]
+        is_elite = 'Elite' in self.game.room_type
+        is_boss = 'Boss' in self.game.room_type
+        
+        # Evaluate combat danger
+        danger_level = self._evaluate_combat_danger(None)
+        
+        # Filter and prioritize potions based on situation
+        potions_to_use = []
+        
+        for potion in potions:
+            if not potion.can_use:
+                continue
+                
+            # Prioritize potions based on situation
+            use_potion = False
+            
+            # Healing potions - use when HP is low and in danger
+            if 'heal' in potion.name.lower() or 'health' in potion.name.lower() or 'strawberry' in potion.name.lower() or 'apple' in potion.name.lower():
+                # Use healing potions when HP is critical or in dangerous situations
+                if (hp_pct < 0.3 or (hp_pct < 0.5 and danger_level > 0.5)) and incoming_damage > 0:
+                    use_potion = True
+                    potions_to_use.append((3, potion))
+            
+            # Damage potions - use when multiple monsters or dangerous enemies
+            elif 'damage' in potion.name.lower() or 'strength' in potion.name.lower() or 'fire' in potion.name.lower() or 'ice' in potion.name.lower() or 'lightning' in potion.name.lower():
+                # Use damage potions in elite/boss fights or when multiple monsters
+                if (is_elite or is_boss or len(alive_monsters) >= 2) and danger_level > 0.4:
+                    use_potion = True
+                    potions_to_use.append((2, potion))
+            
+            # Defensive potions - use when incoming damage is high
+            elif 'block' in potion.name.lower() or 'shield' in potion.name.lower() or 'barrier' in potion.name.lower():
+                # Use defensive potions when incoming damage exceeds current HP or block
+                current_block = sum(monster.block for monster in alive_monsters if hasattr(monster, 'block'))
+                if incoming_damage > current_block + self.game.current_hp * 0.5:
+                    use_potion = True
+                    potions_to_use.append((1, potion))
+            
+            # Other potions - use based on general danger
+            else:
+                if danger_level > 0.7:
+                    use_potion = True
+                    potions_to_use.append((0, potion))
+        
+        # Sort potions by priority (highest first)
+        potions_to_use.sort(reverse=True, key=lambda x: x[0])
+        
+        # Use the highest priority potion
+        if potions_to_use:
+            _, potion = potions_to_use[0]
+            if potion.requires_target:
+                # For damage potions, target highest HP monster; for others, target as appropriate
+                if 'damage' in potion.name.lower():
+                    target = max(alive_monsters, key=lambda m: m.current_hp)
+                else:
+                    target = self.get_low_hp_target()
+                potion_action = PotionAction(True, potion=potion, target_monster=target)
+            else:
+                potion_action = PotionAction(True, potion=potion)
+            
+            if self.game_tracker:
+                self.game_tracker.record_potion_use()
+            
+            return potion_action
+        
+        # Fallback: always use potions in boss fights if nothing else
+        if is_boss:
             potion_action = super().use_next_potion()
             if potion_action and self.game_tracker:
                 self.game_tracker.record_potion_use()
             return potion_action
-
-        # Evaluate combat danger
-        context = DecisionContext(self.game) if OPTIMIZED_AI_AVAILABLE else None
-        danger_level = self._evaluate_combat_danger(context)
-
-        # Use potions in dangerous situations
-        if danger_level > 0.6:
-            for potion in potions:
-                if potion.can_use:
-                    if potion.requires_target:
-                        potion_action = PotionAction(True, potion=potion, target_monster=self.get_low_hp_target())
-                    else:
-                        potion_action = PotionAction(True, potion=potion)
-
-                    # Track potion use
-                    if potion_action and self.game_tracker:
-                        self.game_tracker.record_potion_use()
-
-                    return potion_action
 
         return None
 

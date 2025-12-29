@@ -36,12 +36,13 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         'Spot Weakness': 85, # Consistent strength gain
         'Disarm': 82,        # Powerful single-target defense
         'Headbutt': 88,      # Retrieval + damage + synergy
+        'Perfected Strike': 85,  # Core attack card, excellent scaling
     }
 
     DEMOTED_CARDS = {
         'Searing Blow': 20,  # Requires heavy upgrade investment
         'Wild Strike': 25,   # Adds random card, bloats deck
-        'Flex': 50,          # Only good with Limit Break or immediate use
+        'Flex': 65,          # Improved priority - good for strength decks and immediate use
         'Clash': 40,         # Still worse than other attacks
     }
 

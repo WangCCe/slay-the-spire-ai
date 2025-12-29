@@ -68,36 +68,60 @@ class AdaptiveMapRouter:
         return base_priority
 
     def _adjust_act_1_priority(self, symbol: str, base: int, hp_pct: float) -> int:
-        """Act 1 priorities - more aggressive for strong early characters."""
-        # Ironclad is strongest in Act 1 (Burning Blood healing)
+        """Act 1 priorities - adjusted for A20 difficulty, less aggressive early on."""
+        # Ironclad is strongest in Act 1 (Burning Blood healing), but adjusted for A20
         if self.player_class == 'IRONCLAD':
             if symbol == 'E':  # Elite
-                if hp_pct > 0.6:
-                    return base + 200  # Very aggressive
-                elif hp_pct > 0.4:
-                    return base + 100  # Moderately aggressive
-                elif hp_pct > 0.25:
-                    return base  # Neutral
+                # Get floor if available
+                floor = 0
+                if hasattr(self, 'context') and hasattr(self.context, 'floor'):
+                    floor = self.context.floor
+                
+                # More cautious in early Act 1 (floors 1-5)
+                if floor <= 5:
+                    # Avoid elites entirely in first 5 floors
+                    return base - 200  # Too risky early
+                elif floor <= 10:
+                    # Moderate caution for mid Act 1
+                    if hp_pct > 0.8:
+                        return base + 100  # Only take if very healthy
+                    elif hp_pct > 0.6:
+                        return base + 50  # Cautious
+                    else:
+                        return base - 100  # Too risky
                 else:
-                    return base - 100  # Too risky
+                    # Late Act 1, can be more aggressive
+                    if hp_pct > 0.7:
+                        return base + 150  # Aggressive when healthy
+                    elif hp_pct > 0.5:
+                        return base + 50  # Moderate
+                    else:
+                        return base - 50  # Too risky
 
             elif symbol == 'R':  # Rest
                 if hp_pct > 0.75:
-                    return base - 100  # Don't need rest
+                    return base - 50  # Don't need rest (reduced from -100)
                 elif hp_pct < 0.4:
                     return base + 300  # Urgent
                 else:
                     return base  # Neutral
 
-        # Silent can also be aggressive with poison
+        # Silent can also be aggressive with poison, adjusted for A20
         elif self.player_class == 'THE_SILENT':
-            if symbol == 'E' and hp_pct > 0.5:
-                return base + 150
+            if symbol == 'E':
+                floor = 0
+                if hasattr(self, 'context') and hasattr(self.context, 'floor'):
+                    floor = self.context.floor
+                
+                if floor <= 7:
+                    return base - 150  # Avoid early elites
+                elif hp_pct > 0.6:
+                    return base + 100  # More cautious than before
 
         # Defect is weakest early, more conservative
         elif self.player_class == 'THE_DEFECT':
-            if symbol == 'E' and hp_pct < 0.7:
-                return base - 50
+            if symbol == 'E':
+                return base - 100  # More cautious for Defect in A20
 
         return base
 

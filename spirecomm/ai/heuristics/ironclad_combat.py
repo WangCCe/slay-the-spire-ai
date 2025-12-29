@@ -16,6 +16,7 @@ import sys
 from typing import List, Tuple, Optional
 from .simulation import CombatPlanner, SimulationState, FastCombatSimulator
 from .combat_ending import CombatEndingDetector
+from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster
@@ -101,17 +102,17 @@ class IroncladCombatPlanner(CombatPlanner):
         # Calculate complexity score
         complexity = num_playable * num_monsters
 
-        # Simple局面 (1-3 cards, 1-2 monsters)
+        # Simple局面 (1-3 cards, 1-2 monsters) - increased from 8,3 to 10,4
         if num_playable <= 3 and num_monsters <= 2:
-            return 8, 3
+            return 10, 4
 
-        # Medium局面 (4-6 cards, 2-3 monsters)
+        # Medium局面 (4-6 cards, 2-3 monsters) - increased from 12,4 to 15,5
         elif num_playable <= 6 and num_monsters <= 3:
-            return 12, 4
-
-        # Complex局面 (7+ cards or 4+ monsters) - deeper search
-        else:
             return 15, 5
+
+        # Complex局面 (7+ cards or 4+ monsters) - deeper search, increased from 15,5 to 20,6
+        else:
+            return 20, 6
 
     def _beam_search_turn(self, context: DecisionContext,
                          playable_cards: List[Card],
@@ -182,6 +183,9 @@ class IroncladCombatPlanner(CombatPlanner):
             return None, None
 
         card_id = card.card_id
+        alive_monsters = [(i, m) for i, m in enumerate(state.monsters) if not m['is_gone']]
+        if not alive_monsters:
+            return None, None
 
         # AOE cards - no targeting needed
         # Reaper is AOE heal - prioritize when multiple monsters alive and we have Strength
@@ -191,10 +195,9 @@ class IroncladCombatPlanner(CombatPlanner):
                 return None, None  # AOE
             elif len(state.monsters) == 1:
                 # Single target - less valuable but still use
-                if state.monsters:
-                    first_alive_idx = next((i for i, m in enumerate(state.monsters) if not m['is_gone']), 0)
-                    if first_alive_idx < len(context.monsters_alive):
-                        return context.monsters_alive[first_alive_idx], first_alive_idx
+                i, _ = alive_monsters[0]
+                if i < len(context.monsters_alive):
+                    return context.monsters_alive[i], i
                 return None, None
             else:
                 return None, None
@@ -202,42 +205,57 @@ class IroncladCombatPlanner(CombatPlanner):
         if card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap']:
             return None, None
 
-        # Bash - highest HP (maximize vulnerable duration)
+        # Calculate threat levels for all alive monsters
+        monster_threats = []
+        for i, monster_state in alive_monsters:
+            if i < len(context.monsters_alive):
+                real_monster = context.monsters_alive[i]
+                threat = evaluate_monster_threat(real_monster, context)
+                monster_threats.append((i, monster_state, threat))
+
+        if not monster_threats:
+            return None, None
+
+        # Bash - highest HP with threat consideration (maximize vulnerable duration)
         if card_id == 'Bash':
-            highest_hp_idx = max(enumerate(state.monsters),
-                               key=lambda x: x[1]['hp'] if not x[1]['is_gone'] else 0)
-            # Return actual monster object for action creation
-            if highest_hp_idx[0] < len(context.monsters_alive):
-                return context.monsters_alive[highest_hp_idx[0]], highest_hp_idx[0]
+            # Balance HP and threat for Bash targeting
+            best_idx = max(monster_threats, 
+                         key=lambda x: x[1]['hp'] * 0.7 + x[2] * 0.3)
+            i, _, _ = best_idx
+            if i < len(context.monsters_alive):
+                return context.monsters_alive[i], i
 
-        # Body Slam - lowest HP (finish off weakened enemies)
+        # Body Slam - lowest HP with threat consideration (finish off weakened enemies)
         if card_id == 'Body Slam':
-            lowest_hp_idx = min(enumerate(state.monsters),
-                              key=lambda x: x[1]['hp'] if not x[1]['is_gone'] else 999)
-            if lowest_hp_idx[0] < len(context.monsters_alive):
-                return context.monsters_alive[lowest_hp_idx[0]], lowest_hp_idx[0]
+            # Balance HP and threat for Body Slam targeting
+            best_idx = min(monster_threats, 
+                         key=lambda x: x[1]['hp'] * 0.5 + (10 - x[2]) * 0.5)
+            i, _, _ = best_idx
+            if i < len(context.monsters_alive):
+                return context.monsters_alive[i], i
 
-        # Standard attacks - lowest HP target that's not already vulnerable
+        # Standard attacks - prioritize high threat targets, then lowest HP
         if hasattr(card, 'type') and str(card.type) == 'ATTACK':
-            # Prefer non-vulnerable targets if damage is similar
-            non_vulnerable = [(i, m) for i, m in enumerate(state.monsters)
-                            if not m['is_gone'] and m.get('vulnerable', 0) == 0]
+            # Prefer non-vulnerable high threat targets if available
+            non_vulnerable = [(i, m, t) for i, m, t in monster_threats if m.get('vulnerable', 0) == 0]
             if non_vulnerable:
-                lowest_idx = min(non_vulnerable, key=lambda x: x[1]['hp'])
-                if lowest_idx[0] < len(context.monsters_alive):
-                    return context.monsters_alive[lowest_idx[0]], lowest_idx[0]
-
-            # Otherwise lowest HP
-            lowest_hp_idx = min(enumerate(state.monsters),
-                              key=lambda x: x[1]['hp'] if not x[1]['is_gone'] else 999)
-            if lowest_hp_idx[0] < len(context.monsters_alive):
-                return context.monsters_alive[lowest_hp_idx[0]], lowest_hp_idx[0]
-
-        # Default - first alive monster
-        for i, m in enumerate(state.monsters):
-            if not m['is_gone']:
+                # First sort by threat (descending), then by HP (ascending)
+                non_vulnerable.sort(key=lambda x: (-x[2], x[1]['hp']))
+                i, _, _ = non_vulnerable[0]
                 if i < len(context.monsters_alive):
                     return context.monsters_alive[i], i
+
+            # Otherwise prioritize high threat targets, then lowest HP
+            monster_threats.sort(key=lambda x: (-x[2], x[1]['hp']))
+            i, _, _ = monster_threats[0]
+            if i < len(context.monsters_alive):
+                return context.monsters_alive[i], i
+
+        # Default - highest threat monster
+        monster_threats.sort(key=lambda x: -x[2])
+        i, _, _ = monster_threats[0]
+        if i < len(context.monsters_alive):
+            return context.monsters_alive[i], i
 
         return None, None
 
