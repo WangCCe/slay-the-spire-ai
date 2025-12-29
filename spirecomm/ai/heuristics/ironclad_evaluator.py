@@ -38,6 +38,19 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         'Headbutt': 88,      # Retrieval + damage + synergy
         'Perfected Strike': 85,  # Core attack card, excellent scaling
         'Iron Wave': 75,     # From default → tier 2 (excellent block+damage hybrid)
+        'Flame Barrier': 70, # Good block+damage hybrid, synergizes with Body Slam
+        'Impervious': 72,    # High block + draw, excellent for block decks
+        'Barricade': 80,     # Core for Body Slam decks, enables infinite block
+        'Entrench': 70,      # Synergizes with Barricade, excellent for Body Slam decks
+        'Rage': 75,          # Excellent damage boost, especially with Strength
+        'Whirlwind': 78,     # AOE damage, synergizes with Strength
+        'Battle Trance': 80,  # Key card draw, essential for consistency
+        'Double Tap': 72,    # Enables powerful combos, especially with heavy hitters
+        'Immolate': 73,      # Excellent AOE damage + card draw, despite self-damage
+        'Metallicize': 70,   # Good persistent block, great for early game
+        'Feed': 72,          # Damage + max HP gain, excellent sustain
+        'Heavy Blade': 75,   # Scales well with Strength, efficient damage
+        'Fiend Fire': 70,     # Powerful AOE damage, synergizes with exhaust
     }
 
     DEMOTED_CARDS = {

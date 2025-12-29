@@ -338,8 +338,8 @@ class IroncladCombatPlanner(CombatPlanner):
                     if big_attack_pending:
                         score += 25
 
-                # Iron Wave - excellent block+damage hybrid
-                if card_id == 'Iron Wave':
+                # Hybrid cards (block + damage) - special handling
+                if card_id in ['Iron Wave', 'Flame Barrier']:
                     # Value both the block and damage aspects
                     if hasattr(card, 'block') and card.block > 0:
                         score += card.block * 3  # Value block
@@ -347,6 +347,48 @@ class IroncladCombatPlanner(CombatPlanner):
                         score += card.damage * 1.5  # Value damage
                     # Bonus for hybrid nature
                     score += 15
+                
+                # High priority cards that need special handling
+                elif card_id == 'Immolate':
+                    # Immolate: high damage + card draw, despite self-damage
+                    if hasattr(card, 'damage') and card.damage > 0:
+                        score += card.damage * 2.0  # Value damage highly
+                    # Value card draw potential
+                    score += 10
+                    # Penalize for self-damage only if HP is low
+                    if context.player_hp_pct < 0.3:
+                        score -= 15
+                
+                elif card_id == 'Rage':
+                    # Rage: provides scaling damage boost
+                    score += 20  # Base bonus for scaling potential
+                    # More valuable with high strength
+                    if context.strength >= 5:
+                        score += 15
+                
+                elif card_id == 'Whirlwind':
+                    # Whirlwind: excellent AOE damage
+                    monster_count = len(context.monsters_alive)
+                    if monster_count >= 2:
+                        score += 25  # Bonus for multiple monsters
+                    if hasattr(card, 'damage') and card.damage > 0:
+                        score += card.damage * monster_count * 0.5  # Value per target
+                
+                elif card_id == 'Battle Trance':
+                    # Battle Trance: critical card draw
+                    score += 30  # High value for consistency
+                    # More valuable with small decks
+                    if hasattr(context, 'deck_size') and context.deck_size <= 20:
+                        score += 15
+                
+                elif card_id == 'Double Tap':
+                    # Double Tap: enables powerful combos
+                    score += 25  # Base combo potential
+                    # Check if we have high-damage cards to combo with
+                    has_high_damage = any(c.card_id in ['Perfected Strike', 'Heavy Blade', 'Body Slam']
+                                       for c in context.playable_cards)
+                    if has_high_damage:
+                        score += 20
 
         return score
 
