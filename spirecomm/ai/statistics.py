@@ -17,11 +17,16 @@ def get_ai_version() -> str:
     
     Uses git tag if available, otherwise returns default version.
     This avoids manual version updates and ensures version matches git tag.
+    Now works from any directory by executing git commands in the script's directory.
     """
     try:
+        # Get the directory of this script file
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
         # Try to get the most recent tag
         tag = subprocess.check_output(
             ['git', 'describe', '--tags', '--abbrev=0'],
+            cwd=script_dir,
             stderr=subprocess.DEVNULL
         ).decode('utf-8').strip()
         
@@ -39,21 +44,31 @@ def get_git_commit() -> str:
     """Get current git commit hash for version tracking.
     
     Enhanced to handle more edge cases and provide better error information.
+    Now works from any directory by executing git commands in the script's directory.
     """
     try:
-        # First check if we're in a git repository
+        # Get the directory of this script file
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # First check if we're in a git repository by running git command in script directory
         subprocess.check_output(
             ['git', 'rev-parse', '--is-inside-work-tree'],
+            cwd=script_dir,
             stderr=subprocess.DEVNULL
         )
         
         # If we are in a git repo, get the commit hash
         return subprocess.check_output(
             ['git', 'rev-parse', '--short', 'HEAD'],
+            cwd=script_dir,
             stderr=subprocess.DEVNULL
         ).decode('utf-8').strip()
-    except:
-        return "unknown"
+    except subprocess.CalledProcessError as e:
+        return f"unknown (git error: {e.returncode})"
+    except FileNotFoundError:
+        return "unknown (git not found)"
+    except Exception as e:
+        return f"unknown (error: {str(e)[:20]})"
 
 
 # Auto-detect AI version from git tags
