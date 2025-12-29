@@ -133,10 +133,32 @@ class FastCombatSimulator:
         """Apply attack card effects with proper damage calculation."""
         base_damage = getattr(card, 'damage', 0)
         if base_damage == 0 or not hasattr(card, 'damage'):
-            base_damage = 6  # Conservative estimate for cards without explicit damage
+            # Use game data for more accurate damage estimation
+            from spirecomm.data.loader import game_data_loader
+            card_name = card.card_id.replace('+', '')
+            card_data = game_data_loader.get_card_data(card_name)
+            if card_data:
+                description = card_data.get('description', '').lower()
+                import re
+                damage_match = re.search(r'deal (\d+) damage', description)
+                if damage_match:
+                    base_damage = int(damage_match.group(1))
+            if base_damage == 0:
+                base_damage = 6  # Fallback estimate
 
         # Handle AOE attacks
-        if card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap']:
+        from spirecomm.data.loader import game_data_loader
+        card_name = card.card_id.replace('+', '')
+        card_data = game_data_loader.get_card_data(card_name)
+        is_aoe = False
+        if card_data:
+            description = card_data.get('description', '').lower()
+            is_aoe = 'all' in description or 'every' in description or 'each' in description
+        # Also check known AOE cards by name
+        if card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper', 'Carnage']:
+            is_aoe = True
+
+        if is_aoe:
             # AOE - apply to all monsters
             for monster in state.monsters:
                 if monster['is_gone']:
@@ -153,9 +175,23 @@ class FastCombatSimulator:
                     damage = self._apply_vulnerable_damage(damage, monster)
                     self._deal_damage_to_monster(state, monster, damage)
 
-                    # Bash applies vulnerable
-                    if card.card_id == 'Bash':
-                        monster['vulnerable'] += 2 if card.upgrades > 0 else 1
+                    # Check for card effects using game data
+                    if card_data:
+                        description = card_data.get('description', '').lower()
+                        # Bash applies vulnerable
+                        if 'vulnerable' in description:
+                            vulnerable_stacks = re.search(r'vulnerable (\d+)', description)
+                            if vulnerable_stacks:
+                                monster['vulnerable'] += int(vulnerable_stacks.group(1))
+                            else:
+                                monster['vulnerable'] += 2 if card.upgrades > 0 else 1
+                        # Other effects could be added here based on game data
+                        elif 'weak' in description:
+                            weak_stacks = re.search(r'weak (\d+)', description)
+                            if weak_stacks:
+                                monster['weak'] += int(weak_stacks.group(1))
+                            else:
+                                monster['weak'] += 1
 
     def _apply_vulnerable_damage(self, damage: int, monster: dict) -> int:
         """Apply vulnerable multiplier (1.5x)."""
@@ -340,7 +376,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                 for card in context.playable_cards:
                     card_idx = id(card)  # Use id to track played cards
 
-                    if card_idx not in state.played_card_indices:
+                    if card_idx not in state.played_card_uuids:
                         cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
 
                         # Check if we have enough energy
@@ -350,7 +386,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
                             # Simulate playing this card
                             new_state = self.simulator.simulate_card_play(state, card, target)
-                            new_state.played_card_indices.add(card_idx)
+                            new_state.played_card_uuids.add(card_idx)
 
                             # Create action
                             if target:

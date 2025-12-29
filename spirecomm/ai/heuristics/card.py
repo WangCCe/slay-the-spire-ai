@@ -6,12 +6,18 @@ to consider card synergies, game state context, and deck composition.
 """
 
 import math
+import re
 from typing import Dict, List
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Intent
+from spirecomm.spire import game_data, initialize_game_data
 from spirecomm.ai.decision.base import DecisionContext, CardEvaluator
 from spirecomm.ai.priorities import Priority, SilentPriority, IroncladPriority, DefectPowerPriority
 from spirecomm.ai.heuristics.deck import DeckAnalyzer
+
+# Ensure game data is initialized
+if game_data is None:
+    initialize_game_data()
 
 
 class SynergyCardEvaluator(CardEvaluator):
@@ -93,24 +99,73 @@ class SynergyCardEvaluator(CardEvaluator):
         Returns:
             Numeric value score
         """
-        # 1. Baseline score from legacy priorities
-        baseline = self.baseline_scores.get(card.card_id, 50)
+        # 1. Get card information from game data
+        card_data = game_data.get_card_by_name(card.name, card.upgrades > 0 if hasattr(card, 'upgrades') else False)
+        
+        # 2. Baseline score from legacy priorities and game data
+        baseline = self._calculate_baseline_score(card, card_data)
 
-        # 2. Contextual modifiers
-        modifier = self._calculate_context_modifier(card, context)
+        # 3. Contextual modifiers
+        modifier = self._calculate_context_modifier(card, context, card_data)
 
-        # 3. Deck synergy bonus
-        synergy_bonus = self._calculate_synergy_bonus(card, context)
+        # 4. Deck synergy bonus
+        synergy_bonus = self._calculate_synergy_bonus(card, context, card_data)
 
-        # 4. Combo detection
-        combo_bonus = self._detect_combo_potential(card, context)
+        # 5. Combo detection
+        combo_bonus = self._detect_combo_potential(card, context, card_data)
 
         # Calculate final score
         final_score = (baseline * modifier) + synergy_bonus + combo_bonus
 
         return final_score
+    
+    def _calculate_baseline_score(self, card: Card, card_data: Dict[str, any]) -> float:
+        """Calculate baseline score using game data."""
+        # Start with legacy priority baseline
+        baseline = self.baseline_scores.get(card.card_id, 50)
+        
+        if card_data:
+            # Adjust based on card rarity
+            rarity = card_data.get('rarity', '').upper()
+            rarity_bonus = {
+                'BASIC': 0,
+                'COMMON': 5,
+                'UNCOMMON': 10,
+                'RARE': 15,
+                'SPECIAL': 10
+            }.get(rarity, 0)
+            baseline += rarity_bonus
+            
+            # Adjust based on card type
+            card_type = card_data.get('type', '').upper()
+            type_bonus = {
+                'POWER': 5,  # Power cards are generally more valuable
+                'ATTACK': 0,
+                'SKILL': 0
+            }.get(card_type, 0)
+            baseline += type_bonus
+            
+            # Adjust based on energy cost efficiency
+            cost = card_data.get('cost', '0')
+            if cost.isdigit():
+                cost_value = int(cost)
+                # More efficient cards (higher value per energy) get bonus
+                description = card_data.get('description', '').lower()
+                if 'damage' in description:
+                    # Simple damage per energy calculation
+                    damage_match = re.search(r'deal (\d+) damage', description)
+                    if damage_match:
+                        damage = int(damage_match.group(1))
+                        if cost_value > 0:
+                            efficiency = damage / cost_value
+                            if efficiency > 5:  # More than 5 damage per energy is good
+                                baseline += 10
+                            elif efficiency > 3:  # More than 3 damage per energy is decent
+                                baseline += 5
+        
+        return baseline
 
-    def _calculate_context_modifier(self, card: Card, context: DecisionContext) -> float:
+    def _calculate_context_modifier(self, card: Card, context: DecisionContext, card_data: Dict[str, any]) -> float:
         """Calculate modifier based on current game state."""
         modifier = 1.0
 
@@ -155,39 +210,59 @@ class SynergyCardEvaluator(CardEvaluator):
 
         return modifier
 
-    def _calculate_synergy_bonus(self, card: Card, context: DecisionContext) -> float:
+    def _calculate_synergy_bonus(self, card: Card, context: DecisionContext, card_data: Dict[str, any]) -> float:
         """Calculate bonus based on deck composition and synergies."""
         bonus = 0.0
         card_id_lower = card.card_id.lower()
+        has_poison = False
+        has_strength = False
+        has_draw = False
+        has_exhaust = False
+        has_scaling = False
+
+        # Use game data to detect card synergies more accurately
+        if card_data:
+            description = card_data.get('description', '').lower()
+            if 'poison' in description:
+                has_poison = True
+            if 'strength' in description or 'deal' in description:
+                has_strength = True
+            if 'draw' in description or 'draw' in card_id_lower:
+                has_draw = True
+            if 'exhaust' in description:
+                has_exhaust = True
+            # Check for scaling effects
+            if any(keyword in description for keyword in ['increase', 'gain', 'apply', 'permanent']):
+                has_scaling = True
 
         # Poison synergy
-        if 'poison' in card_id_lower or card.card_id == 'Catalyst':
+        if has_poison or card.card_id == 'Catalyst':
             poison_synergy = context.card_synergies.get('poison', 0)
             bonus += poison_synergy * 20 * self.SYNERGY_WEIGHTS['poison']
 
         # Strength synergy
-        if card.card_id in ['Demon Form', 'Inflame', 'Limit Break', 'Flex']:
+        if has_strength or card.card_id in ['Demon Form', 'Inflame', 'Limit Break', 'Flex']:
             strength_synergy = context.card_synergies.get('strength', 0)
             bonus += strength_synergy * 25 * self.SYNERGY_WEIGHTS['strength']
 
         # Draw synergy
-        if 'draw' in card_id_lower or card.card_id in ['Adrenaline', 'Impatience', 'Acrobatics']:
+        if has_draw or 'draw' in card_id_lower or card.card_id in ['Adrenaline', 'Impatience', 'Acrobatics']:
             draw_synergy = context.card_synergies.get('draw', 0)
             bonus += draw_synergy * 15 * self.SYNERGY_WEIGHTS['draw']
 
         # Exhaust synergy
-        if 'exhaust' in card_id_lower:
+        if has_exhaust or 'exhaust' in card_id_lower:
             exhaust_synergy = context.card_synergies.get('exhaust', 0)
             bonus += exhaust_synergy * 18 * self.SYNERGY_WEIGHTS['exhaust']
 
         # Scaling synergy
-        if card.card_id in ['Noxious Fumes', 'A Thousand Cuts', 'Infinite Blades', 'Demon Form']:
+        if has_scaling or card.card_id in ['Noxious Fumes', 'A Thousand Cuts', 'Infinite Blades', 'Demon Form']:
             scaling_synergy = context.card_synergies.get('scaling', 0)
             bonus += scaling_synergy * 22 * self.SYNERGY_WEIGHTS['scaling']
 
         return bonus
 
-    def _detect_combo_potential(self, card: Card, context: DecisionContext) -> float:
+    def _detect_combo_potential(self, card: Card, context: DecisionContext, card_data: Dict[str, any]) -> float:
         """Detect card combinations in hand/deck."""
         combo_score = 0.0
 
@@ -226,8 +301,19 @@ class SynergyCardEvaluator(CardEvaluator):
     def _is_defensive_card(self, card: Card) -> bool:
         """Check if card is primarily defensive."""
         defensive_keywords = ['defend', 'block', 'blur', 'wave', 'glacier',
-                            'iron wave', 'flame barrier', 'hand of greed']
-
+                            'iron wave', 'flame barrier', 'hand of greed', 'protect']
+        
+        # Check card type first
+        if hasattr(card, 'type') and str(card.type) == 'SKILL':
+            # Get card information from game data
+            card_data = game_data.get_card_by_name(card.name, card.upgrades > 0 if hasattr(card, 'upgrades') else False)
+            if card_data:
+                description = card_data.get('description', '').lower()
+                # If it has defensive keywords in description
+                if any(keyword in description for keyword in defensive_keywords):
+                    return True
+        
+        # Fallback to card name based detection
         card_lower = card.card_id.lower()
         return any(keyword in card_lower for keyword in defensive_keywords)
 
@@ -236,8 +322,16 @@ class SynergyCardEvaluator(CardEvaluator):
         # Check if card type is ATTACK
         if hasattr(card, 'type') and str(card.type) == 'ATTACK':
             return True
-
-        # Some skills that deal damage
+        
+        # Check card data for offensive effects
+        card_data = game_data.get_card_by_name(card.name, card.upgrades > 0 if hasattr(card, 'upgrades') else False)
+        if card_data:
+            description = card_data.get('description', '').lower()
+            # If it deals damage, it's offensive
+            if 'damage' in description or 'deal' in description:
+                return True
+        
+        # Fallback to skill-based detection
         offensive_skills = ['noxious fumes', 'thousand cuts', 'infinite blades']
         card_lower = card.card_id.lower()
         return any(skill in card_lower for skill in offensive_skills)

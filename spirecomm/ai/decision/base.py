@@ -12,6 +12,7 @@ from spirecomm.spire.game import Game
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster, Intent
 from spirecomm.communication.action import Action
+from spirecomm.data.loader import game_data_loader
 
 
 class DecisionContext:
@@ -36,7 +37,7 @@ class DecisionContext:
 
     def __init__(self, game: Game):
         self.game = game
-
+        
         # Player stats - check if player exists
         if hasattr(game, 'current_hp') and hasattr(game, 'max_hp') and game.max_hp > 0:
             self.player_hp_pct = max(0, game.current_hp / max(game.max_hp, 1))
@@ -59,9 +60,37 @@ class DecisionContext:
             if not m.is_gone and not m.half_dead and m.current_hp > 0
         ] if hasattr(game, 'monsters') else []
 
-        # Deck analysis
-        self.deck_archetype = self._analyze_deck_archetype()
-        self.card_synergies = self._calculate_synergies()
+        # Deck analysis - dynamically import DeckAnalyzer to avoid circular imports
+        try:
+            from spirecomm.ai.heuristics.deck import DeckAnalyzer
+            analyzer = DeckAnalyzer()
+            
+            # Use DeckAnalyzer to get deck archetype
+            self.deck_archetype = analyzer.get_archetype(self)
+            
+            # Calculate synergies using enhanced method
+            # First get archetype scores
+            archetype_scores = analyzer.get_archetype_score(self)
+            
+            # Initialize synergies dictionary
+            self.card_synergies = {
+                'poison': archetype_scores.get('poison', 0.0) * 0.7,
+                'strength': archetype_scores.get('strength', 0.0) * 0.7,
+                'draw': archetype_scores.get('draw', 0.0) * 0.7,
+                'exhaust': archetype_scores.get('exhaust', 0.0) * 0.7,
+                'block': archetype_scores.get('block', 0.0) * 0.7,
+                'vulnerable': 0.0,
+                'weak': 0.0,
+                'scaling': archetype_scores.get('scaling', 0.0) * 0.7,
+                'storm': archetype_scores.get('storm', 0.0) * 0.7,
+                'heal': archetype_scores.get('heal', 0.0) * 0.7,
+                'malice': archetype_scores.get('malice', 0.0) * 0.7,
+                'combo': archetype_scores.get('combo', 0.0) * 0.7
+            }
+        except ImportError as e:
+            # Fall back to original methods if DeckAnalyzer is not available
+            self.deck_archetype = self._analyze_deck_archetype()
+            self.card_synergies = self._calculate_synergies()
 
         # Hand analysis
         self.hand_size = len(game.hand) if hasattr(game, 'hand') else 0
@@ -121,31 +150,62 @@ class DecisionContext:
         if not hasattr(self.game, 'deck') or not self.game.deck:
             return 'unknown'
 
-        # Count card types by keywords
-        poison_count = sum(1 for c in self.game.deck if 'poison' in c.card_id.lower() or c.card_id == 'Catalyst')
-        strength_count = sum(1 for c in self.game.deck if c.card_id in ['Demon Form', 'Inflame', 'Limit Break', 'Flex'])
-        block_count = sum(1 for c in self.game.deck if 'defend' in c.card_id.lower() or c.card_id in ['Iron Wave', 'Blaze'])
-        draw_count = sum(1 for c in self.game.deck if c.card_id in ['Adrenaline', 'Impatience', 'Acrobatics'])
-        scaling_count = sum(1 for c in self.game.deck if c.card_id in ['Noxious Fumes', 'A Thousand Cuts', 'Demon Form', 'Infinite Blades'])
+        # Use game data to analyze deck archetype
+        poison_count = 0
+        strength_count = 0
+        block_count = 0
+        draw_count = 0
+        scaling_count = 0
+        card_count = len(self.game.deck)
+
+        for card in self.game.deck:
+            card_name = card.card_id.replace('+', '')  # Remove + from upgraded cards
+            card_data = game_data_loader.get_card_data(card_name)
+            
+            if card_data:
+                description = card_data.get('description', '').lower()
+                card_type = card_data.get('type', '').lower()
+                cost = card_data.get('cost', '0')
+                
+                # Count archetype-specific cards
+                if 'poison' in description or 'catalyst' in card.card_id.lower():
+                    poison_count += 1
+                
+                if card_type == 'attack' and ('strength' in description or 'deal' in description):
+                    strength_count += 1
+                
+                if card_type == 'skill' and ('block' in description or 'gain' in description):
+                    block_count += 1
+                
+                if 'draw' in description or 'draw' in card.card_id.lower():
+                    draw_count += 1
+                
+                if any(keyword in description for keyword in ['strength', 'dexterity', 'poison', 'thorns']):
+                    scaling_count += 1
+
+        # Normalize counts to percentages
+        if card_count > 0:
+            poison_pct = poison_count / card_count
+            strength_pct = strength_count / card_count
+            block_pct = block_count / card_count
+            draw_pct = draw_count / card_count
+            scaling_pct = scaling_count / card_count
+        else:
+            return 'unknown'
 
         # Determine archetype based on dominant strategy
-        counts = {
-            'poison': poison_count,
-            'strength': strength_count,
-            'block': block_count,
-            'draw': draw_count,
-            'scaling': scaling_count
-        }
-
-        max_count = max(counts.values())
-        if max_count < 3:
+        if poison_pct > 0.2:  # More than 20% poison cards
+            return 'poison'
+        elif strength_pct > 0.3:  # More than 30% strength-based attack cards
+            return 'strength'
+        elif block_pct > 0.3:  # More than 30% block cards
+            return 'block'
+        elif scaling_pct > 0.25:  # More than 25% scaling cards
+            return 'scaling'
+        elif draw_pct > 0.25:  # More than 25% draw cards
+            return 'draw'
+        else:
             return 'balanced'  # No clear archetype
-
-        for archetype, count in counts.items():
-            if count == max_count:
-                return archetype
-
-        return 'unknown'
 
     def _calculate_synergies(self) -> Dict[str, float]:
         """
@@ -159,38 +219,101 @@ class DecisionContext:
             'strength': 0.0,
             'draw': 0.0,
             'exhaust': 0.0,
-            'block': 0.0
+            'block': 0.0,
+            'vulnerable': 0.0,
+            'weak': 0.0,
+            'scaling': 0.0
         }
 
-        if not hasattr(self.game, 'deck'):
+        if not hasattr(self.game, 'deck') or not self.game.deck:
             return synergies
 
-        for card in self.game.deck:
-            card_id = card.card_id.lower()
+        deck_cards = self.game.deck
+        card_count = len(deck_cards)
+        max_synergy = card_count * 0.3  # Normalization factor
 
-            # Poison synergies
-            if 'poison' in card_id or 'noxious' in card_id or 'catalyst' in card_id:
-                synergies['poison'] += 0.1
+        # Track archetype-specific cards
+        archetype_count = {
+            'poison': 0,
+            'strength': 0,
+            'draw': 0,
+            'exhaust': 0,
+            'block': 0,
+            'vulnerable': 0,
+            'weak': 0,
+            'scaling': 0
+        }
 
-            # Strength synergies
-            if card.card_id in ['Demon Form', 'Inflame', 'Limit Break', 'Flex']:
-                synergies['strength'] += 0.15
+        # First pass: count cards by archetype
+        for card in deck_cards:
+            card_name = card.card_id.replace('+', '')
+            card_data = game_data_loader.get_card_data(card_name)
+            
+            if card_data:
+                description = card_data.get('description', '').lower()
+                
+                if 'poison' in description or 'noxious' in description:
+                    archetype_count['poison'] += 1
+                
+                if 'strength' in description or 'gain' in description:
+                    archetype_count['strength'] += 1
+                
+                if 'draw' in description or 'discard' in description:
+                    archetype_count['draw'] += 1
+                
+                if 'exhaust' in description:
+                    archetype_count['exhaust'] += 1
+                
+                if 'block' in description:
+                    archetype_count['block'] += 1
+                
+                if 'vulnerable' in description:
+                    archetype_count['vulnerable'] += 1
+                
+                if 'weak' in description:
+                    archetype_count['weak'] += 1
+                
+                if any(keyword in description for keyword in ['strength', 'dexterity', 'poison', 'thorns']):
+                    archetype_count['scaling'] += 1
 
-            # Draw synergies
-            if 'draw' in card_id or card.card_id in ['Adrenaline', 'Impatience', 'Acrobatics']:
-                synergies['draw'] += 0.1
+        # Second pass: calculate synergies based on card combinations
+        for i in range(len(deck_cards)):
+            for j in range(i + 1, len(deck_cards)):
+                card1 = deck_cards[i]
+                card2 = deck_cards[j]
+                
+                card1_name = card1.card_id.replace('+', '')
+                card2_name = card2.card_id.replace('+', '')
+                
+                card1_data = game_data_loader.get_card_data(card1_name)
+                card2_data = game_data_loader.get_card_data(card2_name)
+                
+                if card1_data and card2_data:
+                    desc1 = card1_data.get('description', '').lower()
+                    desc2 = card2_data.get('description', '').lower()
+                    
+                    # Calculate synergies between specific card types
+                    if ('poison' in desc1 and 'poison' in desc2) or ('catalyst' in card1.card_id.lower() and 'poison' in desc2):
+                        synergies['poison'] += 0.05
+                    
+                    if ('strength' in desc1 and 'strength' in desc2) or ('strength' in desc1 and 'attack' in card2_data.get('type', '').lower()):
+                        synergies['strength'] += 0.05
+                    
+                    if ('draw' in desc1 and 'draw' in desc2) or ('draw' in desc1 and 'discard' in desc2):
+                        synergies['draw'] += 0.05
+                    
+                    if ('block' in desc1 and 'block' in desc2) or ('block' in desc1 and card2_data.get('type', '').lower() == 'power'):
+                        synergies['block'] += 0.03
+                    
+                    if ('vulnerable' in desc1 and card2_data.get('type', '').lower() == 'attack'):
+                        synergies['vulnerable'] += 0.04
+                    
+                    if ('weak' in desc1 and card2_data.get('type', '').lower() == 'attack'):
+                        synergies['weak'] += 0.04
 
-            # Exhaust synergies
-            if 'exhaust' in card_id or card.card_id in ['Evolve', 'Feel No Pain', 'Deadly Poison']:
-                synergies['exhaust'] += 0.1
-
-            # Block synergies
-            if 'defend' in card_id or 'block' in card_id or card.card_id in ['Iron Wave', 'Blaze']:
-                synergies['block'] += 0.05
-
-        # Clamp to 0-1
+        # Normalize synergies to 0-1 range
         for key in synergies:
-            synergies[key] = min(1.0, synergies[key])
+            synergies[key] = min(1.0, synergies[key] / max_synergy)
 
         return synergies
 

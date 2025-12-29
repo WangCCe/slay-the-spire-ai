@@ -131,3 +131,8 @@ The AI's combat decision flow in `get_play_card_action()`:
 - The coordinator can run games continuously via `play_one_game()` which returns True for victory
 - Map routing uses dynamic programming to maximize node priority scores
 - Card IDs and Relic IDs come from Communication Mod's Java class names
+
+## Reminder
+
+- Statistical csv file locates in D:\SteamLibrary\steamapps\common\SlayTheSpire  
+- CommunicationMod config file locates in C:\Users\20571\AppData\Local\ModTheSpire\CommunicationMod
