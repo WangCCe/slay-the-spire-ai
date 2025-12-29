@@ -625,6 +625,76 @@ class OptimizedAgent(SimpleAgent):
                         )
                     return CancelAction()
 
+            # Limit Break conditional check (A20 expert strategy)
+            # Only pick Limit Break when we have Strength support
+            limit_break_card = next((c for c in pickable_cards if c.card_id == 'Limit Break'), None)
+            if limit_break_card:
+                current_strength = context.strength if hasattr(context, 'strength') else 0
+
+                # Check if we have Strength scaling cards
+                strength_scaling_cards = ['Demon Form', 'Inflame', 'Spot Weakness']
+                has_strength_scaling = any(
+                    any(c.card_id == sc for sc in strength_scaling_cards)
+                    for c in self.game.deck
+                ) if hasattr(self.game, 'deck') and self.game.deck else False
+
+                # Skip Limit Break if no Strength support
+                if current_strength < 5 and not has_strength_scaling:
+                    import sys
+                    sys.stderr.write(f"[REWARD] Skipping Limit Break - no Strength support (Str={current_strength}, has_scaling={has_strength_scaling})\n")
+                    pickable_cards = [c for c in pickable_cards if c.card_id != 'Limit Break']
+
+                    if not pickable_cards:
+                        # No other cards worth taking
+                        if self.game.screen.can_bowl:
+                            return CardRewardAction(bowl=True)
+                        else:
+                            return CancelAction()
+
+            # Deck size limit check (keep deck lean)
+            deck_size = len(self.game.deck) if hasattr(self.game, 'deck') and self.game.deck else 10
+            if deck_size >= 18:
+                import sys
+                # Be very selective - only high priority cards
+                # Get scores for all pickable cards
+                scored_cards = []
+                for card in pickable_cards:
+                    try:
+                        if self.card_evaluator:
+                            card_score = self.card_evaluator.evaluate_card(card, context)
+                            scored_cards.append((card, card_score))
+                        else:
+                            # Use simple fallback: only take if score looks good
+                            # Default mid-tier score
+                            card_score = 50
+                            scored_cards.append((card, card_score))
+                    except:
+                        scored_cards.append((card, 50))  # Default score
+
+                # Filter for high priority cards (score >= 75)
+                high_priority_cards = [
+                    (card, card_score) for card, card_score in scored_cards
+                    if card_score >= 75
+                ]
+
+                if high_priority_cards:
+                    sys.stderr.write(f"[REWARD] Deck size {deck_size}, being selective (score >= 75)\n")
+                    pickable_cards = [card for card, _ in high_priority_cards]
+                else:
+                    # No good cards - skip to keep deck lean
+                    sys.stderr.write(f"[REWARD] Deck too large ({deck_size}) and no good cards (score >= 75) - skipping\n")
+                    if self.game.screen.can_bowl:
+                        return CardRewardAction(bowl=True)
+                    else:
+                        self.skipped_cards = True
+                        if self.game_tracker:
+                            self.game_tracker.record_card_choice(
+                                chosen=None,
+                                skipped=len(reward_cards),
+                                available=[c.card_id for c in reward_cards]
+                            )
+                        return CancelAction()
+
             # Use synergy evaluator to rank cards
             try:
                 best_card = self.card_evaluator.get_best_card(pickable_cards, context)

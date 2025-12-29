@@ -184,6 +184,21 @@ class IroncladCombatPlanner(CombatPlanner):
         card_id = card.card_id
 
         # AOE cards - no targeting needed
+        # Reaper is AOE heal - prioritize when multiple monsters alive and we have Strength
+        if card_id == 'Reaper':
+            if len(state.monsters) >= 2 and context.strength >= 3:
+                # Best case: multiple targets + good Strength
+                return None, None  # AOE
+            elif len(state.monsters) == 1:
+                # Single target - less valuable but still use
+                if state.monsters:
+                    first_alive_idx = next((i for i, m in enumerate(state.monsters) if not m['is_gone']), 0)
+                    if first_alive_idx < len(context.monsters_alive):
+                        return context.monsters_alive[first_alive_idx], first_alive_idx
+                return None, None
+            else:
+                return None, None
+
         if card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap']:
             return None, None
 
@@ -280,6 +295,18 @@ class IroncladCombatPlanner(CombatPlanner):
                 # Limit Break with high strength
                 if card_id == 'Limit Break' and context.strength >= 5:
                     score += 40
+
+                # Reaper - huge heal potential with Strength
+                if card_id == 'Reaper':
+                    # Value scales with Strength and number of monsters
+                    monster_count = len(context.monsters_alive)
+                    if context.strength >= 3 and monster_count >= 2:
+                        # Optimal Reaper usage
+                        score += 60
+                    elif context.strength >= 5 and monster_count >= 1:
+                        # Still good with high Strength
+                        score += 40
+                    # Low strength/single target - minimal bonus
 
                 # Bash before big attacks
                 if card_id == 'Bash':

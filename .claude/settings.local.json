@@ -4,7 +4,13 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(python:*)",
-      "Bash(git clone:*)"
+      "Bash(git clone:*)",
+      "Bash(cat:*)",
+      "Bash(dir:*)",
+      "Bash(timeout:*)",
+      "Bash(ls:*)",
+      "Bash(echo:*)",
+      "Bash(openspec:*)"
     ]
   }
 }

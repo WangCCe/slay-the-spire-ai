@@ -458,15 +458,21 @@ class SilentPriority(Priority):
 class IroncladPriority(Priority):
 
     CARD_PRIORITY_LIST = [
-        # === ACT 1 PRIORITY CARDS (High impact early game) ===
+        # === ACT 1 ESSENTIALS (Top priority cards based on A20 expert research) ===
         "Bash",  # Vulnerable is crucial in Act 1
         "Shrug It Off",  # Block + draw, efficient
         "Iron Wave",  # Block + attack, very efficient
         "Pommel Strike",  # Cheap, removes bad cards
+        "Reaper",  # PROMOTED: Core sustain for Strength builds (was 549, now top 10)
+        "Spot Weakness",  # PROMOTED: Consistent Strength gain (was 528)
+        "Limit Break",  # PROMOTED: Win condition with Strength (was 585 "late game")
         "Headbutt",  # Card advantage, returns key cards
+        "Inflame",  # PROMOTED: Early Strength scaling (was 584 "late game")
         "Perfected Strike",  # Efficient damage
         "Battle Trance",  # Card draw for consistency
         "Anger",  # Adds damage, costs 1
+        "Body Slam",  # PROMOTED: High damage with block synergy (was 556)
+        "Feel No Pain",  # Core exhaust synergy
         "Strike_R",  # Keep some strikes early game
         "Defend_R",  # Keep some defends early game
 
@@ -481,6 +487,7 @@ class IroncladPriority(Priority):
         "Flame Barrier",
         "Master of Strategy",
         "Disarm",
+        "Corruption",  # Good but needs exhaust synergy
         "Double Tap",
         "Thunderclap",
         "Metallicize",
@@ -488,7 +495,8 @@ class IroncladPriority(Priority):
         "Flash of Steel",
         "Flex",
 
-        # === MID-TIER CARDS ===
+        # === MID-TIER CARDS (Demon Form demoted based on A20 expert feedback) ===
+        "Demon Form",  # DEMOTED: Too slow/expensive for A20 (from top 20 to ~60)
         "Uppercut",
         "J.A.X.",
         "Secret Weapon",
@@ -525,12 +533,10 @@ class IroncladPriority(Priority):
         "Panacea",
         "Reckless Charge",
         "Infernal Blade",
-        "Spot Weakness",
         "Shiv",
         "Havoc",
         "RitualDagger",
         "Dropkick",
-        "Feel No Pain",
         "Swift Strike",
         "Magnetism",
         "Bloodletting",
@@ -547,13 +553,11 @@ class IroncladPriority(Priority):
         "Pummel",
         "Hemokinesis",
         "Exhume",
-        "Reaper",
         "Cleave",
         "Warcry",
         "Purity",
         "Dual Wield",
         "Wild Strike",
-        "Body Slam",
         "Sever Soul",
         "Burning Pact",
         "Brutality",
@@ -577,13 +581,6 @@ class IroncladPriority(Priority):
 
         # === SKIP MARKER ===
         "Skip",
-
-        # === LATE GAME/ARCHITECTURE-SPECIFIC (Lower priority for Act 1) ===
-        # Strength build (need investment)
-        "Demon Form",  # Too slow without support
-        "Inflame",  # Good but not early priority
-        "Limit Break",  # Requires Strength >= 5
-        "Corruption",  # Requires exhaust synergies
 
         # Very low priority cards
         "Flame of Life",
@@ -1201,7 +1198,10 @@ class DefectPowerPriority(Priority):
         "Normality",
     ]
 
-    MAP_NODE_PRIORITIES_1 = {'R': 1000, 'E': 100, '$': 10, '?': 10, 'M': 1, 'T': 0}
+    # Don't fight early Act 1 elites - build power first (A20 expert consensus)
+    # Priorities: Rest >> Shop ≈ Event > Monster >>> Elite (early game)
+    # Fight elites in late Act 1 after building damage output
+    MAP_NODE_PRIORITIES_1 = {'R': 1000, 'E': 80, '$': 85, '?': 85, 'M': 60, 'T': 0}
 
     MAP_NODE_PRIORITIES_2 = {'R': 100, 'E': -1000, '$': 10, '?': 10, 'M': 1, 'T': 0}
 

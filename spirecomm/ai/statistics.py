@@ -7,8 +7,29 @@ multiple games and saves to JSONL and CSV formats.
 
 import json
 import os
+import subprocess
 from typing import List, Dict, Any
 from spirecomm.ai.tracker import GameTracker
+
+
+# AI Version tracking - UPDATE THIS when making significant changes
+AI_VERSION = "0.6.0-optimized-v2"
+# v2 changes:
+# - Reduced elite priority (150→80) to avoid early elite fights
+# - Removed Demon Form forced play logic (A20 trap card)
+# - Demoted Demon Form priority (top 20→~60)
+# - Kept Reaper, Limit Break, Spot Weakness promotions
+
+
+def get_git_commit() -> str:
+    """Get current git commit hash for version tracking."""
+    try:
+        return subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            stderr=subprocess.DEVNULL
+        ).decode('utf-8').strip()
+    except:
+        return "unknown"
 
 
 class GameStatistics:
@@ -43,6 +64,8 @@ class GameStatistics:
         'total_decisions',
         'avg_confidence',
         'fallback_count',
+        'ai_version',
+        'git_commit',
         'timestamp'
     ])
 
@@ -68,6 +91,34 @@ class GameStatistics:
         if not os.path.exists(self.csv_file):
             with open(self.csv_file, 'w', encoding='utf-8') as f:
                 f.write(self.CSV_HEADER + '\n')
+        else:
+            # Check if file needs version columns added (backward compatibility)
+            try:
+                with open(self.csv_file, 'r', encoding='utf-8') as f:
+                    first_line = f.readline().strip()
+                    if 'ai_version' not in first_line:
+                        # Old format detected - add version info to header
+                        # Backup and recreate with new header
+                        import shutil
+                        backup_file = self.csv_file + '.backup'
+                        shutil.copy2(self.csv_file, backup_file)
+
+                        # Read existing data (excluding old header)
+                        with open(backup_file, 'r', encoding='utf-8') as f:
+                            old_lines = f.readlines()
+                            # Skip old header, keep data rows
+                            lines = old_lines[1:] if len(old_lines) > 1 else []
+
+                        # Write new file with updated header
+                        with open(self.csv_file, 'w', encoding='utf-8') as f:
+                            f.write(self.CSV_HEADER + '\n')
+                            # Add empty version columns to existing rows
+                            for line in lines:
+                                if line.strip():
+                                    f.write(line.strip() + ',,\n')
+            except Exception:
+                # If check fails, just use existing file
+                pass
 
     def load_history(self):
         """Load game history from JSONL file."""
@@ -158,6 +209,8 @@ class GameStatistics:
                 str(game_data['total_decisions']),
                 str(game_data['avg_confidence']),
                 str(game_data['fallback_count']),
+                AI_VERSION,
+                get_git_commit(),
                 game_data['timestamp']
             ]
 
