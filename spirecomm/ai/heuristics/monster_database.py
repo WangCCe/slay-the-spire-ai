@@ -81,10 +81,10 @@ MONSTER_DATABASE = {
     "Hexaghost": {
         "threat_level": 3,
         "attacks": ["single_target", "AOE"],
-        "special_abilities": ["phase_change"],
-        "recommended_strategy": "kill_quickly"  # 速战速决，避免进入高伤害阶段
+        "special_abilities": ["phase_change", "burning"],
+        "recommended_strategy": "kill_quickly"  # 速战速决，烧伤不会自然消除，自身带力量加成
     },
-    # Elite monsters
+    # Act 1 Elite monsters
     "Slaver Blue": {
         "threat_level": 4,
         "attacks": ["single_target", "buff"],
@@ -114,6 +114,101 @@ MONSTER_DATABASE = {
         "attacks": ["single_target", "AOE"],
         "special_abilities": ["none"],
         "recommended_strategy": "focus_down"
+    },
+    # Act 2 common monsters
+    "Book of Stabbing": {
+        "threat_level": 2,
+        "attacks": ["single_target", "multi_hit"],
+        "special_abilities": ["none"],
+        "recommended_strategy": "aggressive"
+    },
+    "Cultist": {
+        "threat_level": 2,
+        "attacks": ["single_target", "summon"],
+        "special_abilities": ["summon_cultists"],
+        "recommended_strategy": "priority_target"
+    },
+    "Sneaky Gremlin": {
+        "threat_level": 2,
+        "attacks": ["single_target", "weak"],
+        "special_abilities": ["apply_weak"],
+        "recommended_strategy": "aggressive"
+    },
+    "Shield and Spear": {
+        "threat_level": 3,
+        "attacks": ["single_target", "shield"],
+        "special_abilities": ["protect_ally"],
+        "recommended_strategy": "focus_spear"
+    },
+    # Act 2 Elite monsters
+    "Mugger": {
+        "threat_level": 4,
+        "attacks": ["single_target", "heavy_damage"],
+        "special_abilities": ["steal_gold"],
+        "recommended_strategy": "kill_quickly"
+    },
+    "Sentry Construct": {
+        "threat_level": 4,
+        "attacks": ["single_target", "AOE", "shield"],
+        "special_abilities": ["gain_block", "summon_sentries"],
+        "recommended_strategy": "burst_damage"
+    },
+    "Reptomancer": {
+        "threat_level": 4,
+        "attacks": ["single_target", "summon"],
+        "special_abilities": ["summon_snakes"],
+        "recommended_strategy": "priority_target"
+    },
+    # Act 3 common monsters
+    "Spiker": {
+        "threat_level": 3,
+        "attacks": ["single_target", "AOE"],
+        "special_abilities": ["none"],
+        "recommended_strategy": "aggressive"
+    },
+    "Slag Slime": {
+        "threat_level": 3,
+        "attacks": ["single_target", "debuff"],
+        "special_abilities": ["apply_vulnerable"],
+        "recommended_strategy": "kill_quickly"
+    },
+    # Act 3 Elite monsters
+    "Chosen": {
+        "threat_level": 5,
+        "attacks": ["single_target", "heavy_damage", "AOE"],
+        "special_abilities": ["buff_self"],
+        "recommended_strategy": "kill_quickly"
+    },
+    "Time Eater": {
+        "threat_level": 5,
+        "attacks": ["single_target", "heavy_damage"],
+        "special_abilities": ["slow_player"],
+        "recommended_strategy": "kill_quickly"
+    },
+    "Donu and Deca": {
+        "threat_level": 5,
+        "attacks": ["single_target", "AOE", "shield"],
+        "special_abilities": ["protect_ally", "gain_block"],
+        "recommended_strategy": "focus_deca"
+    },
+    # Bosses
+    "The Guardian": {
+        "threat_level": 4,
+        "attacks": ["single_target", "AOE", "shield"],
+        "special_abilities": ["phase_change"],
+        "recommended_strategy": "kill_quickly"
+    },
+    "The Awakened One": {
+        "threat_level": 5,
+        "attacks": ["single_target", "AOE", "heavy_damage"],
+        "special_abilities": ["phase_change", "buff_self"],
+        "recommended_strategy": "kill_quickly"
+    },
+    "The Heart": {
+        "threat_level": 6,
+        "attacks": ["single_target", "AOE", "heavy_damage"],
+        "special_abilities": ["buff_self", "heal"],
+        "recommended_strategy": "kill_quickly"
     },
 }
 
