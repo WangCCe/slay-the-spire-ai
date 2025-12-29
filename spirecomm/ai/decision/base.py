@@ -83,12 +83,14 @@ class DecisionContext:
         self.vulnerable_stacks = {}  # monster_index -> stacks
         self.weak_stacks = {}  # monster_index -> stacks
         self.frail_stacks = {}  # monster_index -> stacks
+        self.thorns_stacks = {}  # monster_index -> stacks
 
         # 为每个怪物初始化 debuff 追踪（使用索引作为 key）
         for i, monster in enumerate(self.monsters_alive):
             self.vulnerable_stacks[i] = self._get_monster_power_amount(monster, "Vulnerable")
             self.weak_stacks[i] = self._get_monster_power_amount(monster, "Weak")
             self.frail_stacks[i] = self._get_monster_power_amount(monster, "Frail")
+            self.thorns_stacks[i] = self._get_monster_power_amount(monster, "Thorns")
 
         # === 新增：战斗评估 ===
         self.can_end_combat_this_turn = False  # 将由 CombatEndingDetector 计算

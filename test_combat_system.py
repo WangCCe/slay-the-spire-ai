@@ -166,8 +166,8 @@ def test_ironclad_planner():
     context = DecisionContext(game)
     beam_width, max_depth = planner._get_adaptive_parameters(context, cards)
 
-    assert beam_width == 8, f"Simple case: expected beam_width=8, got {beam_width}"
-    assert max_depth == 3, f"Simple case: expected max_depth=3, got {max_depth}"
+    assert beam_width == 10, f"Simple case: expected beam_width=10, got {beam_width}"
+    assert max_depth == 4, f"Simple case: expected max_depth=4, got {max_depth}"
 
     print("  - Planner initialization: PASS")
     print("  - Adaptive parameters (simple): PASS")

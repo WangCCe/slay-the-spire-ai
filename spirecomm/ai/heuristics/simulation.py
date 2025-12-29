@@ -44,6 +44,7 @@ class SimulationState:
                 'vulnerable': context.vulnerable_stacks.get(i, 0),  # Vulnerable stacks (by index)
                 'weak': context.weak_stacks.get(i, 0),  # Weak stacks (by index)
                 'frail': context.frail_stacks.get(i, 0),  # Frail stacks (by index)
+                'thorns': context.thorns_stacks.get(i, 0),  # Thorns/反伤 stacks (by index)
             }
             self.monsters.append(monster_state)
 
@@ -163,7 +164,7 @@ class FastCombatSimulator:
         return damage
 
     def _deal_damage_to_monster(self, state: SimulationState, monster: dict, damage: int):
-        """Deal damage to monster, accounting for block."""
+        """Deal damage to monster, accounting for block and thorns."""
         # Damage block first
         block_damage = min(damage, monster['block'])
         monster['block'] -= block_damage
@@ -177,6 +178,17 @@ class FastCombatSimulator:
         if monster['hp'] <= 0:
             monster['is_gone'] = True
             state.monsters_killed += 1
+        else:
+            # Apply thorns/反伤: take damage when attacking enemies with thorns
+            thorns = monster.get('thorns', 0)
+            if thorns > 0:
+                # Calculate thorns damage (typically 1 damage per thorns stack)
+                # But we'll use a more conservative approach based on damage dealt
+                # because thorns damage is usually proportional to attack damage
+                thorns_damage = min(int(hp_damage * 0.3), thorns)  # Conservative estimate
+                if thorns_damage > 0:
+                    state.player_hp -= thorns_damage
+                    state.player_hp = max(0, state.player_hp)  # Ensure HP doesn't go negative
 
     def _apply_skill(self, state: SimulationState, card: Card):
         """Apply skill card effects."""
