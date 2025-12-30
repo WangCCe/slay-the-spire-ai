@@ -96,14 +96,14 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         'Uppercut', 'Spot Weakness', 'Twin Strike', 'Reaper',
     }
 
-    # HP-cost cards (risky when low HP)
+    # HP-cost cards (spend HP to play)
     HP_COST_CARDS = {
-        'Offering', 'Combust', 'Rupture', 'Blood for Blood', 'Ritual Dagger',
+        'Offering', 'Bloodletting', 'Hemokinesis',
     }
 
-    # Self-damage cards
+    # Self-damage cards (deal HP loss as a side effect)
     SELF_DAMAGE_CARDS = {
-        'Immolate', 'Reckless Charge', 'Fiend Fire', 'Rage',
+        'Immolate', 'Combust', 'Brutality',
     }
 
     def __init__(self, player_class='IRONCLAD'):
@@ -185,7 +185,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
 
         elif hp_pct > 0.8:
             # High HP - can take risks
-            if card.card_id in ['Offering', 'Combust']:
+            if card.card_id in ['Offering', 'Bloodletting', 'Hemokinesis']:
                 modifier *= 1.3  # These are powerful when safe
 
         return modifier

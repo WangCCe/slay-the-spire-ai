@@ -49,9 +49,9 @@ class IroncladDeckStrategy:
         'Uppercut', 'Spot Weakness', 'Twin Strike', 'Reaper',
     }
 
-    # HP-cost cards (avoid at low HP)
+    # HP-cost cards (spend HP to play, avoid at low HP)
     HP_COST_CARDS = {
-        'Offering', 'Combust', 'Rupture', 'Blood for Blood', 'Ritual Dagger',
+        'Offering', 'Bloodletting', 'Hemokinesis',
     }
 
     # Cards to avoid (bloat deck without enough payoff)
