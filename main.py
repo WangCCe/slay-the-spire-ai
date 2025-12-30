@@ -8,12 +8,12 @@ from spirecomm.ai.agent import SimpleAgent, OptimizedAgent, OPTIMIZED_AI_AVAILAB
 from spirecomm.spire.character import PlayerClass
 
 # Setup logging to file (all logs go to main_game_loop.log)
+# Note: We don't use StreamHandler because Communication Mod uses stdout for commands
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(message)s',
     handlers=[
         logging.FileHandler('main_game_loop.log', encoding='utf-8'),
-        logging.StreamHandler(sys.stdout)  # Also print to console
     ]
 )
 
