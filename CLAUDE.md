@@ -144,10 +144,11 @@ D:\SteamLibrary\steamapps\common\SlayTheSpire\
 ```
 
 **Log Files** (in game directory):
+- `main_game_loop.log` - **Primary log file** - Game loop events, coordinator state, game restart tracking
 - `ai_game_stats.csv` - Game statistics (wins, losses, floor reached, etc.)
 - `ai_game_stats.jsonl` - Detailed game logs (JSONL format)
 - `ai_debug.log` - AI debugging and decision history
-- `shop_error.log` - Shop-specific errors (created on demand)
+- `shop_error.log` - Shop-specific errors and warnings
 - `communication_mod_errors.log` - Python exceptions and tracebacks (~18MB)
 
 **CommunicationMod Config**: `C:\Users\20571\AppData\Local\ModTheSpire\CommunicationMod\config.properties`
@@ -155,10 +156,11 @@ D:\SteamLibrary\steamapps\common\SlayTheSpire\
 ### Debugging Tips
 
 When debugging crashes or issues:
-1. Check `communication_mod_errors.log` for Python exceptions and stack traces
-2. Check `shop_error.log` for shop-related errors (if created)
-3. Check `ai_debug.log` for game state tracking and decision history
-4. Use `ai_game_stats.csv` for analyzing win rates and performance trends
+1. **Check `main_game_loop.log` first** - Shows game restart, coordinator state, and general flow
+2. Check `communication_mod_errors.log` for Python exceptions and stack traces
+3. Check `shop_error.log` for shop-related errors (if created)
+4. Check `ai_debug.log` for game state tracking and decision history
+5. Use `ai_game_stats.csv` for analyzing win rates and performance trends
 
 **Common Issues**:
 - Shop crash: Often caused by `coordinator.game` vs `coordinator.last_game_state` attribute confusion
