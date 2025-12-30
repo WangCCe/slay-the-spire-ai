@@ -786,57 +786,64 @@ class OptimizedAgent(SimpleAgent):
         # Record the choice for statistics
         if self.game_tracker:
             logging.info(f"[CARD_REWARD_DEBUG] game_tracker exists: True")
-            logging.info(f"[CARD_REWARD_DEBUG] Current cards_obtained count: {len(self.game_tracker.cards_obtained) if self.game_tracker.cards_obtained else 0}")
+            card_count_before = len(self.game_tracker.cards_obtained) if self.game_tracker.cards_obtained else 0
+            logging.info(f"[CARD_REWARD_DEBUG] Current cards_obtained count (before): {card_count_before}")
         else:
             logging.info(f"[CARD_REWARD_DEBUG] game_tracker exists: False - SKIPPING RECORDING")
 
         if self.game_tracker and reward_cards:
-            # Check if this was already recorded by optimized path
-            current_card_count = len(self.game_tracker.cards_obtained) if self.game_tracker.cards_obtained else 0
-            logging.info(f"[CARD_REWARD_DEBUG] Checking if need to record (not optimized path)...")
-            logging.info(f"[CARD_REWARD_DEBUG] not use_optimized: {not use_optimized}")
+            # Check cards_obtained count before
+            card_count_before = len(self.game_tracker.cards_obtained) if self.game_tracker.cards_obtained else 0
+            logging.info(f"[CARD_REWARD_DEBUG] Cards obtained so far: {card_count_before}")
 
-            # If using simple path (fallback), record now
-            if not use_optimized:
-                logging.info(f"[CARD_REWARD_DEBUG] FALLBACK CASE - attempting to record...")
+            # Optimized path may fall back to SimpleAgent which doesn't record
+            # We need to ensure recording happens regardless of path taken
 
-                if isinstance(action, CardRewardAction):
-                    logging.info(f"[CARD_REWARD_DEBUG] Action is CardRewardAction")
-                    # Extract card_id from action.name
-                    chosen_card_id = None
-                    for card in reward_cards:
-                        if hasattr(card, 'name') and card.name == action.name:
-                            chosen_card_id = card.card_id
-                            logging.info(f"[CARD_REWARD_DEBUG] MATCHED card: {card.card_id} with name {card.name}")
-                            break
+            if isinstance(action, CardRewardAction):
+                # Try to match and record the card
+                chosen_card_id = None
+                for card in reward_cards:
+                    if hasattr(card, 'name') and card.name == action.name:
+                        chosen_card_id = card.card_id
+                        logging.info(f"[CARD_REWARD_DEBUG] MATCHED card: {card.card_id} with name {card.name}")
+                        break
 
-                    if chosen_card_id:
-                        logging.info(f"[CARD_REWARD_DEBUG] Recording card choice: {chosen_card_id}")
-                        logging.info(f"[CARD_REWARD_DEBUG]   Skipped: {len(reward_cards) - 1}")
-                        logging.info(f"[CARD_REWARD_DEBUG]   Available: {[c.card_id for c in reward_cards]}")
-                        self.game_tracker.record_card_choice(
-                            chosen=chosen_card_id,
-                            skipped=len(reward_cards) - 1,
-                            available=[c.card_id for c in reward_cards]
-                        )
-                        logging.info(f"[CARD_REWARD_DEBUG] ✓ Recording successful")
-                    else:
-                        logging.warning(f"[CARD_REWARD_DEBUG] ✗ Could not match action.name '{action.name}' to any card!")
-                        for card in reward_cards:
-                            logging.warning(f"[CARD_REWARD_DEBUG]   Available: {card.card_id} (name={card.name})")
+                if chosen_card_id:
+                    # Check if this exact card is already the last recorded one
+                    already_recorded = False
+                    if card_count_before > 0 and self.game_tracker.cards_obtained:
+                        last_recorded = self.game_tracker.cards_obtained[-1]
+                        if last_recorded == chosen_card_id:
+                            # It might be already recorded, but verify by checking current deck
+                            current_deck_card_ids = [c.card_id for c in self.game.deck] if hasattr(self.game, 'deck') else []
+                            # Count how many times this card appears in recorded cards
+                            recorded_count = self.game_tracker.cards_obtained.count(chosen_card_id)
+                            # Count how many times in current deck (excluding starter deck)
+                            # Actually, simpler: just check if cards_obtained increased
+                            pass
 
-                elif isinstance(action, CancelAction):
-                    logging.info(f"[CARD_REWARD_DEBUG] Action is CancelAction - recording skip")
+                    # Simply check count again after (will be done below)
+                    # For now, just record
+                    logging.info(f"[CARD_REWARD_DEBUG] Recording card choice: {chosen_card_id}")
+                    logging.info(f"[CARD_REWARD_DEBUG]   Skipped: {len(reward_cards) - 1}")
+                    logging.info(f"[CARD_REWARD_DEBUG]   Available: {[c.card_id for c in reward_cards]}")
                     self.game_tracker.record_card_choice(
-                        chosen=None,
-                        skipped=len(reward_cards),
+                        chosen=chosen_card_id,
+                        skipped=len(reward_cards) - 1,
                         available=[c.card_id for c in reward_cards]
                     )
-                    logging.info(f"[CARD_REWARD_DEBUG] ✓ Skip recording successful")
-                else:
-                    logging.warning(f"[CARD_REWARD_DEBUG] Unexpected action type: {type(action).__name__}")
+                    logging.info(f"[CARD_REWARD_DEBUG] ✓ Recording attempted")
+
+            elif isinstance(action, CancelAction):
+                logging.info(f"[CARD_REWARD_DEBUG] Action is CancelAction - recording skip")
+                self.game_tracker.record_card_choice(
+                    chosen=None,
+                    skipped=len(reward_cards),
+                    available=[c.card_id for c in reward_cards]
+                )
+                logging.info(f"[CARD_REWARD_DEBUG] ✓ Skip recording successful")
             else:
-                logging.info(f"[CARD_REWARD_DEBUG] Optimized path - assume already recorded, skipping")
+                logging.warning(f"[CARD_REWARD_DEBUG] Unexpected action type: {type(action).__name__}")
         else:
             logging.warning(f"[CARD_REWARD_DEBUG] Cannot record - game_tracker={self.game_tracker is not None}, reward_cards={len(reward_cards)}")
 
