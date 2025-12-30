@@ -136,11 +136,19 @@ The AI's combat decision flow in `get_play_card_action()`:
 
 ### File Locations
 
-**Game Directory**: `D:\SteamLibrary\steamapps\common\SlayTheSpire\`
-- Statistical csv file: `ai_game_stats.csv`
-- AI debug log: `ai_debug.log`
-- Shop error log: `shop_error.log` (custom logging for shop crashes)
-- CommunicationMod error log: `communication_mod_errors.log` (~18MB, contains detailed Python tracebacks)
+**Important**: Log files use relative paths and are written to the **current working directory** (CWD) where the Python script runs.
+
+**When launched via CommunicationMod**, the CWD is typically the game installation directory:
+```
+D:\SteamLibrary\steamapps\common\SlayTheSpire\
+```
+
+**Log Files** (in game directory):
+- `ai_game_stats.csv` - Game statistics (wins, losses, floor reached, etc.)
+- `ai_game_stats.jsonl` - Detailed game logs (JSONL format)
+- `ai_debug.log` - AI debugging and decision history
+- `shop_error.log` - Shop-specific errors (created on demand)
+- `communication_mod_errors.log` - Python exceptions and tracebacks (~18MB)
 
 **CommunicationMod Config**: `C:\Users\20571\AppData\Local\ModTheSpire\CommunicationMod\config.properties`
 
