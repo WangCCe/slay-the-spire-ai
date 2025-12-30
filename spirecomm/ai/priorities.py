@@ -1199,8 +1199,8 @@ class DefectPowerPriority(Priority):
 
     # Don't fight early Act 1 elites - build power first (A20 expert consensus)
     # Priorities: Rest >> Shop ≈ Event > Monster >>> Elite (early game)
-    # Fight elites in late Act 1 after building damage output
-    MAP_NODE_PRIORITIES_1 = {'R': 1000, 'E': 80, '$': 85, '?': 85, 'M': 60, 'T': 0}
+    # Only consider elites late Act 1 or when HP is high enough to survive.
+    MAP_NODE_PRIORITIES_1 = {'R': 1000, 'E': -10, '$': 85, '?': 85, 'M': 60, 'T': 0}
 
     MAP_NODE_PRIORITIES_2 = {'R': 100, 'E': -1000, '$': 10, '?': 10, 'M': 1, 'T': 0}
 
