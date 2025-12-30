@@ -121,7 +121,7 @@ class IroncladCombatPlanner(CombatPlanner):
         initial_state = SimulationState(context)
 
         # Initialize beam with empty sequence
-        beam = [([], initial_state, 0)]  # (actions, state, energy_spent)
+        beam = [([], initial_state, 0, float('-inf'))]  # (actions, state, energy_spent, score)
 
         best_sequence = []
         best_score = float('-inf')
@@ -129,7 +129,7 @@ class IroncladCombatPlanner(CombatPlanner):
         for depth in range(max_depth):
             new_candidates = []
 
-            for sequence, state, energy_spent in beam:
+            for sequence, state, energy_spent, score in beam:
                 # Try each remaining card
                 for card in playable_cards:
                     card_uuid = card.uuid if hasattr(card, 'uuid') else id(card)
