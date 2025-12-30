@@ -1,5 +1,6 @@
-import sys
+import argparse
 import os
+import sys
 
 from spirecomm.communication.coordinator import Coordinator
 from spirecomm.ai.agent import SimpleAgent, OptimizedAgent, OPTIMIZED_AI_AVAILABLE
@@ -55,47 +56,69 @@ if __name__ == "__main__":
     use_optimized = None
     ascension_level = 0  # Default ascension level
 
-    if len(sys.argv) > 1:
-        arg = sys.argv[1].lower()
-        if arg in ['--optimized', '-o', 'optimized']:
-            use_optimized = True
-            sys.stderr.write("Optimized AI mode enabled via command line\n")
-        elif arg in ['--simple', '-s', 'simple']:
-            use_optimized = False
-            sys.stderr.write("Simple AI mode enforced via command line\n")
-        elif arg in ['--help', '-h']:
-            sys.stderr.write("Slay the Spire AI\n\n")
-            sys.stderr.write("Usage:\n")
-            sys.stderr.write("  python main.py [options]\n\n")
-            sys.stderr.write("Options:\n")
-            sys.stderr.write("  --optimized, -o    Use OptimizedAgent with enhanced AI\n")
-            sys.stderr.write("  --simple, -s       Use SimpleAgent (legacy AI)\n")
-            sys.stderr.write("  --ascension, -a N  Set ascension level (0-20, default: 20)\n")
-            sys.stderr.write("  --help, -h         Show this help message\n\n")
-            sys.stderr.write("Environment Variable:\n")
-            sys.stderr.write("  USE_OPTIMIZED_AI=true  Use OptimizedAgent\n\n")
-            sys.stderr.write("Examples:\n")
-            sys.stderr.write("  python main.py              # Auto-detect, ascension 0\n")
-            sys.stderr.write("  python main.py --optimized  # Force optimized AI\n")
-            sys.stderr.write("  python main.py -a 10        # Ascension level 10\n")
-            sys.stderr.write("  python main.py -a 20        # Ascension level 20\n")
-            sys.stderr.write("  python main.py --optimized -a 20  # Optimized AI A20\n")
-            sys.exit(0)
+    parser = argparse.ArgumentParser(
+        prog="python main.py",
+        description="Slay the Spire AI",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Environment Variable:\n"
+            "  USE_OPTIMIZED_AI=true  Use OptimizedAgent\n\n"
+            "Examples:\n"
+            "  python main.py              # Auto-detect, ascension 0\n"
+            "  python main.py --optimized  # Force optimized AI\n"
+            "  python main.py -a 10        # Ascension level 10\n"
+            "  python main.py -a 20        # Ascension level 20\n"
+            "  python main.py --optimized -a 20  # Optimized AI A20\n"
+        ),
+    )
+    parser.add_argument(
+        "--optimized",
+        "-o",
+        action="store_true",
+        help="Use OptimizedAgent with enhanced AI",
+    )
+    parser.add_argument(
+        "--simple",
+        "-s",
+        action="store_true",
+        help="Use SimpleAgent (legacy AI)",
+    )
+    parser.add_argument(
+        "--ascension",
+        "-a",
+        default=None,
+        metavar="N",
+        help="Set ascension level (0-20, default: 0)",
+    )
+    parser.add_argument(
+        "mode",
+        nargs="?",
+        choices=["optimized", "simple"],
+        help=argparse.SUPPRESS,
+    )
+    args = parser.parse_args()
 
-    # Parse ascension level
-    if len(sys.argv) > 2:
-        for i in range(1, len(sys.argv)):
-            if sys.argv[i].lower() in ['--ascension', '-a']:
-                if i + 1 < len(sys.argv):
-                    try:
-                        ascension_level = int(sys.argv[i + 1])
-                        if ascension_level < 0 or ascension_level > 20:
-                            sys.stderr.write(f"Ascension level must be 0-20, got {ascension_level}\n")
-                            sys.exit(1)
-                        sys.stderr.write(f"Ascension level set to {ascension_level}\n")
-                    except ValueError:
-                        sys.stderr.write(f"Invalid ascension level: {sys.argv[i + 1]}\n")
-                        sys.stderr.write(f"Ascension must be a number (0-20), ignoring and using default\n")
+    if args.optimized and args.simple:
+        sys.stderr.write("Cannot specify both --optimized and --simple\n")
+        sys.exit(1)
+
+    if args.optimized or args.mode == "optimized":
+        use_optimized = True
+        sys.stderr.write("Optimized AI mode enabled via command line\n")
+    elif args.simple or args.mode == "simple":
+        use_optimized = False
+        sys.stderr.write("Simple AI mode enforced via command line\n")
+
+    if args.ascension is not None:
+        try:
+            ascension_level = int(args.ascension)
+            if ascension_level < 0 or ascension_level > 20:
+                sys.stderr.write(f"Ascension level must be 0-20, got {ascension_level}\n")
+                sys.exit(1)
+            sys.stderr.write(f"Ascension level set to {ascension_level}\n")
+        except ValueError:
+            sys.stderr.write(f"Invalid ascension level: {args.ascension}\n")
+            sys.stderr.write("Ascension must be a number (0-20), ignoring and using default\n")
 
     # Define player class before creating agent
     chosen_class = PlayerClass.IRONCLAD  # Fixed to Ironclad for testing
