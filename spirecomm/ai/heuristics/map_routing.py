@@ -56,7 +56,8 @@ class AdaptiveMapRouter:
 
         # Act 1: Character-specific strategies
         if act == 1:
-            base_priority = self._adjust_act_1_priority(symbol, base_priority, hp_pct)
+            floor = getattr(context, 'floor', 0) or 0
+            base_priority = self._adjust_act_1_priority(symbol, base_priority, hp_pct, floor)
 
         # Act 2+: More conservative
         elif act >= 2:
@@ -67,16 +68,11 @@ class AdaptiveMapRouter:
 
         return base_priority
 
-    def _adjust_act_1_priority(self, symbol: str, base: int, hp_pct: float) -> int:
+    def _adjust_act_1_priority(self, symbol: str, base: int, hp_pct: float, floor: int) -> int:
         """Act 1 priorities - adjusted for A20 difficulty, less aggressive early on."""
         # Ironclad is strongest in Act 1 (Burning Blood healing), but adjusted for A20
         if self.player_class == 'IRONCLAD':
             if symbol == 'E':  # Elite
-                # Get floor if available
-                floor = 0
-                if hasattr(self, 'context') and hasattr(self.context, 'floor'):
-                    floor = self.context.floor
-                
                 # More cautious in early Act 1 (floors 1-5)
                 if floor <= 5:
                     # Avoid elites entirely in first 5 floors
@@ -109,10 +105,6 @@ class AdaptiveMapRouter:
         # Silent can also be aggressive with poison, adjusted for A20
         elif self.player_class == 'THE_SILENT':
             if symbol == 'E':
-                floor = 0
-                if hasattr(self, 'context') and hasattr(self.context, 'floor'):
-                    floor = self.context.floor
-                
                 if floor <= 7:
                     return base - 150  # Avoid early elites
                 elif hp_pct > 0.6:
