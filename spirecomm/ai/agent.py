@@ -1,6 +1,7 @@
 import time
 import random
 import logging
+import sys
 from datetime import datetime
 
 from spirecomm.spire.game import Game
@@ -10,13 +11,15 @@ from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
 from spirecomm.ai.priorities import *
 
-# Setup error logging to file
+# Setup error logging to file (also outputs to console)
 ERROR_LOG_FILE = "shop_error.log"
 logging.basicConfig(
-    filename=ERROR_LOG_FILE,
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    filemode='a'
+    handlers=[
+        logging.FileHandler(ERROR_LOG_FILE, encoding='utf-8', mode='a'),
+        logging.StreamHandler(sys.stdout)
+    ]
 )
 
 # Import optimized AI components
@@ -207,12 +210,12 @@ class SimpleAgent:
         elif self.game.screen_type == ScreenType.COMBAT_REWARD:
             import sys
             rewards = self.game.screen.rewards if hasattr(self.game.screen, 'rewards') else []
-            sys.stderr.write(f"[COMBAT_REWARD] Floor {self.game.floor if hasattr(self.game, 'floor') else '?'}: {len(rewards)} rewards, skipped_cards={self.skipped_cards}\n")
+            logging.info(f"[COMBAT_REWARD] Floor {self.game.floor if hasattr(self.game, 'floor') else '?'}: {len(rewards)} rewards, skipped_cards={self.skipped_cards}\n")
 
             for i, reward_item in enumerate(rewards):
                 skip_potion = reward_item.reward_type == RewardType.POTION and self.game.are_potions_full()
                 skip_card = reward_item.reward_type == RewardType.CARD and self.skipped_cards
-                sys.stderr.write(f"  [{i}] type={reward_item.reward_type}, skip_potion={skip_potion}, skip_card={skip_card}\n")
+                logging.info(f"  [{i}] type={reward_item.reward_type}, skip_potion={skip_potion}, skip_card={skip_card}\n")
 
             for reward_item in rewards:
                 if reward_item.reward_type == RewardType.POTION and self.game.are_potions_full():
@@ -220,9 +223,9 @@ class SimpleAgent:
                 elif reward_item.reward_type == RewardType.CARD and self.skipped_cards:
                     continue
                 else:
-                    sys.stderr.write(f"[COMBAT_REWARD] Taking reward: {reward_item.reward_type}\n")
+                    logging.info(f"[COMBAT_REWARD] Taking reward: {reward_item.reward_type}\n")
                     return CombatRewardAction(reward_item)
-            sys.stderr.write(f"[COMBAT_REWARD] Proceeding (all rewards skipped)\n")
+            logging.info(f"[COMBAT_REWARD] Proceeding (all rewards skipped)\n")
             self.skipped_cards = False
             return ProceedAction()
         elif self.game.screen_type == ScreenType.MAP:
@@ -407,12 +410,12 @@ class SimpleAgent:
         import sys
         can_skip = self.game.screen.can_skip if hasattr(self.game.screen, 'can_skip') else False
         in_combat = self.game.in_combat if hasattr(self.game, 'in_combat') else False
-        sys.stderr.write(f"[CARD_REWARD] Floor {self.game.floor if hasattr(self.game, 'floor') else '?'}: {len(reward_cards)} cards, can_skip={can_skip}, in_combat={in_combat}\n")
+        logging.info(f"[CARD_REWARD] Floor {self.game.floor if hasattr(self.game, 'floor') else '?'}: {len(reward_cards)} cards, can_skip={can_skip}, in_combat={in_combat}\n")
 
         for i, card in enumerate(reward_cards):
             count = self.count_copies_in_deck(card)
             needs = self.priorities.needs_more_copies(card, count) if can_skip and not in_combat else True
-            sys.stderr.write(f"  [{i}] {card.card_id} (copies={count}, needs_more={needs})\n")
+            logging.info(f"  [{i}] {card.card_id} (copies={count}, needs_more={needs})\n")
 
         if can_skip and not in_combat:
             pickable_cards = [card for card in reward_cards if self.priorities.needs_more_copies(card, self.count_copies_in_deck(card))]
@@ -421,13 +424,13 @@ class SimpleAgent:
 
         if len(pickable_cards) > 0:
             potential_pick = self.priorities.get_best_card(pickable_cards)
-            sys.stderr.write(f"[CARD_REWARD] Choosing: {potential_pick.card_id if potential_pick else 'None'}\n")
+            logging.info(f"[CARD_REWARD] Choosing: {potential_pick.card_id if potential_pick else 'None'}\n")
             return CardRewardAction(potential_pick)
         elif hasattr(self.game.screen, 'can_bowl') and self.game.screen.can_bowl:
-            sys.stderr.write(f"[CARD_REWARD] Using bowl\n")
+            logging.info(f"[CARD_REWARD] Using bowl\n")
             return CardRewardAction(bowl=True)
         else:
-            sys.stderr.write(f"[CARD_REWARD] Skipping all cards\n")
+            logging.info(f"[CARD_REWARD] Skipping all cards\n")
             self.skipped_cards = True
             return CancelAction()
 
@@ -818,7 +821,7 @@ class OptimizedAgent(SimpleAgent):
                 # Skip Limit Break if no Strength support
                 if current_strength < 5 and not has_strength_scaling:
                     import sys
-                    sys.stderr.write(f"[REWARD] Skipping Limit Break - no Strength support (Str={current_strength}, has_scaling={has_strength_scaling})\n")
+                    logging.info(f"[REWARD] Skipping Limit Break - no Strength support (Str={current_strength}, has_scaling={has_strength_scaling})\n")
                     pickable_cards = [c for c in pickable_cards if c.card_id != 'Limit Break']
 
                     if not pickable_cards:
@@ -855,11 +858,11 @@ class OptimizedAgent(SimpleAgent):
                 ]
 
                 if high_priority_cards:
-                    sys.stderr.write(f"[REWARD] Deck size {deck_size}, being selective (score >= 65)\n")
+                    logging.info(f"[REWARD] Deck size {deck_size}, being selective (score >= 65)\n")
                     pickable_cards = [card for card, _ in high_priority_cards]
                 else:
                     # No good cards - skip to keep deck lean
-                    sys.stderr.write(f"[REWARD] Deck too large ({deck_size}) and no good cards (score >= 65) - skipping\n")
+                    logging.info(f"[REWARD] Deck too large ({deck_size}) and no good cards (score >= 65) - skipping\n")
                     if self.game.screen.can_bowl:
                         return CardRewardAction(bowl=True)
                     else:
