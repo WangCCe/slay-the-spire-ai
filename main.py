@@ -160,6 +160,7 @@ if __name__ == "__main__":
         sys.stderr.write(f"\n{'='*60}\n")
         sys.stderr.write(f"Starting game #{game_count} as {chosen_class}\n")
         sys.stderr.write(f"Ascension Level: {current_ascension}\n")
+        sys.stderr.write(f"Coordinator state: in_game={coordinator.in_game}, ready={coordinator.game_is_ready}\n")
         sys.stderr.write(f"{'='*60}\n")
 
         # Reset game tracker for OptimizedAgent

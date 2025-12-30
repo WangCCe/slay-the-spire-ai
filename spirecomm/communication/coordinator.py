@@ -205,17 +205,44 @@ class Coordinator:
         :return: True if the game was a victory, else False
         :rtype: bool
         """
+        # Clear any pending actions from previous game
         self.clear_actions()
-        while not self.game_is_ready:
+
+        # Wait for ready state (with timeout to prevent hanging)
+        timeout_counter = 0
+        max_wait = 100  # Safety timeout
+        while not self.game_is_ready and timeout_counter < max_wait:
             self.receive_game_state_update(block=True, perform_callbacks=False)
+            timeout_counter += 1
+
+        if not self.game_is_ready:
+            raise Exception("Communication Mod not ready for new game")
+
+        # Start new game if not already in one
         if not self.in_game:
             StartGameAction(player_class, ascension_level, seed).execute(self)
-            self.receive_game_state_update(block=True)
+            # Wait for game to actually start
+            timeout_counter = 0
+            while not self.in_game and timeout_counter < max_wait:
+                self.receive_game_state_update(block=True)
+                timeout_counter += 1
+
+            if not self.in_game:
+                raise Exception("Failed to start new game")
+
+        # Play until game ends
         while self.in_game:
             self.execute_next_action_if_ready()
             self.receive_game_state_update()
-        if self.last_game_state.screen_type == ScreenType.GAME_OVER:
-            return self.last_game_state.screen.victory
+
+        # Return victory status (handle case where screen isn't GAME_OVER)
+        if hasattr(self.last_game_state, 'screen_type'):
+            if self.last_game_state.screen_type == ScreenType.GAME_OVER:
+                return self.last_game_state.screen.victory
+            else:
+                # Game ended but not at GAME_OVER screen
+                # Assume defeat if we're out of game
+                return False
         else:
             return False
 

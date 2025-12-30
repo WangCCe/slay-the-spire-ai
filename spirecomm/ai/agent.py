@@ -101,6 +101,12 @@ class SimpleAgent:
             return ProceedAction()
 
     def get_next_action_out_of_game(self):
+        # Explicitly check for main menu screen to ensure proper restart
+        if hasattr(self.game, 'screen_type'):
+            from spirecomm.spire.screen import ScreenType
+            if self.game.screen_type == ScreenType.MAIN_MENU:
+                return StartGameAction(self.chosen_class)
+        # Default behavior - start new game
         return StartGameAction(self.chosen_class)
 
     def is_monster_attacking(self):
