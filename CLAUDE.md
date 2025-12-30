@@ -134,5 +134,25 @@ The AI's combat decision flow in `get_play_card_action()`:
 
 ## Reminder
 
-- Statistical csv file locates in D:\SteamLibrary\steamapps\common\SlayTheSpire  
-- CommunicationMod config file locates in C:\Users\20571\AppData\Local\ModTheSpire\CommunicationMod
+### File Locations
+
+**Game Directory**: `D:\SteamLibrary\steamapps\common\SlayTheSpire\`
+- Statistical csv file: `ai_game_stats.csv`
+- AI debug log: `ai_debug.log`
+- Shop error log: `shop_error.log` (custom logging for shop crashes)
+- CommunicationMod error log: `communication_mod_errors.log` (~18MB, contains detailed Python tracebacks)
+
+**CommunicationMod Config**: `C:\Users\20571\AppData\Local\ModTheSpire\CommunicationMod\config.properties`
+
+### Debugging Tips
+
+When debugging crashes or issues:
+1. Check `communication_mod_errors.log` for Python exceptions and stack traces
+2. Check `shop_error.log` for shop-related errors (if created)
+3. Check `ai_debug.log` for game state tracking and decision history
+4. Use `ai_game_stats.csv` for analyzing win rates and performance trends
+
+**Common Issues**:
+- Shop crash: Often caused by `coordinator.game` vs `coordinator.last_game_state` attribute confusion
+- Beam search errors: Check combat planner implementation for tuple unpacking issues
+- Missing attributes: Always use `coordinator.last_game_state` not `coordinator.game`
