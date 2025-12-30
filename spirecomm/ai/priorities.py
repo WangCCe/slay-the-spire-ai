@@ -685,7 +685,6 @@ class IroncladPriority(Priority):
         "Panacea",
         "Reckless Charge",
         "Infernal Blade",
-        "Strike_R",
         "Spot Weakness",
         "Strike_R",
         "Shiv",
