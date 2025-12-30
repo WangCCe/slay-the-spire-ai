@@ -10,7 +10,8 @@
       "Bash(timeout:*)",
       "Bash(ls:*)",
       "Bash(echo:*)",
-      "Bash(openspec:*)"
+      "Bash(openspec:*)",
+      "Bash(find:*)"
     ]
   }
 }

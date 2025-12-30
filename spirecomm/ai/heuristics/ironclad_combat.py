@@ -611,7 +611,7 @@ class IroncladCombatPlanner(CombatPlanner):
         for monster in context.monsters_alive:
             if monster.monster_id == "Lagavulin":
                 if hasattr(monster, 'intent'):
-                    from spirecomm.spire.intent import Intent
+                    from spirecomm.spire.character import Intent
                     if monster.intent == Intent.DEFEND:
                         return True
         return False
