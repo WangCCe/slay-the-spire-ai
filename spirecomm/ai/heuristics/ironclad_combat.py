@@ -273,19 +273,49 @@ class IroncladCombatPlanner(CombatPlanner):
         """
         score = 0.0
 
+        # Special handling for monsters that require quick kills
+        cultist_ritual = self._is_cultist_ritual_turn(context)
+        has_cultist = self._has_cultist(context)
+        has_gremlin_nob = self._has_gremlin_nob(context)
+        lagavulin_hibernating = self._is_lagavulin_hibernating(context)
+        has_lagavulin = self._has_lagavulin(context)
+        
+        # Determine if we should prioritize attack over defense
+        # These monsters have scaling damage or dangerous mechanics
+        if cultist_ritual:
+            # Cultist is gaining Strength, will attack next turn with more damage
+            damage_weight = 5.0
+            block_penalty = True
+        elif lagavulin_hibernating:
+            # Lagavulin is hibernating, will deal massive damage when it wakes up
+            damage_weight = 5.0
+            block_penalty = True
+        elif has_gremlin_nob or has_lagavulin or has_cultist:
+            # These monsters have scaling damage or dangerous mechanics
+            # Defense is not sustainable - always prioritize attacking
+            damage_weight = 4.0
+            block_penalty = True
+        else:
+            damage_weight = 3.0
+            block_penalty = False
+
         # 1. Monsters killed (huge bonus)
         kills = final_state.monsters_killed
         score += kills * 200
 
         # 2. Damage dealt
         damage = final_state.total_damage_dealt
-        score += damage * 3
+        score += damage * damage_weight
 
         # 3. Block (only valuable when taking damage)
         block_gained = final_state.player_block - initial_state.player_block
         incoming_damage = context.incoming_damage
 
-        if incoming_damage > initial_state.player_block:
+        if block_penalty and block_gained > 0:
+            # Heavily penalize block against monsters with scaling/dangerous mechanics
+            # This prevents the AI from prolonging the battle
+            score -= block_gained * 10
+        elif incoming_damage > initial_state.player_block:
             # Need block - value it highly
             score += min(block_gained, incoming_damage) * 5
         else:
@@ -511,6 +541,96 @@ class IroncladCombatPlanner(CombatPlanner):
         defensive_keywords = ['defend', 'iron wave', 'flame barrier']
         card_lower = card.card_id.lower()
         return any(kw in card_lower for kw in defensive_keywords)
+
+    def _is_cultist_ritual_turn(self, context: DecisionContext) -> bool:
+        """
+        Check if any Cultist is using Ritual (non-attack turn).
+        
+        Cultist uses Ritual on first turn to gain Strength, which means:
+        - No damage this turn (safe to attack)
+        - Next turn will deal more damage (need to kill quickly)
+        
+        Args:
+            context: Current decision context
+            
+        Returns:
+            True if any Cultist is using Ritual this turn
+        """
+        for monster in context.monsters_alive:
+            if monster.monster_id == "Cultist":
+                if hasattr(monster, 'intent'):
+                    from spirecomm.spire.intent import Intent
+                    if monster.intent != Intent.ATTACK and monster.intent != Intent.ATTACK_BUFF:
+                        return True
+        return False
+
+    def _has_cultist(self, context: DecisionContext) -> bool:
+        """
+        Check if there are any Cultists alive.
+        
+        Cultist's damage scales with Strength each turn, so defense is not sustainable.
+        We should always prioritize attacking over defending.
+        
+        Args:
+            context: Current decision context
+            
+        Returns:
+            True if any Cultist is alive
+        """
+        return any(monster.monster_id == "Cultist" for monster in context.monsters_alive)
+
+    def _has_gremlin_nob(self, context: DecisionContext) -> bool:
+        """
+        Check if there are any Gremlin Nob alive.
+        
+        Gremlin Nob is an Act 1 elite that gains Strength when using Bash.
+        Its damage scales with Strength, making defense unsustainable.
+        We should always prioritize attacking over defending.
+        
+        Args:
+            context: Current decision context
+            
+        Returns:
+            True if any Gremlin Nob is alive
+        """
+        return any(monster.monster_id == "Gremlin Nob" for monster in context.monsters_alive)
+
+    def _is_lagavulin_hibernating(self, context: DecisionContext) -> bool:
+        """
+        Check if any Lagavulin is hibernating (charging up).
+        
+        Lagavulin hibernates for 3 turns, then deals massive damage (18-22).
+        We should kill it before it wakes up, or at least minimize defense.
+        
+        Args:
+            context: Current decision context
+            
+        Returns:
+            True if any Lagavulin is hibernating
+        """
+        for monster in context.monsters_alive:
+            if monster.monster_id == "Lagavulin":
+                if hasattr(monster, 'intent'):
+                    from spirecomm.spire.intent import Intent
+                    if monster.intent == Intent.DEFEND:
+                        return True
+        return False
+
+    def _has_lagavulin(self, context: DecisionContext) -> bool:
+        """
+        Check if there are any Lagavulin alive.
+        
+        Lagavulin is an Act 1 elite with hibernation mechanics.
+        After hibernating, it deals massive damage.
+        We should prioritize attacking over defending throughout the fight.
+        
+        Args:
+            context: Current decision context
+            
+        Returns:
+            True if any Lagavulin is alive
+        """
+        return any(monster.monster_id == "Lagavulin" for monster in context.monsters_alive)
 
     def get_confidence(self, context: DecisionContext) -> float:
         """

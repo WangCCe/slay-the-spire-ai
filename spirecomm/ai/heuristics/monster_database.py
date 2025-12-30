@@ -267,4 +267,22 @@ def evaluate_monster_threat(monster, context):
     if context.player_hp_pct < 0.5:
         threat *= 1.5
     
+    # Special handling for monsters with scaling damage
+    # These monsters become more dangerous as the battle progresses
+    
+    # Cultist: threat increases with turn number
+    # because Cultist's damage scales with Strength (gained from Ritual)
+    if monster.monster_id == "Cultist" and hasattr(context, 'turn'):
+        threat += context.turn
+    
+    # Gremlin Nob: threat increases with turn number
+    # because Gremlin Nob gains Strength when using Bash
+    if monster.monster_id == "Gremlin Nob" and hasattr(context, 'turn'):
+        threat += context.turn * 1.5
+    
+    # Lagavulin: threat increases with turn number
+    # because after hibernation it deals massive damage (18-22)
+    if monster.monster_id == "Lagavulin" and hasattr(context, 'turn'):
+        threat += context.turn * 2
+    
     return threat
