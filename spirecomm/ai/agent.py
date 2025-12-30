@@ -72,7 +72,11 @@ class SimpleAgent:
             self.map_router = AdaptiveMapRouter(player_class=player_class_str)
 
     def handle_error(self, error):
-        raise Exception(error)
+        # Log the error and return a safe action instead of raising
+        import logging
+        logging.error(f"Game error: {error}")
+        # Return StateAction to get current state instead of raising
+        return StateAction()
 
     def get_next_action_in_game(self, game_state):
         self.game = game_state
