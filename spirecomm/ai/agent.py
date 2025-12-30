@@ -405,11 +405,13 @@ class SimpleAgent:
         return count
 
     def choose_card_reward(self):
+        import logging
+        logging.info(f"[SIMPLE_AGENT_CARD_REWARD] SimpleAgent.choose_card_reward called")
         reward_cards = self.game.screen.cards
         import sys
         can_skip = self.game.screen.can_skip if hasattr(self.game.screen, 'can_skip') else False
         in_combat = self.game.in_combat if hasattr(self.game, 'in_combat') else False
-        logging.info(f"[CARD_REWARD] Floor {self.game.floor if hasattr(self.game, 'floor') else '?'}: {len(reward_cards)} cards, can_skip={can_skip}, in_combat={in_combat}\n")
+        logging.info(f"[SIMPLE_AGENT_CARD_REWARD] Floor {self.game.floor if hasattr(self.game, 'floor') else '?'}: {len(reward_cards)} cards, can_skip={can_skip}, in_combat={in_combat}\n")
 
         for i, card in enumerate(reward_cards):
             count = self.count_copies_in_deck(card)
@@ -749,47 +751,96 @@ class OptimizedAgent(SimpleAgent):
         Returns:
             CardRewardAction or CancelAction
         """
+        import logging
+
         # Get reward cards before they're modified
         reward_cards = self.game.screen.cards if hasattr(self.game, 'screen') and hasattr(self.game.screen, 'cards') else []
 
+        # LOG: Entry point
+        logging.info(f"[CARD_REWARD_DEBUG] choose_card_reward called")
+        logging.info(f"[CARD_REWARD_DEBUG] reward_cards count: {len(reward_cards)}")
+        for i, card in enumerate(reward_cards):
+            logging.info(f"[CARD_REWARD_DEBUG]   Card {i}: {card.card_id} (name={card.name})")
+
+        # Check conditions
+        use_optimized = self.use_optimized_card_selection and self.card_evaluator and OPTIMIZED_AI_AVAILABLE
+        logging.info(f"[CARD_REWARD_DEBUG] use_optimized_card_selection: {self.use_optimized_card_selection}")
+        logging.info(f"[CARD_REWARD_DEBUG] card_evaluator exists: {self.card_evaluator is not None}")
+        logging.info(f"[CARD_REWARD_DEBUG] OPTIMIZED_AI_AVAILABLE: {OPTIMIZED_AI_AVAILABLE}")
+        logging.info(f"[CARD_REWARD_DEBUG] Will use optimized path: {use_optimized}")
+
         # Get action from parent (either optimized or simple logic)
-        if self.use_optimized_card_selection and self.card_evaluator and OPTIMIZED_AI_AVAILABLE:
+        if use_optimized:
+            logging.info(f"[CARD_REWARD_DEBUG] Taking OPTIMIZED path")
             action = self._choose_card_reward_optimized()
         else:
+            logging.info(f"[CARD_REWARD_DEBUG] Taking SIMPLE path (fallback)")
             action = super().choose_card_reward()
 
-        # Record the choice for statistics (if not already recorded by optimized path)
+        # LOG: Action result
+        logging.info(f"[CARD_REWARD_DEBUG] Action type: {type(action).__name__}")
+        if isinstance(action, CardRewardAction):
+            logging.info(f"[CARD_REWARD_DEBUG] Action name: {action.name}")
+        logging.info(f"[CARD_REWARD_DEBUG] Action repr: {repr(action)}")
+
+        # Record the choice for statistics
+        if self.game_tracker:
+            logging.info(f"[CARD_REWARD_DEBUG] game_tracker exists: True")
+            logging.info(f"[CARD_REWARD_DEBUG] Current cards_obtained count: {len(self.game_tracker.cards_obtained) if self.game_tracker.cards_obtained else 0}")
+        else:
+            logging.info(f"[CARD_REWARD_DEBUG] game_tracker exists: False - SKIPPING RECORDING")
+
         if self.game_tracker and reward_cards:
             # Check if this was already recorded by optimized path
-            # Optimized path records at line 889, so we check if tracker was updated
             current_card_count = len(self.game_tracker.cards_obtained) if self.game_tracker.cards_obtained else 0
+            logging.info(f"[CARD_REWARD_DEBUG] Checking if need to record (not optimized path)...")
+            logging.info(f"[CARD_REWARD_DEBUG] not use_optimized: {not use_optimized}")
 
             # If using simple path (fallback), record now
-            if not (self.use_optimized_card_selection and self.card_evaluator and OPTIMIZED_AI_AVAILABLE):
-                # This is the fallback case - record what happened
+            if not use_optimized:
+                logging.info(f"[CARD_REWARD_DEBUG] FALLBACK CASE - attempting to record...")
+
                 if isinstance(action, CardRewardAction):
-                    # CardRewardAction means a card was taken or bowl was used
-                    # We need to figure out which card from the action name
+                    logging.info(f"[CARD_REWARD_DEBUG] Action is CardRewardAction")
+                    # Extract card_id from action.name
                     chosen_card_id = None
                     for card in reward_cards:
                         if hasattr(card, 'name') and card.name == action.name:
                             chosen_card_id = card.card_id
+                            logging.info(f"[CARD_REWARD_DEBUG] MATCHED card: {card.card_id} with name {card.name}")
                             break
 
                     if chosen_card_id:
+                        logging.info(f"[CARD_REWARD_DEBUG] Recording card choice: {chosen_card_id}")
+                        logging.info(f"[CARD_REWARD_DEBUG]   Skipped: {len(reward_cards) - 1}")
+                        logging.info(f"[CARD_REWARD_DEBUG]   Available: {[c.card_id for c in reward_cards]}")
                         self.game_tracker.record_card_choice(
                             chosen=chosen_card_id,
                             skipped=len(reward_cards) - 1,
                             available=[c.card_id for c in reward_cards]
                         )
+                        logging.info(f"[CARD_REWARD_DEBUG] ✓ Recording successful")
+                    else:
+                        logging.warning(f"[CARD_REWARD_DEBUG] ✗ Could not match action.name '{action.name}' to any card!")
+                        for card in reward_cards:
+                            logging.warning(f"[CARD_REWARD_DEBUG]   Available: {card.card_id} (name={card.name})")
+
                 elif isinstance(action, CancelAction):
-                    # CancelAction means all cards were skipped
+                    logging.info(f"[CARD_REWARD_DEBUG] Action is CancelAction - recording skip")
                     self.game_tracker.record_card_choice(
                         chosen=None,
                         skipped=len(reward_cards),
                         available=[c.card_id for c in reward_cards]
                     )
+                    logging.info(f"[CARD_REWARD_DEBUG] ✓ Skip recording successful")
+                else:
+                    logging.warning(f"[CARD_REWARD_DEBUG] Unexpected action type: {type(action).__name__}")
+            else:
+                logging.info(f"[CARD_REWARD_DEBUG] Optimized path - assume already recorded, skipping")
+        else:
+            logging.warning(f"[CARD_REWARD_DEBUG] Cannot record - game_tracker={self.game_tracker is not None}, reward_cards={len(reward_cards)}")
 
+        logging.info(f"[CARD_REWARD_DEBUG] choose_card_reward returning action\n")
         return action
 
     def _choose_card_reward_optimized(self):

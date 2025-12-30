@@ -125,9 +125,20 @@ class GameTracker:
             skipped: Number of cards skipped
             available: List of available card IDs
         """
+        import logging
+        logging.info(f"[TRACKER] record_card_choice called")
+        logging.info(f"[TRACKER]   chosen: {chosen}")
+        logging.info(f"[TRACKER]   skipped: {skipped}")
+        logging.info(f"[TRACKER]   available: {available}")
+        logging.info(f"[TRACKER]   cards_obtained before: {len(self.cards_obtained) if self.cards_obtained else 0}")
+
         if chosen:
             self.cards_obtained.append(chosen)
+            logging.info(f"[TRACKER]   appended '{chosen}' to cards_obtained")
+            logging.info(f"[TRACKER]   cards_obtained after: {len(self.cards_obtained)}")
         self.cards_skipped += skipped
+
+        logging.info(f"[TRACKER] record_card_choice complete\n")
 
     def record_relic(self, relic_id: str):
         """
