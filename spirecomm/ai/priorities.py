@@ -687,7 +687,6 @@ class IroncladPriority(Priority):
         "Infernal Blade",
         "Strike_R",
         "Spot Weakness",
-        "Strike_R",
         "Shiv",
         "Havoc",
         "RitualDagger",
