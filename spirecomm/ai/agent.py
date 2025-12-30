@@ -744,14 +744,53 @@ class OptimizedAgent(SimpleAgent):
     def choose_card_reward(self):
         """
         Override with optimized card selection if enabled.
+        Always records card choices to game_tracker for statistics.
 
         Returns:
             CardRewardAction or CancelAction
         """
+        # Get reward cards before they're modified
+        reward_cards = self.game.screen.cards if hasattr(self.game, 'screen') and hasattr(self.game.screen, 'cards') else []
+
+        # Get action from parent (either optimized or simple logic)
         if self.use_optimized_card_selection and self.card_evaluator and OPTIMIZED_AI_AVAILABLE:
-            return self._choose_card_reward_optimized()
+            action = self._choose_card_reward_optimized()
         else:
-            return super().choose_card_reward()
+            action = super().choose_card_reward()
+
+        # Record the choice for statistics (if not already recorded by optimized path)
+        if self.game_tracker and reward_cards:
+            # Check if this was already recorded by optimized path
+            # Optimized path records at line 889, so we check if tracker was updated
+            current_card_count = len(self.game_tracker.cards_obtained) if self.game_tracker.cards_obtained else 0
+
+            # If using simple path (fallback), record now
+            if not (self.use_optimized_card_selection and self.card_evaluator and OPTIMIZED_AI_AVAILABLE):
+                # This is the fallback case - record what happened
+                if isinstance(action, CardRewardAction):
+                    # CardRewardAction means a card was taken or bowl was used
+                    # We need to figure out which card from the action name
+                    chosen_card_id = None
+                    for card in reward_cards:
+                        if hasattr(card, 'name') and card.name == action.name:
+                            chosen_card_id = card.card_id
+                            break
+
+                    if chosen_card_id:
+                        self.game_tracker.record_card_choice(
+                            chosen=chosen_card_id,
+                            skipped=len(reward_cards) - 1,
+                            available=[c.card_id for c in reward_cards]
+                        )
+                elif isinstance(action, CancelAction):
+                    # CancelAction means all cards were skipped
+                    self.game_tracker.record_card_choice(
+                        chosen=None,
+                        skipped=len(reward_cards),
+                        available=[c.card_id for c in reward_cards]
+                    )
+
+        return action
 
     def _choose_card_reward_optimized(self):
         """
