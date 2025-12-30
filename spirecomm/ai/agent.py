@@ -1,5 +1,7 @@
 import time
 import random
+import logging
+from datetime import datetime
 
 from spirecomm.spire.game import Game
 from spirecomm.spire.character import Intent, PlayerClass
@@ -7,6 +9,15 @@ import spirecomm.spire.card
 from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
 from spirecomm.ai.priorities import *
+
+# Setup error logging to file
+ERROR_LOG_FILE = "shop_error.log"
+logging.basicConfig(
+    filename=ERROR_LOG_FILE,
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filemode='a'
+)
 
 # Import optimized AI components
 try:
@@ -234,9 +245,12 @@ class SimpleAgent:
                         valid_cards.append(card)
                     else:
                         import sys
-                        print(f"[SHOP_SCREEN WARNING] Skipping invalid card: {card}", file=sys.stderr)
+                        card_info = f"card_id={getattr(card, 'card_id', 'MISSING')}, name={getattr(card, 'name', 'MISSING')}, price={getattr(card, 'price', 'MISSING')}"
+                        logging.warning(f"[SHOP_SCREEN] Skipping invalid card: {card_info}")
+                        print(f"[SHOP_SCREEN WARNING] Skipping invalid card: {card_info}", file=sys.stderr)
 
                 if not valid_cards:
+                    logging.warning("[SHOP_SCREEN] No valid cards found")
                     return CancelAction()
 
                 # Priority 1: Purge (card removal) if needed and affordable
@@ -266,7 +280,9 @@ class SimpleAgent:
                                     return BuyCardAction(card)
                         except Exception as e:
                             import sys
-                            print(f"[SHOP_SCREEN] Error evaluating card {card.card_id if hasattr(card, 'card_id') else 'UNKNOWN'}: {e}", file=sys.stderr)
+                            card_id = card.card_id if hasattr(card, 'card_id') else 'UNKNOWN'
+                            logging.error(f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}")
+                            print(f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}", file=sys.stderr)
                             continue
                 else:
                     # Fallback to original logic (using validated cards)
@@ -276,7 +292,9 @@ class SimpleAgent:
                                 return BuyCardAction(card)
                         except Exception as e:
                             import sys
-                            print(f"[SHOP_SCREEN] Error evaluating card {card.card_id if hasattr(card, 'card_id') else 'UNKNOWN'}: {e}", file=sys.stderr)
+                            card_id = card.card_id if hasattr(card, 'card_id') else 'UNKNOWN'
+                            logging.error(f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}")
+                            print(f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}", file=sys.stderr)
                             continue
 
                 # Priority 3: Buy useful relics (consider price and value)
@@ -292,7 +310,9 @@ class SimpleAgent:
                                     return BuyRelicAction(relic)
                         except Exception as e:
                             import sys
-                            print(f"[SHOP_SCREEN] Error evaluating relic {relic.name if hasattr(relic, 'name') else 'UNKNOWN'}: {e}", file=sys.stderr)
+                            relic_name = relic.name if hasattr(relic, 'name') else 'UNKNOWN'
+                            logging.error(f"[SHOP_SCREEN] Error evaluating relic {relic_name}: {e}")
+                            print(f"[SHOP_SCREEN] Error evaluating relic {relic_name}: {e}", file=sys.stderr)
                             continue
 
                 # Priority 4: Buy potions if needed and affordable
@@ -306,7 +326,9 @@ class SimpleAgent:
                                     return BuyPotionAction(potion)
                         except Exception as e:
                             import sys
-                            print(f"[SHOP_SCREEN] Error evaluating potion {potion.name if hasattr(potion, 'name') else 'UNKNOWN'}: {e}", file=sys.stderr)
+                            potion_name = potion.name if hasattr(potion, 'name') else 'UNKNOWN'
+                            logging.error(f"[SHOP_SCREEN] Error evaluating potion {potion_name}: {e}")
+                            print(f"[SHOP_SCREEN] Error evaluating potion {potion_name}: {e}", file=sys.stderr)
                             continue
 
                 # Priority 5: Purge as last resort if we have extra gold
@@ -317,9 +339,16 @@ class SimpleAgent:
                 return CancelAction()
             except Exception as e:
                 import sys
-                print(f"[SHOP_SCREEN ERROR] {type(e).__name__}: {e}", file=sys.stderr)
-                print(f"[SHOP_SCREEN ERROR] Cards: {[c.card_id if hasattr(c, 'card_id') else 'INVALID' for c in self.game.screen.cards] if hasattr(self.game.screen, 'cards') else 'NO_CARDS'}", file=sys.stderr)
                 import traceback
+                error_msg = f"[SHOP_SCREEN ERROR] {type(e).__name__}: {e}"
+                card_list = [c.card_id if hasattr(c, 'card_id') else 'INVALID' for c in self.game.screen.cards] if hasattr(self.game.screen, 'cards') else 'NO_CARDS'
+
+                logging.error(error_msg)
+                logging.error(f"[SHOP_SCREEN ERROR] Cards: {card_list}")
+                logging.error(f"[SHOP_SCREEN ERROR] Traceback:\n{traceback.format_exc()}")
+
+                print(error_msg, file=sys.stderr)
+                print(f"[SHOP_SCREEN ERROR] Cards: {card_list}", file=sys.stderr)
                 traceback.print_exc(file=sys.stderr)
                 return CancelAction()
         elif self.game.screen_type == ScreenType.GRID:
