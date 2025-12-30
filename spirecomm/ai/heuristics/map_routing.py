@@ -218,10 +218,10 @@ class AdaptiveMapRouter:
             score += 150
         elif hp_pct < 0.5:
             score += 80
+        if is_pre_boss and hp_pct < 0.6:
+            score += 150  # Definitely rest before boss
         elif is_pre_boss and hp_pct < 0.8:
             score += 100  # Rest before boss
-        elif is_pre_boss and hp_pct < 0.6:
-            score += 150  # Definitely rest before boss
 
         return score
 
