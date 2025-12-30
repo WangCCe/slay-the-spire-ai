@@ -68,7 +68,9 @@ class Priority:
         return max(card_list, key=lambda x: self.PLAY_PRIORITIES.get(x.card_id, math.inf) - 0.5 * x.upgrades)
 
     def should_skip(self, card):
-        return self.CARD_PRIORITIES.get(card.card_id, math.inf) > self.CARD_PRIORITIES.get("Skip")
+        card_priority = self.CARD_PRIORITIES.get(card.card_id, math.inf)
+        skip_priority = self.CARD_PRIORITIES.get("Skip", float('inf'))
+        return card_priority > skip_priority
 
     def needs_more_copies(self, card, num_copies):
         return self.MAX_COPIES.get(card.card_id, 0) > num_copies

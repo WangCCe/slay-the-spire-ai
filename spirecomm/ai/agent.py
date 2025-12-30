@@ -215,64 +215,113 @@ class SimpleAgent:
             best_boss_relic = self.priorities.get_best_boss_relic(relics)
             return BossRewardAction(best_boss_relic)
         elif self.game.screen_type == ScreenType.SHOP_SCREEN:
-            # Smart shop decision making
-            gold = self.game.gold
-            screen = self.game.screen
-            
-            # Calculate deck stats for better decision making
-            deck_size = len(self.game.deck) if hasattr(self.game, 'deck') else 0
-            
-            # Priority 1: Purge (card removal) if needed and affordable
-            purge_cost = screen.purge_cost if screen.purge_available else float('inf')
-            if screen.purge_available and gold >= purge_cost:
-                # Only purge if deck is large enough or has low-value cards
-                if deck_size >= 15:
-                    # Count bad cards that should be removed
-                    bad_cards = [c for c in self.game.deck if c.card_id in ['Strike_R', 'Defend_R', 'Bash']]
-                    if len(bad_cards) >= 2:
-                        return ChooseAction(name="purge")
-            
-            # Priority 2: Buy cards that are good for the deck
-            if hasattr(self.priorities, 'get_sorted_cards'):
-                # Get sorted cards by priority
-                sorted_cards = self.priorities.get_sorted_cards(screen.cards)
-                for card in sorted_cards:
-                    # Only buy if affordable and not skipping
-                    if gold >= card.price and not self.priorities.should_skip(card):
-                        # Check if we can afford it after considering purge
-                        if not screen.purge_available or gold - card.price >= purge_cost:
-                            return BuyCardAction(card)
-            else:
-                # Fallback to original logic
+            try:
+                # Smart shop decision making
+                gold = self.game.gold
+                screen = self.game.screen
+
+                # Validate screen.cards exists
+                if not hasattr(screen, 'cards') or not screen.cards:
+                    return CancelAction()
+
+                # Calculate deck stats for better decision making
+                deck_size = len(self.game.deck) if hasattr(self.game, 'deck') else 0
+
+                # Validate card objects have required attributes before processing
+                valid_cards = []
                 for card in screen.cards:
-                    if gold >= card.price and not self.priorities.should_skip(card):
-                        return BuyCardAction(card)
-            
-            # Priority 3: Buy useful relics (consider price and value)
-            # Only buy relics if we have enough gold left (keep some for purge/cards if needed)
-            for relic in screen.relics:
-                # Skip expensive relics that might prevent more important purchases
-                if gold >= relic.price and relic.price <= gold * 0.7:  # Don't spend all gold on relics
-                    # Prioritize useful relics for Ironclad
-                    useful_relics = ['Burning Blood', 'Barricade', 'Demon Form', 'Limit Break', 'Juggernaut', 'Runic Pyramid', 'Sundial', 'Twin Daggers', 'Cloak Clasp', 'Gremlin Horn']
-                    if relic.name in useful_relics or gold >= relic.price + 50:  # Keep some gold reserve
-                        return BuyRelicAction(relic)
-            
-            # Priority 4: Buy potions if needed and affordable
-            if not self.game.are_potions_full():
-                for potion in screen.potions:
-                    if gold >= potion.price:
-                        # Prioritize useful potions
-                        useful_potions = ['Healing Potion', 'Strength Potion', 'Fire Potion', 'Ice Potion', 'Block Potion', 'Strawberry']
-                        if potion.name in useful_potions:
-                            return BuyPotionAction(potion)
-            
-            # Priority 5: Purge as last resort if we have extra gold
-            if screen.purge_available and gold >= purge_cost:
-                return ChooseAction(name="purge")
-            
-            # No good purchases available
-            return CancelAction()
+                    if hasattr(card, 'card_id') and hasattr(card, 'name') and hasattr(card, 'price'):
+                        valid_cards.append(card)
+                    else:
+                        import sys
+                        print(f"[SHOP_SCREEN WARNING] Skipping invalid card: {card}", file=sys.stderr)
+
+                if not valid_cards:
+                    return CancelAction()
+
+                # Priority 1: Purge (card removal) if needed and affordable
+                purge_cost = screen.purge_cost if screen.purge_available else float('inf')
+                if screen.purge_available and gold >= purge_cost:
+                    # Only purge if deck is large enough or has low-value cards
+                    if deck_size >= 15:
+                        # Count bad cards that should be removed
+                        bad_cards = [c for c in self.game.deck if c.card_id in ['Strike_R', 'Defend_R', 'Bash']]
+                        if len(bad_cards) >= 2:
+                            return ChooseAction(name="purge")
+
+                # Priority 2: Buy cards that are good for the deck
+                if hasattr(self.priorities, 'get_sorted_cards'):
+                    # Get sorted cards by priority (using only validated cards)
+                    sorted_cards = self.priorities.get_sorted_cards(valid_cards)
+                    for card in sorted_cards:
+                        try:
+                            # Validate card attributes
+                            if not hasattr(card, 'price') or not hasattr(card, 'card_id'):
+                                continue
+
+                            # Only buy if affordable and not skipping
+                            if gold >= card.price and not self.priorities.should_skip(card):
+                                # Check if we can afford it after considering purge
+                                if not screen.purge_available or gold - card.price >= purge_cost:
+                                    return BuyCardAction(card)
+                        except Exception as e:
+                            import sys
+                            print(f"[SHOP_SCREEN] Error evaluating card {card.card_id if hasattr(card, 'card_id') else 'UNKNOWN'}: {e}", file=sys.stderr)
+                            continue
+                else:
+                    # Fallback to original logic (using validated cards)
+                    for card in valid_cards:
+                        try:
+                            if gold >= card.price and not self.priorities.should_skip(card):
+                                return BuyCardAction(card)
+                        except Exception as e:
+                            import sys
+                            print(f"[SHOP_SCREEN] Error evaluating card {card.card_id if hasattr(card, 'card_id') else 'UNKNOWN'}: {e}", file=sys.stderr)
+                            continue
+
+                # Priority 3: Buy useful relics (consider price and value)
+                # Only buy relics if we have enough gold left (keep some for purge/cards if needed)
+                if hasattr(screen, 'relics') and screen.relics:
+                    for relic in screen.relics:
+                        try:
+                            # Skip expensive relics that might prevent more important purchases
+                            if gold >= relic.price and relic.price <= gold * 0.7:  # Don't spend all gold on relics
+                                # Prioritize useful relics for Ironclad
+                                useful_relics = ['Burning Blood', 'Barricade', 'Demon Form', 'Limit Break', 'Juggernaut', 'Runic Pyramid', 'Sundial', 'Twin Daggers', 'Cloak Clasp', 'Gremlin Horn']
+                                if relic.name in useful_relics or gold >= relic.price + 50:  # Keep some gold reserve
+                                    return BuyRelicAction(relic)
+                        except Exception as e:
+                            import sys
+                            print(f"[SHOP_SCREEN] Error evaluating relic {relic.name if hasattr(relic, 'name') else 'UNKNOWN'}: {e}", file=sys.stderr)
+                            continue
+
+                # Priority 4: Buy potions if needed and affordable
+                if hasattr(screen, 'potions') and screen.potions and not self.game.are_potions_full():
+                    for potion in screen.potions:
+                        try:
+                            if gold >= potion.price:
+                                # Prioritize useful potions
+                                useful_potions = ['Healing Potion', 'Strength Potion', 'Fire Potion', 'Ice Potion', 'Block Potion', 'Strawberry']
+                                if potion.name in useful_potions:
+                                    return BuyPotionAction(potion)
+                        except Exception as e:
+                            import sys
+                            print(f"[SHOP_SCREEN] Error evaluating potion {potion.name if hasattr(potion, 'name') else 'UNKNOWN'}: {e}", file=sys.stderr)
+                            continue
+
+                # Priority 5: Purge as last resort if we have extra gold
+                if screen.purge_available and gold >= purge_cost:
+                    return ChooseAction(name="purge")
+
+                # No good purchases available
+                return CancelAction()
+            except Exception as e:
+                import sys
+                print(f"[SHOP_SCREEN ERROR] {type(e).__name__}: {e}", file=sys.stderr)
+                print(f"[SHOP_SCREEN ERROR] Cards: {[c.card_id if hasattr(c, 'card_id') else 'INVALID' for c in self.game.screen.cards] if hasattr(self.game.screen, 'cards') else 'NO_CARDS'}", file=sys.stderr)
+                import traceback
+                traceback.print_exc(file=sys.stderr)
+                return CancelAction()
         elif self.game.screen_type == ScreenType.GRID:
             if not self.game.choice_available:
                 return ProceedAction()

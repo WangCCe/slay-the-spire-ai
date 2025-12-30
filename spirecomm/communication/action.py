@@ -136,6 +136,8 @@ class BuyCardAction(ChooseAction):
     """An action to buy a card in a shop"""
 
     def __init__(self, card):
+        if not hasattr(card, 'name'):
+            raise ValueError(f"Card object missing 'name' attribute: {card}")
         super().__init__(name=card.name)
 
 
