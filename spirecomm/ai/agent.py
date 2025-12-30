@@ -14,9 +14,12 @@ try:
     from spirecomm.ai.heuristics.card import SynergyCardEvaluator
     from spirecomm.ai.heuristics.simulation import HeuristicCombatPlanner
     from spirecomm.ai.heuristics.deck import DeckAnalyzer
+    from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter
     OPTIMIZED_AI_AVAILABLE = True
 except ImportError:
     OPTIMIZED_AI_AVAILABLE = False
+    DecisionContext = None
+    AdaptiveMapRouter = None
 
 # Import tracker separately (always available, no dependencies)
 try:
@@ -37,6 +40,7 @@ class SimpleAgent:
         self.map_route = []
         self.chosen_class = chosen_class
         self.priorities = Priority()
+        self.map_router = None
         self.change_class(chosen_class)
 
     def change_class(self, new_class):
@@ -49,6 +53,9 @@ class SimpleAgent:
             self.priorities = DefectPowerPriority()
         else:
             self.priorities = random.choice(list(PlayerClass))
+        if AdaptiveMapRouter is not None:
+            player_class_str = str(self.chosen_class).replace('PlayerClass.', '')
+            self.map_router = AdaptiveMapRouter(player_class=player_class_str)
 
     def handle_error(self, error):
         raise Exception(error)
@@ -341,11 +348,16 @@ class SimpleAgent:
             return CancelAction()
 
     def generate_map_route(self):
-        node_rewards = self.priorities.MAP_NODE_PRIORITIES.get(self.game.act)
-        best_rewards = {0: {node.x: node_rewards[node.symbol] for node in self.game.map.nodes[0].values()}}
+        context = DecisionContext(self.game) if DecisionContext is not None else None
+        best_rewards = {
+            0: {
+                node.x: self._calculate_map_node_priority(node, context)
+                for node in self.game.map.nodes[0].values()
+            }
+        }
         best_parents = {0: {node.x: 0 for node in self.game.map.nodes[0].values()}}
-        min_reward = min(node_rewards.values())
         map_height = max(self.game.map.nodes.keys())
+        min_reward = -10**9
         for y in range(0, map_height):
             best_rewards[y+1] = {node.x: min_reward * 20 for node in self.game.map.nodes[y+1].values()}
             best_parents[y+1] = {node.x: -1 for node in self.game.map.nodes[y+1].values()}
@@ -353,7 +365,7 @@ class SimpleAgent:
                 node = self.game.map.get_node(x, y)
                 best_node_reward = best_rewards[y][x]
                 for child in node.children:
-                    test_child_reward = best_node_reward + node_rewards[child.symbol]
+                    test_child_reward = best_node_reward + self._calculate_map_node_priority(child, context)
                     if test_child_reward > best_rewards[y+1][child.x]:
                         best_rewards[y+1][child.x] = test_child_reward
                         best_parents[y+1][child.x] = node.x
@@ -362,6 +374,13 @@ class SimpleAgent:
         for y in range(map_height, 0, -1):
             best_path[y - 1] = best_parents[y][best_path[y]]
         self.map_route = best_path
+
+    def _calculate_map_node_priority(self, node, context):
+        if self.map_router is None or context is None:
+            node_rewards = self.priorities.MAP_NODE_PRIORITIES.get(self.game.act, {})
+            return node_rewards.get(node.symbol, 0)
+        context.floor = node.y + 1
+        return self.map_router.calculate_node_priority(node, context)
 
     def make_map_choice(self):
         if len(self.game.screen.next_nodes) > 0 and self.game.screen.next_nodes[0].y == 0:
@@ -986,4 +1005,3 @@ class OptimizedAgent(SimpleAgent):
             summary['avg_confidence'] = sum(combat_confidences) / len(combat_confidences)
 
         return summary
-
