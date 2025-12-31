@@ -108,6 +108,12 @@ class Coordinator:
 
         :return: None
         """
+        # Skip any None values in the queue (defensive programming)
+        while len(self.action_queue) > 0 and self.action_queue[0] is None:
+            import logging
+            logging.warning("Removing None from action_queue")
+            self.action_queue.popleft()
+
         if len(self.action_queue) > 0 and self.action_queue[0].can_be_executed(self):
             self.execute_next_action()
 
