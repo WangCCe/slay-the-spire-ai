@@ -559,7 +559,7 @@ class IroncladCombatPlanner(CombatPlanner):
         for monster in context.monsters_alive:
             if monster.monster_id == "Cultist":
                 if hasattr(monster, 'intent'):
-                    from spirecomm.spire.intent import Intent
+                    from spirecomm.spire.character import Intent
                     if monster.intent != Intent.ATTACK and monster.intent != Intent.ATTACK_BUFF:
                         return True
         return False

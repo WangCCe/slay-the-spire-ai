@@ -11,7 +11,8 @@
       "Bash(ls:*)",
       "Bash(echo:*)",
       "Bash(openspec:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(python3:*)"
     ]
   }
 }
