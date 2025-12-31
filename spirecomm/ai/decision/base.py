@@ -71,7 +71,9 @@ class DecisionContext:
             # Calculate synergies using enhanced method
             # First get archetype scores
             archetype_scores = analyzer.get_archetype_score(self)
-            
+            self.archetype_scores = archetype_scores  # Save for access by evaluators
+            self.archetype_score = max(archetype_scores.values()) if archetype_scores else 0.0  # Max score as confidence
+
             # Initialize synergies dictionary
             self.card_synergies = {
                 'poison': archetype_scores.get('poison', 0.0) * 0.7,
@@ -91,6 +93,9 @@ class DecisionContext:
             # Fall back to original methods if DeckAnalyzer is not available
             self.deck_archetype = self._analyze_deck_archetype()
             self.card_synergies = self._calculate_synergies()
+            # Set default values for archetype scores
+            self.archetype_scores = {}
+            self.archetype_score = 0.0
 
         # Hand analysis
         self.hand_size = len(game.hand) if hasattr(game, 'hand') else 0

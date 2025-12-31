@@ -143,11 +143,25 @@ class Coordinator:
 
         :param block: set to True to wait for the next message
         :type block: bool
-        :return: the message from Communication Mod
-        :rtype: str
+        :return: the message from Communication Mod, or None if timeout/empty
+        :rtype: str or None
         """
-        if block or not self.input_queue.empty():
-            return self.input_queue.get()
+        if block:
+            # Blocking call with timeout
+            try:
+                return self.input_queue.get(timeout=10.0)  # Increased to 10 seconds
+            except queue.Empty:
+                return None
+        elif not self.input_queue.empty():
+            # Non-blocking call - return immediately if data available
+            # No timeout needed for non-blocking calls
+            try:
+                return self.input_queue.get_nowait()
+            except queue.Empty:
+                return None
+        else:
+            # Queue is empty and not blocking
+            return None
 
     def receive_game_state_update(self, block=False, perform_callbacks=True):
         """Using the next message from Communication Mod, update the stored game state
@@ -210,9 +224,19 @@ class Coordinator:
 
         # Wait for ready state (with timeout to prevent hanging)
         timeout_counter = 0
-        max_wait = 100  # Safety timeout
+        consecutive_timeouts = 0
+        max_wait = 50  # Increased from 20 to allow more attempts
+        max_consecutive_timeouts = 10  # Increased from 3 to 10
+
         while not self.game_is_ready and timeout_counter < max_wait:
-            self.receive_game_state_update(block=True, perform_callbacks=False)
+            received = self.receive_game_state_update(block=True, perform_callbacks=False)
+            if received:
+                consecutive_timeouts = 0  # Reset timeout counter on successful receive
+            else:
+                consecutive_timeouts += 1
+                if consecutive_timeouts >= max_consecutive_timeouts:
+                    # Only fail if we get MANY consecutive timeouts
+                    raise Exception(f"Communication Mod not responding (timeout after {consecutive_timeouts} attempts)")
             timeout_counter += 1
 
         if not self.game_is_ready:
@@ -223,8 +247,16 @@ class Coordinator:
             StartGameAction(player_class, ascension_level, seed).execute(self)
             # Wait for game to actually start
             timeout_counter = 0
+            consecutive_timeouts = 0
             while not self.in_game and timeout_counter < max_wait:
-                self.receive_game_state_update(block=True)
+                received = self.receive_game_state_update(block=True)
+                if received:
+                    consecutive_timeouts = 0  # Reset timeout counter on successful receive
+                else:
+                    consecutive_timeouts += 1
+                    if consecutive_timeouts >= max_consecutive_timeouts:
+                        # Only fail if we get MANY consecutive timeouts
+                        raise Exception(f"Communication Mod not responding when starting game (timeout after {consecutive_timeouts} attempts)")
                 timeout_counter += 1
 
             if not self.in_game:

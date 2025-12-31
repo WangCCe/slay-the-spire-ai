@@ -188,7 +188,22 @@ if __name__ == "__main__":
         agent.change_class(chosen_class)
 
         # Play the game
-        result = coordinator.play_one_game(chosen_class, ascension_level=current_ascension)
+        try:
+            result = coordinator.play_one_game(chosen_class, ascension_level=current_ascension)
+        except Exception as e:
+            # Handle communication errors or game crashes
+            error_msg = f"\n[ERROR] Game #{game_count} failed: {e}\n"
+            logging.info(error_msg)
+            if debug_log:
+                debug_log.write(error_msg)
+                debug_log.flush()
+
+            # Try to restart Communication Mod connection by waiting a bit
+            import time
+            time.sleep(2)  # Wait for Communication Mod to recover
+
+            # Continue to next game instead of crashing
+            continue
 
         # Record game result if statistics available
         if statistics:
