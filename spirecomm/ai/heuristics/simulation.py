@@ -605,6 +605,16 @@ class FastCombatSimulator:
         if final_state.player_block > expected_incoming * 1.5 and expected_incoming > 0:
             logger.warning(f"[OVER_DEFENSE] Block ({final_state.player_block}) is {final_state.player_block / max(expected_incoming, 1):.1f}x incoming damage ({expected_incoming}) - wasting resources!")
 
+        # Detect useless defense (block when no incoming damage)
+        if expected_incoming == 0 and final_state.player_block > 0:
+            logger.warning(f"[USELESS_DEFENSE] Gained {block_gained} block when no incoming damage expected - completely wasted!")
+
+        # Penalty for useless defense (block when monsters aren't attacking)
+        if expected_incoming == 0 and block_gained > 0:
+            # Heavy penalty: block cards are completely wasted this turn
+            score -= block_gained * 10.0  # 10 points per block wasted
+            logger.debug(f"[USELESS_DEFENSE_PENALTY] -{block_gained * 10.0:.1f} score for {block_gained} wasted block")
+
         # Death penalty (infinite score = avoid at all costs)
         if hp_loss_next_turn >= final_state.player_hp:
             return float('-inf')
