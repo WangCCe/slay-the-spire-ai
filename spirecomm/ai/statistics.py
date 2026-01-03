@@ -41,7 +41,8 @@ def get_ai_version() -> str:
     # Version 3.0: Phase 1-6 beam search optimization complete
     # Version 3.1: Added group-based card limits + AOE scoring fix
     # Version 3.1.1: Added defense logging (DAMAGE_FALLBACK, OVER_DEFENSE, DEFENSE_ANALYSIS)
-    return "3.1.1-beam-optimized"
+    # Version 3.1.2: Enabled DEBUG logging for defense analysis
+    return "3.1.2-beam-optimized"
 
 
 def get_git_commit() -> str:

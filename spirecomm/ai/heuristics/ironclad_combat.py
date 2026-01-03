@@ -66,6 +66,9 @@ class IroncladCombatPlanner(CombatPlanner):
         # Log turn start
         sys.stderr.write(f"\n[COMBAT] Turn {context.turn}, Floor {context.floor}, Act {context.act}\n")
         sys.stderr.write(f"[COMBAT] Playable cards: {len(playable_cards)}, Energy: {context.energy_available}\n")
+        # Log card IDs for debugging
+        card_ids = [card.card_id for card in playable_cards]
+        sys.stderr.write(f"[COMBAT] Cards in hand: {', '.join(card_ids)}\n")
         sys.stderr.write(f"[COMBAT] Monsters: {len(context.monsters_alive)}, HP: {context.player_hp_pct:.1%}\n")
 
         # Step 1: Check for lethal (can we kill all monsters this turn?)
@@ -83,6 +86,13 @@ class IroncladCombatPlanner(CombatPlanner):
         # Step 3: Use beam search to find optimal sequence
         sequence = self._beam_search_turn(context, playable_cards, beam_width, max_depth)
         sys.stderr.write(f"[COMBAT] Best sequence: {len(sequence)} cards\n")
+        # Log card IDs in best sequence for debugging
+        if sequence:
+            seq_card_ids = []
+            for action in sequence:
+                if hasattr(action, 'card') and action.card:
+                    seq_card_ids.append(action.card.card_id)
+            sys.stderr.write(f"[COMBAT] Sequence cards: {', '.join(seq_card_ids)}\n")
         return sequence
 
     def _get_adaptive_parameters(self, context: DecisionContext, playable_cards: List[Card]) -> Tuple[int, int]:
