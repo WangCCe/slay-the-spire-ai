@@ -490,6 +490,57 @@ class SimpleAgent:
         return ChooseAction(0)
 
 
+class TurnPlanSignature:
+    """
+    Signature of turn state for cache validation and replan triggering.
+
+    Tracks the game state when a plan was created to detect if the plan
+    becomes invalid due to card draws, monster deaths, energy changes, etc.
+    """
+
+    def __init__(self, game):
+        """Create signature from current game state."""
+        # Track hand cards by UUID to detect draws/exhausts
+        self.hand_cards = tuple(
+            getattr(c, 'uuid', id(c)) for c in game.hand
+            if hasattr(c, 'uuid') or hasattr(c, 'card_id')
+        )
+
+        # Track available energy
+        self.energy = game.player.energy if hasattr(game.player, 'energy') else 3
+
+        # Track monster states
+        if hasattr(game, 'monsters') and game.monsters:
+            self.monster_signature = tuple(
+                (m.current_hp, m.block if hasattr(m, 'block') else 0,
+                 str(m.intent) if hasattr(m, 'intent') else None,
+                 m.is_gone if hasattr(m, 'is_gone') else True,
+                 m.half_dead if hasattr(m, 'half_dead') else False)
+                for m in game.monsters
+            )
+        else:
+            self.monster_signature = tuple()
+
+        # Flags for random events that invalidate plan
+        self.has_drawn_cards = False  # Set to True if draw events occur
+        self.has_random_effects = False  # Set for random targeting/shuffle
+
+    def __eq__(self, other):
+        """Check if two signatures are equal."""
+        if not isinstance(other, TurnPlanSignature):
+            return False
+        return (self.hand_cards == other.hand_cards and
+                self.energy == other.energy and
+                self.monster_signature == other.monster_signature and
+                self.has_drawn_cards == other.has_drawn_cards and
+                self.has_random_effects == other.has_random_effects)
+
+    def __hash__(self):
+        """Make signature hashable for use in sets/dicts."""
+        return hash((self.hand_cards, self.energy, self.monster_signature,
+                     self.has_drawn_cards, self.has_random_effects))
+
+
 class OptimizedAgent(SimpleAgent):
     """
     Enhanced agent with modular decision system.
@@ -500,6 +551,7 @@ class OptimizedAgent(SimpleAgent):
     - Beam search combat planning
     - Adaptive strategy based on deck archetype
     - Context-aware decision making
+    - Smart replan triggering for dynamic game states
 
     Usage:
         agent = OptimizedAgent(chosen_class=PlayerClass.THE_SILENT)
@@ -577,6 +629,12 @@ class OptimizedAgent(SimpleAgent):
             # === 新增：存储规划的动作序列 ===
             self.current_action_sequence = []
             self.current_action_index = 0
+
+            # === 新增：存储当前计划的签名用于缓存失效检测 ===
+            self.current_plan_signature = None
+
+            # 统计重新规划次数（用于调优）
+            self.replan_count_this_turn = 0
         else:
             self.card_evaluator = None
             self.combat_planner = None
@@ -587,6 +645,8 @@ class OptimizedAgent(SimpleAgent):
             self.decision_history = []
             self.current_action_sequence = []
             self.current_action_index = 0
+            self.current_plan_signature = None
+            self.replan_count_this_turn = 0
 
     def get_play_card_action(self):
         """
@@ -622,23 +682,35 @@ class OptimizedAgent(SimpleAgent):
             return EndTurnAction()
 
         try:
-            # 如果有待执行的序列，继续执行
+            # === 新增：检查是否需要重新规划 ===
+            # 创建当前游戏状态的签名
+            current_signature = TurnPlanSignature(self.game)
+
+            # 如果有待执行的序列，检查是否仍然有效
             if self.current_action_sequence and self.current_action_index < len(self.current_action_sequence):
-                action = self.current_action_sequence[self.current_action_index]
-                self.current_action_index += 1
+                # 检查缓存是否失效
+                if self.should_replan(current_signature):
+                    # 缓存失效 - 需要重新规划
+                    self.replan_count_this_turn += 1
+                    self.current_action_sequence = []
+                    self.current_action_index = 0
+                else:
+                    # 缓存有效 - 继续执行序列
+                    action = self.current_action_sequence[self.current_action_index]
+                    self.current_action_index += 1
 
-                # 验证动作仍然可执行
-                if isinstance(action, PlayCardAction):
-                    card_uuid = getattr(action.card, 'uuid', None) if action.card else None
-                    hand_uuids = [getattr(c, 'uuid', None) for c in self.game.hand if hasattr(c, 'uuid')]
-                    if card_uuid and card_uuid in hand_uuids:
-                        return action
-                    else:
-                        # 卡不在手上了（不应该发生），重置序列
-                        self.current_action_sequence = []
-                        self.current_action_index = 0
+                    # 验证动作仍然可执行
+                    if isinstance(action, PlayCardAction):
+                        card_uuid = getattr(action.card, 'uuid', None) if action.card else None
+                        hand_uuids = [getattr(c, 'uuid', None) for c in self.game.hand if hasattr(c, 'uuid')]
+                        if card_uuid and card_uuid in hand_uuids:
+                            return action
+                        else:
+                            # 卡不在手上了（不应该发生），重置序列
+                            self.current_action_sequence = []
+                            self.current_action_index = 0
 
-            # 规划新序列
+            # 规划新序列（首次规划或缓存失效后）
             context = DecisionContext(self.game)
             action_sequence = self.combat_planner.plan_turn(context)
 
@@ -646,6 +718,9 @@ class OptimizedAgent(SimpleAgent):
                 # 存储序列用于执行
                 self.current_action_sequence = action_sequence
                 self.current_action_index = 0
+
+                # === 新增：保存当前计划签名 ===
+                self.current_plan_signature = current_signature
 
                 # 计算置信度
                 confidence = 0.5  # 默认值
@@ -687,6 +762,48 @@ class OptimizedAgent(SimpleAgent):
             self.current_action_sequence = []
             return super().get_play_card_action()
 
+    def should_replan(self, current_signature):
+        """
+        Check if the cached plan is still valid.
+
+        Returns True if any of the following conditions are met:
+        - No previous signature (first time planning this turn)
+        - Hand cards changed (card draws, exhausts, generation)
+        - Energy changed (Bloodletting, potions, etc.)
+        - Monster states changed (deaths, intent changes)
+        - Random effects occurred (shuffle, random targeting)
+
+        Args:
+            current_signature: Current TurnPlanSignature
+
+        Returns:
+            True if should replan, False otherwise
+        """
+        # No previous signature - need to plan
+        if self.current_plan_signature is None:
+            return True
+
+        # Check for basic state mismatches
+        if self.current_plan_signature.hand_cards != current_signature.hand_cards:
+            # Cards drawn, exhausted, or generated
+            return True
+
+        if self.current_plan_signature.energy != current_signature.energy:
+            # Energy changed (Bloodletting, Energy potion, etc.)
+            return True
+
+        if self.current_plan_signature.monster_signature != current_signature.monster_signature:
+            # Monster state changed (death, block, intent)
+            return True
+
+        # Check for random events
+        if current_signature.has_drawn_cards or current_signature.has_random_effects:
+            # Random effects invalidate the plan
+            return True
+
+        # Signature matches - cached plan is still valid
+        return False
+
     def get_next_action_in_game(self, game_state):
         """
         Override to detect turn changes, combat events, and track statistics.
@@ -697,9 +814,11 @@ class OptimizedAgent(SimpleAgent):
         # 检测回合变化
         if hasattr(game_state, 'turn') and hasattr(self.game, 'turn'):
             if game_state.turn != self.game.turn:
-                # 新回合 - 重置动作序列
+                # 新回合 - 重置动作序列和签名
                 self.current_action_sequence = []
                 self.current_action_index = 0
+                self.current_plan_signature = None
+                self.replan_count_this_turn = 0
 
         # Track game statistics if available
         if self.game_tracker and hasattr(game_state, 'in_combat'):
