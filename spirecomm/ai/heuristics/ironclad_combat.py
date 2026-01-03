@@ -163,6 +163,15 @@ class IroncladCombatPlanner(CombatPlanner):
                     )
                     new_state.played_card_uuids.add(card_uuid)
 
+                    # === NEW: Set primary target on first attack ===
+                    # If this is the first attack (no primary target yet), set it
+                    if state.primary_target is None and target_idx is not None:
+                        # Check if this is an attack card (not AOE)
+                        is_attack = hasattr(card, 'type') and str(card.type) == 'ATTACK'
+                        is_single_target = target_idx is not None and card.card_id not in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
+                        if is_attack and is_single_target:
+                            new_state.primary_target = target_idx
+
                     # Create action
                     if target:
                         action = PlayCardAction(card=card, target_monster=target)
@@ -190,7 +199,12 @@ class IroncladCombatPlanner(CombatPlanner):
 
     def _choose_target_for_card(self, card: Card, context: DecisionContext,
                                 state: SimulationState) -> Tuple[Optional[Monster], Optional[int]]:
-        """Choose best target for card given current simulation state."""
+        """
+        Choose best target for card given current simulation state.
+
+        Implements focused fire: prioritizes primary_target to concentrate damage
+        and kill monsters faster, reducing total damage taken.
+        """
         if not state.monsters:
             return None, None
 
@@ -216,6 +230,19 @@ class IroncladCombatPlanner(CombatPlanner):
 
         if card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap']:
             return None, None
+
+        # === NEW: Focused Fire ===
+        # If we have a primary target that's still alive, prioritize attacking it
+        if state.primary_target is not None:
+            primary_idx = state.primary_target
+            # Check if primary target is still alive
+            if primary_idx < len(state.monsters) and not state.monsters[primary_idx]['is_gone']:
+                # Primary target still alive - focus fire on it
+                if primary_idx < len(context.monsters_alive):
+                    return context.monsters_alive[primary_idx], primary_idx
+            else:
+                # Primary target is dead - clear it
+                state.primary_target = None
 
         # Calculate threat levels for all alive monsters
         monster_threats = []

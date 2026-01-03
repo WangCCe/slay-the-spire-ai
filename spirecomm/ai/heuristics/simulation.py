@@ -130,6 +130,10 @@ class SimulationState:
         self.total_damage_dealt = 0
         self.monsters_killed = 0
 
+        # Primary target for focused fire (monster index or None)
+        # Set on first attack, maintained until target dies
+        self.primary_target = None
+
         # Engine event tracking (for synergy evaluation)
         self.exhaust_events = 0  # Cards exhausted
         self.cards_drawn = 0  # Cards drawn
@@ -164,6 +168,7 @@ class SimulationState:
         new_state.energy_spent = self.energy_spent
         new_state.total_damage_dealt = self.total_damage_dealt
         new_state.monsters_killed = self.monsters_killed
+        new_state.primary_target = self.primary_target
         new_state.exhaust_events = self.exhaust_events
         new_state.cards_drawn = self.cards_drawn
         new_state.skills_played = self.skills_played
