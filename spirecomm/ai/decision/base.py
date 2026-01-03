@@ -145,6 +145,92 @@ class DecisionContext:
                     total += 5 * self.act
         return total
 
+    def compute_threat(self, monster) -> int:
+        """
+        Calculate the threat level of a monster for targeting decisions.
+
+        Higher threat means the monster should be prioritized for:
+        - Killing (can be defeated this turn)
+        - Debuffing (apply Vulnerable/Weak to reduce incoming damage)
+        - High-priority targeting (focus damage on most dangerous enemy)
+
+        Threat components:
+        - Expected damage next turn (from move_adjusted_damage)
+        - Debuff threat (applies Weak/Vulnerable: +10)
+        - Scaling threat (buffs/growth over time: +15)
+        - AOE threat (buffs other monsters: +8)
+
+        Args:
+            monster: Monster to evaluate
+
+        Returns:
+            Threat score (higher = more threatening)
+        """
+        threat = 0
+
+        # Import Intent enum for comparison
+        try:
+            from spirecomm.spire.character import Intent
+            intent_type = monster.intent if hasattr(monster, 'intent') else None
+        except:
+            intent_type = None
+
+        # 1. Expected damage from intent
+        if hasattr(monster, 'move_adjusted_damage') and monster.move_adjusted_damage is not None:
+            # Use actual damage from game state
+            hits = hasattr(monster, 'move_hits') and monster.move_hits or 1
+            threat += monster.move_adjusted_damage * hits
+
+            # Add strength to damage (scaling threat)
+            if hasattr(monster, 'strength') and monster.strength > 0:
+                threat += monster.strength * hits
+
+        # 2. Debuff threat (Weak/Vulnerable are dangerous)
+        if intent_type:
+            intent_str = str(intent_type).upper() if intent_type else ''
+
+            # Check if monster applies debuffs
+            if 'DEBUFF_WEAK' in intent_str or 'DEBUFF_VULNERABLE' in intent_str:
+                threat += 10  # Debuff application is high threat
+            elif 'WEAK' in intent_str or 'VULNERABLE' in intent_str:
+                # Some monsters have WEAK/VULNERABLE as their name
+                # Only add threat if it's actually applying a debuff
+                if hasattr(monster, 'move_base_damage'):
+                    # If it has damage, it's probably an attack+debuff
+                    threat += 10
+
+        # 3. Scaling threat (elite/boss monsters that grow stronger)
+        if hasattr(monster, 'name'):
+            name = monster.name.lower()
+            # Known scaling monsters
+            scaling_monsters = [
+                'gremlin nob', 'gremlin thief', 'gremlin face',
+                'slaver', 'sentry', 'hexaghost', 'champ',
+                'the guardian', 'bronze automaton',
+                'the collector', 'awakened one',
+                'reptomancer', 'centurion', 'healer'
+            ]
+            if any(scaling_name in name for scaling_name in scaling_monsters):
+                threat += 15  # Scaling threat
+
+            # Boss threat (Act bosses are very dangerous)
+            if 'boss' in name or any(boss in name for boss in ['hexaghost', 'slime boss', 'the guardian']):
+                threat += 20  # Extra threat for bosses
+
+        # 4. AOE threat (buffs other monsters)
+        if intent_type:
+            intent_str = str(intent_type).upper() if intent_type else ''
+            if 'BUFF' in intent_str:
+                threat += 8  # Buffing allies is threatening
+
+        # 5. High HP threat (more HP = more dangerous if left alive)
+        if hasattr(monster, 'current_hp') and hasattr(monster, 'max_hp'):
+            hp_ratio = monster.current_hp / max(monster.max_hp, 1)
+            if hp_ratio > 0.5:  # Monster above 50% HP
+                threat += int(hp_ratio * 5)  # Up to +5 for high HP
+
+        return threat
+
     def _analyze_deck_archetype(self) -> str:
         """
         Analyze deck to determine archetype.

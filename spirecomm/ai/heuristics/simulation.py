@@ -63,6 +63,15 @@ class SimulationState:
         self.total_damage_dealt = 0
         self.monsters_killed = 0
 
+        # Engine event tracking (for synergy evaluation)
+        self.exhaust_events = 0  # Cards exhausted
+        self.cards_drawn = 0  # Cards drawn
+        self.skills_played = 0  # Skill cards played
+        self.attacks_played = 0  # Attack cards played
+        self.damage_instances = 0  # Individual damage instances
+        self.energy_gained = 0  # Energy gained (e.g., Bloodletting)
+        self.energy_saved = 0  # Energy saved (e.g., Corruption free skills)
+
     def _get_player_debuff_stacks(self, context: DecisionContext, power_name: str) -> int:
         """Get debuff stacks on the player from powers."""
         if not hasattr(context.game, 'player') or not hasattr(context.game.player, 'powers'):
@@ -88,6 +97,13 @@ class SimulationState:
         new_state.energy_spent = self.energy_spent
         new_state.total_damage_dealt = self.total_damage_dealt
         new_state.monsters_killed = self.monsters_killed
+        new_state.exhaust_events = self.exhaust_events
+        new_state.cards_drawn = self.cards_drawn
+        new_state.skills_played = self.skills_played
+        new_state.attacks_played = self.attacks_played
+        new_state.damage_instances = self.damage_instances
+        new_state.energy_gained = self.energy_gained
+        new_state.energy_saved = self.energy_saved
         return new_state
 
     def state_key(self, playable_cards):
@@ -185,6 +201,13 @@ class FastCombatSimulator:
 
         # Use actual cost (for Snecko Eye and other cost modifiers)
         cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
+        base_cost = card.cost if hasattr(card, 'cost') else cost
+
+        # Track energy saved (for Corruption, etc.)
+        energy_saved = base_cost - cost
+        if energy_saved > 0:
+            new_state.energy_saved += energy_saved
+
         new_state.player_energy -= cost
         new_state.energy_spent += cost
 
@@ -192,8 +215,10 @@ class FastCombatSimulator:
         card_type = str(card.type) if hasattr(card, 'type') else 'UNKNOWN'
 
         if card_type == 'ATTACK':
+            new_state.attacks_played += 1
             self._apply_attack(new_state, card, target, target_index if target_index is not None else -1)
         elif card_type == 'SKILL':
+            new_state.skills_played += 1
             self._apply_skill(new_state, card)
         elif card_type == 'POWER':
             self._apply_power(new_state, card)
@@ -239,6 +264,7 @@ class FastCombatSimulator:
                 damage = self._apply_vulnerable_damage(damage, monster)
                 damage = self._apply_weak_damage(damage, monster.get('weak', 0))
                 self._deal_damage_to_monster(state, monster, damage)
+                state.damage_instances += 1  # Track each damage instance
         else:
             # Single-target attack
             if target_index is not None and target_index < len(state.monsters):
@@ -248,6 +274,7 @@ class FastCombatSimulator:
                     damage = self._apply_vulnerable_damage(damage, monster)
                     damage = self._apply_weak_damage(damage, monster.get('weak', 0))
                     self._deal_damage_to_monster(state, monster, damage)
+                    state.damage_instances += 1  # Track damage instance
 
                     # Check for card effects using game data
                     if card_data:
@@ -320,9 +347,24 @@ class FastCombatSimulator:
             block_gain = self._apply_frail_block(block_gain, state.player_frail)
             state.player_block += block_gain
 
-        # Draw cards - simplified (we don't simulate actual draws)
-        # Just account for the potential value in scoring
-        pass
+        # Track exhaust events (for Feel No Pain, etc.)
+        try:
+            from spirecomm.data.loader import game_data_loader
+            card_name = card.card_id.replace('+', '')
+            card_data = game_data_loader.get_card_data(card_name)
+            if card_data:
+                description = card_data.get('description', '').lower()
+                # Check if card exhausts
+                if 'exhaust' in description or card.card_id in ['Pommel Strike', 'Offering', 'Reaper']:
+                    state.exhaust_events += 1
+                # Track draw events
+                if 'draw' in description:
+                    import re
+                    draw_match = re.search(r'draw (\d+)', description)
+                    if draw_match:
+                        state.cards_drawn += int(draw_match.group(1))
+        except:
+            pass
 
     def _apply_power(self, state: SimulationState, card: Card):
         """Apply power card effects."""
@@ -335,6 +377,36 @@ class FastCombatSimulator:
         # Inflame - adds strength
         elif card_id == 'Inflame':
             state.player_strength += 2 if card.upgrades > 0 else 1
+
+        # Corruption - skills cost 0 (track for synergy evaluation)
+        elif card_id == 'Corruption':
+            # This is tracked implicitly via energy_saved when skills are played
+            pass
+
+        # Feel No Pain - gain block when cards exhaust
+        elif card_id == 'Feel No Pain':
+            # Track as exhaust synergy
+            pass
+
+        # Draw power
+        elif card_id == 'Draw':
+            state.cards_drawn += 1 if card.upgrades == 0 else 2
+
+        # Energy gain (Bloodletting, etc.)
+        elif 'energy' in card_id.lower() or card_id in ['Demon Form', 'Combust']:
+            # Track energy gained
+            try:
+                from spirecomm.data.loader import game_data_loader
+                card_name = card.card_id.replace('+', '')
+                card_data = game_data_loader.get_card_data(card_name)
+                if card_data:
+                    description = card_data.get('description', '').lower()
+                    import re
+                    energy_match = re.search(r'gain (\d+) energy', description)
+                    if energy_match:
+                        state.energy_gained += int(energy_match.group(1))
+            except:
+                pass
 
         # Other powers can be added as needed
 
@@ -453,6 +525,20 @@ class FastCombatSimulator:
         danger_threshold = 15 + (current_act * 5)  # Act 1: 20, Act 2: 25, Act 3: 30
         if final_state.player_hp - hp_loss_next_turn < danger_threshold:
             score -= 50  # Extra penalty for dangerous low HP
+
+        # 7. Engine event tracking (synergy bonuses)
+        # Feel No Pain value: exhaust events generate block
+        FNP_value = 3
+        score += final_state.exhaust_events * FNP_value
+
+        # Draw Engine value: card draw provides options
+        draw_value = 3
+        score += final_state.cards_drawn * draw_value
+
+        # Energy value: gained/saved energy is valuable
+        energy_value = 4
+        score += final_state.energy_gained * energy_value
+        score += final_state.energy_saved * energy_value
 
         return score
 
@@ -630,12 +716,15 @@ class HeuristicCombatPlanner(CombatPlanner):
 
     def _find_best_target(self, card: Card, context: DecisionContext) -> Monster:
         """
-        Find the best target for a card.
+        Find the best target for a card using threat-based targeting.
 
         Strategy:
-        - Attack cards: lowest HP (for kills)
-        - Debuff cards: highest HP (maximize duration)
-        - Defensive buffs: highest HP (tank protection)
+        - Attack cards:
+          1. Estimate damage
+          2. Find killable targets (damage >= monster HP + block)
+          3. Target highest threat killable monster, or highest threat overall
+        - Debuff cards: highest threat monster (maximize debuff value)
+        - Defensive buffs: highest threat monster (protect from biggest threat)
 
         Args:
             card: Card being played
@@ -651,11 +740,46 @@ class HeuristicCombatPlanner(CombatPlanner):
         is_attack = hasattr(card, 'type') and str(card.type) == 'ATTACK'
 
         if is_attack:
-            # Target lowest HP monster
-            return min(context.monsters_alive, key=lambda m: m.current_hp)
+            # Estimate damage for this attack
+            base_damage = getattr(card, 'damage', 0)
+
+            # Try to get damage from game data
+            if base_damage == 0 or not hasattr(card, 'damage'):
+                try:
+                    from spirecomm.data.loader import game_data_loader
+                    card_name = card.card_id.replace('+', '')
+                    card_data = game_data_loader.get_card_data(card_name)
+                    if card_data:
+                        description = card_data.get('description', '').lower()
+                        import re
+                        damage_match = re.search(r'deal (\d+) damage', description)
+                        if damage_match:
+                            base_damage = int(damage_match.group(1))
+                except:
+                    pass
+
+            if base_damage == 0:
+                base_damage = 6  # Fallback estimate
+
+            # Add player strength
+            total_damage = base_damage + context.player.strength if hasattr(context.player, 'strength') else base_damage
+
+            # Find killable targets
+            killable_targets = []
+            for monster in context.monsters_alive:
+                effective_hp = monster.current_hp + monster.block
+                if total_damage >= effective_hp:
+                    killable_targets.append(monster)
+
+            if killable_targets:
+                # Target highest threat killable monster
+                return max(killable_targets, key=lambda m: context.compute_threat(m))
+            else:
+                # No killable targets, target highest threat overall
+                return max(context.monsters_alive, key=lambda m: context.compute_threat(m))
         else:
-            # Target highest HP monster for debuffs/buffs
-            return max(context.monsters_alive, key=lambda m: m.current_hp)
+            # For debuff/buff cards, target highest threat monster
+            return max(context.monsters_alive, key=lambda m: context.compute_threat(m))
 
     def fast_score_action(self, card: Card, state: SimulationState, context: DecisionContext) -> float:
         """
