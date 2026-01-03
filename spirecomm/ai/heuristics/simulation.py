@@ -6,6 +6,7 @@ to find optimal play sequences using beam search.
 """
 
 import copy
+import logging
 import time
 from typing import List, Dict, Tuple, Optional
 from spirecomm.spire.card import Card
@@ -13,6 +14,72 @@ from spirecomm.spire.character import Monster
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
+
+# Configure logging for combat decisions
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# SCORING WEIGHTS CONFIGURATION (Tune these based on testing results)
+# =============================================================================
+
+# Survival weights
+W_DEATHRISK = 8.0  # Penalty per HP expected to be lost next turn
+                   # Increase (→10-12) for more defensive play
+                   # Decrease (→5-6) for more aggressive play
+                   # Target: 15-25 HP loss per act
+
+# Combat outcome weights
+KILL_BONUS = 100  # Points per monster killed
+                 # Increase if AI doesn't prioritize kills enough
+                 # Decrease if AI overkills excessively
+
+DAMAGE_WEIGHT = 2.0  # Points per damage dealt
+                    # Increase (→3-4) for more aggressive damage
+                    # Decrease if AI ignores defense
+
+BLOCK_WEIGHT = 1.5  # Points per block gained
+                   # Increase (→2-3) for more defensive play
+                   # Decrease if AI over-defends
+
+ENERGY_EFFICIENCY_WEIGHT = 3.0  # Points per energy spent
+                               # Reward for using available energy
+
+HP_LOSS_PENALTY = 10.0  # Penalty per HP lost this turn
+                       # Increase for more conservative play
+
+# Danger threshold penalty
+DANGER_PENALTY = 50.0  # Extra penalty when below danger threshold
+                      # Threshold = 15 + (act * 5) → Act 1: 20, Act 2: 25, Act 3: 30
+
+# Engine event synergy weights
+EXHAULT_SYNERGY_VALUE = 3.0  # Points per exhaust event (Feel No Pain)
+DRAW_SYNERGY_VALUE = 3.0  # Points per card drawn
+ENERGY_SYNERGY_VALUE = 4.0  # Points per energy gained/saved (Corruption, Bloodletting)
+
+# Adaptive search parameters
+BEAM_WIDTH_ACT1 = 12  # Beam width for Act 1 (simple enemies)
+BEAM_WIDTH_ACT2 = 18  # Beam width for Act 2 (moderate complexity)
+BEAM_WIDTH_ACT3 = 25  # Beam width for Act 3 (high complexity, elites/bosses)
+MAX_DEPTH_CAP = 5  # Maximum search depth (hard cap for timeout protection)
+
+# FastScore weights (Stage 1 of two-stage expansion)
+FASTSCORE_ZERO_COST_BONUS = 20  # Bonus for zero-cost cards
+FASTSCORE_ATTACK_BONUS = 10  # Bonus for attacks when monsters alive
+FASTSCORE_LOWHP_BLOCK_BONUS = 15  # Bonus for block when low HP
+FASTSCORE_DAMAGE_MULTIPLIER = 2.0  # Points per damage point in FastScore
+
+# Progressive widening M values (Stage 2 of two-stage expansion)
+M_VALUES = [12, 10, 7, 5, 4]  # Number of actions to full-simulate at each depth
+                               # Decreases with depth: 12→10→7→5→4
+
+# Timeout protection
+TIMEOUT_BUDGET = 0.08  # Seconds (80ms budget for beam search)
+
+
+# =============================================================================
+# END CONFIGURATION
+# =============================================================================
 
 
 class SimulationState:
@@ -490,24 +557,24 @@ class FastCombatSimulator:
         initial_alive = sum(1 for m in initial_state.monsters if not m['is_gone'])
         final_alive = sum(1 for m in final_state.monsters if not m['is_gone'])
         kills = initial_alive - final_alive
-        score += kills * 100  # Big bonus for kills
+        score += kills * KILL_BONUS
 
         # 2. Damage dealt
         total_damage = sum(m['hp'] for m in initial_state.monsters) - \
                       sum(m['hp'] for m in final_state.monsters)
-        score += total_damage * 2
+        score += total_damage * DAMAGE_WEIGHT
 
         # 3. Block gained (defensive value)
         block_gained = final_state.player_block - initial_state.player_block
-        score += block_gained * 1.5
+        score += block_gained * BLOCK_WEIGHT
 
         # 4. Energy efficiency (prefer using most energy)
         energy_used = initial_state.player_energy - final_state.player_energy
-        score += energy_used * 3
+        score += energy_used * ENERGY_EFFICIENCY_WEIGHT
 
         # 5. HP preserved (very important)
         hp_lost = initial_state.player_hp - final_state.player_hp
-        score -= hp_lost * 10  # Penalty for taking damage
+        score -= hp_lost * HP_LOSS_PENALTY
 
         # 6. Survival-first scoring (estimate next turn incoming damage)
         expected_incoming = self._estimate_incoming_damage(final_state.monsters)
@@ -517,28 +584,24 @@ class FastCombatSimulator:
         if hp_loss_next_turn >= final_state.player_hp:
             return float('-inf')
 
-        # Survival penalty (weighted heavily: W_DEATHRISK = 8.0)
-        W_DEATHRISK = 8.0
+        # Survival penalty (weighted heavily)
         score -= hp_loss_next_turn * W_DEATHRISK
 
         # Danger threshold penalty (act-dependent)
         danger_threshold = 15 + (current_act * 5)  # Act 1: 20, Act 2: 25, Act 3: 30
         if final_state.player_hp - hp_loss_next_turn < danger_threshold:
-            score -= 50  # Extra penalty for dangerous low HP
+            score -= DANGER_PENALTY
 
         # 7. Engine event tracking (synergy bonuses)
         # Feel No Pain value: exhaust events generate block
-        FNP_value = 3
-        score += final_state.exhaust_events * FNP_value
+        score += final_state.exhaust_events * EXHAULT_SYNERGY_VALUE
 
         # Draw Engine value: card draw provides options
-        draw_value = 3
-        score += final_state.cards_drawn * draw_value
+        score += final_state.cards_drawn * DRAW_SYNERGY_VALUE
 
         # Energy value: gained/saved energy is valuable
-        energy_value = 4
-        score += final_state.energy_gained * energy_value
-        score += final_state.energy_saved * energy_value
+        score += final_state.energy_gained * ENERGY_SYNERGY_VALUE
+        score += final_state.energy_saved * ENERGY_SYNERGY_VALUE
 
         return score
 
@@ -552,21 +615,33 @@ class HeuristicCombatPlanner(CombatPlanner):
     """
 
     def __init__(self, card_evaluator: SynergyCardEvaluator = None,
-                 beam_width: int = 10, max_depth: int = 4, player_class: str = None):
+                 beam_width: int = 10, max_depth: int = 4, player_class: str = None, act: int = 1):
         """
         Initialize the combat planner.
 
         Args:
             card_evaluator: Card evaluator for value calculations
-            beam_width: Number of candidates to keep at each depth
+            beam_width: Number of candidates to keep at each depth (optional, adaptive if act provided)
             max_depth: Maximum number of cards to lookahead
             player_class: Player class for class-specific logic
+            act: Current act number (1, 2, 3) for adaptive beam width
         """
         self.card_evaluator = card_evaluator or SynergyCardEvaluator()
         self.simulator = FastCombatSimulator(self.card_evaluator)
-        self.beam_width = beam_width
+
+        # Adaptive beam width by act (if act provided)
+        if act and beam_width == 10:  # Use adaptive if default and act known
+            # Act 1: 12 (simple enemies, less search needed)
+            # Act 2: 18 (moderate complexity)
+            # Act 3: 25 (high complexity, elites/bosses)
+            adaptive_width = [BEAM_WIDTH_ACT1, BEAM_WIDTH_ACT2, BEAM_WIDTH_ACT3]
+            self.beam_width = adaptive_width[min(act - 1, 2)] if act <= 3 else BEAM_WIDTH_ACT3
+        else:
+            self.beam_width = beam_width
+
         self.max_depth = max_depth
         self.player_class = player_class
+        self.act = act  # Store act for reference
 
     def plan_turn(self, context: DecisionContext) -> List[Action]:
         """
@@ -580,15 +655,67 @@ class HeuristicCombatPlanner(CombatPlanner):
         Returns:
             List of actions to execute (may be empty)
         """
+        # Track decision time
+        decision_start = time.time()
+
+        # Log input state
+        logger.debug(f"=== Beam Search Planning ===")
+        logger.debug(f"Act: {context.act if hasattr(context, 'act') else 1}")
+        logger.debug(f"Turn: {context.turn if hasattr(context, 'turn') else 1}")
+        logger.debug(f"Playable cards: {len(context.playable_cards)}")
+        logger.debug(f"Energy available: {context.energy_available if hasattr(context, 'energy_available') else 3}")
+
+        # === Adaptive beam width by act ===
+        # Act 1: 12 (simple enemies, less search needed)
+        # Act 2: 18 (moderate complexity)
+        # Act 3: 25 (high complexity, elites/bosses)
+        if hasattr(context, 'act'):
+            adaptive_width = [BEAM_WIDTH_ACT1, BEAM_WIDTH_ACT2, BEAM_WIDTH_ACT3]
+            self.beam_width = adaptive_width[min(context.act - 1, 2)] if context.act <= 3 else BEAM_WIDTH_ACT3
+
+        # === Adaptive max_depth by hand size and energy ===
+        playable_count = len(context.playable_cards)
+
+        # Count zero-cost cards (they enable deeper chains)
+        extra_zero_cost = sum(1 for c in context.playable_cards
+                             if hasattr(c, 'cost_for_turn') and c.cost_for_turn == 0)
+
+        # Extra energy beyond base 3
+        extra_energy = context.energy_available - 3 if hasattr(context, 'energy_available') else 0
+
+        # Calculate adaptive depth: base 3 + bonuses
+        # More cards, zero-cost cards, or extra energy → deeper search
+        adaptive_depth = 3 + extra_energy + (extra_zero_cost // 2)
+
+        # Cap at playable card count (can't play more than you have)
+        adaptive_depth = min(adaptive_depth, playable_count)
+
+        # Hard cap at MAX_DEPTH_CAP to avoid excessive search (timeout protection)
+        self.max_depth = min(adaptive_depth, MAX_DEPTH_CAP)
+
+        # Log adaptive parameters
+        logger.debug(f"Beam width: {self.beam_width}")
+        logger.debug(f"Max depth: {self.max_depth}")
+        logger.debug(f"Zero-cost cards: {extra_zero_cost}")
+        logger.debug(f"Extra energy: {extra_energy}")
+
         if not context.playable_cards:
+            decision_time = (time.time() - decision_start) * 1000
+            logger.debug(f"No playable cards. Decision time: {decision_time:.1f}ms")
             return []  # No playable cards, end turn
 
         # If only 1-2 cards, simple evaluation is sufficient
         if len(context.playable_cards) <= 2:
-            return self._simple_plan(context)
+            result = self._simple_plan(context)
+            decision_time = (time.time() - decision_start) * 1000
+            logger.debug(f"Simple plan ({len(result)} actions). Decision time: {decision_time:.1f}ms")
+            return result
 
         # Use beam search for complex situations
-        return self._beam_search_plan(context)
+        result = self._beam_search_plan(context)
+        decision_time = (time.time() - decision_start) * 1000
+        logger.debug(f"Beam search complete ({len(result)} actions). Decision time: {decision_time:.1f}ms")
+        return result
 
     def _simple_plan(self, context: DecisionContext) -> List[Action]:
         """Simple planning for trivial situations."""
@@ -611,7 +738,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         # === Timeout protection: Track start time ===
         start_time = time.time()
-        timeout_budget = 0.08  # 80ms budget for beam search
+        timeout_budget = TIMEOUT_BUDGET  # Configurable timeout budget
 
         # Initialize beam with empty sequence
         beam = [([], initial_state, 0)]  # (actions, state, energy_spent)
@@ -626,6 +753,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             # === Timeout check: Return best found so far ===
             if time.time() - start_time > timeout_budget:
                 # Timeout! Return best sequence found (may be empty → use simple plan)
+                logger.warning(f"Beam search timeout at depth {depth}! Time: {(time.time() - start_time) * 1000:.1f}ms (budget: {timeout_budget * 1000:.1f}ms)")
                 break
             new_candidates = []
 
@@ -654,8 +782,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
                 # Stage 2: Progressive widening - select top M based on depth
                 # M_values: Depth 0→12, 1→10, 2→7, 3→5, 4→4
-                M_values = [12, 10, 7, 5, 4]
-                M = M_values[min(depth, len(M_values) - 1)]
+                M = M_VALUES[min(depth, len(M_VALUES) - 1)]
 
                 # Only full-simulate top M actions
                 for card, card_idx, cost, _ in scored_actions[:M]:
@@ -704,6 +831,11 @@ class HeuristicCombatPlanner(CombatPlanner):
             # Convert transposition table back to beam
             deduplicated_candidates = list(seen_states.values())
 
+            # Log transposition table stats
+            if len(new_candidates) > len(deduplicated_candidates):
+                merge_count = len(new_candidates) - len(deduplicated_candidates)
+                logger.debug(f"Depth {depth}: {len(new_candidates)} candidates → {len(deduplicated_candidates)} unique (merged {merge_count} duplicates)")
+
             # Keep top candidates
             deduplicated_candidates.sort(key=lambda x: x[3], reverse=True)
             beam = deduplicated_candidates[:self.beam_width]
@@ -711,6 +843,12 @@ class HeuristicCombatPlanner(CombatPlanner):
             # Track best sequence
             if beam:
                 best_sequence, best_state, best_energy, best_score = beam[0]
+
+        # Log final result
+        if best_sequence:
+            logger.debug(f"Best sequence: {len(best_sequence)} actions, score: {best_score:.1f}")
+        else:
+            logger.debug("No valid sequence found, falling back to simple plan")
 
         return best_sequence if best_sequence else self._simple_plan(context)
 
@@ -807,20 +945,20 @@ class HeuristicCombatPlanner(CombatPlanner):
         # Zero-cost bonus (Apex, Clothesline after Corruption, etc.)
         cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
         if cost == 0:
-            score += 20
+            score += FASTSCORE_ZERO_COST_BONUS
 
         # Attack bonus when monsters alive
         monsters_alive = [m for m in state.monsters if not m['is_gone']]
         if monsters_alive and hasattr(card, 'type') and str(card.type) == 'ATTACK':
-            score += 10
+            score += FASTSCORE_ATTACK_BONUS
 
         # Block bonus at low HP
         if state.player_hp < 30 and hasattr(card, 'block') and card.block is not None:
-            score += 15
+            score += FASTSCORE_LOWHP_BLOCK_BONUS
 
         # Base damage estimate
         if hasattr(card, 'damage') and card.damage:
-            score += card.damage * 2
+            score += card.damage * FASTSCORE_DAMAGE_MULTIPLIER
         elif hasattr(card, 'type') and str(card.type) == 'ATTACK':
             # Fallback: use game data for damage
             from spirecomm.data.loader import game_data_loader
@@ -832,7 +970,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                 damage_match = re.search(r'deal (\d+) damage', description)
                 if damage_match:
                     base_damage = int(damage_match.group(1))
-                    score += base_damage * 2
+                    score += base_damage * FASTSCORE_DAMAGE_MULTIPLIER
 
         return score
 
