@@ -38,7 +38,8 @@ def get_ai_version() -> str:
         pass
     
     # Fallback to default version if git tag not available
-    return "0.6.0-optimized-v2"
+    # Version 3.0: Phase 1-6 beam search optimization complete
+    return "3.0-beam-optimized"
 
 
 def get_git_commit() -> str:
