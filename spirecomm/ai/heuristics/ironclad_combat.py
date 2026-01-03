@@ -12,7 +12,7 @@ Optimizes combat decisions for Ironclad's unique mechanics using beam search:
 - Smart targeting (Bash on high HP, kill low HP, etc.)
 """
 
-import sys
+import logging
 from typing import List, Tuple, Optional
 from .simulation import CombatPlanner, SimulationState, FastCombatSimulator
 from .combat_ending import CombatEndingDetector
@@ -22,6 +22,8 @@ from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster
 from spirecomm.communication.action import Action, PlayCardAction
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
+
+logger = logging.getLogger(__name__)
 
 
 class IroncladCombatPlanner(CombatPlanner):
@@ -64,35 +66,35 @@ class IroncladCombatPlanner(CombatPlanner):
             return []
 
         # Log turn start
-        sys.stderr.write(f"\n[COMBAT] Turn {context.turn}, Floor {context.floor}, Act {context.act}\n")
-        sys.stderr.write(f"[COMBAT] Playable cards: {len(playable_cards)}, Energy: {context.energy_available}\n")
+        logger.info(f"[COMBAT] Turn {context.turn}, Floor {context.floor}, Act {context.act}")
+        logger.info(f"[COMBAT] Playable cards: {len(playable_cards)}, Energy: {context.energy_available}")
         # Log card IDs for debugging
         card_ids = [card.card_id for card in playable_cards]
-        sys.stderr.write(f"[COMBAT] Cards in hand: {', '.join(card_ids)}\n")
-        sys.stderr.write(f"[COMBAT] Monsters: {len(context.monsters_alive)}, HP: {context.player_hp_pct:.1%}\n")
+        logger.info(f"[COMBAT] Cards in hand: {', '.join(card_ids)}")
+        logger.info(f"[COMBAT] Monsters: {len(context.monsters_alive)}, HP: {context.player_hp_pct:.1%}")
 
         # Step 1: Check for lethal (can we kill all monsters this turn?)
         if self.combat_ending_detector.can_kill_all(context):
-            sys.stderr.write("[COMBAT] Lethal detected!\n")
+            logger.info("[COMBAT] Lethal detected!")
             lethal_sequence = self.combat_ending_detector.find_lethal_sequence(context)
             if lethal_sequence:
-                sys.stderr.write(f"[COMBAT] Lethal sequence: {len(lethal_sequence)} cards\n")
+                logger.info(f"[COMBAT] Lethal sequence: {len(lethal_sequence)} cards")
                 return lethal_sequence
 
         # Step 2: Determine adaptive parameters based on complexity
         beam_width, max_depth = self._get_adaptive_parameters(context, playable_cards)
-        sys.stderr.write(f"[COMBAT] Beam search: width={beam_width}, depth={max_depth}\n")
+        logger.info(f"[COMBAT] Beam search: width={beam_width}, depth={max_depth}")
 
         # Step 3: Use beam search to find optimal sequence
         sequence = self._beam_search_turn(context, playable_cards, beam_width, max_depth)
-        sys.stderr.write(f"[COMBAT] Best sequence: {len(sequence)} cards\n")
+        logger.info(f"[COMBAT] Best sequence: {len(sequence)} cards")
         # Log card IDs in best sequence for debugging
         if sequence:
             seq_card_ids = []
             for action in sequence:
                 if hasattr(action, 'card') and action.card:
                     seq_card_ids.append(action.card.card_id)
-            sys.stderr.write(f"[COMBAT] Sequence cards: {', '.join(seq_card_ids)}\n")
+            logger.info(f"[COMBAT] Sequence cards: {', '.join(seq_card_ids)}")
         return sequence
 
     def _get_adaptive_parameters(self, context: DecisionContext, playable_cards: List[Card]) -> Tuple[int, int]:
