@@ -79,10 +79,15 @@ class SimpleAgent:
             if self.game.proceed_available:
                 return ProceedAction()
             if self.game.play_available:
-                if self.game.room_type == "MonsterRoomBoss" and len(self.game.get_real_potions()) > 0:
-                    potion_action = self.use_next_potion()
-                    if potion_action is not None:
-                        return potion_action
+                # Potions are now integrated into beam search for OptimizedAgent
+                # Fallback: use potions in dangerous situations outside of beam search
+                if len(self.game.get_real_potions()) > 0:
+                    danger_level = self._evaluate_combat_danger(None)
+                    # Use potions in high-danger situations (>0.6) or in elite/boss fights
+                    if danger_level > 0.6 or 'Elite' in self.game.room_type or 'Boss' in self.game.room_type:
+                        potion_action = self.use_next_potion()
+                        if potion_action is not None:
+                            return potion_action
                 return self.get_play_card_action()
             if self.game.end_available:
                 return EndTurnAction()

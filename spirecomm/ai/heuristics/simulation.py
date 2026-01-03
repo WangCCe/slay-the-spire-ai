@@ -793,14 +793,29 @@ class HeuristicCombatPlanner(CombatPlanner):
                         if energy_spent + cost <= context.energy_available:
                             playable_actions.append((card, card_idx, cost))
 
-                if not playable_actions:
-                    continue  # No playable cards for this beam entry
+                # Collect potion actions (only at depth 0 to limit search complexity)
+                potion_actions = []
+                if depth == 0:
+                    potion_actions = self._get_potion_actions(context, state)
+                    # Limit to highest-priority potion to prevent exponential growth
+                    if potion_actions:
+                        potion_actions.sort(key=lambda x: x[3], reverse=True)
+                        potion_actions = [potion_actions[0]]  # Best potion only
+                        logger.debug(f"Potion considered: {potion_actions[0][0].name}, score: {potion_actions[0][3]:.1f}")
+
+                if not playable_actions and not potion_actions:
+                    continue  # No playable actions for this beam entry
 
                 # Stage 1: FastScore filter - lightweight scoring without simulation
                 scored_actions = [
                     (card, card_idx, cost, self.fast_score_action(card, state, context))
                     for card, card_idx, cost in playable_actions
                 ]
+
+                # Add potion actions with their priority scores (use priority as fast_score)
+                for potion, target, cost, priority in potion_actions:
+                    # Use a tuple format that matches card actions but with marker for potion
+                    scored_actions.append((('potion', potion, target), potion, cost, priority))
 
                 # Sort by fast_score descending (highest first)
                 scored_actions.sort(key=lambda x: x[3], reverse=True)
@@ -810,31 +825,72 @@ class HeuristicCombatPlanner(CombatPlanner):
                 M = M_VALUES[min(depth, len(M_VALUES) - 1)]
 
                 # Only full-simulate top M actions
-                for card, card_idx, cost, _ in scored_actions[:M]:
-                    # Determine target
-                    target = self._find_best_target(card, context) if card.has_target else None
+                for action_info, card_or_potion, cost, _ in scored_actions[:M]:
+                    # Check if this is a potion action
+                    if isinstance(action_info, tuple) and action_info[0] == 'potion':
+                        # Handle potion action
+                        from spirecomm.communication.action import PotionAction
+                        _, potion, target = action_info
 
-                    # Simulate playing this card
-                    new_state = self.simulator.simulate_card_play(state, card, target)
-                    new_state.played_card_uuids.add(card_idx)
+                        # Simulate potion use (simplified simulation for now)
+                        new_state = copy.deepcopy(state)
+                        # Apply potion effect to state
+                        if potion.effect_type == 'damage' and target:
+                            # Reduce target HP
+                            for i, m in enumerate(new_state.monsters):
+                                if m.current_hp > 0 and (m.name == target.name or m.current_hp == target.current_hp):
+                                    new_state.monsters[i] = m._replace(current_hp=max(0, m.current_hp - potion.effect_value))
+                                    break
+                        elif potion.effect_type == 'block':
+                            new_state = new_state._replace(player_block=new_state.player_block + potion.effect_value)
+                        elif potion.effect_type in ['heal', 'regen']:
+                            new_state = new_state._replace(player_hp=min(new_state.player_max_hp, new_state.player_hp + potion.effect_value))
+                        elif potion.effect_type == 'buff_strength':
+                            new_state = new_state._replace(player_strength=new_state.player_strength + potion.effect_value)
 
-                    # Create action
-                    if target:
-                        action = PlayCardAction(card=card, target_monster=target)
+                        # Create potion action
+                        if target:
+                            action = PotionAction(True, potion=potion, target_monster=target)
+                        else:
+                            action = PotionAction(True, potion=potion)
+
+                        new_sequence = sequence + [action]
+
+                        # Score this sequence (with small conservation penalty for using potion)
+                        current_act = context.act if hasattr(context, 'act') else 1
+                        score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act)
+                        total_score = score - 5  # Conservation penalty
+
+                        new_candidates.append((new_sequence, new_state, energy_spent, total_score))
                     else:
-                        action = PlayCardAction(card=card)
+                        # Handle card action (original logic)
+                        card = card_or_potion
+                        card_idx = action_info  # For cards, action_info is the card_idx
 
-                    new_sequence = sequence + [action]
+                        # Determine target
+                        target = self._find_best_target(card, context) if card.has_target else None
 
-                    # Score this sequence (with current act for survival threshold)
-                    current_act = context.act if hasattr(context, 'act') else 1
-                    score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act)
+                        # Simulate playing this card
+                        new_state = self.simulator.simulate_card_play(state, card, target)
+                        new_state.played_card_uuids.add(card_idx)
 
-                    # Consider card value from evaluator
-                    card_value = self.card_evaluator.evaluate_card(card, context)
-                    total_score = score + card_value
+                        # Create action
+                        if target:
+                            action = PlayCardAction(card=card, target_monster=target)
+                        else:
+                            action = PlayCardAction(card=card)
 
-                    new_candidates.append((new_sequence, new_state, energy_spent + cost, total_score))
+                        new_sequence = sequence + [action]
+
+                        # Score this sequence (with current act for survival threshold)
+                        current_act = context.act if hasattr(context, 'act') else 1
+                        score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act)
+
+                        # Consider card value from evaluator
+                        card_value = self.card_evaluator.evaluate_card(card, context)
+                        total_score = score + card_value
+
+                        new_candidates.append((new_sequence, new_state, energy_spent + cost, total_score))
 
             if not new_candidates:
                 break  # No more valid plays
@@ -872,10 +928,145 @@ class HeuristicCombatPlanner(CombatPlanner):
         # Log final result
         if best_sequence:
             logger.debug(f"Best sequence: {len(best_sequence)} actions, score: {best_score:.1f}")
+            # Check if potion is in best sequence
+            for action in best_sequence:
+                if hasattr(action, 'potion') and action.potion:
+                    logger.info(f"Potion selected by beam search: {action.potion.name}")
         else:
             logger.debug("No valid sequence found, falling back to simple plan")
 
         return best_sequence if best_sequence else self._simple_plan(context)
+
+    def _is_healing_potion(self, potion) -> bool:
+        """Check if potion is a healing potion."""
+        return potion.effect_type in ['heal', 'regen']
+
+    def _is_damage_potion(self, potion) -> bool:
+        """Check if potion is a damage potion."""
+        return potion.effect_type == 'damage'
+
+    def _is_block_potion(self, potion) -> bool:
+        """Check if potion is a block potion."""
+        return potion.effect_type == 'block'
+
+    def _get_incoming_damage(self, context: DecisionContext) -> int:
+        """Calculate total incoming damage from all monsters."""
+        incoming = 0
+        for monster in context.game.monsters:
+            if not monster.is_gone and not monster.half_dead:
+                if monster.move_adjusted_damage is not None:
+                    incoming += monster.move_adjusted_damage * monster.move_hits
+                elif monster.intent == Intent.NONE:
+                    incoming += 5 * context.act
+        return incoming
+
+    def _score_potion(self, potion, context: DecisionContext, state: SimulationState) -> float:
+        """
+        Score a potion based on its expected value in the current combat situation.
+
+        Args:
+            potion: Potion object
+            context: Decision context
+            state: Simulation state
+
+        Returns:
+            Score value (higher is better)
+        """
+        score = 0.0
+        hp_pct = state.player_hp / max(state.player_max_hp, 1)
+        incoming_damage = self._get_incoming_damage(context)
+        alive_monsters = [m for m in context.game.monsters if not m.is_gone]
+
+        # Healing potions: high value when HP is low
+        if self._is_healing_potion(potion):
+            if hp_pct < 0.3:
+                score += 50  # Critical HP
+            elif hp_pct < 0.5 and incoming_damage > state.player_hp * 0.3:
+                score += 30  # In danger
+
+        # Damage potions: high value for lethal or high-threat targets
+        elif self._is_damage_potion(potion):
+            if alive_monsters and incoming_damage > 0:
+                # Bonus for elites/bosses
+                if 'Elite' in context.game.room_type or 'Boss' in context.game.room_type:
+                    score += 40
+                # Bonus for multiple monsters (AOE)
+                if len(alive_monsters) >= 2:
+                    score += 25
+                # Bonus when close to lethal
+                total_monster_hp = sum(m.current_hp for m in alive_monsters)
+                if total_monster_hp < 50:
+                    score += 20
+
+        # Block potions: high value when incoming damage is high
+        elif self._is_block_potion(potion):
+            if incoming_damage > state.player_hp * 0.4:
+                score += 35  # High incoming damage
+
+        # Utility/Buff potions: baseline value in dangerous fights
+        else:
+            if incoming_damage > state.player_hp * 0.3:
+                score += 20
+
+        return score
+
+    def _find_best_potion_target(self, potion, context: DecisionContext) -> Monster:
+        """
+        Find the best target for a potion.
+
+        Args:
+            potion: Potion object
+            context: Decision context
+
+        Returns:
+            Target monster (or None if no target needed)
+        """
+        if not context.monsters_alive:
+            return None
+
+        # For damage potions, target highest-threat monster
+        if self._is_damage_potion(potion):
+            return max(context.monsters_alive, key=lambda m: context.compute_threat(m))
+
+        # For debuff potions, target high-HP monsters to maximize debuff value
+        elif potion.effect_type.startswith('debuff_'):
+            return max(context.monsters_alive, key=lambda m: m.current_hp)
+
+        # Default: highest threat
+        return max(context.monsters_alive, key=lambda m: context.compute_threat(m))
+
+    def _get_potion_actions(self, context: DecisionContext, state: SimulationState) -> List[Tuple]:
+        """
+        Generate potion actions for beam search expansion.
+
+        Args:
+            context: Decision context
+            state: Simulation state
+
+        Returns:
+            List of (potion, target_monster, energy_cost, priority_score) tuples
+        """
+        from spirecomm.spire.potion import Potion
+
+        potions = context.game.get_real_potions()
+        potion_actions = []
+
+        for potion in potions:
+            if not potion.can_use:
+                continue
+
+            # Calculate priority score based on potion type and game state
+            priority = self._score_potion(potion, context, state)
+
+            # Determine target if needed
+            target = None
+            if potion.requires_target:
+                target = self._find_best_potion_target(potion, context)
+
+            # Potions cost 0 energy
+            potion_actions.append((potion, target, 0, priority))
+
+        return potion_actions
 
     def _find_best_target(self, card: Card, context: DecisionContext) -> Monster:
         """
