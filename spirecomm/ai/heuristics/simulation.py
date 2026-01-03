@@ -931,6 +931,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         - Attacks when monsters alive: +10 (offensive value)
         - Block at low HP: +15 (defensive value)
         - Base damage: +2 per damage point
+        - AOE multiplier: ×(1 + 0.5×(monsters-1)) for multi-target attacks
 
         Args:
             card: Card to score
@@ -949,6 +950,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         # Attack bonus when monsters alive
         monsters_alive = [m for m in state.monsters if not m['is_gone']]
+        num_monsters = len(monsters_alive)
         if monsters_alive and hasattr(card, 'type') and str(card.type) == 'ATTACK':
             score += FASTSCORE_ATTACK_BONUS
 
@@ -956,9 +958,23 @@ class HeuristicCombatPlanner(CombatPlanner):
         if state.player_hp < 30 and hasattr(card, 'block') and card.block is not None:
             score += FASTSCORE_LOWHP_BLOCK_BONUS
 
-        # Base damage estimate
+        # Detect AOE cards
+        is_aoe = False
+        if hasattr(card, 'card_id'):
+            # Check known AOE cards
+            from spirecomm.ai.priorities import IroncladPriority
+            if hasattr(context, 'player_class'):
+                player_class = str(context.player_class)
+            else:
+                player_class = 'IRONCLAD'
+
+            if player_class == 'IRONCLAD':
+                is_aoe = card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper', 'Carnage']
+
+        # Base damage estimate with AOE multiplier
+        base_damage = 0
         if hasattr(card, 'damage') and card.damage:
-            score += card.damage * FASTSCORE_DAMAGE_MULTIPLIER
+            base_damage = card.damage
         elif hasattr(card, 'type') and str(card.type) == 'ATTACK':
             # Fallback: use game data for damage
             from spirecomm.data.loader import game_data_loader
@@ -970,7 +986,16 @@ class HeuristicCombatPlanner(CombatPlanner):
                 damage_match = re.search(r'deal (\d+) damage', description)
                 if damage_match:
                     base_damage = int(damage_match.group(1))
-                    score += base_damage * FASTSCORE_DAMAGE_MULTIPLIER
+
+        # Apply AOE multiplier for multi-target attacks
+        if is_aoe and num_monsters > 1:
+            # AOE multiplier: scales with monster count
+            # 2 monsters: 1.5x, 3 monsters: 2.0x, 4 monsters: 2.5x
+            aoe_multiplier = 1.0 + 0.5 * (num_monsters - 1)
+            score += base_damage * FASTSCORE_DAMAGE_MULTIPLIER * aoe_multiplier
+        else:
+            # Single-target attack
+            score += base_damage * FASTSCORE_DAMAGE_MULTIPLIER
 
         return score
 
