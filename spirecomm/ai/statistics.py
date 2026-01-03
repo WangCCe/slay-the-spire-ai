@@ -39,7 +39,8 @@ def get_ai_version() -> str:
     
     # Fallback to default version if git tag not available
     # Version 3.0: Phase 1-6 beam search optimization complete
-    return "3.0-beam-optimized"
+    # Version 3.1: Added group-based card limits + AOE scoring fix
+    return "3.1-beam-optimized"
 
 
 def get_git_commit() -> str:
