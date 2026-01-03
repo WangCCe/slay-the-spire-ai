@@ -45,7 +45,8 @@ def get_ai_version() -> str:
     # Version 3.2.0: Wider beam search (Act1/2/3: 20/30/40), increased M_VALUES and TIMEOUT_BUDGET
     # Version 3.2.1: Significantly reduced Act 1 elite priority to avoid early elites
     # Version 3.2.2: Added penalty for useless defense when monsters aren't attacking
-    return "3.2.2-fix-useless-defense"
+    # Version 3.2.3: Fix incoming_damage to respect monster intents (skip DEBUG/DEFEND/BUFF intents)
+    return "3.2.3-fix-intent-filter"
 
 
 def get_git_commit() -> str:

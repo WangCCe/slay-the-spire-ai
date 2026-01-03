@@ -130,13 +130,36 @@ class DecisionContext:
         self.can_end_combat_this_turn = False  # 将由 CombatEndingDetector 计算
 
     def _calculate_incoming_damage(self) -> int:
-        """Calculate total incoming damage from all monsters."""
+        """Calculate total incoming damage from all monsters.
+
+        Only counts damage from monsters with ATTACK intents.
+        Monsters with non-attack intents (DEBUG, DEFEND, BUFF, etc.) are ignored.
+        """
         if not hasattr(self.game, 'monsters'):
             return 0
 
         total = 0
         for monster in self.game.monsters:
             if not monster.is_gone and not monster.half_dead:
+                # Check if monster is attacking this turn
+                is_attacking = False
+                if hasattr(monster, 'intent') and monster.intent is not None:
+                    try:
+                        from spirecomm.spire.character import Intent
+                        intent_str = str(monster.intent).upper()
+
+                        # Only count attack intents
+                        if any(attack_type in intent_str for attack_type in ['ATTACK', 'ATTACK_BUFF', 'ATTACK_DEBUFF', 'ATTACK_DEFEND']):
+                            is_attacking = True
+                    except:
+                        # If intent parsing fails, check move_adjusted_damage as fallback
+                        is_attacking = True
+
+                # Skip non-attacking monsters (DEFEND, BUFF, DEBUG, STUNNED, etc.)
+                if not is_attacking:
+                    continue
+
+                # Calculate damage from attacking monsters
                 if hasattr(monster, 'move_adjusted_damage') and monster.move_adjusted_damage is not None:
                     hits = hasattr(monster, 'move_hits') and monster.move_hits or 1
                     total += monster.move_adjusted_damage * hits
