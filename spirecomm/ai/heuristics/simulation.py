@@ -58,9 +58,9 @@ DRAW_SYNERGY_VALUE = 3.0  # Points per card drawn
 ENERGY_SYNERGY_VALUE = 4.0  # Points per energy gained/saved (Corruption, Bloodletting)
 
 # Adaptive search parameters
-BEAM_WIDTH_ACT1 = 12  # Beam width for Act 1 (simple enemies)
-BEAM_WIDTH_ACT2 = 18  # Beam width for Act 2 (moderate complexity)
-BEAM_WIDTH_ACT3 = 25  # Beam width for Act 3 (high complexity, elites/bosses)
+BEAM_WIDTH_ACT1 = 20  # Beam width for Act 1 (simple enemies) - increased from 12 (+67%)
+BEAM_WIDTH_ACT2 = 30  # Beam width for Act 2 (moderate complexity) - increased from 18 (+67%)
+BEAM_WIDTH_ACT3 = 40  # Beam width for Act 3 (high complexity, elites/bosses) - increased from 25 (+60%)
 MAX_DEPTH_CAP = 5  # Maximum search depth (hard cap for timeout protection)
 
 # FastScore weights (Stage 1 of two-stage expansion)
@@ -70,11 +70,11 @@ FASTSCORE_LOWHP_BLOCK_BONUS = 15  # Bonus for block when low HP
 FASTSCORE_DAMAGE_MULTIPLIER = 2.0  # Points per damage point in FastScore
 
 # Progressive widening M values (Stage 2 of two-stage expansion)
-M_VALUES = [12, 10, 7, 5, 4]  # Number of actions to full-simulate at each depth
-                               # Decreases with depth: 12→10→7→5→4
+M_VALUES = [20, 18, 15, 12, 10]  # Number of actions to full-simulate at each depth
+                                  # Decreases with depth: 20→18→15→12→10 (increased from 12→10→7→5→4)
 
 # Timeout protection
-TIMEOUT_BUDGET = 0.08  # Seconds (80ms budget for beam search)
+TIMEOUT_BUDGET = 0.15  # Seconds (150ms budget for beam search) - increased from 80ms
 
 
 # =============================================================================
