@@ -7,14 +7,15 @@ from spirecomm.communication.coordinator import Coordinator
 from spirecomm.ai.agent import SimpleAgent, OptimizedAgent, OPTIMIZED_AI_AVAILABLE
 from spirecomm.spire.character import PlayerClass
 
-# Setup logging to file (all logs go to main_game_loop.log)
+# Setup logging to file (all logs go to ai_debug.log)
 # Note: We don't use StreamHandler because Communication Mod uses stdout for commands
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(message)s',
+    format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('main_game_loop.log', encoding='utf-8'),
-    ]
+        logging.FileHandler('ai_debug.log', encoding='utf-8', mode='a'),
+    ],
+    force=True  # Force reconfiguration even if logging was already configured
 )
 
 # Import statistics components
@@ -139,17 +140,12 @@ if __name__ == "__main__":
 
     # Setup statistics tracking if available
     statistics = None
-    debug_log = None
     if STATISTICS_AVAILABLE:
         statistics = GameStatistics()
         logging.info("Statistics tracking enabled")
         logging.info(f"  Logging to: {statistics.log_file}")
         logging.info(f"  CSV export: {statistics.csv_file}")
-
-        # Also open debug log file
-        debug_log_path = "ai_debug.log"
-        debug_log = open(debug_log_path, 'a', encoding='utf-8')
-        debug_log.write(f"\n{'='*60}\n")
+        logging.info(f"  All logs written to: ai_debug.log")
 
     # Setup coordinator
     coordinator = Coordinator()
@@ -192,11 +188,7 @@ if __name__ == "__main__":
             result = coordinator.play_one_game(chosen_class, ascension_level=current_ascension)
         except Exception as e:
             # Handle communication errors or game crashes
-            error_msg = f"\n[ERROR] Game #{game_count} failed: {e}\n"
-            logging.info(error_msg)
-            if debug_log:
-                debug_log.write(error_msg)
-                debug_log.flush()
+            logging.error(f"Game #{game_count} failed: {e}")
 
             # Try to restart Communication Mod connection by waiting a bit
             import time
@@ -208,75 +200,42 @@ if __name__ == "__main__":
         # Record game result if statistics available
         if statistics:
             try:
-                debug_msg = f"\n[DEBUG] Attempting to save statistics...\n"
-                debug_msg += f"[DEBUG] agent type: {type(agent).__name__}\n"
-                debug_msg += f"[DEBUG] is OptimizedAgent: {isinstance(agent, OptimizedAgent)}\n"
-
-                logging.info(debug_msg)
-                if debug_log:
-                    debug_log.write(debug_msg)
-                    debug_log.flush()
+                logging.debug("Attempting to save statistics...")
+                logging.debug(f"  agent type: {type(agent).__name__}")
+                logging.debug(f"  is OptimizedAgent: {isinstance(agent, OptimizedAgent)}")
 
                 # Only OptimizedAgent has game_tracker
                 if isinstance(agent, OptimizedAgent) and hasattr(agent, 'game_tracker') and agent.game_tracker:
-                    debug_msg2 = f"[DEBUG] game_tracker found, saving...\n"
-                    debug_msg2 += f"[DEBUG] result: {result}\n"
-                    debug_msg2 += f"[DEBUG] coordinator has last_game_state: {hasattr(coordinator, 'last_game_state')}\n"
-
-                    logging.info(debug_msg2)
-                    if debug_log:
-                        debug_log.write(debug_msg2)
-                        debug_log.flush()
+                    logging.debug("  game_tracker found, saving...")
+                    logging.debug(f"  result: {result}")
+                    logging.debug(f"  coordinator has last_game_state: {hasattr(coordinator, 'last_game_state')}")
 
                     # Record game over state
                     if hasattr(coordinator, 'last_game_state') and coordinator.last_game_state is not None:
                         agent.game_tracker.record_game_over(result, coordinator.last_game_state)
-                        if debug_log:
-                            debug_log.write(f"[DEBUG] Recorded game over via last_game_state\n")
-                            debug_log.flush()
+                        logging.debug("  Recorded game over via last_game_state")
                     else:
                         # Fallback: record with minimal info
-                        debug_msg3 = f"[DEBUG] No last_game_state, using fallback\n"
-                        logging.info(debug_msg3)
-                        if debug_log:
-                            debug_log.write(debug_msg3)
-                            debug_log.flush()
-
+                        logging.debug("  No last_game_state, using fallback")
                         agent.game_tracker.victory = result
                         agent.game_tracker.final_floor = agent.game.floor if hasattr(agent.game, 'floor') else 0
                         agent.game_tracker.final_act = agent.game.act if hasattr(agent.game, 'act') else 1
 
                     # Save to statistics
                     statistics.record_game(agent.game_tracker)
-                    if debug_log:
-                        debug_log.write(f"[DEBUG] Saved to statistics\n")
-                        debug_log.flush()
+                    logging.debug("  Saved to statistics")
 
                     # Print simple confirmation
                     result_str = "WIN" if result else "LOSS"
                     floor = agent.game_tracker.final_floor
                     act = agent.game_tracker.final_act
-                    confirm_msg = f"\nGame #{game_count} saved: {result_str} at Act {act} Floor {floor}\n"
-                    logging.info(confirm_msg)
-                    if debug_log:
-                        debug_log.write(confirm_msg)
-                        debug_log.flush()
+                    logging.info(f"Game #{game_count} saved: {result_str} at Act {act} Floor {floor}")
                 else:
-                    debug_msg4 = f"[DEBUG] No game_tracker to save (not OptimizedAgent or tracker is None)\n"
-                    logging.info(debug_msg4)
-                    if debug_log:
-                        debug_log.write(debug_msg4)
-                        debug_log.flush()
+                    logging.debug("  No game_tracker to save (not OptimizedAgent or tracker is None)")
             except Exception as e:
-                error_msg = f"Error saving statistics: {e}\n"
-                logging.info(error_msg)
-                if debug_log:
-                    debug_log.write(error_msg)
-                    debug_log.flush()
+                logging.error(f"Error saving statistics: {e}")
                 import traceback
-                traceback.print_exc()
-                if debug_log:
-                    traceback.print_exc(file=debug_log)
+                logging.debug(traceback.format_exc())
 
         # Print summary if OptimizedAgent (to stderr)
         if isinstance(agent, OptimizedAgent):

@@ -22,12 +22,13 @@ def get_ai_version() -> str:
     try:
         # Get the directory of this script file
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        
+
         # Try to get the most recent tag
         tag = subprocess.check_output(
             ['git', 'describe', '--tags', '--abbrev=0'],
             cwd=script_dir,
-            stderr=subprocess.DEVNULL
+            stderr=subprocess.DEVNULL,
+            timeout=5
         ).decode('utf-8').strip()
         
         # If tag exists, use it
@@ -42,33 +43,20 @@ def get_ai_version() -> str:
 
 def get_git_commit() -> str:
     """Get current git commit hash for version tracking.
-    
+
     Enhanced to handle more edge cases and provide better error information.
     Now works from any directory by executing git commands in the script's directory.
+    Uses caching to avoid repeated slow git calls.
+
+    DISABLED: Git calls are too slow in WSL/Windows cross-filesystem environment.
     """
-    try:
-        # Get the directory of this script file
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        # First check if we're in a git repository by running git command in script directory
-        subprocess.check_output(
-            ['git', 'rev-parse', '--is-inside-work-tree'],
-            cwd=script_dir,
-            stderr=subprocess.DEVNULL
-        )
-        
-        # If we are in a git repo, get the commit hash
-        return subprocess.check_output(
-            ['git', 'rev-parse', '--short', 'HEAD'],
-            cwd=script_dir,
-            stderr=subprocess.DEVNULL
-        ).decode('utf-8').strip()
-    except subprocess.CalledProcessError as e:
-        return f"unknown (git error: {e.returncode})"
-    except FileNotFoundError:
-        return "unknown (git not found)"
-    except Exception as e:
-        return f"unknown (error: {str(e)[:20]})"
+    # Temporarily disabled - always return cached/unknown value
+    import logging
+    logging.info("[STATS] get_git_commit() - git calls disabled, using default")
+    return "unknown (git disabled)"
+
+    # Original code below is disabled
+    return None  # Unreachable
 
 
 # Auto-detect AI version from git tags
@@ -193,16 +181,25 @@ class GameStatistics:
         Args:
             tracker: GameTracker with completed game data
         """
+        import logging
+        logging.info("[STATS] record_game() called")
+
         game_data = tracker.to_dict()
+        logging.info("[STATS] tracker.to_dict() completed")
 
         # Add to in-memory list
         self.games.append(game_data)
+        logging.info("[STATS] Added to in-memory list")
 
         # Save to JSONL
+        logging.info("[STATS] About to save to JSONL...")
         self._save_to_jsonl(game_data)
+        logging.info("[STATS] JSONL save completed")
 
         # Save to CSV
+        logging.info("[STATS] About to save to CSV...")
         self._save_to_csv(game_data)
+        logging.info("[STATS] CSV save completed")
 
     def _save_to_jsonl(self, game_data: Dict[str, Any]):
         """
@@ -226,11 +223,16 @@ class GameStatistics:
         Args:
             game_data: Game data dictionary
         """
+        import logging
+        logging.info("[STATS] _save_to_csv() started")
+
         try:
             # Extract and format values
+            logging.info("[STATS] Extracting card/relic strings...")
             cards_str = ';'.join(game_data['cards_obtained']) if game_data['cards_obtained'] else ''
             relics_str = ';'.join(game_data['relics']) if game_data['relics'] else ''
 
+            logging.info("[STATS] Building values list...")
             values = [
                 str(game_data['game_id']),
                 game_data['player_class'] or '',
@@ -258,11 +260,14 @@ class GameStatistics:
             ]
 
             row = ','.join(values)
+            logging.info("[STATS] Row built, about to write to CSV...")
 
             with open(self.csv_file, 'a', encoding='utf-8') as f:
                 f.write(row + '\n')
+            logging.info("[STATS] CSV write completed successfully")
         except Exception as e:
-            # Silently fail if can't write
+            import logging
+            logging.error(f"[STATS] Error in _save_to_csv: {e}")
             pass
 
     def get_recent_games(self, n: int = 10) -> List[Dict[str, Any]]:

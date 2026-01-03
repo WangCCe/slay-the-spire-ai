@@ -11,15 +11,8 @@ from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
 from spirecomm.ai.priorities import *
 
-# Setup error logging to file (no console output to avoid interfering with Communication Mod)
-ERROR_LOG_FILE = "shop_error.log"
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(ERROR_LOG_FILE, encoding='utf-8', mode='a'),
-    ]
-)
+# Note: Logging is configured in main.py to write to ai_debug.log
+# No need to configure here
 
 # Import optimized AI components
 try:
