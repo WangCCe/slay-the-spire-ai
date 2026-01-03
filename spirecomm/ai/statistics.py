@@ -42,8 +42,9 @@ def get_ai_version() -> str:
     # Version 3.1: Added group-based card limits + AOE scoring fix
     # Version 3.1.1: Added defense logging (DAMAGE_FALLBACK, OVER_DEFENSE, DEFENSE_ANALYSIS)
     # Version 3.1.2: Enabled DEBUG logging for defense analysis
-    # Version 3.2.0: Wider beam search (Act1/2/3: 15/22/30), increased M_VALUES and TIMEOUT_BUDGET
-    return "3.2.0-wider-beam"
+    # Version 3.2.0: Wider beam search (Act1/2/3: 20/30/40), increased M_VALUES and TIMEOUT_BUDGET
+    # Version 3.2.1: Significantly reduced Act 1 elite priority to avoid early elites
+    return "3.2.1-elite-avoidance"
 
 
 def get_git_commit() -> str:
