@@ -44,8 +44,8 @@ def get_ai_version() -> str:
     # Version 3.1.2: Enabled DEBUG logging for defense analysis
     # Version 3.2.0: Wider beam search (Act1/2/3: 20/30/40), increased M_VALUES and TIMEOUT_BUDGET
     # Version 3.2.1: Significantly reduced Act 1 elite priority to avoid early elites
-    # Version 3.2.2: Integrated potions into beam search - intelligent potion usage in dangerous fights
-    return "3.2.2-potion-integration"
+    # Version 3.2.2: Added penalty for useless defense when monsters aren't attacking
+    return "3.2.2-fix-useless-defense"
 
 
 def get_git_commit() -> str:
