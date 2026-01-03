@@ -257,12 +257,14 @@ class SimpleAgent:
                 # Priority 1: Purge (card removal) if needed and affordable
                 purge_cost = screen.purge_cost if screen.purge_available else float('inf')
                 if screen.purge_available and gold >= purge_cost:
-                    # Only purge if deck is large enough or has low-value cards
-                    if deck_size >= 15:
-                        # Count bad cards that should be removed
-                        bad_cards = [c for c in self.game.deck if c.card_id in ['Strike_R', 'Defend_R', 'Bash']]
-                        if len(bad_cards) >= 2:
-                            return ChooseAction(name="purge")
+                    # Only remove Strike_R and Defend_R (based on Tier List strategy)
+                    # Priority: Strike_R first, then Defend_R
+                    strikes = [c for c in self.game.deck if c.card_id == 'Strike_R']
+                    defends = [c for c in self.game.deck if c.card_id == 'Defend_R']
+
+                    # Purge if we have at least 1 strike or 1 defend
+                    if len(strikes) >= 1 or len(defends) >= 1:
+                        return ChooseAction(name="purge")
 
                 # Priority 2: Buy cards that are good for the deck
                 if hasattr(self.priorities, 'get_sorted_cards'):
@@ -356,9 +358,20 @@ class SimpleAgent:
             if not self.game.choice_available:
                 return ProceedAction()
             if self.game.screen.for_upgrade or self.choose_good_card:
+                # For upgrade: pick best cards
                 available_cards = self.priorities.get_sorted_cards(self.game.screen.cards)
             else:
-                available_cards = self.priorities.get_sorted_cards(self.game.screen.cards, reverse=True)
+                # For purge/remove: prioritize Strike_R, then Defend_R, then others by reverse priority
+                strikes = [c for c in self.game.screen.cards if c.card_id == 'Strike_R']
+                defends = [c for c in self.game.screen.cards if c.card_id == 'Defend_R']
+                others = [c for c in self.game.screen.cards if c.card_id not in ['Strike_R', 'Defend_R']]
+
+                # Sort others by reverse priority (worst first)
+                others_sorted = self.priorities.get_sorted_cards(others, reverse=True)
+
+                # Combine: strikes first, then defends, then others
+                available_cards = strikes + defends + others_sorted
+
             num_cards = self.game.screen.num_cards
             return CardSelectAction(available_cards[:num_cards])
         elif self.game.screen_type == ScreenType.HAND_SELECT:

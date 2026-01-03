@@ -460,47 +460,109 @@ class SilentPriority(Priority):
 class IroncladPriority(Priority):
 
     CARD_PRIORITY_LIST = [
-        # === ACT 1 ESSENTIALS (Top priority cards based on A20 expert research) ===
-        "Bash",  # Vulnerable is crucial in Act 1
-        "Shrug It Off",  # Block + draw, efficient
-        "Iron Wave",  # Block + attack, very efficient
-        "Pommel Strike",  # Cheap, removes bad cards
-        "Reaper",  # PROMOTED: Core sustain for Strength builds (was 549, now top 10)
-        "Spot Weakness",  # PROMOTED: Consistent Strength gain (was 528)
-        "Limit Break",  # PROMOTED: Win condition with Strength (was 585 "late game")
-        "Headbutt",  # Card advantage, returns key cards
-        "Inflame",  # PROMOTED: Early Strength scaling (was 584 "late game")
-        "Perfected Strike",  # Efficient damage
-        "Battle Trance",  # Card draw for consistency
-        "Anger",  # Adds damage, costs 1
-        "Body Slam",  # PROMOTED: High damage with block synergy (was 556)
-        "Feel No Pain",  # Core exhaust synergy
-        "Strike_R",  # Keep some strikes early game
-        "Defend_R",  # Keep some defends early game
+        # === 90-100 分 (神级) - From Tier List ===
+        "Offering",
 
-        # === HIGH IMPACT CARDS ===
+        # === 80-90 分 (顶级) ===
+        "Burning Pact",
+        "Second Wind",
+        "Battle Trance",
+
+        # === 70-80 分 (优秀) ===
+        "Shockwave",
+        "Dark Embrace",
+
+        # === 60-70 分 (良好) ===
+        "Impervious",
+        "Fiend Fire",
+        "Immolate",
+        "Blood for Blood",
+        "Feel No Pain",
+
+        # === 50-60 分 (中等) ===
+        "Pommel Strike",
+        "Spot Weakness",
+        "Evolve",
+        "Shrug It Off",
+        "Armaments",
+        "Havoc",
+        "Hemokinesis",
+
+        # === 40-50 分 (中等偏下) ===
+        "Feed",
+        "Anger",
+        "Inflame",
+        "Rage",
+        "Bloodletting",
+
+        # === 30-40 分 (较差) ===
+        "Body Slam",
+        "Corruption",
+        "Headbutt",
+        "Reckless Charge",
+        "Reaper",
+
+        # === 20-30 分 (差) ===
+        "Carnage",
+        "Uppercut",
+        "Ghostly Armor",
+        "Rampage",
+        "Brutality",
+        "Sever Soul",
+
+        # === SKIP MARKER (Tier List: 跳过 26.8% 在 20-30 分) ===
+        "Skip",
+
+        # === 10-20 分 (很差) ===
+        "Flame Barrier",
+        "True Grit",
+        "Combust",
+        "Barricade",
+        "Power Through",
+        "Fire Breathing",
+        "Infernal Blade",
+        "Exhume",
+        "Searing Blow",
+
+        # === 5-10 分 (极差) ===
+        "Juggernaut",
+        "Pummel",
+        "Whirlwind",
+        "Berserk",
+
+        # === 1-5 分 (几乎不可用) ===
+        "Bludgeon",
+        "Double Tap",
+        "Twin Strike",
+        "Demon Form",
+        "Dual Wield",
+        "Perfected Strike",
+        "Dropkick",
+        "Clash",
+
+        # === 0-1 分 (垃圾) ===
+        "Strike_R",
+        "Defend_R",
+        "Bash",
+        "Intimidate",
+        "Iron Wave",
+        "Flex",
+        "Rupture",
+        "Cleave",
+        "Thunderclap",
+        "Warcry",
+        "Sentinel",
+        "Wild Strike",
+        "Limit Break",
+        "Entrench",
+        "Seeing Red",
+
+        # === 其他卡牌 (不在 Tier List 中，添加到最后) ===
         "Apotheosis",
         "Ghostly",
-        "Whirlwind",
-        "Rage",
-        "Offering",
-        "Impervious",
-        "Immolate",
-        "Flame Barrier",
-        "Master of Strategy",
-        "Disarm",
-        "Corruption",  # Good but needs exhaust synergy
-        "Double Tap",
-        "Thunderclap",
         "Metallicize",
-        "PanicButton",
-        "Flash of Steel",
-        "Flex",
-
-        # === MID-TIER CARDS (Demon Form demoted based on A20 expert feedback) ===
-        "Demon Form",  # DEMOTED: Too slow/expensive for A20 (from top 20 to ~60)
-        "Uppercut",
-        "J.A.X.",
+        "Disarm",
+        "Master of Strategy",
         "Secret Weapon",
         "Finesse",
         "Mayhem",
@@ -515,80 +577,32 @@ class IroncladPriority(Priority):
         "Trip",
         "Enlightenment",
         "Heavy Blade",
-        "Feed",
-        "Fiend Fire",
-        "Twin Strike",
-        "Seeing Red",
-        "Combust",
-        "Clash",
-        "Dark Shackles",
-        "Sword Boomerang",
-        "Dramatic Entrance",
-        "Bludgeon",
-        "HandOfGreed",
-        "Evolve",
-        "Violence",
-        "Bite",
-        "Carnage",
         "Clothesline",
         "Bandage Up",
         "Panacea",
-        "Reckless Charge",
-        "Infernal Blade",
         "Shiv",
-        "Havoc",
         "RitualDagger",
-        "Dropkick",
         "Swift Strike",
         "Magnetism",
-        "Bloodletting",
-        "Armaments",
         "Mind Blast",
         "AscendersBane",
         "Dazed",
         "Void",
-        "Rampage",
-        "Ghostly Armor",
-        "True Grit",
         "Blind",
         "Good Instincts",
-        "Pummel",
-        "Hemokinesis",
-        "Exhume",
-        "Cleave",
-        "Warcry",
+        "Dark Shackles",
+        "Sword Boomerang",
+        "Dramatic Entrance",
+        "HandOfGreed",
+        "Violence",
+        "Bite",
         "Purity",
-        "Dual Wield",
-        "Wild Strike",
-        "Sever Soul",
-        "Burning Pact",
-        "Brutality",
-        "Barricade",
-        "Intimidate",
-        "Juggernaut",
         "Sadistic Nature",
-        "Dark Embrace",
-        "Power Through",
         "Transmutation",
-        "Sentinel",
-        "Rupture",
         "Slimed",
-        "Fire Breathing",
-        "Second Wind",
         "Impatience",
         "The Bomb",
         "Jack Of All Trades",
-        "Searing Blow",
-        "Blood for Blood",
-
-        # === SKIP MARKER ===
-        "Skip",
-
-        # Very low priority cards
-        "Flame of Life",
-        # === VERY LOW PRIORITY/CURSES ===
-        "Berserk",
-        "Entrench",
         "Forethought",
         "Clumsy",
         "Parasite",
@@ -604,6 +618,7 @@ class IroncladPriority(Priority):
         "Pain",
         "Normality",
         "Pride",
+        "Flame of Life",
     ]
 
     DEFENSIVE_CARDS = [
@@ -766,41 +781,163 @@ class IroncladPriority(Priority):
     ]
 
     MAX_COPIES = {
-        # === ACT 1 ESSENTIALS (Limit copies) ===
-        "Bash": 1,  # Vulnerable is key, but only need 1-2
-        "Iron Wave": 2,  # Excellent early, okay to have 2
-        "Shrug It Off": 3,  # Block + draw is great
-        "Pommel Strike": 1,  # Card removal is valuable
-        "Headbutt": 2,  # Card advantage
-        "Perfected Strike": 2,  # Efficient damage
-        "Battle Trance": 2,  # Draw is consistency
-        "Anger": 2,  # Adds attacks to deck
-        "Strike_R": 4,  # Keep some strikes early
-        "Defend_R": 4,  # Keep some defends early
+        # === 基于 Tier List 的限制策略 ===
 
-        # === HIGH IMPACT CARDS ===
-        "Offering": 2,
-        "Impervious": 99,
+        # 90-100 分 (神级) - 鼓励获取
+        "Offering": 2,  # 90-100分
+
+        # 80-90 分 (顶级) - 鼓励获取
+        "Burning Pact": 2,  # 80-90分
+        "Second Wind": 1,  # 80-90分
+        "Battle Trance": 2,  # 80-90分
+
+        # 70-80 分 (优秀) - 可以获取
+        "Shockwave": 1,  # 70-80分
+        "Dark Embrace": 1,  # 70-80分
+
+        # 60-70 分 (良好) - 适量获取
+        "Impervious": 2,  # 60-70分
+        "Fiend Fire": 1,  # 60-70分
+        "Immolate": 1,  # 60-70分
+        "Blood for Blood": 1,  # 60-70分
+        "Feel No Pain": 2,  # 60-70分
+
+        # 50-60 分 (中等) - 限制数量
+        "Pommel Strike": 1,  # 50-60分
+        "Spot Weakness": 1,  # 50-60分
+        "Evolve": 1,  # 50-60分
+        "Shrug It Off": 2,  # 50-60分
+        "Armaments": 1,  # 50-60分
+        "Havoc": 1,  # 50-60分
+        "Hemokinesis": 1,  # 50-60分
+
+        # 40-50 分 (中等偏下) - 严格限制
+        "Feed": 1,  # 40-50分
+        "Anger": 1,  # 40-50分
+        "Inflame": 1,  # 40-50分
+        "Rage": 2,  # 40-50分
+        "Bloodletting": 1,  # 40-50分
+
+        # 30-40 分 (较差) - 尽量不拿
+        "Body Slam": 0,  # 30-40分，不鼓励
+        "Corruption": 1,  # 30-40分
+        "Headbutt": 1,  # 30-40分
+        "Reckless Charge": 0,  # 30-40分，不鼓励
+        "Reaper": 1,  # 30-40分
+
+        # 20-30 分 (差) - 几乎不拿
+        "Carnage": 0,  # 20-30分
+        "Uppercut": 0,  # 20-30分
+        "Ghostly Armor": 0,  # 20-30分
+        "Rampage": 0,  # 20-30分
+        "Brutality": 0,  # 20-30分
+        "Sever Soul": 0,  # 20-30分
+
+        # 10-20 分及以下 - 不拿
+        "Flame Barrier": 0,  # 10-20分
+        "True Grit": 0,  # 10-20分
+        "Combust": 0,  # 10-20分
+        "Barricade": 0,  # 10-20分
+        "Power Through": 0,  # 10-20分
+        "Fire Breathing": 0,  # 10-20分
+        "Infernal Blade": 0,  # 10-20分
+        "Exhume": 0,  # 10-20分
+        "Searing Blow": 0,  # 10-20分
+        "Juggernaut": 0,  # 5-10分
+        "Pummel": 0,  # 5-10分
+        "Whirlwind": 0,  # 5-10分
+        "Berserk": 0,  # 5-10分
+
+        # 1-5 分 (几乎不可用) - 绝不拿
+        "Bludgeon": 0,  # 1-5分
+        "Double Tap": 0,  # 1-5分
+        "Twin Strike": 0,  # 1-5分
+        "Demon Form": 0,  # 1-5分
+        "Dual Wield": 0,  # 1-5分
+        "Perfected Strike": 0,  # 1-5分
+        "Dropkick": 0,  # 1-5分
+        "Clash": 0,  # 1-5分
+
+        # 0-1 分 (垃圾) - 绝不拿
+        "Strike_R": 0,  # 0-1分，尽快移除
+        "Defend_R": 0,  # 0-1分，尽快移除
+        "Bash": 0,  # 0-1分
+        "Intimidate": 0,  # 0-1分
+        "Iron Wave": 0,  # 0-1分
+        "Flex": 0,  # 0-1分
+        "Rupture": 0,  # 0-1分
+        "Cleave": 0,  # 0-1分
+        "Thunderclap": 0,  # 0-1分
+        "Warcry": 0,  # 0-1分
+        "Sentinel": 0,  # 0-1分
+        "Wild Strike": 0,  # 0-1分
+        "Limit Break": 0,  # 0-1分
+        "Entrench": 0,  # 0-1分
+        "Seeing Red": 0,  # 0-1分
+
+        # 其他卡牌 (不在 Tier List 中) - 保守限制
         "Apotheosis": 1,
-        "Ghostly": 99,
-        "Whirlwind": 2,
-        "Demon Form": 1,  # Only need 1, too slow
-        "Immolate": 1,
-        "Rage": 2,
-        "Limit Break": 1,  # Reduced from 3 - rarely need more than 1
-        "Flame Barrier": 2,
-        "Master of Strategy": 99,
-        "Inflame": 2,  # Increased from 1 - good for Strength builds
-        "Disarm": 2,
-        "Double Tap": 1,
-        "Thunderclap": 1,
-        "Metallicize": 1,
-        "Shockwave": 1,
-        "Uppercut": 1,
-        "J.A.X.": 1,
+        "Ghostly": 1,
+        "Metallicize": 0,
+        "Disarm": 1,
+        "Master of Strategy": 1,
+        "Secret Weapon": 0,
+        "Finesse": 0,
+        "Mayhem": 0,
+        "Panache": 0,
+        "Secret Technique": 0,
+        "Metamorphosis": 0,
+        "Thinking Ahead": 0,
+        "Madness": 1,
+        "Discovery": 1,
+        "Chrysalis": 0,
+        "Deep Breath": 0,
+        "Trip": 0,
+        "Enlightenment": 0,
+        "Heavy Blade": 0,
+        "Clothesline": 0,
+        "Bandage Up": 0,
+        "Panacea": 0,
+        "Shiv": 0,
+        "RitualDagger": 0,
+        "Swift Strike": 0,
+        "Magnetism": 0,
+        "Mind Blast": 0,
+        "AscendersBane": 0,
+        "Dazed": 0,
+        "Void": 0,
+        "Blind": 0,
+        "Good Instincts": 0,
+        "Dark Shackles": 0,
+        "Sword Boomerang": 0,
+        "Dramatic Entrance": 0,
+        "HandOfGreed": 0,
+        "Violence": 0,
+        "Bite": 0,
+        "Purity": 1,
+        "Sadistic Nature": 0,
+        "Transmutation": 0,
+        "Slimed": 0,
+        "Impatience": 0,
+        "The Bomb": 0,
+        "Jack Of All Trades": 0,
+        "Forethought": 0,
+        "Clumsy": 0,
+        "Parasite": 0,
+        "Shame": 0,
+        "Injury": 0,
+        "Wound": 0,
+        "Writhe": 0,
+        "Doubt": 0,
+        "Burn": 0,
+        "Decay": 0,
+        "Regret": 0,
+        "Necronomicurse": 0,
+        "Pain": 0,
+        "Normality": 0,
+        "Pride": 0,
+        "Flame of Life": 0,
         "PanicButton": 1,
-        "Flash of Steel": 99,
-        "Flex": 1,
     }
 
     BOSS_RELIC_PRIORITY_LIST = [
