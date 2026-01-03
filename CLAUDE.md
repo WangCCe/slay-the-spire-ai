@@ -23,137 +23,240 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is `spirecomm` - a Python package for interfacing with the game *Slay the Spire* through the [Communication Mod](https://github.com/ForgottenArbiter/CommunicationMod). It includes a simple AI bot that can play the game autonomously.
+This is `spirecomm` - a Python package for interfacing with the game *Slay the Spire* through the [Communication Mod](https://github.com/ForgottenArbiter/CommunicationMod). It includes an autonomous AI bot that can play the game.
 
 **Communication Mod**: An external mod for Slay the Spire that enables communication between the game and external processes via stdin/stdout. The mod sends JSON game state and accepts text commands.
 
-## Installation and Setup
+## Development Commands
 
-### Installing the package
+### Installation
 ```bash
 python setup.py install
 ```
 
 ### Running the AI
+
+**Via Communication Mod (production)**:
 1. Install and configure [Communication Mod](https://github.com/ForgottenArbiter/CommunicationMod) for Slay the Spire
-2. Configure Communication Mod's `config.properties` (typically at `c:\Users\{USERNAME}\AppData\Local\ModTheSpire\CommunicationMod\config.properties`) to run `main.py` from this repository
+2. Configure Communication Mod's `config.properties` (typically at `c:\Users\{USERNAME}\AppData\Local\ModTheSpire\CommunicationMod\config.properties`) to run `main.py`
 3. The AI will cycle through all character classes (Ironclad, Silent, Defect) indefinitely
+
+**Direct execution (testing)**:
+```bash
+# Run with optimized AI (auto-enabled for Ironclad)
+python main.py
+
+# Force simple AI
+python main.py --simple
+
+# Force optimized AI
+python main.py --optimized
+
+# Set player class
+python main.py --class IRONCLAD
+```
+
+### Testing
+
+Run individual test files (requires Communication Mod and running game):
+```bash
+python test_startup.py          # Communication integration tests
+python test_combat_system.py    # Combat decision verification
+python test_tracking.py          # Statistics tracking validation
+python test_optimized_ai.py      # Optimized agent tests
+```
+
+**Note**: Tests are integration tests requiring a live Slay the Spire game instance. No automated unit test framework is used (no pytest/unittest).
 
 ## Architecture
 
 ### Three-Layer Architecture
 
-The codebase is organized into three main layers:
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    spirecomm/spire/                         │
+│                  Game State Data Models                     │
+│  Game, Card, Monster, Player, Relic, Potion, Power, Map    │
+└──────────────────────┬──────────────────────────────────────┘
+                       │ JSON deserialization
+┌──────────────────────▼──────────────────────────────────────┐
+│              spirecomm/communication/                       │
+│            Communication Layer (stdin/stdout)               │
+│  Coordinator - threaded bidirectional communication         │
+│  Action - command pattern with execute(coordinator)         │
+└──────────────────────┬──────────────────────────────────────┘
+                       │ Callbacks
+┌──────────────────────▼──────────────────────────────────────┐
+│                   spirecomm/ai/                             │
+│                 Decision Making Layer                       │
+│  SimpleAgent - priority-based decisions                     │
+│  OptimizedAgent - beam search combat planning (Ironclad)    │
+│  heuristics/ - specialized evaluators                       │
+│  decision/ - context and planning systems                   │
+└─────────────────────────────────────────────────────────────┘
+```
 
-1. **spirecomm/spire/** - Game state data models
-   - `game.py`: Core `Game` class that deserializes JSON from Communication Mod into Python objects
-   - `character.py`: `Player`, `Monster`, `Intent` enum, `PlayerClass` enum
-   - `card.py`: Card data model
-   - `relic.py`: Relic data model
-   - `potion.py`: Potion data model
-   - `power.py`: Power/buff data model
-   - `map.py`: Map node structure
-   - `screen.py`: All screen types (Event, Rest, Shop, CombatReward, etc.)
+### Key Components
 
-2. **spirecomm/communication/** - Communication layer with the game
-   - `coordinator.py`: `Coordinator` class manages bidirectional stdin/stdout communication
-     - Runs background threads for reading/writing
-     - Maintains game state and action queues
-     - Executes actions when game is ready
-     - Provides callbacks for state changes, errors, and out-of-game events
-   - `action.py`: All action types (PlayCardAction, PotionAction, ChooseAction, etc.)
-     - Each action has an `execute(coordinator)` method
-     - Actions validate they can be executed via `can_be_executed()`
+**1. spirecomm/spire/** - Game State Models
+- `game.py`: Core `Game` class that deserializes JSON from Communication Mod into Python objects
+- `character.py`: `Player`, `Monster`, `Intent` enum, `PlayerClass` enum
+- `card.py`: Card data model with `cost_for_turn` support (for Snecko Eye)
+- `relic.py`, `potion.py`, `power.py`: Item/effect data models
+- `map.py`: Map node structure
+- `screen.py`: All screen types (Event, Rest, Shop, CombatReward, etc.)
 
-3. **spirecomm/ai/** - AI decision making
-   - `agent.py`: `SimpleAgent` class that makes all gameplay decisions
-     - `get_next_action_in_game()`: Main decision function called during gameplay
-     - `get_play_card_action()`: Combat card selection logic
-     - `handle_screen()`: Route to appropriate screen handler (map, rewards, events, etc.)
-     - `choose_card_reward()`: Card reward selection based on priorities
-   - `priorities.py`: Class-specific priority systems
-     - `Priority` (base class), `SilentPriority`, `IroncladPriority`, `DefectPowerPriority`
-     - Each class has lists for CARD_PRIORITY_LIST (rewards), PLAY_PRIORITY_LIST (combat), AOE_CARDS, DEFENSIVE_CARDS
-     - `MAX_COPIES` dict limits how many of each card to add to deck
-     - Map routing priorities by act (prioritize Rest/$/?/M/Elite nodes differently)
+**2. spirecomm/communication/** - Communication Layer
+- `coordinator.py`: `Coordinator` class manages bidirectional stdin/stdout communication
+  - Runs background threads for reading/writing
+  - Maintains `action_queue` and `last_game_state`
+  - Executes actions when `game_is_ready`
+  - Provides callbacks: `state_change_callback`, `error_callback`, `out_of_game_callback`
+- `action.py`: All action types (PlayCardAction, PotionAction, ChooseAction, etc.)
+  - Each has `execute(coordinator)` and `can_be_executed()` methods
+
+**3. spirecomm/ai/** - Decision Making
+- `agent.py`: `SimpleAgent` and `OptimizedAgent` classes
+  - `get_next_action_in_game()`: Main decision function
+  - `get_play_card_action()`: Combat card selection
+  - `handle_screen()`: Routes to screen-specific handlers
+- `priorities.py`: `Priority`, `SilentPriority`, `IroncladPriority`, `DefectPowerPriority`
+  - `CARD_PRIORITY_LIST`: Reward selection priorities
+  - `PLAY_PRIORITY_LIST`: Combat card priorities
+  - `MAX_COPIES`: Deck building limits
+- `heuristics/`: Specialized evaluation modules
+  - `card.py`: `SynergyCardEvaluator` - dynamic card valuation
+  - `simulation.py`: `HeuristicCombatPlanner` - beam search combat planning
+  - `deck.py`: `DeckAnalyzer` - archetype detection
+  - `combat_ending.py`: Lethal detection and defense skipping
+  - `map_routing.py`: `AdaptiveMapRouter` - path optimization
+  - `ironclad_combat.py`: Ironclad-specific combat logic
+  - `ironclad_archetype.py`: Ironclad archetype detection
+  - `relic.py`: Relic evaluation
+  - `monster_database.py`: Monster information
+- `decision/base.py`: `DecisionContext` - wraps game state for AI decisions
+- `statistics.py`: `GameStatistics` - win rate tracking
+- `tracker.py`: `GameTracker` - game state tracking
 
 ### Communication Flow
 
 ```
-Communication Mod → stdin → Coordinator.input_queue → Coordinator.receive_game_state_update()
-                                                                  ↓
-                                                          Callback to SimpleAgent
-                                                                  ↓
-                                                          Returns Action → action_queue
-                                                                  ↓
-                                          Coordinator.execute_next_action() → stdout → Communication Mod
+Communication Mod → stdin → Coordinator.input_queue
+                                   ↓
+                         receive_game_state_update()
+                                   ↓
+                         state_change_callback → Agent.get_next_action_in_game()
+                                                                   ↓
+                                                         Action → action_queue
+                                                                   ↓
+                                   Coordinator.execute_next_action() → stdout
+                                                                          ↓
+                                                                 Communication Mod
 ```
 
 ### State Machine
 
 The AI responds to different game screens via `handle_screen()` in agent.py:
-- **EVENT**: Choose event options (some hardcoded logic)
-- **CHEST**: Open chest
-- **SHOP_ROOM**: Open shopkeeper menu
-- **REST**: Choose rest option (REST if HP < 50%, SMITH, LIFT, or DIG)
-- **CARD_REWARD**: Pick best card based on priorities or skip
-- **COMBAT_REWARD**: Take rewards (gold/relics/potions, skip potions if full)
-- **MAP**: Dynamic programming to find optimal path through the map
-- **BOSS_REWARD**: Choose best boss relic
-- **SHOP_SCREEN**: Buy cards/relics/purge based on priorities and gold
-- **GRID**: Card selection (upgrade/transform/purge)
-- **HAND_SELECT**: Choose cards from hand for card effects
 
-### Combat Logic
+| Screen Type | Handler Behavior |
+|------------|------------------|
+| **EVENT** | Choose event options (some hardcoded logic) |
+| **CHEST** | Open chest |
+| **SHOP_ROOM** | Open shopkeeper menu |
+| **REST** | REST if HP < 50%, else SMITH, LIFT, or DIG |
+| **CARD_REWARD** | Pick best card based on priorities or skip |
+| **COMBAT_REWARD** | Take rewards (gold/relics/potions, skip potions if full) |
+| **MAP** | Dynamic programming to find optimal path |
+| **BOSS_REWARD** | Choose best boss relic |
+| **SHOP_SCREEN** | Buy cards/relics/purge based on priorities and gold |
+| **GRID** | Card selection (upgrade/transform/purge) |
+| **HAND_SELECT** | Choose cards from hand for card effects |
 
-The AI's combat decision flow in `get_play_card_action()`:
+### Combat Decision Systems
+
+**SimpleAgent (original)**:
 1. Separate zero-cost and nonzero-cost playable cards
-2. Identify AOE cards and defensive cards
+2. Identify AOE and defensive cards
 3. Skip defensive cards if already have enough block
-4. Prioritize zero-cost non-attack cards first
-5. Then nonzero-cost cards (prioritized by PLAY_PRIORITY_LIST)
+4. Prioritize zero-cost non-attack cards
+5. Play nonzero-cost cards by PLAY_PRIORITY_LIST
 6. Use AOE attacks when multiple monsters alive
-7. Fall back to zero-cost attacks
-8. Target lowest HP for attacks, highest HP for non-attacks
+7. Target lowest HP for attacks, highest HP for non-attacks
 
-## Key Design Patterns
+**OptimizedAgent (Ironclad only)**:
+1. **Beam Search Planning**: Evaluates sequences of cards, not just individual cards
+2. **Lethal Detection**: Checks if monsters can be killed this turn
+3. **Accurate Simulation**: Considers Strength, Vulnerable, Block, AOE
+4. **Smart Targeting**: Bash applies Vulnerable to high-HP monsters, attacks target low-HP
+5. **Synergy Detection**: Recognizes combos (Limit Break + high Strength, etc.)
 
-- **Callback architecture**: Register callbacks for state changes, errors, and menu navigation
-- **Action queue**: Actions are queued and execute only when `game_is_ready` (Communication Mod is ready for commands)
-- **Screen polymorphism**: Each screen type has its own class with `SCREEN_TYPE` and `from_json()` classmethod
-- **Priority-based AI**: All decisions are based on hardcoded priority lists per character class
+## Important Implementation Details
 
-## Development Notes
+### Coordinator State Management
 
-- The package version is in `setup.py` (currently 0.6.0)
-- Game state is completely reconstructed from JSON on each update (no state mutation between updates)
-- Monster intent analysis is available for combat decisions
-- The coordinator can run games continuously via `play_one_game()` which returns True for victory
-- Map routing uses dynamic programming to maximize node priority scores
-- Card IDs and Relic IDs come from Communication Mod's Java class names
+**CRITICAL**: Always use `coordinator.last_game_state` NOT `coordinator.game`
 
-## Reminder
+- `coordinator.game`: Deprecated, may not reflect current state
+- `coordinator.last_game_state`: Most recent game state from Communication Mod
+- This is a common source of bugs, especially in shop interactions
 
-### File Locations
+### Card Cost Handling
 
-**Important**: Log files use relative paths and are written to the **current working directory** (CWD) where the Python script runs.
+For Snecko Eye relic support, cards have two cost fields:
+- `card.cost`: Base cost from card definition
+- `card.cost_for_turn`: Modified cost (set by Snecko Eye randomizer)
+- Always use `cost_for_turn` when available
 
-**When launched via CommunicationMod**, the CWD is typically the game installation directory:
+### Action Execution
+
+Actions are queued via `coordinator.add_action_to_queue(action)` and execute when `game_is_ready`. Each action must:
+1. Check `can_be_executed(coordinator)` before executing
+2. Implement `execute(coordinator)` to send commands
+3. Handle validation errors gracefully (invalid actions crash to desktop)
+
+### Beam Search Combat Planner
+
+Located in `spirecomm/ai/heuristics/simulation.py`:
+- Explores card sequences using beam search (keeps top N candidates)
+- Adapts search depth based on game complexity
+- Returns complete action sequences, not single cards
+- Execution tracked via `current_action_sequence` and `current_action_index` in agent
+
+### Error Handling
+
+- Use try/except in communication-critical paths
+- Print errors to stderr, NOT stdout (stdout reserved for Communication Mod)
+- Fallback to safe actions (EndTurnAction, ProceedAction) on errors
+- All errors logged to `shop_error.log` and `communication_mod_errors.log`
+
+### Map Routing
+
+Uses dynamic programming to maximize node priority scores:
+- Different priorities per act (e.g., prioritize Elites in Act 1)
+- Adapts based on character class
+- Considered in `AdaptiveMapRouter` class
+
+## Log Files and Debugging
+
+**Important**: Log files use relative paths and are written to the **current working directory** where the Python script runs.
+
+**When launched via CommunicationMod**, the CWD is typically:
 ```
 D:\SteamLibrary\steamapps\common\SlayTheSpire\
 ```
 
-**Log Files** (in game directory):
-- `main_game_loop.log` - **Primary log file** - Game loop events, coordinator state, game restart tracking
-- `ai_game_stats.csv` - Game statistics (wins, losses, floor reached, etc.)
-- `ai_game_stats.jsonl` - Detailed game logs (JSONL format)
-- `ai_debug.log` - AI debugging and decision history
-- `shop_error.log` - Shop-specific errors and warnings
-- `communication_mod_errors.log` - Python exceptions and tracebacks (~18MB)
+### Log Files (in game directory)
 
-**CommunicationMod Config**: `C:\Users\20571\AppData\Local\ModTheSpire\CommunicationMod\config.properties`
+| File | Purpose |
+|------|---------|
+| `main_game_loop.log` | **Primary log** - game loop events, coordinator state, restart tracking |
+| `ai_game_stats.csv` | Game statistics (wins, losses, floor reached, character class, etc.) |
+| `ai_game_stats.jsonl` | Detailed game logs (JSONL format) |
+| `ai_debug.log` | AI debugging and decision history |
+| `shop_error.log` | Shop-specific errors and warnings |
+| `communication_mod_errors.log` | Python exceptions and stack traces |
 
-### Debugging Tips
+### Debugging Workflow
 
 When debugging crashes or issues:
 1. **Check `main_game_loop.log` first** - Shows game restart, coordinator state, and general flow
@@ -162,7 +265,77 @@ When debugging crashes or issues:
 4. Check `ai_debug.log` for game state tracking and decision history
 5. Use `ai_game_stats.csv` for analyzing win rates and performance trends
 
-**Common Issues**:
-- Shop crash: Often caused by `coordinator.game` vs `coordinator.last_game_state` attribute confusion
-- Beam search errors: Check combat planner implementation for tuple unpacking issues
-- Missing attributes: Always use `coordinator.last_game_state` not `coordinator.game`
+### Common Issues
+
+**Shop crashes**: Often caused by `coordinator.game` vs `coordinator.last_game_state` attribute confusion
+
+**Beam search errors**: Check tuple unpacking in combat planner implementation
+
+**Missing attributes**: Always use `coordinator.last_game_state` not `coordinator.game`
+
+**Snecko Eye costs**: Ensure `cost_for_turn` field is being used
+
+**Agent selection confusion**:
+- `SimpleAgent`: Original priority-based AI (all characters)
+- `OptimizedAgent`: Beam search AI (Ironclad only, auto-enabled)
+- Use `--simple` flag to force SimpleAgent for Ironclad
+
+## Code Conventions
+
+### Naming
+- Classes: `PascalCase` (e.g., `SimpleAgent`, `DecisionContext`)
+- Functions/Methods: `snake_case` (e.g., `get_next_action_in_game`, `handle_screen`)
+- Constants: `UPPER_SNAKE_CASE` (e.g., `MAX_COPIES`, `CARD_PRIORITY_LIST`)
+- Private/Internal: Prefixed with underscore (e.g., `_calculate_block`)
+
+### Imports
+- Group imports: standard library, third-party, local
+- Use `from X import Y` for common imports
+- Wildcard imports (`*`) used selectively for action classes
+
+### Error Handling
+- Use try/except in communication-critical paths
+- Print errors to stderr to avoid interfering with Communication Mod protocol
+- Fallback to safe actions (EndTurnAction, ProceedAction) on errors
+
+## Dependencies
+
+- **Python**: 3.7+ (no external packages - standard library only)
+- **Communication Mod**: 0.7.0+ (https://github.com/ForgottenArbiter/CommunicationMod)
+- **Slay the Spire**: Game with ModTheSpire mod loader installed
+
+## Performance Constraints
+
+- **Response Time**: AI must respond in ~100ms to avoid game timeouts
+- **Decision Complexity**: Beam search adapts depth based on game complexity
+- **Memory**: Stateless design - game state reconstructed from JSON each update
+- **Threading**: Coordinator uses daemon threads for stdin/stdout
+
+## Game Domain Knowledge
+
+### Characters
+- **Ironclad**: Strength-based warrior, block cards, self-damage synergies
+- **Silent**: Shiv/dexterity focused, poison, deck cycling
+- **Defect**: Orb-based powers, elemental spells, focus manipulation
+
+### Combat Mechanics
+- **Energy**: Limited resource (typically 3) to play cards
+- **Block**: Damage reduction, decays each turn
+- **Intents**: Monsters telegraph their next action (attack, defend, buff, debuff)
+- **Powers**: Ongoing effects that modify game state
+- **Relics**: Passive abilities that provide strategic advantages
+
+### Map Nodes
+- **M**: Monster room
+- **?**: Event
+- **$**: Shop
+- **E**: Elite
+- **Rest**: Rest site
+- **Boss**: Boss fight
+- **Treasure**: Chest
+
+### AI Strategy Concepts
+- **Archetypes**: Deck build patterns (e.g., Strength build, Shiv Silent, Poison deck)
+- **Synergies**: Card combinations (e.g., Limit Break + high Strength)
+- **Map Routing**: Choosing optimal path based on node priorities and character needs
+- **Lethal Detection**: Checking if combat can end this turn to avoid over-defending
