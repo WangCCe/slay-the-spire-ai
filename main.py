@@ -12,7 +12,7 @@ from spirecomm.spire.character import PlayerClass
 # Python 3.7 compatibility: force parameter not available, check if already configured
 if not logging.getLogger().hasHandlers():
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,  # TEMPORARY: Set to DEBUG to see defense analysis logs
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
             logging.FileHandler('ai_debug.log', encoding='utf-8', mode='a'),
