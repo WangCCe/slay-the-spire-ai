@@ -6,6 +6,7 @@ to find optimal play sequences using beam search.
 """
 
 import copy
+import time
 from typing import List, Dict, Tuple, Optional
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster
@@ -88,6 +89,56 @@ class SimulationState:
         new_state.total_damage_dealt = self.total_damage_dealt
         new_state.monsters_killed = self.monsters_killed
         return new_state
+
+    def state_key(self, playable_cards):
+        """
+        Create a hashable key for state deduplication in transposition table.
+
+        The key includes all game-relevant fields that affect the value of a state.
+        Different action sequences that lead to identical states will have the same key.
+
+        Args:
+            playable_cards: List of cards currently playable (not yet played)
+
+        Returns:
+            Tuple containing (player_key, monster_key, hand_key)
+        """
+        # Player state (what matters for future decisions)
+        player_key = (
+            self.player_hp,
+            self.player_block,
+            self.player_energy,
+            self.player_strength,
+            self.player_vulnerable,
+            self.player_weak,
+            self.player_frail
+        )
+
+        # Monster states (sorted for consistent hashing)
+        # Use tuple for immutability and sorting to ensure consistent ordering
+        monster_key = tuple(sorted(
+            (
+                m['hp'],
+                m['block'],
+                m['vulnerable'],
+                m['weak'],
+                m['frail'],
+                str(m['intent']) if m['intent'] else None,  # Convert intent to string
+                m['is_gone'],
+                m['name']  # Include name for elite/boss identification
+            )
+            for m in self.monsters
+            if not m['is_gone']  # Only include alive monsters
+        ))
+
+        # Hand cards (multi-set - sorted list of card IDs)
+        # This represents what cards are available to play
+        hand_key = tuple(sorted(
+            c.card_id for c in playable_cards
+            if id(c) not in self.played_card_uuids  # Only cards not yet played
+        ))
+
+        return (player_key, monster_key, hand_key)
 
 
 class FastCombatSimulator:
@@ -469,8 +520,12 @@ class HeuristicCombatPlanner(CombatPlanner):
             return [PlayCardAction(card=best_card)]
 
     def _beam_search_plan(self, context: DecisionContext) -> List[Action]:
-        """Use beam search to find optimal action sequence."""
+        """Use beam search to find optimal action sequence with transposition table."""
         initial_state = SimulationState(context)
+
+        # === Timeout protection: Track start time ===
+        start_time = time.time()
+        timeout_budget = 0.08  # 80ms budget for beam search
 
         # Initialize beam with empty sequence
         beam = [([], initial_state, 0)]  # (actions, state, energy_spent)
@@ -478,50 +533,94 @@ class HeuristicCombatPlanner(CombatPlanner):
         best_sequence = []
         best_score = float('-inf')
 
+        # Transposition table: maps state_key → (sequence, state, energy_spent, score)
+        seen_states = {}
+
         for depth in range(self.max_depth):
+            # === Timeout check: Return best found so far ===
+            if time.time() - start_time > timeout_budget:
+                # Timeout! Return best sequence found (may be empty → use simple plan)
+                break
             new_candidates = []
 
             for sequence, state, energy_spent in beam:
-                # Try each remaining playable card
+                # === Two-stage action expansion ===
+                # Collect playable cards
+                playable_actions = []
                 for card in context.playable_cards:
-                    card_idx = id(card)  # Use id to track played cards
-
+                    card_idx = id(card)
                     if card_idx not in state.played_card_uuids:
                         cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
-
-                        # Check if we have enough energy
                         if energy_spent + cost <= context.energy_available:
-                            # Determine target
-                            target = self._find_best_target(card, context) if card.has_target else None
+                            playable_actions.append((card, card_idx, cost))
 
-                            # Simulate playing this card
-                            new_state = self.simulator.simulate_card_play(state, card, target)
-                            new_state.played_card_uuids.add(card_idx)
+                if not playable_actions:
+                    continue  # No playable cards for this beam entry
 
-                            # Create action
-                            if target:
-                                action = PlayCardAction(card=card, target_monster=target)
-                            else:
-                                action = PlayCardAction(card=card)
+                # Stage 1: FastScore filter - lightweight scoring without simulation
+                scored_actions = [
+                    (card, card_idx, cost, self.fast_score_action(card, state, context))
+                    for card, card_idx, cost in playable_actions
+                ]
 
-                            new_sequence = sequence + [action]
+                # Sort by fast_score descending (highest first)
+                scored_actions.sort(key=lambda x: x[3], reverse=True)
 
-                            # Score this sequence (with current act for survival threshold)
-                            current_act = context.act if hasattr(context, 'act') else 1
-                            score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act)
+                # Stage 2: Progressive widening - select top M based on depth
+                # M_values: Depth 0→12, 1→10, 2→7, 3→5, 4→4
+                M_values = [12, 10, 7, 5, 4]
+                M = M_values[min(depth, len(M_values) - 1)]
 
-                            # Consider card value from evaluator
-                            card_value = self.card_evaluator.evaluate_card(card, context)
-                            total_score = score + card_value
+                # Only full-simulate top M actions
+                for card, card_idx, cost, _ in scored_actions[:M]:
+                    # Determine target
+                    target = self._find_best_target(card, context) if card.has_target else None
 
-                            new_candidates.append((new_sequence, new_state, energy_spent + cost, total_score))
+                    # Simulate playing this card
+                    new_state = self.simulator.simulate_card_play(state, card, target)
+                    new_state.played_card_uuids.add(card_idx)
+
+                    # Create action
+                    if target:
+                        action = PlayCardAction(card=card, target_monster=target)
+                    else:
+                        action = PlayCardAction(card=card)
+
+                    new_sequence = sequence + [action]
+
+                    # Score this sequence (with current act for survival threshold)
+                    current_act = context.act if hasattr(context, 'act') else 1
+                    score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act)
+
+                    # Consider card value from evaluator
+                    card_value = self.card_evaluator.evaluate_card(card, context)
+                    total_score = score + card_value
+
+                    new_candidates.append((new_sequence, new_state, energy_spent + cost, total_score))
 
             if not new_candidates:
                 break  # No more valid plays
 
+            # === Transposition table: Deduplicate identical states ===
+            # Keep only the best-scoring path to each unique state
+            for candidate in new_candidates:
+                seq, st, energy, score = candidate
+                key = st.state_key(context.playable_cards)
+
+                if key in seen_states:
+                    # State seen before - keep best scoring path
+                    existing_score = seen_states[key][3]
+                    if score > existing_score:
+                        seen_states[key] = candidate  # Replace with better path
+                else:
+                    seen_states[key] = candidate  # First time seeing this state
+
+            # Convert transposition table back to beam
+            deduplicated_candidates = list(seen_states.values())
+
             # Keep top candidates
-            new_candidates.sort(key=lambda x: x[3], reverse=True)
-            beam = new_candidates[:self.beam_width]
+            deduplicated_candidates.sort(key=lambda x: x[3], reverse=True)
+            beam = deduplicated_candidates[:self.beam_width]
 
             # Track best sequence
             if beam:
@@ -557,6 +656,61 @@ class HeuristicCombatPlanner(CombatPlanner):
         else:
             # Target highest HP monster for debuffs/buffs
             return max(context.monsters_alive, key=lambda m: m.current_hp)
+
+    def fast_score_action(self, card: Card, state: SimulationState, context: DecisionContext) -> float:
+        """
+        Lightweight scoring without full simulation.
+
+        Used in Stage 1 of two-stage action expansion to filter low-value actions
+        before expensive full simulation.
+
+        Scoring criteria:
+        - Zero-cost cards: +20 (high value)
+        - Attacks when monsters alive: +10 (offensive value)
+        - Block at low HP: +15 (defensive value)
+        - Base damage: +2 per damage point
+
+        Args:
+            card: Card to score
+            state: Current simulation state
+            context: Decision context
+
+        Returns:
+            Fast score (higher is better)
+        """
+        score = 0.0
+
+        # Zero-cost bonus (Apex, Clothesline after Corruption, etc.)
+        cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
+        if cost == 0:
+            score += 20
+
+        # Attack bonus when monsters alive
+        monsters_alive = [m for m in state.monsters if not m['is_gone']]
+        if monsters_alive and hasattr(card, 'type') and str(card.type) == 'ATTACK':
+            score += 10
+
+        # Block bonus at low HP
+        if state.player_hp < 30 and hasattr(card, 'block') and card.block is not None:
+            score += 15
+
+        # Base damage estimate
+        if hasattr(card, 'damage') and card.damage:
+            score += card.damage * 2
+        elif hasattr(card, 'type') and str(card.type) == 'ATTACK':
+            # Fallback: use game data for damage
+            from spirecomm.data.loader import game_data_loader
+            card_name = card.card_id.replace('+', '')
+            card_data = game_data_loader.get_card_data(card_name)
+            if card_data:
+                import re
+                description = card_data.get('description', '').lower()
+                damage_match = re.search(r'deal (\d+) damage', description)
+                if damage_match:
+                    base_damage = int(damage_match.group(1))
+                    score += base_damage * 2
+
+        return score
 
     def get_confidence(self, context: DecisionContext) -> float:
         """
