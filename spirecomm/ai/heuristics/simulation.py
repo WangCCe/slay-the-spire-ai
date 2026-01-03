@@ -30,6 +30,11 @@ class SimulationState:
         self.player_energy = context.energy_available
         self.player_strength = context.strength
 
+        # Player debuffs (binary: >0 means debuffed)
+        self.player_vulnerable = self._get_player_debuff_stacks(context, 'Vulnerable')
+        self.player_weak = self._get_player_debuff_stacks(context, 'Weak')
+        self.player_frail = self._get_player_debuff_stacks(context, 'Frail')
+
         # Monster state (each monster tracked independently)
         self.monsters = []
         for i, monster in enumerate(context.monsters_alive):
@@ -45,6 +50,9 @@ class SimulationState:
                 'weak': context.weak_stacks.get(i, 0),  # Weak stacks (by index)
                 'frail': context.frail_stacks.get(i, 0),  # Frail stacks (by index)
                 'thorns': context.thorns_stacks.get(i, 0),  # Thorns/反伤 stacks (by index)
+                'move_base_damage': monster.move_base_damage if hasattr(monster, 'move_base_damage') else 0,
+                'move_adjusted_damage': monster.move_adjusted_damage if hasattr(monster, 'move_adjusted_damage') else 0,
+                'strength': monster.strength if hasattr(monster, 'strength') else 0,
             }
             self.monsters.append(monster_state)
 
@@ -54,6 +62,16 @@ class SimulationState:
         self.total_damage_dealt = 0
         self.monsters_killed = 0
 
+    def _get_player_debuff_stacks(self, context: DecisionContext, power_name: str) -> int:
+        """Get debuff stacks on the player from powers."""
+        if not hasattr(context.game, 'player') or not hasattr(context.game.player, 'powers'):
+            return 0
+
+        for power in context.game.player.powers:
+            if hasattr(power, 'name') and power.name == power_name:
+                return hasattr(power, 'amount') and power.amount or 1
+        return 0
+
     def clone(self) -> 'SimulationState':
         """Create a deep copy of this state."""
         new_state = SimulationState.__new__(SimulationState)
@@ -61,6 +79,9 @@ class SimulationState:
         new_state.player_block = self.player_block
         new_state.player_energy = self.player_energy
         new_state.player_strength = self.player_strength
+        new_state.player_vulnerable = self.player_vulnerable
+        new_state.player_weak = self.player_weak
+        new_state.player_frail = self.player_frail
         new_state.monsters = [m.copy() for m in self.monsters]
         new_state.played_card_uuids = self.played_card_uuids.copy()
         new_state.energy_spent = self.energy_spent
@@ -165,6 +186,7 @@ class FastCombatSimulator:
                     continue
                 damage = base_damage + state.player_strength
                 damage = self._apply_vulnerable_damage(damage, monster)
+                damage = self._apply_weak_damage(damage, monster.get('weak', 0))
                 self._deal_damage_to_monster(state, monster, damage)
         else:
             # Single-target attack
@@ -173,6 +195,7 @@ class FastCombatSimulator:
                 if not monster['is_gone']:
                     damage = base_damage + state.player_strength
                     damage = self._apply_vulnerable_damage(damage, monster)
+                    damage = self._apply_weak_damage(damage, monster.get('weak', 0))
                     self._deal_damage_to_monster(state, monster, damage)
 
                     # Check for card effects using game data
@@ -194,10 +217,22 @@ class FastCombatSimulator:
                                 monster['weak'] += 1
 
     def _apply_vulnerable_damage(self, damage: int, monster: dict) -> int:
-        """Apply vulnerable multiplier (1.5x)."""
+        """Apply vulnerable multiplier (1.5x). Binary: any vulnerable stacks = 1.5x damage."""
         if monster.get('vulnerable', 0) > 0:
             return int(damage * 1.5)
         return damage
+
+    def _apply_weak_damage(self, damage: int, player_weak: int) -> int:
+        """Apply weak multiplier (0.75x). Binary: any weak stacks = 0.75x damage."""
+        if player_weak > 0:
+            return int(damage * 0.75)
+        return damage
+
+    def _apply_frail_block(self, block: int, player_frail: int) -> int:
+        """Apply frail multiplier (0.75x). Binary: any frail stacks = 0.75x block gained."""
+        if player_frail > 0:
+            return int(block * 0.75)
+        return block
 
     def _deal_damage_to_monster(self, state: SimulationState, monster: dict, damage: int):
         """Deal damage to monster, accounting for block and thorns."""
@@ -228,9 +263,11 @@ class FastCombatSimulator:
 
     def _apply_skill(self, state: SimulationState, card: Card):
         """Apply skill card effects."""
-        # Block skills
+        # Block skills - apply frail multiplier if player has frail
         if hasattr(card, 'block') and card.block is not None:
-            state.player_block += card.block
+            block_gain = card.block
+            block_gain = self._apply_frail_block(block_gain, state.player_frail)
+            state.player_block += block_gain
 
         # Draw cards - simplified (we don't simulate actual draws)
         # Just account for the potential value in scoring
@@ -250,7 +287,63 @@ class FastCombatSimulator:
 
         # Other powers can be added as needed
 
-    def calculate_outcome_score(self, initial_state: SimulationState, final_state: SimulationState) -> float:
+    def _estimate_incoming_damage(self, monsters_state: list) -> int:
+        """
+        Estimate expected incoming damage from monsters next turn.
+
+        Args:
+            monsters_state: List of monster state dictionaries
+
+        Returns:
+            Expected total damage
+        """
+        total_damage = 0
+
+        for monster in monsters_state:
+            if monster['is_gone']:
+                continue
+
+            intent = monster.get('intent')
+            if intent is None:
+                continue
+
+            # Import Intent enum if available
+            try:
+                from spirecomm.spire.character import Intent
+                # Check if intent is an Intent enum or string
+                if isinstance(intent, str):
+                    intent_str = intent
+                else:
+                    intent_str = str(intent).split('.')[-1] if hasattr(intent, 'name') else str(intent)
+            except:
+                intent_str = str(intent)
+
+            # Estimate damage based on intent
+            if 'ATTACK' in intent_str.upper() or 'ATTACK_BUFF' in intent_str.upper() or 'ATTACK_DEBUFF' in intent_str.upper() or 'ATTACK_DEFEND' in intent_str.upper():
+                # Use actual monster damage data from game state
+                damage = monster.get('move_adjusted_damage', 0)
+
+                # Fallback to base_damage if adjusted_damage not available
+                if damage == 0:
+                    damage = monster.get('move_base_damage', 0)
+
+                # If still no damage data, use conservative estimate based on monster
+                if damage == 0:
+                    # Conservative estimate by monster name/type (can be improved)
+                    monster_name = monster.get('name', '')
+                    if 'elite' in monster_name.lower() or 'boss' in monster_name.lower():
+                        damage = 15  # Elite/boss hit harder
+                    else:
+                        damage = 8  # Normal monster
+
+                # Adjust for monster strength
+                damage += monster.get('strength', 0)
+
+                total_damage += damage
+
+        return total_damage
+
+    def calculate_outcome_score(self, initial_state: SimulationState, final_state: SimulationState, current_act: int = 1) -> float:
         """
         Calculate the quality of a combat outcome.
 
@@ -292,6 +385,23 @@ class FastCombatSimulator:
         # 5. HP preserved (very important)
         hp_lost = initial_state.player_hp - final_state.player_hp
         score -= hp_lost * 10  # Penalty for taking damage
+
+        # 6. Survival-first scoring (estimate next turn incoming damage)
+        expected_incoming = self._estimate_incoming_damage(final_state.monsters)
+        hp_loss_next_turn = max(0, expected_incoming - final_state.player_block)
+
+        # Death penalty (infinite score = avoid at all costs)
+        if hp_loss_next_turn >= final_state.player_hp:
+            return float('-inf')
+
+        # Survival penalty (weighted heavily: W_DEATHRISK = 8.0)
+        W_DEATHRISK = 8.0
+        score -= hp_loss_next_turn * W_DEATHRISK
+
+        # Danger threshold penalty (act-dependent)
+        danger_threshold = 15 + (current_act * 5)  # Act 1: 20, Act 2: 25, Act 3: 30
+        if final_state.player_hp - hp_loss_next_turn < danger_threshold:
+            score -= 50  # Extra penalty for dangerous low HP
 
         return score
 
@@ -396,8 +506,9 @@ class HeuristicCombatPlanner(CombatPlanner):
 
                             new_sequence = sequence + [action]
 
-                            # Score this sequence
-                            score = self.simulator.calculate_outcome_score(initial_state, new_state)
+                            # Score this sequence (with current act for survival threshold)
+                            current_act = context.act if hasattr(context, 'act') else 1
+                            score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act)
 
                             # Consider card value from evaluator
                             card_value = self.card_evaluator.evaluate_card(card, context)
