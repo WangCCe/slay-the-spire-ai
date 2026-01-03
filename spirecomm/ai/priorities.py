@@ -12,6 +12,8 @@ class Priority:
 
     MAX_COPIES = {}
 
+    GROUP_MAX_COPIES = {}  # 分组限制：一组卡牌共享数量限制
+
     BOSS_RELIC_PRIORITY_LIST = []
 
     MAP_NODE_PRIORITIES_1 = {'R': 1000, 'E': 10, '$': 100, '?': 100, 'M': 1, 'T': 0}
@@ -72,8 +74,56 @@ class Priority:
         skip_priority = self.CARD_PRIORITIES.get("Skip", float('inf'))
         return card_priority > skip_priority
 
-    def needs_more_copies(self, card, num_copies):
+    def needs_more_copies(self, card, num_copies, deck=None):
+        """
+        Check if we need more copies of a card.
+
+        Args:
+            card: The card to check
+            num_copies: Current copies of this specific card
+            deck: Full deck (optional, for group limit calculation)
+
+        Returns:
+            True if we should take this card
+        """
+        # Check if card belongs to a group with shared limit
+        if deck is not None and card.card_id in self.MAX_COPIES:
+            limit = self.MAX_COPIES[card.card_id]
+            # If limit is a string, it's a group reference
+            if isinstance(limit, str):
+                return self._check_group_limit(card, limit, deck)
+
+        # Original logic for individual limits
         return self.MAX_COPIES.get(card.card_id, 0) > num_copies
+
+    def _check_group_limit(self, card, group_name, deck):
+        """
+        Check if taking this card would exceed the group limit.
+
+        Args:
+            card: The card we want to take
+            group_name: Name of the group (string)
+            deck: Current deck
+
+        Returns:
+            True if within group limit, False otherwise
+        """
+        # Get all cards in this group
+        group_cards = [
+            card_id for card_id, limit in self.MAX_COPIES.items()
+            if isinstance(limit, str) and limit == group_name
+        ]
+
+        # Count how many cards from this group are already in deck
+        group_count = sum(
+            1 for deck_card in deck
+            if deck_card.card_id in group_cards
+        )
+
+        # Get the group limit
+        group_limit = self.GROUP_MAX_COPIES.get(group_name, 0)
+
+        return group_count < group_limit
 
     def get_best_boss_relic(self, relic_list):
         return min(relic_list, key=lambda x: self.BOSS_RELIC_PRIORITIES.get(x.relic_id, 0))
@@ -780,7 +830,22 @@ class IroncladPriority(Priority):
         "Whirlwind"
     ]
 
+    GROUP_MAX_COPIES = {
+        "transition_attack": 2,  # 前期过渡攻击牌，总共限制2张
+        "basic_defense": 1,      # 基础防御牌，总共限制1张
+    }
+
     MAX_COPIES = {
+        # === 分组限制：前期过渡卡牌 ===
+        "Bash": "transition_attack",           # Vulnerable很重要，前期必带
+        "Iron Wave": "transition_attack",      # 攻击+block，前期很实用
+        "True Grit": "basic_defense",          # block+exhaust，前期防御
+        "Clothesline": "transition_attack",    # 攻击+stun，控制很实用
+        "Cleave": "transition_attack",         # 基础AOE
+        "Thunderclap": "transition_attack",    # AOE+weak
+        "Uppercut": "transition_attack",       # 攻击+weak
+        "Pummel": "transition_attack",         # 多次攻击
+
         # === 基于 Tier List 的限制策略 ===
 
         # 90-100 分 (神级) - 鼓励获取
@@ -827,7 +892,7 @@ class IroncladPriority(Priority):
 
         # 20-30 分 (差) - 几乎不拿
         "Carnage": 0,  # 20-30分
-        "Uppercut": 0,  # 20-30分
+        # "Uppercut": 分组限制 (transition_attack)
         "Ghostly Armor": 0,  # 20-30分
         "Rampage": 0,  # 20-30分
         "Brutality": 0,  # 20-30分
@@ -835,7 +900,7 @@ class IroncladPriority(Priority):
 
         # 10-20 分及以下 - 不拿
         "Flame Barrier": 0,  # 10-20分
-        "True Grit": 0,  # 10-20分
+        # "True Grit": 分组限制 (basic_defense)
         "Combust": 0,  # 10-20分
         "Barricade": 0,  # 10-20分
         "Power Through": 0,  # 10-20分
@@ -844,7 +909,7 @@ class IroncladPriority(Priority):
         "Exhume": 0,  # 10-20分
         "Searing Blow": 0,  # 10-20分
         "Juggernaut": 0,  # 5-10分
-        "Pummel": 0,  # 5-10分
+        # "Pummel": 分组限制 (transition_attack)
         "Whirlwind": 0,  # 5-10分
         "Berserk": 0,  # 5-10分
 
@@ -861,13 +926,13 @@ class IroncladPriority(Priority):
         # 0-1 分 (垃圾) - 绝不拿
         "Strike_R": 0,  # 0-1分，尽快移除
         "Defend_R": 0,  # 0-1分，尽快移除
-        "Bash": 0,  # 0-1分
+        # "Bash": 分组限制 (transition_attack)
         "Intimidate": 0,  # 0-1分
-        "Iron Wave": 0,  # 0-1分
+        # "Iron Wave": 分组限制 (transition_attack)
         "Flex": 0,  # 0-1分
         "Rupture": 0,  # 0-1分
-        "Cleave": 0,  # 0-1分
-        "Thunderclap": 0,  # 0-1分
+        # "Cleave": 分组限制 (transition_attack)
+        # "Thunderclap": 分组限制 (transition_attack)
         "Warcry": 0,  # 0-1分
         "Sentinel": 0,  # 0-1分
         "Wild Strike": 0,  # 0-1分
@@ -895,7 +960,7 @@ class IroncladPriority(Priority):
         "Trip": 0,
         "Enlightenment": 0,
         "Heavy Blade": 0,
-        "Clothesline": 0,
+        # "Clothesline": 分组限制 (transition_attack)
         "Bandage Up": 0,
         "Panacea": 0,
         "Shiv": 0,

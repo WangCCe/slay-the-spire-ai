@@ -425,7 +425,10 @@ class SimpleAgent:
             logging.info(f"  [{i}] {card.card_id} (copies={count}, needs_more={needs})\n")
 
         if can_skip and not in_combat:
-            pickable_cards = [card for card in reward_cards if self.priorities.needs_more_copies(card, self.count_copies_in_deck(card))]
+            pickable_cards = [
+                card for card in reward_cards
+                if self.priorities.needs_more_copies(card, self.count_copies_in_deck(card), self.game.deck)
+            ]
         else:
             pickable_cards = reward_cards
 
@@ -1020,7 +1023,7 @@ class OptimizedAgent(SimpleAgent):
             if self.game.screen.can_skip and not self.game.in_combat:
                 pickable_cards = [
                     card for card in reward_cards
-                    if self.priorities.needs_more_copies(card, self.count_copies_in_deck(card))
+                    if self.priorities.needs_more_copies(card, self.count_copies_in_deck(card), self.game.deck)
                 ]
             else:
                 pickable_cards = reward_cards
