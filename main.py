@@ -9,14 +9,21 @@ from spirecomm.spire.character import PlayerClass
 
 # Setup logging to file (all logs go to ai_debug.log)
 # Note: We don't use StreamHandler because Communication Mod uses stdout for commands
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('ai_debug.log', encoding='utf-8', mode='a'),
-    ],
-    force=True  # Force reconfiguration even if logging was already configured
-)
+# Python 3.7 compatibility: force parameter not available, check if already configured
+if not logging.getLogger().hasHandlers():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('ai_debug.log', encoding='utf-8', mode='a'),
+        ],
+    )
+else:
+    # Logging already configured, just add our file handler if not present
+        logger = logging.getLogger()
+        has_file_handler = any(isinstance(h, logging.FileHandler) for h in logger.handlers)
+        if not has_file_handler:
+            logger.addHandler(logging.FileHandler('ai_debug.log', encoding='utf-8', mode='a'))
 
 # Import statistics components
 try:
