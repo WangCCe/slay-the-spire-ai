@@ -76,23 +76,23 @@ class AdaptiveMapRouter:
                 # More cautious in early Act 1 (floors 1-5)
                 if floor <= 5:
                     # Avoid elites entirely in first 5 floors
-                    return base - 200  # Too risky early
+                    return base - 300  # Too risky early (increased penalty from -200)
                 elif floor <= 10:
-                    # Moderate caution for mid Act 1
-                    if hp_pct > 0.8:
-                        return base + 100  # Only take if very healthy
-                    elif hp_pct > 0.6:
-                        return base + 50  # Cautious
+                    # Moderate caution for mid Act 1 - much more conservative
+                    if hp_pct > 0.85:
+                        return base - 50  # Even when very healthy, avoid (was +100)
+                    elif hp_pct > 0.7:
+                        return base - 100  # Cautious (was +50)
                     else:
-                        return base - 100  # Too risky
+                        return base - 200  # Too risky (was -100)
                 else:
-                    # Late Act 1, can be more aggressive
-                    if hp_pct > 0.7:
-                        return base + 150  # Aggressive when healthy
-                    elif hp_pct > 0.5:
-                        return base + 50  # Moderate
+                    # Late Act 1, still avoid elites unless very healthy
+                    if hp_pct > 0.85:
+                        return base + 20  # Only consider when very healthy (was +150)
+                    elif hp_pct > 0.7:
+                        return base - 50  # Still cautious (was +50)
                     else:
-                        return base - 50  # Too risky
+                        return base - 150  # Too risky (was -50)
 
             elif symbol == 'R':  # Rest
                 if hp_pct > 0.75:

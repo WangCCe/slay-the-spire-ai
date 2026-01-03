@@ -16,7 +16,7 @@ class Priority:
 
     BOSS_RELIC_PRIORITY_LIST = []
 
-    MAP_NODE_PRIORITIES_1 = {'R': 1000, 'E': 10, '$': 100, '?': 100, 'M': 1, 'T': 0}
+    MAP_NODE_PRIORITIES_1 = {'R': 1000, 'E': -50, '$': 100, '?': 100, 'M': 1, 'T': 0}  # E: 10→-50, avoid elites in Act 1
 
     MAP_NODE_PRIORITIES_2 = {'R': 1000, 'E': 100, '$': 10, '?': 10, 'M': 1, 'T': 0}
 
