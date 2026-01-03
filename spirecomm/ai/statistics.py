@@ -46,7 +46,8 @@ def get_ai_version() -> str:
     # Version 3.2.1: Significantly reduced Act 1 elite priority to avoid early elites
     # Version 3.2.2: Added penalty for useless defense when monsters aren't attacking
     # Version 3.2.3: Fix incoming_damage to respect monster intents (skip DEBUG/DEFEND/BUFF intents)
-    return "3.2.3-fix-intent-filter"
+    # Version 3.2.4: Reduce defense scoring weight from 5 to 2 (attack is better than defense)
+    return "3.2.4-reduce-defense-weight"
 
 
 def get_git_commit() -> str:

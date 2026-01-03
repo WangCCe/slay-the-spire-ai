@@ -351,7 +351,8 @@ class IroncladCombatPlanner(CombatPlanner):
         damage = final_state.total_damage_dealt
         score += damage * damage_weight
 
-        # 3. Block (only valuable when taking damage)
+        # 3. Block (only valuable when taking damage, but less valuable than attacking)
+        # Defense is temporary (blocks 1 turn), while killing monsters is permanent
         block_gained = final_state.player_block - initial_state.player_block
         incoming_damage = context.incoming_damage
 
@@ -360,8 +361,9 @@ class IroncladCombatPlanner(CombatPlanner):
             # This prevents the AI from prolonging the battle
             score -= block_gained * 10
         elif incoming_damage > initial_state.player_block:
-            # Need block - value it highly
-            score += min(block_gained, incoming_damage) * 5
+            # Need block - value it, but less than damage
+            # Defense is temporary (blocks 1 turn), attack is permanent (kills monsters)
+            score += min(block_gained, incoming_damage) * 2  # Reduced from 5 to 2
         else:
             # Already safe - minimal value
             score += block_gained * 0.5
