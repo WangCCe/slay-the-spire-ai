@@ -516,6 +516,8 @@ class FastCombatSimulator:
                 # Fallback to base_damage if adjusted_damage not available
                 if damage == 0:
                     damage = monster.get('move_base_damage', 0)
+                    if damage > 0:
+                        logger.debug(f"[DAMAGE_FALLBACK] Monster '{monster.get('name', 'Unknown')}' using base_damage={damage}")
 
                 # If still no damage data, use conservative estimate based on monster
                 if damage == 0:
@@ -523,13 +525,21 @@ class FastCombatSimulator:
                     monster_name = monster.get('name', '')
                     if 'elite' in monster_name.lower() or 'boss' in monster_name.lower():
                         damage = 15  # Elite/boss hit harder
+                        logger.warning(f"[DAMAGE_FALLBACK] Monster '{monster_name}' using ELITE fallback damage={damage} (no damage data available)")
                     else:
                         damage = 8  # Normal monster
+                        logger.warning(f"[DAMAGE_FALLBACK] Monster '{monster_name}' using NORMAL fallback damage={damage} (no damage data available)")
 
                 # Adjust for monster strength
-                damage += monster.get('strength', 0)
+                strength = monster.get('strength', 0)
+                if strength > 0:
+                    logger.debug(f"[DAMAGE_FALLBACK] Monster '{monster.get('name', 'Unknown')}' has Strength {strength}, damage: {damage} → {damage + strength}")
+                    damage += strength
 
                 total_damage += damage
+
+        if total_damage > 0:
+            logger.debug(f"[INCOMING_DAMAGE] Estimated total incoming damage: {total_damage}")
 
         return total_damage
 
@@ -579,6 +589,16 @@ class FastCombatSimulator:
         # 6. Survival-first scoring (estimate next turn incoming damage)
         expected_incoming = self._estimate_incoming_damage(final_state.monsters)
         hp_loss_next_turn = max(0, expected_incoming - final_state.player_block)
+
+        # Log defensive analysis for debugging
+        if block_gained > 0 or final_state.player_block > 0:
+            logger.debug(f"[DEFENSE_ANALYSIS] block_gained={block_gained}, final_block={final_state.player_block}, "
+                        f"expected_incoming={expected_incoming}, hp_loss_next_turn={hp_loss_next_turn}, "
+                        f"player_hp={final_state.player_hp}")
+
+        # Detect over-defense (block significantly exceeds incoming damage)
+        if final_state.player_block > expected_incoming * 1.5 and expected_incoming > 0:
+            logger.warning(f"[OVER_DEFENSE] Block ({final_state.player_block}) is {final_state.player_block / max(expected_incoming, 1):.1f}x incoming damage ({expected_incoming}) - wasting resources!")
 
         # Death penalty (infinite score = avoid at all costs)
         if hp_loss_next_turn >= final_state.player_hp:

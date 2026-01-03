@@ -141,7 +141,12 @@ class SimpleAgent:
         zero_cost_non_attacks = [card for card in zero_cost_cards if card.type != spirecomm.spire.card.CardType.ATTACK]
         nonzero_cost_cards = [card for card in playable_cards if card.cost != 0]
         aoe_cards = [card for card in playable_cards if self.priorities.is_card_aoe(card)]
-        if self.game.player.block > self.get_incoming_damage() - (self.game.act + 4):
+        incoming_damage = self.get_incoming_damage()
+        if self.game.player.block > incoming_damage - (self.game.act + 4):
+            import logging
+            logging.info(f"[SIMPLE_AGENT_DEFENSE] Skipping defensive cards - block={self.game.player.block}, "
+                        f"incoming={incoming_damage}, threshold={incoming_damage - (self.game.act + 4)}, "
+                        f"act={self.game.act}")
             offensive_cards = [card for card in nonzero_cost_cards if not self.priorities.is_card_defensive(card)]
             if len(offensive_cards) > 0:
                 nonzero_cost_cards = offensive_cards
