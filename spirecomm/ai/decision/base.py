@@ -129,6 +129,14 @@ class DecisionContext:
         # === 新增：战斗评估 ===
         self.can_end_combat_this_turn = False  # 将由 CombatEndingDetector 计算
 
+        # === 新增：威胁检测 ===
+        # Create threat profiler and analyze enemy threat level
+        self.threat_profiler = EnemyThreatProfiler()
+        self.threat_category = self.threat_profiler.analyze_threat(self.monsters_alive)
+
+        # Convenience property: is this an elite/scaling fight?
+        self.is_elite_fight = self.threat_category in [ThreatCategory.ELITE, ThreatCategory.SCALING]
+
     def _calculate_incoming_damage(self) -> int:
         """Calculate total incoming damage from all monsters.
 
@@ -616,3 +624,133 @@ class StateEvaluator(DecisionEngine):
             Win probability 0-1
         """
         return self.evaluate_state(context)
+
+
+from enum import Enum
+
+
+class ThreatCategory(Enum):
+    """
+    Threat level of enemies in combat.
+
+    Used to select appropriate combat mode (aggressive vs balanced).
+    """
+    REGULAR = 0       # Normal hallway fights
+    ELITE = 1         # Act 1/2/3 elites
+    BOSS = 2          # Act bosses
+    SCALING = 3       # Enemies with dangerous scaling (strength gain, multihit)
+    HIGH_DEFENSE = 4  # Enemies with high block/armor
+
+
+class EnemyThreatProfiler:
+    """
+    Analyzes enemy composition and determines threat category.
+
+    Detects elite fights, scaling mechanics, and multi-enemy combos
+    to trigger appropriate combat mode selection.
+    """
+
+    # Elite monster names for detection (case-insensitive substring match)
+    ELITE_NAMES = [
+        'Gremlin Nob',
+        'Slaver',
+        'Sentry',
+        'The Guardian',
+        'Gremlin Leader',
+        'Hexaghost',
+        'Reptomancer',
+        'The Collector',
+        'The Champ',
+        'The Automatron',
+        'The Ascender',
+        'The Shield',
+        'The Spire'
+    ]
+
+    def __init__(self):
+        """Initialize the threat profiler."""
+        self._cached_threat = None
+        self._cached_monsters = None
+
+    def analyze_threat(self, monsters: List[Monster]) -> ThreatCategory:
+        """
+        Analyze enemy composition and determine threat category.
+
+        Args:
+            monsters: List of monsters in current combat
+
+        Returns:
+            ThreatCategory indicating the threat level
+        """
+        # Check cache to avoid redundant computation
+        monster_key = tuple(id(m) for m in monsters)
+        if self._cached_threat is not None and self._cached_monsters == monster_key:
+            return self._cached_threat
+
+        threat = self._do_analyze_threat(monsters)
+
+        # Cache result
+        self._cached_threat = threat
+        self._cached_monsters = monster_key
+
+        return threat
+
+    def _do_analyze_threat(self, monsters: List[Monster]) -> ThreatCategory:
+        """Internal threat analysis logic."""
+
+        if not monsters:
+            return ThreatCategory.REGULAR
+
+        # 1. Check for elites by name
+        for monster in monsters:
+            if self._is_elite_by_name(monster):
+                return ThreatCategory.ELITE
+
+        # 2. Check for scaling mechanics (powers)
+        for monster in monsters:
+            if self._has_scaling_power(monster):
+                return ThreatCategory.SCALING
+
+        # 3. Check for multi-enemy combos (3+ monsters)
+        if len(monsters) >= 3:
+            return ThreatCategory.SCALING
+
+        # 4. Default to regular
+        return ThreatCategory.REGULAR
+
+    def _is_elite_by_name(self, monster: Monster) -> bool:
+        """Check if monster is an elite based on name."""
+        if not hasattr(monster, 'name'):
+            return False
+
+        name = monster.name.lower()
+
+        for elite_name in self.ELITE_NAMES:
+            if elite_name.lower() in name:
+                return True
+
+        return False
+
+    def _has_scaling_power(self, monster: Monster) -> bool:
+        """Check if monster has dangerous scaling powers."""
+        if not hasattr(monster, 'powers'):
+            return False
+
+        if not monster.powers:
+            return False
+
+        # Check power names for scaling indicators
+        scaling_keywords = ['strength', 'ritual', 'thorns', 'anger', 'enrage']
+        for power in monster.powers:
+            if hasattr(power, 'name'):
+                power_name = power.name.lower()
+                for keyword in scaling_keywords:
+                    if keyword in power_name:
+                        return True
+
+        return False
+
+    def clear_cache(self):
+        """Clear cached threat analysis (call when combat changes)."""
+        self._cached_threat = None
+        self._cached_monsters = None

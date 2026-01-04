@@ -78,6 +78,84 @@ TIMEOUT_BUDGET = 0.15  # Seconds (150ms budget for beam search) - increased from
 
 
 # =============================================================================
+# COMBAT MODE CONFIGURATION
+# =============================================================================
+
+from enum import Enum
+
+
+class CombatMode(Enum):
+    """
+    Combat mode determines the aggression level of the AI.
+
+    Each mode has different weight profiles for scoring combat actions.
+    """
+    BALANCED = 0          # Standard balanced play (original weights)
+    AGGRESSIVE = 1        # Elite/scaling fights (maximize damage)
+    SEMI_AGGRESSIVE = 2   # Boss fights (damage-focused but balanced)
+
+
+# Combat mode weight profiles
+COMBAT_MODE_WEIGHTS = {
+    CombatMode.BALANCED: {
+        'DAMAGE_WEIGHT': 2.0,
+        'BLOCK_WEIGHT': 1.5,
+        'W_DEATHRISK': 8.0,
+        'KILL_BONUS': 100,
+        'ENERGY_EFFICIENCY_WEIGHT': 3.0,
+    },
+    CombatMode.AGGRESSIVE: {
+        'DAMAGE_WEIGHT': 5.0,        # +150% damage priority
+        'BLOCK_WEIGHT': 0.5,         # -67% block priority
+        'W_DEATHRISK': 4.0,          # -50% survival penalty
+        'KILL_BONUS': 200,           # +100% kill bonus
+        'ENERGY_EFFICIENCY_WEIGHT': 5.0,  # +67% energy efficiency
+    },
+    CombatMode.SEMI_AGGRESSIVE: {
+        'DAMAGE_WEIGHT': 3.5,        # +75% damage priority
+        'BLOCK_WEIGHT': 1.0,         # -33% block priority
+        'W_DEATHRISK': 6.0,          # -25% survival penalty
+        'KILL_BONUS': 150,           # +50% kill bonus
+        'ENERGY_EFFICIENCY_WEIGHT': 4.0,  # +33% energy efficiency
+    },
+}
+
+
+def get_combat_mode_weights(mode: CombatMode) -> dict:
+    """
+    Get weight profile for a combat mode.
+
+    Args:
+        mode: The combat mode
+
+    Returns:
+        Dictionary of weight names to values
+    """
+    return COMBAT_MODE_WEIGHTS.get(mode, COMBAT_MODE_WEIGHTS[CombatMode.BALANCED]).copy()
+
+
+def select_combat_mode(threat_category) -> CombatMode:
+    """
+    Select appropriate combat mode based on enemy threat category.
+
+    Args:
+        threat_category: ThreatCategory from EnemyThreatProfiler
+
+    Returns:
+        CombatMode to use for this fight
+    """
+    # Import here to avoid circular dependency
+    from spirecomm.ai.decision.base import ThreatCategory
+
+    if threat_category in [ThreatCategory.ELITE, ThreatCategory.SCALING]:
+        return CombatMode.AGGRESSIVE
+    elif threat_category == ThreatCategory.BOSS:
+        return CombatMode.SEMI_AGGRESSIVE
+    else:
+        return CombatMode.BALANCED
+
+
+# =============================================================================
 # END CONFIGURATION
 # =============================================================================
 
@@ -548,7 +626,8 @@ class FastCombatSimulator:
 
         return total_damage
 
-    def calculate_outcome_score(self, initial_state: SimulationState, final_state: SimulationState, current_act: int = 1) -> float:
+    def calculate_outcome_score(self, initial_state: SimulationState, final_state: SimulationState,
+                               current_act: int = 1, weights: dict = None) -> float:
         """
         Calculate the quality of a combat outcome.
 
@@ -562,30 +641,42 @@ class FastCombatSimulator:
         Args:
             initial_state: State before actions
             final_state: State after actions
+            current_act: Current act number (1, 2, 3)
+            weights: Combat mode weight profile (uses defaults if None)
 
         Returns:
             Outcome score
         """
+        # Use default weights if none provided (backward compatibility)
+        if weights is None:
+            weights = {
+                'KILL_BONUS': KILL_BONUS,
+                'DAMAGE_WEIGHT': DAMAGE_WEIGHT,
+                'BLOCK_WEIGHT': BLOCK_WEIGHT,
+                'ENERGY_EFFICIENCY_WEIGHT': ENERGY_EFFICIENCY_WEIGHT,
+                'W_DEATHRISK': W_DEATHRISK,
+            }
+
         score = 0.0
 
         # 1. Monsters killed (high priority)
         initial_alive = sum(1 for m in initial_state.monsters if not m['is_gone'])
         final_alive = sum(1 for m in final_state.monsters if not m['is_gone'])
         kills = initial_alive - final_alive
-        score += kills * KILL_BONUS
+        score += kills * weights['KILL_BONUS']
 
         # 2. Damage dealt
         total_damage = sum(m['hp'] for m in initial_state.monsters) - \
                       sum(m['hp'] for m in final_state.monsters)
-        score += total_damage * DAMAGE_WEIGHT
+        score += total_damage * weights['DAMAGE_WEIGHT']
 
         # 3. Block gained (defensive value)
         block_gained = final_state.player_block - initial_state.player_block
-        score += block_gained * BLOCK_WEIGHT
+        score += block_gained * weights['BLOCK_WEIGHT']
 
         # 4. Energy efficiency (prefer using most energy)
         energy_used = initial_state.player_energy - final_state.player_energy
-        score += energy_used * ENERGY_EFFICIENCY_WEIGHT
+        score += energy_used * weights['ENERGY_EFFICIENCY_WEIGHT']
 
         # 5. HP preserved (very important)
         hp_lost = initial_state.player_hp - final_state.player_hp
@@ -620,7 +711,7 @@ class FastCombatSimulator:
             return float('-inf')
 
         # Survival penalty (weighted heavily)
-        score -= hp_loss_next_turn * W_DEATHRISK
+        score -= hp_loss_next_turn * weights['W_DEATHRISK']
 
         # Danger threshold penalty (act-dependent)
         danger_threshold = 15 + (current_act * 5)  # Act 1: 20, Act 2: 25, Act 3: 30
@@ -650,7 +741,8 @@ class HeuristicCombatPlanner(CombatPlanner):
     """
 
     def __init__(self, card_evaluator: SynergyCardEvaluator = None,
-                 beam_width: int = 10, max_depth: int = 4, player_class: str = None, act: int = 1):
+                 beam_width: int = 10, max_depth: int = 4, player_class: str = None, act: int = 1,
+                 combat_mode: CombatMode = CombatMode.BALANCED):
         """
         Initialize the combat planner.
 
@@ -660,9 +752,17 @@ class HeuristicCombatPlanner(CombatPlanner):
             max_depth: Maximum number of cards to lookahead
             player_class: Player class for class-specific logic
             act: Current act number (1, 2, 3) for adaptive beam width
+            combat_mode: Combat mode (BALANCED, AGGRESSIVE, SEMI_AGGRESSIVE)
         """
         self.card_evaluator = card_evaluator or SynergyCardEvaluator()
         self.simulator = FastCombatSimulator(self.card_evaluator)
+
+        # Store combat mode and get weight profile
+        self.combat_mode = combat_mode
+        self.weights = get_combat_mode_weights(combat_mode)
+
+        # Log mode selection for debugging
+        logger.info(f"[COMBAT_MODE] Using {combat_mode.name} mode - DAMAGE={self.weights['DAMAGE_WEIGHT']}, BLOCK={self.weights['BLOCK_WEIGHT']}")
 
         # Adaptive beam width by act (if act provided)
         if act and beam_width == 10:  # Use adaptive if default and act known
@@ -868,7 +968,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
                         # Score this sequence (with small conservation penalty for using potion)
                         current_act = context.act if hasattr(context, 'act') else 1
-                        score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act)
+                        score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act, self.weights)
                         total_score = score - 5  # Conservation penalty
 
                         new_candidates.append((new_sequence, new_state, energy_spent, total_score))
@@ -894,7 +994,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
                         # Score this sequence (with current act for survival threshold)
                         current_act = context.act if hasattr(context, 'act') else 1
-                        score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act)
+                        score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act, self.weights)
 
                         # Consider card value from evaluator
                         card_value = self.card_evaluator.evaluate_card(card, context)
