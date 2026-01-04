@@ -219,6 +219,16 @@ if __name__ == "__main__":
 
                     # Record game over state
                     if hasattr(coordinator, 'last_game_state') and coordinator.last_game_state is not None:
+                        # Fix: Check if agent died in combat and end combat wasn't recorded
+                        if hasattr(agent, '_in_combat') and agent._in_combat:
+                            game_state = coordinator.last_game_state
+                            agent.game_tracker.end_combat(
+                                hp_remaining=game_state.current_hp if hasattr(game_state, 'current_hp') else 0,
+                                max_hp=game_state.max_hp if hasattr(game_state, 'max_hp') else 80
+                            )
+                            agent._in_combat = False
+                            logging.debug("  Recorded combat end (died in combat)")
+
                         agent.game_tracker.record_game_over(result, coordinator.last_game_state)
                         logging.debug("  Recorded game over via last_game_state")
                     else:
