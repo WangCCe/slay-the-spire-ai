@@ -172,6 +172,7 @@ class SimulationState:
         """Initialize simulation state from decision context."""
         # Player state
         self.player_hp = context.game.current_hp
+        self.player_max_hp = context.game.max_hp
         self.player_block = context.game.player.block if hasattr(context.game.player, 'block') else 0
         self.player_energy = context.energy_available
         self.player_strength = context.strength
@@ -235,6 +236,7 @@ class SimulationState:
         """Create a deep copy of this state."""
         new_state = SimulationState.__new__(SimulationState)
         new_state.player_hp = self.player_hp
+        new_state.player_max_hp = self.player_max_hp
         new_state.player_block = self.player_block
         new_state.player_energy = self.player_energy
         new_state.player_strength = self.player_strength
