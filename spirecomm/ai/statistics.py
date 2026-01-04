@@ -54,7 +54,11 @@ def get_ai_version() -> str:
     #   - 3 Sentries: Single-target focus bonus (+50 for 70%+ concentration)
     #   - Slime Boss: AOE priority (×1.5 multiplier for Cleave/Thunderclap/Whirlwind/Immolate)
     #   - A20 early aggression: Turn 1 (8+ dmg), Turn 2 (15+ dmg), Turn 3+ (12+/turn average)
-    return "3.4.0-unified-elite-strategies"
+    # Version 3.4.1: Critical bug fix - Preserve IroncladCombatPlanner during combat mode switches
+    #   - Fixed agent.py overwriting IroncladCombatPlanner with HeuristicCombatPlanner
+    #   - Elite strategies (Gremlin Nob, Lagavulin, 3 Sentries, Slime Boss) now active
+    #   - Added combat_mode parameter to IroncladCombatPlanner
+    return "3.4.1-fix-elite-planner-override"
 
 
 def get_git_commit() -> str:
