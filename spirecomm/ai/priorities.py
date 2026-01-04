@@ -1032,6 +1032,15 @@ class IroncladPriority(Priority):
         "Calling Bell",
     ]
 
+    # Don't fight early Act 1 elites - build power first (A20 expert consensus)
+    # Priorities: Rest > Shop ≈ Event > Monster >>> Elite (early game)
+    # Only consider elites late Act 1 or when HP is high enough to survive.
+    MAP_NODE_PRIORITIES_1 = {'R': 600, 'E': -100, '$': 85, '?': 85, 'M': 60, 'T': 0}
+
+    MAP_NODE_PRIORITIES_2 = {'R': 100, 'E': -1000, '$': 10, '?': 10, 'M': 1, 'T': 0}
+
+    MAP_NODE_PRIORITIES_3 = {'R': 1000, 'E': 10, '$': 100, '?': 100, 'M': 1, 'T': 0}
+
 
 class DefectPowerPriority(Priority):
 
@@ -1400,12 +1409,3 @@ class DefectPowerPriority(Priority):
         "Pride",
         "Normality",
     ]
-
-    # Don't fight early Act 1 elites - build power first (A20 expert consensus)
-    # Priorities: Rest >> Shop ≈ Event > Monster >>> Elite (early game)
-    # Only consider elites late Act 1 or when HP is high enough to survive.
-    MAP_NODE_PRIORITIES_1 = {'R': 1000, 'E': -10, '$': 85, '?': 85, 'M': 60, 'T': 0}
-
-    MAP_NODE_PRIORITIES_2 = {'R': 100, 'E': -1000, '$': 10, '?': 10, 'M': 1, 'T': 0}
-
-    MAP_NODE_PRIORITIES_3 = {'R': 1000, 'E': 10, '$': 100, '?': 100, 'M': 1, 'T': 0}
