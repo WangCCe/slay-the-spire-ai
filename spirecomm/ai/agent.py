@@ -456,6 +456,13 @@ class SimpleAgent:
 
     def generate_map_route(self):
         context = DecisionContext(self.game) if DecisionContext is not None else None
+
+        # Log current state
+        hp_pct = context.player_hp_pct if context else 0
+        act = self.game.act if hasattr(self.game, 'act') else 1
+        floor = self.game.floor if hasattr(self.game, 'floor') else 0
+        logging.info(f"[MAP_ROUTING] Generating route: Act={act}, Floor={floor}, HP={hp_pct:.1%}, Class={self.chosen_class}\n")
+
         best_rewards = {
             0: {
                 node.x: self._calculate_map_node_priority(node, context)
@@ -465,6 +472,7 @@ class SimpleAgent:
         best_parents = {0: {node.x: 0 for node in self.game.map.nodes[0].values()}}
         map_height = max(self.game.map.nodes.keys())
         min_reward = -10**9
+
         for y in range(0, map_height):
             best_rewards[y+1] = {node.x: min_reward * 20 for node in self.game.map.nodes[y+1].values()}
             best_parents[y+1] = {node.x: -1 for node in self.game.map.nodes[y+1].values()}
@@ -472,15 +480,29 @@ class SimpleAgent:
                 node = self.game.map.get_node(x, y)
                 best_node_reward = best_rewards[y][x]
                 for child in node.children:
-                    test_child_reward = best_node_reward + self._calculate_map_node_priority(child, context)
+                    child_priority = self._calculate_map_node_priority(child, context)
+                    test_child_reward = best_node_reward + child_priority
                     if test_child_reward > best_rewards[y+1][child.x]:
                         best_rewards[y+1][child.x] = test_child_reward
                         best_parents[y+1][child.x] = node.x
+
+                    # Log node evaluation (first few floors)
+                    if y < 5:
+                        logging.info(f"[MAP_ROUTING] Floor {y+1}: node({child.x},{child.y}) symbol={child.symbol} priority={child_priority} total_reward={test_child_reward}\n")
+
         best_path = [0] * (map_height + 1)
         best_path[map_height] = max(best_rewards[map_height].keys(), key=lambda x: best_rewards[map_height][x])
         for y in range(map_height, 0, -1):
             best_path[y - 1] = best_parents[y][best_path[y]]
         self.map_route = best_path
+
+        # Log chosen path
+        path_summary = []
+        for y in range(len(best_path)):
+            node = self.game.map.get_node(best_path[y], y)
+            if node:
+                path_summary.append(f"{y}:{node.symbol}")
+        logging.info(f"[MAP_ROUTING] Chosen path: {' -> '.join(path_summary)}\n")
 
     def _calculate_map_node_priority(self, node, context):
         if self.map_router is None or context is None:

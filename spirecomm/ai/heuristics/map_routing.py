@@ -69,38 +69,31 @@ class AdaptiveMapRouter:
         return base_priority
 
     def _adjust_act_1_priority(self, symbol: str, base: int, hp_pct: float, floor: int) -> int:
-        """Act 1 priorities - adjusted for A20 difficulty, less aggressive early on."""
-        # Ironclad is strongest in Act 1 (Burning Blood healing), but adjusted for A20
+        """Act 1 priorities - Ironclad prioritizes upgrades and avoids elites."""
+        # Ironclad prioritizes rest sites for card upgrades, avoids elites consistently
         if self.player_class == 'IRONCLAD':
             if symbol == 'E':  # Elite
-                # More cautious in early Act 1 (floors 1-5)
+                # Consistently avoid elites regardless of floor or HP
+                # Prioritize building deck strength through upgrades first
                 if floor <= 5:
-                    # Avoid elites entirely in first 5 floors
-                    return base - 300  # Too risky early (increased penalty from -200)
+                    return base - 300  # Too risky early game
                 elif floor <= 10:
-                    # Moderate caution for mid Act 1 - much more conservative
-                    if hp_pct > 0.85:
-                        return base - 50  # Even when very healthy, avoid (was +100)
-                    elif hp_pct > 0.7:
-                        return base - 100  # Cautious (was +50)
-                    else:
-                        return base - 200  # Too risky (was -100)
+                    return base - 150  # Still very cautious mid Act 1
                 else:
-                    # Late Act 1, still avoid elites unless very healthy
+                    # Even late Act 1, only slight consideration when very healthy
                     if hp_pct > 0.85:
-                        return base + 20  # Only consider when very healthy (was +150)
-                    elif hp_pct > 0.7:
-                        return base - 50  # Still cautious (was +50)
+                        return base - 20  # Slightly less penalty when very healthy
                     else:
-                        return base - 150  # Too risky (was -50)
+                        return base - 100  # Avoid by default
 
             elif symbol == 'R':  # Rest
+                # Prioritize rest sites for card upgrades even when healthy
                 if hp_pct > 0.75:
-                    return base - 50  # Don't need rest (reduced from -100)
+                    return base + 50  # Worth it for upgrades (was -50)
                 elif hp_pct < 0.4:
-                    return base + 300  # Urgent
+                    return base + 300  # Urgent healing
                 else:
-                    return base  # Neutral
+                    return base + 100  # Generally good for upgrades
 
         # Silent can also be aggressive with poison, adjusted for A20
         elif self.player_class == 'THE_SILENT':
