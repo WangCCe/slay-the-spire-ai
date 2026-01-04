@@ -14,6 +14,9 @@ from spirecomm.ai.priorities import *
 # Note: Logging is configured in main.py to write to ai_debug.log
 # No need to configure here
 
+# Get logger for this module
+logger = logging.getLogger(__name__)
+
 # Import optimized AI components
 try:
     from spirecomm.ai.decision.base import DecisionContext
@@ -694,6 +697,13 @@ class OptimizedAgent(SimpleAgent):
             if self.use_optimized_combat and self.combat_planner and OPTIMIZED_AI_AVAILABLE:
                 return self._get_optimized_play_card_action()
             else:
+                # Log why we're falling back
+                if not self.use_optimized_combat:
+                    logger.warning("[OPTIMIZED_AI] use_optimized_combat is False")
+                elif not self.combat_planner:
+                    logger.warning("[OPTIMIZED_AI] combat_planner is None")
+                elif not OPTIMIZED_AI_AVAILABLE:
+                    logger.warning("[OPTIMIZED_AI] OPTIMIZED_AI_AVAILABLE is False")
                 # Fall back to SimpleAgent logic
                 return super().get_play_card_action()
         except Exception as e:
@@ -702,6 +712,7 @@ class OptimizedAgent(SimpleAgent):
             print(f"Error in optimized combat: {e}", file=sys.stderr)
             import traceback
             traceback.print_exc(file=sys.stderr)
+            logger.error(f"[OPTIMIZED_AI] Exception: {e}")
             return super().get_play_card_action()
 
     def _get_optimized_play_card_action(self):
