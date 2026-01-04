@@ -46,47 +46,62 @@ class CombatEndingDetector:
         Returns:
             True if lethal is possible
         """
-        if not context.monsters_alive:
-            return True
+        try:
+            logger.info("[LETHAL_ENTRY] can_kill_all() called")
 
-        # Step 1: Calculate affordable damage (respecting energy constraints)
-        affordable_damage = self._calculate_affordable_damage(context)
+            if not context.monsters_alive:
+                logger.info("[LETHAL_ENTRY] No monsters alive, returning True")
+                return True
 
-        # Step 2: Calculate total monster HP (including block)
-        total_monster_hp = sum(m.current_hp + m.block for m in context.monsters_alive)
+            logger.info(f"[LETHAL_ENTRY] {len(context.monsters_alive)} monsters, {len(context.playable_cards)} cards")
 
-        # Step 3: Check with reduced margin (10% instead of 20%)
-        margin_multiplier = 1.1
-        has_damage_potential = affordable_damage >= total_monster_hp * margin_multiplier
+            # Step 1: Calculate affordable damage (respecting energy constraints)
+            logger.info("[LETHAL_ENTRY] About to calculate affordable damage...")
+            affordable_damage = self._calculate_affordable_damage(context)
+            logger.info(f"[LETHAL_ENTRY] Affordable damage calculated: {affordable_damage}")
 
-        # Step 4: Validate targeting (single-target vs AOE constraints)
-        targeting_feasible = self._can_target_all_monsters(context, affordable_damage)
+            # Step 2: Calculate total monster HP (including block)
+            total_monster_hp = sum(m.current_hp + m.block for m in context.monsters_alive)
 
-        # Step 5: HP safety check (only go for lethal if not too risky)
-        hp_safe = context.player_hp > 30 or context.player_hp_pct > 0.3
+            # Step 3: Check with reduced margin (10% instead of 20%)
+            margin_multiplier = 1.1
+            has_damage_potential = affordable_damage >= total_monster_hp * margin_multiplier
 
-        # Log detection results
-        logger.info(f"[LETHAL_DETECTION] affordable_damage={affordable_damage}, "
-                   f"total_monster_hp={total_monster_hp}, margin_ok={has_damage_potential}, "
-                   f"targeting_ok={targeting_feasible}, hp_safe={hp_safe}, "
-                   f"player_hp={context.player_hp}, player_hp_pct={context.player_hp_pct:.2f}")
+            # Step 4: Validate targeting (single-target vs AOE constraints)
+            targeting_feasible = self._can_target_all_monsters(context, affordable_damage)
 
-        # Final decision
-        lethal_detected = has_damage_potential and targeting_feasible and hp_safe
+            # Step 5: HP safety check (only go for lethal if not too risky)
+            hp_safe = context.player_hp > 30 or context.player_hp_pct > 0.3
 
-        if lethal_detected:
-            logger.info(f"[LETHAL_DETECTION] LETHAL DETECTED! All checks passed")
-        else:
-            reasons = []
-            if not has_damage_potential:
-                reasons.append(f"Insufficient damage ({affordable_damage} < {int(total_monster_hp * margin_multiplier)} with 10% margin)")
-            if not targeting_feasible:
-                reasons.append("Targeting constraints prevent lethal")
-            if not hp_safe:
-                reasons.append(f"HP too low for risky lethal ({context.player_hp} HP, {context.player_hp_pct:.1%})")
-            logger.info(f"[LETHAL_DETECTION] No lethal. Reason: {'; '.join(reasons)}")
+            # Log detection results
+            logger.info(f"[LETHAL_DETECTION] affordable_damage={affordable_damage}, "
+                       f"total_monster_hp={total_monster_hp}, margin_ok={has_damage_potential}, "
+                       f"targeting_ok={targeting_feasible}, hp_safe={hp_safe}, "
+                       f"player_hp={context.player_hp}, player_hp_pct={context.player_hp_pct:.2f}")
 
-        return lethal_detected
+            # Final decision
+            lethal_detected = has_damage_potential and targeting_feasible and hp_safe
+
+            if lethal_detected:
+                logger.info(f"[LETHAL_DETECTION] LETHAL DETECTED! All checks passed")
+            else:
+                reasons = []
+                if not has_damage_potential:
+                    reasons.append(f"Insufficient damage ({affordable_damage} < {int(total_monster_hp * margin_multiplier)} with 10% margin)")
+                if not targeting_feasible:
+                    reasons.append("Targeting constraints prevent lethal")
+                if not hp_safe:
+                    reasons.append(f"HP too low for risky lethal ({context.player_hp} HP, {context.player_hp_pct:.1%})")
+                logger.info(f"[LETHAL_DETECTION] No lethal. Reason: {'; '.join(reasons)}")
+
+            return lethal_detected
+
+        except Exception as e:
+            import traceback
+            logger.error(f"[LETHAL_ERROR] Exception in can_kill_all: {e}")
+            logger.error(f"[LETHAL_ERROR] Traceback: {traceback.format_exc()}")
+            # On error, assume no lethal
+            return False
 
     def find_lethal_sequence(self, context: DecisionContext) -> List[PlayCardAction]:
         """

@@ -72,7 +72,11 @@ def get_ai_version() -> str:
     #   - Added logs before/after lethal check
     #   - Added logs before _get_adaptive_parameters()
     #   - Will find why "Beam search" log never appears
-    return "3.4.5-debug-plan-turn"
+    # Version 3.4.6: Add exception handling to can_kill_all()
+    #   - Added try-catch to catch and log exceptions
+    #   - Added [LETHAL_ENTRY] logs to trace execution
+    #   - Will reveal what's blocking lethal detection
+    return "3.4.6-debug-lethal-exception"
 
 
 def get_git_commit() -> str:
