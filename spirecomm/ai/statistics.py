@@ -76,7 +76,11 @@ def get_ai_version() -> str:
     #   - Added try-catch to catch and log exceptions
     #   - Added [LETHAL_ENTRY] logs to trace execution
     #   - Will reveal what's blocking lethal detection
-    return "3.4.6-debug-lethal-exception"
+    # Version 3.4.7: Fix missing player_hp attribute in DecisionContext
+    #   - Added player_hp and player_max_hp to DecisionContext
+    #   - Fixed AttributeError: 'DecisionContext' object has no attribute 'player_hp'
+    #   - Added warning log if HP attributes are missing
+    return "3.4.7-fix-player-hp"
 
 
 def get_git_commit() -> str:

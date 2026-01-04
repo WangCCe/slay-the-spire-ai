@@ -40,8 +40,15 @@ class DecisionContext:
         
         # Player stats - check if player exists
         if hasattr(game, 'current_hp') and hasattr(game, 'max_hp') and game.max_hp > 0:
+            self.player_hp = game.current_hp
+            self.player_max_hp = game.max_hp
             self.player_hp_pct = max(0, game.current_hp / max(game.max_hp, 1))
         else:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning("[DecisionContext] Game missing HP attributes, using defaults")
+            self.player_hp = 80  # Default HP
+            self.player_max_hp = 80
             self.player_hp_pct = 1.0  # Default to full HP
 
         if hasattr(game, 'player') and game.player is not None:
