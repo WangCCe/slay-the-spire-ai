@@ -47,7 +47,8 @@ def get_ai_version() -> str:
     # Version 3.2.2: Added penalty for useless defense when monsters aren't attacking
     # Version 3.2.3: Fix incoming_damage to respect monster intents (skip DEBUG/DEFEND/BUFF intents)
     # Version 3.2.4: Reduce defense scoring weight from 5 to 2 (attack is better than defense)
-    return "3.2.4-reduce-defense-weight"
+    # Version 3.3.0: Implement aggressive combat mode for elite/scaling fights (threat detection, AGGRESSIVE mode)
+    return "3.3.0-aggressive-elite-combat"
 
 
 def get_git_commit() -> str:
