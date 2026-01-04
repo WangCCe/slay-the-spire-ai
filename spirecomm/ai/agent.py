@@ -1082,7 +1082,8 @@ class OptimizedAgent(SimpleAgent):
                 pickable_cards = reward_cards
 
             if not pickable_cards:
-                if self.game.screen.can_bowl:
+                # Only use bowl when not in combat (bowl is for post-combat rewards only)
+                if self.game.screen.can_bowl and not self.game.in_combat:
                     return CardRewardAction(bowl=True)
                 else:
                     self.skipped_cards = True
@@ -1122,7 +1123,8 @@ class OptimizedAgent(SimpleAgent):
 
                     if not pickable_cards:
                         # No other cards worth taking
-                        if self.game.screen.can_bowl:
+                        # Only use bowl when not in combat
+                        if self.game.screen.can_bowl and not self.game.in_combat:
                             return CardRewardAction(bowl=True)
                         else:
                             return CancelAction()
@@ -1159,7 +1161,8 @@ class OptimizedAgent(SimpleAgent):
                 else:
                     # No good cards - skip to keep deck lean
                     logging.info(f"[REWARD] Deck too large ({deck_size}) and no good cards (score >= 65) - skipping\n")
-                    if self.game.screen.can_bowl:
+                    # Only use bowl when not in combat
+                    if self.game.screen.can_bowl and not self.game.in_combat:
                         return CardRewardAction(bowl=True)
                     else:
                         self.skipped_cards = True

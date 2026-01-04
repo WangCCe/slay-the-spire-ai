@@ -920,7 +920,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
                 # Stage 1: FastScore filter - lightweight scoring without simulation
                 scored_actions = [
-                    (card, card_idx, cost, self.fast_score_action(card, state, context))
+                    (card_idx, card, cost, self.fast_score_action(card, state, context))
                     for card, card_idx, cost in playable_actions
                 ]
 
@@ -937,12 +937,12 @@ class HeuristicCombatPlanner(CombatPlanner):
                 M = M_VALUES[min(depth, len(M_VALUES) - 1)]
 
                 # Only full-simulate top M actions
-                for action_info, card_or_potion, cost, _ in scored_actions[:M]:
-                    # Check if this is a potion action
-                    if isinstance(action_info, tuple) and action_info[0] == 'potion':
+                for card_idx, card, cost, _ in scored_actions[:M]:
+                    # Check if this is a potion action (card_idx is a tuple marker for potions)
+                    if isinstance(card_idx, tuple) and card_idx[0] == 'potion':
                         # Handle potion action
                         from spirecomm.communication.action import PotionAction
-                        _, potion, target = action_info
+                        _, potion, target = card_idx
 
                         # Simulate potion use (simplified simulation for now)
                         new_state = copy.deepcopy(state)
@@ -976,8 +976,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                         new_candidates.append((new_sequence, new_state, energy_spent, total_score))
                     else:
                         # Handle card action (original logic)
-                        card = card_or_potion
-                        card_idx = action_info  # For cards, action_info is the card_idx
+                        # card_idx is the card index, card is the Card object
 
                         # Determine target
                         target = self._find_best_target(card, context) if card.has_target else None
