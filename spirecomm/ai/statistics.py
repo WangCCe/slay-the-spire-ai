@@ -58,7 +58,11 @@ def get_ai_version() -> str:
     #   - Fixed agent.py overwriting IroncladCombatPlanner with HeuristicCombatPlanner
     #   - Elite strategies (Gremlin Nob, Lagavulin, 3 Sentries, Slime Boss) now active
     #   - Added combat_mode parameter to IroncladCombatPlanner
-    return "3.4.1-fix-elite-planner-override"
+    # Version 3.4.2: Add diagnostic logging for OptimizedAI fallback
+    #   - Added logger to agent.py
+    #   - Added warnings to identify why OptimizedAI falls back to SimpleAgent
+    #   - Will show: use_optimized_combat, combat_planner, or OPTIMIZED_AI_AVAILABLE issues
+    return "3.4.2-debug-optimized-fallback"
 
 
 def get_git_commit() -> str:
