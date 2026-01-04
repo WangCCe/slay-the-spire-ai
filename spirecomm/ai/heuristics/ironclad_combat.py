@@ -18,7 +18,7 @@ from .simulation import CombatPlanner, SimulationState, FastCombatSimulator
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
-from spirecomm.spire.card import Card
+from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster
 from spirecomm.communication.action import Action, PlayCardAction
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
@@ -377,6 +377,13 @@ class IroncladCombatPlanner(CombatPlanner):
             if isinstance(action, PlayCardAction):
                 card = action.card
                 card_id = card.card_id
+
+                # Gremlin Nob SKILL penalty: playing SKILL cards gives Nob +1 Strength
+                # This heavily penalizes SKILL cards to discourage triggering Nob's passive
+                if has_gremlin_nob and hasattr(card, 'type'):
+                    if card.type == CardType.SKILL:
+                        score -= 50
+                        logger.info(f"[SKILL_PENALTY] Applied -50 for {card.card_id} (SKILL) against Gremlin Nob")
 
                 # Powers are valuable early
                 if card_id == 'Demon Form' and context.turn <= 3:

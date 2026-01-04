@@ -48,7 +48,8 @@ def get_ai_version() -> str:
     # Version 3.2.3: Fix incoming_damage to respect monster intents (skip DEBUG/DEFEND/BUFF intents)
     # Version 3.2.4: Reduce defense scoring weight from 5 to 2 (attack is better than defense)
     # Version 3.3.0: Implement aggressive combat mode for elite/scaling fights (threat detection, AGGRESSIVE mode)
-    return "3.3.0-aggressive-elite-combat"
+    # Version 3.3.1: Add SKILL card penalty against Gremlin Nob (-50 per SKILL to prevent Nob's Strength gain)
+    return "3.3.1-gremlin-skill-penalty"
 
 
 def get_git_commit() -> str:
