@@ -65,7 +65,10 @@ def get_ai_version() -> str:
     # Version 3.4.3: Debug monster_id vs monster.name mismatch
     #   - Added [ELITE_DEBUG] logs to show monster_ids and monster_names
     #   - Hypothesis: monster.monster_id != monster.name (e.g., "GremlinNob" vs "Gremlin Nob")
-    return "3.4.3-debug-monster-id"
+    # Version 3.4.4: Add entry logging to trace if _detect_elite_type is called
+    #   - Added [ELITE_ENTRY] and [SCORE_DEBUG] logs
+    #   - Will confirm if _detect_elite_type() is being called at all
+    return "3.4.4-debug-elite-entry"
 
 
 def get_git_commit() -> str:

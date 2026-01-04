@@ -330,6 +330,10 @@ class IroncladCombatPlanner(CombatPlanner):
         """
         score = 0.0
 
+        # DEBUG: Log when _score_sequence is called
+        if len(sequence) <= 1:
+            logger.info("[SCORE_DEBUG] _score_sequence called - will call _detect_elite_type")
+
         # Detect elite type for specialized strategies (A20 elite framework)
         elite_type = self._detect_elite_type(context)
 
@@ -722,7 +726,10 @@ class IroncladCombatPlanner(CombatPlanner):
         Returns:
             EliteType enum value indicating the elite type (or UNKNOWN)
         """
+        logger.info("[ELITE_ENTRY] _detect_elite_type called")
+
         if not context.monsters_alive:
+            logger.info("[ELITE_ENTRY] No monsters alive, returning UNKNOWN")
             return EliteType.UNKNOWN
 
         monster_ids = [m.monster_id for m in context.monsters_alive]
