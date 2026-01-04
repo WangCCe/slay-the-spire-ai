@@ -725,6 +725,27 @@ class OptimizedAgent(SimpleAgent):
 
             # 规划新序列（首次规划或缓存失效后）
             context = DecisionContext(self.game)
+
+            # === 新增：根据敌人威胁选择战斗模式 ===
+            # Import combat mode selector
+            from spirecomm.ai.heuristics.simulation import select_combat_mode, CombatMode
+            from spirecomm.ai.decision.base import ThreatCategory
+
+            # Select combat mode based on enemy threat
+            combat_mode = select_combat_mode(context.threat_category)
+
+            # Check if we need to recreate combat planner (mode changed)
+            if (not hasattr(self, '_current_combat_mode') or
+                self._current_combat_mode != combat_mode):
+                # Combat mode changed, recreate planner with new mode
+                self.combat_planner = HeuristicCombatPlanner(
+                    card_evaluator=self.card_evaluator,
+                    player_class=getattr(self, 'player_class', 'IRONCLAD'),
+                    act=context.act,
+                    combat_mode=combat_mode
+                )
+                self._current_combat_mode = combat_mode
+
             action_sequence = self.combat_planner.plan_turn(context)
 
             if action_sequence:
