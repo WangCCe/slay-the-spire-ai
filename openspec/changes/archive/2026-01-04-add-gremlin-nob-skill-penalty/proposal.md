@@ -21,6 +21,28 @@ Add card type-based scoring penalty for Gremlin Nob fights to discourage playing
 
 **Solution**: Add card type detection to penalize ALL SKILL cards (not just block-gaining ones), while preserving ATTACK and POWER cards.
 
+## What Changes
+
+### Code Changes
+
+1. **spirecomm/ai/heuristics/ironclad_combat.py**:
+   - Import `CardType` from `spirecomm.spire.card`
+   - Add SKILL penalty check in `_score_sequence()` card evaluation loop (lines 381-386)
+   - Apply -50 penalty for `CardType.SKILL` when `has_gremlin_nob` is True
+   - Log penalty application with `[SKILL_PENALTY]` tag
+
+2. **spirecomm/ai/statistics.py**:
+   - Bump version to `v3.3.1-gremlin-skill-penalty`
+   - Add version comment documenting the change
+
+### Spec Changes
+
+- **elite-aggressive-mode**: ADDED "Gremlin Nob SKILL Card Penalty" requirement
+  - Card type detection using `card.type == CardType.SKILL`
+  - -50 point penalty per SKILL card against Gremlin Nob
+  - Excludes POWER-type cards (auto-excluded by type check)
+  - Logging requirement for debugging
+
 ## Motivation
 
 Current implementation penalizes `block_gained` against Gremlin Nob (line 362 in ironclad_combat.py), but this misses the core issue:
