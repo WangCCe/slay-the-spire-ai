@@ -74,7 +74,7 @@ class GameTracker:
         self.decision_confidences: List[float] = []  # List of confidence scores
         self.fallback_count: int = 0
 
-    def start_combat(self, floor: int, act: int, room_type: str):
+    def start_combat(self, floor: int, act: int, room_type: str, start_turn: int = 0):
         """
         Record the start of a combat.
 
@@ -82,6 +82,7 @@ class GameTracker:
             floor: Current floor number
             act: Current act number
             room_type: Type of room ("monster", "elite", "boss")
+            start_turn: Current game turn when combat starts
         """
         self.current_combat = {
             'floor': floor,
@@ -89,22 +90,29 @@ class GameTracker:
             'room_type': room_type,
             'start_time': datetime.now(),
             'turns': 0,
+            'start_turn': start_turn,
             'hp_at_start': None,  # Will be filled later
             'hp_at_end': None,
             'decisions': 0
         }
 
-    def end_combat(self, hp_remaining: int, max_hp: int):
+    def end_combat(self, hp_remaining: int, max_hp: int, end_turn: int = None):
         """
         Record the end of current combat.
 
         Args:
             hp_remaining: Player HP after combat
             max_hp: Player max HP
+            end_turn: Current game turn when combat ends (if None, uses manual turn tracking)
         """
         if self.current_combat:
             self.current_combat['hp_at_end'] = hp_remaining
             self.current_combat['hp_at_start'] = max_hp  # Approximation
+
+            # Calculate turns from start_turn and end_turn if provided
+            if end_turn is not None and 'start_turn' in self.current_combat:
+                # Turns = end_turn - start_turn + 1 (first turn counts as 1)
+                self.current_combat['turns'] = max(1, end_turn - self.current_combat['start_turn'] + 1)
 
             # Track kills
             if self.current_combat['room_type'] == 'elite':
@@ -152,6 +160,11 @@ class GameTracker:
     def record_potion_use(self):
         """Record using a potion."""
         self.potions_used += 1
+
+    def record_turn(self):
+        """Record a turn in the current combat."""
+        if self.current_combat is not None:
+            self.current_combat['turns'] += 1
 
     def record_decision(self, decision_type: str, confidence: float, used_fallback: bool = False):
         """
