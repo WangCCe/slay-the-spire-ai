@@ -760,12 +760,21 @@ class OptimizedAgent(SimpleAgent):
             if (not hasattr(self, '_current_combat_mode') or
                 self._current_combat_mode != combat_mode):
                 # Combat mode changed, recreate planner with new mode
-                self.combat_planner = HeuristicCombatPlanner(
-                    card_evaluator=self.card_evaluator,
-                    player_class=getattr(self, 'player_class', 'IRONCLAD'),
-                    act=context.act,
-                    combat_mode=combat_mode
-                )
+                # IMPORTANT: Preserve class-specific planner (e.g., IroncladCombatPlanner)
+                player_class_str = getattr(self, 'player_class', 'IRONCLAD')
+                if player_class_str == 'IRONCLAD' and OPTIMIZED_AI_AVAILABLE:
+                    from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
+                    self.combat_planner = IroncladCombatPlanner(
+                        card_evaluator=self.card_evaluator,
+                        combat_mode=combat_mode
+                    )
+                else:
+                    self.combat_planner = HeuristicCombatPlanner(
+                        card_evaluator=self.card_evaluator,
+                        player_class=player_class_str,
+                        act=context.act,
+                        combat_mode=combat_mode
+                    )
                 self._current_combat_mode = combat_mode
 
             action_sequence = self.combat_planner.plan_turn(context)

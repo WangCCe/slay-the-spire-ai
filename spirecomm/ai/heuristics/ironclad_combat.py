@@ -47,7 +47,7 @@ class IroncladCombatPlanner(CombatPlanner):
     4. Ironclad-specific logic - Demon Form timing, Limit Break threshold, etc.
     """
 
-    def __init__(self, card_evaluator=None, beam_width=10, max_depth=5):
+    def __init__(self, card_evaluator=None, beam_width=10, max_depth=5, combat_mode=None):
         """
         Initialize Ironclad combat planner.
 
@@ -55,12 +55,14 @@ class IroncladCombatPlanner(CombatPlanner):
             card_evaluator: Card evaluator for fallback
             beam_width: Number of candidates to keep in beam search
             max_depth: Maximum depth for beam search
+            combat_mode: Optional combat mode (BALANCED/AGGRESSIVE/DEFENSIVE)
         """
         self.card_evaluator = card_evaluator or SynergyCardEvaluator()
         self.simulator = FastCombatSimulator(self.card_evaluator)
         self.beam_width = beam_width
         self.max_depth = max_depth
         self.combat_ending_detector = CombatEndingDetector()
+        self.combat_mode = combat_mode  # Store combat mode for reference
 
     def plan_turn(self, context: DecisionContext) -> List[Action]:
         """
