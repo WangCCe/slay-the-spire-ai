@@ -1,8 +1,51 @@
 import json
 import os
+import sys
+import platform
 from typing import Dict, List, Any
 import re
 from pathlib import Path
+
+
+def convert_windows_path_to_wsl(windows_path: str) -> str:
+    """
+    Convert Windows path to WSL path if running in WSL.
+
+    Examples:
+        D:\\path\\to\\file → /mnt/d/path/to/file
+        C:\\path\\to\\file → /mnt/c/path/to/file
+
+    Args:
+        windows_path: Windows-style path
+
+    Returns:
+        WSL-compatible path (or original path if not in WSL)
+    """
+    # Check if we're in WSL
+    is_wsl = sys.platform.startswith('linux') and os.path.exists('/proc/version')
+    if is_wsl:
+        try:
+            with open('/proc/version', 'r') as f:
+                version_info = f.read().lower()
+                is_wsl = 'microsoft' in version_info or 'wsl' in version_info
+        except:
+            is_wsl = False
+
+    if not is_wsl:
+        return windows_path
+
+    # Convert Windows path to WSL path
+    # Handle both backslashes and forward slashes
+    path = windows_path.replace('\\', '/')
+
+    # Match drive letter and path (e.g., D:/path or D:/path)
+    match = re.match(r'^([A-Za-z]):/(.*)$', path)
+    if match:
+        drive_letter = match.group(1).lower()
+        rest_of_path = match.group(2)
+        return f'/mnt/{drive_letter}/{rest_of_path}'
+
+    return windows_path
 
 
 def load_items_json(export_path: str) -> Dict[str, List[Dict[str, Any]]]:
@@ -234,14 +277,33 @@ game_data = None
 def initialize_game_data(export_path: str = default_export_path):
     """
     Initialize the global game data instance.
-    
+
     Args:
         export_path: Path to the Slay the Spire export directory
     """
     global game_data
-    game_data = GameDataLoader(export_path)
+
+    # Convert Windows path to WSL path if needed
+    converted_path = convert_windows_path_to_wsl(export_path)
+
+    try:
+        game_data = GameDataLoader(converted_path)
+    except FileNotFoundError as e:
+        # If game data files are not found, log a warning but don't crash
+        import warnings
+        warnings.warn(
+            f"Could not load game data from {converted_path}. "
+            f"This is expected if running tests without the game installed. "
+            f"Error: {e}"
+        )
+        # Create a minimal game_data object to prevent crashes
+        game_data = None
 
 
 # Initialize the game data when the module is imported
-if os.path.exists(default_export_path):
+# Try both original and converted paths
+export_path_to_try = convert_windows_path_to_wsl(default_export_path)
+if os.path.exists(export_path_to_try):
+    initialize_game_data()
+elif os.path.exists(default_export_path):
     initialize_game_data()

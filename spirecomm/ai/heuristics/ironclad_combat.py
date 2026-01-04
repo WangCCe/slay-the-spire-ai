@@ -13,7 +13,8 @@ Optimizes combat decisions for Ironclad's unique mechanics using beam search:
 """
 
 import logging
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
+from enum import Enum
 from .simulation import CombatPlanner, SimulationState, FastCombatSimulator
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
@@ -24,6 +25,15 @@ from spirecomm.communication.action import Action, PlayCardAction
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 
 logger = logging.getLogger(__name__)
+
+
+class EliteType(Enum):
+    """Enumeration of Act 1 elite monsters for specialized strategy application."""
+    GREMLIN_NOB = "Gremlin Nob"
+    LAGAVULIN = "Lagavulin"
+    THREE_SENTRIES = "3 Sentries"
+    SLIME_BOSS = "Slime Boss"
+    UNKNOWN = "Unknown"
 
 
 class IroncladCombatPlanner(CombatPlanner):
@@ -314,8 +324,12 @@ class IroncladCombatPlanner(CombatPlanner):
         3. Block gained (only when needed)
         4. Energy efficiency
         5. Strategic value (powers, draw cards)
+        6. Elite-specific tactics (applied via unified framework)
         """
         score = 0.0
+
+        # Detect elite type for specialized strategies (A20 elite framework)
+        elite_type = self._detect_elite_type(context)
 
         # Special handling for monsters that require quick kills
         cultist_ritual = self._is_cultist_ritual_turn(context)
@@ -472,6 +486,11 @@ class IroncladCombatPlanner(CombatPlanner):
                                        for c in context.playable_cards)
                     if has_high_damage:
                         score += 20
+
+        # Apply elite-specific strategy overrides (unified framework)
+        score = self._apply_elite_strategy_override(
+            elite_type, sequence, initial_state, final_state, context, score
+        )
 
         return score
 
@@ -672,18 +691,404 @@ class IroncladCombatPlanner(CombatPlanner):
     def _has_lagavulin(self, context: DecisionContext) -> bool:
         """
         Check if there are any Lagavulin alive.
-        
+
         Lagavulin is an Act 1 elite with hibernation mechanics.
         After hibernating, it deals massive damage.
         We should prioritize attacking over defending throughout the fight.
-        
+
         Args:
             context: Current decision context
-            
+
         Returns:
             True if any Lagavulin is alive
         """
         return any(monster.monster_id == "Lagavulin" for monster in context.monsters_alive)
+
+    def _detect_elite_type(self, context: DecisionContext) -> EliteType:
+        """
+        Detect which Act 1 elite we're fighting to apply specialized strategy.
+
+        This unified detection system enables elite-specific tactics:
+        - Gremlin Nob: SKILL card penalty (-50)
+        - Lagavulin: Progressive scaling based on Siphon Soul count
+        - 3 Sentries: Single-target focus bonus
+        - Slime Boss: AOE damage priority
+
+        Args:
+            context: Current decision context
+
+        Returns:
+            EliteType enum value indicating the elite type (or UNKNOWN)
+        """
+        if not context.monsters_alive:
+            return EliteType.UNKNOWN
+
+        monster_ids = [m.monster_id for m in context.monsters_alive]
+        monster_names = [m.name for m in context.monsters_alive]
+
+        # Gremlin Nob: Easy detection by monster_id
+        if "Gremlin Nob" in monster_ids:
+            logger.info("[ELITE_DETECTION] Gremlin Nob detected - SKILL penalty active")
+            return EliteType.GREMLIN_NOB
+
+        # Lagavulin: Single elite with specific name
+        if "Lagavulin" in monster_ids:
+            logger.info("[ELITE_DETECTION] Lagavulin detected - progressive scaling active")
+            return EliteType.LAGAVULIN
+
+        # 3 Sentries: Multiple monsters with "Sentry" in name
+        sentry_count = sum(1 for name in monster_names if "Sentry" in name)
+        if sentry_count >= 2:  # Usually 3, but might kill one already
+            logger.info(f"[ELITE_DETECTION] 3 Sentries detected ({sentry_count} alive) - single-target focus active")
+            return EliteType.THREE_SENTRIES
+
+        # Slime Boss: Single monster with "Slime" in name
+        if len(context.monsters_alive) == 1:
+            monster = context.monsters_alive[0]
+            if "Slime" in monster.monster_id and hasattr(monster, 'elite'):
+                logger.info("[ELITE_DETECTION] Slime Boss detected - AOE priority active")
+                return EliteType.SLIME_BOSS
+
+        return EliteType.UNKNOWN
+
+    def _apply_elite_strategy_override(
+        self,
+        elite_type: EliteType,
+        sequence: List[Action],
+        initial_state: SimulationState,
+        final_state: SimulationState,
+        context: DecisionContext,
+        base_score: float
+    ) -> float:
+        """
+        Apply elite-specific strategy overrides using unified framework.
+
+        This is the central integration point for all Act 1 elite tactics.
+        Each elite type has specialized handling based on its unique mechanics.
+
+        Args:
+            elite_type: Type of elite detected (Gremlin Nob, Lagavulin, etc.)
+            sequence: Action sequence being scored
+            initial_state: Starting simulation state
+            final_state: Ending simulation state after sequence
+            context: Current decision context
+            base_score: Pre-calculated score from base evaluation
+
+        Returns:
+            Final score after applying elite-specific modifiers
+        """
+        score = base_score
+
+        # Apply elite-specific strategies
+        if elite_type == EliteType.GREMLIN_NOB:
+            # Gremlin Nob: SKILL penalty already applied in card loop (v3.3.1)
+            # No additional modifiers needed here - existing logic handles it
+            pass
+
+        elif elite_type == EliteType.LAGAVULIN:
+            # Lagavulin: Progressive scaling based on Siphon Soul count
+            score = self._apply_lagavulin_strategy(sequence, initial_state, final_state, context, score)
+
+        elif elite_type == EliteType.THREE_SENTRIES:
+            # 3 Sentries: Single-target focus bonus
+            score = self._apply_sentries_strategy(sequence, context, score)
+
+        elif elite_type == EliteType.SLIME_BOSS:
+            # Slime Boss: AOE damage priority
+            score = self._apply_slime_boss_strategy(sequence, context, score)
+
+        # A20 Early Aggression (applies to ALL elites at ascension >= 20)
+        if elite_type != EliteType.UNKNOWN and hasattr(context, 'ascension') and context.ascension >= 20:
+            score = self._apply_a20_early_aggression(sequence, initial_state, final_state, context, score)
+
+        return score
+
+    def _apply_lagavulin_strategy(
+        self,
+        sequence: List[Action],
+        initial_state: SimulationState,
+        final_state: SimulationState,
+        context: DecisionContext,
+        score: float
+    ) -> float:
+        """
+        Apply Lagavulin-specific strategy: progressive scaling based on Siphon Soul count.
+
+        Lagavulin uses Siphon Soul every 3 turns (turns 6, 9, 12, ...) which reduces
+        player Dexterity and Strength, making the fight progressively harder.
+
+        Strategy: Exponentially increase damage_weight as Siphon Soul count increases.
+
+        Formula: damage_weight = min(8.0, 4.0 + (siphon_count × 1.5))
+
+        Args:
+            sequence: Action sequence being scored
+            initial_state: Starting simulation state
+            final_state: Ending simulation state after sequence
+            context: Current decision context
+            score: Current score
+
+        Returns:
+            Adjusted score with Lagavulin-specific modifiers
+        """
+        if not hasattr(context, 'turn'):
+            return score
+
+        turn = context.turn
+
+        # Calculate Siphon Soul count (starts turn 6, happens every 3 turns)
+        if turn < 6:
+            siphon_count = 0
+            damage_weight = 5.0  # Early hibernation phase
+        else:
+            siphon_count = (turn - 6) // 3 + 1
+            damage_weight = min(8.0, 4.0 + (siphon_count * 1.5))
+
+        # Calculate damage dealt in this sequence
+        damage_dealt = final_state.total_damage_dealt - initial_state.total_damage_dealt
+
+        # Apply progressive damage bonus
+        damage_bonus = damage_dealt * damage_weight
+        score += damage_bonus
+
+        # Low-damage penalty after first Siphon (turn 6+)
+        if turn >= 6:
+            min_damage_needed = 15 + (siphon_count * 5)
+            if damage_dealt < min_damage_needed:
+                penalty = 200
+                score -= penalty
+                logger.info(f"[LAGAVULIN_LOW_DAMAGE] -{penalty} for {damage_dealt} damage (need {min_damage_needed}+, siphon_count={siphon_count})")
+
+        # Pre-Siphon Soul burst bonus (incentivize killing before next debuff)
+        if turn >= 5:
+            turns_until_siphon = 2 - (turn - 5) % 3
+            if turns_until_siphon == 1 and damage_dealt > 30:
+                bonus = 100
+                score += bonus
+                logger.info(f"[LAGAVULIN_BURST] +{bonus} for {damage_dealt} damage before Siphon Soul")
+
+        logger.debug(f"[LAGAVULIN] Turn {turn}: Siphon count={siphon_count}, damage_weight={damage_weight:.1f}, damage_bonus={damage_bonus:.1f}")
+
+        return score
+
+    def _apply_sentries_strategy(
+        self,
+        sequence: List[Action],
+        context: DecisionContext,
+        score: float
+    ) -> float:
+        """
+        Apply 3 Sentries strategy: reward concentrated damage on one elite.
+
+        Principle: "Burst down one" is better than spreading damage evenly.
+        When two Sentries both use Focus to gain Strength, the fight becomes much harder.
+        We must eliminate one Sentry ASAP before both stack high Strength.
+
+        Scoring:
+        - 70%+ damage on one target → +50 bonus (concentrated fire)
+        - <50% concentration → -30 penalty (spreading damage too evenly)
+
+        Args:
+            sequence: Action sequence being scored
+            context: Current decision context
+            score: Current score
+
+        Returns:
+            Adjusted score with Sentries-specific modifiers
+        """
+        if len(context.monsters_alive) < 2:
+            # Only one Sentry left, normal priority
+            return score
+
+        # Calculate damage distribution
+        damage_by_target = self._calculate_damage_distribution(sequence, context)
+
+        if not damage_by_target or damage_by_target['total_damage'] == 0:
+            # No damage dealt, no modifiers
+            return score
+
+        # Calculate concentration ratio
+        concentration = damage_by_target['highest_damage'] / damage_by_target['total_damage']
+
+        # Bonus: 70%+ damage on one target = +50 points
+        if concentration >= 0.7:
+            bonus = 50
+            score += bonus
+            logger.info(f"[SENTRIES_FOCUS] +{bonus} for concentrating {concentration:.1%} damage on one target")
+
+        # Penalty: Evenly spread damage (<50% on any target) = -30 points
+        elif concentration < 0.5 and damage_by_target['total_damage'] > 15:
+            penalty = 30
+            score -= penalty
+            logger.info(f"[SENTRIES_SPREAD] -{penalty} for spreading damage too evenly ({concentration:.1%} concentration)")
+
+        return score
+
+    def _calculate_damage_distribution(self, sequence: List[Action], context: DecisionContext) -> Dict:
+        """
+        Calculate how damage is distributed across monsters.
+
+        Used by 3 Sentries strategy to determine if damage is concentrated on one target.
+
+        Args:
+            sequence: Action sequence to analyze
+            context: Current decision context
+
+        Returns:
+            Dict with 'highest_damage', 'total_damage', and optionally 'target_count'
+        """
+        damage_by_target = {}
+
+        for action in sequence:
+            if isinstance(action, PlayCardAction):
+                card = action.card
+                if hasattr(card, 'damage') and card.damage > 0:
+                    # Try to get target monster
+                    target = None
+                    if hasattr(action, 'target_monster') and action.target_monster:
+                        target = action.target_monster
+                    elif hasattr(card, 'has_target') and card.has_target and context.monsters_alive:
+                        # Default to first monster if we can't determine target
+                        target = context.monsters_alive[0]
+
+                    if target:
+                        # Use monster id or index as key
+                        target_key = id(target)
+                        damage_by_target[target_key] = damage_by_target.get(target_key, 0) + card.damage
+
+        if damage_by_target:
+            return {
+                'highest_damage': max(damage_by_target.values()),
+                'total_damage': sum(damage_by_target.values()),
+                'target_count': len(damage_by_target)
+            }
+        else:
+            return {'highest_damage': 0, 'total_damage': 0, 'target_count': 0}
+
+    def _apply_slime_boss_strategy(
+        self,
+        sequence: List[Action],
+        context: DecisionContext,
+        score: float
+    ) -> float:
+        """
+        Apply Slime Boss strategy: prioritize AOE damage.
+
+        Slime Boss splits into 3 monsters at 50% HP, making AOE attacks highly valuable.
+        AOE cards damage the boss before split AND all spawned slimes after split.
+
+        Strategy:
+        - AOE cards (Cleave, Thunderclap, Whirlwind, Immolate) → ×1.5 damage multiplier
+        - High damage (>12) near split threshold (40-60% HP) → +30 bonus
+
+        Args:
+            sequence: Action sequence being scored
+            context: Current decision context
+            score: Current score
+
+        Returns:
+            Adjusted score with Slime Boss-specific modifiers
+        """
+        if not context.monsters_alive:
+            return score
+
+        # Get Slime Boss HP percentage
+        slime_boss = context.monsters_alive[0]
+        if hasattr(slime_boss, 'current_hp') and hasattr(slime_boss, 'max_hp'):
+            hp_pct = slime_boss.current_hp / slime_boss.max_hp
+        else:
+            hp_pct = 1.0  # Default to full HP if unknown
+
+        # AOE cards list
+        aoe_cards = ['Cleave', 'Thunderclap', 'Whirlwind', 'Immolate']
+
+        for action in sequence:
+            if isinstance(action, PlayCardAction):
+                card = action.card
+                card_id = card.card_id
+
+                # AOE damage multiplier (×1.5)
+                if card_id in aoe_cards:
+                    monster_count = len(context.monsters_alive)
+                    if hasattr(card, 'damage') and card.damage > 0:
+                        aoe_damage = card.damage * monster_count
+                        bonus = aoe_damage * 1.5
+                        score += bonus
+                        logger.info(f"[SLIME_AOE] +{bonus:.1f} for {card_id} ({aoe_damage} damage × 1.5 to {monster_count} targets)")
+
+                # Near split threshold (40-60% HP): Extra bonus for high damage
+                if 0.4 < hp_pct < 0.6:
+                    if hasattr(card, 'damage') and card.damage > 12:
+                        burst_bonus = 30
+                        score += burst_bonus
+                        logger.info(f"[SLIME_BURST] +{burst_bonus} for high damage ({card.damage}) near split threshold")
+
+        return score
+
+    def _apply_a20_early_aggression(
+        self,
+        sequence: List[Action],
+        initial_state: SimulationState,
+        final_state: SimulationState,
+        context: DecisionContext,
+        score: float
+    ) -> float:
+        """
+        Apply A20 early aggression rules for elite fights.
+
+        At A20, elites kill you if you wait. Must damage from turn 1.
+        This prevents passive "preparation" turns where AI only plays Powers/defends.
+
+        Thresholds:
+        - Turn 1: Require 8+ damage (-50 penalty if not)
+        - Turn 2: Require 15+ damage (-100 penalty if not)
+        - Turn 3+: Require 12 HP damage per turn average (-150 penalty if behind)
+
+        Args:
+            sequence: Action sequence being scored
+            initial_state: Starting simulation state
+            final_state: Ending simulation state after sequence
+            context: Current decision context
+            score: Current score
+
+        Returns:
+            Adjusted score with A20 early aggression penalties
+        """
+        if not hasattr(context, 'turn'):
+            return score
+
+        turn = context.turn
+        damage_dealt = final_state.total_damage_dealt - initial_state.total_damage_dealt
+
+        # Turn 1: At least some damage (8+)
+        if turn == 1 and damage_dealt < 8:
+            penalty = 50
+            score -= penalty
+            logger.info(f"[A20_AGGRESSION_TURN1] -{penalty} for only {damage_dealt} damage (need 8+)")
+
+        # Turn 2: Significant damage expected (15+)
+        if turn == 2 and damage_dealt < 15:
+            penalty = 100
+            score -= penalty
+            logger.info(f"[A20_AGGRESSION_TURN2] -{penalty} for only {damage_dealt} damage (need 15+)")
+
+        # Turn 3+: Kill pressure - check if we're keeping up
+        if turn >= 3:
+            # Calculate expected damage (12 HP per turn average)
+            expected_damage = turn * 12
+
+            # Calculate actual damage dealt so far (from initial monster HP)
+            total_monster_hp = sum(m.current_hp for m in context.monsters_alive)
+            # We need to track initial max HP, but use approximation
+            initial_max_hp = sum(m.max_hp for m in context.monsters_alive)
+            damage_so_far = initial_max_hp - total_monster_hp
+
+            if damage_so_far < expected_damage:
+                penalty = 150
+                score -= penalty
+                logger.info(f"[A20_AGGRESSION_TURN{turn}] -{penalty} for falling behind ({damage_so_far} damage vs {expected_damage} expected)")
+
+        return score
 
     def get_confidence(self, context: DecisionContext) -> float:
         """

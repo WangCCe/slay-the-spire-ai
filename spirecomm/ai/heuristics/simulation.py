@@ -34,6 +34,10 @@ KILL_BONUS = 100  # Points per monster killed
                  # Increase if AI doesn't prioritize kills enough
                  # Decrease if AI overkills excessively
 
+ALL_LETHAL_BONUS = 500  # Exponential bonus for killing ALL monsters
+                       # This creates strong incentive to close out games
+                       # Should be much higher than KILL_BONUS to prioritize all-kill over partial kill
+
 DAMAGE_WEIGHT = 2.0  # Points per damage dealt
                     # Increase (→3-4) for more aggressive damage
                     # Decrease if AI ignores defense
@@ -667,6 +671,11 @@ class FastCombatSimulator:
         kills = initial_alive - final_alive
         score += kills * weights['KILL_BONUS']
 
+        # ALL_LETHAL_BONUS: Exponential bonus for killing all monsters
+        if final_alive == 0 and initial_alive > 0:
+            score += ALL_LETHAL_BONUS
+            logger.debug(f"[ALL_LETHAL_BONUS] +{ALL_LETHAL_BONUS} score for killing all {initial_alive} monsters")
+
         # 2. Damage dealt
         total_damage = sum(m['hp'] for m in initial_state.monsters) - \
                       sum(m['hp'] for m in final_state.monsters)
@@ -674,7 +683,17 @@ class FastCombatSimulator:
 
         # 3. Block gained (defensive value)
         block_gained = final_state.player_block - initial_state.player_block
-        score += block_gained * weights['BLOCK_WEIGHT']
+
+        # Apply block penalty when lethal is available (all monsters could be killed)
+        # Calculate if lethal is possible by checking if total damage could kill all
+        total_monster_hp = sum(m['hp'] + m['block'] for m in initial_state.monsters if not m['is_gone'])
+        if final_alive > 0 and total_damage >= total_monster_hp * 1.1:
+            # Lethal is available but we chose defense - penalize heavily
+            score += block_gained * weights['BLOCK_WEIGHT'] * 0.3  # 70% reduction
+            logger.debug(f"[LETHAL_BLOCK_PENALTY] Block score reduced by 70% because lethal was available")
+        else:
+            # Normal scoring
+            score += block_gained * weights['BLOCK_WEIGHT']
 
         # 4. Energy efficiency (prefer using most energy)
         energy_used = initial_state.player_energy - final_state.player_energy

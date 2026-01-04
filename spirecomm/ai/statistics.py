@@ -49,7 +49,12 @@ def get_ai_version() -> str:
     # Version 3.2.4: Reduce defense scoring weight from 5 to 2 (attack is better than defense)
     # Version 3.3.0: Implement aggressive combat mode for elite/scaling fights (threat detection, AGGRESSIVE mode)
     # Version 3.3.1: Add SKILL card penalty against Gremlin Nob (-50 per SKILL to prevent Nob's Strength gain)
-    return "3.3.1-gremlin-skill-penalty"
+    # Version 3.4.0: Unified Act 1 elite strategy framework
+    #   - Lagavulin: Progressive damage scaling (4.0 → 8.0) based on Siphon Soul count
+    #   - 3 Sentries: Single-target focus bonus (+50 for 70%+ concentration)
+    #   - Slime Boss: AOE priority (×1.5 multiplier for Cleave/Thunderclap/Whirlwind/Immolate)
+    #   - A20 early aggression: Turn 1 (8+ dmg), Turn 2 (15+ dmg), Turn 3+ (12+/turn average)
+    return "3.4.0-unified-elite-strategies"
 
 
 def get_git_commit() -> str:

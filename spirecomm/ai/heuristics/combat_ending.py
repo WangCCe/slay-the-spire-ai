@@ -5,11 +5,14 @@ This module provides lethality detection to prevent over-defending when
 combat could be ended this turn.
 """
 
+import logging
 from typing import List, Tuple, Optional
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster
 from spirecomm.communication.action import PlayCardAction
 from ..decision.base import DecisionContext
+
+logger = logging.getLogger(__name__)
 
 
 class CombatEndingDetector:
@@ -31,6 +34,12 @@ class CombatEndingDetector:
         """
         Check if all monsters can be killed this turn.
 
+        Improved detection with:
+        - Energy constraint validation
+        - Targeting feasibility check
+        - HP safety threshold
+        - Reduced margin (10% instead of 20%)
+
         Args:
             context: Current decision context
 
@@ -40,15 +49,44 @@ class CombatEndingDetector:
         if not context.monsters_alive:
             return True
 
-        # Calculate total damage potential
-        total_possible_damage = self._calculate_max_damage(context)
+        # Step 1: Calculate affordable damage (respecting energy constraints)
+        affordable_damage = self._calculate_affordable_damage(context)
 
-        # Calculate total monster HP (including block)
+        # Step 2: Calculate total monster HP (including block)
         total_monster_hp = sum(m.current_hp + m.block for m in context.monsters_alive)
 
-        # Conservative check: need 20% margin for error
-        # (to account for suboptimal targeting, AOE inefficiency, etc.)
-        return total_possible_damage >= total_monster_hp * 1.2
+        # Step 3: Check with reduced margin (10% instead of 20%)
+        margin_multiplier = 1.1
+        has_damage_potential = affordable_damage >= total_monster_hp * margin_multiplier
+
+        # Step 4: Validate targeting (single-target vs AOE constraints)
+        targeting_feasible = self._can_target_all_monsters(context, affordable_damage)
+
+        # Step 5: HP safety check (only go for lethal if not too risky)
+        hp_safe = context.player_hp > 30 or context.player_hp_pct > 0.3
+
+        # Log detection results
+        logger.info(f"[LETHAL_DETECTION] affordable_damage={affordable_damage}, "
+                   f"total_monster_hp={total_monster_hp}, margin_ok={has_damage_potential}, "
+                   f"targeting_ok={targeting_feasible}, hp_safe={hp_safe}, "
+                   f"player_hp={context.player_hp}, player_hp_pct={context.player_hp_pct:.2f}")
+
+        # Final decision
+        lethal_detected = has_damage_potential and targeting_feasible and hp_safe
+
+        if lethal_detected:
+            logger.info(f"[LETHAL_DETECTION] LETHAL DETECTED! All checks passed")
+        else:
+            reasons = []
+            if not has_damage_potential:
+                reasons.append(f"Insufficient damage ({affordable_damage} < {int(total_monster_hp * margin_multiplier)} with 10% margin)")
+            if not targeting_feasible:
+                reasons.append("Targeting constraints prevent lethal")
+            if not hp_safe:
+                reasons.append(f"HP too low for risky lethal ({context.player_hp} HP, {context.player_hp_pct:.1%})")
+            logger.info(f"[LETHAL_DETECTION] No lethal. Reason: {'; '.join(reasons)}")
+
+        return lethal_detected
 
     def find_lethal_sequence(self, context: DecisionContext) -> List[PlayCardAction]:
         """
@@ -62,7 +100,10 @@ class CombatEndingDetector:
         Returns:
             List of actions to kill all monsters, or empty list if not possible
         """
+        logger.info(f"[LETHAL_SEQUENCE] Attempting to construct lethal sequence")
+
         if not self.can_kill_all(context):
+            logger.info(f"[LETHAL_SEQUENCE] Construction aborted: lethal not detected")
             return []
 
         # Greedy approach: play highest-damage cards on lowest-HP targets
@@ -101,6 +142,12 @@ class CombatEndingDetector:
                     played_cards.add(card_uuid)
                     break
 
+        if sequence:
+            card_names = [action.card.card_id if hasattr(action, 'card') and hasattr(action.card, 'card_id') else 'Unknown' for action in sequence]
+            logger.info(f"[LETHAL_SEQUENCE] Constructed sequence with {len(sequence)} cards: {', '.join(card_names)}")
+        else:
+            logger.warning(f"[LETHAL_SEQUENCE] Construction failed: greedy approach returned empty sequence")
+
         return sequence
 
     def should_skip_defense(self, context: DecisionContext) -> bool:
@@ -122,6 +169,97 @@ class CombatEndingDetector:
             return context.player_hp_pct > 0.3
 
         return False
+
+    def _calculate_affordable_damage(self, context: DecisionContext) -> int:
+        """
+        Calculate total damage from cards that are affordable with available energy.
+
+        This respects energy constraints, unlike _calculate_max_damage().
+
+        Args:
+            context: Current decision context
+
+        Returns:
+            Total damage that can be dealt with available energy
+        """
+        total_damage = 0
+        energy_used = 0
+
+        # Sort attack cards by damage efficiency (damage per energy)
+        attack_cards = []
+        for card in context.playable_cards:
+            if hasattr(card, 'type') and str(card.type) == 'ATTACK':
+                cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
+                damage = self._get_card_damage(card, context)
+                if cost > 0:
+                    efficiency = damage / cost
+                else:
+                    efficiency = float('inf')  # Zero-cost cards are infinitely efficient
+                attack_cards.append((card, cost, damage, efficiency))
+
+        # Sort by efficiency (highest first), then by damage (highest first)
+        attack_cards.sort(key=lambda x: (x[3], x[2]), reverse=True)
+
+        # Greedily select cards until energy runs out
+        for card, cost, damage, _ in attack_cards:
+            if energy_used + cost <= context.energy_available:
+                total_damage += damage
+                energy_used += cost
+            elif cost == 0:
+                # Zero-cost cards can always be played
+                total_damage += damage
+
+        return total_damage
+
+    def _can_target_all_monsters(self, context: DecisionContext, affordable_damage: int) -> bool:
+        """
+        Check if targeting constraints allow killing all monsters.
+
+        Validates that single-target attacks can reach all monsters
+        (i.e., we have enough attacks and energy to target each monster).
+
+        Args:
+            context: Current decision context
+            affordable_damage: Total damage we can afford to deal
+
+        Returns:
+            True if targeting is feasible, False otherwise
+        """
+        num_monsters = len(context.monsters_alive)
+
+        # Count AOE attacks
+        aoe_count = 0
+        single_target_count = 0
+
+        for card in context.playable_cards:
+            if hasattr(card, 'type') and str(card.type) == 'ATTACK':
+                # Check if this is an AOE attack
+                card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ""
+                is_aoe = card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper', 'Carnage']
+
+                if is_aoe:
+                    aoe_count += 1
+                else:
+                    single_target_count += 1
+
+        # If we have AOE, targeting is always feasible
+        if aoe_count > 0:
+            return True
+
+        # If we have enough single-target attacks for each monster, feasible
+        if single_target_count >= num_monsters:
+            return True
+
+        # Otherwise, check if we have enough total damage to overcome targeting inefficiency
+        # Apply a penalty for single-target vs multiple monsters
+        if num_monsters == 1:
+            return True  # Single monster, no targeting issue
+        elif num_monsters == 2:
+            # Need 30% more damage to overcome targeting inefficiency
+            return affordable_damage >= sum(m.current_hp + m.block for m in context.monsters_alive) * 1.3
+        else:
+            # Need 50% more damage for 3+ monsters
+            return affordable_damage >= sum(m.current_hp + m.block for m in context.monsters_alive) * 1.5
 
     def _calculate_max_damage(self, context: DecisionContext) -> int:
         """
