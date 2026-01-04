@@ -896,7 +896,8 @@ class OptimizedAgent(SimpleAgent):
                         floor=game_state.floor if hasattr(game_state, 'floor') else 0,
                         act=game_state.act if hasattr(game_state, 'act') else 1,
                         room_type=room_type,
-                        start_turn=game_state.turn if hasattr(game_state, 'turn') else 0
+                        start_turn=game_state.turn if hasattr(game_state, 'turn') else 0,
+                        current_hp=game_state.current_hp if hasattr(game_state, 'current_hp') else None
                     )
                     self._in_combat = True
                 elif not current_in_combat and self._in_combat:

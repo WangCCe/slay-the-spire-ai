@@ -50,6 +50,7 @@ class GameTracker:
         self.current_combat: Optional[Dict[str, Any]] = None
         self.elite_kills: int = 0
         self.boss_kills: int = 0
+        self.total_hp_loss_accumulated: int = 0  # Track actual HP loss across all combats
 
         # Death information
         self.death_floor: Optional[int] = None
@@ -61,6 +62,7 @@ class GameTracker:
         # Card tracking
         self.cards_obtained: List[str] = []  # Card IDs obtained
         self.cards_skipped: int = 0
+        self._last_card_choice_signature: Optional[str] = None  # To prevent duplicate recording
 
         # Relic tracking
         self.relics: List[str] = []  # Relic IDs obtained
@@ -74,7 +76,7 @@ class GameTracker:
         self.decision_confidences: List[float] = []  # List of confidence scores
         self.fallback_count: int = 0
 
-    def start_combat(self, floor: int, act: int, room_type: str, start_turn: int = 0):
+    def start_combat(self, floor: int, act: int, room_type: str, start_turn: int = 0, current_hp: int = None):
         """
         Record the start of a combat.
 
@@ -83,6 +85,7 @@ class GameTracker:
             act: Current act number
             room_type: Type of room ("monster", "elite", "boss")
             start_turn: Current game turn when combat starts
+            current_hp: Player HP at combat start
         """
         self.current_combat = {
             'floor': floor,
@@ -91,7 +94,7 @@ class GameTracker:
             'start_time': datetime.now(),
             'turns': 0,
             'start_turn': start_turn,
-            'hp_at_start': None,  # Will be filled later
+            'hp_at_start': current_hp,  # Record actual HP at combat start
             'hp_at_end': None,
             'decisions': 0
         }
@@ -107,7 +110,14 @@ class GameTracker:
         """
         if self.current_combat:
             self.current_combat['hp_at_end'] = hp_remaining
-            self.current_combat['hp_at_start'] = max_hp  # Approximation
+
+            # Use hp_at_start if recorded, otherwise fall back to max_hp approximation
+            if self.current_combat['hp_at_start'] is None:
+                self.current_combat['hp_at_start'] = max_hp
+
+            # Calculate HP loss for this combat and accumulate
+            hp_loss_this_combat = max(0, self.current_combat['hp_at_start'] - hp_remaining)
+            self.total_hp_loss_accumulated += hp_loss_this_combat
 
             # Calculate turns from start_turn and end_turn if provided
             if end_turn is not None and 'start_turn' in self.current_combat:
@@ -134,6 +144,20 @@ class GameTracker:
             available: List of available card IDs
         """
         import logging
+        import hashlib
+
+        # Create a signature to detect duplicate calls
+        # Use sorted available cards + chosen + skipped to create unique signature
+        available_str = ','.join(sorted(available))
+        signature = f"{chosen}|{skipped}|{available_str}"
+        signature_hash = hashlib.md5(signature.encode()).hexdigest()[:8]
+
+        if self._last_card_choice_signature == signature_hash:
+            logging.info(f"[TRACKER] Duplicate card choice detected, skipping")
+            return
+
+        self._last_card_choice_signature = signature_hash
+
         logging.info(f"[TRACKER] record_card_choice called")
         logging.info(f"[TRACKER]   chosen: {chosen}")
         logging.info(f"[TRACKER]   skipped: {skipped}")
@@ -237,13 +261,8 @@ class GameTracker:
         avg_turns = sum(c['turns'] for c in self.combats) / len(self.combats) \
             if self.combats else 0.0
 
-        # Calculate HP lost
-        total_hp_lost = 0
-        if self.combats:
-            first_combat = self.combats[0]
-            hp_at_start = first_combat.get('hp_at_start', 80)  # Default max HP
-            hp_at_end = self.combats[-1].get('hp_at_end', hp_at_start)
-            total_hp_lost = hp_at_start - hp_at_end
+        # Use accumulated HP loss (actual total damage taken across all combats)
+        total_hp_lost = self.total_hp_loss_accumulated
 
         return {
             'game_id': int(self.game_start_time.timestamp()),
