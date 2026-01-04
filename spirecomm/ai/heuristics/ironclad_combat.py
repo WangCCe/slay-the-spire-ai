@@ -91,14 +91,17 @@ class IroncladCombatPlanner(CombatPlanner):
             logger.info(f"[COMBAT] Monster {i+1}: {monster.name}, Intent: {intent_str}, HP: {monster.current_hp}/{monster.max_hp}")
 
         # Step 1: Check for lethal (can we kill all monsters this turn?)
+        logger.info("[COMBAT] About to check lethal...")
         if self.combat_ending_detector.can_kill_all(context):
             logger.info("[COMBAT] Lethal detected!")
             lethal_sequence = self.combat_ending_detector.find_lethal_sequence(context)
             if lethal_sequence:
                 logger.info(f"[COMBAT] Lethal sequence: {len(lethal_sequence)} cards")
                 return lethal_sequence
+        logger.info("[COMBAT] No lethal, proceeding to beam search...")
 
         # Step 2: Determine adaptive parameters based on complexity
+        logger.info("[COMBAT] About to get adaptive parameters...")
         beam_width, max_depth = self._get_adaptive_parameters(context, playable_cards)
         logger.info(f"[COMBAT] Beam search: width={beam_width}, depth={max_depth}")
 

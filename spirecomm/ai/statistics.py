@@ -68,7 +68,11 @@ def get_ai_version() -> str:
     # Version 3.4.4: Add entry logging to trace if _detect_elite_type is called
     #   - Added [ELITE_ENTRY] and [SCORE_DEBUG] logs
     #   - Will confirm if _detect_elite_type() is being called at all
-    return "3.4.4-debug-elite-entry"
+    # Version 3.4.5: Trace plan_turn() execution to find where it exits early
+    #   - Added logs before/after lethal check
+    #   - Added logs before _get_adaptive_parameters()
+    #   - Will find why "Beam search" log never appears
+    return "3.4.5-debug-plan-turn"
 
 
 def get_git_commit() -> str:
