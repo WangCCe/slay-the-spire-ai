@@ -728,6 +728,10 @@ class IroncladCombatPlanner(CombatPlanner):
         monster_ids = [m.monster_id for m in context.monsters_alive]
         monster_names = [m.name for m in context.monsters_alive]
 
+        # DEBUG: Log monster IDs and names for debugging
+        logger.info(f"[ELITE_DEBUG] monster_ids: {monster_ids}")
+        logger.info(f"[ELITE_DEBUG] monster_names: {monster_names}")
+
         # Gremlin Nob: Easy detection by monster_id
         if "Gremlin Nob" in monster_ids:
             logger.info("[ELITE_DETECTION] Gremlin Nob detected - SKILL penalty active")

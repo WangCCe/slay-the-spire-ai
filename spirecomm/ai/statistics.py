@@ -62,7 +62,10 @@ def get_ai_version() -> str:
     #   - Added logger to agent.py
     #   - Added warnings to identify why OptimizedAI falls back to SimpleAgent
     #   - Will show: use_optimized_combat, combat_planner, or OPTIMIZED_AI_AVAILABLE issues
-    return "3.4.2-debug-optimized-fallback"
+    # Version 3.4.3: Debug monster_id vs monster.name mismatch
+    #   - Added [ELITE_DEBUG] logs to show monster_ids and monster_names
+    #   - Hypothesis: monster.monster_id != monster.name (e.g., "GremlinNob" vs "Gremlin Nob")
+    return "3.4.3-debug-monster-id"
 
 
 def get_git_commit() -> str:
