@@ -27,12 +27,21 @@ def get_ai_version() -> str:
     - Eliminates manual version management
     """
     import logging
+    import shutil
     logger = logging.getLogger(__name__)
 
     try:
         # Get the directory of this script file
         script_dir = os.path.dirname(os.path.abspath(__file__))
         logger.info(f"[STATS] script_dir: {script_dir}")
+
+        # Find git executable
+        git_executable = shutil.which('git')
+        if not git_executable:
+            logger.warning("[STATS] git executable not found in PATH")
+            return "3.5.9-dev-no-git"
+
+        logger.info(f"[STATS] git executable: {git_executable}")
 
         # Find git repository root (search upwards from script_dir)
         git_dir = script_dir
@@ -51,7 +60,7 @@ def get_ai_version() -> str:
 
         # Get latest tag
         tag = subprocess.check_output(
-            ['git', 'describe', '--tags', '--abbrev=0'],
+            [git_executable, 'describe', '--tags', '--abbrev=0'],
             cwd=git_dir,
             stderr=subprocess.PIPE,
             timeout=10
@@ -60,7 +69,7 @@ def get_ai_version() -> str:
 
         # Get commits since tag
         commits = subprocess.check_output(
-            ['git', 'rev-list', '--count', f'{tag}..HEAD'],
+            [git_executable, 'rev-list', '--count', f'{tag}..HEAD'],
             cwd=git_dir,
             stderr=subprocess.PIPE,
             timeout=10
@@ -69,7 +78,7 @@ def get_ai_version() -> str:
 
         # Get short commit hash
         commit_hash = subprocess.check_output(
-            ['git', 'rev-parse', '--short', 'HEAD'],
+            [git_executable, 'rev-parse', '--short', 'HEAD'],
             cwd=git_dir,
             stderr=subprocess.PIPE,
             timeout=10
@@ -80,7 +89,7 @@ def get_ai_version() -> str:
         has_uncommitted_changes = False
         try:
             dirty = subprocess.check_output(
-                ['git', 'status', '--porcelain'],
+                [git_executable, 'status', '--porcelain'],
                 cwd=git_dir,
                 stderr=subprocess.PIPE,
                 timeout=10
