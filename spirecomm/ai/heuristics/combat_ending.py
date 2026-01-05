@@ -201,27 +201,18 @@ class CombatEndingDetector:
         total_damage = 0
         energy_used = 0
 
-        logger.info(f"[LETHAL_DAMAGE] Checking {len(context.playable_cards)} playable cards")
-
         # Sort attack cards by damage efficiency (damage per energy)
         attack_cards = []
         for card in context.playable_cards:
             # FIX: Compare CardType enum directly, not string
-            is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
-            card_type_str = str(card.type) if hasattr(card, 'type') else "UNKNOWN"
-            logger.info(f"[LETHAL_DAMAGE] Card {card.name}: type={card_type_str}, is_attack={is_attack}")
-
-            if is_attack:
+            if hasattr(card, 'type') and card.type == CardType.ATTACK:
                 cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
                 damage = self._get_card_damage(card, context)
-                logger.info(f"[LETHAL_DAMAGE]   → Attack card! cost={cost}, damage={damage}")
                 if cost > 0:
                     efficiency = damage / cost
                 else:
                     efficiency = float('inf')  # Zero-cost cards are infinitely efficient
                 attack_cards.append((card, cost, damage, efficiency))
-            else:
-                logger.info(f"[LETHAL_DAMAGE]   → Skipped (not an attack)")
 
         # Sort by efficiency (highest first), then by damage (highest first)
         attack_cards.sort(key=lambda x: (x[3], x[2]), reverse=True)
@@ -235,7 +226,6 @@ class CombatEndingDetector:
                 # Zero-cost cards can always be played
                 total_damage += damage
 
-        logger.info(f"[LETHAL_DAMAGE] Total affordable damage: {total_damage}, energy used: {energy_used}/{context.energy_available}")
         return total_damage
 
     def _can_target_all_monsters(self, context: DecisionContext, affordable_damage: int) -> bool:
