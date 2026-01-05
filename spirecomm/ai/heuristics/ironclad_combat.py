@@ -98,6 +98,7 @@ class IroncladCombatPlanner(CombatPlanner):
             if lethal_sequence:
                 logger.info(f"[COMBAT] Lethal sequence: {len(lethal_sequence)} cards")
                 return lethal_sequence
+            logger.warning(f"[COMBAT] game_id={context.game_id} Lethal detected but sequence empty; falling back to beam search")
         logger.info("[COMBAT] No lethal, proceeding to beam search...")
 
         # Step 2: Determine adaptive parameters based on complexity
@@ -107,14 +108,16 @@ class IroncladCombatPlanner(CombatPlanner):
 
         # Step 3: Use beam search to find optimal sequence
         sequence = self._beam_search_turn(context, playable_cards, beam_width, max_depth)
+        if not sequence:
+            logger.info(f"[COMBAT] game_id={context.game_id} End turn chosen (empty sequence)")
+            return []
         logger.info(f"[COMBAT] game_id={context.game_id} Best sequence: {len(sequence)} cards")
         # Log card IDs in best sequence for debugging
-        if sequence:
-            seq_card_ids = []
-            for action in sequence:
-                if hasattr(action, 'card') and action.card:
-                    seq_card_ids.append(action.card.card_id)
-            logger.info(f"[COMBAT] game_id={context.game_id} Sequence cards: {', '.join(seq_card_ids)}")
+        seq_card_ids = []
+        for action in sequence:
+            if hasattr(action, 'card') and action.card:
+                seq_card_ids.append(action.card.card_id)
+        logger.info(f"[COMBAT] game_id={context.game_id} Sequence cards: {', '.join(seq_card_ids)}")
         return sequence
 
     def _get_adaptive_parameters(self, context: DecisionContext, playable_cards: List[Card]) -> Tuple[int, int]:

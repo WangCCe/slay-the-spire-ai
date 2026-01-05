@@ -163,6 +163,7 @@ class CombatEndingDetector:
             logger.info(f"[LETHAL_SEQUENCE] Constructed sequence with {len(sequence)} cards: {', '.join(card_names)}")
         else:
             logger.warning(f"[LETHAL_SEQUENCE] Construction failed: greedy approach returned empty sequence")
+            logger.warning(f"[LETHAL_SEQUENCE] Debug: attacks={len(attack_cards)}, energy={context.energy_available}")
 
         return sequence
 

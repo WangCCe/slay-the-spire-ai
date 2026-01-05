@@ -149,6 +149,25 @@ class SimpleAgent:
         zero_cost_non_attacks = [card for card in zero_cost_cards if card.type != spirecomm.spire.card.CardType.ATTACK]
         nonzero_cost_cards = [card for card in playable_cards if card.cost != 0]
         aoe_cards = [card for card in playable_cards if self.priorities.is_card_aoe(card)]
+        # If any monsters are at 1 HP (Neow's Blessing, etc.), prioritize cleanup attacks.
+        low_hp_monsters = [
+            monster for monster in self.game.monsters
+            if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone
+            and monster.current_hp <= 1
+        ]
+        if low_hp_monsters:
+            attack_cards = [card for card in playable_cards if card.type == spirecomm.spire.card.CardType.ATTACK]
+            if attack_cards:
+                import logging
+                if self.many_monsters_alive() and aoe_cards:
+                    card_to_play = self.priorities.get_best_card_to_play(aoe_cards)
+                else:
+                    card_to_play = self.priorities.get_best_card_to_play(attack_cards)
+                logging.info(f"[SIMPLE_AGENT_LETHAL] Cleanup attack selected: {card_to_play.card_id}")
+                if card_to_play.has_target:
+                    target = self.get_low_hp_target()
+                    return PlayCardAction(card=card_to_play, target_monster=target)
+                return PlayCardAction(card=card_to_play)
         incoming_damage = self.get_incoming_damage()
         if self.game.player.block > incoming_damage - (self.game.act + 4):
             import logging
@@ -693,26 +712,27 @@ class OptimizedAgent(SimpleAgent):
         Returns:
             PlayCardAction or EndTurnAction
         """
+        game_id = getattr(self.game, 'game_id', None)
         try:
             if self.use_optimized_combat and self.combat_planner and OPTIMIZED_AI_AVAILABLE:
                 return self._get_optimized_play_card_action()
             else:
                 # Log why we're falling back
                 if not self.use_optimized_combat:
-                    logger.warning("[OPTIMIZED_AI] use_optimized_combat is False")
+                    logger.warning("[OPTIMIZED_AI] game_id=%s use_optimized_combat is False", game_id)
                 elif not self.combat_planner:
-                    logger.warning("[OPTIMIZED_AI] combat_planner is None")
+                    logger.warning("[OPTIMIZED_AI] game_id=%s combat_planner is None", game_id)
                 elif not OPTIMIZED_AI_AVAILABLE:
-                    logger.warning("[OPTIMIZED_AI] OPTIMIZED_AI_AVAILABLE is False")
+                    logger.warning("[OPTIMIZED_AI] game_id=%s OPTIMIZED_AI_AVAILABLE is False", game_id)
                 # Fall back to SimpleAgent logic
                 return super().get_play_card_action()
         except Exception as e:
-            # On error, print and fall back to simple logic
+            # On error, log and fall back to simple logic
             import sys
             print(f"Error in optimized combat: {e}", file=sys.stderr)
             import traceback
             traceback.print_exc(file=sys.stderr)
-            logger.error(f"[OPTIMIZED_AI] Exception: {e}")
+            logger.exception("[OPTIMIZED_AI] game_id=%s Exception in optimized combat", game_id)
             return super().get_play_card_action()
 
     def _get_optimized_play_card_action(self):
@@ -727,6 +747,7 @@ class OptimizedAgent(SimpleAgent):
         if not self.game.play_available:
             return EndTurnAction()
 
+        game_id = getattr(self.game, 'game_id', None)
         try:
             # === 新增：检查是否需要重新规划 ===
             # 创建当前游戏状态的签名
@@ -835,6 +856,7 @@ class OptimizedAgent(SimpleAgent):
             print(f"Error in _get_optimized_play_card_action: {e}", file=sys.stderr)
             import traceback
             traceback.print_exc(file=sys.stderr)
+            logger.exception("[OPTIMIZED_AI] game_id=%s Exception in _get_optimized_play_card_action", game_id)
             self.current_action_sequence = []
             return super().get_play_card_action()
 

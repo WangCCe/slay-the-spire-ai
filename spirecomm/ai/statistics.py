@@ -97,7 +97,7 @@ def get_ai_version() -> str:
     #   - Uses game_data_loader._parse_card_damage() for metadata/regex parsing
     #   - Fixes infinite loop when AI runs out of attack cards (True Grit exhausts hand)
     #   - Resolves Floor 11 Slaver combat stalling issue
-    return "3.5.6-end-turn-candidate"
+    return "3.5.8-lethal-cleanup"
 
 
 def get_git_commit() -> str:
