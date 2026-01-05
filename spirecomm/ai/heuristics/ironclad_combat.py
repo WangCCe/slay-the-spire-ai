@@ -370,9 +370,46 @@ class IroncladCombatPlanner(CombatPlanner):
         kills = final_state.monsters_killed
         score += kills * 200
 
-        # 2. Damage dealt
+        # 2. Damage dealt (with multi-monster bonuses)
         damage = final_state.total_damage_dealt
-        score += damage * damage_weight
+
+        # Multi-monster detection and adaptive damage weighting
+        num_monsters = len(context.monsters_alive)
+
+        # Get floor for special Floor 6-7 handling
+        current_floor = getattr(context, 'floor', 0)
+
+        # Base damage multiplier based on monster count
+        if num_monsters >= 3:
+            damage_multiplier = 1.8
+        elif num_monsters == 2:
+            damage_multiplier = 1.3
+        else:
+            damage_multiplier = 1.0
+
+        # Floor 6-7 special AOE priority (highest death floors)
+        if current_floor in [6, 7] and num_monsters >= 2:
+            floor_bonus = 0.4 if num_monsters >= 3 else 0.2
+            damage_multiplier += floor_bonus
+            logger.info(f"[FLOOR6_AOE] Enhanced priority on Floor {current_floor}: {damage_multiplier}×")
+
+        logger.info(f"[OUTCOME_MONSTERS] Detected {num_monsters} alive monsters")
+        logger.info(f"[OUTCOME_MULTIPLIER] Applied {damage_multiplier}× damage weight (base: {damage_weight})")
+
+        score += damage * damage_weight * damage_multiplier
+
+        # AOE card bonus in multi-monster scenarios
+        if num_monsters >= 2:
+            aoe_cards = ['Cleave', 'Whirlwind', 'Thunderclap', 'Immolate']
+
+            for action in sequence:
+                if isinstance(action, PlayCardAction) and hasattr(action.card, 'card_id'):
+                    card_id = action.card.card_id.replace('+', '')  # Handle upgraded cards
+
+                    if card_id in aoe_cards:
+                        aoe_bonus = 40 if num_monsters >= 3 else 20
+                        score += aoe_bonus
+                        logger.info(f"[OUTCOME_AOE] +{aoe_bonus} for {card_id} in {num_monsters}-monster fight")
 
         # 3. Block (only valuable when taking damage, but less valuable than attacking)
         # Defense is temporary (blocks 1 turn), while killing monsters is permanent
