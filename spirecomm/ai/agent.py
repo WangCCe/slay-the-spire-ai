@@ -713,17 +713,35 @@ class OptimizedAgent(SimpleAgent):
             PlayCardAction or EndTurnAction
         """
         game_id = getattr(self.game, 'game_id', None)
+        def _fallback_snapshot():
+            try:
+                hand_ids = [c.card_id for c in self.game.hand]
+                monsters = []
+                for m in self.game.monsters:
+                    if m.is_gone or m.half_dead:
+                        continue
+                    intent = str(m.intent) if hasattr(m, 'intent') else 'UNKNOWN'
+                    monsters.append(f"{m.name}:{m.current_hp}/{m.max_hp}:{intent}")
+                return (
+                    f"hp={self.game.current_hp}/{self.game.max_hp} "
+                    f"block={self.game.player.block} "
+                    f"energy={self.game.energy} "
+                    f"hand={hand_ids} "
+                    f"monsters={monsters}"
+                )
+            except Exception:
+                return "snapshot=unavailable"
         try:
             if self.use_optimized_combat and self.combat_planner and OPTIMIZED_AI_AVAILABLE:
                 return self._get_optimized_play_card_action()
             else:
                 # Log why we're falling back
                 if not self.use_optimized_combat:
-                    logger.warning("[OPTIMIZED_AI] game_id=%s use_optimized_combat is False", game_id)
+                    logger.warning("[OPTIMIZED_AI] game_id=%s use_optimized_combat is False %s", game_id, _fallback_snapshot())
                 elif not self.combat_planner:
-                    logger.warning("[OPTIMIZED_AI] game_id=%s combat_planner is None", game_id)
+                    logger.warning("[OPTIMIZED_AI] game_id=%s combat_planner is None %s", game_id, _fallback_snapshot())
                 elif not OPTIMIZED_AI_AVAILABLE:
-                    logger.warning("[OPTIMIZED_AI] game_id=%s OPTIMIZED_AI_AVAILABLE is False", game_id)
+                    logger.warning("[OPTIMIZED_AI] game_id=%s OPTIMIZED_AI_AVAILABLE is False %s", game_id, _fallback_snapshot())
                 # Fall back to SimpleAgent logic
                 return super().get_play_card_action()
         except Exception as e:
@@ -732,7 +750,7 @@ class OptimizedAgent(SimpleAgent):
             print(f"Error in optimized combat: {e}", file=sys.stderr)
             import traceback
             traceback.print_exc(file=sys.stderr)
-            logger.exception("[OPTIMIZED_AI] game_id=%s Exception in optimized combat", game_id)
+            logger.exception("[OPTIMIZED_AI] game_id=%s Exception in optimized combat %s", game_id, _fallback_snapshot())
             return super().get_play_card_action()
 
     def _get_optimized_play_card_action(self):
