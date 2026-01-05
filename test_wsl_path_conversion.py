@@ -9,7 +9,7 @@ import os
 # Add project to path
 sys.path.insert(0, '/mnt/d/PycharmProjects/slay-the-spire-ai')
 
-from spirecomm.spire.data_loader import convert_windows_path_to_wsl
+from spirecomm.data.loader import convert_windows_path_to_wsl
 
 def test_path_conversion():
     """Test Windows to WSL path conversion."""

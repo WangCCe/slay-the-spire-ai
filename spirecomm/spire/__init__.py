@@ -6,7 +6,6 @@ from .potion import Potion
 from .power import Power
 from .relic import Relic
 from .screen import ScreenType, Screen
-from .data_loader import GameDataLoader, game_data, initialize_game_data
 
 __all__ = [
     'Card', 'CardType', 'CardRarity',
@@ -16,6 +15,5 @@ __all__ = [
     'Potion',
     'Power',
     'Relic',
-    'ScreenType', 'Screen',
-    'GameDataLoader', 'game_data', 'initialize_game_data'
+    'ScreenType', 'Screen'
 ]

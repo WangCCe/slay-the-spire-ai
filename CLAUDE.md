@@ -190,6 +190,51 @@ The AI responds to different game screens via `handle_screen()` in agent.py:
 4. **Smart Targeting**: Bash applies Vulnerable to high-HP monsters, attacks target low-HP
 5. **Synergy Detection**: Recognizes combos (Limit Break + high Strength, etc.)
 
+### X-Card Calculation System
+
+Some cards in Slay the Spire have variable damage or block marked as "X" in their card text. These X-cards require dynamic calculation based on game state rather than using fixed values.
+
+**Supported X-Cards (Ironclad)**:
+- **Body Slam**: Damage = current player block
+  - Example: With 25 block, deals 25 damage
+  - High damage potential when combined with block-building cards
+- **Rage**: Block = current energy
+  - Example: With 3 energy, gains 3 block
+  - Cost-effective defense that scales with energy relics
+- **Whirlwind**: Damage = energy (AOE, applies to each enemy)
+  - Example: With 3 energy and 2 monsters, deals 3 damage to each (6 total)
+  - Powerful AOE that scales with energy
+- **Bludgeon**: Damage = 12 + (block ÷ 10), capped at 30
+  - Example: With 50 block, deals 17 damage (12 + 5)
+  - Example: With 200 block, deals 30 damage (capped)
+
+**Implementation**:
+- Located in `spirecomm/ai/heuristics/simulation.py:FastCombatSimulator`
+- Methods: `_calculate_x_damage()` and `_calculate_x_block()`
+- Integrated into beam search scoring (`fast_score_action()`) and full simulation
+- Uses `DecisionContext.energy_available` for energy-based calculations
+- Normalizes card IDs by removing '+' suffix (handles upgraded cards)
+
+**How It Works**:
+1. When simulating a card play, if `base_damage == 0`, check if it's an X-card
+2. Match card.card_id against known X-card patterns (Body Slam, Rage, etc.)
+3. Calculate dynamic value based on current game state (block, energy, monsters)
+4. Apply calculated value in damage/block formulas with Strength, Weak, Frail modifiers
+5. Score X-cards appropriately in beam search (prioritize Body Slam with high block, etc.)
+
+**Adding New X-Cards**:
+To add support for additional X-cards:
+1. Add card to CARD_METADATA in `spirecomm/data/loader.py` with `is_x_damage=True` or `is_x_block=True`
+2. Add calculation logic in `_calculate_x_damage()` or `_calculate_x_block()` methods
+3. Test with `test_x_card_calculation.py`
+4. Update this documentation
+
+**Limitations**:
+- Currently only supports Ironclad X-cards (Body Slam, Rage, Whirlwind, Bludgeon)
+- Silent and Defect X-cards not yet implemented (e.g., Deadly Poison, Focus)
+- Does not handle multi-hit X-cards (e.g., Pummel, Tempest) that need repeated attack simulation
+- Uses `energy_available` instead of true `max_energy` (acceptable for most cases)
+
 ## Important Implementation Details
 
 ### Coordinator State Management
@@ -206,6 +251,44 @@ For Snecko Eye relic support, cards have two cost fields:
 - `card.cost`: Base cost from card definition
 - `card.cost_for_turn`: Modified cost (set by Snecko Eye randomizer)
 - Always use `cost_for_turn` when available
+
+### Game Data Loading
+
+The AI loads card, relic, and creature metadata from `items.json` exported by StSExporter mod:
+
+**Location**: `spirecomm/data/loader.py`
+
+**Usage**:
+```python
+from spirecomm.data.loader import game_data_loader
+
+# Get card data
+card_data = game_data_loader.get_card_data("Bash")
+damage = game_data_loader._parse_card_damage(card_data)
+is_aoe = game_data_loader._is_card_aoe(card_data)
+```
+
+**Features**:
+- Auto-initializes on module import (loads from `items.json`)
+- WSL path conversion for cross-platform development
+- Card metadata parsing (damage, block, AOE detection)
+- Hardcoded fallback for complex cards (Heavy Blade, Bludgeon, etc.)
+- Error handling for missing/corrupted data files
+
+**Path Configuration**:
+- Default: `D:\SteamLibrary\steamapps\common\SlayTheSpire\export\items.json`
+- Override via: `SLAY_THE_SPIRE_EXPORT_PATH` environment variable
+- Automatically converts Windows paths to WSL format on Linux
+
+**Card Metadata**:
+- 709 cards, 178 relics, 66 creatures, 52 keywords loaded
+- Parser uses 3-stage approach: structured field → hardcoded metadata → regex
+- Critical Ironclad cards have accurate damage values (Heavy Blade: 14, Cleave: 8, etc.)
+
+**Error Handling**:
+- Missing `items.json`: Raises `FileNotFoundError` with helpful message
+- Corrupted JSON: Raises `ValueError` with line number
+- Falls back to non-initialized loader (warns on first use) if file not found
 
 ### Action Execution
 

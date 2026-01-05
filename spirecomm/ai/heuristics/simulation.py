@@ -14,6 +14,7 @@ from spirecomm.spire.character import Monster
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
+from spirecomm.data.loader import game_data_loader
 
 # Configure logging for combat decisions
 logger = logging.getLogger(__name__)
@@ -332,7 +333,8 @@ class FastCombatSimulator:
 
     def simulate_card_play(self, state: SimulationState, card: Card,
                           target: Optional[Monster] = None,
-                          target_index: Optional[int] = None) -> SimulationState:
+                          target_index: Optional[int] = None,
+                          context: Optional[DecisionContext] = None) -> SimulationState:
         """
         Simulate playing a single card with accurate damage calculation.
 
@@ -343,12 +345,14 @@ class FastCombatSimulator:
         - Monster block
         - AOE vs single-target
         - Power effects (Demon Form, Inflame, etc.)
+        - X-damage and X-block cards (Body Slam, Rage, etc.)
 
         Args:
             state: Current simulation state
             card: Card to play
             target: Target monster (if applicable)
             target_index: Index of target in monsters list
+            context: Decision context (needed for X-card calculations)
 
         Returns:
             New simulation state after playing the card
@@ -372,41 +376,39 @@ class FastCombatSimulator:
 
         if card_type == 'ATTACK':
             new_state.attacks_played += 1
-            self._apply_attack(new_state, card, target, target_index if target_index is not None else -1)
+            self._apply_attack(new_state, card, target, target_index if target_index is not None else -1, context)
         elif card_type == 'SKILL':
             new_state.skills_played += 1
-            self._apply_skill(new_state, card)
+            self._apply_skill(new_state, card, context)
         elif card_type == 'POWER':
             self._apply_power(new_state, card)
 
         return new_state
 
     def _apply_attack(self, state: SimulationState, card: Card,
-                     target: Optional[Monster], target_index: int):
+                     target: Optional[Monster], target_index: int, context: DecisionContext = None):
         """Apply attack card effects with proper damage calculation."""
         base_damage = getattr(card, 'damage', 0)
         if base_damage == 0 or not hasattr(card, 'damage'):
             # Use game data for more accurate damage estimation
-            from spirecomm.data.loader import game_data_loader
             card_name = card.card_id.replace('+', '')
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
-                description = card_data.get('description', '').lower()
-                import re
-                damage_match = re.search(r'deal (\d+) damage', description)
-                if damage_match:
-                    base_damage = int(damage_match.group(1))
+                base_damage = game_data_loader._parse_card_damage(card_data)
+
+            # Check for X-damage cards and calculate dynamically
+            if base_damage == 0 and context is not None:
+                base_damage = self._calculate_x_damage(card, state, context)
+
             if base_damage == 0:
-                base_damage = 6  # Fallback estimate
+                base_damage = 6  # Fallback estimate for truly unknown cards
 
         # Handle AOE attacks
-        from spirecomm.data.loader import game_data_loader
         card_name = card.card_id.replace('+', '')
         card_data = game_data_loader.get_card_data(card_name)
         is_aoe = False
         if card_data:
-            description = card_data.get('description', '').lower()
-            is_aoe = 'all' in description or 'every' in description or 'each' in description
+            is_aoe = game_data_loader._is_card_aoe(card_data)
         # Also check known AOE cards by name
         if card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper', 'Carnage']:
             is_aoe = True
@@ -468,6 +470,83 @@ class FastCombatSimulator:
             return int(block * 0.75)
         return block
 
+    def _calculate_x_damage(self, card: Card, state: SimulationState, context: DecisionContext) -> int:
+        """
+        Calculate dynamic damage for X-damage cards.
+
+        X-damage cards have variable damage based on game state:
+        - Body Slam: damage = player_block
+        - Bludgeon: damage = min(30, 12 + player_block // 10)
+        - Whirlwind: damage = max_energy (applies AOE multiplier automatically)
+
+        Args:
+            card: The card being played
+            state: Current simulation state
+            context: Decision context
+
+        Returns:
+            Calculated damage value, or 0 if not an X-damage card
+
+        Examples:
+            >>> # Body Slam with 20 block
+            >>> _calculate_x_damage(Card('Body Slam'), state, context)
+            20
+            >>> # Bludgeon with 50 block
+            >>> _calculate_x_damage(Card('Bludgeon'), state, context)
+            17  # 12 + 50//10 = 17
+        """
+        # Normalize card name by removing '+' suffix (handles upgraded cards)
+        card_name = card.card_id.replace('+', '')
+
+        if card_name == 'Body Slam':
+            # Body Slam deals damage equal to your current block
+            return state.player_block
+
+        elif card_name == 'Bludgeon':
+            # Bludgeon: X damage where X = 12-30 based on current block
+            # Formula: Each 10 block adds 1 damage, starting from 12, capped at 30
+            # 0 block = 12 damage, 10 block = 13 damage, 180+ block = 30 damage
+            return min(30, 12 + state.player_block // 10)
+
+        elif card_name == 'Whirlwind':
+            # Whirlwind: X damage where X = energy (AOE applies to each monster)
+            # Uses current available energy (before playing the card)
+            return context.energy_available if context else max(state.player_energy, 1)
+
+        # Fallback: not an X-damage card
+        return 0
+
+    def _calculate_x_block(self, card: Card, state: SimulationState, context: DecisionContext) -> int:
+        """
+        Calculate dynamic block gain for X-block cards.
+
+        X-block cards have variable block based on game state:
+        - Rage: block = max_energy (total energy, not energy after playing)
+
+        Args:
+            card: The card being played
+            state: Current simulation state
+            context: Decision context
+
+        Returns:
+            Calculated block value, or 0 if not an X-block card
+
+        Examples:
+            >>> # Rage with 3 max energy
+            >>> _calculate_x_block(Card('Rage'), state, context)
+            3
+        """
+        # Normalize card name by removing '+' suffix (handles upgraded cards)
+        card_name = card.card_id.replace('+', '')
+
+        if card_name == 'Rage':
+            # Rage: Gain X Block. X equals your Energy.
+            # Uses current available energy (max energy for most cases)
+            return context.energy_available if context else max(state.player_energy, 1)
+
+        # Fallback: not an X-block card
+        return 0
+
     def _deal_damage_to_monster(self, state: SimulationState, monster: dict, damage: int):
         """Deal damage to monster, accounting for block and thorns."""
         # Damage block first
@@ -495,17 +574,24 @@ class FastCombatSimulator:
                     state.player_hp -= thorns_damage
                     state.player_hp = max(0, state.player_hp)  # Ensure HP doesn't go negative
 
-    def _apply_skill(self, state: SimulationState, card: Card):
+    def _apply_skill(self, state: SimulationState, card: Card, context: Optional[DecisionContext] = None):
         """Apply skill card effects."""
         # Block skills - apply frail multiplier if player has frail
         if hasattr(card, 'block') and card.block is not None:
             block_gain = card.block
             block_gain = self._apply_frail_block(block_gain, state.player_frail)
             state.player_block += block_gain
+        else:
+            # Check for X-block cards (like Rage)
+            if context is not None:
+                block_gain = self._calculate_x_block(card, state, context)
+                if block_gain > 0:
+                    # Apply frail multiplier
+                    block_gain = self._apply_frail_block(block_gain, state.player_frail)
+                    state.player_block += block_gain
 
         # Track exhaust events (for Feel No Pain, etc.)
         try:
-            from spirecomm.data.loader import game_data_loader
             card_name = card.card_id.replace('+', '')
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
@@ -552,7 +638,6 @@ class FastCombatSimulator:
         elif 'energy' in card_id.lower() or card_id in ['Demon Form', 'Combust']:
             # Track energy gained
             try:
-                from spirecomm.data.loader import game_data_loader
                 card_name = card.card_id.replace('+', '')
                 card_data = game_data_loader.get_card_data(card_name)
                 if card_data:
@@ -1001,7 +1086,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                         target = self._find_best_target(card, context) if card.has_target else None
 
                         # Simulate playing this card
-                        new_state = self.simulator.simulate_card_play(state, card, target)
+                        new_state = self.simulator.simulate_card_play(state, card, target, context=context)
                         new_state.played_card_uuids.add(card_idx)
 
                         # Create action
@@ -1230,15 +1315,10 @@ class HeuristicCombatPlanner(CombatPlanner):
             # Try to get damage from game data
             if base_damage == 0 or not hasattr(card, 'damage'):
                 try:
-                    from spirecomm.data.loader import game_data_loader
                     card_name = card.card_id.replace('+', '')
                     card_data = game_data_loader.get_card_data(card_name)
                     if card_data:
-                        description = card_data.get('description', '').lower()
-                        import re
-                        damage_match = re.search(r'deal (\d+) damage', description)
-                        if damage_match:
-                            base_damage = int(damage_match.group(1))
+                        base_damage = game_data_loader._parse_card_damage(card_data)
                 except:
                     pass
 
@@ -1304,6 +1384,15 @@ class HeuristicCombatPlanner(CombatPlanner):
         if state.player_hp < 30 and hasattr(card, 'block') and card.block is not None:
             score += FASTSCORE_LOWHP_BLOCK_BONUS
 
+        # X-block bonus for cards like Rage
+        if not (hasattr(card, 'block') and card.block is not None):
+            x_block = self._calculate_x_block(card, state, context)
+            if x_block > 0:
+                # X-block cards are valuable when you need defense
+                if state.player_hp < 40:
+                    score += FASTSCORE_LOWHP_BLOCK_BONUS
+                score += x_block * 1.0  # 1 point per block gained
+
         # Detect AOE cards
         is_aoe = False
         if hasattr(card, 'card_id'):
@@ -1323,15 +1412,14 @@ class HeuristicCombatPlanner(CombatPlanner):
             base_damage = card.damage
         elif hasattr(card, 'type') and str(card.type) == 'ATTACK':
             # Fallback: use game data for damage
-            from spirecomm.data.loader import game_data_loader
             card_name = card.card_id.replace('+', '')
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
-                import re
-                description = card_data.get('description', '').lower()
-                damage_match = re.search(r'deal (\d+) damage', description)
-                if damage_match:
-                    base_damage = int(damage_match.group(1))
+                base_damage = game_data_loader._parse_card_damage(card_data)
+
+            # Check for X-damage cards and calculate dynamically
+            if base_damage == 0:
+                base_damage = self._calculate_x_damage(card, state, context)
 
         # Apply AOE multiplier for multi-target attacks
         if is_aoe and num_monsters > 1:

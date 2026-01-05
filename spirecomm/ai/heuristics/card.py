@@ -10,14 +10,10 @@ import re
 from typing import Dict, List
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Intent
-from spirecomm.spire import game_data, initialize_game_data
+from spirecomm.data.loader import game_data_loader
 from spirecomm.ai.decision.base import DecisionContext, CardEvaluator
 from spirecomm.ai.priorities import Priority, SilentPriority, IroncladPriority, DefectPowerPriority
 from spirecomm.ai.heuristics.deck import DeckAnalyzer
-
-# Ensure game data is initialized
-if game_data is None:
-    initialize_game_data()
 
 
 class SynergyCardEvaluator(CardEvaluator):
@@ -100,7 +96,7 @@ class SynergyCardEvaluator(CardEvaluator):
             Numeric value score
         """
         # 1. Get card information from game data
-        card_data = game_data.get_card_by_name(card.name, card.upgrades > 0 if hasattr(card, 'upgrades') else False)
+        card_data = game_data_loader.get_card_data(card.name)
         
         # 2. Baseline score from legacy priorities and game data
         baseline = self._calculate_baseline_score(card, card_data)
@@ -306,7 +302,7 @@ class SynergyCardEvaluator(CardEvaluator):
         # Check card type first
         if hasattr(card, 'type') and str(card.type) == 'SKILL':
             # Get card information from game data
-            card_data = game_data.get_card_by_name(card.name, card.upgrades > 0 if hasattr(card, 'upgrades') else False)
+            card_data = game_data_loader.get_card_data(card.name)
             if card_data:
                 description = card_data.get('description', '').lower()
                 # If it has defensive keywords in description
@@ -324,7 +320,7 @@ class SynergyCardEvaluator(CardEvaluator):
             return True
         
         # Check card data for offensive effects
-        card_data = game_data.get_card_by_name(card.name, card.upgrades > 0 if hasattr(card, 'upgrades') else False)
+        card_data = game_data_loader.get_card_data(card.name)
         if card_data:
             description = card_data.get('description', '').lower()
             # If it deals damage, it's offensive
