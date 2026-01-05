@@ -26,46 +26,69 @@ def get_ai_version() -> str:
     - Includes short commit hash for traceability
     - Eliminates manual version management
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     try:
         # Get the directory of this script file
         script_dir = os.path.dirname(os.path.abspath(__file__))
+        logger.info(f"[STATS] script_dir: {script_dir}")
+
+        # Find git repository root (search upwards from script_dir)
+        git_dir = script_dir
+        found_git = False
+        for _ in range(5):  # Search up to 5 levels up
+            if os.path.exists(os.path.join(git_dir, '.git')):
+                found_git = True
+                break
+            git_dir = os.path.dirname(git_dir)
+
+        if not found_git:
+            logger.warning(f"[STATS] No .git directory found from {script_dir}")
+            return "3.5.9-dev"
+
+        logger.info(f"[STATS] Found git directory at: {git_dir}")
 
         # Get latest tag
         tag = subprocess.check_output(
             ['git', 'describe', '--tags', '--abbrev=0'],
-            cwd=script_dir,
-            stderr=subprocess.DEVNULL,
-            timeout=5
+            cwd=git_dir,
+            stderr=subprocess.PIPE,
+            timeout=10
         ).decode('utf-8').strip()
+        logger.info(f"[STATS] tag: {tag}")
 
         # Get commits since tag
         commits = subprocess.check_output(
             ['git', 'rev-list', '--count', f'{tag}..HEAD'],
-            cwd=script_dir,
-            stderr=subprocess.DEVNULL,
-            timeout=5
+            cwd=git_dir,
+            stderr=subprocess.PIPE,
+            timeout=10
         ).decode('utf-8').strip()
+        logger.info(f"[STATS] commits since tag: {commits}")
 
         # Get short commit hash
         commit_hash = subprocess.check_output(
             ['git', 'rev-parse', '--short', 'HEAD'],
-            cwd=script_dir,
-            stderr=subprocess.DEVNULL,
-            timeout=5
+            cwd=git_dir,
+            stderr=subprocess.PIPE,
+            timeout=10
         ).decode('utf-8').strip()
+        logger.info(f"[STATS] commit hash: {commit_hash}")
 
         # Check if working directory has uncommitted changes
+        has_uncommitted_changes = False
         try:
             dirty = subprocess.check_output(
                 ['git', 'status', '--porcelain'],
-                cwd=script_dir,
-                stderr=subprocess.DEVNULL,
-                timeout=5
+                cwd=git_dir,
+                stderr=subprocess.PIPE,
+                timeout=10
             ).decode('utf-8').strip()
-
             has_uncommitted_changes = len(dirty) > 0
+            logger.info(f"[STATS] has uncommitted changes: {has_uncommitted_changes}")
         except:
-            has_uncommitted_changes = False
+            logger.info(f"[STATS] Could not check git status")
 
         # Format version string
         if commits == '0':
@@ -77,12 +100,20 @@ def get_ai_version() -> str:
             if has_uncommitted_changes:
                 version += ".dirty"
 
+        logger.info(f"[STATS] Final version: {version}")
         return version
 
+    except subprocess.TimeoutExpired as e:
+        logger.error(f"[STATS] Git command timed out: {e}")
+        return "3.5.9-dev-timeout"
+    except subprocess.CalledProcessError as e:
+        logger.error(f"[STATS] Git command failed (exit {e.returncode}): {e}")
+        if e.stderr:
+            logger.error(f"[STATS] stderr: {e.stderr.decode('utf-8', errors='ignore')}")
+        return "3.5.9-dev-git-error"
     except Exception as e:
         # Fallback if git commands fail
-        import logging
-        logging.warning(f"[STATS] Failed to get version from git: {e}, using fallback")
+        logger.error(f"[STATS] Failed to get version from git: {type(e).__name__}: {e}")
         return "3.5.9-dev"
 
 
