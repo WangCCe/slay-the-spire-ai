@@ -718,7 +718,7 @@ class FastCombatSimulator:
         return total_damage
 
     def calculate_outcome_score(self, initial_state: SimulationState, final_state: SimulationState,
-                               current_act: int = 1, weights: dict = None) -> float:
+                               current_act: int = 1, weights: dict = None, context=None, sequence=None) -> float:
         """
         Calculate the quality of a combat outcome.
 
@@ -734,6 +734,8 @@ class FastCombatSimulator:
             final_state: State after actions
             current_act: Current act number (1, 2, 3)
             weights: Combat mode weight profile (uses defaults if None)
+            context: DecisionContext for floor-aware scoring (optional)
+            sequence: Card action sequence for AOE bonuses (optional)
 
         Returns:
             Outcome score
@@ -761,10 +763,47 @@ class FastCombatSimulator:
             score += ALL_LETHAL_BONUS
             logger.debug(f"[ALL_LETHAL_BONUS] +{ALL_LETHAL_BONUS} score for killing all {initial_alive} monsters")
 
-        # 2. Damage dealt
+        # 2. Damage dealt (with multi-monster bonuses)
         total_damage = sum(m['hp'] for m in initial_state.monsters) - \
                       sum(m['hp'] for m in final_state.monsters)
-        score += total_damage * weights['DAMAGE_WEIGHT']
+
+        # Multi-monster detection and adaptive damage weighting
+        num_monsters = len([m for m in initial_state.monsters if not m['is_gone']])
+
+        # Get floor for special Floor 6-7 handling
+        current_floor = getattr(context, 'floor', 0) if context else 0
+
+        # Base damage multiplier based on monster count
+        if num_monsters >= 3:
+            damage_multiplier = 1.8
+        elif num_monsters == 2:
+            damage_multiplier = 1.3
+        else:
+            damage_multiplier = 1.0
+
+        # Floor 6-7 special AOE priority (highest death floors)
+        if current_floor in [6, 7] and num_monsters >= 2:
+            floor_bonus = 0.4 if num_monsters >= 3 else 0.2
+            damage_multiplier += floor_bonus
+            logger.info(f"[FLOOR6_AOE] Enhanced priority on Floor {current_floor}: {damage_multiplier}×")
+
+        logger.info(f"[OUTCOME_MONSTERS] Detected {num_monsters} alive monsters")
+        logger.info(f"[OUTCOME_MULTIPLIER] Applied {damage_multiplier}× damage weight (base: {weights['DAMAGE_WEIGHT']})")
+
+        score += total_damage * weights['DAMAGE_WEIGHT'] * damage_multiplier
+
+        # AOE card bonus in multi-monster scenarios
+        if sequence and num_monsters >= 2:
+            aoe_cards = ['Cleave', 'Whirlwind', 'Thunderclap', 'Immolate']
+
+            for action in sequence:
+                if hasattr(action, 'card') and hasattr(action.card, 'card_id'):
+                    card_id = action.card.card_id.replace('+', '')  # Handle upgraded cards
+
+                    if card_id in aoe_cards:
+                        aoe_bonus = 40 if num_monsters >= 3 else 20
+                        score += aoe_bonus
+                        logger.info(f"[OUTCOME_AOE] +{aoe_bonus} for {card_id} in {num_monsters}-monster fight")
 
         # 3. Block gained (defensive value)
         block_gained = final_state.player_block - initial_state.player_block
@@ -1074,7 +1113,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
                         # Score this sequence (with small conservation penalty for using potion)
                         current_act = context.act if hasattr(context, 'act') else 1
-                        score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act, self.weights)
+                        score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act, self.weights, context, new_sequence)
                         total_score = score - 5  # Conservation penalty
 
                         new_candidates.append((new_sequence, new_state, energy_spent, total_score))
@@ -1099,7 +1138,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
                         # Score this sequence (with current act for survival threshold)
                         current_act = context.act if hasattr(context, 'act') else 1
-                        score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act, self.weights)
+                        score = self.simulator.calculate_outcome_score(initial_state, new_state, current_act, self.weights, context, new_sequence)
 
                         # Consider card value from evaluator
                         card_value = self.card_evaluator.evaluate_card(card, context)

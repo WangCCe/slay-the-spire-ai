@@ -80,14 +80,13 @@ def get_ai_version() -> str:
     #   - Added player_hp and player_max_hp to DecisionContext
     #   - Fixed AttributeError: 'DecisionContext' object has no attribute 'player_hp'
     #   - Added warning log if HP attributes are missing
-    # Version 3.5.0: Implement X-card calculation and unify game data loading
-    #   - X-Card Calculation: Dynamic damage/block for Body Slam, Rage, Whirlwind, Bludgeon
-    #   - Game Data Unification: Consolidated loaders, WSL path support, enhanced parsing
-    #   - Added _calculate_x_damage() and _calculate_x_block() to FastCombatSimulator
-    #   - Integrated X-calculation into attack/skill simulation and beam search scoring
-    #   - Created comprehensive test suite (test_x_card_calculation.py) with 100% pass rate
-    #   - Added CARD_METADATA for 35+ Ironclad cards with 3-stage parsing
-    return "3.5.0-x-card-calculation"
+    # Version 3.5.1: Multi-monster scoring fix
+    #   - Added monster count detection to calculate_outcome_score()
+    #   - Applied adaptive damage weight: 1.0× (1 monster), 1.3× (2 monsters), 1.8× (3+ monsters)
+    #   - Added AOE card bonus in multi-monster scenarios
+    #   - Added Floor 6-7 special AOE priority
+    #   - Fixed scoring mismatch between FastScore and Outcome Score
+    return "3.5.1-multi-monster-scoring"
 
 
 def get_git_commit() -> str:
