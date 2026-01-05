@@ -91,8 +91,10 @@ def get_ai_version() -> str:
     # Version 3.5.3: Lethal detection damage calculation fix
     #   - Fixed CombatEndingDetector._get_card_damage() always returning 0
     #   - Card objects don't have 'damage' attribute (Communication Mod JSON doesn't include it)
-    #   - Now uses game_data_loader.get_card_data() to get base damage from items.json
-    #   - Supports upgraded cards (base_damage + damage_upgrade * upgrades)
+    #   - Uses card.name to query game_data_loader.get_card_data() from items.json
+    #   - card.name matches items.json format ("Strike" for basic, "Strike+" for upgraded)
+    #   - card_id is internal ("Strike_R") and doesn't match items.json keys
+    #   - Uses game_data_loader._parse_card_damage() for metadata/regex parsing
     #   - Fixes infinite loop when AI runs out of attack cards (True Grit exhausts hand)
     #   - Resolves Floor 11 Slaver combat stalling issue
     return "3.5.3-lethal-damage-fix"
