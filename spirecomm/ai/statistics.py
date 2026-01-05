@@ -88,7 +88,14 @@ def get_ai_version() -> str:
     #   - Added AOE card bonus: +20 (2 monsters) or +40 (3+ monsters)
     #   - Added logging: [OUTCOME_MONSTERS], [OUTCOME_MULTIPLIER], [OUTCOME_AOE], [FLOOR6_AOE]
     #   - Now both FastCombatSimulator and IroncladCombatPlanner have multi-monster scoring
-    return "3.5.2-multi-monster-scoring-fixed"
+    # Version 3.5.3: Lethal detection damage calculation fix
+    #   - Fixed CombatEndingDetector._get_card_damage() always returning 0
+    #   - Card objects don't have 'damage' attribute (Communication Mod JSON doesn't include it)
+    #   - Now uses game_data_loader.get_card_data() to get base damage from items.json
+    #   - Supports upgraded cards (base_damage + damage_upgrade * upgrades)
+    #   - Fixes infinite loop when AI runs out of attack cards (True Grit exhausts hand)
+    #   - Resolves Floor 11 Slaver combat stalling issue
+    return "3.5.3-lethal-damage-fix"
 
 
 def get_git_commit() -> str:
