@@ -2,28 +2,44 @@ import argparse
 import os
 import sys
 import logging
+from logging.handlers import RotatingFileHandler
 
 from spirecomm.communication.coordinator import Coordinator
 from spirecomm.ai.agent import SimpleAgent, OptimizedAgent, OPTIMIZED_AI_AVAILABLE
 from spirecomm.spire.character import PlayerClass
 
-# Setup logging to file (all logs go to ai_debug.log)
+# Setup logging to file with rotation (all logs go to ai_debug.log)
 # Note: We don't use StreamHandler because Communication Mod uses stdout for commands
+# Log rotation: 10MB per file, keep 5 backup files (60MB total)
 # Python 3.7 compatibility: force parameter not available, check if already configured
 if not logging.getLogger().hasHandlers():
+    handler = RotatingFileHandler(
+        'ai_debug.log',
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=5,  # Keep 5 backups
+        encoding='utf-8',
+        mode='a'
+    )
     logging.basicConfig(
         level=logging.DEBUG,  # TEMPORARY: Set to DEBUG to see defense analysis logs
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('ai_debug.log', encoding='utf-8', mode='a'),
+            handler,
         ],
     )
 else:
-    # Logging already configured, just add our file handler if not present
-        logger = logging.getLogger()
-        has_file_handler = any(isinstance(h, logging.FileHandler) for h in logger.handlers)
-        if not has_file_handler:
-            logger.addHandler(logging.FileHandler('ai_debug.log', encoding='utf-8', mode='a'))
+    # Logging already configured, just add our rotating file handler if not present
+    logger = logging.getLogger()
+    has_rotating_handler = any(isinstance(h, RotatingFileHandler) for h in logger.handlers)
+    if not has_rotating_handler:
+        rotating_handler = RotatingFileHandler(
+            'ai_debug.log',
+            maxBytes=10*1024*1024,  # 10MB
+            backupCount=5,  # Keep 5 backups
+            encoding='utf-8',
+            mode='a'
+        )
+        logger.addHandler(rotating_handler)
 
 # Import statistics components
 try:

@@ -13,91 +13,77 @@ from spirecomm.ai.tracker import GameTracker
 
 
 def get_ai_version() -> str:
-    """Get AI version from git tags or fallback to default.
-    
-    Uses git tag if available, otherwise returns default version.
-    This avoids manual version updates and ensures version matches git tag.
-    Now works from any directory by executing git commands in the script's directory.
+    """Generate semantic version from git tags.
+
+    Version format:
+    - On exact tag: {tag} (e.g., "v3.5.9")
+    - N commits after tag: {tag}+{n}.g{hash} (e.g., "v3.5.9+2.gabcdef")
+    - No git available: "3.5.9-dev"
+
+    This approach:
+    - Automatically tracks version from git tags
+    - Shows how many commits since last tag
+    - Includes short commit hash for traceability
+    - Eliminates manual version management
     """
     try:
         # Get the directory of this script file
         script_dir = os.path.dirname(os.path.abspath(__file__))
 
-        # Try to get the most recent tag
+        # Get latest tag
         tag = subprocess.check_output(
             ['git', 'describe', '--tags', '--abbrev=0'],
             cwd=script_dir,
             stderr=subprocess.DEVNULL,
             timeout=5
         ).decode('utf-8').strip()
-        
-        # If tag exists, use it
-        if tag:
-            return tag
-    except:
-        pass
-    
-    # Fallback to default version if git tag not available
-    # Version 3.0: Phase 1-6 beam search optimization complete
-    # Version 3.1: Added group-based card limits + AOE scoring fix
-    # Version 3.1.1: Added defense logging (DAMAGE_FALLBACK, OVER_DEFENSE, DEFENSE_ANALYSIS)
-    # Version 3.1.2: Enabled DEBUG logging for defense analysis
-    # Version 3.2.0: Wider beam search (Act1/2/3: 20/30/40), increased M_VALUES and TIMEOUT_BUDGET
-    # Version 3.2.1: Significantly reduced Act 1 elite priority to avoid early elites
-    # Version 3.2.2: Added penalty for useless defense when monsters aren't attacking
-    # Version 3.2.3: Fix incoming_damage to respect monster intents (skip DEBUG/DEFEND/BUFF intents)
-    # Version 3.2.4: Reduce defense scoring weight from 5 to 2 (attack is better than defense)
-    # Version 3.3.0: Implement aggressive combat mode for elite/scaling fights (threat detection, AGGRESSIVE mode)
-    # Version 3.3.1: Add SKILL card penalty against Gremlin Nob (-50 per SKILL to prevent Nob's Strength gain)
-    # Version 3.4.0: Unified Act 1 elite strategy framework
-    #   - Lagavulin: Progressive damage scaling (4.0 → 8.0) based on Siphon Soul count
-    #   - 3 Sentries: Single-target focus bonus (+50 for 70%+ concentration)
-    #   - Slime Boss: AOE priority (×1.5 multiplier for Cleave/Thunderclap/Whirlwind/Immolate)
-    #   - A20 early aggression: Turn 1 (8+ dmg), Turn 2 (15+ dmg), Turn 3+ (12+/turn average)
-    # Version 3.4.1: Critical bug fix - Preserve IroncladCombatPlanner during combat mode switches
-    #   - Fixed agent.py overwriting IroncladCombatPlanner with HeuristicCombatPlanner
-    #   - Elite strategies (Gremlin Nob, Lagavulin, 3 Sentries, Slime Boss) now active
-    #   - Added combat_mode parameter to IroncladCombatPlanner
-    # Version 3.4.2: Add diagnostic logging for OptimizedAI fallback
-    #   - Added logger to agent.py
-    #   - Added warnings to identify why OptimizedAI falls back to SimpleAgent
-    #   - Will show: use_optimized_combat, combat_planner, or OPTIMIZED_AI_AVAILABLE issues
-    # Version 3.4.3: Debug monster_id vs monster.name mismatch
-    #   - Added [ELITE_DEBUG] logs to show monster_ids and monster_names
-    #   - Hypothesis: monster.monster_id != monster.name (e.g., "GremlinNob" vs "Gremlin Nob")
-    # Version 3.4.4: Add entry logging to trace if _detect_elite_type is called
-    #   - Added [ELITE_ENTRY] and [SCORE_DEBUG] logs
-    #   - Will confirm if _detect_elite_type() is being called at all
-    # Version 3.4.5: Trace plan_turn() execution to find where it exits early
-    #   - Added logs before/after lethal check
-    #   - Added logs before _get_adaptive_parameters()
-    #   - Will find why "Beam search" log never appears
-    # Version 3.4.6: Add exception handling to can_kill_all()
-    #   - Added try-catch to catch and log exceptions
-    #   - Added [LETHAL_ENTRY] logs to trace execution
-    #   - Will reveal what's blocking lethal detection
-    # Version 3.4.7: Fix missing player_hp attribute in DecisionContext
-    #   - Added player_hp and player_max_hp to DecisionContext
-    #   - Fixed AttributeError: 'DecisionContext' object has no attribute 'player_hp'
-    #   - Added warning log if HP attributes are missing
-    # Version 3.5.2: Multi-monster scoring fix (IroncladCombatPlanner)
-    #   - Fixed IroncladCombatPlanner._score_sequence() missing multi-monster bonuses
-    #   - Added monster count detection to _score_sequence()
-    #   - Applied adaptive damage multiplier: 1.0× (1 monster), 1.3× (2 monsters), 1.8× (3+ monsters)
-    #   - Added Floor 6-7 special priority: +0.2× (2 monsters) or +0.4× (3+ monsters)
-    #   - Added AOE card bonus: +20 (2 monsters) or +40 (3+ monsters)
-    #   - Added logging: [OUTCOME_MONSTERS], [OUTCOME_MULTIPLIER], [OUTCOME_AOE], [FLOOR6_AOE]
-    #   - Now both FastCombatSimulator and IroncladCombatPlanner have multi-monster scoring
-    # Version 3.5.3: Lethal detection damage calculation fix
-    #   - Fixed CombatEndingDetector._get_card_damage() always returning 0
-    #   - Card objects don't have 'damage' attribute (Communication Mod JSON doesn't include it)
-    #   - Uses card.name to query game_data_loader.get_card_data() from items.json
-    #   - card.name matches items.json format ("Strike" for basic, "Strike+" for upgraded)
-    #   - card_id is internal ("Strike_R") and doesn't match items.json keys
-    #   - Uses game_data_loader._parse_card_damage() for metadata/regex parsing
-    #   - Fixes infinite loop when AI runs out of attack cards (True Grit exhausts hand)
-    #   - Resolves Floor 11 Slaver combat stalling issue
-    return "3.5.9-lethal-vulnerable-fix"
+
+        # Get commits since tag
+        commits = subprocess.check_output(
+            ['git', 'rev-list', '--count', f'{tag}..HEAD'],
+            cwd=script_dir,
+            stderr=subprocess.DEVNULL,
+            timeout=5
+        ).decode('utf-8').strip()
+
+        # Get short commit hash
+        commit_hash = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            cwd=script_dir,
+            stderr=subprocess.DEVNULL,
+            timeout=5
+        ).decode('utf-8').strip()
+
+        # Check if working directory has uncommitted changes
+        try:
+            dirty = subprocess.check_output(
+                ['git', 'status', '--porcelain'],
+                cwd=script_dir,
+                stderr=subprocess.DEVNULL,
+                timeout=5
+            ).decode('utf-8').strip()
+
+            has_uncommitted_changes = len(dirty) > 0
+        except:
+            has_uncommitted_changes = False
+
+        # Format version string
+        if commits == '0':
+            # Exactly on tag
+            version = tag if not has_uncommitted_changes else f"{tag}.dirty"
+        else:
+            # N commits after tag
+            version = f"{tag}+{commits}.g{commit_hash}"
+            if has_uncommitted_changes:
+                version += ".dirty"
+
+        return version
+
+    except Exception as e:
+        # Fallback if git commands fail
+        import logging
+        logging.warning(f"[STATS] Failed to get version from git: {e}, using fallback")
+        return "3.5.9-dev"
 
 
 def get_git_commit() -> str:

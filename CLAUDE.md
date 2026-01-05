@@ -335,9 +335,41 @@ D:\SteamLibrary\steamapps\common\SlayTheSpire\
 | `main_game_loop.log` | **Primary log** - game loop events, coordinator state, restart tracking |
 | `ai_game_stats.csv` | Game statistics (wins, losses, floor reached, character class, etc.) |
 | `ai_game_stats.jsonl` | Detailed game logs (JSONL format) |
-| `ai_debug.log` | AI debugging and decision history |
+| `ai_debug.log` | AI debugging and decision history (with automatic rotation) |
+| `ai_debug.log.1` through `.5` | Rotated backup logs (see Log Rotation below) |
 | `shop_error.log` | Shop-specific errors and warnings |
 | `communication_mod_errors.log` | Python exceptions and stack traces |
+
+### Log Rotation
+
+**ai_debug.log** uses automatic log rotation to prevent unlimited file growth:
+
+- **Rotation Trigger**: When `ai_debug.log` reaches 10MB
+- **Backup Count**: Keeps 5 backup files (`.1` through `.5`)
+- **Total Storage**: Maximum 60MB (10MB × 6 files)
+- **Rotation Behavior**:
+  - Current logs: `ai_debug.log` (active, <10MB)
+  - Oldest backup: `ai_debug.log.5` (deleted on next rotation)
+  - Newest backup: `ai_debug.log.1` (most recent rotation)
+
+**Example**:
+```
+ai_debug.log      → 5.1 MB  (current, actively written)
+ai_debug.log.1    → 10.0 MB (most recent backup)
+ai_debug.log.2    → 10.0 MB
+ai_debug.log.3    → 10.0 MB
+ai_debug.log.4    → 10.0 MB
+ai_debug.log.5    → 10.0 MB (oldest, will be deleted next rotation)
+```
+
+**Configuration** (main.py):
+```python
+handler = RotatingFileHandler(
+    'ai_debug.log',
+    maxBytes=10*1024*1024,  # 10MB
+    backupCount=5,
+)
+```
 
 ### Debugging Workflow
 
