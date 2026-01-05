@@ -384,6 +384,8 @@ class FastCombatSimulator:
         elif card_type == CardType.POWER:
             self._apply_power(new_state, card)
 
+        self._apply_self_damage(new_state, card)
+
         return new_state
 
     def _apply_attack(self, state: SimulationState, card: Card,
@@ -654,6 +656,27 @@ class FastCombatSimulator:
                 pass
 
         # Other powers can be added as needed
+
+    def _apply_self_damage(self, state: SimulationState, card: Card):
+        """Apply HP costs for cards that damage the player to fuel effects."""
+        try:
+            card_name = card.card_id.replace('+', '')
+            card_data = game_data_loader.get_card_data(card_name)
+            if not card_data:
+                return
+
+            description = card_data.get('description', '') or ''
+            match = re.search(r'lose (\d+) hp', description.lower())
+            if not match:
+                return
+
+            hp_loss = int(match.group(1))
+            if hp_loss <= 0:
+                return
+
+            state.player_hp = max(0, state.player_hp - hp_loss)
+        except Exception:
+            pass
 
     def _estimate_incoming_damage(self, monsters_state: list) -> int:
         """

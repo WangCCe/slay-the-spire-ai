@@ -269,6 +269,32 @@ def test_edge_cases():
 
     print("\n✓ All edge case tests passed!")
 
+def test_self_damage_cards():
+    """Test that HP-cost cards reduce player HP even when killing enemies."""
+    print("\n" + "=" * 80)
+    print("TEST: Self-Damage Cards (Hemokinesis)")
+    print("=" * 80)
+
+    evaluator = SynergyCardEvaluator()
+    planner = FastCombatSimulator(evaluator)
+    context = create_test_context(player_hp=5)
+    state = create_test_state(context, player_block=0)
+    card = MockCard('Hemokinesis')
+
+    new_state = planner.simulate_card_play(state, card, context=context)
+    expected_hp = max(0, 5 - 2)
+
+    print("\n[Test 1] Hemokinesis applies self-damage")
+    print(f"  Starting HP: 5")
+    print(f"  Expected HP after play: {expected_hp}")
+    print(f"  Actual HP after play: {new_state.player_hp}")
+    assert new_state.player_hp == expected_hp, (
+        f"Expected player HP to drop to {expected_hp}, got {new_state.player_hp}"
+    )
+    print("  ✓ PASS")
+
+    print("\n✓ Self-damage card tests passed!")
+
 def main():
     """Run all tests."""
     print("\n" + "=" * 80)
@@ -282,6 +308,7 @@ def main():
         test_rage_block()
         test_upgraded_cards()
         test_edge_cases()
+        test_self_damage_cards()
 
         print("\n" + "=" * 80)
         print("✅ ALL TESTS PASSED!")

@@ -145,22 +145,6 @@ def get_ai_version() -> str:
         return "3.5.9-dev"
 
 
-def get_git_commit() -> str:
-    """Get current git commit hash for version tracking.
-
-    Enhanced to handle more edge cases and provide better error information.
-    Now works from any directory by executing git commands in the script's directory.
-    Uses caching to avoid repeated slow git calls.
-
-    DISABLED: Git calls are too slow in WSL/Windows cross-filesystem environment.
-    """
-    # Temporarily disabled - always return cached/unknown value
-    import logging
-    logging.info("[STATS] get_git_commit() - git calls disabled, using default")
-    return "unknown (git disabled)"
-
-    # Original code below is disabled
-    return None  # Unreachable
 
 
 # Auto-detect AI version from git tags
@@ -200,7 +184,6 @@ class GameStatistics:
         'avg_confidence',
         'fallback_count',
         'ai_version',
-        'git_commit',
         'timestamp'
     ])
 
@@ -359,7 +342,6 @@ class GameStatistics:
                 str(game_data['avg_confidence']),
                 str(game_data['fallback_count']),
                 AI_VERSION,
-                get_git_commit(),
                 game_data['timestamp']
             ]
 
