@@ -10,6 +10,7 @@ from typing import List, Tuple, Optional
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster
 from spirecomm.communication.action import PlayCardAction
+from spirecomm.data.loader import game_data_loader
 from ..decision.base import DecisionContext
 
 logger = logging.getLogger(__name__)
@@ -307,8 +308,16 @@ class CombatEndingDetector:
         """
         base_damage = 0
 
-        if hasattr(card, 'damage') and card.damage is not None:
-            base_damage = card.damage
+        # Get base damage from game data loader (Card objects don't have damage attribute)
+        card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ""
+        card_data = game_data_loader.get_card_data(card_id)
+
+        if card_data:
+            base_damage = card_data.get('damage', 0)
+            # Handle upgraded cards (base damage + upgrades)
+            if hasattr(card, 'upgrades') and card.upgrades > 0:
+                damage_upgrade = card_data.get('damage_upgrade', 0)
+                base_damage += damage_upgrade * card.upgrades
 
         # Add strength (for attacks)
         if hasattr(card, 'type') and str(card.type) == 'ATTACK':
