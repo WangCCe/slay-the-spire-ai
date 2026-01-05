@@ -208,6 +208,7 @@ class CombatEndingDetector:
             if hasattr(card, 'type') and card.type == CardType.ATTACK:
                 cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
                 damage = self._get_card_damage(card, context)
+                logger.info(f"[LETHAL_CALC] {card.name}: cost={cost}, damage={damage}, eff={damage/cost if cost > 0 else 'inf'}")
                 if cost > 0:
                     efficiency = damage / cost
                 else:
@@ -218,14 +219,18 @@ class CombatEndingDetector:
         attack_cards.sort(key=lambda x: (x[3], x[2]), reverse=True)
 
         # Greedily select cards until energy runs out
+        selected = []
         for card, cost, damage, _ in attack_cards:
             if energy_used + cost <= context.energy_available:
                 total_damage += damage
                 energy_used += cost
+                selected.append(card.name)
             elif cost == 0:
                 # Zero-cost cards can always be played
                 total_damage += damage
+                selected.append(card.name)
 
+        logger.info(f"[LETHAL_CALC] Selected: {selected}, total_damage={total_damage}, energy_used={energy_used}/{context.energy_available}")
         return total_damage
 
     def _can_target_all_monsters(self, context: DecisionContext, affordable_damage: int) -> bool:
