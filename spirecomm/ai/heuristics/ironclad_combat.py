@@ -156,7 +156,7 @@ class IroncladCombatPlanner(CombatPlanner):
         beam = [([], initial_state, 0, float('-inf'))]  # (actions, state, energy_spent, score)
 
         best_sequence = []
-        best_score = float('-inf')
+        best_score = self._score_sequence([], initial_state, initial_state, context)
 
         for depth in range(max_depth):
             new_candidates = []
@@ -202,6 +202,9 @@ class IroncladCombatPlanner(CombatPlanner):
 
                     # Score
                     score = self._score_sequence(new_sequence, initial_state, new_state, context)
+                    if score > best_score:
+                        best_score = score
+                        best_sequence = new_sequence
 
                     new_candidates.append((new_sequence, new_state, energy_spent + cost, score))
 
@@ -211,9 +214,6 @@ class IroncladCombatPlanner(CombatPlanner):
             # Keep top candidates
             new_candidates.sort(key=lambda x: x[3], reverse=True)
             beam = new_candidates[:beam_width]
-
-            if beam:
-                best_sequence, best_state, best_energy, best_score = beam[0]
 
         if beam:
             top_candidates = beam[:3]
