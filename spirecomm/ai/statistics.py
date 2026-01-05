@@ -35,10 +35,29 @@ def get_ai_version() -> str:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         logger.info(f"[STATS] script_dir: {script_dir}")
 
-        # Find git executable
+        # Find git executable - try multiple methods
         git_executable = shutil.which('git')
+
+        # If not found in PATH, try common installation locations
         if not git_executable:
-            logger.warning("[STATS] git executable not found in PATH")
+            logger.info("[STATS] git not found in PATH, checking common locations")
+            common_git_paths = [
+                r"C:\Program Files\Git\bin\git.exe",
+                r"C:\Program Files\Git\cmd\git.exe",
+                r"C:\Program Files\Git\mingw64\bin\git.exe",
+                r"C:\Program Files (x86)\Git\bin\git.exe",
+                r"C:\Program Files (x86)\Git\cmd\git.exe",
+                os.path.expanduser(r"~\AppData\Local\Programs\Git\bin\git.exe"),
+            ]
+
+            for git_path in common_git_paths:
+                if os.path.exists(git_path):
+                    git_executable = git_path
+                    logger.info(f"[STATS] Found git at: {git_path}")
+                    break
+
+        if not git_executable:
+            logger.warning("[STATS] git executable not found in PATH or common locations")
             return "3.5.9-dev-no-git"
 
         logger.info(f"[STATS] git executable: {git_executable}")
