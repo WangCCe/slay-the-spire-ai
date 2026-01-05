@@ -453,6 +453,9 @@ class IroncladCombatPlanner(CombatPlanner):
         # 4. Energy efficiency
         energy_used = final_state.energy_spent
         score += energy_used * 2
+        # Draw/energy gains (Offering/Bloodletting/etc.)
+        score += final_state.cards_drawn * 3
+        score += final_state.energy_gained * 4
 
         # 5. Strategic bonus for card types
         for action in sequence:
