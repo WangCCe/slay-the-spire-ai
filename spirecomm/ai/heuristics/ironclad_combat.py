@@ -171,7 +171,7 @@ class IroncladCombatPlanner(CombatPlanner):
             new_candidates = []
 
             # === NEW: Check if target exploration should be enabled ===
-            elapsed_ms = (time.time() - decision_start) * 1000 if hasattr(self, 'decision_start') else 0
+            elapsed_ms = (time.time() - self.decision_start) * 1000 if hasattr(self, 'decision_start') else 0
             explore_targets = self._should_explore_targets(context, elapsed_ms)
 
             for sequence, state, energy_spent, score in beam:
