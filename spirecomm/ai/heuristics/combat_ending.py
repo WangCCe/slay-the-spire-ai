@@ -132,7 +132,7 @@ class CombatEndingDetector:
 
         # Get attack cards sorted by damage
         attack_cards = [c for c in context.playable_cards
-                       if hasattr(c, 'type') and str(c.type) == 'ATTACK']
+                       if hasattr(c, 'type') and c.type == CardType.ATTACK]
         attack_cards.sort(key=lambda c: self._get_card_damage(c, context), reverse=True)
 
         for monster in remaining_monsters:
@@ -254,7 +254,7 @@ class CombatEndingDetector:
         single_target_count = 0
 
         for card in context.playable_cards:
-            if hasattr(card, 'type') and str(card.type) == 'ATTACK':
+            if hasattr(card, 'type') and card.type == CardType.ATTACK:
                 # Check if this is an AOE attack
                 card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ""
                 is_aoe = card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper', 'Carnage']
@@ -296,7 +296,7 @@ class CombatEndingDetector:
         total_damage = 0
 
         for card in context.playable_cards:
-            if hasattr(card, 'type') and str(card.type) == 'ATTACK':
+            if hasattr(card, 'type') and card.type == CardType.ATTACK:
                 total_damage += self._get_card_damage(card, context)
 
         return total_damage

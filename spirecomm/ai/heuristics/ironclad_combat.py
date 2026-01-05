@@ -187,7 +187,7 @@ class IroncladCombatPlanner(CombatPlanner):
                     # If this is the first attack (no primary target yet), set it
                     if state.primary_target is None and target_idx is not None:
                         # Check if this is an attack card (not AOE)
-                        is_attack = hasattr(card, 'type') and str(card.type) == 'ATTACK'
+                        is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
                         is_single_target = target_idx is not None and card.card_id not in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
                         if is_attack and is_single_target:
                             new_state.primary_target = target_idx
@@ -294,7 +294,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 return context.monsters_alive[i], i
 
         # Standard attacks - prioritize high threat targets, then lowest HP
-        if hasattr(card, 'type') and str(card.type) == 'ATTACK':
+        if hasattr(card, 'type') and card.type == CardType.ATTACK:
             # Prefer non-vulnerable high threat targets if available
             non_vulnerable = [(i, m, t) for i, m, t in monster_threats if m.get('vulnerable', 0) == 0]
             if non_vulnerable:
@@ -570,7 +570,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
     def _get_card_priority(self, card: Card, context: DecisionContext) -> float:
         """Get priority score for a card (simplified version of existing logic)."""
-        card_type = str(card.type) if hasattr(card, 'type') else 'UNKNOWN'
+        card_type = card.type if hasattr(card, 'type') else None
         card_id = card.card_id
         
         # Check if fighting Gremlins or other weak monsters that require aggressive play
@@ -588,7 +588,7 @@ class IroncladCombatPlanner(CombatPlanner):
             aggressive_mode = True
 
         # Powers first
-        if card_type == 'POWER':
+        if card_type == CardType.POWER:
             if card_id == 'Demon Form' and context.turn <= 3:
                 return 1000
             return 600 if context.turn <= 3 else 400
@@ -610,7 +610,7 @@ class IroncladCombatPlanner(CombatPlanner):
             return 750  # Still good when we don't need block
 
         # Attacks - prioritize more in aggressive mode
-        if card_type == 'ATTACK':
+        if card_type == CardType.ATTACK:
             base_attack_priority = 700
             
             # Increase attack priority for aggressive mode against Gremlins

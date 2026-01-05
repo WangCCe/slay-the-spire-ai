@@ -8,7 +8,7 @@ to consider card synergies, game state context, and deck composition.
 import math
 import re
 from typing import Dict, List
-from spirecomm.spire.card import Card
+from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Intent
 from spirecomm.data.loader import game_data_loader
 from spirecomm.ai.decision.base import DecisionContext, CardEvaluator
@@ -300,7 +300,7 @@ class SynergyCardEvaluator(CardEvaluator):
                             'iron wave', 'flame barrier', 'hand of greed', 'protect']
         
         # Check card type first
-        if hasattr(card, 'type') and str(card.type) == 'SKILL':
+        if hasattr(card, 'type') and card.type == CardType.SKILL:
             # Get card information from game data
             card_data = game_data_loader.get_card_data(card.name)
             if card_data:
@@ -316,7 +316,7 @@ class SynergyCardEvaluator(CardEvaluator):
     def _is_offensive_card(self, card: Card) -> bool:
         """Check if card is primarily offensive."""
         # Check if card type is ATTACK
-        if hasattr(card, 'type') and str(card.type) == 'ATTACK':
+        if hasattr(card, 'type') and card.type == CardType.ATTACK:
             return True
         
         # Check card data for offensive effects

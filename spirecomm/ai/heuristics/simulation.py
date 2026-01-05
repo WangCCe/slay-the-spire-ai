@@ -10,7 +10,7 @@ import logging
 import re
 import time
 from typing import List, Dict, Tuple, Optional
-from spirecomm.spire.card import Card
+from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster, Intent
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
@@ -373,15 +373,15 @@ class FastCombatSimulator:
         new_state.energy_spent += cost
 
         # Apply card effects based on type
-        card_type = str(card.type) if hasattr(card, 'type') else 'UNKNOWN'
+        card_type = card.type if hasattr(card, 'type') else None
 
-        if card_type == 'ATTACK':
+        if card_type == CardType.ATTACK:
             new_state.attacks_played += 1
             self._apply_attack(new_state, card, target, target_index if target_index is not None else -1, context)
-        elif card_type == 'SKILL':
+        elif card_type == CardType.SKILL:
             new_state.skills_played += 1
             self._apply_skill(new_state, card, context)
-        elif card_type == 'POWER':
+        elif card_type == CardType.POWER:
             self._apply_power(new_state, card)
 
         return new_state
@@ -1344,7 +1344,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             return None
 
         # Check if card is an attack
-        is_attack = hasattr(card, 'type') and str(card.type) == 'ATTACK'
+        is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
 
         if is_attack:
             # Estimate damage for this attack
@@ -1415,7 +1415,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         # Attack bonus when monsters alive
         monsters_alive = [m for m in state.monsters if not m['is_gone']]
         num_monsters = len(monsters_alive)
-        if monsters_alive and hasattr(card, 'type') and str(card.type) == 'ATTACK':
+        if monsters_alive and hasattr(card, 'type') and card.type == CardType.ATTACK:
             score += FASTSCORE_ATTACK_BONUS
 
         # Block bonus at low HP
@@ -1448,7 +1448,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         base_damage = 0
         if hasattr(card, 'damage') and card.damage:
             base_damage = card.damage
-        elif hasattr(card, 'type') and str(card.type) == 'ATTACK':
+        elif hasattr(card, 'type') and card.type == CardType.ATTACK:
             # Fallback: use game data for damage
             card_name = card.card_id.replace('+', '')
             card_data = game_data_loader.get_card_data(card_name)
