@@ -80,7 +80,14 @@ def get_ai_version() -> str:
     #   - Added player_hp and player_max_hp to DecisionContext
     #   - Fixed AttributeError: 'DecisionContext' object has no attribute 'player_hp'
     #   - Added warning log if HP attributes are missing
-    return "3.4.7-fix-player-hp"
+    # Version 3.5.0: Implement X-card calculation and unify game data loading
+    #   - X-Card Calculation: Dynamic damage/block for Body Slam, Rage, Whirlwind, Bludgeon
+    #   - Game Data Unification: Consolidated loaders, WSL path support, enhanced parsing
+    #   - Added _calculate_x_damage() and _calculate_x_block() to FastCombatSimulator
+    #   - Integrated X-calculation into attack/skill simulation and beam search scoring
+    #   - Created comprehensive test suite (test_x_card_calculation.py) with 100% pass rate
+    #   - Added CARD_METADATA for 35+ Ironclad cards with 3-stage parsing
+    return "3.5.0-x-card-calculation"
 
 
 def get_git_commit() -> str:
