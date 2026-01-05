@@ -13,6 +13,8 @@ Optimizes combat decisions for Ironclad's unique mechanics using beam search:
 """
 
 import logging
+import copy
+import time
 from typing import List, Tuple, Optional, Dict
 from enum import Enum
 from .simulation import CombatPlanner, SimulationState, FastCombatSimulator
@@ -23,6 +25,7 @@ from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster
 from spirecomm.communication.action import Action, PlayCardAction
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
+from spirecomm.data.loader import game_data_loader
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +74,9 @@ class IroncladCombatPlanner(CombatPlanner):
         Returns:
             List of actions to execute in order
         """
+        # Track decision start time for timeout protection
+        self.decision_start = time.time()
+
         import sys
         playable_cards = context.playable_cards
 
@@ -164,6 +170,10 @@ class IroncladCombatPlanner(CombatPlanner):
         for depth in range(max_depth):
             new_candidates = []
 
+            # === NEW: Check if target exploration should be enabled ===
+            elapsed_ms = (time.time() - decision_start) * 1000 if hasattr(self, 'decision_start') else 0
+            explore_targets = self._should_explore_targets(context, elapsed_ms)
+
             for sequence, state, energy_spent, score in beam:
                 # Try each remaining card
                 for card in playable_cards:
@@ -177,39 +187,119 @@ class IroncladCombatPlanner(CombatPlanner):
                     if energy_spent + cost > context.energy_available:
                         continue
 
-                    # Select target
-                    target, target_idx = self._choose_target_for_card(card, context, state)
+                    # === NEW: Target exploration ===
+                    if card.has_target and explore_targets:
+                        # Get ranked targets
+                        ranked_targets = self._rank_targets(card, context, state)
 
-                    # Simulate
-                    new_state = self.simulator.simulate_card_play(
-                        state, card, target, target_idx
-                    )
-                    new_state.played_card_uuids.add(card_uuid)
+                        # Prune targets
+                        pruned_targets = self._prune_targets(card, ranked_targets, context, state)
 
-                    # === NEW: Set primary target on first attack ===
-                    # If this is the first attack (no primary target yet), set it
-                    if state.primary_target is None and target_idx is not None:
-                        # Check if this is an attack card (not AOE)
-                        is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
-                        is_single_target = target_idx is not None and card.card_id not in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
-                        if is_attack and is_single_target:
-                            new_state.primary_target = target_idx
+                        # Progressive target expansion: depth 0→2 targets, depth 1→1-2, depth 2+→1
+                        M_targets = 2 if depth == 0 else (1 if depth >= 2 else 2)
 
-                    # Create action
-                    if target:
-                        action = PlayCardAction(card=card, target_monster=target)
+                        if pruned_targets and len(pruned_targets) > 1:
+                            # Explore multiple targets
+                            targets_to_explore = pruned_targets[:M_targets]
+                            logger.info(f"[TARGET_EXPLORE] Depth {depth}: exploring {len(targets_to_explore)} targets for {card.card_id}")
+
+                            for target, target_idx in targets_to_explore:
+                                # Simulate
+                                new_state = self.simulator.simulate_card_play(
+                                    state, card, target, target_idx
+                                )
+                                new_state_copy = copy.deepcopy(new_state)
+                                new_state_copy.played_card_uuids.add(card_uuid)
+
+                                # Set primary target on first attack
+                                if state.primary_target is None and target_idx is not None:
+                                    is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
+                                    is_single_target = target_idx is not None and card.card_id not in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
+                                    if is_attack and is_single_target:
+                                        new_state_copy.primary_target = target_idx
+
+                                # Create action
+                                if target:
+                                    action = PlayCardAction(card=card, target_monster=target)
+                                else:
+                                    action = PlayCardAction(card=card)
+
+                                new_sequence = sequence + [action]
+
+                                # Score
+                                score_val = self._score_sequence(new_sequence, initial_state, new_state_copy, context)
+                                if score_val > best_score:
+                                    best_score = score_val
+                                    best_sequence = new_sequence
+
+                                new_candidates.append((new_sequence, new_state_copy, energy_spent + cost, score_val))
+                        else:
+                            # Fallback to deterministic
+                            target, target_idx = self._choose_target_for_card(card, context, state)
+
+                            # Simulate
+                            new_state = self.simulator.simulate_card_play(
+                                state, card, target, target_idx
+                            )
+                            new_state.played_card_uuids.add(card_uuid)
+
+                            # Set primary target on first attack
+                            if state.primary_target is None and target_idx is not None:
+                                is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
+                                is_single_target = target_idx is not None and card.card_id not in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
+                                if is_attack and is_single_target:
+                                    new_state.primary_target = target_idx
+
+                            # Create action
+                            if target:
+                                action = PlayCardAction(card=card, target_monster=target)
+                            else:
+                                action = PlayCardAction(card=card)
+
+                            new_sequence = sequence + [action]
+
+                            # Score
+                            score_val = self._score_sequence(new_sequence, initial_state, new_state, context)
+                            if score_val > best_score:
+                                best_score = score_val
+                                best_sequence = new_sequence
+
+                            new_candidates.append((new_sequence, new_state, energy_spent + cost, score_val))
                     else:
-                        action = PlayCardAction(card=card)
+                        # Use deterministic targeting (either no target exploration needed, or card has no target)
+                        # Select target
+                        target, target_idx = self._choose_target_for_card(card, context, state)
 
-                    new_sequence = sequence + [action]
+                        # Simulate
+                        new_state = self.simulator.simulate_card_play(
+                            state, card, target, target_idx
+                        )
+                        new_state.played_card_uuids.add(card_uuid)
 
-                    # Score
-                    score = self._score_sequence(new_sequence, initial_state, new_state, context)
-                    if score > best_score:
-                        best_score = score
-                        best_sequence = new_sequence
+                        # === NEW: Set primary target on first attack ===
+                        # If this is the first attack (no primary target yet), set it
+                        if state.primary_target is None and target_idx is not None:
+                            # Check if this is an attack card (not AOE)
+                            is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
+                            is_single_target = target_idx is not None and card.card_id not in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
+                            if is_attack and is_single_target:
+                                new_state.primary_target = target_idx
 
-                    new_candidates.append((new_sequence, new_state, energy_spent + cost, score))
+                        # Create action
+                        if target:
+                            action = PlayCardAction(card=card, target_monster=target)
+                        else:
+                            action = PlayCardAction(card=card)
+
+                        new_sequence = sequence + [action]
+
+                        # Score
+                        score = self._score_sequence(new_sequence, initial_state, new_state, context)
+                        if score > best_score:
+                            best_score = score
+                            best_sequence = new_sequence
+
+                        new_candidates.append((new_sequence, new_state, energy_spent + cost, score))
 
             if not new_candidates:
                 break
@@ -340,6 +430,185 @@ class IroncladCombatPlanner(CombatPlanner):
             return context.monsters_alive[i], i
 
         return None, None
+
+    def _rank_targets(self, card: Card, context: DecisionContext, state: SimulationState) -> List[Tuple]:
+        """
+        Rank targets for a card using threat-based targeting.
+
+        Returns a list of (monster, monster_idx, threat_score) tuples sorted by threat (highest first).
+
+        Args:
+            card: Card being played
+            context: Decision context
+            state: Simulation state
+
+        Returns:
+            List of (monster, monster_idx, threat_score) tuples sorted by threat descending
+        """
+        if not context.monsters_alive:
+            return []
+
+        # Rank all monsters by threat
+        ranked_targets = []
+        for i, monster_state in enumerate(state.monsters):
+            if monster_state['is_gone']:
+                continue
+
+            if i < len(context.monsters_alive):
+                monster = context.monsters_alive[i]
+                threat = evaluate_monster_threat(monster, context)
+                ranked_targets.append((monster, i, threat))
+
+        # Sort by threat descending
+        ranked_targets.sort(key=lambda x: x[2], reverse=True)
+
+        return ranked_targets
+
+    def _prune_targets(self, card: Card, ranked_targets: List[Tuple], context: DecisionContext, state: SimulationState) -> List[Tuple]:
+        """
+        Prune target space to limit beam search expansion.
+
+        Pruning strategy:
+        - For attack cards: Keep killable targets + highest threat fallback
+        - For debuff cards: Keep top 2 threat targets
+        - Skip if > 4 monsters (fallback to deterministic)
+
+        Args:
+            card: Card being played
+            ranked_targets: List of (monster, monster_idx, threat_score) tuples from _rank_targets()
+            context: Decision context
+            state: Simulation state
+
+        Returns:
+            Pruned list of (monster, monster_idx, threat_score) tuples
+        """
+        if not ranked_targets:
+            return []
+
+        monster_count = len(context.monsters_alive)
+
+        # Skip pruning if too many monsters (fallback to deterministic)
+        if monster_count > 4:
+            logger.info(f"[TARGET_PRUNING] Skipping - {monster_count} monsters > 4")
+            return []
+
+        # Check if cleanup phase (all monsters low HP)
+        all_low_hp = all(m['hp'] < 8 for m in state.monsters if not m['is_gone'])
+        if all_low_hp:
+            logger.info("[TARGET_PRUNING] Cleanup phase detected - using greedy lowest-HP")
+            # Use greedy lowest-HP targeting
+            low_hp_targets = sorted(
+                [(m, idx, threat) for m, idx, threat in ranked_targets],
+                key=lambda x: x[0].current_hp
+            )
+            return low_hp_targets[:1]  # Just the lowest HP target
+
+        is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
+
+        if is_attack:
+            # Estimate damage for attack cards
+            base_damage = getattr(card, 'damage', 0)
+            if base_damage == 0 or not hasattr(card, 'damage'):
+                try:
+                    card_name = card.card_id.replace('+', '')
+                    card_data = game_data_loader.get_card_data(card_name)
+                    if card_data:
+                        base_damage = game_data_loader._parse_card_damage(card_data)
+                except:
+                    pass
+
+            if base_damage == 0:
+                base_damage = 6  # Fallback
+
+            # Add player strength
+            total_damage = base_damage + context.strength if hasattr(context, 'strength') else base_damage
+
+            # Separate killable and non-killable targets
+            killable = []
+            non_killable = []
+            for monster, idx, threat in ranked_targets:
+                if idx < len(state.monsters):
+                    effective_hp = state.monsters[idx]['hp'] + state.monsters[idx]['block']
+                    if total_damage >= effective_hp:
+                        killable.append((monster, idx, threat))
+                    else:
+                        non_killable.append((monster, idx, threat))
+
+            if killable:
+                # Keep only killable targets (max 3)
+                result = killable[:3]
+                logger.info(f"[TARGET_PRUNING] Attack: {len(result)} killable targets (from {len(ranked_targets)} total)")
+                return result
+            else:
+                # No killable targets, keep highest threat only
+                result = ranked_targets[:1]
+                logger.info(f"[TARGET_PRUNING] Attack: 1 non-killable target (highest threat)")
+                return result
+        else:
+            # For debuff cards, keep top 2 threat targets
+            result = ranked_targets[:2]
+            logger.info(f"[TARGET_PRUNING] Debuff: {len(result)} targets (top threat)")
+            return result
+
+    def _should_explore_targets(self, context: DecisionContext, elapsed_time: float) -> bool:
+        """
+        Determine if target exploration should be enabled based on game state.
+
+        Enable when ALL of:
+        - 2-3 monsters alive (not overwhelming)
+        - Hand size <= 5 cards (manageable complexity)
+        - At least one single-target attack or debuff card in hand
+        - Beam search time < 60ms (not approaching timeout)
+        - NOT in cleanup phase (not all monsters < 8 HP)
+
+        Args:
+            context: Decision context
+            elapsed_time: Time elapsed in beam search so far (ms)
+
+        Returns:
+            True if target exploration should be enabled, False otherwise
+        """
+        monster_count = len(context.monsters_alive)
+        hand_size = len(context.hand) if hasattr(context, 'hand') else len(context.playable_cards)
+
+        # Condition 1: Monster count
+        if monster_count > 3:
+            logger.info(f"[TARGET_EXPLORE] Disabled - {monster_count} monsters > 3")
+            return False
+        if monster_count < 2:
+            logger.info(f"[TARGET_EXPLORE] Disabled - {monster_count} monster < 2")
+            return False
+
+        # Condition 2: Hand size
+        if hand_size > 5:
+            logger.info(f"[TARGET_EXPLORE] Disabled - hand size {hand_size} > 5")
+            return False
+
+        # Condition 3: Check for single-target cards
+        has_single_target = False
+        for card in context.playable_cards:
+            if card.has_target:
+                has_single_target = True
+                break
+
+        if not has_single_target:
+            logger.info("[TARGET_EXPLORE] Disabled - no single-target cards")
+            return False
+
+        # Condition 4: Timeout protection
+        if elapsed_time > 60:
+            logger.info(f"[TARGET_EXPLORE] Disabled - timeout risk ({elapsed_time:.1f}ms > 60ms)")
+            return False
+
+        # Condition 5: Cleanup phase detection
+        # Note: Can't access state.monsters here, so use context
+        all_low_hp = all(m.current_hp < 8 for m in context.monsters_alive)
+        if all_low_hp:
+            logger.info("[TARGET_EXPLORE] Disabled - cleanup phase (all monsters < 8 HP)")
+            return False
+
+        logger.info(f"[TARGET_EXPLORE] Enabled - {monster_count} monsters, {hand_size} cards, {elapsed_time:.1f}ms")
+        return True
 
     def _score_sequence(self, sequence: List[Action], initial_state: SimulationState,
                        final_state: SimulationState, context: DecisionContext) -> float:
