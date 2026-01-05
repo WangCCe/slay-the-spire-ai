@@ -78,7 +78,7 @@ class IroncladCombatPlanner(CombatPlanner):
             return []
 
         # Log turn start
-        logger.info(f"[COMBAT] Turn {context.turn}, Floor {context.floor}, Act {context.act}")
+        logger.info(f"[COMBAT] game_id={context.game_id} Turn {context.turn}, Floor {context.floor}, Act {context.act}")
         logger.info(f"[COMBAT] Playable cards: {len(playable_cards)}, Energy: {context.energy_available}")
         # Log card IDs for debugging
         card_ids = [card.card_id for card in playable_cards]
@@ -107,14 +107,14 @@ class IroncladCombatPlanner(CombatPlanner):
 
         # Step 3: Use beam search to find optimal sequence
         sequence = self._beam_search_turn(context, playable_cards, beam_width, max_depth)
-        logger.info(f"[COMBAT] Best sequence: {len(sequence)} cards")
+        logger.info(f"[COMBAT] game_id={context.game_id} Best sequence: {len(sequence)} cards")
         # Log card IDs in best sequence for debugging
         if sequence:
             seq_card_ids = []
             for action in sequence:
                 if hasattr(action, 'card') and action.card:
                     seq_card_ids.append(action.card.card_id)
-            logger.info(f"[COMBAT] Sequence cards: {', '.join(seq_card_ids)}")
+            logger.info(f"[COMBAT] game_id={context.game_id} Sequence cards: {', '.join(seq_card_ids)}")
         return sequence
 
     def _get_adaptive_parameters(self, context: DecisionContext, playable_cards: List[Card]) -> Tuple[int, int]:
@@ -214,6 +214,26 @@ class IroncladCombatPlanner(CombatPlanner):
 
             if beam:
                 best_sequence, best_state, best_energy, best_score = beam[0]
+
+        if beam:
+            top_candidates = beam[:3]
+            for rank, (seq, state, energy, score) in enumerate(top_candidates, start=1):
+                seq_card_ids = []
+                for action in seq:
+                    if hasattr(action, 'card') and action.card:
+                        seq_card_ids.append(action.card.card_id)
+                block_gained = state.player_block - initial_state.player_block
+                logger.info(
+                    "[COMBAT_CANDIDATE] game_id=%s rank=%s score=%.1f damage=%s kills=%s block=%s energy=%s cards=%s",
+                    context.game_id,
+                    rank,
+                    score,
+                    state.total_damage_dealt,
+                    state.monsters_killed,
+                    block_gained,
+                    state.energy_spent,
+                    ", ".join(seq_card_ids),
+                )
 
         return best_sequence if best_sequence else self._fallback_plan(context, playable_cards)
 
@@ -369,6 +389,8 @@ class IroncladCombatPlanner(CombatPlanner):
         # 1. Monsters killed (huge bonus)
         kills = final_state.monsters_killed
         score += kills * 200
+        total_monsters = len(context.monsters_alive)
+        all_killed = total_monsters > 0 and kills >= total_monsters
 
         # 2. Damage dealt (with multi-monster bonuses)
         damage = final_state.total_damage_dealt
@@ -437,6 +459,24 @@ class IroncladCombatPlanner(CombatPlanner):
             if isinstance(action, PlayCardAction):
                 card = action.card
                 card_id = card.card_id
+                card_id_base = card_id.replace('+', '')
+
+                # HP-cost cards: strong penalty at low HP unless the sequence kills everything
+                hp_costs = {
+                    'Offering': 6,
+                    'Bloodletting': 3,
+                    'Hemokinesis': 2,
+                }
+                if card_id_base in hp_costs and not all_killed:
+                    hp_cost = hp_costs[card_id_base]
+                    if context.player_hp <= hp_cost:
+                        score -= 1000
+                    elif context.player_hp_pct < 0.3:
+                        score -= 200
+                    elif context.player_hp_pct < 0.5:
+                        score -= 120
+                    else:
+                        score -= 60
 
                 # Gremlin Nob SKILL penalty: playing SKILL cards gives Nob +1 Strength
                 # This heavily penalizes SKILL cards to discourage triggering Nob's passive

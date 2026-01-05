@@ -887,6 +887,13 @@ class OptimizedAgent(SimpleAgent):
         Args:
             game_state: Current game state
         """
+        # Attach stable game_id for logging correlation
+        if self.game_tracker:
+            try:
+                game_state.game_id = int(self.game_tracker.game_start_time.timestamp())
+            except Exception:
+                pass
+
         # 检测回合变化
         if hasattr(game_state, 'turn') and hasattr(self.game, 'turn'):
             if game_state.turn != self.game.turn:

@@ -37,6 +37,7 @@ class DecisionContext:
 
     def __init__(self, game: Game):
         self.game = game
+        self.game_id = getattr(game, 'game_id', None)
         
         # Player stats - check if player exists
         if hasattr(game, 'current_hp') and hasattr(game, 'max_hp') and game.max_hp > 0:
