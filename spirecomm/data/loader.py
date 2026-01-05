@@ -143,18 +143,16 @@ CARD_METADATA = {
         'reason': 'Vulnerable debuff'
     },
     'armaments': {
-        'damage': 5,
-        'upgraded_damage': 5,
-        'reason': 'Upgrade cards in hand'
+        'block': 5,
+        'upgraded_block': 7,
+        'reason': 'Gain block and upgrade cards in hand'
     },
     'angry mode': {
         'block': 5,
         'reason': 'Gain strength when damaged'
     },
     'flex': {
-        'damage': 2,
-        'upgraded_damage': 3,
-        'reason': 'Gain-lose strength combo'
+        'reason': 'Gain 2 Strength, lose 2 at end of turn'
     },
     'flash of steel': {
         'damage': 5,
@@ -167,14 +165,10 @@ CARD_METADATA = {
         'reason': 'Draw 1 card'
     },
     'pain': {
-        'damage': 6,
-        'upgraded_damage': 9,
-        'reason': 'Lose HP, deal damage'
+        'reason': 'Curse: Lose HP when other cards played'
     },
     'disarm': {
-        'damage': 7,
-        'upgraded_damage': 10,
-        'reason': 'Temporarily reduce enemy attack'
+        'reason': 'Enemy loses 2 Strength, exhaust'
     },
     'pummel': {
         'damage': 3,
