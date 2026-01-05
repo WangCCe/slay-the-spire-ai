@@ -309,15 +309,21 @@ class CombatEndingDetector:
         base_damage = 0
 
         # Get base damage from game data loader (Card objects don't have damage attribute)
-        card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ""
-        card_data = game_data_loader.get_card_data(card_id)
+        if hasattr(card, 'card_id'):
+            card_id = card.card_id
 
-        if card_data:
-            base_damage = card_data.get('damage', 0)
-            # Handle upgraded cards (base damage + upgrades)
-            if hasattr(card, 'upgrades') and card.upgrades > 0:
-                damage_upgrade = card_data.get('damage_upgrade', 0)
-                base_damage += damage_upgrade * card.upgrades
+            # Handle upgraded cards: Strike_R -> Strike+, Bash_R -> Bash+
+            if card_id.endswith('_R'):
+                # Remove _R suffix and add + to get upgraded card ID
+                upgraded_id = card_id[:-2] + '+'
+                card_data = game_data_loader.get_card_data(upgraded_id)
+            else:
+                # Non-upgraded card
+                card_data = game_data_loader.get_card_data(card_id)
+
+            if card_data:
+                # Use _parse_card_damage which handles metadata and regex parsing
+                base_damage = game_data_loader._parse_card_damage(card_data) or 0
 
         # Add strength (for attacks)
         if hasattr(card, 'type') and str(card.type) == 'ATTACK':
