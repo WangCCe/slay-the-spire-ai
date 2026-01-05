@@ -131,7 +131,9 @@ class DecisionContext:
             self.vulnerable_stacks[i] = self._get_monster_power_amount(monster, "Vulnerable")
             self.weak_stacks[i] = self._get_monster_power_amount(monster, "Weak")
             self.frail_stacks[i] = self._get_monster_power_amount(monster, "Frail")
-            self.thorns_stacks[i] = self._get_monster_power_amount(monster, "Thorns")
+            thorns = self._get_monster_power_amount(monster, "Thorns")
+            sharp_hide = self._get_monster_power_amount(monster, "Sharp Hide")
+            self.thorns_stacks[i] = max(thorns, sharp_hide)
 
         # === 新增：战斗评估 ===
         self.can_end_combat_this_turn = False  # 将由 CombatEndingDetector 计算
