@@ -64,6 +64,19 @@ class CombatEndingDetector:
             # Step 2: Calculate total monster HP (including block)
             total_monster_hp = sum(m.current_hp + m.block for m in context.monsters_alive)
 
+            # Log vulnerable-related intermediate values for verification
+            vulnerable_targets = []
+            for i, monster in enumerate(context.monsters_alive):
+                stacks = context.vulnerable_stacks.get(i, 0)
+                if stacks > 0:
+                    vulnerable_targets.append(
+                        f"idx={i}, stacks={stacks}, hp={monster.current_hp}, block={monster.block}"
+                    )
+            logger.info(
+                "[LETHAL_VULNERABLE] targets=%s, multiplier=1.5",
+                vulnerable_targets if vulnerable_targets else "none",
+            )
+
             # Step 3: Check with reduced margin (10% instead of 20%)
             margin_multiplier = 1.1
             has_damage_potential = affordable_damage >= total_monster_hp * margin_multiplier
