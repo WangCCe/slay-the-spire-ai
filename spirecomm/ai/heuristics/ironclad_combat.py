@@ -477,12 +477,15 @@ class IroncladCombatPlanner(CombatPlanner):
                     hp_cost = hp_costs[card_id_base]
                     if context.player_hp <= hp_cost:
                         score -= 1000
-                    elif context.player_hp_pct < 0.3:
-                        score -= 200
-                    elif context.player_hp_pct < 0.5:
-                        score -= 120
                     else:
-                        score -= 60
+                        multiplier = 1.0
+                        if context.player_hp_pct < 0.3:
+                            multiplier = 3.0
+                        elif context.player_hp_pct < 0.5:
+                            multiplier = 2.0
+                        penalty_per_hp = 12
+                        penalty = hp_cost * penalty_per_hp * multiplier
+                        score -= penalty
 
                 # Gremlin Nob SKILL penalty: playing SKILL cards gives Nob +1 Strength
                 # This heavily penalizes SKILL cards to discourage triggering Nob's passive
