@@ -309,18 +309,11 @@ class CombatEndingDetector:
         base_damage = 0
 
         # Get base damage from game data loader (Card objects don't have damage attribute)
-        if hasattr(card, 'card_id'):
-            card_id = card.card_id
-
-            # Handle upgraded cards: Strike_R -> Strike+, Bash_R -> Bash+
-            if card_id.endswith('_R'):
-                # Remove _R suffix and add + to get upgraded card ID
-                upgraded_id = card_id[:-2] + '+'
-                card_data = game_data_loader.get_card_data(upgraded_id)
-            else:
-                # Non-upgraded card
-                card_data = game_data_loader.get_card_data(card_id)
-
+        # Use card.name instead of card_id because:
+        #   - card_id: "Strike_R" (Communication Mod internal ID)
+        #   - card.name: "Strike+" (matches items.json)
+        if hasattr(card, 'name'):
+            card_data = game_data_loader.get_card_data(card.name)
             if card_data:
                 # Use _parse_card_damage which handles metadata and regex parsing
                 base_damage = game_data_loader._parse_card_damage(card_data) or 0
