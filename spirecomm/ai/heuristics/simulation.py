@@ -1412,6 +1412,30 @@ class HeuristicCombatPlanner(CombatPlanner):
         """
         score = 0.0
 
+        # === CRITICAL: Rage synergy bonus (play before attacks) ===
+        # Rage effect: "Whenever you play an Attack this turn, gain 3 Block"
+        # Value depends on how many attack cards can be played after it
+        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        if card_name == 'Rage':
+            # Count playable attack cards in hand
+            attack_cards = [c for c in context.playable_cards
+                          if hasattr(c, 'type') and c.type == CardType.ATTACK]
+
+            # Calculate potential block from Rage (3 block per attack)
+            potential_block = len(attack_cards) * 3
+
+            # Base bonus for Rage (it's 0 cost and enables block generation)
+            score += 15  # Base value for playing a 0-cost skill
+
+            # Add value based on attack cards in hand
+            score += potential_block * 1.5  # 1.5 points per potential block
+
+            # Extra bonus when low HP (defense is more valuable)
+            if state.player_hp < 40:
+                score += 10
+
+            logger.debug(f"Rage score bonus: {potential_block} potential block from {len(attack_cards)} attacks")
+
         # Zero-cost bonus (Apex, Clothesline after Corruption, etc.)
         cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
         if cost == 0:
@@ -1427,8 +1451,8 @@ class HeuristicCombatPlanner(CombatPlanner):
         if state.player_hp < 30 and hasattr(card, 'block') and card.block is not None:
             score += FASTSCORE_LOWHP_BLOCK_BONUS
 
-        # X-block bonus for cards like Rage
-        if not (hasattr(card, 'block') and card.block is not None):
+        # X-block bonus for cards like Rage (already handled above for Rage)
+        if not (hasattr(card, 'block') and card.block is not None) and card_name != 'Rage':
             x_block = self._calculate_x_block(card, state, context)
             if x_block > 0:
                 # X-block cards are valuable when you need defense
