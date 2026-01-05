@@ -99,7 +99,7 @@ CARD_METADATA = {
         'upgraded_damage': 18,
         'reason': 'Multi-hit: deals damage 3 times'
     },
-    'sword boom': {
+    'sword boomerang': {
         'damage': 13,
         'upgraded_damage': 17,
         'reason': 'Returns to hand, exhaust if not ethereal'
@@ -146,10 +146,6 @@ CARD_METADATA = {
         'block': 5,
         'upgraded_block': 7,
         'reason': 'Gain block and upgrade cards in hand'
-    },
-    'angry mode': {
-        'block': 5,
-        'reason': 'Gain strength when damaged'
     },
     'flex': {
         'reason': 'Gain 2 Strength, lose 2 at end of turn'
