@@ -187,6 +187,8 @@ class SimulationState:
         self.player_vulnerable = self._get_player_debuff_stacks(context, 'Vulnerable')
         self.player_weak = self._get_player_debuff_stacks(context, 'Weak')
         self.player_frail = self._get_player_debuff_stacks(context, 'Frail')
+        # Rage power: block gained per attack played.
+        self.rage_block_per_attack = self._get_player_power_amount(context, 'Rage')
 
         # Monster state (each monster tracked independently)
         self.monsters = []
@@ -238,6 +240,16 @@ class SimulationState:
                 return hasattr(power, 'amount') and power.amount or 1
         return 0
 
+    def _get_player_power_amount(self, context: DecisionContext, power_name: str) -> int:
+        """Get power amount on the player from powers."""
+        if not hasattr(context.game, 'player') or not hasattr(context.game.player, 'powers'):
+            return 0
+
+        for power in context.game.player.powers:
+            if hasattr(power, 'name') and power.name == power_name:
+                return hasattr(power, 'amount') and power.amount or 0
+        return 0
+
     def clone(self) -> 'SimulationState':
         """Create a deep copy of this state."""
         new_state = SimulationState.__new__(SimulationState)
@@ -249,6 +261,7 @@ class SimulationState:
         new_state.player_vulnerable = self.player_vulnerable
         new_state.player_weak = self.player_weak
         new_state.player_frail = self.player_frail
+        new_state.rage_block_per_attack = self.rage_block_per_attack
         new_state.monsters = [m.copy() for m in self.monsters]
         new_state.played_card_uuids = self.played_card_uuids.copy()
         new_state.energy_spent = self.energy_spent
@@ -285,7 +298,8 @@ class SimulationState:
             self.player_strength,
             self.player_vulnerable,
             self.player_weak,
-            self.player_frail
+            self.player_frail,
+            self.rage_block_per_attack
         )
 
         # Monster states (sorted for consistent hashing)
@@ -346,7 +360,7 @@ class FastCombatSimulator:
         - Monster block
         - AOE vs single-target
         - Power effects (Demon Form, Inflame, etc.)
-        - X-damage and X-block cards (Body Slam, Rage, etc.)
+        - X-damage and X-block cards (Body Slam, etc.)
 
         Args:
             state: Current simulation state
@@ -378,6 +392,7 @@ class FastCombatSimulator:
         if card_type == CardType.ATTACK:
             new_state.attacks_played += 1
             self._apply_attack(new_state, card, target, target_index if target_index is not None else -1, context)
+            self._apply_rage_block(new_state)
         elif card_type == CardType.SKILL:
             new_state.skills_played += 1
             self._apply_skill(new_state, card, context)
@@ -523,8 +538,7 @@ class FastCombatSimulator:
         """
         Calculate dynamic block gain for X-block cards.
 
-        X-block cards have variable block based on game state:
-        - Rage: block = max_energy (total energy, not energy after playing)
+        X-block cards have variable block based on game state.
 
         Args:
             card: The card being played
@@ -534,19 +548,7 @@ class FastCombatSimulator:
         Returns:
             Calculated block value, or 0 if not an X-block card
 
-        Examples:
-            >>> # Rage with 3 max energy
-            >>> _calculate_x_block(Card('Rage'), state, context)
-            3
         """
-        # Normalize card name by removing '+' suffix (handles upgraded cards)
-        card_name = card.card_id.replace('+', '')
-
-        if card_name == 'Rage':
-            # Rage: Gain X Block. X equals your Energy.
-            # Uses current available energy (max energy for most cases)
-            return context.energy_available if context else max(state.player_energy, 1)
-
         # Fallback: not an X-block card
         return 0
 
@@ -585,13 +587,16 @@ class FastCombatSimulator:
             block_gain = self._apply_frail_block(block_gain, state.player_frail)
             state.player_block += block_gain
         else:
-            # Check for X-block cards (like Rage)
+            # Check for X-block cards
             if context is not None:
                 block_gain = self._calculate_x_block(card, state, context)
                 if block_gain > 0:
                     # Apply frail multiplier
                     block_gain = self._apply_frail_block(block_gain, state.player_frail)
                     state.player_block += block_gain
+        if card.card_id == 'Rage':
+            rage_gain = 5 if getattr(card, 'upgrades', 0) > 0 else 3
+            state.rage_block_per_attack += rage_gain
 
         # Track exhaust events (for Feel No Pain, etc.)
         try:
@@ -656,6 +661,13 @@ class FastCombatSimulator:
                 pass
 
         # Other powers can be added as needed
+
+    def _apply_rage_block(self, state: SimulationState):
+        """Apply Rage block trigger after playing an attack."""
+        if state.rage_block_per_attack <= 0:
+            return
+        block_gain = self._apply_frail_block(state.rage_block_per_attack, state.player_frail)
+        state.player_block += block_gain
 
     def _apply_self_damage(self, state: SimulationState, card: Card):
         """Apply HP costs for cards that damage the player to fuel effects."""
