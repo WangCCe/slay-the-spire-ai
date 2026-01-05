@@ -125,17 +125,21 @@ class CombatEndingDetector:
         # Greedy approach: play highest-damage cards on lowest-HP targets
         sequence = []
         remaining_monsters = context.monsters_alive.copy()
+        remaining_monster_indices = list(range(len(remaining_monsters)))
         played_cards = set()
 
         # Sort monsters by HP (kill weakest first)
-        remaining_monsters.sort(key=lambda m: m.current_hp)
+        combined = list(zip(remaining_monsters, remaining_monster_indices))
+        combined.sort(key=lambda pair: pair[0].current_hp)
+        remaining_monsters = [m for m, _ in combined]
+        remaining_monster_indices = [i for _, i in combined]
 
         # Get attack cards sorted by damage
         attack_cards = [c for c in context.playable_cards
                        if hasattr(c, 'type') and c.type == CardType.ATTACK]
         attack_cards.sort(key=lambda c: self._get_card_damage(c, context), reverse=True)
 
-        for monster in remaining_monsters:
+        for monster, monster_idx in zip(remaining_monsters, remaining_monster_indices):
             for card in attack_cards:
                 card_uuid = card.uuid if hasattr(card, 'uuid') else id(card)
                 if card_uuid in played_cards:
@@ -146,7 +150,7 @@ class CombatEndingDetector:
                     continue
 
                 # Check vulnerable status
-                vulnerable = context.vulnerable_stacks.get(monster, 0)
+                vulnerable = context.vulnerable_stacks.get(monster_idx, 0)
                 damage = self._get_card_damage(card, context)
                 if vulnerable > 0:
                     damage = int(damage * 1.5)
