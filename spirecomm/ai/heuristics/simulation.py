@@ -1178,7 +1178,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                             if pruned_targets and len(pruned_targets) > 1:
                                 # Explore multiple targets (limited by M_targets)
                                 targets_to_explore = pruned_targets[:M_targets]
-                                logger.debug(f"[TARGET_EXPLORE] Depth {depth}: exploring {len(targets_to_explore)} targets for {card.card_id}")
+                                logger.info(f"[TARGET_EXPLORE] Depth {depth}: exploring {len(targets_to_explore)} targets for {card.card_id}")
 
                                 for target, _ in targets_to_explore:
                                     # Simulate playing this card with each target
@@ -1482,13 +1482,13 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         # Skip pruning if too many monsters (fallback to deterministic)
         if monster_count > 4:
-            logger.debug(f"[TARGET_PRUNING] Skipping - {monster_count} monsters > 4")
+            logger.info(f"[TARGET_PRUNING] Skipping - {monster_count} monsters > 4")
             return []
 
         # Check if cleanup phase (all monsters low HP)
         all_low_hp = all(m.current_hp < 8 for m in context.monsters_alive)
         if all_low_hp:
-            logger.debug("[TARGET_PRUNING] Cleanup phase detected - using greedy lowest-HP")
+            logger.info("[TARGET_PRUNING] Cleanup phase detected - using greedy lowest-HP")
             # Use greedy lowest-HP targeting
             low_hp_targets = sorted(
                 [(m, threat) for m, threat in ranked_targets],
@@ -1529,17 +1529,17 @@ class HeuristicCombatPlanner(CombatPlanner):
             if killable:
                 # Keep only killable targets (max 3)
                 result = killable[:3]
-                logger.debug(f"[TARGET_PRUNING] Attack: {len(result)} killable targets (from {len(ranked_targets)} total)")
+                logger.info(f"[TARGET_PRUNING] Attack: {len(result)} killable targets (from {len(ranked_targets)} total)")
                 return result
             else:
                 # No killable targets, keep highest threat only
                 result = ranked_targets[:1]
-                logger.debug(f"[TARGET_PRUNING] Attack: 1 non-killable target (highest threat)")
+                logger.info(f"[TARGET_PRUNING] Attack: 1 non-killable target (highest threat)")
                 return result
         else:
             # For debuff cards, keep top 2 threat targets
             result = ranked_targets[:2]
-            logger.debug(f"[TARGET_PRUNING] Debuff: {len(result)} targets (top threat)")
+            logger.info(f"[TARGET_PRUNING] Debuff: {len(result)} targets (top threat)")
             return result
 
     def _should_explore_targets(self, context: DecisionContext, elapsed_time: float) -> bool:
@@ -1565,15 +1565,15 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         # Condition 1: Monster count
         if monster_count > 3:
-            logger.debug(f"[TARGET_EXPLORE] Disabled - {monster_count} monsters > 3")
+            logger.info(f"[TARGET_EXPLORE] Disabled - {monster_count} monsters > 3")
             return False
         if monster_count < 2:
-            logger.debug(f"[TARGET_EXPLORE] Disabled - {monster_count} monster < 2")
+            logger.info(f"[TARGET_EXPLORE] Disabled - {monster_count} monster < 2")
             return False
 
         # Condition 2: Hand size
         if hand_size > 5:
-            logger.debug(f"[TARGET_EXPLORE] Disabled - hand size {hand_size} > 5")
+            logger.info(f"[TARGET_EXPLORE] Disabled - hand size {hand_size} > 5")
             return False
 
         # Condition 3: Check for single-target cards
@@ -1584,21 +1584,21 @@ class HeuristicCombatPlanner(CombatPlanner):
                 break
 
         if not has_single_target:
-            logger.debug("[TARGET_EXPLORE] Disabled - no single-target cards")
+            logger.info("[TARGET_EXPLORE] Disabled - no single-target cards")
             return False
 
         # Condition 4: Timeout protection
         if elapsed_time > 60:
-            logger.debug(f"[TARGET_EXPLORE] Disabled - timeout risk ({elapsed_time:.1f}ms > 60ms)")
+            logger.info(f"[TARGET_EXPLORE] Disabled - timeout risk ({elapsed_time:.1f}ms > 60ms)")
             return False
 
         # Condition 5: Cleanup phase detection
         all_low_hp = all(m.current_hp < 8 for m in context.monsters_alive)
         if all_low_hp:
-            logger.debug("[TARGET_EXPLORE] Disabled - cleanup phase (all monsters < 8 HP)")
+            logger.info("[TARGET_EXPLORE] Disabled - cleanup phase (all monsters < 8 HP)")
             return False
 
-        logger.debug(f"[TARGET_EXPLORE] Enabled - {monster_count} monsters, {hand_size} cards, {elapsed_time:.1f}ms")
+        logger.info(f"[TARGET_EXPLORE] Enabled - {monster_count} monsters, {hand_size} cards, {elapsed_time:.1f}ms")
         return True
 
     def _find_best_target(self, card: Card, context: DecisionContext) -> Monster:
