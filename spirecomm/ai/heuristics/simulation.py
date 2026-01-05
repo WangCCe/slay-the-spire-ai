@@ -7,10 +7,11 @@ to find optimal play sequences using beam search.
 
 import copy
 import logging
+import re
 import time
 from typing import List, Dict, Tuple, Optional
 from spirecomm.spire.card import Card
-from spirecomm.spire.character import Monster
+from spirecomm.spire.character import Monster, Intent
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
@@ -601,7 +602,6 @@ class FastCombatSimulator:
                     state.exhaust_events += 1
                 # Track draw events
                 if 'draw' in description:
-                    import re
                     draw_match = re.search(r'draw (\d+)', description)
                     if draw_match:
                         state.cards_drawn += int(draw_match.group(1))
@@ -642,7 +642,6 @@ class FastCombatSimulator:
                 card_data = game_data_loader.get_card_data(card_name)
                 if card_data:
                     description = card_data.get('description', '').lower()
-                    import re
                     energy_match = re.search(r'gain (\d+) energy', description)
                     if energy_match:
                         state.energy_gained += int(energy_match.group(1))
