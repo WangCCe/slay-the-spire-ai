@@ -80,13 +80,15 @@ def get_ai_version() -> str:
     #   - Added player_hp and player_max_hp to DecisionContext
     #   - Fixed AttributeError: 'DecisionContext' object has no attribute 'player_hp'
     #   - Added warning log if HP attributes are missing
-    # Version 3.5.1: Multi-monster scoring fix
-    #   - Added monster count detection to calculate_outcome_score()
-    #   - Applied adaptive damage weight: 1.0× (1 monster), 1.3× (2 monsters), 1.8× (3+ monsters)
-    #   - Added AOE card bonus in multi-monster scenarios
-    #   - Added Floor 6-7 special AOE priority
-    #   - Fixed scoring mismatch between FastScore and Outcome Score
-    return "3.5.1-multi-monster-scoring"
+    # Version 3.5.2: Multi-monster scoring fix (IroncladCombatPlanner)
+    #   - Fixed IroncladCombatPlanner._score_sequence() missing multi-monster bonuses
+    #   - Added monster count detection to _score_sequence()
+    #   - Applied adaptive damage multiplier: 1.0× (1 monster), 1.3× (2 monsters), 1.8× (3+ monsters)
+    #   - Added Floor 6-7 special priority: +0.2× (2 monsters) or +0.4× (3+ monsters)
+    #   - Added AOE card bonus: +20 (2 monsters) or +40 (3+ monsters)
+    #   - Added logging: [OUTCOME_MONSTERS], [OUTCOME_MULTIPLIER], [OUTCOME_AOE], [FLOOR6_AOE]
+    #   - Now both FastCombatSimulator and IroncladCombatPlanner have multi-monster scoring
+    return "3.5.2-multi-monster-scoring-fixed"
 
 
 def get_git_commit() -> str:
