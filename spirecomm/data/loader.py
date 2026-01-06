@@ -3,7 +3,7 @@ import os
 import sys
 import re
 import warnings
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 
 
 DEFAULT_EXPORT_PATH = "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export"
@@ -51,169 +51,91 @@ def convert_windows_path_to_wsl(windows_path: str) -> str:
 
 
 # Hardcoded metadata for cards with complex damage formulas
-# These are cards that cannot be reliably parsed from descriptions
+# These are cards that cannot be reliably parsed from wiki data or descriptions
+# After wiki parser integration, this only contains cards with dynamic formulas
 CARD_METADATA = {
-    # Ironclad Attacks
-    'heavy blade': {
-        'damage': 14,
-        'upgraded_damage': 22,
-        'is_x_damage': False,
-        'reason': 'Dynamic damage formula: !D! = 5 + times_str**'
+    # X-Damage Cards (variable damage based on game state)
+    'body slam': {
+        'damage': 0,
+        'is_x_damage': True,
+        'reason': 'X-damage = player_block'
     },
-    'cleave': {
-        'damage': 8,
-        'upgraded_damage': 11,
-        'aoe': True,
-        'reason': 'AOE attack affecting all enemies'
+    'bludgeon': {
+        'damage': 0,
+        'is_x_damage': True,
+        'reason': 'X-damage = min(30, 12 + player_block // 10)'
     },
     'whirlwind': {
         'damage': 0,
         'is_x_damage': True,
         'aoe': True,
-        'reason': 'X damage = energy spent'
-    },
-    'pommel strike': {
-        'damage': 10,
-        'upgraded_damage': 14,
-        'reason': 'Multi-hit: deals damage twice'
-    },
-    'iron wave': {
-        'damage': 5,
-        'upgraded_damage': 7,
-        'block': 5,
-        'upgraded_block': 7,
-        'reason': 'Deal damage and gain block'
-    },
-    'body slam': {
-        'damage': 0,
-        'is_x_damage': True,
-        'reason': 'Damage equals your block'
-    },
-    'bludgeon': {
-        'damage': 0,
-        'is_x_damage': True,
-        'reason': 'X damage = 12-30 based on current block'
-    },
-    'uppercut': {
-        'damage': 13,
-        'upgraded_damage': 18,
-        'reason': 'Multi-hit: deals damage 3 times'
-    },
-    'sword boomerang': {
-        'damage': 13,
-        'upgraded_damage': 17,
-        'reason': 'Returns to hand, exhaust if not ethereal'
-    },
-    'immolate': {
-        'damage': 21,
-        'upgraded_damage': 28,
-        'aoe': True,
-        'reason': 'AOE damage to all enemies'
-    },
-    'sever soul': {
-        'damage': 16,
-        'upgraded_damage': 22,
-        'reason': 'Exhausts a card from hand'
-    },
-    'reaper': {
-        'damage': 3,
-        'upgraded_damage': 4,
-        'is_x_damage': True,  # Based on unblocked damage
-        'reason': 'Heals for % of unblocked damage dealt'
-    },
-    'carnage': {
-        'damage': 20,
-        'upgraded_damage': 28,
-        'reason': 'Cannot attack if at low HP'
-    },
-    'limit break': {
-        'damage': 0,
-        'reason': 'Double strength, no direct damage'
-    },
-
-    # Common Ironclad Skills
-    'defend': {
-        'block': 5,
-        'upgraded_block': 8,
-        'reason': 'Basic defense card'
-    },
-    'bash': {
-        'damage': 8,
-        'upgraded_damage': 10,
-        'reason': 'Vulnerable debuff'
-    },
-    'armaments': {
-        'block': 5,
-        'upgraded_block': 7,
-        'reason': 'Gain block and upgrade cards in hand'
-    },
-    'flex': {
-        'reason': 'Gain 2 Strength, lose 2 at end of turn'
-    },
-    'flash of steel': {
-        'damage': 5,
-        'upgraded_damage': 7,
-        'reason': 'Draw 1 card'
-    },
-    'shrug it off': {
-        'block': 8,
-        'upgraded_block': 11,
-        'reason': 'Draw 1 card'
-    },
-    'pain': {
-        'reason': 'Curse: Lose HP when other cards played'
-    },
-    'disarm': {
-        'reason': 'Enemy loses 2 Strength, exhaust'
-    },
-    'pummel': {
-        'damage': 3,
-        'upgraded_damage': 4,
-        'reason': 'Multi-hit based on energy'
-    },
-    'tempest': {
-        'damage': 4,
-        'upgraded_damage': 6,
-        'is_x_damage': True,  # Multi-hit
-        'reason': 'Multi-hit based on energy'
-    },
-    'dark embrace': {
-        'block': 5,
-        'upgraded_block': 7,
-        'reason': 'Draw when cards exhausted'
+        'reason': 'X-damage = max_energy (AOE to all enemies)'
     },
     'combust': {
         'damage': 0,
-        'is_x_damage': True,  # Based on turns played
-        'reason': 'Self-damage over time'
+        'is_x_damage': True,
+        'reason': 'X-damage = self-damage over time'
     },
+    'reaper': {
+        'damage': 0,
+        'is_x_damage': True,
+        'reason': 'X-damage based on unblocked damage dealt (healing)'
+    },
+
+    # X-Block Cards (variable block based on game state)
     'rage': {
         'block': 0,
-        'is_x_block': True,  # Based on energy spent
-        'reason': 'X block = energy spent'
+        'is_x_block': True,
+        'reason': 'X-block = max_energy'
     },
+
+    # Complex Formula Cards (damage scales with stats)
+    'heavy blade': {
+        'damage': 14,
+        'upgraded_damage': 22,
+        'is_x_damage': False,
+        'reason': 'Base damage, scales with Strength: !D! = 5 + Strength*times_str'
+    },
+
+    # Power Cards (no direct damage/block, stat manipulation)
+    'demon form': {
+        'damage': 0,
+        'reason': 'Power: Gain Strength each turn'
+    },
+    'inflame': {
+        'damage': 0,
+        'reason': 'Power: Gain Strength'
+    },
+    'spot weakness': {
+        'damage': 0,
+        'reason': 'Power: Gain Strength when attacking if enemy intends to attack'
+    },
+    'limit break': {
+        'damage': 0,
+        'reason': 'Power: Double your Strength'
+    },
+    'flex': {
+        'damage': 0,
+        'reason': 'Gain Strength this turn, lose at end of turn'
+    },
+
+    # Special Effect Cards (mechanics not captured by damage/block values)
     'exhume': {
         'damage': 0,
-        'reason': 'Retrieve exhaust pile card'
+        'reason': 'Retrieve card from exhaust pile'
     },
     'second wind': {
         'damage': 0,
         'block': 0,
-        'reason': 'Exhaust: gain block and draw'
+        'reason': 'Exhaust non-Attack cards, gain block per card'
     },
-
-    # Powers
-    'demon form': {
+    'disarm': {
         'damage': 0,
-        'reason': 'Gain strength each turn'
+        'reason': 'Enemy loses Strength, Exhaust'
     },
-    'inflame': {
+    'pain': {
         'damage': 0,
-        'reason': 'Gain strength'
-    },
-    'spot weakness': {
-        'damage': 0,
-        'reason': 'Gain strength when attacking enemy with intent'
+        'reason': 'Curse: Lose HP when other cards played'
     },
 }
 
@@ -224,9 +146,11 @@ class GameDataLoader:
 
     This loader reads items.json from the Slay the Spire export directory
     and provides access to card, relic, creature, and keyword metadata.
+
+    Additionally, it can parse wiki-card-data.txt for enhanced upgrade value extraction.
     """
 
-    def __init__(self, data_path: str = DEFAULT_EXPORT_PATH, auto_load: bool = True):
+    def __init__(self, data_path: str = DEFAULT_EXPORT_PATH, auto_load: bool = True, wiki_data_path: Optional[str] = None):
         """
         Initialize the game data loader.
 
@@ -234,14 +158,17 @@ class GameDataLoader:
             data_path: Path to the Slay the Spire export directory
             auto_load: If True, load data immediately (raises FileNotFoundError if missing)
                       If False, data loads on first access (returns None if missing)
+            wiki_data_path: Optional path to wiki-card-data.txt. If None, uses data_path/wiki-card-data.txt
         """
         self.data_path = convert_windows_path_to_wsl(data_path)
         self.items_file = os.path.join(self.data_path, "items.json")
+        self._wiki_data_file = convert_windows_path_to_wsl(wiki_data_path) if wiki_data_path else os.path.join(self.data_path, "wiki-card-data.txt")
         self._cards: Optional[Dict[str, Dict[str, Any]]] = None
         self._relics: Optional[Dict[str, Dict[str, Any]]] = None
         self._keywords: Optional[Dict[str, Dict[str, Any]]] = None
         self._creatures: Optional[Dict[str, Dict[str, Any]]] = None
         self._enemies: Optional[Dict[str, Dict[str, Any]]] = None
+        self._wiki_data: Optional[Dict[str, Dict[str, Any]]] = None  # Lazy-loaded wiki card data
         self._loaded = False
 
         if auto_load:
@@ -322,6 +249,94 @@ class GameDataLoader:
             f"{len(data.get('potions', []))} potions",
             file=sys.stderr
         )
+
+    def _load_wiki_data(self) -> None:
+        """
+        Lazy-load wiki card data from wiki-card-data.txt.
+
+        This method loads and parses the Lua-formatted wiki data file,
+        extracting Text fields with upgrade values like [8|10].
+        The data is cached in self._wiki_data for subsequent accesses.
+
+        Wiki data format (simplified Lua table):
+        {Name = "Bash", Text = "Deal [8|10] damage.", Cost = 2, CostPlus = nil}
+        """
+        if self._wiki_data is not None:
+            return  # Already loaded
+
+        self._wiki_data = {}
+
+        if not os.path.exists(self._wiki_data_file):
+            print(
+                f"Wiki data not found at {self._wiki_data_file}, using fallback parsing",
+                file=sys.stderr
+            )
+            return
+
+        try:
+            with open(self._wiki_data_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Parse wiki data using regex
+            # Match individual card entries: {Name = "...", Text = "...", ...}
+            card_pattern = r'\{Name = "(.*?)",.*?Text = "(.*?)".*?\}'
+            matches = re.findall(card_pattern, content, re.DOTALL)
+
+            for name, text in matches:
+                card_name = name.lower()
+                self._wiki_data[card_name] = {
+                    'text': text,
+                    'name': name
+                }
+
+            # Extract CostPlus field if present (for upgraded cost detection)
+            cost_plus_pattern = r'\{Name = "(.*?)",.*?CostPlus = (-?\d+).*?\}'
+            cost_matches = re.findall(cost_plus_pattern, content, re.DOTALL)
+            for name, cost_plus in cost_matches:
+                card_name = name.lower()
+                if card_name in self._wiki_data:
+                    self._wiki_data[card_name]['cost_plus'] = int(cost_plus)
+
+            print(
+                f"Loaded wiki data for {len(self._wiki_data)} cards",
+                file=sys.stderr
+            )
+
+        except Exception as e:
+            warnings.warn(
+                f"Failed to load wiki data: {e}\n"
+                f"Wiki parsing will be disabled."
+            )
+            self._wiki_data = {}
+
+    def _parse_text_field_for_upgrade_values(self, text: str) -> Tuple[Optional[int], Optional[int]]:
+        """
+        Extract base and upgraded values from wiki Text field.
+
+        Args:
+            text: Text field containing upgrade values like "[8|10]"
+
+        Returns:
+            Tuple of (base_value, upgraded_value), or (None, None) if no match
+
+        Examples:
+            >>> _parse_text_field_for_upgrade_values("Deal [8|10] damage.")
+            (8, 10)
+            >>> _parse_text_field_for_upgrade_values("Gain [5|8] Block.")
+            (5, 8)
+            >>> _parse_text_field_for_upgrade_values("No values here")
+            (None, None)
+        """
+        # Pattern to match [base|upgraded] format
+        upgrade_pattern = r'\[(\d+)\|(\d+)\]'
+        matches = re.findall(upgrade_pattern, text)
+
+        if not matches:
+            return None, None
+
+        # Return the first match (most cards have only one upgrade pair)
+        base_value, upgraded_value = matches[0]
+        return int(base_value), int(upgraded_value)
 
     def get_card_data(self, card_name: str) -> Optional[Dict[str, Any]]:
         """
@@ -514,8 +529,10 @@ class GameDataLoader:
 
         Stages:
         1. Check structured 'damage' field (future-proof for StSExporter)
-        2. Check CARD_METADATA for hardcoded values (complex cards)
-        3. Parse description with regex
+        2. Check CARD_METADATA for X-cards and complex formulas (priority over wiki)
+        3. Parse wiki-card-data.txt for upgrade values (static cards)
+        4. Check CARD_METADATA for remaining hardcoded values
+        5. Parse description with regex
 
         Args:
             card_data: Card data dictionary from items.json
@@ -537,15 +554,43 @@ class GameDataLoader:
             return int(card_data['damage']) if card_data['damage'] else None
 
         card_name = card_data.get('name', '').lower()
+        is_upgraded = card_name.endswith('+')
+        base_card_name = card_name.rstrip('+')  # Remove '+' for lookup
 
-        # Stage 2: Check CARD_METADATA for hardcoded values
-        if card_name in CARD_METADATA:
-            metadata = CARD_METADATA[card_name]
+        # Stage 2: Check CARD_METADATA first for X-cards and complex formulas (priority over wiki)
+        if base_card_name in CARD_METADATA:
+            metadata = CARD_METADATA[base_card_name]
+            # X-damage cards should always use CARD_METADATA, not wiki data
             if metadata.get('is_x_damage'):
                 return 0  # X-damage cards have variable damage
-            return metadata.get('damage')
+            # Complex formula cards also use CARD_METADATA
+            if 'reason' in metadata and 'scales with' in metadata['reason'].lower():
+                damage = metadata.get('damage')
+                upgraded_damage_meta = metadata.get('upgraded_damage')
+                if is_upgraded and upgraded_damage_meta is not None:
+                    return upgraded_damage_meta
+                return damage
 
-        # Stage 3: Parse description with regex
+        # Stage 3: Parse wiki data for upgrade values (static cards only)
+        self._load_wiki_data()  # Lazy load
+        if self._wiki_data and base_card_name in self._wiki_data:
+            wiki_entry = self._wiki_data[base_card_name]
+            text = wiki_entry.get('text', '')
+            base_damage, upgraded_damage = self._parse_text_field_for_upgrade_values(text)
+            if base_damage is not None:
+                # Return appropriate value based on upgrade status
+                return upgraded_damage if is_upgraded else base_damage
+
+        # Stage 4: Check CARD_METADATA for remaining hardcoded values
+        if base_card_name in CARD_METADATA:
+            metadata = CARD_METADATA[base_card_name]
+            damage = metadata.get('damage')
+            upgraded_damage_meta = metadata.get('upgraded_damage')
+            if is_upgraded and upgraded_damage_meta is not None:
+                return upgraded_damage_meta
+            return damage
+
+        # Stage 5: Parse description with regex
         description = card_data.get('description', '').lower()
         match = re.search(r'deal (\d+) damage', description)
         if match:
@@ -555,7 +600,14 @@ class GameDataLoader:
 
     def _parse_card_block(self, card_data: Dict[str, Any]) -> Optional[int]:
         """
-        Extract base block value from card data.
+        Extract base block value from card data using multi-stage approach.
+
+        Stages:
+        1. Check structured 'block' field (future-proof for StSExporter)
+        2. Check CARD_METADATA for X-block cards (priority over wiki)
+        3. Parse wiki-card-data.txt for upgrade values (static cards)
+        4. Check CARD_METADATA for remaining hardcoded values
+        5. Parse description with regex
 
         Args:
             card_data: Card data dictionary from items.json
@@ -570,20 +622,41 @@ class GameDataLoader:
         if not card_data:
             return None
 
-        # Check structured field
+        # Stage 1: Check structured field
         if 'block' in card_data:
             return int(card_data['block']) if card_data['block'] else None
 
         card_name = card_data.get('name', '').lower()
+        is_upgraded = card_name.endswith('+')
+        base_card_name = card_name.rstrip('+')  # Remove '+' for lookup
 
-        # Check CARD_METADATA
-        if card_name in CARD_METADATA:
-            metadata = CARD_METADATA[card_name]
+        # Stage 2: Check CARD_METADATA first for X-block cards (priority over wiki)
+        if base_card_name in CARD_METADATA:
+            metadata = CARD_METADATA[base_card_name]
+            # X-block cards should always use CARD_METADATA, not wiki data
             if metadata.get('is_x_block'):
                 return 0  # X-block cards have variable block
-            return metadata.get('block')
 
-        # Parse description
+        # Stage 3: Parse wiki data for upgrade values (static cards only)
+        self._load_wiki_data()  # Lazy load
+        if self._wiki_data and base_card_name in self._wiki_data:
+            wiki_entry = self._wiki_data[base_card_name]
+            text = wiki_entry.get('text', '')
+            base_block, upgraded_block = self._parse_text_field_for_upgrade_values(text)
+            if base_block is not None:
+                # Return appropriate value based on upgrade status
+                return upgraded_block if is_upgraded else base_block
+
+        # Stage 4: Check CARD_METADATA for remaining hardcoded values
+        if base_card_name in CARD_METADATA:
+            metadata = CARD_METADATA[base_card_name]
+            block = metadata.get('block')
+            upgraded_block_meta = metadata.get('upgraded_block')
+            if is_upgraded and upgraded_block_meta is not None:
+                return upgraded_block_meta
+            return block
+
+        # Stage 5: Parse description with regex
         description = card_data.get('description', '').lower()
         match = re.search(r'gain (\d+) block', description)
         if match:
@@ -594,6 +667,11 @@ class GameDataLoader:
     def _is_card_aoe(self, card_data: Dict[str, Any]) -> bool:
         """
         Detect if card is an AOE (multi-target) attack.
+
+        Uses multi-stage approach:
+        1. Check CARD_METADATA first (for complex AOE cards)
+        2. Check wiki data for AOE indicators in Text field (NEW)
+        3. Check description for AOE keywords
 
         Args:
             card_data: Card data dictionary from items.json
@@ -611,12 +689,22 @@ class GameDataLoader:
             return False
 
         card_name = card_data.get('name', '').lower()
+        base_card_name = card_name.rstrip('+')  # Remove '+' for lookup
 
-        # Check CARD_METADATA first
-        if card_name in CARD_METADATA:
-            return CARD_METADATA[card_name].get('aoe', False)
+        # Stage 1: Check CARD_METADATA first (complex cards)
+        if base_card_name in CARD_METADATA:
+            return CARD_METADATA[base_card_name].get('aoe', False)
 
-        # Check description for AOE keywords
+        # Stage 2: Check wiki data for AOE indicators (NEW)
+        self._load_wiki_data()  # Lazy load
+        if self._wiki_data and base_card_name in self._wiki_data:
+            wiki_entry = self._wiki_data[base_card_name]
+            text = wiki_entry.get('text', '').lower()
+            aoe_keywords = ['all enemies', 'every enemy', 'each enemy', 'all']
+            if any(keyword in text for keyword in aoe_keywords):
+                return True
+
+        # Stage 3: Check description for AOE keywords
         description = card_data.get('description', '').lower()
         aoe_keywords = ['all enemies', 'every enemy', 'each enemy', 'all']
         return any(keyword in description for keyword in aoe_keywords)
