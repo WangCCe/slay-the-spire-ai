@@ -802,8 +802,19 @@ class IroncladCombatPlanner(CombatPlanner):
                 # Hybrid cards (block + damage) - special handling
                 if card_id in ['Iron Wave', 'Flame Barrier']:
                     # Value both the block and damage aspects
-                    if hasattr(card, 'block') and card.block > 0:
-                        score += card.block * 3  # Value block
+                    # Block values from game_data_loader since card.block is not set
+                    upgrades = getattr(card, 'upgrades', 0)
+                    if card_id == 'Iron Wave':
+                        block_val = 7 if upgrades > 0 else 5
+                    elif card_id == 'Flame Barrier':
+                        block_val = 16 if upgrades > 0 else 12
+                    else:
+                        # Fallback: try to get from game data
+                        block_val = 0
+
+                    if block_val > 0:
+                        score += block_val * 3  # Value block
+
                     if hasattr(card, 'damage') and card.damage > 0:
                         score += card.damage * 1.5  # Value damage
                     # Bonus for hybrid nature
@@ -972,11 +983,22 @@ class IroncladCombatPlanner(CombatPlanner):
 
     def _is_defensive_card(self, card: Card) -> bool:
         """Check if card is defensive."""
-        if hasattr(card, 'block') and card.block:
-            return True
-        defensive_keywords = ['defend', 'iron wave', 'flame barrier']
+        # Block values from game_data_loader since card.block is not set
+        # So we check by card_id instead
+        # Complete list of 47 defensive cards across all 4 characters (from items.json analysis)
+        defensive_keywords = [
+            'armaments', 'backflip', 'blur', 'boot sequence', 'charge battery',
+            'cloak and dagger', 'dash', 'deceive reality', 'defend', 'deflect',
+            'dodge and roll', 'empty body', 'entrench', 'equilibrium', 'evaluate',
+            'finesse', 'flame barrier', 'force field', 'genetic algorithm', 'ghostly armor',
+            'glacier', 'good instincts', 'halt', 'hologram', 'impervious', 'iron wave',
+            'just lucky', 'leap', 'leg sweep', 'panic button', 'perseverance', 'power through',
+            'prostrate', 'protect', 'reinforced body', 'safety', 'sanctity', 'second wind',
+            'sentinel', 'shrug it off', 'spirit shield', 'steam barrier', 'survivor', 'swivel',
+            'third eye', 'true grit', 'vigilance'
+        ]
         card_lower = card.card_id.lower()
-        return any(kw in card_lower for kw in defensive_keywords)
+        return any(keyword in card_lower for keyword in defensive_keywords)
 
     def _is_cultist_ritual_turn(self, context: DecisionContext) -> bool:
         """

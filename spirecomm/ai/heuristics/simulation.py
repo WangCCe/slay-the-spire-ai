@@ -79,6 +79,92 @@ FASTSCORE_DAMAGE_MULTIPLIER = 2.0  # Points per damage point in FastScore
 M_VALUES = [20, 18, 15, 12, 10]  # Number of actions to full-simulate at each depth
                                   # Decreases with depth: 20→18→15→12→10 (increased from 12→10→7→5→4)
 
+# =============================================================================
+# CARD UPGRADE MAPPINGS
+# =============================================================================
+
+# Attack card upgrade damage bonuses (Ironclad)
+# Maps card name to damage increase when upgraded (upgrades=1)
+DAMAGE_UPGRADE_BONUS = {
+    # +0 damage (upgrades don't increase base damage)
+    'Pummel': 0,
+    'Sword Boomerang': 0,
+    'Perfected Strike': 0,
+    'Heavy Blade': 0,  # Complex: depends on Strength
+    'Uppercut': 0,
+    'Rampage': 0,  # Has separate scaling mechanism
+
+    # +1 damage
+    'Pommel Strike': 1,
+    'Anger': 1,
+    'Dropkick': 1,
+    'Fiend Fire': 1,
+    'Reckless Charge': 1,
+
+    # +2 damage
+    'Bash': 2,
+    'Iron Wave': 2,
+    'Clothesline': 2,
+    'Reaper': 2,
+
+    # +3 damage
+    'Strike': 3,
+    'Thunderclap': 3,
+    'Twin Strike': 3,
+    'Headbutt': 3,
+    'Cleave': 3,
+
+    # +4 damage
+    'Clash': 4,
+    'Blood for Blood': 4,
+    'Searing Blow': 4,
+
+    # +5 damage
+    'Wild Strike': 5,
+    'Hemokinesis': 5,
+
+    # +6 damage
+    'Sever Soul': 6,
+
+    # +7 damage
+    'Immolate': 7,
+
+    # +8 damage
+    'Carnage': 8,
+
+    # +10 damage
+    'Bludgeon': 10,
+}
+
+# Block card upgrade block bonuses (All characters)
+# Maps card name to block increase when upgraded (upgrades=1)
+BLOCK_UPGRADE_BONUS = {
+    # Ironclad
+    'Defend': 3,        # 5 → 8
+    'Iron Wave': 2,     # 5 → 7
+    'Flame Barrier': 4, # 12 → 16
+    'Impervious': 10,   # 30 → 40
+
+    # Silent
+    'Survivor': 3,      # 8 → 11
+    'Backflip': 3,      # 5 → 8
+    'Deflect': 3,       # 4 → 7
+    'Dodge and Roll': 2, # 4 → 6
+    'Blur': 3,          # 5 → 8
+    'Leg Sweep': 3,     # 11 → 14
+
+    # Defect
+    'Charge Battery': 3,  # 7 → 10
+    'Hologram': 2,        # 3 → 5
+    'Leap': 3,            # 9 → 12
+    'Steam Barrier': 2,   # 6 → 8
+    'Boot Sequence': 3,   # 10 → 13
+    'Equilibrium': 3,     # 13 → 16
+    'Force Field': 4,     # 12 → 16
+    'Glacier': 3,         # 7 → 10
+    'Reinforced Body': 2, # 7 → 9
+}
+
 # Timeout protection
 TIMEOUT_BUDGET = 0.15  # Seconds (150ms budget for beam search) - increased from 80ms
 
@@ -409,10 +495,24 @@ class FastCombatSimulator:
         base_damage = getattr(card, 'damage', 0)
         if base_damage == 0 or not hasattr(card, 'damage'):
             # Use game data for more accurate damage estimation
-            card_name = card.card_id.replace('+', '')
+            card_name = card.card_id.replace('+', '').replace('+', '')  # Remove upgrade suffix
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
                 base_damage = game_data_loader._parse_card_damage(card_data)
+
+                # Apply upgrade bonus if card is upgraded
+                upgrades = getattr(card, 'upgrades', 0)
+                if upgrades > 0 and base_damage:
+                    # Check if we have a known upgrade bonus for this card
+                    upgrade_bonus = DAMAGE_UPGRADE_BONUS.get(card_name)
+                    if upgrade_bonus is not None:
+                        # Use known bonus
+                        base_damage += upgrade_bonus
+                        logger.debug(f"[DAMAGE_UPGRADE] {card.card_id} (upgrades={upgrades}): {base_damage} damage (+{upgrade_bonus})")
+                    else:
+                        # Unknown card - apply generic +3 bonus (most common pattern)
+                        base_damage += 3
+                        logger.debug(f"[DAMAGE_UPGRADE_GENERIC] {card.card_id} (upgrades={upgrades}): {base_damage} damage (+3 generic)")
 
             # Check for X-damage cards and calculate dynamically
             if base_damage == 0 and context is not None:
@@ -584,16 +684,48 @@ class FastCombatSimulator:
         # Block skills - apply frail multiplier if player has frail
         if hasattr(card, 'block') and card.block is not None:
             block_gain = card.block
+            logger.debug(f"[BLOCK_SKILL] Using card.block attribute: {block_gain} for {card.card_id}")
             block_gain = self._apply_frail_block(block_gain, state.player_frail)
             state.player_block += block_gain
         else:
-            # Check for X-block cards
+            # Check for X-block cards first
             if context is not None:
                 block_gain = self._calculate_x_block(card, state, context)
                 if block_gain > 0:
+                    logger.debug(f"[BLOCK_X] X-block calculated: {block_gain} for {card.card_id}")
                     # Apply frail multiplier
                     block_gain = self._apply_frail_block(block_gain, state.player_frail)
                     state.player_block += block_gain
+                else:
+                    # Not an X-block card - try to get block from game data
+                    # (needed because Card objects don't have block attribute set)
+                    card_name = card.card_id.replace('+', '')
+                    card_data = game_data_loader.get_card_data(card_name)
+                    if card_data:
+                        base_block = game_data_loader._parse_card_block(card_data)
+                        if base_block and base_block > 0:
+                            # Apply upgrade bonus if card is upgraded
+                            upgrades = getattr(card, 'upgrades', 0)
+                            if upgrades > 0:
+                                # Check if we have a known upgrade bonus for this card
+                                upgrade_bonus = BLOCK_UPGRADE_BONUS.get(card_name)
+                                if upgrade_bonus is not None:
+                                    # Use known bonus
+                                    base_block += upgrade_bonus
+                                    logger.debug(f"[BLOCK_UPGRADE] {card.card_id} (upgrades={upgrades}): {base_block} block (+{upgrade_bonus})")
+                                else:
+                                    # Unknown card - apply generic +3 bonus
+                                    base_block += 3
+                                    logger.debug(f"[BLOCK_UPGRADE_GENERIC] {card.card_id} (upgrades={upgrades}): {base_block} block (+3 generic)")
+                            else:
+                                logger.debug(f"[BLOCK_BASE] {card.card_id} (upgrades={upgrades}): {base_block} block")
+
+                            block_gain = self._apply_frail_block(base_block, state.player_frail)
+                            state.player_block += block_gain
+                        else:
+                            logger.debug(f"[BLOCK_NONE] No block found for {card.card_id}")
+                    else:
+                        logger.debug(f"[BLOCK_NODATA] No card data found for {card_name}")
         if card.card_id == 'Rage':
             rage_gain = 5 if getattr(card, 'upgrades', 0) > 0 else 3
             state.rage_block_per_attack += rage_gain
@@ -847,6 +979,20 @@ class FastCombatSimulator:
         # 3. Block gained (defensive value)
         block_gained = final_state.player_block - initial_state.player_block
 
+        # Log block cards used in this sequence for debugging
+        if block_gained > 0 and sequence:
+            block_cards = []
+            for action in sequence:
+                if hasattr(action, 'card') and hasattr(action.card, 'card_id'):
+                    card_id = action.card.card_id
+                    # Check if this is a block card by looking at known block cards
+                    card_name = card_id.replace('+', '')
+                    if any(bc in card_name for bc in ['Defend', 'Iron Wave', 'Flame Barrier', 'Impervious', 'Entrench', 'Rage', 'Body Slam']):
+                        upgrades = getattr(action.card, 'upgrades', 0)
+                        block_cards.append(f"{card_id}({upgrades}u)" if upgrades > 0 else card_id)
+            if block_cards:
+                logger.info(f"[BLOCK_CARDS] Block cards in sequence: {', '.join(block_cards)} → {block_gained} block gained")
+
         # Apply block penalty when lethal is available (all monsters could be killed)
         # Calculate if lethal is possible by checking if total damage could kill all
         total_monster_hp = sum(m['hp'] + m['block'] for m in initial_state.monsters if not m['is_gone'])
@@ -857,6 +1003,8 @@ class FastCombatSimulator:
         else:
             # Normal scoring
             score += block_gained * weights['BLOCK_WEIGHT']
+            if block_gained > 0:
+                logger.debug(f"[BLOCK_SCORE] +{block_gained} block × {weights['BLOCK_WEIGHT']} = +{block_gained * weights['BLOCK_WEIGHT']:.1f} score")
 
         # 4. Energy efficiency (prefer using most energy)
         energy_used = initial_state.player_energy - final_state.player_energy
@@ -1724,12 +1872,13 @@ class HeuristicCombatPlanner(CombatPlanner):
         if monsters_alive and hasattr(card, 'type') and card.type == CardType.ATTACK:
             score += FASTSCORE_ATTACK_BONUS
 
-        # Block bonus at low HP
-        if state.player_hp < 30 and hasattr(card, 'block') and card.block is not None:
+        # Block bonus at low HP (check by card_id since card.block is not set)
+        is_block_card = any(keyword in card_name for keyword in ['Defend', 'Iron Wave', 'Flame Barrier', 'Impervious', 'Entrench'])
+        if state.player_hp < 30 and is_block_card:
             score += FASTSCORE_LOWHP_BLOCK_BONUS
 
         # X-block bonus for cards like Rage (already handled above for Rage)
-        if not (hasattr(card, 'block') and card.block is not None) and card_name != 'Rage':
+        if not is_block_card and card_name != 'Rage':
             x_block = self._calculate_x_block(card, state, context)
             if x_block > 0:
                 # X-block cards are valuable when you need defense
