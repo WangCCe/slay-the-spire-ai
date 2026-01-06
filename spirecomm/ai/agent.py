@@ -798,13 +798,22 @@ class OptimizedAgent(SimpleAgent):
             # 规划新序列（首次规划或缓存失效后）
             context = DecisionContext(self.game)
 
-            # === 新增：根据敌人威胁选择战斗模式 ===
+            # === Enhanced combat mode selection using Wiki monster data ===
             # Import combat mode selector
-            from spirecomm.ai.heuristics.simulation import select_combat_mode, CombatMode
+            from spirecomm.ai.heuristics.simulation import select_combat_mode_with_monster_data, CombatMode
             from spirecomm.ai.decision.base import ThreatCategory
 
-            # Select combat mode based on enemy threat
-            combat_mode = select_combat_mode(context.threat_category)
+            # Select combat mode based on enhanced monster analysis
+            # This uses Wiki data to detect summoners, phase changes, hibernation, etc.
+            try:
+                combat_mode = select_combat_mode_with_monster_data(context)
+            except Exception as e:
+                # Fallback to original method if enhanced version fails
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Enhanced combat mode selection failed: {e}, falling back to basic mode")
+                from spirecomm.ai.heuristics.simulation import select_combat_mode
+                combat_mode = select_combat_mode(context.threat_category)
 
             # Check if we need to recreate combat planner (mode changed)
             if (not hasattr(self, '_current_combat_mode') or

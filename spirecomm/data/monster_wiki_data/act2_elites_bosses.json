@@ -1,0 +1,393 @@
+{
+  "The Champ": {
+    "monster_id": "The_Champ",
+    "name": "The Champ",
+    "monster_type": "boss",
+    "hp_ranges": {
+      "normal": {"min": 420, "max": 420},
+      "ascension_9+": {"min": 440, "max": 440}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Defensive Stance",
+        "intent": "BUFF_DEFEND",
+        "damage": null,
+        "effect": "Gains 15 Block and 5 Metallicize.",
+        "block_gain": 15,
+        "metallicize_gain": 5,
+        "ascension_modifiers": {
+          "9+": {"block_gain": 18, "metallicize_gain": 6},
+          "19+": {"block_gain": 20, "metallicize_gain": 7}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Face Slap",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 12,
+        "effect": "Deals 12 damage, applying 2 Frail and 2 Vulnerable.",
+        "frail_applied": 2,
+        "vulnerable_applied": 2,
+        "ascension_modifiers": {
+          "4+": {"damage": 14}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Taunt",
+        "intent": "DEBUFF",
+        "damage": null,
+        "effect": "Applies 2 Weak and 2 Vulnerable.",
+        "weak_applied": 2,
+        "vulnerable_applied": 2
+      },
+      {
+        "move_id": 3,
+        "name": "Heavy Slash",
+        "intent": "ATTACK",
+        "damage": 16,
+        "effect": "Deals 16 damage.",
+        "ascension_modifiers": {
+          "4+": {"damage": 18}
+        }
+      },
+      {
+        "move_id": 4,
+        "name": "Gloat",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Gains 2 Strength.",
+        "strength_gain": 2,
+        "ascension_modifiers": {
+          "4+": {"strength_gain": 3},
+          "19+": {"strength_gain": 4}
+        }
+      },
+      {
+        "move_id": 5,
+        "name": "Execute",
+        "intent": "ATTACK",
+        "damage": 10,
+        "hits": 2,
+        "effect": "Deals 10 x 2 damage."
+      },
+      {
+        "move_id": 6,
+        "name": "Anger",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Removes all debuffs, gains 6 Strength.",
+        "strength_gain": 6,
+        "clears_debuffs": true,
+        "ascension_modifiers": {
+          "4+": {"strength_gain": 9},
+          "19+": {"strength_gain": 12}
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Phase 1: Uses Taunt every 4 turns. Other turns: 15% Defensive Stance, 15% Gloat (replaced with Defensive Stance on A19+), 25% Face Slap, 45% Heavy Slash. Cannot use same move twice in a row. When HP drops below 50%, uses Anger next turn to enter Phase 2. Phase 2: Uses Execute, then 2 random moves, then Execute again. Defensive Stance can only be used twice per battle.",
+      "phases": [
+        {
+          "phase": 1,
+          "hp_threshold": 50,
+          "trigger": "below_50_percent_hp",
+          "probabilities": {
+            "defensive_stance": 0.15,
+            "gloat": 0.15,
+            "face_slap": 0.25,
+            "heavy_slash": 0.45
+          },
+          "constraints": ["cannot_use_same_move_twice_in_a_row", "taunt_every_4_turns"],
+          "ascension_modifiers": {
+            "19+": {"gloat_replaced_with_defensive_stance": true}
+          }
+        },
+        {
+          "phase": 2,
+          "pattern": ["Execute", "random", "random", "Execute"],
+          "transition_move": "Anger"
+        }
+      ],
+      "special_constraints": [
+        "defensive_stance_max_2_per_battle",
+        "anger_clears_debuffs"
+      ]
+    },
+    "special_mechanics": {
+      "type": "phase_change",
+      "phases": [
+        {
+          "trigger": "hp_below_50_percent",
+          "transition_move": "Anger"
+        }
+      ],
+      "powers": ["Metallicize"],
+      "recommended_strategy": {
+        "primary": "burst_below_50_percent_hp",
+        "secondary": "avoid_triggering_phase_2_on_turns_5_6",
+        "note": "Try to get Champ below 50% HP on turns 3 or 4 to avoid Taunt. Phase 2 Execute deals very high damage with Strength scaling."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 28,
+      "phase1_threat": 24,
+      "phase2_threat": 35,
+      "scaling_threat": 5.0,
+      "strength_scaling_threat": 4.5
+    }
+  },
+  "The Collector": {
+    "monster_id": "The_Collector",
+    "name": "The Collector",
+    "monster_type": "boss",
+    "hp_ranges": {
+      "normal": {"min": 240, "max": 260},
+      "ascension_9+": {"min": 250, "max": 270}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Collect",
+        "intent": "UNKNOWN",
+        "damage": null,
+        "effect": "Spawns 3 Acquired Puppets. Can only be used if no Puppets are alive."
+      },
+      {
+        "move_id": 1,
+        "name": "Light Beam",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 6,
+        "effect": "Deals 6 damage and applies 1 Weak.",
+        "weak_applied": 1
+      },
+      {
+        "move_id": 2,
+        "name": "Dark Beam",
+        "intent": "ATTACK",
+        "damage": 18,
+        "effect": "Deals 18 damage."
+      },
+      {
+        "move_id": 3,
+        "name": "Mega Beam",
+        "intent": "ATTACK",
+        "damage": 25,
+        "effect": "Deals 25 damage. Can only use if 2 or more Puppets are alive."
+      }
+    ],
+    "pattern": {
+      "description": "Starts combat by using Collect to spawn 3 Puppets. Only uses Light Beam and Dark Beam while Puppets are alive. If all Puppets die, may use Collect again on next turn.",
+      "initial_move": "Collect",
+      "probabilities_with_puppets": {
+        "light_beam": 0.4,
+        "dark_beam": 0.6
+      },
+      "spawn_condition": "no_puppets_alive",
+      "mega_beam_condition": "2+_puppets_alive"
+    },
+    "special_mechanics": {
+      "type": "summoner",
+      "summons": ["Acquired Puppet", "Acquired Puppet", "Acquired Puppet"],
+      "summon_count": 3,
+      "puppet_hp": 14,
+      "minion_death_trigger": "buff_collector",
+      "minion_buff": {
+        "type": "strength_gain",
+        "amount": 1,
+        "trigger": "when_puppet_dies"
+      },
+      "recommended_strategy": {
+        "primary": "kill_puppets_first",
+        "secondary": "prevent_puppet_respawn",
+        "note": "Each Puppet death gives Collector +1 Strength. Kill all Puppets quickly, then burst Collector before he can respawn them."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 26,
+      "summoning_threat": 20,
+      "minion_threat": 8,
+      "scaling_threat": 3.0,
+      "party_threat_multiplier": 2.5
+    }
+  },
+  "Centurion & Mystic": {
+    "monster_id": "Centurion_Mystic",
+    "name": "Centurion & Mystic",
+    "monster_type": "elite",
+    "hp_ranges": {
+      "centurion": {"min": 52, "max": 58},
+      "mystic": {"min": 44, "max": 50},
+      "ascension_7+": {
+        "centurion": {"min": 56, "max": 62},
+        "mystic": {"min": 48, "max": 54}
+      }
+    },
+    "monsters": ["Centurion", "Mystic"],
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Slash",
+        "intent": "ATTACK",
+        "damage": 12,
+        "effect": "Deals 12 damage.",
+        "monster": "Centurion"
+      },
+      {
+        "move_id": 1,
+        "name": "Defensive Mode",
+        "intent": "DEFEND",
+        "damage": null,
+        "effect": "Centurion gains 12 Block and 6 Metallicize.",
+        "block_gain": 12,
+        "metallicize_gain": 6,
+        "monster": "Centurion"
+      },
+      {
+        "move_id": 2,
+        "name": "Rage",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Centurion gains 2 Strength and 4 Block.",
+        "strength_gain": 2,
+        "block_gain": 4,
+        "monster": "Centurion"
+      },
+      {
+        "move_id": 3,
+        "name": "Charge",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Gains 1 Charge. At 3 Charges, uses Burst.",
+        "charge_gain": 1,
+        "monster": "Mystic"
+      },
+      {
+        "move_id": 4,
+        "name": "Burst",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 14,
+        "effect": "Deals 14 damage and applies 2 Weak. Consumes all Charges.",
+        "weak_applied": 2,
+        "consumes_charges": true,
+        "monster": "Mystic"
+      },
+      {
+        "move_id": 5,
+        "name": "Focus",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Gains 1 Charge. At 2 Charges, uses Beam.",
+        "charge_gain": 1,
+        "monster": "Mystic"
+      },
+      {
+        "move_id": 6,
+        "name": "Beam",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 8,
+        "effect": "Deals 8 damage and applies 1 Weak. Consumes all Charges.",
+        "weak_applied": 1,
+        "consumes_charges": true,
+        "monster": "Mystic"
+      }
+    ],
+    "pattern": {
+      "description": "Centurion: Alternates between attacking and buffing/defending. Mystic: Builds up charges then unleashes high-damage attacks.",
+      "centurion_pattern": {
+        "probabilities": {"slash": 0.4, "defensive_mode": 0.3, "rage": 0.3}
+      },
+      "mystic_pattern": {
+        "charge_to_burst": 3,
+        "focus_to_beam": 2
+      }
+    },
+    "special_mechanics": {
+      "type": "duo_boss",
+      "monsters": ["Centurion", "Mystic"],
+      "synergy": "Centurion protects while Mystic charges",
+      "recommended_strategy": {
+        "primary": "kill_mystic_first",
+        "secondary": "prevent_mystic_from_charging",
+        "note": "Mystic's Burst (3 charges) and Beam (2 charges) deal high damage. Centurion's Rage gives him Strength scaling."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 24,
+      "centurion_threat": 18,
+      "mystic_threat": 22,
+      "scaling_threat": 3.5
+    }
+  },
+  "Gremlin Leader": {
+    "monster_id": "Gremlin_Leader",
+    "name": "Gremlin Leader",
+    "monster_type": "elite",
+    "hp_ranges": {
+      "normal": {"min": 140, "max": 148},
+      "ascension_8+": {"min": 145, "max": 155}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Encourage",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "All enemies gain 3 Strength. All minions gain 6 Block.",
+        "strength_gain": 3,
+        "minion_block_gain": 6,
+        "ascension_modifiers": {
+          "3+": {"strength_gain": 4, "minion_block_gain": 6},
+          "18+": {"strength_gain": 5, "minion_block_gain": 10}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Rally!",
+        "intent": "UNKNOWN",
+        "damage": null,
+        "effect": "Summons up to 2 random Gremlins.",
+        "summons": "Gremlin",
+        "summon_count": {"min": 1, "max": 2}
+      },
+      {
+        "move_id": 2,
+        "name": "Stab",
+        "intent": "ATTACK",
+        "damage": 6,
+        "effect": "Deals 6 damage 3 times.",
+        "hits": 3
+      }
+    ],
+    "pattern": {
+      "description": "Complex pattern based on number of other enemies. 0 enemies: 75% Rally!, 25% Stab. 1 enemy: depends on last move. 2-3 enemies: 66% Encourage, 34% Stab. Cannot use same move twice in a row.",
+      "probability_by_enemy_count": {
+        "0_enemies": {"rally": 0.75, "stab": 0.25},
+        "2-3_enemies": {"encourage": 0.66, "stab": 0.34}
+      },
+      "constraints": ["cannot_use_same_move_twice_in_a_row"]
+    },
+    "special_mechanics": {
+      "type": "summoner",
+      "summons": ["Gremlin"],
+      "max_minions": 3,
+      "scaling": {
+        "type": "party_strength_scaling",
+        "rate": "+3-5 Strength for all enemies per Encourage"
+      },
+      "recommended_strategy": {
+        "primary": "kill_minions_to_reduce_attacks",
+        "secondary": "kill_gremlin_wizards_first",
+        "note": "Killing gremlins forces Leader to use Rally/Encourage instead of attacking. New gremlins don't inherit old Strength buffs."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 20,
+      "summoning_threat": 15,
+      "buff_threat": 25,
+      "scaling_threat": 4.0,
+      "party_threat_multiplier": 1.5
+    }
+  }
+}

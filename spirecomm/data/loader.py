@@ -169,6 +169,7 @@ class GameDataLoader:
         self._creatures: Optional[Dict[str, Dict[str, Any]]] = None
         self._enemies: Optional[Dict[str, Dict[str, Any]]] = None
         self._wiki_data: Optional[Dict[str, Dict[str, Any]]] = None  # Lazy-loaded wiki card data
+        self._enhanced_monster_db = None  # Lazy-loaded enhanced monster database
         self._loaded = False
 
         if auto_load:
@@ -708,6 +709,210 @@ class GameDataLoader:
         description = card_data.get('description', '').lower()
         aoe_keywords = ['all enemies', 'every enemy', 'each enemy', 'all']
         return any(keyword in description for keyword in aoe_keywords)
+
+    # ===== Enhanced Monster Database Methods =====
+
+    def _get_enhanced_monster_db(self):
+        """
+        Lazy-load the enhanced monster database.
+
+        Returns:
+            EnhancedMonsterDatabase instance
+        """
+        if self._enhanced_monster_db is None:
+            try:
+                from spirecomm.ai.heuristics.enhanced_monster_database import EnhancedMonsterDatabase
+                self._enhanced_monster_db = EnhancedMonsterDatabase()
+                print(
+                    f"Enhanced monster database loaded: {len(self._enhanced_monster_db.get_all_monsters())} monsters",
+                    file=sys.stderr
+                )
+            except Exception as e:
+                warnings.warn(
+                    f"Failed to load enhanced monster database: {e}\n"
+                    f"Enhanced monster features will be disabled."
+                )
+                self._enhanced_monster_db = False  # Use False to indicate failed load
+        return self._enhanced_monster_db
+
+    def get_enhanced_monster_data(self, monster_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get enhanced monster data from Wiki.
+
+        Args:
+            monster_name: Name of the monster (e.g., "Cultist", "Lagavulin", "The Champ")
+
+        Returns:
+            Dictionary with enhanced monster data (moves, patterns, special mechanics, threat profile),
+            or None if not found or database unavailable
+        """
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):  # Check if db loaded successfully (not False)
+            return db.get_monster_data(monster_name)
+        return None
+
+    def get_monster_moves(self, monster_name: str) -> List[Dict[str, Any]]:
+        """
+        Get list of moves for a monster from Wiki data.
+
+        Args:
+            monster_name: Name of the monster
+
+        Returns:
+            List of move dictionaries with move_id, name, intent, damage, effect
+        """
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.get_moves(monster_name)
+        return []
+
+    def get_monster_pattern(self, monster_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get move pattern information for a monster from Wiki data.
+
+        Args:
+            monster_name: Name of the monster
+
+        Returns:
+            Pattern dictionary with description, probabilities, constraints, phases
+        """
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.get_pattern(monster_name)
+        return None
+
+    def get_monster_special_mechanics(self, monster_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get special mechanics for a monster from Wiki data.
+
+        Args:
+            monster_name: Name of the monster
+
+        Returns:
+            Special mechanics dictionary with type and additional details
+            (summoner, hibernation, phase_change, death_split, etc.)
+        """
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.get_special_mechanics(monster_name)
+        return None
+
+    def get_monster_threat_profile(self, monster_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get threat profile for a monster from Wiki data.
+
+        Args:
+            monster_name: Name of the monster
+
+        Returns:
+            Threat profile dictionary with base_threat, scaling_threat, special situation threats
+        """
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.get_threat_profile(monster_name)
+        return None
+
+    def predict_monster_moves(self, monster_name: str, current_turn: int,
+                             monster_hp_percent: float) -> List[Dict[str, Any]]:
+        """
+        Predict next moves for a monster based on its Wiki pattern.
+
+        Args:
+            monster_name: Name of the monster
+            current_turn: Current combat turn (1-indexed)
+            monster_hp_percent: Current HP as percentage (0.0 to 1.0)
+
+        Returns:
+            List of predicted moves for next 3 turns with confidence scores
+        """
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.predict_next_moves(monster_name, current_turn, monster_hp_percent)
+        return []
+
+    def calculate_monster_future_threat(self, monster_name: str, current_turn: int,
+                                       monster_hp_percent: float, current_strength: int = 0) -> int:
+        """
+        Calculate future threat based on predicted moves and scaling from Wiki data.
+
+        Args:
+            monster_name: Name of the monster
+            current_turn: Current combat turn
+            monster_hp_percent: Current HP as percentage
+            current_strength: Current monster Strength (for scaling)
+
+        Returns:
+            Future threat score (higher = more dangerous)
+        """
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.calculate_future_threat(monster_name, current_turn, monster_hp_percent, current_strength)
+        return 20  # Default fallback
+
+    def is_monster_summoner(self, monster_name: str) -> bool:
+        """Check if monster is a summoner type from Wiki data."""
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.is_summoner(monster_name)
+        return False
+
+    def is_monster_hibernating(self, monster_name: str, current_turn: int) -> bool:
+        """Check if monster is currently hibernating from Wiki data."""
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.is_hibernating(monster_name, current_turn)
+        return False
+
+    def does_monster_have_phase_change(self, monster_name: str) -> bool:
+        """Check if monster has phase change mechanics from Wiki data."""
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.has_phase_change(monster_name)
+        return False
+
+    def does_monster_have_death_split(self, monster_name: str) -> bool:
+        """Check if monster splits on death from Wiki data."""
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.has_death_split(monster_name)
+        return False
+
+    def get_monster_recommended_strategy(self, monster_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get recommended strategy for fighting a monster from Wiki data.
+
+        Args:
+            monster_name: Name of the monster
+
+        Returns:
+            Strategy dictionary with primary, secondary, and note
+        """
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.get_recommended_strategy(monster_name)
+        return None
+
+    def get_monster_minions(self, monster_name: str) -> List[str]:
+        """
+        Get list of minions a monster can summon from Wiki data.
+
+        Args:
+            monster_name: Name of the monster
+
+        Returns:
+            List of minion names
+        """
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.get_minions(monster_name)
+        return []
+
+    def is_monster_duo_boss(self, monster_name: str) -> bool:
+        """Check if monster is a duo boss (two monsters fighting together) from Wiki data."""
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.is_duo_boss(monster_name)
+        return False
 
 
 # Create a global instance for easy access

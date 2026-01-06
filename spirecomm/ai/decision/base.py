@@ -272,6 +272,173 @@ class DecisionContext:
 
         return threat
 
+    def compute_threat_v2(self, monster) -> int:
+        """
+        Calculate enhanced threat level using Wiki monster data for proactive threat assessment.
+
+        This enhanced version incorporates:
+        - Immediate threat (current intent damage)
+        - Future threat (predicted next 2-3 moves from Wiki patterns)
+        - Scaling threat (from Wiki threat profiles)
+        - Special ability threat (summoner, hibernation, phase change, etc.)
+        - Composition threat (minions, party buffs)
+
+        Args:
+            monster: Monster to evaluate
+
+        Returns:
+            Enhanced threat score (higher = more threatening)
+        """
+        # Fallback to original method if monster name unavailable
+        if not hasattr(monster, 'name'):
+            return self.compute_threat(monster)
+
+        monster_name = monster.name
+        threat = 0
+
+        # Get enhanced monster data from Wiki
+        monster_data = game_data_loader.get_enhanced_monster_data(monster_name)
+
+        # If no Wiki data, fallback to original method
+        if not monster_data:
+            return self.compute_threat(monster)
+
+        # ===== Component 1: Immediate threat (current intent) =====
+        if hasattr(monster, 'move_adjusted_damage') and monster.move_adjusted_damage is not None:
+            hits = hasattr(monster, 'move_hits') and monster.move_hits or 1
+            immediate_damage = monster.move_adjusted_damage * hits
+            threat += immediate_damage
+
+            # Add current Strength to damage
+            if hasattr(monster, 'strength') and monster.strength > 0:
+                threat += monster.strength * hits
+
+        # ===== Component 2: Future threat (predict next 2-3 moves) =====
+        # Get monster HP percentage for phase detection
+        if hasattr(monster, 'current_hp') and hasattr(monster, 'max_hp') and monster.max_hp > 0:
+            monster_hp_percent = monster.current_hp / monster.max_hp
+        else:
+            monster_hp_percent = 1.0
+
+        # Get current Strength for scaling
+        current_strength = getattr(monster, 'strength', 0)
+
+        # Predict future moves using Wiki patterns
+        predicted_moves = game_data_loader.predict_monster_moves(
+            monster_name, self.turn, monster_hp_percent
+        )
+
+        # Add threat from predicted moves (discounted by 60% for uncertainty)
+        for prediction in predicted_moves:
+            move = prediction.get('move', {})
+            confidence = prediction.get('confidence', 0.5)
+
+            # Damage threat
+            if 'damage' in move and move['damage']:
+                hits = move.get('hits', 1)
+                damage = move['damage'] * hits
+                threat += int(damage * 0.6 * confidence)  # Discount future damage
+
+            # Debuff threat
+            if any(key in move for key in ['weak_applied', 'vulnerable_applied', 'frail_applied']):
+                threat += int(3 * confidence)
+
+            # Summon threat
+            if 'summons' in move:
+                threat += int(10 * confidence)
+
+        # ===== Component 3: Scaling threat (from Wiki threat profile) =====
+        threat_profile = game_data_loader.get_monster_threat_profile(monster_name)
+        if threat_profile:
+            scaling_threat = threat_profile.get('scaling_threat', 0)
+
+            # Estimate turns to kill based on HP percentage
+            if scaling_threat > 0:
+                estimated_ttd = int(10 * monster_hp_percent)  # Rough estimate
+                threat += int(scaling_threat * estimated_ttd * 0.3)
+
+            # Strength scaling threat
+            if current_strength > 0:
+                strength_scaling = threat_profile.get('strength_scaling_threat', 4.0)
+                threat += int(strength_scaling * current_strength)
+
+        # ===== Component 4: Special ability threat =====
+        special_mechanics = game_data_loader.get_monster_special_mechanics(monster_name)
+        if special_mechanics:
+            mech_type = special_mechanics.get('type', '')
+
+            # Summoner threat (high priority to kill)
+            if mech_type == 'summoner':
+                summoning_threat = threat_profile.get('summoning_threat', 20) if threat_profile else 20
+                threat += summoning_threat
+
+                # Add minion threat
+                minion_count = len([m for m in self.monsters_alive if m.name != monster_name])
+                minion_threat = threat_profile.get('minion_threat', 10) if threat_profile else 10
+                threat += minion_threat * minion_count
+
+            # Hibernation threat (low while sleeping, high when awake)
+            elif mech_type == 'hibernation':
+                hibernation_turns = special_mechanics.get('hibernation_turns', 3)
+                if self.turn <= hibernation_turns:
+                    # Still sleeping - low threat
+                    hibernation_threat = threat_profile.get('hibernation_threat', 5) if threat_profile else 5
+                    threat = hibernation_threat  # Replace, not add
+                else:
+                    # Awakened - high threat
+                    awakened_threat = threat_profile.get('awakened_threat', 40) if threat_profile else 40
+                    threat += awakened_threat
+
+            # Phase change threat
+            elif mech_type == 'phase_change' or 'phases' in special_mechanics:
+                # Determine current phase
+                phases = special_mechanics.get('phases', [])
+                current_phase = 1
+                for phase in phases:
+                    if 'hp_threshold' in phase:
+                        if monster_hp_percent < (phase['hp_threshold'] / 100.0):
+                            current_phase = phase.get('phase', 2)
+                            break
+
+                # Add phase-specific threat
+                phase_threat_key = f'phase{current_phase}_threat'
+                if threat_profile and phase_threat_key in threat_profile:
+                    phase_threat = threat_profile[phase_threat_key]
+                    threat += int(phase_threat * 0.5)  # Moderate weight for phase threat
+
+            # Death split threat (prioritize AOE)
+            elif mech_type == 'death_split':
+                split_hp = special_mechanics.get('hp_threshold', 50)
+                if monster_hp_percent < (split_hp / 100.0):
+                    # About to split - high threat unless we have AOE
+                    threat += 15
+
+            # Charge attack threat
+            elif mech_type == 'charge_attack':
+                charge_threat = threat_profile.get('charge_threat', 25) if threat_profile else 25
+                threat += charge_threat
+
+            # Duo boss threat (both monsters scale together)
+            elif mech_type == 'duo_boss':
+                party_multiplier = threat_profile.get('party_threat_multiplier', 1.5) if threat_profile else 1.5
+                threat = int(threat * party_multiplier)
+
+        # ===== Component 5: Composition threat (party buffs) =====
+        # Check if monster buffs other monsters
+        if hasattr(monster, 'intent'):
+            intent_str = str(monster.intent).upper() if monster.intent else ''
+            if 'BUFF' in intent_str and len(self.monsters_alive) > 1:
+                # Party-wide buff is more threatening with more monsters
+                threat += len(self.monsters_alive) * 5
+
+        # ===== Component 6: Base threat adjustment =====
+        if threat_profile:
+            base_threat = threat_profile.get('base_threat', 20)
+            # Blend calculated threat with base threat (70% calculated, 30% base)
+            threat = int(threat * 0.7 + base_threat * 0.3)
+
+        return max(threat, 5)  # Minimum threat of 5
+
     def _analyze_deck_archetype(self) -> str:
         """
         Analyze deck to determine archetype.

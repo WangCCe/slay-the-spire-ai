@@ -1,0 +1,538 @@
+{
+  "Cultist": {
+    "monster_id": "Cultist",
+    "name": "Cultist",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {"min": 48, "max": 54},
+      "ascension_7+": {"min": 50, "max": 56}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Incantation",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Gains 3 Ritual.",
+        "strength_gain": 3
+      },
+      {
+        "move_id": 1,
+        "name": "Dark Strike",
+        "intent": "ATTACK",
+        "damage": 6,
+        "effect": "Deal 6 damage."
+      }
+    ],
+    "pattern": {
+      "description": "Always starts with Incantation, then uses Dark Strike every turn after."
+    },
+    "special_mechanics": {
+      "type": "summoner",
+      "scaling": {
+        "type": "strength_scaling",
+        "rate": "+3 Strength/turn"
+      }
+    },
+    "threat_profile": {
+      "base_threat": 15,
+      "scaling_threat": 3.0
+    }
+  },
+  "Lagavulin": {
+    "monster_id": "Lagavulin",
+    "name": "Lagavulin",
+    "monster_type": "elite",
+    "hp_ranges": {
+      "normal": {"min": 109, "max": 111},
+      "ascension_8+": {"min": 112, "max": 115}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Attack",
+        "intent": "ATTACK",
+        "damage": 18,
+        "effect": "Deal 18 damage.",
+        "ascension_modifiers": {
+          "3+": {"damage": 20},
+          "18+": {"damage": 20}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Siphon Soul",
+        "intent": "DEBUFF",
+        "damage": null,
+        "effect": "Inflicts -1 Dexterity, then -1 Strength.",
+        "ascension_modifiers": {
+          "18+": {"effect": "Inflicts -2 Dexterity, then -2 Strength."}
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Will attack twice, then uses Siphon Soul; repeats this pattern for the entire duration of the fight."
+    },
+    "special_mechanics": {
+      "type": "hibernation",
+      "hibernation_turns": 3,
+      "awakening_condition": "after 3 turns or when HP damage taken",
+      "powers_while_sleeping": ["Metallicize 8"],
+      "awakened_stunned": true
+    },
+    "threat_profile": {
+      "base_threat": 20,
+      "hibernation_threat": 5,
+      "awakened_threat": 30,
+      "scaling_threat": 2.5
+    }
+  },
+  "Hexaghost": {
+    "monster_id": "Hexaghost",
+    "name": "Hexaghost",
+    "monster_type": "boss",
+    "hp_ranges": {
+      "normal": {"min": 250, "max": 250},
+      "ascension_9+": {"min": 264, "max": 264}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Activate",
+        "intent": "UNKNOWN",
+        "damage": null,
+        "effect": "Nothing."
+      },
+      {
+        "move_id": 1,
+        "name": "Divider",
+        "intent": "ATTACK",
+        "damage": null,
+        "effect": "Deals (H+1) x 6 damage. H = (Current Player HP divided by 12), rounded down.",
+        "note": "Scales with player HP"
+      },
+      {
+        "move_id": 2,
+        "name": "Sear",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 6,
+        "effect": "Deals 6 damage, shuffles a Burn into the discard pile.",
+        "ascension_modifiers": {
+          "19+": {"burn_count": 2}
+        }
+      },
+      {
+        "move_id": 3,
+        "name": "Tackle",
+        "intent": "ATTACK",
+        "damage": 10,
+        "effect": "Deals 5 x 2 damage.",
+        "ascension_modifiers": {
+          "4+": {"damage": 12}
+        }
+      },
+      {
+        "move_id": 4,
+        "name": "Inflame",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Gains 2 Strength and 12 Block.",
+        "strength_gain": 2,
+        "block_gain": 12,
+        "ascension_modifiers": {
+          "19+": {"strength_gain": 3}
+        }
+      },
+      {
+        "move_id": 5,
+        "name": "Inferno",
+        "intent": "ATTACK",
+        "damage": 12,
+        "effect": "Deals 2 x 6 damage, shuffles 3 Burn into the discard pile. Upgrades all Burn.",
+        "burn_count": 3,
+        "ascension_modifiers": {
+          "4+": {"damage": 18}
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Starts with Activate, followed by Divider. Each attack lights one green flame. At 6 flames, uses Inferno and resets flames.",
+      "move_sequence": [0, 1, 2, 3, 2, 4, 3, 2, 5],
+      "flame_mechanic": {
+        "type": "charge_based",
+        "max_charges": 6,
+        "ultimate_move": 5
+      }
+    },
+    "special_mechanics": {
+      "type": "phase_change",
+      "phases": [
+        {
+          "trigger": "flame_count",
+          "threshold": 6,
+          "effect": "Use Inferno and reset flames"
+        }
+      ],
+      "burn_escalation": true,
+      "recommended_strategy": {
+        "primary": "kill_quickly",
+        "burst_windows": ["Before first Inferno", "Immediately after Inflame"]
+      }
+    },
+    "threat_profile": {
+      "base_threat": 25,
+      "scaling_threat": 4.0,
+      "time_pressure": "high"
+    }
+  },
+  "Slime Boss": {
+    "monster_id": "Slime_Boss",
+    "name": "Slime Boss",
+    "monster_type": "boss",
+    "hp_ranges": {
+      "normal": {"min": 140, "max": 140},
+      "ascension_9+": {"min": 150, "max": 150}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Goop Spray",
+        "intent": "DEBUFF",
+        "damage": null,
+        "effect": "Shuffles 3 Slimed to your discard pile.",
+        "ascension_modifiers": {
+          "19+": {"slimed_count": 5}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Preparing",
+        "intent": "UNKNOWN",
+        "damage": null,
+        "effect": "Nothing."
+      },
+      {
+        "move_id": 2,
+        "name": "Slam",
+        "intent": "ATTACK",
+        "damage": 35,
+        "effect": "Deals 35 damage.",
+        "ascension_modifiers": {
+          "4+": {"damage": 38}
+        }
+      },
+      {
+        "move_id": 3,
+        "name": "Split",
+        "intent": "UNKNOWN",
+        "damage": null,
+        "effect": "Splits into an Acid Slime (L) and a Spike Slime (L) with current HP. Interrupts previous intents.",
+        "note": "Triggered at 50% HP or below"
+      }
+    ],
+    "pattern": {
+      "description": "Will always go through the pattern of Goop Spray, Preparing, Slam, and then repeat.",
+      "move_sequence": [0, 1, 2],
+      "split_trigger": {
+        "hp_threshold": 50,
+        "threshold_type": "percentage",
+        "interrupts_pattern": true
+      }
+    },
+    "special_mechanics": {
+      "type": "death_split",
+      "splits_into": ["Acid Slime (L)", "Spike Slime (L)"],
+      "hp_inheritance": "current_hp_percentage",
+      "split_conditions": {
+        "hp_threshold": 50,
+        "threshold_type": "percentage"
+      },
+      "recommended_strategy": {
+        "primary": "burst_below_50_percent",
+        "aoe_effectiveness": "high",
+        "note": "Get boss far below half health in one turn so resulting slimes have less HP"
+      }
+    },
+    "threat_profile": {
+      "base_threat": 20,
+      "pre_split_threat": 18,
+      "post_split_threat": 25,
+      "scaling_threat": 2.0,
+      "aoe_priority": "high"
+    }
+  },
+  "Blue Slaver": {
+    "monster_id": "Blue_Slaver",
+    "name": "Blue Slaver",
+    "monster_type": "elite",
+    "hp_ranges": {
+      "normal": {"min": 46, "max": 50},
+      "ascension_7+": {"min": 48, "max": 52}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Stab",
+        "intent": "ATTACK",
+        "damage": 12,
+        "effect": "Deals 12 damage.",
+        "ascension_modifiers": {
+          "2+": {"damage": 13}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Rake",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 7,
+        "effect": "Deals 7 damage and applies 1 Weak.",
+        "weak_applied": 1,
+        "ascension_modifiers": {
+          "2+": {"damage": 8},
+          "17+": {"weak_applied": 2}
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Every turn, has 40% chance to use Rake and 60% chance to use Stab. Cannot use the same move 3 times in a row.",
+      "probabilities": {
+        "rake": 0.4,
+        "stab": 0.6
+      },
+      "constraints": ["cannot_use_same_move_3x_in_a_row"],
+      "ascension_modifiers": {
+        "17+": ["cannot_use_rake_2x_in_a_row"]
+      }
+    },
+    "special_mechanics": {
+      "type": "none",
+      "debuff_focus": "weak"
+    },
+    "threat_profile": {
+      "base_threat": 16,
+      "debuff_threat": 4,
+      "scaling_threat": 1.5
+    }
+  },
+  "Red Slaver": {
+    "monster_id": "Red_Slaver",
+    "name": "Red Slaver",
+    "monster_type": "elite",
+    "hp_ranges": {
+      "normal": {"min": 46, "max": 50},
+      "ascension_7+": {"min": 48, "max": 52}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Stab",
+        "intent": "ATTACK",
+        "damage": 13,
+        "effect": "Deals 13 damage.",
+        "ascension_modifiers": {
+          "2+": {"damage": 14}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Scrape",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 8,
+        "effect": "Deals 8 damage and applies 1 Vulnerable.",
+        "vulnerable_applied": 1,
+        "ascension_modifiers": {
+          "2+": {"damage": 9},
+          "17+": {"vulnerable_applied": 2}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Entangle",
+        "intent": "DEBUFF",
+        "damage": null,
+        "effect": "Applies 1 Entangled. You may not play any Attacks this turn."
+      }
+    ],
+    "pattern": {
+      "description": "Always starts with Stab. After first Stab, 25% chance of Entangle every turn. Follows Scrape, Scrape, Stab pattern until Entangle is used. After Entangle, 55% Scrape, 45% Stab. Cannot use Stab 3x or Scrape 3x in a row.",
+      "initial_move": "Stab",
+      "phases": [
+        {
+          "phase": "pre_entangle",
+          "pattern": ["Scrape", "Scrape", "Stab"],
+          "entangle_chance": 0.25
+        },
+        {
+          "phase": "post_entangle",
+          "probabilities": {
+            "scrape": 0.55,
+            "stab": 0.45
+          }
+        }
+      ],
+      "constraints": ["cannot_use_stab_3x_in_a_row", "cannot_use_scrape_3x_in_a_row"],
+      "ascension_modifiers": {
+        "17+": {
+          "pattern_change": ["Scrape", "Stab"],
+          "additional_constraint": "cannot_use_scrape_2x_in_a_row"
+        }
+      }
+    },
+    "special_mechanics": {
+      "type": "debuff_control",
+      "debuff_focus": "vulnerable",
+      "unique_debuff": "Entangled",
+      "unique_effect": "Prevents playing Attacks for 1 turn"
+    },
+    "threat_profile": {
+      "base_threat": 18,
+      "debuff_threat": 5,
+      "entangle_threat": 8,
+      "scaling_threat": 2.0
+    }
+  },
+  "Gremlin Giant": {
+    "monster_id": "Gremlin_Giant",
+    "name": "Gremlin Giant",
+    "monster_type": "elite",
+    "hp_ranges": {
+      "normal": {"min": 82, "max": 90},
+      "ascension_7+": {"min": 86, "max": 94}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Smash",
+        "intent": "ATTACK",
+        "damage": 16,
+        "effect": "Deals 16 damage.",
+        "ascension_modifiers": {
+          "2+": {"damage": 18}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Rush",
+        "intent": "ATTACK",
+        "damage": 30,
+        "effect": "Charges for 1 turn (becomes Stunned), then deals 30 damage.",
+        "ascension_modifiers": {
+          "2+": {"damage": 32}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Garbage",
+        "intent": "DEFEND",
+        "damage": null,
+        "effect": "Gains 5 Block.",
+        "block_gain": 5,
+        "ascension_modifiers": {
+          "2+": {"block_gain": 8}
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Alternates between attacking and defending/charging. Uses Rush to charge up for big damage next turn.",
+      "move_cycle": ["Smash", "Garbage", "Rush", "Smash"]
+    },
+    "special_mechanics": {
+      "type": "charge_attack",
+      "charge_move": "Rush",
+      "charge_turns": 1,
+      "charged_damage_multiplier": 1.875,
+      "strategy": "Defend heavily during Rush charge turn"
+    },
+    "threat_profile": {
+      "base_threat": 17,
+      "charge_threat": 25,
+      "scaling_threat": 2.0
+    }
+  },
+  "Guardian": {
+    "monster_id": "Guardian",
+    "name": "Guardian",
+    "monster_type": "boss",
+    "hp_ranges": {
+      "normal": {"min": 230, "max": 250},
+      "ascension_9+": {"min": 240, "max": 260}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Charged",
+        "intent": "DEFEND",
+        "damage": null,
+        "effect": "Gains 10 Block. When you attack Guardian, you take 5 damage for each hit.",
+        "block_gain": 10,
+        "retaliatory_damage": 5,
+        "ascension_modifiers": {
+          "18+": {"block_gain": 12}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Twin Slam",
+        "intent": "ATTACK",
+        "damage": 10,
+        "effect": "Deals 10 damage twice.",
+        "hits": 2,
+        "ascension_modifiers": {
+          "18+": {"damage": 12}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Sharp Within",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 6,
+        "effect": "Deals 6 damage and applies 2 Vulnerable.",
+        "vulnerable_applied": 2,
+        "ascension_modifiers": {
+          "3+": {"damage": 8}
+        }
+      },
+      {
+        "move_id": 3,
+        "name": "Wrist Drill",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 5,
+        "effect": "Deals 5 damage 3 times and applies 2 Weak.",
+        "hits": 3,
+        "weak_applied": 2,
+        "ascension_modifiers": {
+          "18+": {"hits": 4}
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Starts in defending mode. Uses Charged to gain Block that damages you when attacking. Alternates between defensive and offensive moves based on HP percentage.",
+      "hp_threshold_modes": {
+        "high_hp": ["Charged", "Twin Slam", "Charged", "Sharp Within"],
+        "low_hp": ["Wrist Drill", "Charged", "Twin Slam"]
+      },
+      "defensive_trigger": {
+        "hp_below": 0.5,
+        "mode": "frequent_blocking"
+      }
+    },
+    "special_mechanics": {
+      "type": "retaliatory_block",
+      "retaliatory_damage": 5,
+      "retaliation_trigger": "when_attacked",
+      "block_mechanic": "Charged move grants Block that damages attacker",
+      "recommended_strategy": {
+        "primary": "burst_when_block_low",
+        "secondary": "use_weak_to_mitigate_retaliation",
+        "note": "Avoid attacking heavily when Guardian has Block from Charged"
+      }
+    },
+    "threat_profile": {
+      "base_threat": 22,
+      "retaliatory_threat": 8,
+      "defensive_threat": 15,
+      "offensive_threat": 24,
+      "scaling_threat": 2.5
+    }
+  }
+}

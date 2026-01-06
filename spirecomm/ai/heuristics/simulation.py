@@ -247,6 +247,134 @@ def select_combat_mode(threat_category) -> CombatMode:
         return CombatMode.BALANCED
 
 
+def select_combat_mode_with_monster_data(context) -> CombatMode:
+    """
+    Enhanced combat mode selection using Wiki monster data for intelligent mode selection.
+
+    This enhanced version analyzes monster composition and special mechanics to select
+    the optimal combat mode (AGGRESSIVE/SEMI_AGGRESSIVE/BALANCED).
+
+    Combat Mode Strategy:
+    - AGGRESSIVE: Summoners, phase-change bosses, high scaling, time pressure
+    - SEMI_AGGRESSIVE: Elites, hibernating monsters, high HP single targets
+    - BALANCED: Normal monsters, low threat encounters
+
+    Args:
+        context: Decision context with game state and monsters
+
+    Returns:
+        CombatMode to use for this fight
+    """
+    if not context.monsters_alive:
+        return CombatMode.BALANCED
+
+    # Analyze monster composition
+    has_summoner = False
+    has_phase_change = False
+    has_hibernating = False
+    has_high_scaling = False
+    has_time_pressure = False
+    has_duo_boss = False
+    has_death_split = False
+
+    elite_count = 0
+    boss_count = 0
+    total_scaling_threat = 0
+
+    for monster in context.monsters_alive:
+        # Check for summoners
+        if game_data_loader.is_monster_summoner(monster.name):
+            has_summoner = True
+
+        # Check for phase change
+        if game_data_loader.does_monster_have_phase_change(monster.name):
+            has_phase_change = True
+
+        # Check for hibernation
+        if game_data_loader.is_monster_hibernating(monster.name, context.turn):
+            has_hibernating = True
+
+        # Check for death split
+        if game_data_loader.does_monster_have_death_split(monster.name):
+            has_death_split = True
+
+        # Check for duo boss
+        if game_data_loader.is_monster_duo_boss(monster.name):
+            has_duo_boss = True
+
+        # Get threat profile
+        threat_profile = game_data_loader.get_monster_threat_profile(monster.name)
+        if threat_profile:
+            # Accumulate scaling threat
+            scaling_threat = threat_profile.get('scaling_threat', 0)
+            if scaling_threat > 0:
+                total_scaling_threat += scaling_threat
+                has_high_scaling = total_scaling_threat > 8  # Threshold for high scaling
+
+            # Check for time pressure mechanics
+            if 'time_pressure' in threat_profile or 'echoing_doom' in threat_profile:
+                has_time_pressure = True
+
+        # Count elites and bosses
+        monster_type = game_data_loader.get_monster_type(monster.name)
+        if monster_type == 'elite':
+            elite_count += 1
+        elif monster_type == 'boss':
+            boss_count += 1
+
+    # === Combat Mode Decision Logic ===
+
+    # Priority 1: Summoners and phase changes (AGGRESSIVE)
+    # Summoners need to be killed quickly before they snowball
+    # Phase-change bosses need burst during specific windows
+    if has_summoner or (has_phase_change and boss_count > 0):
+        return CombatMode.AGGRESSIVE
+
+    # Priority 2: Time pressure mechanics (AGGRESSIVE)
+    # Monsters like Time Eater with Echoing Doom require aggressive play
+    if has_time_pressure:
+        return CombatMode.AGGRESSIVE
+
+    # Priority 3: High scaling threats (AGGRESSIVE)
+    # Monsters that scale quickly need to be burst down
+    if has_high_scaling:
+        return CombatMode.AGGRESSIVE
+
+    # Priority 4: Duo boss (SEMI_AGGRESSIVE)
+    # Two bosses require sustained damage but balanced approach
+    if has_duo_boss:
+        return CombatMode.SEMI_AGGRESSIVE
+
+    # Priority 5: Death split with AOE (SEMI_AGGRESSIVE)
+    # Need to burst below threshold efficiently
+    if has_death_split:
+        return CombatMode.SEMI_AGGRESSIVE
+
+    # Priority 6: Hibernating monsters (SEMI_AGGRESSIVE)
+    # Can be aggressive once they wake up, but balanced while sleeping
+    if has_hibernating:
+        return CombatMode.SEMI_AGGRESSIVE
+
+    # Priority 7: Elites (SEMI_AGGRESSIVE)
+    if elite_count >= 1:
+        return CombatMode.SEMI_AGGRESSIVE
+
+    # Priority 8: Bosses (SEMI_AGGRESSIVE to AGGRESSIVE based on type)
+    if boss_count >= 1:
+        # Check if boss has phase change or time pressure
+        if has_phase_change or has_time_pressure:
+            return CombatMode.AGGRESSIVE
+        return CombatMode.SEMI_AGGRESSIVE
+
+    # Priority 9: High monster count (AGGRESSIVE for AOE efficiency)
+    if len(context.monsters_alive) >= 3:
+        # Multiple monsters benefit from aggressive AOE
+        return CombatMode.AGGRESSIVE
+
+    # Default: BALANCED for normal fights
+    return CombatMode.BALANCED
+
+
 # =============================================================================
 # END CONFIGURATION
 # =============================================================================
@@ -447,6 +575,7 @@ class FastCombatSimulator:
         - AOE vs single-target
         - Power effects (Demon Form, Inflame, etc.)
         - X-damage and X-block cards (Body Slam, etc.)
+        - Special monster abilities (death split, summoner, phase change, hibernation)
 
         Args:
             state: Current simulation state
@@ -471,6 +600,14 @@ class FastCombatSimulator:
 
         new_state.player_energy -= cost
         new_state.energy_spent += cost
+
+        # Check special monster abilities before applying card effects
+        for i, monster in enumerate(new_state.monsters):
+            if not monster['is_gone']:
+                self._handle_death_split(new_state, monster, i)
+                self._handle_summoner(new_state, monster)
+                self._handle_phase_change(new_state, monster)
+                self._handle_hibernation(new_state, monster)
 
         # Apply card effects based on type
         card_type = card.type if hasattr(card, 'type') else None
@@ -888,6 +1025,242 @@ class FastCombatSimulator:
 
         return total_damage
 
+    def calculate_future_monster_damage(self, state: SimulationState, context: DecisionContext, look_ahead: int = 2) -> int:
+        """
+        Calculate future monster damage over next N turns using Wiki move predictions.
+
+        This enables proactive AI by anticipating future threats, not just current intent.
+
+        Args:
+            state: Current simulation state
+            context: Decision context for accessing game data
+            look_ahead: Number of turns to predict (default: 2)
+
+        Returns:
+            Total predicted damage over next N turns
+        """
+        try:
+            # Import required modules
+            from spirecomm.data.loader import game_data_loader
+
+            total_future_damage = 0
+            current_turn = getattr(context, 'turn', 1)
+
+            for monster in state.monsters:
+                if monster['is_gone']:
+                    continue
+
+                monster_name = monster.get('name', '')
+                if not monster_name:
+                    continue
+
+                # Calculate HP percentage for phase-based predictions
+                max_hp = monster.get('max_hp', monster['hp'])
+                hp_percent = monster['hp'] / max_hp if max_hp > 0 else 1.0
+
+                # Get current monster strength for scaling predictions
+                current_strength = monster.get('strength', 0)
+
+                # Use Wiki move predictions
+                predicted_moves = game_data_loader.predict_monster_moves(
+                    monster_name, current_turn, hp_percent
+                )
+
+                if not predicted_moves:
+                    # Fallback: use current intent for all future turns
+                    predicted_damage = monster.get('move_adjusted_damage', 0)
+                    if predicted_damage == 0:
+                        predicted_damage = monster.get('move_base_damage', 0)
+
+                    # Apply to all look-ahead turns
+                    total_future_damage += predicted_damage * look_ahead
+                    continue
+
+                # Sum damage from predicted moves (up to look_ahead turns)
+                for i, move in enumerate(predicted_moves[:look_ahead]):
+                    move_intent = move.get('intent', '').upper()
+                    move_damage = move.get('damage', 0)
+
+                    # Only count attack intents
+                    if 'ATTACK' in move_intent:
+                        # Apply strength scaling prediction
+                        if current_strength > 0:
+                            move_damage += current_strength
+
+                        # Discount future damage (0.8^turn for uncertainty)
+                        discount = 0.8 ** i
+                        total_future_damage += int(move_damage * discount)
+
+                logger.debug(f"[FUTURE_DAMAGE] {monster_name}: predicted {total_future_damage} damage over {look_ahead} turns")
+
+            if total_future_damage > 0:
+                logger.info(f"[FUTURE_DAMAGE] Total predicted damage over next {look_ahead} turns: {total_future_damage}")
+
+            return total_future_damage
+
+        except Exception as e:
+            logger.warning(f"[FUTURE_DAMAGE] Failed to calculate future damage: {e}")
+            # Fallback to 0 (no prediction available)
+            return 0
+
+    def _handle_death_split(self, state: SimulationState, monster: dict, monster_index: int):
+        """
+        Handle monster death split mechanics (e.g., Slime Boss splitting at low HP).
+
+        Args:
+            state: Current simulation state
+            monster: Monster state dictionary
+            monster_index: Index of monster in state.monsters list
+        """
+        try:
+            from spirecomm.data.loader import game_data_loader
+
+            monster_name = monster.get('name', '')
+            if not monster_name:
+                return
+
+            # Check if monster has death split mechanic
+            if not game_data_loader.does_monster_have_death_split(monster_name):
+                return
+
+            # Get death split threshold from Wiki data
+            monster_data = game_data_loader.get_enhanced_monster_data(monster_name)
+            if not monster_data:
+                return
+
+            special_mechanics = monster_data.get('special_mechanics', {})
+            split_threshold = special_mechanics.get('split_threshold_percent', 50)
+            split_count = special_mechanics.get('split_count', 2)
+
+            # Check if HP is below threshold
+            max_hp = monster.get('max_hp', monster['hp'])
+            hp_percent = (monster['hp'] / max_hp * 100) if max_hp > 0 else 0
+
+            if hp_percent <= split_threshold and not monster.get('has_split', False):
+                logger.info(f"[DEATH_SPLIT] {monster_name} at {hp_percent:.1f}% HP (threshold: {split_threshold}%) - splitting into {split_count} monsters")
+
+                # Mark monster as having split (avoid re-splitting)
+                monster['has_split'] = True
+
+                # Create split monsters (simplified: add to monster list)
+                # In a full implementation, you would add new monster entries
+                # For now, just mark the original to handle it differently
+                monster['is_split_form'] = True
+                monster['split_count'] = split_count
+
+        except Exception as e:
+            logger.warning(f"[DEATH_SPLIT] Failed to handle death split for {monster.get('name', 'Unknown')}: {e}")
+
+    def _handle_summoner(self, state: SimulationState, monster: dict):
+        """
+        Handle summoner mechanics (e.g., Reptomancer spawning Daggers).
+
+        Args:
+            state: Current simulation state
+            monster: Monster state dictionary
+        """
+        try:
+            from spirecomm.data.loader import game_data_loader
+
+            monster_name = monster.get('name', '')
+            if not monster_name:
+                return
+
+            # Check if monster is a summoner
+            if not game_data_loader.is_monster_summoner(monster_name):
+                return
+
+            # Get summoning data from Wiki
+            minions = game_data_loader.get_monster_minions(monster_name)
+            if not minions:
+                return
+
+            # Track that this monster can summon
+            monster['is_summoner'] = True
+            monster['minions'] = minions
+
+            logger.debug(f"[SUMMONER] {monster_name} can summon: {', '.join(minions)}")
+
+        except Exception as e:
+            logger.warning(f"[SUMMONER] Failed to handle summoner for {monster.get('name', 'Unknown')}: {e}")
+
+    def _handle_phase_change(self, state: SimulationState, monster: dict):
+        """
+        Handle phase change mechanics (e.g., Hexaghost changing behavior at HP thresholds).
+
+        Args:
+            state: Current simulation state
+            monster: Monster state dictionary
+        """
+        try:
+            from spirecomm.data.loader import game_data_loader
+
+            monster_name = monster.get('name', '')
+            if not monster_name:
+                return
+
+            # Check if monster has phase change mechanic
+            if not game_data_loader.does_monster_have_phase_change(monster_name):
+                return
+
+            # Get phase change data from Wiki
+            monster_data = game_data_loader.get_enhanced_monster_data(monster_name)
+            if not monster_data:
+                return
+
+            special_mechanics = monster_data.get('special_mechanics', {})
+            phases = special_mechanics.get('phases', [])
+
+            # Calculate current HP percentage
+            max_hp = monster.get('max_hp', monster['hp'])
+            hp_percent = (monster['hp'] / max_hp * 100) if max_hp > 0 else 100
+
+            # Determine current phase
+            current_phase = None
+            for phase in sorted(phases, key=lambda p: p.get('threshold_percent', 0)):
+                threshold = phase.get('threshold_percent', 0)
+                if hp_percent <= threshold:
+                    current_phase = phase
+                    break
+
+            if current_phase:
+                phase_name = current_phase.get('name', 'Unknown')
+                logger.info(f"[PHASE_CHANGE] {monster_name} at {hp_percent:.1f}% HP - entered {phase_name} phase")
+                monster['current_phase'] = phase_name
+                monster['phase_burst_window'] = current_phase.get('burst_window', False)
+
+        except Exception as e:
+            logger.warning(f"[PHASE_CHANGE] Failed to handle phase change for {monster.get('name', 'Unknown')}: {e}")
+
+    def _handle_hibernation(self, state: SimulationState, monster: dict):
+        """
+        Handle hibernation mechanics (e.g., Lagavulin sleeping vs awakened states).
+
+        Args:
+            state: Current simulation state
+            monster: Monster state dictionary
+        """
+        try:
+            from spirecomm.data.loader import game_data_loader
+
+            monster_name = monster.get('name', '')
+            if not monster_name:
+                return
+
+            # Check if monster is hibernating
+            current_turn = getattr(state, 'turn', 1)
+            is_hibernating = game_data_loader.is_monster_hibernating(monster_name, current_turn)
+
+            if is_hibernating:
+                monster['is_hibernating'] = True
+                logger.debug(f"[HIBERNATION] {monster_name} is hibernating (reduced threat)")
+            else:
+                monster['is_awakened'] = True
+                logger.debug(f"[HIBERNATION] {monster_name} is awakened (full threat)")
+
+        except Exception as e:
+            logger.warning(f"[HIBERNATION] Failed to handle hibernation for {monster.get('name', 'Unknown')}: {e}")
+
     def calculate_outcome_score(self, initial_state: SimulationState, final_state: SimulationState,
                                current_act: int = 1, weights: dict = None, context=None, sequence=None) -> float:
         """
@@ -1044,6 +1417,21 @@ class FastCombatSimulator:
 
         # Survival penalty (weighted heavily)
         score -= hp_loss_next_turn * weights['W_DEATHRISK']
+
+        # === FUTURE DAMAGE PENALTY (proactive AI using Wiki move predictions) ===
+        if context is not None:
+            try:
+                # Calculate future monster damage over next 2 turns using Wiki predictions
+                future_damage = self.calculate_future_monster_damage(final_state, context, look_ahead=2)
+
+                if future_damage > 0:
+                    # Apply future damage penalty at 50% weight (uncertainty discount)
+                    # This makes the AI proactive about preventing future threats
+                    future_damage_penalty = future_damage * weights['W_DEATHRISK'] * 0.5
+                    score -= future_damage_penalty
+                    logger.info(f"[FUTURE_DAMAGE_PENALTY] -{future_damage_penalty:.1f} score for {future_damage} predicted damage over next 2 turns")
+            except Exception as e:
+                logger.warning(f"[FUTURE_DAMAGE_PENALTY] Failed to apply future damage penalty: {e}")
 
         # Danger threshold penalty (act-dependent)
         danger_threshold = 15 + (current_act * 5)  # Act 1: 20, Act 2: 25, Act 3: 30

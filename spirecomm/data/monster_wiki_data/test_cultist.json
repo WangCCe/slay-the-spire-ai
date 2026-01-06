@@ -1,0 +1,48 @@
+{
+  "Cultist": {
+    "monster_id": "Cultist",
+    "name": "Cultist",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 48,
+        "max": 54
+      },
+      "ascension_7+": {
+        "min": 50,
+        "max": 56
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Incantation",
+        "intent": "",
+        "damage": null,
+        "effect": "Gains 3  Ritual.",
+        "strength_gain": 3
+      },
+      {
+        "move_id": 1,
+        "name": "Dark Strike",
+        "intent": "",
+        "damage": 6,
+        "effect": "Deal 6 damage."
+      }
+    ],
+    "pattern": {
+      "description": "Always starts with  Incantation, then uses  Dark Strike every turn after."
+    },
+    "special_mechanics": {
+      "type": "summoner",
+      "scaling": {
+        "type": "strength_scaling",
+        "rate": "+3 Strength/turn"
+      }
+    },
+    "threat_profile": {
+      "base_threat": 15,
+      "scaling_threat": 3.0
+    }
+  }
+}

@@ -431,6 +431,288 @@ class IroncladCombatPlanner(CombatPlanner):
 
         return None, None
 
+    def _choose_target_for_card_v2(self, card: Card, context: DecisionContext,
+                                    state: SimulationState) -> Tuple[Optional[Monster], Optional[int]]:
+        """
+        Enhanced target selection using Wiki monster data for intelligent targeting.
+
+        This enhanced version incorporates:
+        - Special mechanics handling (summoner, hibernation, phase change, death split)
+        - AOE optimization for minion swarms and death splits
+        - Duo boss strategy (focus fire)
+        - Threat-based targeting with future threat prediction
+
+        Args:
+            card: Card being played
+            context: Decision context
+            state: Simulation state
+
+        Returns:
+            Tuple of (target_monster, target_index) or (None, None) for AOE
+        """
+        if not state.monsters:
+            return None, None
+
+        card_id = card.card_id
+        alive_monsters = [(i, m) for i, m in enumerate(state.monsters) if not m['is_gone']]
+        if not alive_monsters:
+            return None, None
+
+        # === AOE Cards - Enhanced Logic ===
+        if card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']:
+            # Check if we should use AOE based on monster composition
+            should_use_aoe = self._should_use_aoe(card_id, context, state)
+            if should_use_aoe:
+                return None, None  # AOE is optimal
+            else:
+                # Fall through to single-target logic
+                pass
+
+        # === Special Mechanics Targeting ===
+
+        # 1. Summoner handling - check for Reptomancer/Gremlin Leader/etc.
+        summoner_targets = []
+        for i, monster_state in alive_monsters:
+            if i < len(context.monsters_alive):
+                monster = context.monsters_alive[i]
+                if game_data_loader.is_monster_summoner(monster.name):
+                    # Get minions count
+                    minions = game_data_loader.get_monster_minions(monster.name)
+                    if minions:
+                        summoner_targets.append((i, monster, monster_state))
+
+        if summoner_targets:
+            # Strategy depends on summoner type
+            for i, monster, monster_state in summoner_targets:
+                strategy = game_data_loader.get_monster_recommended_strategy(monster.name)
+                if strategy:
+                    primary = strategy.get('primary', '')
+                    # If strategy says "kill_minions_first", check if we have minions to target
+                    if 'kill_minions_first' in primary or 'minion' in primary.lower():
+                        # Target minions instead of summoner
+                        minion_indices = [j for j, m in enumerate(context.monsters_alive)
+                                        if any(minion_name.lower() in m.name.lower()
+                                              for minion_name in game_data_loader.get_monster_minions(monster.name))]
+                        if minion_indices and card_id not in ['Bash']:  # Bash on summoner
+                            # Target highest HP minion to clear them efficiently
+                            minion_idx = max(minion_indices,
+                                           key=lambda idx: context.monsters_alive[idx].current_hp)
+                            if minion_idx < len(context.monsters_alive):
+                                return context.monsters_alive[minion_idx], minion_idx
+
+                    # Otherwise, kill summoner first
+                    if 'kill_summoner' in primary or 'priority_target' in primary:
+                        return monster, i
+
+        # 2. Hibernation handling - ignore Lagavulin while sleeping
+        hibernating_monsters = []
+        awake_monsters = []
+        for i, monster_state in alive_monsters:
+            if i < len(context.monsters_alive):
+                monster = context.monsters_alive[i]
+                if game_data_loader.is_monster_hibernating(monster.name, context.turn):
+                    hibernating_monsters.append((i, monster))
+                else:
+                    awake_monsters.append((i, monster, monster_state))
+
+        # If we have awake monsters, prioritize them over hibernating ones
+        if awake_monsters and hibernating_monsters and len(awake_monsters) > 0:
+            # Filter to only consider awake monsters
+            alive_monsters = awake_monsters
+
+        # 3. Death split handling - prioritize AOE or burst below threshold
+        for i, monster, monster_state in alive_monsters:
+            if i < len(context.monsters_alive):
+                real_monster = context.monsters_alive[i]
+                if game_data_loader.does_monster_have_death_split(real_monster.name):
+                    # Check if we're near split threshold
+                    if hasattr(real_monster, 'current_hp') and hasattr(real_monster, 'max_hp'):
+                        hp_percent = real_monster.current_hp / max(real_monster.max_hp, 1)
+
+                        # Get split threshold
+                        monster_data = game_data_loader.get_enhanced_monster_data(real_monster.name)
+                        if monster_data and 'special_mechanics' in monster_data:
+                            split_threshold = monster_data['special_mechanics'].get('split_conditions', {}).get('hp_threshold', 50) / 100.0
+
+                            # If below threshold and not using AOE, prioritize this monster to finish it
+                            if hp_percent < split_threshold:
+                                # Check if card can lethal
+                                if hasattr(card, 'damage_for') or 'damage' in card_id.lower():
+                                    # Calculate damage
+                                    try:
+                                        damage = card.damage_for(context.turn, context.strength)
+                                        if damage >= real_monster.current_hp:
+                                            # Can kill before split - prioritize
+                                            return real_monster, i
+                                    except:
+                                        pass
+
+        # 4. Phase change handling - prioritize during burst windows
+        for i, monster, monster_state in alive_monsters:
+            if i < len(context.monsters_alive):
+                real_monster = context.monsters_alive[i]
+                if game_data_loader.does_monster_have_phase_change(real_monster.name):
+                    strategy = game_data_loader.get_monster_recommended_strategy(real_monster.name)
+                    if strategy:
+                        primary = strategy.get('primary', '')
+                        # Check for burst windows
+                        if 'burst' in primary.lower() and '50_percent' in primary:
+                            # Burst phase active - prioritize this monster
+                            if hasattr(real_monster, 'current_hp') and hasattr(real_monster, 'max_hp'):
+                                if real_monster.current_hp / real_monster.max_hp < 0.6:
+                                    # In burst window - prioritize
+                                    return real_monster, i
+
+        # 5. Duo boss handling - focus fire on one
+        duo_bosses = []
+        for i, monster, monster_state in alive_monsters:
+            if i < len(context.monsters_alive):
+                real_monster = context.monsters_alive[i]
+                if game_data_loader.is_monster_duo_boss(real_monster.name):
+                    duo_bosses.append((i, real_monster, monster_state))
+
+        if duo_bosses and len(duo_bosses) >= 2:
+            # Focus fire on the weaker one (lower HP) or the one with higher threat
+            # Calculate enhanced threat for each duo boss
+            duo_with_threat = []
+            for i, boss, monster_state in duo_bosses:
+                threat = context.compute_threat_v2(boss)
+                duo_with_threat.append((i, boss, threat, monster_state['hp']))
+
+            # Prioritize by threat, then by HP (weaker first)
+            duo_with_threat.sort(key=lambda x: (-x[2], x[3]))
+            i, boss, _, _ = duo_with_threat[0]
+            return boss, i
+
+        # === Fallback to Enhanced Threat-Based Targeting ===
+        # Calculate enhanced threat for all monsters
+        monster_threats = []
+        for i, monster_state in alive_monsters:
+            if i < len(context.monsters_alive):
+                real_monster = context.monsters_alive[i]
+                threat = context.compute_threat_v2(real_monster)
+                monster_threats.append((i, monster_state, threat))
+
+        if not monster_threats:
+            return None, None
+
+        # Bash - highest HP with enhanced threat consideration
+        if card_id == 'Bash':
+            # Balance HP and threat for Bash targeting
+            best_idx = max(monster_threats,
+                         key=lambda x: x[1]['hp'] * 0.6 + x[2] * 0.4)  # More weight on threat with v2
+            i, _, _ = best_idx
+            if i < len(context.monsters_alive):
+                return context.monsters_alive[i], i
+
+        # Body Slam - lowest HP (finish off weakened enemies)
+        if card_id == 'Body Slam':
+            best_idx = min(monster_threats,
+                         key=lambda x: x[1]['hp'])
+            i, _, _ = best_idx
+            if i < len(context.monsters_alive):
+                return context.monsters_alive[i], i
+
+        # Standard attacks - prioritize high threat targets with enhanced threat
+        if hasattr(card, 'type') and card.type == CardType.ATTACK:
+            # Prefer non-vulnerable high threat targets
+            non_vulnerable = [(i, m, t) for i, m, t in monster_threats if m.get('vulnerable', 0) == 0]
+            if non_vulnerable:
+                non_vulnerable.sort(key=lambda x: (-x[2], x[1]['hp']))
+                i, _, _ = non_vulnerable[0]
+                if i < len(context.monsters_alive):
+                    return context.monsters_alive[i], i
+
+            # Otherwise prioritize high threat
+            monster_threats.sort(key=lambda x: (-x[2], x[1]['hp']))
+            i, _, _ = monster_threats[0]
+            if i < len(context.monsters_alive):
+                return context.monsters_alive[i], i
+
+        # Default - highest threat monster (enhanced)
+        monster_threats.sort(key=lambda x: -x[2])
+        i, _, _ = monster_threats[0]
+        if i < len(context.monsters_alive):
+            return context.monsters_alive[i], i
+
+        return None, None
+
+    def _should_use_aoe(self, card_id: str, context: DecisionContext, state: SimulationState) -> bool:
+        """
+        Decide if AOE card should be used based on monster composition.
+
+        AOE is optimal when:
+        - 3+ monsters with similar HP (efficient multi-target damage)
+        - Summoner with 2+ minions (clear minions efficiently)
+        - Death split monster below threshold (kill all parts)
+        - Duo boss (both bosses similar HP)
+
+        Args:
+            card_id: Card being considered
+            context: Decision context
+            state: Simulation state
+
+        Returns:
+            True if AOE should be used, False if single-target is better
+        """
+        if not state.monsters:
+            return False
+
+        alive_monsters = [m for m in state.monsters if not m['is_gone']]
+        if len(alive_monsters) < 2:
+            return False  # Single target - no AOE benefit
+
+        # Check for death split monsters
+        for i, monster_state in enumerate(alive_monsters):
+            if i < len(context.monsters_alive):
+                monster = context.monsters_alive[i]
+                if game_data_loader.does_monster_have_death_split(monster.name):
+                    # AOE is very effective against split monsters
+                    return True
+
+        # Check for summoner with minions
+        summoner_with_minions = False
+        for i, monster_state in enumerate(alive_monsters):
+            if i < len(context.monsters_alive):
+                monster = context.monsters_alive[i]
+                if game_data_loader.is_monster_summoner(monster.name):
+                    minions = game_data_loader.get_monster_minions(monster.name)
+                    minion_count = len([m for m in context.monsters_alive
+                                      if any(minion.lower() in m.name.lower() for minion in minions)])
+                    if minion_count >= 2:
+                        summoner_with_minions = True
+                        break
+
+        if summoner_with_minions:
+            return True
+
+        # Check for 3+ monsters with similar HP
+        if len(alive_monsters) >= 3:
+            hp_values = [m['hp'] for m in alive_monsters]
+            hp_std_dev = (max(hp_values) - min(hp_values)) / max(sum(hp_values), 1)
+
+            # If HP values are within 30% of each other, AOE is efficient
+            if hp_std_dev < 0.3:
+                return True
+
+        # Check for duo boss
+        duo_count = 0
+        for i, monster_state in enumerate(alive_monsters):
+            if i < len(context.monsters_alive):
+                monster = context.monsters_alive[i]
+                if game_data_loader.is_monster_duo_boss(monster.name):
+                    duo_count += 1
+
+        if duo_count >= 2:
+            return True
+
+        # Special case: Reaper with good Strength
+        if card_id == 'Reaper' and context.strength >= 3:
+            return True
+
+        # Default: use AOE if 3+ targets
+        return len(alive_monsters) >= 3
+
     def _rank_targets(self, card: Card, context: DecisionContext, state: SimulationState) -> List[Tuple]:
         """
         Rank targets for a card using threat-based targeting.

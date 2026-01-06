@@ -1,0 +1,553 @@
+{
+  "Reptomancer": {
+    "monster_id": "Reptomancer",
+    "name": "Reptomancer",
+    "monster_type": "elite",
+    "hp_ranges": {
+      "normal": {"min": 180, "max": 190},
+      "ascension_8+": {"min": 190, "max": 200}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Summon",
+        "intent": "UNKNOWN",
+        "damage": null,
+        "effect": "Summons a Dagger.",
+        "summons": "Dagger",
+        "summon_count": 1,
+        "ascension_modifiers": {
+          "3+": {"summon_count": 1},
+          "18+": {"summon_count": 2}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Snake Strike",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 13,
+        "hits": 2,
+        "effect": "Deals 13 x 2 damage and applies 1 Weak.",
+        "weak_applied": 1,
+        "ascension_modifiers": {
+          "3+": {"damage": 16},
+          "18+": {"damage": 16}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Big Bite",
+        "intent": "ATTACK",
+        "damage": 30,
+        "effect": "Deals 30 damage.",
+        "ascension_modifiers": {
+          "3+": {"damage": 34},
+          "18+": {"damage": 34}
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Always uses Summon on the first turn. After the first turn, has a 33% chance to use any of her 3 moves. If 4 or more Daggers are present, 67% chance of using Snake Strike and 33% chance of using Big Bite.",
+      "initial_move": "Summon",
+      "probabilities": {
+        "normal": {"summon": 0.33, "snake_strike": 0.33, "big_bite": 0.33},
+        "4+_daggers": {"snake_strike": 0.67, "big_bite": 0.33}
+      },
+      "constraints": [
+        "cannot_use_snake_strike_twice_in_a_row",
+        "cannot_use_big_bite_twice_in_a_row",
+        "cannot_use_summon_3x_in_a_row",
+        "maximum_4_daggers"
+      ]
+    },
+    "special_mechanics": {
+      "type": "summoner",
+      "summons": ["Dagger"],
+      "max_minions": 4,
+      "minion_hp": {"min": 20, "max": 25},
+      "minion_moves": ["Stab (9 dmg + Wound)", "Explode (25 dmg, dies)"],
+      "minion_pattern": "Stab first turn, Explodes second turn",
+      "scaling": {
+        "type": "minion_swarm",
+        "rate": "+1 Dagger per summon (max 4)",
+        "ascension_18+": "Summons 2 Daggers at once"
+      },
+      "recommended_strategy": {
+        "primary": "kill_minions_first",
+        "secondary": "use_aoe_to_clear_daggers_quickly",
+        "note": "Daggers only live 2 turns but deal high damage. Clear them before they explode."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 22,
+      "summoning_threat": 18,
+      "minion_threat": 15,
+      "scaling_threat": 3.5,
+      "party_threat_multiplier": 2.0
+    }
+  },
+  "Sentry": {
+    "monster_id": "Sentry",
+    "name": "Sentry",
+    "monster_type": "elite",
+    "hp_ranges": {
+      "normal": {"min": 50, "max": 56},
+      "ascension_8+": {"min": 54, "max": 60}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Beam",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 10,
+        "effect": "Deals 10 damage and applies 1 Weak.",
+        "weak_applied": 1,
+        "ascension_modifiers": {
+          "18+": {"damage": 12, "weak_applied": 2}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Beam",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 10,
+        "effect": "Deals 10 damage and applies 1 Vulnerable.",
+        "vulnerable_applied": 1,
+        "ascension_modifiers": {
+          "18+": {"damage": 12, "vulnerable_applied": 2}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Charge",
+        "intent": "BUFF_DEFEND",
+        "damage": null,
+        "effect": "Gains 1 Beam. At 3 Beams, uses Beam Shutdown.",
+        "charge_gain": 1
+      },
+      {
+        "move_id": 3,
+        "name": "Beam Shutdown",
+        "intent": "ATTACK",
+        "damage": 20,
+        "hits": 3,
+        "effect": "Deals 20 damage 3 times. Consumes all Beams."
+      },
+      {
+        "move_id": 4,
+        "name": "Protect",
+        "intent": "DEFEND",
+        "damage": null,
+        "effect": "Gains 12 Block. Cannot be used twice in a row.",
+        "block_gain": 12
+      }
+    ],
+    "pattern": {
+      "description": "Starts with Charge. Uses Charge every 2 turns until 3 Beams are accumulated, then uses Beam Shutdown. Alternates between attacking with Beam (Weak/Vulnerable) and blocking. Cannot use same move twice in a row.",
+      "initial_move": "Charge",
+      "charge_mechanic": {
+        "max_charges": 3,
+        "ultimate_move": "Beam Shutdown",
+        "charge_frequency": "every_2_turns"
+      },
+      "constraints": ["cannot_use_same_move_twice_in_a_row", "cannot_use_protect_twice_in_a_row"]
+    },
+    "special_mechanics": {
+      "type": "charge_attack",
+      "charge_move": "Charge",
+      "charge_turns": 3,
+      "charged_damage_multiplier": 3.0,
+      "strategy": "Defend heavily when Sentry has 2+ Beams to prepare for Beam Shutdown",
+      "weaknesses": {
+        "weak": 2.0,
+        "vulnerable": 1.5
+      }
+    },
+    "threat_profile": {
+      "base_threat": 19,
+      "charge_threat": 25,
+      "beam_shutdown_threat": 35,
+      "scaling_threat": 2.5
+    }
+  },
+  "Chosen": {
+    "monster_id": "Chosen",
+    "name": "Chosen",
+    "monster_type": "elite",
+    "hp_ranges": {
+      "normal": {"min": 110, "max": 122},
+      "ascension_8+": {"min": 116, "max": 128}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Slash",
+        "intent": "ATTACK",
+        "damage": 12,
+        "effect": "Deals 12 damage.",
+        "ascension_modifiers": {
+          "3+": {"damage": 14}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Divinity",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Gains 2 Ritual.",
+        "strength_gain": 2,
+        "ascension_modifiers": {
+          "18+": {"strength_gain": 3}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Hex",
+        "intent": "DEBUFF",
+        "damage": null,
+        "effect": "Applies 1 random hex from: 2 Weak, 2 Vulnerable, or 2 Frail.",
+        "random_debuff": ["weak", "vulnerable", "frail"],
+        "debuff_count": 2
+      },
+      {
+        "move_id": 3,
+        "name": "Protect",
+        "intent": "DEFEND",
+        "damage": null,
+        "effect": "Gains 16 Block.",
+        "block_gain": 16
+      },
+      {
+        "move_id": 4,
+        "name": "Zeal",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Gains 3 Temporary HP and 1 Ritual. Cannot use if has 3 Temporary HP.",
+        "temp_hp_gain": 3,
+        "strength_gain": 1,
+        "constraint": "cannot_use_with_3_temp_hp"
+      },
+      {
+        "move_id": 5,
+        "name": "Manifest",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Gains 1 Artifact and 1 Ritual. Cannot use more than once per combat.",
+        "artifact_gain": 1,
+        "strength_gain": 1,
+        "constraint": "once_per_combat"
+      },
+      {
+        "move_id": 6,
+        "name": "Channel",
+        "intent": "ATTACK",
+        "damage": 30,
+        "effect": "Deals 30 damage. Only use if has Ritual and no Temporary HP.",
+        "condition": "has_ritual_and_no_temp_hp"
+      }
+    ],
+    "pattern": {
+      "description": "Complex pattern with multiple mechanics. 50% chance to use Divinity on first turn if below 50% HP. Otherwise uses random moves from Slash, Hex, Protect. Cannot use same move twice in a row. Zeal and Manifest have special constraints. Channel used when powered up.",
+      "initial_move": "random_divinity_or_hex",
+      "probabilities": {
+        "below_50_percent_hp_first_turn": {"divinity": 0.5},
+        "normal": {"slash": 0.4, "hex": 0.3, "protect": 0.3}
+      },
+      "constraints": ["cannot_use_same_move_twice_in_a_row"]
+    },
+    "special_mechanics": {
+      "type": "strength_scaler",
+      "scaling": {
+        "type": "ritual_scaling",
+        "base_gain": 2,
+        "divinity_move": "+2 Ritual",
+        "zeal_move": "+1 Ritual + 3 Temp HP",
+        "manifest_move": "+1 Ritual + 1 Artifact (once per combat)"
+      },
+      "debuff_mechanic": {
+        "type": "random_hex",
+        "options": ["2 Weak", "2 Vulnerable", "2 Frail"]
+      },
+      "recommended_strategy": {
+        "primary": "burst_below_50_percent_hp",
+        "secondary": "apply_weak_to_mitigate_strength_scaling",
+        "note": "Chosen can scale very quickly with Ritual. Kill before Ritual gets too high. Weak is effective."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 20,
+      "divinity_threat": 30,
+      "ritual_scaling_threat": 4.0,
+      "hex_threat": 8
+    }
+  },
+  "Time Eater": {
+    "monster_id": "Time_Eater",
+    "name": "Time Eater",
+    "monster_type": "boss",
+    "hp_ranges": {
+      "normal": {"min": 250, "max": 260},
+      "ascension_9+": {"min": 260, "max": 270}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Ravage",
+        "intent": "ATTACK",
+        "damage": 6,
+        "hits": 3,
+        "effect": "Deals 6 damage 3 times.",
+        "ascension_modifiers": {
+          "4+": {"damage": 7}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Haste",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Gains 1 Energy and 2 Focus. Cannot use more than once per combat.",
+        "energy_gain": 1,
+        "focus_gain": 2,
+        "constraint": "once_per_combat"
+      },
+      {
+        "move_id": 2,
+        "name": "Blink",
+        "intent": "DEBUFF",
+        "damage": null,
+        "effect": "Shuffles 3 Cards into your discard pile. At the start of your next turn, if the card is still in your discard pile, draw 2 fewer cards.",
+        "cards_shuffled": 3,
+        "draw_reduction": 2
+      },
+      {
+        "move_id": 3,
+        "name": "Slam",
+        "intent": "ATTACK",
+        "damage": 32,
+        "effect": "Deals 32 damage.",
+        "ascension_modifiers": {
+          "4+": {"damage": 36}
+        }
+      },
+      {
+        "move_id": 4,
+        "name": "Fear",
+        "intent": "DEBUFF",
+        "damage": null,
+        "effect": "Applies 1 Vulnerable. Cannot use more than twice per combat.",
+        "vulnerable_applied": 1,
+        "constraint": "max_2_per_combat"
+      },
+      {
+        "move_id": 5,
+        "name": "Stasis",
+        "intent": "DEBUFF",
+        "damage": null,
+        "effect": "Puts the top card of your draw pile into Stasis. On your turn, play that card for free, then return it to your hand.",
+        "note": "Forces free card play next turn"
+      },
+      {
+        "move_id": 6,
+        "name": "Rewind",
+        "intent": "DEFEND",
+        "damage": null,
+        "effect": "Gains 18 Block. Cannot use more than once per combat.",
+        "block_gain": 18,
+        "constraint": "once_per_combat"
+      },
+      {
+        "move_id": 7,
+        "name": "Tick",
+        "intent": "UNKNOWN",
+        "damage": null,
+        "effect": "Gain 1 Time. At 6 Time, uses Echoing Doom."
+      },
+      {
+        "move_id": 8,
+        "name": "Echoing Doom",
+        "intent": "ATTACK",
+        "damage": 40,
+        "effect": "Deals 40 damage and applies 1 Vulnerable. Consumes all Time.",
+        "vulnerable_applied": 1
+      }
+    ],
+    "pattern": {
+      "description": "Uses Tick every turn to build Time. At 6 Time, uses Echoing Doom and resets Time. Other moves: 25% Ravage, 20% Slam, 15% Haste/Blink/Fear/Stasis/Rewind (randomly chosen). Cannot use same move twice in a row except Tick.",
+      "time_mechanic": {
+        "type": "charge_based",
+        "max_charges": 6,
+        "ultimate_move": "Echoing Doom",
+        "charge_frequency": "every_turn"
+      },
+      "probabilities": {
+        "ravage": 0.25,
+        "slam": 0.20,
+        "haste": 0.15,
+        "blink": 0.15,
+        "fear": 0.15,
+        "stasis": 0.15,
+        "rewind": 0.15
+      },
+      "constraints": ["cannot_use_same_move_twice_in_a_row", "tick_used_every_turn"]
+    },
+    "special_mechanics": {
+      "type": "time_pressure",
+      "phases": [
+        {
+          "trigger": "time_count",
+          "threshold": 6,
+          "effect": "Use Echoing Doom (40 damage + Vulnerable) and reset Time"
+        }
+      ],
+      "unique_debuffs": [
+        {
+          "name": "Blink",
+          "effect": "Reduces draw by 2 next turn for each Blink card still in discard"
+        },
+        {
+          "name": "Stasis",
+          "effect": "Forces free play of top card next turn"
+        }
+      ],
+      "recommended_strategy": {
+        "primary": "kill_quickly",
+        "secondary": "block_heavy_before_echoing_doom",
+        "note": "Echoing Doom at 6 Time deals massive damage. Cycle out Blink cards quickly to avoid draw reduction."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 26,
+      "time_pressure_threat": 4.0,
+      "echoing_doom_threat": 40,
+      "scaling_threat": 3.0
+    }
+  },
+  "Donu & Deca": {
+    "monster_id": "Donu_Deca",
+    "name": "Donu & Deca",
+    "monster_type": "boss",
+    "hp_ranges": {
+      "donu": {"min": 150, "max": 160},
+      "deca": {"min": 150, "max": 160},
+      "ascension_9+": {
+        "donu": {"min": 160, "max": 170},
+        "deca": {"min": 160, "max": 170}
+      }
+    },
+    "monsters": ["Donu", "Deca"],
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Anger",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Donu gains 2 Strength.",
+        "strength_gain": 2,
+        "monster": "Donu"
+      },
+      {
+        "move_id": 1,
+        "name": "Bash",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 8,
+        "effect": "Deals 8 damage and applies 2 Vulnerable.",
+        "vulnerable_applied": 2,
+        "monster": "Donu"
+      },
+      {
+        "move_id": 2,
+        "name": "Defensive Mode",
+        "intent": "DEFEND",
+        "damage": null,
+        "effect": "Gains 12 Block and 3 Plated Armor. Cannot use twice in a row.",
+        "block_gain": 12,
+        "plated_armor_gain": 3,
+        "monster": "Donu"
+      },
+      {
+        "move_id": 3,
+        "name": "Haste",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Deca gains 1 Dexterity and 1 Focus.",
+        "dexterity_gain": 1,
+        "focus_gain": 1,
+        "monster": "Deca"
+      },
+      {
+        "move_id": 4,
+        "name": "Beam",
+        "intent": "ATTACK",
+        "damage": 6,
+        "hits": 3,
+        "effect": "Deals 6 damage 3 times.",
+        "monster": "Deca"
+      },
+      {
+        "move_id": 5,
+        "name": "Focus",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Gains 2 Focus. Cannot use twice in a row.",
+        "focus_gain": 2,
+        "monster": "Deca"
+      },
+      {
+        "move_id": 6,
+        "name": "Shield",
+        "intent": "DEFEND",
+        "damage": null,
+        "effect": "Gains 20 Block.",
+        "block_gain": 20,
+        "monster": "Deca"
+      }
+    ],
+    "pattern": {
+      "description": "Donu and Deca share a circular buffer of 6 moves: Anger, Bash, Defensive Mode, Haste, Beam, Focus, Shield. They cycle through these moves in order, each using every third move.",
+      "circular_pattern": [
+        "Anger (Donu)",
+        "Bash (Donu)",
+        "Defensive Mode (Donu)",
+        "Haste (Deca)",
+        "Beam (Deca)",
+        "Focus (Deca)",
+        "Shield (Deca)"
+      ],
+      "pattern_length": 7,
+      "monster_turn_order": ["Donu", "Deca"],
+      "constraints": ["cannot_use_defensive_mode_twice_in_a_row", "cannot_use_focus_twice_in_a_row"]
+    },
+    "special_mechanics": {
+      "type": "duo_boss",
+      "monsters": ["Donu", "Deca"],
+      "synergy": "Circular move pattern with shared buffs",
+      "buffs": {
+        "donu_scaling": {
+          "type": "strength",
+          "rate": "+2 Strength per Anger"
+        },
+        "deca_scaling": {
+          "type": "dexterity_focus",
+          "rate": "+1 Dexterity and +1-2 Focus per Haste/Focus"
+        }
+      },
+      "defensive_mechanics": {
+        "donu": "+3 Plated Armor per Defensive Mode",
+        "deca": "+20 Block per Shield"
+      },
+      "recommended_strategy": {
+        "primary": "kill_one_quickly_to_break_pattern",
+        "secondary": "prioritize_deca_if_high_orb_count",
+        "note": "Both bosses scale quickly. Killing one stops the pattern. Deca is priority if you have orb build."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 24,
+      "donu_threat": 22,
+      "deca_threat": 24,
+      "scaling_threat": 4.5,
+      "party_threat_multiplier": 1.8
+    }
+  }
+}
