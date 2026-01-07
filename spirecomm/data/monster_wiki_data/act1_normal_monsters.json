@@ -1,0 +1,1220 @@
+[
+  {
+    "monster_id": "Red_Louse",
+    "name": "Red Louse",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 10,
+        "max": 15
+      },
+      "ascension_7+": {
+        "min": 11,
+        "max": 16
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Bite",
+        "intent": "ATTACK",
+        "damage": {
+          "min": 5,
+          "max": 7
+        },
+        "effect": "Deals D damage (D is 5-7 at battle start). Deals D+1 damage on Ascension 2+.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage_bonus": 1
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Grow",
+        "intent": "BUFF",
+        "damage": null,
+        "strength_gain": 3,
+        "effect": "Gains 3 Strength (4 on Ascension 17+).",
+        "ascension_modifiers": {
+          "17+": {
+            "strength_gain": 4
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "25% Grow, 75% Bite. Cannot use same move three times in a row.",
+      "move_probabilities": {
+        "Grow": 0.25,
+        "Bite": 0.75
+      },
+      "constraints": [
+        "max_consecutive_same_move: 2"
+      ]
+    },
+    "special_mechanics": {
+      "type": "curl_up",
+      "description": "Gains 3-7 Block upon first receiving attack damage (4-8 on A7+, 9-12 on A17+).",
+      "curl_up_block": {
+        "normal": {
+          "min": 3,
+          "max": 7
+        },
+        "ascension_7+": {
+          "min": 4,
+          "max": 8
+        },
+        "ascension_17+": {
+          "min": 9,
+          "max": 12
+        }
+      }
+    },
+    "threat_profile": {
+      "base_threat": 8,
+      "scaling_threat": 1.5,
+      "notes": "Low HP but Curl Up provides surprise block. Grow can increase threat over time."
+    }
+  },
+  {
+    "monster_id": "Green_Louse",
+    "name": "Green Louse",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 11,
+        "max": 17
+      },
+      "ascension_7+": {
+        "min": 12,
+        "max": 18
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Bite",
+        "intent": "ATTACK",
+        "damage": {
+          "min": 5,
+          "max": 7
+        },
+        "effect": "Deals D damage (D is 5-7 at battle start). Deals D+1 damage on Ascension 2+.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage_bonus": 1
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Spit Web",
+        "intent": "DEBUFF",
+        "damage": null,
+        "weak": 2,
+        "effect": "Applies 2 Weak."
+      }
+    ],
+    "pattern": {
+      "description": "25% Spit Web, 75% Bite. Cannot use same move three times in a row.",
+      "move_probabilities": {
+        "Spit Web": 0.25,
+        "Bite": 0.75
+      },
+      "constraints": [
+        "max_consecutive_same_move: 2"
+      ]
+    },
+    "special_mechanics": {
+      "type": "curl_up",
+      "description": "Gains 3-7 Block upon first receiving attack damage (4-8 on A7+, 9-12 on A17+).",
+      "curl_up_block": {
+        "normal": {
+          "min": 3,
+          "max": 7
+        },
+        "ascension_7+": {
+          "min": 4,
+          "max": 8
+        },
+        "ascension_17+": {
+          "min": 9,
+          "max": 12
+        }
+      }
+    },
+    "threat_profile": {
+      "base_threat": 9,
+      "scaling_threat": 0.5,
+      "notes": "Slightly higher HP than Red Louse. Spit Web applies Weak, reducing player damage."
+    }
+  },
+  {
+    "monster_id": "Fungi_Beast",
+    "name": "Fungi Beast",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 22,
+        "max": 28
+      },
+      "ascension_7+": {
+        "min": 24,
+        "max": 28
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Bite",
+        "intent": "ATTACK",
+        "damage": 6,
+        "effect": "Deals 6 damage."
+      },
+      {
+        "move_id": 1,
+        "name": "Grow",
+        "intent": "BUFF",
+        "damage": null,
+        "strength_gain": 3,
+        "effect": "Gains 3 Strength (4 on Ascension 2+, 5 on Ascension 17+).",
+        "ascension_modifiers": {
+          "2+": {
+            "strength_gain": 4
+          },
+          "17+": {
+            "strength_gain": 5
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "60% Bite, 40% Grow. Cannot use Bite three times in a row, cannot use Grow twice in a row.",
+      "move_probabilities": {
+        "Bite": 0.6,
+        "Grow": 0.4
+      },
+      "constraints": [
+        "max_consecutive_bites: 2",
+        "max_consecutive_grows: 1"
+      ]
+    },
+    "special_mechanics": {
+      "type": "death_effect",
+      "description": "On death, applies 2 Vulnerable to the player.",
+      "death_effect": {
+        "type": "apply_vulnerable",
+        "amount": 2
+      }
+    },
+    "threat_profile": {
+      "base_threat": 12,
+      "scaling_threat": 3.0,
+      "notes": "Moderate HP with Strength scaling. Death effect applies Vulnerable, making subsequent enemies more dangerous."
+    }
+  },
+  {
+    "monster_id": "Sentry",
+    "name": "Sentry",
+    "monster_type": "elite",
+    "hp_ranges": {
+      "normal": {
+        "min": 38,
+        "max": 42
+      },
+      "ascension_8+": {
+        "min": 39,
+        "max": 45
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Beam",
+        "intent": "ATTACK",
+        "damage": 9,
+        "effect": "Deals 9 damage (10 on Ascension 3+).",
+        "ascension_modifiers": {
+          "3+": {
+            "damage": 10
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Bolt",
+        "intent": "DEBUFF",
+        "damage": null,
+        "dazed": 2,
+        "effect": "Shuffles 2 Dazed into discard pile (2 on A3+, 3 on A18+).",
+        "ascension_modifiers": {
+          "3+": {
+            "dazed": 2
+          },
+          "18+": {
+            "dazed": 3
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Alternates between Beam and Bolt every turn.",
+      "move_pattern": "alternating",
+      "elite_3x_pattern": "1st and 3rd Sentries start with Bolt, 2nd starts with Beam, then all alternate",
+      "normal_pattern": "With Spheric Guardian: Always starts with Bolt, then alternates"
+    },
+    "special_mechanics": {
+      "type": "artifact",
+      "description": "Has 1 Artifact, which prevents the first debuff applied.",
+      "artifact_count": 1
+    },
+    "threat_profile": {
+      "base_threat": 18,
+      "scaling_threat": 2.0,
+      "notes": "High HP for normal/low elite. Bolt floods deck with Dazed cards. Artifact makes debuffs ineffective. Very dangerous in groups of 3."
+    }
+  },
+  {
+    "monster_id": "Spheric_Guardian",
+    "name": "Spheric Guardian",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 20,
+        "max": 20
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Activate",
+        "intent": "DEFEND",
+        "damage": null,
+        "block_gain": 25,
+        "effect": "Gains 25 Block (25 on A2+, 35 on A17+).",
+        "ascension_modifiers": {
+          "2+": {
+            "block_gain": 25
+          },
+          "17+": {
+            "block_gain": 35
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Slam",
+        "intent": "ATTACK",
+        "damage": 20,
+        "hits": 2,
+        "effect": "Deals 10 x 2 damage (11 x 2 on A2+ and A17+).",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 22
+          },
+          "17+": {
+            "damage": 22
+          }
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Harden",
+        "intent": "ATTACK_DEFEND",
+        "damage": 10,
+        "block_gain": 15,
+        "effect": "Deals 10 damage, gains 15 Block (11 damage, 15 Block on A2+ and A17+).",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 11,
+            "block_gain": 15
+          },
+          "17+": {
+            "damage": 11,
+            "block_gain": 15
+          }
+        }
+      },
+      {
+        "move_id": 3,
+        "name": "Attack/Debuff",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 10,
+        "frail": 5,
+        "effect": "Deals 10 damage, applies 5 Frail (11 damage, 5 Frail on A2+ and A17+).",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 11,
+            "frail": 5
+          },
+          "17+": {
+            "damage": 11,
+            "frail": 5
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Always starts with Activate, then uses Attack/Debuff. Afterwards, alternates between Slam and Harden every turn.",
+      "opening": [
+        "Activate"
+      ],
+      "then": [
+        "Attack/Debuff"
+      ],
+      "alternating": [
+        "Slam",
+        "Harden"
+      ]
+    },
+    "special_mechanics": {
+      "type": "barricade_artifact",
+      "description": "Has Barricade (Block does not remove at start of turn) and 3 Artifacts.",
+      "barricade": true,
+      "artifact_count": 3
+    },
+    "threat_profile": {
+      "base_threat": 16,
+      "scaling_threat": 0.5,
+      "notes": "Low HP (20) but starts with 40 Block. Has Barricade so Block persists. 3 Artifacts make debuffs ineffective. Alternating Slam and Harden create a defensive + offensive rhythm."
+    }
+  },
+  {
+    "monster_id": "Fat_Gremlin",
+    "name": "Fat Gremlin",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 13,
+        "max": 17
+      },
+      "ascension_7+": {
+        "min": 14,
+        "max": 18
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Smash",
+        "intent": "ATTACK",
+        "damage": 4,
+        "weak": 1,
+        "effect": "Deal 4 damage, apply 1 Weak. A2+: Deal 5 damage, apply 1 Weak. A17+: Deal 5 damage, apply 1 Weak and 1 Frail.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 5
+          },
+          "17+": {
+            "damage": 5,
+            "weak": 1,
+            "frail": 1
+          }
+        }
+      }
+    ],
+    "pattern": null,
+    "special_mechanics": {
+      "type": "none"
+    },
+    "threat_profile": {
+      "base_threat": 8,
+      "scaling_threat": 1.0,
+      "notes": "None"
+    }
+  },
+  {
+    "monster_id": "Mad_Gremlin",
+    "name": "Mad Gremlin",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 20,
+        "max": 24
+      },
+      "ascension_7+": {
+        "min": 21,
+        "max": 25
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Scratch",
+        "intent": "ATTACK",
+        "damage": 4,
+        "effect": "Deal 4 damage. A2+: Deal 5 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 5
+          }
+        }
+      }
+    ],
+    "pattern": null,
+    "special_mechanics": {
+      "type": "strength_on_hit",
+      "description": "Gains Strength when taking attack damage",
+      "strength_gain": {
+        "normal": 1,
+        "ascension_17+": 2
+      }
+    },
+    "threat_profile": {
+      "base_threat": 8,
+      "scaling_threat": 1.0,
+      "notes": "Angry 1 (A17+: Angry 2) - Increases Strength when taking attack damage"
+    }
+  },
+  {
+    "monster_id": "Shield_Gremlin",
+    "name": "Shield Gremlin",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 12,
+        "max": 15
+      },
+      "ascension_7+": {
+        "min": 13,
+        "max": 17
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Protect",
+        "intent": "DEFEND",
+        "block_gain": 7,
+        "effect": "Target gains 7 Block. A2+: Target gains 8 Block. A17+: Target gains 11 Block.",
+        "ascension_modifiers": {
+          "2+": {
+            "block_gain": 8
+          },
+          "17+": {
+            "block_gain": 11
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Shield Bash",
+        "intent": "ATTACK",
+        "damage": 6,
+        "effect": "Deals 6 damage. A2+: Deals 8 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 8
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "If other enemies exist, always uses Protect on one of them. If no other enemies, uses Shield Bash unless it intends to Protect itself."
+    },
+    "special_mechanics": {
+      "type": "none"
+    },
+    "threat_profile": {
+      "base_threat": 8,
+      "scaling_threat": 1.0,
+      "notes": "None"
+    }
+  },
+  {
+    "monster_id": "Sneaky_Gremlin",
+    "name": "Sneaky Gremlin",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 10,
+        "max": 14
+      },
+      "ascension_7+": {
+        "min": 11,
+        "max": 15
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Puncture",
+        "intent": "ATTACK",
+        "damage": 9,
+        "effect": "Deals 9 damage. A2+: Deals 10 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 10
+          }
+        }
+      }
+    ],
+    "pattern": null,
+    "special_mechanics": {
+      "type": "none"
+    },
+    "threat_profile": {
+      "base_threat": 8,
+      "scaling_threat": 1.0,
+      "notes": "None"
+    }
+  },
+  {
+    "monster_id": "Gremlin_Wizard",
+    "name": "Gremlin Wizard",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 23,
+        "max": 25
+      },
+      "ascension_7+": {
+        "min": 22,
+        "max": 26
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Charging",
+        "intent": "BUFF",
+        "effect": "Charges for 2 turns, then Ultimate Blast on turn 3. Afterwards, charges for 3 turns between Blasts. A17+: Continues attacking without charging after first blast."
+      },
+      {
+        "move_id": 1,
+        "name": "Ultimate Blast",
+        "intent": "ATTACK",
+        "damage": 25,
+        "effect": "Deal 25 damage. A2+: Deal 30 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 30
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Charges for 2 turns, attacks on turn 3. Then charges for 3 turns between attacks. A17+: Attacks every turn after first blast."
+    },
+    "special_mechanics": {
+      "type": "none"
+    },
+    "threat_profile": {
+      "base_threat": 12,
+      "scaling_threat": 1.0,
+      "notes": "None"
+    }
+  },
+  {
+    "monster_id": "Acid_Slime_L",
+    "name": "Acid Slime (L)",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 65,
+        "max": 69
+      },
+      "ascension_7+": {
+        "min": 68,
+        "max": 72
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Corrosive Spit",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 11,
+        "slimed_added": 2,
+        "effect": "Deals 11 damage, shuffles 2 Slimed into discard pile.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 12
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Lick",
+        "intent": "DEBUFF",
+        "weak": 2,
+        "effect": "Inflicts 2 Weak."
+      },
+      {
+        "move_id": 2,
+        "name": "Tackle",
+        "intent": "ATTACK",
+        "damage": 16,
+        "effect": "Deals 16 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 18
+          }
+        }
+      },
+      {
+        "move_id": 3,
+        "name": "Split",
+        "intent": "UNKNOWN",
+        "effect": "Dies and spawns 2 Acid Slime (M) with current HP."
+      }
+    ],
+    "pattern": {
+      "description": "30% Corrosive Spit / 40% Tackle / 30% Lick. A17+: 40% Corrosive Spit / 40% Tackle / 20% Lick. Cannot use Tackle/Lick twice in a row (A17+). Cannot use other moves three times in a row. Splits when HP reaches 50% or lower.",
+      "move_probabilities": {
+        "Corrosive Spit": 0.3,
+        "Tackle": 0.4,
+        "Lick": 0.3
+      },
+      "ascension_17+_probabilities": {
+        "Corrosive Spit": 0.4,
+        "Tackle": 0.4,
+        "Lick": 0.2
+      },
+      "constraints": [
+        "max_consecutive_tackle_lick: 1 (A17+)",
+        "max_consecutive_other_moves: 2"
+      ],
+      "split_trigger": "hp_below_50_percent"
+    },
+    "special_mechanics": {
+      "type": "split",
+      "description": "When HP is at or below 50%, will split into 2 Acid Slime (M) with current HP. Split interrupts current intent.",
+      "split_threshold": 0.5,
+      "splits_into": [
+        "Acid_Slime_M",
+        "Acid_Slime_M"
+      ],
+      "hp_preserved": true
+    },
+    "threat_profile": {
+      "base_threat": 15,
+      "scaling_threat": 2.5,
+      "notes": "High HP with Split mechanic. Spawns 2 smaller slimes at 50% HP. Corrosive Spit floods deck with Slimed cards. Lick applies Weak. Priority target to kill before Split triggers."
+    }
+  },
+  {
+    "monster_id": "Acid_Slime_M",
+    "name": "Acid Slime (M)",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 28,
+        "max": 32
+      },
+      "ascension_7+": {
+        "min": 29,
+        "max": 34
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Corrosive Spit",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 7,
+        "slimed_added": 1,
+        "effect": "Deals 7 damage, shuffles 1 Slimed into discard pile.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 8
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Lick",
+        "intent": "DEBUFF",
+        "weak": 1,
+        "effect": "Inflicts 1 Weak."
+      },
+      {
+        "move_id": 2,
+        "name": "Tackle",
+        "intent": "ATTACK",
+        "damage": 10,
+        "effect": "Deals 10 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 12
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Below A17: Pattern identical to Acid Slime (L) but cannot Split. A17+: 40% Corrosive Spit / 40% Tackle / 20% Lick. Lick cannot be used twice in a row (A17+). Other moves cannot be used three times in a row.",
+      "move_probabilities": {
+        "Corrosive Spit": 0.3,
+        "Tackle": 0.4,
+        "Lick": 0.3
+      },
+      "ascension_17+_probabilities": {
+        "Corrosive Spit": 0.4,
+        "Tackle": 0.4,
+        "Lick": 0.2
+      },
+      "constraints": [
+        "max_consecutive_lick: 1 (A17+)",
+        "max_consecutive_other_moves: 2"
+      ]
+    },
+    "special_mechanics": {
+      "type": "none"
+    },
+    "threat_profile": {
+      "base_threat": 10,
+      "scaling_threat": 1.5,
+      "notes": "Medium-sized slime from Acid Slime (L) split. Cannot split further. Corrosive Spit adds Slimed to deck. Moderate damage output."
+    }
+  },
+  {
+    "monster_id": "Acid_Slime_S",
+    "name": "Acid Slime (S)",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 8,
+        "max": 12
+      },
+      "ascension_7+": {
+        "min": 9,
+        "max": 13
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Lick",
+        "intent": "DEBUFF",
+        "weak": 1,
+        "effect": "Inflicts 1 Weak."
+      },
+      {
+        "move_id": 1,
+        "name": "Tackle",
+        "intent": "ATTACK",
+        "damage": 3,
+        "effect": "Deals 3 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 4
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Turn 1: 50% Lick / 50% Tackle. A17+: Always starts with Lick. Afterwards, alternates between Lick and Tackle.",
+      "turn_1_probabilities": {
+        "Lick": 0.5,
+        "Tackle": 0.5
+      },
+      "ascension_17+_opening": "Lick",
+      "subsequent_pattern": "alternating"
+    },
+    "special_mechanics": {
+      "type": "none"
+    },
+    "threat_profile": {
+      "base_threat": 5,
+      "scaling_threat": 0.5,
+      "notes": "Smallest slime. Very low HP. Alternates between Lick and Tackle. Minimal threat but can apply Weak."
+    }
+  },
+  {
+    "monster_id": "Spike_Slime_L",
+    "name": "Spike Slime (L)",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 64,
+        "max": 70
+      },
+      "ascension_7+": {
+        "min": 67,
+        "max": 73
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Flame Tackle",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 16,
+        "slimed_added": 2,
+        "effect": "Deals 16 damage, shuffles 2 Slimed into discard pile.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 18
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Lick",
+        "intent": "DEBUFF",
+        "frail": 2,
+        "effect": "Inflicts 2 Frail.",
+        "ascension_modifiers": {
+          "17+": {
+            "frail": 3
+          }
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Split",
+        "intent": "UNKNOWN",
+        "effect": "Dies and spawns 2 Spike Slime (M) with current HP."
+      }
+    ],
+    "pattern": {
+      "description": "30% Flame Tackle / 70% Lick. Cannot use same move three times in a row. A17+: Lick cannot be used twice in a row, Flame Tackle cannot be used three times in a row. Splits when HP reaches 50% or lower.",
+      "move_probabilities": {
+        "Flame Tackle": 0.3,
+        "Lick": 0.7
+      },
+      "constraints": [
+        "max_consecutive_same_move: 2",
+        "max_consecutive_lick: 1 (A17+)",
+        "max_consecutive_flame_tackle: 2 (A17+)"
+      ],
+      "split_trigger": "hp_below_50_percent"
+    },
+    "special_mechanics": {
+      "type": "split",
+      "description": "When HP is at or below 50%, will split into 2 Spike Slime (M) with current HP. Split interrupts current intent.",
+      "split_threshold": 0.5,
+      "splits_into": [
+        "Spike_Slime_M",
+        "Spike_Slime_M"
+      ],
+      "hp_preserved": true
+    },
+    "threat_profile": {
+      "base_threat": 16,
+      "scaling_threat": 2.5,
+      "notes": "High HP with Split mechanic. Lick applies Frail reducing Block effectiveness. Flame Tackle adds Slimed to deck. Splits at 50% HP into 2 medium slimes."
+    }
+  },
+  {
+    "monster_id": "Spike_Slime_M",
+    "name": "Spike Slime (M)",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 28,
+        "max": 32
+      },
+      "ascension_7+": {
+        "min": 29,
+        "max": 34
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Flame Tackle",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 8,
+        "slimed_added": 1,
+        "effect": "Deals 8 damage, shuffles 1 Slimed into discard pile.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 10
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Lick",
+        "intent": "DEBUFF",
+        "frail": 1,
+        "effect": "Inflicts 1 Frail."
+      }
+    ],
+    "pattern": {
+      "description": "Identical to Spike Slime (L) pattern but cannot Split. 30% Flame Tackle / 70% Lick. Cannot use same move three times in a row. A17+: Same move restrictions as Spike Slime (L).",
+      "move_probabilities": {
+        "Flame Tackle": 0.3,
+        "Lick": 0.7
+      },
+      "constraints": [
+        "max_consecutive_same_move: 2",
+        "max_consecutive_lick: 1 (A17+)",
+        "max_consecutive_flame_tackle: 2 (A17+)"
+      ]
+    },
+    "special_mechanics": {
+      "type": "none"
+    },
+    "threat_profile": {
+      "base_threat": 11,
+      "scaling_threat": 1.5,
+      "notes": "Medium-sized slime from Spike Slime (L) split. Cannot split further. Lick applies Frail reducing Block gained. Flame Tackle adds Slimed to deck."
+    }
+  },
+  {
+    "monster_id": "Spike_Slime_S",
+    "name": "Spike Slime (S)",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 10,
+        "max": 14
+      },
+      "ascension_7+": {
+        "min": 11,
+        "max": 15
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Tackle",
+        "intent": "ATTACK",
+        "damage": 5,
+        "effect": "Deals 5 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 6
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Only has Tackle. No other moves available.",
+      "only_move": "Tackle"
+    },
+    "special_mechanics": {
+      "type": "none"
+    },
+    "threat_profile": {
+      "base_threat": 6,
+      "scaling_threat": 0.5,
+      "notes": "Smallest slime. Very low HP. Only has Tackle attack. Minimal threat on its own but dangerous in groups."
+    }
+  },
+  {
+    "monster_id": "Cultist",
+    "name": "Cultist",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 48,
+        "max": 54
+      },
+      "ascension_7+": {
+        "min": 50,
+        "max": 56
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Incantation",
+        "intent": "BUFF",
+        "ritual_gain": 3,
+        "effect": "Gains 3 Ritual (gains Strength at end of turn).",
+        "ascension_modifiers": {
+          "2+": {
+            "ritual_gain": 4
+          },
+          "17+": {
+            "ritual_gain": 5
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Dark Strike",
+        "intent": "ATTACK",
+        "damage": 6,
+        "effect": "Deals 6 damage."
+      }
+    ],
+    "pattern": {
+      "description": "Always starts with Incantation (gains Ritual), then uses Dark Strike every turn after. Ritual causes Strength to increase at end of each turn, making Dark Strike hit harder each turn.",
+      "opening": [
+        "Incantation"
+      ],
+      "subsequent_pattern": "Dark Strike every turn"
+    },
+    "special_mechanics": {
+      "type": "ritual",
+      "description": "Has Ritual power that gains X Strength at the end of its turn. Ritual stacks additively (3 on normal, 4 on A2+, 5 on A17+). This is a snowball mechanic - damage increases exponentially as turns pass. Must kill quickly before damage becomes unmanageable.",
+      "ritual_value": {
+        "normal": 3,
+        "ascension_2+": 4,
+        "ascension_17+": 5
+      },
+      "ritual_effect": "gain_strength_at_end_of_turn",
+      "stacking_behavior": "additive"
+    },
+    "threat_profile": {
+      "base_threat": 18,
+      "scaling_threat": 5.0,
+      "notes": "Very dangerous due to Ritual snowball. Gains Strength every turn making Dark Strike hit progressively harder (6, 9, 12, 15, 18...). Must prioritize killing quickly. Weak is very effective to reduce damage. Appears in all 3 acts making it a constant threat."
+    }
+  },
+  {
+    "monster_id": "Blue_Slaver",
+    "name": "Blue Slaver",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 46,
+        "max": 50
+      },
+      "ascension_7+": {
+        "min": 48,
+        "max": 52
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Stab",
+        "intent": "ATTACK",
+        "damage": 12,
+        "effect": "Deals 12 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 13
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Rake",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 7,
+        "weak": 1,
+        "effect": "Deals 7 damage, applies 1 Weak.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 8,
+            "weak": 1
+          },
+          "17+": {
+            "damage": 8,
+            "weak": 2
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "40% Rake / 60% Stab. Cannot use same move 3 times in a row. A17+: Rake cannot be used twice in a row.",
+      "move_probabilities": {
+        "Rake": 0.4,
+        "Stab": 0.6
+      },
+      "constraints": [
+        "max_consecutive_same_move: 2",
+        "max_consecutive_rake: 1 (A17+)"
+      ]
+    },
+    "special_mechanics": {
+      "type": "none"
+    },
+    "threat_profile": {
+      "base_threat": 12,
+      "scaling_threat": 1.5,
+      "notes": "Basic attacker with occasional Weak application. Rake reduces your damage output. Stab is moderate damage. Not a priority target but can wear you down with repeated Weak applications."
+    }
+  },
+  {
+    "monster_id": "Red_Slaver",
+    "name": "Red Slaver",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 46,
+        "max": 50
+      },
+      "ascension_7+": {
+        "min": 48,
+        "max": 52
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Stab",
+        "intent": "ATTACK",
+        "damage": 13,
+        "effect": "Deals 13 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 14
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Scrape",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 8,
+        "vulnerable": 1,
+        "effect": "Deals 8 damage, applies 1 Vulnerable.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 9,
+            "vulnerable": 1
+          },
+          "17+": {
+            "damage": 9,
+            "vulnerable": 2
+          }
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Entangle",
+        "intent": "DEBUFF",
+        "entangled": 1,
+        "effect": "Applies 1 Entangled (cannot play Attacks this turn).",
+        "special": "Debuff that prevents playing Attack cards for one turn"
+      }
+    ],
+    "pattern": {
+      "description": "Always starts with Stab. After first Stab, 25% chance per turn to use Entangle. Before Entangle: follows Scrape, Scrape, Stab pattern repeatedly. After Entangle: 55% Scrape / 45% Stab. Cannot use Stab or Scrape 3 times in a row. A17+: Pre-Entangle pattern changes to Scrape, Stab (repeat). Scrape cannot be used twice in a row.",
+      "opening": [
+        "Stab"
+      ],
+      "pre_entangle_pattern": {
+        "below_A17": [
+          "Scrape",
+          "Scrape",
+          "Stab"
+        ],
+        "ascension_17+": [
+          "Scrape",
+          "Stab"
+        ]
+      },
+      "entangle_trigger_chance": 0.25,
+      "post_entangle_probabilities": {
+        "Scrape": 0.55,
+        "Stab": 0.45
+      },
+      "constraints": [
+        "max_consecutive_stab: 2",
+        "max_consecutive_scrape: 2",
+        "max_consecutive_scrape: 1 (A17+)"
+      ]
+    },
+    "special_mechanics": {
+      "type": "entangle",
+      "description": "Can apply Entangled debuff that prevents playing Attack cards for one turn. This completely shuts down Attack-based decks for a turn. Must plan for non-Attack turns when Entangle is likely. Entangle has 25% chance per turn after opening.",
+      "entangled_duration": 1,
+      "entangled_effect": "cannot_play_attacks",
+      "entangle_trigger_chance": 0.25
+    },
+    "threat_profile": {
+      "base_threat": 15,
+      "scaling_threat": 2.0,
+      "notes": "Dangerous due to Entangle preventing Attacks. Scrape applies Vulnerable increasing damage taken. Unpredictable pattern with Entangle threat. Higher damage than Blue Slaver. Can be extremely problematic for Attack-heavy decks."
+    }
+  }
+]

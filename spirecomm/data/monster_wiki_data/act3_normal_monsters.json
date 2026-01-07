@@ -1,0 +1,392 @@
+[
+  {
+    "monster_id": "Transient",
+    "name": "Transient",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 999,
+        "max": 999
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Attack",
+        "intent": "ATTACK",
+        "damage": "30 + X*10",
+        "effect": "Deals 30 + X*10 damage, where X = turn number - 1.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": "40 + X*10"
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Uses Attack every turn. Damage scales with turn number (30 + X*10, where X = turn number - 1). Ascension 2+: 40 + X*10 damage."
+    },
+    "special_mechanics": {
+      "type": "fading_shifting",
+      "description": "Has Fading 5 + Shifting. Dies in 5 turns (6 on Ascension 17+). Upon taking attack damage, loses that much Strength until end of turn (no stacking).",
+      "fading_turns": {
+        "normal": 5,
+        "ascension_17+": 6
+      },
+      "shifting": "Loses Strength equal to damage taken until end of turn"
+    },
+    "threat_profile": {
+      "base_threat": 20,
+      "scaling_threat": 4.0,
+      "notes": "Extremely dangerous with scaling damage. Must kill quickly before damage becomes unmanageable. Shifting reduces Strength when attacked, making defense less effective. Achievement available for killing before Fading."
+    }
+  },
+  {
+    "monster_id": "Spiker",
+    "name": "Spiker",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 42,
+        "max": 56
+      },
+      "ascension_7+": {
+        "min": 44,
+        "max": 60
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Cut",
+        "intent": "ATTACK",
+        "damage": 7,
+        "effect": "Deals 7 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 9
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Spike",
+        "intent": "BUFF",
+        "thorns_gain": 2,
+        "effect": "Gains 2 Thorns."
+      }
+    ],
+    "pattern": {
+      "description": "50% Cut / 50% Spike. Cannot use Cut twice in a row. Can use Spike up to 6 times maximum per battle.",
+      "move_probabilities": {
+        "Cut": 0.5,
+        "Spike": 0.5
+      },
+      "constraints": [
+        "max_consecutive_cut: 1",
+        "max_spike_uses: 6"
+      ]
+    },
+    "special_mechanics": {
+      "type": "thorns",
+      "description": "Starts with 3 Thorns (4 on Ascension 2+, 7 on Ascension 17+). When attacked, deals Thorns damage to the attacker.",
+      "thorns_value": {
+        "normal": 3,
+        "ascension_2+": 4,
+        "ascension_17+": 7
+      }
+    },
+    "threat_profile": {
+      "base_threat": 16,
+      "scaling_threat": 3.0,
+      "notes": "Thorns damage punishes multi-hit attacks. Must kill carefully or avoid attacking. Spike increases Thorns further."
+    }
+  },
+  {
+    "monster_id": "Exploder",
+    "name": "Exploder",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 30,
+        "max": 30
+      },
+      "ascension_7+": {
+        "min": 30,
+        "max": 35
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Slam",
+        "intent": "ATTACK",
+        "damage": 9,
+        "effect": "Deals 9 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 11
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Explode",
+        "intent": "UNKNOWN",
+        "damage": 30,
+        "effect": "Dies and deals 30 damage to the player."
+      }
+    ],
+    "pattern": {
+      "description": "Uses Slam twice, then uses Explode (dies and deals 30 damage).",
+      "opening": [
+        "Slam",
+        "Slam"
+      ],
+      "then": [
+        "Explode"
+      ]
+    },
+    "special_mechanics": {
+      "type": "combust",
+      "description": "Has Combust power: Dies and deals 30 damage in 3 turns. Explosion no longer ignores Block.",
+      "combust_turns": 3,
+      "combust_damage": 30
+    },
+    "threat_profile": {
+      "base_threat": 15,
+      "scaling_threat": 1.5,
+      "notes": "Low HP but will explode for 30 damage after 3 turns. Kill before explosion or have enough Block. Prioritize killing over other enemies."
+    }
+  },
+  {
+    "monster_id": "Repulsor",
+    "name": "Repulsor",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 29,
+        "max": 35
+      },
+      "ascension_7+": {
+        "min": 31,
+        "max": 38
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Bash",
+        "intent": "ATTACK",
+        "damage": 11,
+        "effect": "Deals 11 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 13
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Repulse",
+        "intent": "DEBUFF",
+        "dazed": 2,
+        "effect": "Shuffles 2 Dazed into the draw pile."
+      }
+    ],
+    "pattern": {
+      "description": "20% Bash / 80% Repulse. Cannot use Bash twice in a row.",
+      "move_probabilities": {
+        "Bash": 0.2,
+        "Repulse": 0.8
+      },
+      "constraints": [
+        "max_consecutive_bash: 1"
+      ]
+    },
+    "special_mechanics": {
+      "type": "none"
+    },
+    "threat_profile": {
+      "base_threat": 12,
+      "scaling_threat": 1.0,
+      "notes": "Mostly uses Repulse to flood deck with Dazed. Occasional Bash for damage. Not a priority target compared to Spiker or Exploder."
+    }
+  },
+  {
+    "monster_id": "Writhing_Mass",
+    "name": "Writhing Mass",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 160,
+        "max": 160
+      },
+      "ascension_7+": {
+        "min": 175,
+        "max": 175
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Implant",
+        "intent": "DEBUFF",
+        "effect": "Permanently adds a Parasite card to your deck.",
+        "special": "Can only be used once per combat"
+      },
+      {
+        "move_id": 1,
+        "name": "Flail",
+        "intent": "ATTACK_DEFEND",
+        "damage": 15,
+        "block_gain": 16,
+        "effect": "Deals 15 damage, gains 16 Block.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 16,
+            "block_gain": 18
+          }
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Wither",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 10,
+        "weak": 2,
+        "vulnerable": 2,
+        "effect": "Deals 10 damage, applies 2 Weak and 2 Vulnerable.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 12
+          }
+        }
+      },
+      {
+        "move_id": 3,
+        "name": "Multi-Strike",
+        "intent": "ATTACK",
+        "damage": 7,
+        "hits": 3,
+        "effect": "Deals 7 x 3 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 9,
+            "hits": 3
+          }
+        }
+      },
+      {
+        "move_id": 4,
+        "name": "Strong Strike",
+        "intent": "ATTACK",
+        "damage": 32,
+        "effect": "Deals 32 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 38
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Turn 1: Equal chance of Multi-Strike, Strong Strike, Flail, or Wither (25% each). After turn 1: 10% Implant, 30% Flail, 20% Wither, 30% Multi-Strike, 10% Strong Strike. Cannot use same move twice in a row. Intent always changes when Reactive is triggered.",
+      "turn_1_probabilities": {
+        "Multi-Strike": 0.25,
+        "Strong Strike": 0.25,
+        "Flail": 0.25,
+        "Wither": 0.25
+      },
+      "subsequent_probabilities": {
+        "Implant": 0.1,
+        "Flail": 0.3,
+        "Wither": 0.2,
+        "Multi-Strike": 0.3,
+        "Strong Strike": 0.1
+      },
+      "constraints": [
+        "max_consecutive_same_move: 1",
+        "implant_once_per_combat: true",
+        "reactive_changes_intent: true"
+      ]
+    },
+    "special_mechanics": {
+      "type": "malleable_reactive",
+      "description": "Has Malleable 3 + Reactive. Malleable: Gains X Block when attacked, increases by 1 each trigger, resets to X at turn start. Reactive: Changes intent when attacked.",
+      "malleable_value": 3,
+      "reactive": "Changes intent upon receiving attack damage"
+    },
+    "threat_profile": {
+      "base_threat": 25,
+      "scaling_threat": 4.0,
+      "notes": "Very dangerous with high HP and multiple threatening moves. Implant permanently adds Parasite card to deck - kill quickly. Reactive makes it unpredictable when attacked. Malleable provides increasing Block."
+    }
+  },
+  {
+    "monster_id": "Orb_Walker",
+    "name": "Orb Walker",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 90,
+        "max": 96
+      },
+      "ascension_7+": {
+        "min": 92,
+        "max": 102
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Laser",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 10,
+        "burn_added": 2,
+        "effect": "Deals 10 damage. Shuffles 1 Burn into draw pile and adds another to discard pile.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 11
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Claw",
+        "intent": "ATTACK",
+        "damage": 15,
+        "effect": "Deals 15 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 16
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "60% Laser / 40% Claw. Neither move can be used three times in a row.",
+      "move_probabilities": {
+        "Laser": 0.6,
+        "Claw": 0.4
+      },
+      "constraints": [
+        "max_consecutive_laser: 2",
+        "max_consecutive_claw: 2"
+      ]
+    },
+    "special_mechanics": {
+      "type": "strength_up",
+      "description": "At the end of its turn, gains X Strength (3 on normal, 5 on Ascension 17+). Can snowball quickly if not killed.",
+      "strength_gain": {
+        "normal": 3,
+        "ascension_17+": 5
+      }
+    },
+    "threat_profile": {
+      "base_threat": 22,
+      "scaling_threat": 5.0,
+      "notes": "Very dangerous with Strength Up buff. Gains 3 Strength every turn (5 on A17+). Must kill aggressively. Laser floods deck with Burn cards. Always attacks, so Weak is very effective."
+    }
+  }
+]

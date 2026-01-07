@@ -1,0 +1,405 @@
+[
+  {
+    "monster_id": "Snake_Plant",
+    "name": "Snake Plant",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 75,
+        "max": 79
+      },
+      "ascension_7+": {
+        "min": 78,
+        "max": 82
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Chomp",
+        "intent": "ATTACK",
+        "damage": 7,
+        "hits": 3,
+        "effect": "Deals 7 x 3 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 8,
+            "hits": 3
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Enfeebling Spores",
+        "intent": "DEBUFF",
+        "frail": 2,
+        "weak": 2,
+        "effect": "Inflicts 2 Frail and 2 Weak."
+      }
+    ],
+    "pattern": {
+      "description": "65% Chomp, 35% Enfeebling Spores. Cannot use Chomp 3x in a row, cannot use Enfeebling Spores 2x in a row. A17+: Chomp > Chomp > Enfeebling Spores pattern after first Enfeebling Spores.",
+      "move_probabilities": {
+        "Chomp": 0.65,
+        "Enfeebling Spores": 0.35
+      },
+      "constraints": [
+        "max_consecutive_chomp: 2",
+        "max_consecutive_spores: 1"
+      ],
+      "ascension_17+_pattern": "Chomp > Chomp > Enfeebling Spores"
+    },
+    "special_mechanics": {
+      "type": "malleable",
+      "description": "Upon receiving attack damage, gains X Block. Block gain increases by 1 each time Malleable is triggered. Resets to X at start of turn.",
+      "malleable_value": 3
+    },
+    "threat_profile": {
+      "base_threat": 18,
+      "scaling_threat": 2.5,
+      "notes": "High HP with Malleable defense. Chomp hits 3 times for multi-hit synergies. Enfeebling Spores applies both Frail and Weak, severely reducing player capabilities."
+    }
+  },
+  {
+    "monster_id": "Looter",
+    "name": "Looter",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 44,
+        "max": 48
+      },
+      "ascension_7+": {
+        "min": 46,
+        "max": 50
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Mug",
+        "intent": "ATTACK",
+        "damage": 10,
+        "effect": "Deals 10 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 11
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Lunge",
+        "intent": "ATTACK",
+        "damage": 12,
+        "effect": "Deals 12 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 14
+          }
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Smoke Bomb",
+        "intent": "DEFEND",
+        "block_gain": 6,
+        "effect": "Gains 6 Block."
+      },
+      {
+        "move_id": 3,
+        "name": "Escape",
+        "intent": "ESCAPE",
+        "effect": "Escapes from combat, taking all stolen gold."
+      }
+    ],
+    "pattern": {
+      "description": "Uses Mug for first 2 turns. Turn 3: 50% Lunge / 50% Smoke Bomb. If Lunge is used on turn 3, uses Smoke Bomb afterwards. Uses Escape after Smoke Bomb.",
+      "opening": [
+        "Mug",
+        "Mug"
+      ],
+      "turn_3_options": [
+        "Lunge",
+        "Smoke Bomb"
+      ],
+      "escape_trigger": "after_smoke_bomb"
+    },
+    "special_mechanics": {
+      "type": "thievery",
+      "description": "Steals X gold with every attack. Total gold stolen is returned if the enemy is killed.",
+      "thievery_value": 15,
+      "ascension_17+_thievery": 20
+    },
+    "threat_profile": {
+      "base_threat": 12,
+      "scaling_threat": 1.5,
+      "notes": "Steals gold with attacks. Must kill quickly to recover gold. Pattern is predictable with escape trigger."
+    }
+  },
+  {
+    "monster_id": "Mugger",
+    "name": "Mugger",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 48,
+        "max": 52
+      },
+      "ascension_7+": {
+        "min": 50,
+        "max": 54
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Mug",
+        "intent": "ATTACK",
+        "damage": 10,
+        "effect": "Deals 10 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 11
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Lunge",
+        "intent": "ATTACK",
+        "damage": 16,
+        "effect": "Deals 16 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 18
+          }
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Smoke Bomb",
+        "intent": "DEFEND",
+        "block_gain": 11,
+        "effect": "Gains 11 Block.",
+        "ascension_modifiers": {
+          "17+": {
+            "block_gain": 17
+          }
+        }
+      },
+      {
+        "move_id": 3,
+        "name": "Escape",
+        "intent": "ESCAPE",
+        "effect": "Escapes from combat, taking all stolen gold."
+      }
+    ],
+    "pattern": {
+      "description": "Identical to Looter's pattern. Uses Mug for first 2 turns. Turn 3: 50% Lunge / 50% Smoke Bomb. If Lunge is used on turn 3, uses Smoke Bomb afterwards. Uses Escape after Smoke Bomb.",
+      "opening": [
+        "Mug",
+        "Mug"
+      ],
+      "turn_3_options": [
+        "Lunge",
+        "Smoke Bomb"
+      ],
+      "escape_trigger": "after_smoke_bomb"
+    },
+    "special_mechanics": {
+      "type": "thievery",
+      "description": "Steals X gold with every attack. Total gold stolen is returned if the enemy is killed.",
+      "thievery_value": 15,
+      "ascension_17+_thievery": 20
+    },
+    "threat_profile": {
+      "base_threat": 14,
+      "scaling_threat": 2.0,
+      "notes": "Higher damage and HP than Looter. Lunge hits for 16-18 damage. Must kill quickly to recover gold."
+    }
+  },
+  {
+    "monster_id": "Snecko",
+    "name": "Snecko",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 114,
+        "max": 120
+      },
+      "ascension_7+": {
+        "min": 120,
+        "max": 125
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Perplexing Glare",
+        "intent": "DEBUFF",
+        "confused": 1,
+        "effect": "Inflicts Confused (randomizes card costs for 1 turn)."
+      },
+      {
+        "move_id": 1,
+        "name": "Tail Whip",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 8,
+        "vulnerable": 2,
+        "effect": "Deals 8 damage, applies 2 Vulnerable.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 10
+          },
+          "17+": {
+            "damage": 10,
+            "vulnerable": 2,
+            "weak": 2
+          }
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Bite",
+        "intent": "ATTACK",
+        "damage": 15,
+        "effect": "Deals 15 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 18
+          },
+          "17+": {
+            "damage": 18
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Always starts with Perplexing Glare. Afterwards, 60% Bite / 40% Tail Whip. Cannot use Bite 3 times in a row.",
+      "opening": [
+        "Perplexing Glare"
+      ],
+      "move_probabilities": {
+        "Bite": 0.6,
+        "Tail Whip": 0.4
+      },
+      "constraints": [
+        "max_consecutive_bite: 2"
+      ]
+    },
+    "special_mechanics": {
+      "type": "confused_inflict",
+      "description": "Inflicts Confused status with Perplexing Glare, which randomizes card costs for the player. Can be beneficial for high-cost decks but detrimental for low-cost decks.",
+      "confused_duration": 1
+    },
+    "threat_profile": {
+      "base_threat": 14,
+      "scaling_threat": 2.0,
+      "notes": "Confused can be beneficial or detrimental depending on deck. Tail Whip applies Vulnerable increasing damage taken. High HP makes it a lengthy fight. Odd Mushroom relic reduces Vulnerable impact."
+    }
+  },
+  {
+    "monster_id": "Chosen",
+    "name": "Chosen",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 95,
+        "max": 99
+      },
+      "ascension_7+": {
+        "min": 98,
+        "max": 103
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Poke",
+        "intent": "ATTACK",
+        "damage": 10,
+        "hits": 2,
+        "effect": "Deals 5 x 2 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 12,
+            "hits": 2
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Zap",
+        "intent": "ATTACK",
+        "damage": 18,
+        "effect": "Deals 18 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 21
+          }
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Debilitate",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 10,
+        "vulnerable": 2,
+        "effect": "Deals 10 damage, applies 2 Vulnerable.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 12,
+            "vulnerable": 2
+          }
+        }
+      },
+      {
+        "move_id": 3,
+        "name": "Drain",
+        "intent": "DEBUFF_BUFF",
+        "weak": 3,
+        "strength_gain": 3,
+        "effect": "Applies 3 Weak, gains 3 Strength."
+      },
+      {
+        "move_id": 4,
+        "name": "Hex",
+        "intent": "DEBUFF",
+        "hex": 1,
+        "effect": "Applies Hex (whenever you play a non-Attack card, add X Dazed to your draw pile)."
+      }
+    ],
+    "pattern": {
+      "description": "Normal opening: Poke → Hex. A17+ opening: Hex. Afterwards, alternates every turn between (50% Debilitate / 50% Drain) and (60% Poke / 40% Zap).",
+      "opening": [
+        "Poke",
+        "Hex"
+      ],
+      "ascension_17+_opening": [
+        "Hex"
+      ],
+      "phase_1_probabilities": {
+        "Debilitate": 0.5,
+        "Drain": 0.5
+      },
+      "phase_2_probabilities": {
+        "Poke": 0.6,
+        "Zap": 0.4
+      },
+      "pattern_description": "Alternates between phase 1 (Debilitate/Drain) and phase 2 (Poke/Zap) every turn after opening"
+    },
+    "special_mechanics": {
+      "type": "hex",
+      "description": "Has Hex power that triggers whenever you play a non-Attack card. Adds X Dazed cards to your draw pile. Dazed costs 1 and Exhausts. This punishes playing Skills and Powers.",
+      "hex_stacks": true,
+      "hex_trigger": "play_non_attack_card",
+      "hex_effect": "add_X_dazed_to_draw_pile"
+    },
+    "threat_profile": {
+      "base_threat": 20,
+      "scaling_threat": 4.0,
+      "notes": "Very dangerous with Hex debuff that floods deck with Dazed when playing non-Attack cards. Drain applies Weak to reduce your damage while gaining Strength to increase its own damage. Must prioritize Attack cards or remove Hex quickly. High HP makes it a lengthy fight."
+    }
+  }
+]
