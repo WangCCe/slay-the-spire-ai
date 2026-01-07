@@ -228,7 +228,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
                                 # Score
                                 score_val = self._score_sequence(new_sequence, initial_state, new_state_copy, context)
-                                if score_val > best_score:
+                                if score_val > best_score or (score_val == best_score and not best_sequence and new_sequence):
                                     best_score = score_val
                                     best_sequence = new_sequence
 
@@ -260,7 +260,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
                             # Score
                             score_val = self._score_sequence(new_sequence, initial_state, new_state, context)
-                            if score_val > best_score:
+                            if score_val > best_score or (score_val == best_score and not best_sequence and new_sequence):
                                 best_score = score_val
                                 best_sequence = new_sequence
 
@@ -295,7 +295,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
                         # Score
                         score = self._score_sequence(new_sequence, initial_state, new_state, context)
-                        if score > best_score:
+                        if score > best_score or (score == best_score and not best_sequence and new_sequence):
                             best_score = score
                             best_sequence = new_sequence
 
