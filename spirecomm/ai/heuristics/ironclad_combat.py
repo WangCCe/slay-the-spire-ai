@@ -328,7 +328,7 @@ class IroncladCombatPlanner(CombatPlanner):
                     ", ".join(seq_card_ids),
                 )
 
-        return best_sequence if best_sequence else self._fallback_plan(context, playable_cards)
+        return best_sequence
 
     def _choose_target_for_card(self, card: Card, context: DecisionContext,
                                 state: SimulationState) -> Tuple[Optional[Monster], Optional[int]]:
