@@ -74,6 +74,8 @@ FASTSCORE_ZERO_COST_BONUS = 20  # Bonus for zero-cost cards
 FASTSCORE_ATTACK_BONUS = 10  # Bonus for attacks when monsters alive
 FASTSCORE_LOWHP_BLOCK_BONUS = 15  # Bonus for block when low HP
 FASTSCORE_DAMAGE_MULTIPLIER = 2.0  # Points per damage point in FastScore
+FASTSCORE_POWER_BONUS = 8  # Baseline bonus for power cards
+FASTSCORE_POWER_EARLY_BONUS = 6  # Extra bonus for early-turn powers
 
 # Progressive widening M values (Stage 2 of two-stage expansion)
 M_VALUES = [20, 18, 15, 12, 10]  # Number of actions to full-simulate at each depth
@@ -2262,6 +2264,13 @@ class HeuristicCombatPlanner(CombatPlanner):
         cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
         if cost == 0:
             score += FASTSCORE_ZERO_COST_BONUS
+
+        # Baseline power bonus to avoid pruning setup cards
+        if hasattr(card, 'type') and card.type == CardType.POWER:
+            power_bonus = FASTSCORE_POWER_BONUS
+            if hasattr(context, 'turn') and context.turn <= 2:
+                power_bonus += FASTSCORE_POWER_EARLY_BONUS
+            score += power_bonus
 
         # Attack bonus when monsters alive
         monsters_alive = [m for m in state.monsters if not m['is_gone']]

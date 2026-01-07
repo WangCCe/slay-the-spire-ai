@@ -29,6 +29,10 @@ from spirecomm.data.loader import game_data_loader
 
 logger = logging.getLogger(__name__)
 
+POWER_BONUS_EARLY = 18
+POWER_BONUS_MID = 12
+POWER_BONUS_LATE = 6
+
 
 class EliteType(Enum):
     """Enumeration of Act 1 elite monsters for specialized strategy application."""
@@ -1017,6 +1021,17 @@ class IroncladCombatPlanner(CombatPlanner):
                 card = action.card
                 card_id = card.card_id
                 card_id_base = card_id.replace('+', '')
+                card_type = card.type if hasattr(card, 'type') else None
+
+                if card_type == CardType.POWER:
+                    if context.turn <= 2:
+                        power_bonus = POWER_BONUS_EARLY
+                    elif context.turn <= 4:
+                        power_bonus = POWER_BONUS_MID
+                    else:
+                        power_bonus = POWER_BONUS_LATE
+                    score += power_bonus
+                    logger.debug(f"[POWER_BONUS] +{power_bonus} for {card_id} on turn {context.turn}")
 
                 # HP-cost cards: strong penalty at low HP unless the sequence kills everything
                 hp_costs = {
