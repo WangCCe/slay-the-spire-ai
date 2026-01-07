@@ -452,6 +452,124 @@ class EnhancedMonsterDatabase:
             return mechanics["recommended_strategy"]
         return None
 
+    def get_timing_hints(self, monster_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get timing-specific strategy hints for a monster.
+
+        These hints guide turn timing decisions without hardcoding logic.
+
+        Args:
+            monster_name: Name of the monster
+
+        Returns:
+            Dictionary with timing hints:
+            {
+                "safe_turn_indicators": ["BUFF", "DEFEND"],
+                "spike_turn_indicators": ["ATTACK_DEBUFF"],
+                "preparation_windows": [...],
+                "burst_opportunities": [...],
+                "preferred_response": {
+                    "SAFE": "aggressive_damage",
+                    "THREAT_SPIKE": "block_then_attack"
+                }
+            }
+        """
+        monster_data = self.get_monster_data(monster_name)
+        if monster_data and "timing_strategy" in monster_data:
+            return monster_data["timing_strategy"]
+        return None
+
+    def is_safe_turn(self, monster_name: str, current_turn: int,
+                    monster_hp_percent: float = 1.0) -> bool:
+        """
+        Check if current turn is a "safe turn" for a monster.
+
+        Safe turns are when the monster buffs/defends instead of attacking.
+
+        Args:
+            monster_name: Name of the monster
+            current_turn: Current combat turn
+            monster_hp_percent: Monster HP as percentage (for phase detection)
+
+        Returns:
+            True if monster is not attacking this turn
+        """
+        # Get timing hints
+        hints = self.get_timing_hints(monster_name)
+        if hints:
+            # Check current move against safe turn indicators
+            safe_indicators = hints.get("safe_turn_indicators", [])
+            if safe_indicators:
+                # Predict current move
+                predicted_moves = self.predict_next_moves(
+                    monster_name, current_turn, monster_hp_percent
+                )
+                if predicted_moves:
+                    current_move = predicted_moves[0].get("move", {})
+                    current_intent = current_move.get("intent", "").upper()
+
+                    # Check if intent matches safe indicators
+                    for indicator in safe_indicators:
+                        if indicator.upper() in current_intent:
+                            return True
+
+        # Fallback: check if current move is non-attack
+        predicted_moves = self.predict_next_moves(
+            monster_name, current_turn, monster_hp_percent
+        )
+        if predicted_moves:
+            current_move = predicted_moves[0].get("move", {})
+            current_intent = current_move.get("intent", "").upper()
+
+            # Non-attack intents are safe
+            non_attack_intents = ["BUFF", "DEFEND", "DEBUFF", "DEBUG", "NONE", "STUN", "SLEEP"]
+            return current_intent in non_attack_intents
+
+        return False
+
+    def get_big_attack_pattern(self, monster_name: str) -> List[Dict[str, Any]]:
+        """
+        Get big attack patterns for a monster.
+
+        Returns upcoming big attacks with turn numbers and damage.
+
+        Args:
+            monster_name: Name of the monster
+
+        Returns:
+            List of big attack patterns:
+            [
+                {"turn": 3, "damage": 25, "move": "Strong Attack"},
+                {"turn": 6, "damage": 30, "move": "Ultimate"}
+            ]
+        """
+        monster_data = self.get_monster_data(monster_name)
+        if not monster_data:
+            return []
+
+        big_attacks = []
+        moves = monster_data.get("moves", [])
+        pattern = monster_data.get("pattern", {})
+
+        # Check for big attack moves
+        for move in moves:
+            damage = move.get("damage", 0)
+            if damage >= 20:  # Threshold for "big"
+                # Try to find turn number from pattern
+                move_name = move.get("name", "")
+                big_attacks.append({
+                    "move": move_name,
+                    "damage": damage,
+                    "intent": move.get("intent", ""),
+                    "turn": None  # Turn number depends on current state
+                })
+
+        # Check pattern for explicit big attack turns
+        if "big_attack_turns" in pattern:
+            big_attacks.extend(pattern["big_attack_turns"])
+
+        return big_attacks
+
     def get_all_monsters(self) -> List[str]:
         """Get list of all monster names in the database."""
         return list(self._data.keys())
@@ -537,3 +655,21 @@ def calculate_future_threat(monster_name: str, current_turn: int,
     return get_enhanced_monster_db().calculate_future_threat(
         monster_name, current_turn, monster_hp_percent, current_strength
     )
+
+
+def get_monster_timing_hints(monster_name: str) -> Optional[Dict[str, Any]]:
+    """Get timing hints for a monster (convenience function)."""
+    return get_enhanced_monster_db().get_timing_hints(monster_name)
+
+
+def is_monster_safe_turn(monster_name: str, current_turn: int,
+                        monster_hp_percent: float = 1.0) -> bool:
+    """Check if current turn is safe for a monster (convenience function)."""
+    return get_enhanced_monster_db().is_safe_turn(
+        monster_name, current_turn, monster_hp_percent
+    )
+
+
+def get_monster_big_attack_pattern(monster_name: str) -> List[Dict[str, Any]]:
+    """Get big attack pattern for a monster (convenience function)."""
+    return get_enhanced_monster_db().get_big_attack_pattern(monster_name)
