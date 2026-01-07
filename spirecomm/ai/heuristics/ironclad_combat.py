@@ -203,7 +203,7 @@ class IroncladCombatPlanner(CombatPlanner):
                             targets_to_explore = pruned_targets[:M_targets]
                             logger.info(f"[TARGET_EXPLORE] Depth {depth}: exploring {len(targets_to_explore)} targets for {card.card_id}")
 
-                            for target, target_idx in targets_to_explore:
+                            for target, target_idx, threat in targets_to_explore:
                                 # Simulate
                                 new_state = self.simulator.simulate_card_play(
                                     state, card, target, target_idx

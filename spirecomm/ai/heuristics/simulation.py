@@ -1247,6 +1247,15 @@ class FastCombatSimulator:
             if not monster_name:
                 return
 
+            # Only process if monster actually has hibernation mechanics
+            monster_data = game_data_loader.get_enhanced_monster_data(monster_name)
+            if not monster_data:
+                return
+
+            special_mechanics = monster_data.get('special_mechanics', {})
+            if special_mechanics.get('type') != 'hibernation':
+                return  # Not a hibernating monster
+
             # Check if monster is hibernating
             current_turn = getattr(state, 'turn', 1)
             is_hibernating = game_data_loader.is_monster_hibernating(monster_name, current_turn)
