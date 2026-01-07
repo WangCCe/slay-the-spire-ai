@@ -1,4 +1,7 @@
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CardType(Enum):
@@ -36,12 +39,17 @@ class Card:
 
     @classmethod
     def from_json(cls, json_object):
+        upgrades = json_object.get("upgrades", 0)
+        name = json_object.get("name", "")
+        if upgrades == 0 and name.endswith("+"):
+            upgrades = 1
+            logger.info(f"[CARD_UPGRADE_FIX] name='{name}' indicates upgrade; treating upgrades=1")
         return cls(
             card_id=json_object["id"],
-            name=json_object["name"],
+            name=name,
             card_type=CardType[json_object["type"]],
             rarity=CardRarity[json_object["rarity"]],
-            upgrades=json_object["upgrades"],
+            upgrades=upgrades,
             has_target=json_object["has_target"],
             cost=json_object["cost"],
             cost_for_turn=json_object.get("costForTurn"),  # Actual cost this turn (modified by relics like Snecko Eye)

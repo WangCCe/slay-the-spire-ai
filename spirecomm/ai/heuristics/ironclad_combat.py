@@ -34,6 +34,14 @@ POWER_BONUS_MID = 12
 POWER_BONUS_LATE = 6
 
 
+def _format_card_for_log(card: Card) -> str:
+    upgrades = getattr(card, 'upgrades', 0)
+    name = getattr(card, 'name', '')
+    if name:
+        return f"{card.card_id}({name},u{upgrades})"
+    return f"{card.card_id}(u{upgrades})"
+
+
 class EliteType(Enum):
     """Enumeration of Act 1 elite monsters for specialized strategy application."""
     GREMLIN_NOB = "Gremlin Nob"
@@ -91,7 +99,7 @@ class IroncladCombatPlanner(CombatPlanner):
         logger.info(f"[COMBAT] game_id={context.game_id} Turn {context.turn}, Floor {context.floor}, Act {context.act}")
         logger.info(f"[COMBAT] Playable cards: {len(playable_cards)}, Energy: {context.energy_available}")
         # Log card IDs for debugging
-        card_ids = [card.card_id for card in playable_cards]
+        card_ids = [_format_card_for_log(card) for card in playable_cards]
         logger.info(f"[COMBAT] Cards in hand: {', '.join(card_ids)}")
         logger.info(f"[COMBAT] Monsters: {len(context.monsters_alive)}, HP: {context.player_hp_pct:.1%}")
 
@@ -126,7 +134,7 @@ class IroncladCombatPlanner(CombatPlanner):
         seq_card_ids = []
         for action in sequence:
             if hasattr(action, 'card') and action.card:
-                seq_card_ids.append(action.card.card_id)
+                seq_card_ids.append(_format_card_for_log(action.card))
         logger.info(f"[COMBAT] game_id={context.game_id} Sequence cards: {', '.join(seq_card_ids)}")
         return sequence
 
@@ -318,7 +326,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 seq_card_ids = []
                 for action in seq:
                     if hasattr(action, 'card') and action.card:
-                        seq_card_ids.append(action.card.card_id)
+                        seq_card_ids.append(_format_card_for_log(action.card))
                 block_gained = state.player_block - initial_state.player_block
                 logger.info(
                     "[COMBAT_CANDIDATE] game_id=%s rank=%s score=%.1f damage=%s kills=%s block=%s energy=%s cards=%s",
