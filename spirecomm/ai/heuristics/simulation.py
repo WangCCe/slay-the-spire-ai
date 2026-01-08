@@ -561,6 +561,16 @@ class FastCombatSimulator:
             card_evaluator: Card evaluator for value calculations
         """
         self.card_evaluator = card_evaluator
+        self.timing_context = None  # TimingContext for dynamic weights (set externally)
+
+    def set_timing_context(self, timing_context):
+        """
+        Set timing context for dynamic weight adjustment.
+
+        Args:
+            timing_context: TimingContext with turn classification and weights
+        """
+        self.timing_context = timing_context
 
     def simulate_card_play(self, state: SimulationState, card: Card,
                           target: Optional[Monster] = None,
@@ -1272,6 +1282,63 @@ class FastCombatSimulator:
         except Exception as e:
             logger.warning(f"[HIBERNATION] Failed to handle hibernation for {monster.get('name', 'Unknown')}: {e}")
 
+    def _calculate_timing_bonus(self, final_state: SimulationState) -> float:
+        """
+        Calculate timing-specific bonuses based on turn classification.
+
+        Adds bonuses for:
+        - Attacking on safe turns (monster buffing)
+        - Blocking properly on threat spike turns
+        - Building block before big attacks
+
+        Args:
+            final_state: Final simulation state
+
+        Returns:
+            Timing bonus score (positive = good)
+        """
+        if self.timing_context is None:
+            return 0.0
+
+        bonus = 0.0
+        timing = self.timing_context.turn_timing
+
+        # Safe turn bonus: reward attacking when monsters are buffing
+        if timing.value == "SAFE":
+            damage_dealt = sum(
+                m['hp'] for m in final_state.monsters if not m['is_gone']
+            )  # Note: This is rough estimate
+            bonus += damage_dealt * 0.5  # Extra reward for attacking on safe turns
+            logger.debug(f"[TIMING_BONUS] Safe turn: +{damage_dealt * 0.5:.1f} for attacking")
+
+        # Threat spike bonus: reward proper blocking
+        elif timing.value == "THREAT_SPIKE":
+            expected_damage = self.timing_context.current_damage
+            if final_state.player_block >= expected_damage * 0.8:
+                # Good blocking - sufficient block for incoming damage
+                bonus += 50.0
+                logger.debug(f"[TIMING_BONUS] Threat spike: +50.0 for proper blocking")
+            else:
+                # Under-blocking - penalty
+                bonus -= 30.0
+                logger.debug(f"[TIMING_BONUS] Threat spike: -30.0 for under-blocking (block={final_state.player_block}, damage={expected_damage})")
+
+        # Preparation bonus: reward building block for future spike
+        elif timing.value == "PREPARATION":
+            if self.timing_context.future_damage_curve:
+                future_damage = self.timing_context.future_damage_curve[0]
+                if final_state.player_block >= future_damage * 0.6:
+                    bonus += 30.0
+                    logger.debug(f"[TIMING_BONUS] Preparation: +30.0 for building block (future_damage={future_damage})")
+
+        # Burst window bonus: reward aggressive damage
+        elif timing.value == "BURST_WINDOW":
+            damage_dealt = getattr(final_state, 'damage_dealt', 0)
+            bonus += damage_dealt * 0.8  # High bonus for damage
+            logger.debug(f"[TIMING_BONUS] Burst window: +{damage_dealt * 0.8:.1f} for aggressive damage")
+
+        return bonus
+
     def calculate_outcome_score(self, initial_state: SimulationState, final_state: SimulationState,
                                current_act: int = 1, weights: dict = None, context=None, sequence=None) -> float:
         """
@@ -1297,13 +1364,32 @@ class FastCombatSimulator:
         """
         # Use default weights if none provided (backward compatibility)
         if weights is None:
-            weights = {
-                'KILL_BONUS': KILL_BONUS,
-                'DAMAGE_WEIGHT': DAMAGE_WEIGHT,
-                'BLOCK_WEIGHT': BLOCK_WEIGHT,
-                'ENERGY_EFFICIENCY_WEIGHT': ENERGY_EFFICIENCY_WEIGHT,
-                'W_DEATHRISK': W_DEATHRISK,
-            }
+            # === TIMING-AWARE WEIGHT SELECTION ===
+            # If timing context is available, use dynamic weights
+            if self.timing_context is not None:
+                timing_weights = self.timing_context.balance_weights
+                weights = {
+                    'KILL_BONUS': timing_weights.kill_bonus,
+                    'DAMAGE_WEIGHT': timing_weights.damage_weight,
+                    'BLOCK_WEIGHT': timing_weights.block_weight,
+                    'ENERGY_EFFICIENCY_WEIGHT': ENERGY_EFFICIENCY_WEIGHT,  # Keep constant
+                    'W_DEATHRISK': W_DEATHRISK,  # Keep constant for now
+                }
+                logger.debug(
+                    f"[TIMING_WEIGHTS] Using {self.timing_context.turn_timing.value} weights: "
+                    f"damage={timing_weights.damage_weight:.2f}, "
+                    f"block={timing_weights.block_weight:.2f}, "
+                    f"kill_bonus={timing_weights.kill_bonus:.0f}"
+                )
+            else:
+                # Default static weights
+                weights = {
+                    'KILL_BONUS': KILL_BONUS,
+                    'DAMAGE_WEIGHT': DAMAGE_WEIGHT,
+                    'BLOCK_WEIGHT': BLOCK_WEIGHT,
+                    'ENERGY_EFFICIENCY_WEIGHT': ENERGY_EFFICIENCY_WEIGHT,
+                    'W_DEATHRISK': W_DEATHRISK,
+                }
 
         score = 0.0
 
@@ -1459,6 +1545,11 @@ class FastCombatSimulator:
         # Energy value: gained/saved energy is valuable
         score += final_state.energy_gained * ENERGY_SYNERGY_VALUE
         score += final_state.energy_saved * ENERGY_SYNERGY_VALUE
+
+        # === TIMING-AWARE SCORING BONUS ===
+        # Add timing-specific bonuses based on turn classification
+        timing_bonus = self._calculate_timing_bonus(final_state)
+        score += timing_bonus
 
         return score
 

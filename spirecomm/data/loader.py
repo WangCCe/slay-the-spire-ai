@@ -914,6 +914,54 @@ class GameDataLoader:
             return db.is_duo_boss(monster_name)
         return False
 
+    def get_monster_timing_hints(self, monster_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get timing strategy hints for a monster from Wiki data.
+
+        Args:
+            monster_name: Name of the monster
+
+        Returns:
+            Timing hints dictionary with safe_turn_indicators, spike_turn_indicators, etc.
+        """
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.get_timing_hints(monster_name)
+        return None
+
+    def is_monster_safe_turn(self, monster_name: str, current_turn: int,
+                            monster_hp_percent: float = 1.0) -> bool:
+        """
+        Check if current turn is a "safe turn" for a monster (buffing/defending).
+
+        Args:
+            monster_name: Name of the monster
+            current_turn: Current combat turn
+            monster_hp_percent: Monster HP as percentage (for phase detection)
+
+        Returns:
+            True if monster is not attacking this turn
+        """
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.is_safe_turn(monster_name, current_turn, monster_hp_percent)
+        return False
+
+    def get_monster_big_attack_pattern(self, monster_name: str) -> List[Dict[str, Any]]:
+        """
+        Get big attack patterns for a monster from Wiki data.
+
+        Args:
+            monster_name: Name of the monster
+
+        Returns:
+            List of big attack patterns with turn numbers and damage
+        """
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.get_big_attack_pattern(monster_name)
+        return []
+
 
 # Create a global instance for easy access
 # Try to initialize with auto_load=True, fall back to auto_load=False if file not found

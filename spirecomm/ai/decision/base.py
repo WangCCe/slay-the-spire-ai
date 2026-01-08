@@ -115,6 +115,11 @@ class DecisionContext:
         # === 新增：遗物检测 ===
         self.has_snecko_eye = self._has_relic("Snecko Eye")
         self.has_burning_blood = self._has_relic("Burning Blood")
+
+        # === TIMING AWARENESS ===
+        # Timing context for dynamic offensive/defensive balance
+        # Set externally by TurnTimingClassifier
+        self.timing_context = None  # Type: Optional[TimingContext]
         self.has_busted_clock = self._has_relic("Busted Clock")
         self.has_orichalcum = self._has_relic("Orichalcum")
         self.has_paper_crane = self._has_relic("Paper Crane")

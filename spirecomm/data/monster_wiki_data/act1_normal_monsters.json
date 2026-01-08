@@ -75,6 +75,34 @@
       "base_threat": 8,
       "scaling_threat": 1.5,
       "notes": "Low HP but Curl Up provides surprise block. Grow can increase threat over time."
+    },
+    "timing_strategy": {
+      "description": "Red Louse alternates between Bite (attack) and Grow (+3 Strength). Attack during Grow turns.",
+      "safe_turn_indicators": [
+        "BUFF"
+      ],
+      "spike_turn_indicators": [
+        "ATTACK"
+      ],
+      "preparation_windows": [
+        {
+          "trigger": "after_strength_gain",
+          "look_ahead": 1,
+          "expected_damage": 10,
+          "note": "After Grow, Bite damage increases by Strength"
+        }
+      ],
+      "burst_opportunities": [
+        {
+          "trigger": "grow_turn",
+          "reason": "Louse is gaining Strength instead of attacking - kill it fast!"
+        }
+      ],
+      "preferred_response": {
+        "SAFE": "aggressive_damage",
+        "THREAT_SPIKE": "block_if_damage > 8",
+        "PREPARATION": "build_block"
+      }
     }
   },
   {
@@ -148,6 +176,34 @@
       "base_threat": 9,
       "scaling_threat": 0.5,
       "notes": "Slightly higher HP than Red Louse. Spit Web applies Weak, reducing player damage."
+    },
+    "timing_strategy": {
+      "description": "Green Louse alternates between Bite (attack) and Grow (+3 Strength). Attack during Grow turns.",
+      "safe_turn_indicators": [
+        "BUFF"
+      ],
+      "spike_turn_indicators": [
+        "ATTACK"
+      ],
+      "preparation_windows": [
+        {
+          "trigger": "after_strength_gain",
+          "look_ahead": 1,
+          "expected_damage": 10,
+          "note": "After Grow, Bite damage increases by Strength"
+        }
+      ],
+      "burst_opportunities": [
+        {
+          "trigger": "grow_turn",
+          "reason": "Louse is gaining Strength instead of attacking - kill it fast!"
+        }
+      ],
+      "preferred_response": {
+        "SAFE": "aggressive_damage",
+        "THREAT_SPIKE": "block_if_damage > 8",
+        "PREPARATION": "build_block"
+      }
     }
   },
   {
@@ -212,6 +268,25 @@
       "base_threat": 12,
       "scaling_threat": 3.0,
       "notes": "Moderate HP with Strength scaling. Death effect applies Vulnerable, making subsequent enemies more dangerous."
+    },
+    "timing_strategy": {
+      "description": "Alternates between Bite and Spore Cloud (applies Weak). Attack aggressively on Spore Cloud turns.",
+      "safe_turn_indicators": [
+        "DEBUFF"
+      ],
+      "spike_turn_indicators": [],
+      "preparation_windows": [],
+      "burst_opportunities": [
+        {
+          "trigger": "spore_cloud_turn",
+          "reason": "Fungi Beast is applying Weak instead of attacking - but Weak will reduce your damage next turn"
+        }
+      ],
+      "preferred_response": {
+        "SAFE": "attack_aggressive",
+        "THREAT_SPIKE": "block"
+      },
+      "notes": "Spore Cloud applies 2 Weak, making attacks less effective next turn. Consider using block or non-attack cards on Spore Cloud turns."
     }
   },
   {
@@ -1055,6 +1130,34 @@
       "base_threat": 18,
       "scaling_threat": 5.0,
       "notes": "Very dangerous due to Ritual snowball. Gains Strength every turn making Dark Strike hit progressively harder (6, 9, 12, 15, 18...). Must prioritize killing quickly. Weak is very effective to reduce damage. Appears in all 3 acts making it a constant threat."
+    },
+    "timing_strategy": {
+      "description": "Cultist Rituals on turn 1 (no damage), then attacks every turn with increasing Strength.",
+      "safe_turn_indicators": [
+        "BUFF"
+      ],
+      "spike_turn_indicators": [
+        "ATTACK"
+      ],
+      "preparation_windows": [
+        {
+          "trigger": "after_ritual",
+          "look_ahead": 1,
+          "expected_damage": 9,
+          "note": "After turn 1, Cultist will have +3 Strength and attack for 9 damage"
+        }
+      ],
+      "burst_opportunities": [
+        {
+          "turn": 1,
+          "reason": "Cultist is buffing (Ritual) - perfect time to attack"
+        }
+      ],
+      "preferred_response": {
+        "SAFE": "aggressive_damage",
+        "THREAT_SPIKE": "block_then_attack",
+        "PREPARATION": "build_block"
+      }
     }
   },
   {
