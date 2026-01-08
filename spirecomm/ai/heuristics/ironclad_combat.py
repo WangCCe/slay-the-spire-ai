@@ -26,6 +26,8 @@ from spirecomm.spire.character import Monster
 from spirecomm.communication.action import Action, PlayCardAction
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.data.loader import game_data_loader
+# === TIMING AWARENESS IMPORTS ===
+from .timing import TurnTimingClassifier, CombatBalanceStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +81,11 @@ class IroncladCombatPlanner(CombatPlanner):
         self.combat_ending_detector = CombatEndingDetector()
         self.combat_mode = combat_mode  # Store combat mode for reference
 
+        # === TIMING AWARENESS INITIALIZATION ===
+        self.timing_classifier = TurnTimingClassifier()
+        self.balance_strategy = CombatBalanceStrategy()
+        logger.info("[TIMING_INIT] IroncladCombatPlanner initialized with timing awareness")
+
     def plan_turn(self, context: DecisionContext) -> List[Action]:
         """
         Plan optimal turn using Ironclad-specific strategies.
@@ -118,6 +125,32 @@ class IroncladCombatPlanner(CombatPlanner):
                 return lethal_sequence
             logger.warning(f"[COMBAT] game_id={context.game_id} Lethal detected but sequence empty; falling back to beam search")
         logger.info("[COMBAT] No lethal, proceeding to beam search...")
+
+        # === TIMING AWARENESS: Classify turn timing ===
+        logger.info("[TIMING] About to classify turn timing...")
+        timing_context = self.timing_classifier.classify_turn(context)
+        logger.info(f"[TIMING_CLASSIFY] Turn {context.turn}: {timing_context.turn_timing.value}")
+        logger.info(f"[TIMING_CLASSIFY] Current damage: {timing_context.current_damage:.1f}")
+        if timing_context.future_damage_curve:
+            logger.info(f"[TIMING_CLASSIFY] Future damage: {[f'{d:.1f}' for d in timing_context.future_damage_curve]}")
+        if timing_context.safe_windows:
+            logger.info(f"[TIMING_CLASSIFY] Safe windows: {len(timing_context.safe_windows)}")
+
+        # Get optimal weights for this timing
+        balance_weights = self.balance_strategy.get_balance_weights(
+            timing_context.turn_timing,
+            context,
+            timing_context
+        )
+        logger.info(f"[TIMING_WEIGHTS] Using {timing_context.turn_timing.value} weights: "
+                   f"damage={balance_weights.damage_weight:.2f}, block={balance_weights.block_weight:.2f}, "
+                   f"kill_bonus={balance_weights.kill_bonus:.1f}")
+
+        # Set timing context on simulator for dynamic weight usage
+        self.simulator.set_timing_context(timing_context)
+
+        # Store timing context in DecisionContext for reference
+        context.timing_context = timing_context
 
         # Step 2: Determine adaptive parameters based on complexity
         logger.info("[COMBAT] About to get adaptive parameters...")
