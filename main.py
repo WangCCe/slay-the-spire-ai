@@ -90,6 +90,7 @@ if __name__ == "__main__":
     # Parse command line arguments
     use_optimized = None
     ascension_level = 0  # Default ascension level
+    run_seed = None
 
     parser = argparse.ArgumentParser(
         prog="python main.py",
@@ -104,6 +105,7 @@ if __name__ == "__main__":
             "  python main.py -a 10        # Ascension level 10\n"
             "  python main.py -a 20        # Ascension level 20\n"
             "  python main.py --optimized -a 20  # Optimized AI A20\n"
+            "  python main.py --seed 7010470200064802279  # Fixed seed run\n"
         ),
     )
     parser.add_argument(
@@ -124,6 +126,11 @@ if __name__ == "__main__":
         default=None,
         metavar="N",
         help="Set ascension level (0-20, default: 0)",
+    )
+    parser.add_argument(
+        "--seed",
+        metavar="SEED",
+        help="Set a fixed run seed (alphanumeric string)",
     )
     parser.add_argument(
         "mode",
@@ -154,6 +161,13 @@ if __name__ == "__main__":
         except ValueError:
             logging.warning(f"Invalid ascension level: {args.ascension}")
             logging.warning("Ascension must be a number (0-20), ignoring and using default")
+
+    if args.seed is not None:
+        run_seed = str(args.seed).strip()
+        if not run_seed:
+            logging.error("Seed cannot be empty")
+            sys.exit(1)
+        logging.info(f"Run seed set to {run_seed}")
 
     # Define player class before creating agent
     chosen_class = PlayerClass.IRONCLAD  # Fixed to Ironclad for testing
@@ -190,6 +204,8 @@ if __name__ == "__main__":
         logging.info(f"\n{'='*60}\n")
         logging.info(f"Starting game #{game_count} as {chosen_class}")
         logging.info(f"Ascension Level: {current_ascension}")
+        if run_seed is not None:
+            logging.info(f"Seed: {run_seed}")
         logging.info(f"Coordinator state: in_game={coordinator.in_game}, ready={coordinator.game_is_ready}")
         logging.info(f"{'='*60}\n")
 
@@ -208,7 +224,11 @@ if __name__ == "__main__":
 
         # Play the game
         try:
-            result = coordinator.play_one_game(chosen_class, ascension_level=current_ascension)
+            result = coordinator.play_one_game(
+                chosen_class,
+                ascension_level=current_ascension,
+                seed=run_seed,
+            )
         except Exception as e:
             # Handle communication errors or game crashes
             logging.error(f"Game #{game_count} failed: {e}")

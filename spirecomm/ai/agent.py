@@ -896,6 +896,15 @@ class OptimizedAgent(SimpleAgent):
                         used_fallback=False
                     )
 
+                # Record potion usage when beam search selects a potion action.
+                if self.game_tracker and action_sequence:
+                    try:
+                        from spirecomm.communication.action import PotionAction
+                        if isinstance(action_sequence[0], PotionAction):
+                            self.game_tracker.record_potion_use()
+                    except Exception:
+                        pass
+
                 # 返回第一个动作
                 return action_sequence[0]
 

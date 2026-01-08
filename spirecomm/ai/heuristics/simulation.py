@@ -1834,12 +1834,33 @@ class HeuristicCombatPlanner(CombatPlanner):
                         # Simulate potion use (simplified simulation for now)
                         new_state = copy.deepcopy(state)
                         # Apply potion effect to state
-                        if potion.effect_type == 'damage' and target:
-                            # Reduce target HP
-                            for i, m in enumerate(new_state.monsters):
-                                if m.current_hp > 0 and (m.name == target.name or m.current_hp == target.current_hp):
-                                    new_state.monsters[i] = m._replace(current_hp=max(0, m.current_hp - potion.effect_value))
-                                    break
+                        if potion.effect_type == 'damage':
+                            # Reduce target HP (handle single target or AOE)
+                            if potion.target_type == 'all_monsters':
+                                for i, m in enumerate(new_state.monsters):
+                                    if not m.get('is_gone') and m['hp'] > 0:
+                                        new_state.monsters[i]['hp'] = max(0, m['hp'] - potion.effect_value)
+                            else:
+                                target_index = None
+                                if target:
+                                    # Match by name first, then closest HP to avoid duplicate-name ambiguity.
+                                    candidates = []
+                                    for i, m in enumerate(new_state.monsters):
+                                        if m['hp'] > 0 and m['name'] == target.name:
+                                            hp_delta = abs(m['hp'] - getattr(target, 'current_hp', m['hp']))
+                                            candidates.append((hp_delta, i))
+                                    if candidates:
+                                        candidates.sort(key=lambda x: x[0])
+                                        target_index = candidates[0][1]
+                                if target_index is None:
+                                    # Fallback: first alive monster.
+                                    for i, m in enumerate(new_state.monsters):
+                                        if m['hp'] > 0 and not m.get('is_gone'):
+                                            target_index = i
+                                            break
+                                if target_index is not None:
+                                    m = new_state.monsters[target_index]
+                                    m['hp'] = max(0, m['hp'] - potion.effect_value)
                         elif potion.effect_type == 'block':
                             new_state = new_state._replace(player_block=new_state.player_block + potion.effect_value)
                         elif potion.effect_type in ['heal', 'regen']:
@@ -2045,6 +2066,15 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         # Damage potions: high value for lethal or high-threat targets
         elif self._is_damage_potion(potion):
+            if alive_monsters:
+                # Immediate lethal check for any target (ignore incoming damage gating).
+                for i, monster in enumerate(alive_monsters):
+                    vuln = context.vulnerable_stacks.get(i, 0) if hasattr(context, 'vulnerable_stacks') else 0
+                    damage = potion.effect_value * (1.5 if vuln > 0 else 1.0)
+                    if damage >= monster.current_hp:
+                        score += 100
+                        break
+
             if alive_monsters and incoming_damage > 0:
                 # Bonus for elites/bosses
                 if 'Elite' in context.game.room_type or 'Boss' in context.game.room_type:
