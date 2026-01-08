@@ -1132,32 +1132,23 @@
       "notes": "Very dangerous due to Ritual snowball. Gains Strength every turn making Dark Strike hit progressively harder (6, 9, 12, 15, 18...). Must prioritize killing quickly. Weak is very effective to reduce damage. Appears in all 3 acts making it a constant threat."
     },
     "timing_strategy": {
-      "description": "Cultist Rituals on turn 1 (no damage), then attacks every turn with increasing Strength.",
-      "safe_turn_indicators": [
-        "BUFF"
-      ],
-      "spike_turn_indicators": [
-        "ATTACK"
-      ],
-      "preparation_windows": [
-        {
-          "trigger": "after_ritual",
-          "look_ahead": 1,
-          "expected_damage": 9,
-          "note": "After turn 1, Cultist will have +3 Strength and attack for 9 damage"
-        }
-      ],
+      "description": "Cultist Rituals on turn 1 (no damage), then attacks every turn with exponentially increasing Strength. MUST KILL QUICKLY - damage snowballs (6, 9, 12, 15, 18...). Prolonging fight is fatal.",
+      "safe_turn_indicators": [],
+      "spike_turn_indicators": [],
       "burst_opportunities": [
         {
-          "turn": 1,
-          "reason": "Cultist is buffing (Ritual) - perfect time to attack"
+          "trigger": "always",
+          "reason": "Cultist snowballs exponentially with Ritual - kill as fast as possible regardless of intent"
         }
       ],
       "preferred_response": {
-        "SAFE": "aggressive_damage",
-        "THREAT_SPIKE": "block_then_attack",
-        "PREPARATION": "build_block"
-      }
+        "BURST_WINDOW": "maximum_aggression",
+        "SAFE": "maximum_aggression",
+        "THREAT_SPIKE": "maximum_aggression",
+        "BALANCED": "maximum_aggression"
+      },
+      "notes": "Cultist gains +3 Strength every turn via Ritual ( stacks additively). Dark Strike damage: 6→9→12→15→18... Each turn you wait, damage increases by 3. This is a RACE against time. Prioritize damage over defense - blocking only delays inevitable snowball. Use Bash+Vulnerable for maximum damage. Weak can slow snowball but doesn't stop it.",
+      "always_classify_as": "BURST_WINDOW"
     }
   },
   {

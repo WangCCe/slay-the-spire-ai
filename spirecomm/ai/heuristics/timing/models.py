@@ -153,12 +153,14 @@ class MonsterTimingHints:
         preparation_windows: Turns before spikes where we should build block
         burst_opportunities: Turns where monster is vulnerable to burst damage
         preferred_response: Default action per timing category (timing → action mapping)
+        raw_data: Original Wiki timing_strategy dict (for advanced features like always_classify_as)
     """
     safe_turn_indicators: List[str] = field(default_factory=list)
     spike_turn_indicators: List[str] = field(default_factory=list)
     preparation_windows: List[Dict[str, Any]] = field(default_factory=list)
     burst_opportunities: List[Dict[str, Any]] = field(default_factory=list)
     preferred_response: Dict[str, str] = field(default_factory=dict)
+    raw_data: Dict[str, Any] = field(default_factory=dict)
 
     def is_safe_turn(self, move_intent: str) -> bool:
         """Check if a move intent indicates a safe turn."""
@@ -183,7 +185,8 @@ class MonsterTimingHints:
             spike_turn_indicators=data.get('spike_turn_indicators', []),
             preparation_windows=data.get('preparation_windows', []),
             burst_opportunities=data.get('burst_opportunities', []),
-            preferred_response=data.get('preferred_response', {})
+            preferred_response=data.get('preferred_response', {}),
+            raw_data=data  # Store complete original data for advanced features
         )
 
 

@@ -58,8 +58,14 @@ class TurnTimingClassifier:
             # Analyze timing for all monsters
             timing_analysis = self._analyze_monster_timing(context, monsters, current_turn)
 
-            # Classify overall turn timing
-            turn_timing = self._classify_overall_timing(timing_analysis, context)
+            # Check if any monster has forced classification (always_classify_as)
+            forced_timing = self._check_forced_classification(timing_analysis['monster_hints'])
+            if forced_timing:
+                turn_timing = forced_timing
+                logger.info(f"[TIMING_CLASSIFIER] Using forced classification: {turn_timing.value}")
+            else:
+                # Classify overall turn timing
+                turn_timing = self._classify_overall_timing(timing_analysis, context)
 
             # Detect safe windows
             safe_windows = self._detect_safe_windows(context, monsters, current_turn)
@@ -344,12 +350,33 @@ class TurnTimingClassifier:
                         intent = move.get('intent', '').upper()
 
                         if 'ATTACK' in intent:
+                            # Get base damage
                             damage = move.get('damage', 0)
                             hits = move.get('hits', 1)
 
-                            # Add monster strength
-                            strength = getattr(monster, 'strength', 0)
-                            total_damage += (damage + strength) * hits
+                            # Handle damage range (e.g., {"min": 5, "max": 7})
+                            if isinstance(damage, dict):
+                                damage = damage.get('max', damage.get('min', 0))
+
+                            # Apply ascension modifiers to damage
+                            damage = self._apply_ascension_damage_modifiers(
+                                monster.name, move, damage, context
+                            )
+
+                            # Get current strength
+                            current_strength = getattr(monster, 'strength', 0)
+
+                            # Get ascension level from context
+                            ascension_level = getattr(context, 'ascension_level', 0)
+                            if hasattr(context, 'game') and hasattr(context.game, 'ascension_level'):
+                                ascension_level = context.game.ascension_level or 0
+
+                            # Predict future strength considering Ritual scaling
+                            predicted_strength = self._predict_future_strength(
+                                monster, current_turn, target_turn, current_strength, ascension_level
+                            )
+
+                            total_damage += (damage + predicted_strength) * hits
 
                 damage_curve.append(total_damage)
 
@@ -358,6 +385,176 @@ class TurnTimingClassifier:
         except Exception as e:
             logger.warning(f"[DAMAGE_CURVE] Calculation failed: {e}")
             return [0] * look_ahead
+
+    def _apply_ascension_damage_modifiers(
+        self,
+        monster_name: str,
+        move: Dict[str, Any],
+        base_damage: int,
+        context
+    ) -> int:
+        """
+        Apply ascension-level modifiers to move damage.
+
+        Args:
+            monster_name: Name of the monster
+            move: Move dictionary
+            base_damage: Base damage value
+            context: Decision context
+
+        Returns:
+            Damage adjusted for ascension level
+        """
+        try:
+            from spirecomm.data.loader import game_data_loader
+
+            # Get ascension level
+            ascension_level = 0
+            if hasattr(context, 'game') and hasattr(context.game, 'ascension_level'):
+                ascension_level = context.game.ascension_level or 0
+
+            # Check if move has ascension modifiers
+            if 'ascension_modifiers' not in move:
+                return base_damage
+
+            asc_mods = move['ascension_modifiers']
+            adjusted_damage = base_damage
+
+            # Apply modifiers in order (highest first)
+            for asc_threshold in sorted([int(k.split('+')[0]) for k in asc_mods.keys() if '+' in k], reverse=True):
+                if ascension_level >= asc_threshold:
+                    # Find the modifier key for this threshold
+                    mod_key = f"{asc_threshold}+"
+                    if mod_key in asc_mods:
+                        mods = asc_mods[mod_key]
+                        if 'damage_bonus' in mods:
+                            adjusted_damage += mods['damage_bonus']
+                            logger.debug(f"[ASCENSION_DAMAGE] {monster_name} A{ascension_level}+: "
+                                       f"damage {base_damage} + {mods['damage_bonus']} = {adjusted_damage}")
+                        break  # Apply highest applicable modifier only
+
+            return adjusted_damage
+
+        except Exception as e:
+            logger.warning(f"[ASCENSION_DAMAGE] Failed to apply modifiers for {monster_name}: {e}")
+            return base_damage
+
+    def _predict_future_strength(
+        self,
+        monster,
+        current_turn: int,
+        target_turn: int,
+        current_strength: int,
+        ascension_level: int = 0
+    ) -> int:
+        """
+        Predict monster's Strength at a future turn, considering Ritual scaling.
+
+        Args:
+            monster: Monster object
+            current_turn: Current turn number
+            target_turn: Future turn to predict for
+            current_strength: Monster's current Strength
+            ascension_level: Game ascension level (affects Ritual values)
+
+        Returns:
+            Predicted Strength at target_turn
+        """
+        try:
+            from spirecomm.data.loader import game_data_loader
+
+            # Get monster's special mechanics
+            monster_data = game_data_loader.get_monster_data(monster.name)
+            if not monster_data:
+                return current_strength
+
+            special_mechanics = monster_data.get('special_mechanics', {})
+            if not special_mechanics:
+                return current_strength
+
+            mech_type = special_mechanics.get('type', '').lower()
+
+            # Handle Ritual mechanics (Cultist)
+            if 'ritual' in mech_type:
+                ritual_value_dict = special_mechanics.get('ritual_value', {})
+                # ritual_value can be a dict {'normal': 3, 'ascension_2+': 4, ...} or an int
+                if isinstance(ritual_value_dict, dict):
+                    # Select ritual value based on ascension level
+                    if ascension_level >= 17:
+                        ritual_value = ritual_value_dict.get('ascension_17+', 5)
+                    elif ascension_level >= 2:
+                        ritual_value = ritual_value_dict.get('ascension_2+', 4)
+                    else:
+                        ritual_value = ritual_value_dict.get('normal', 3)
+                else:
+                    ritual_value = int(ritual_value_dict) if ritual_value_dict else 3
+
+                # Ritual triggers at end of each turn
+                # Cultist: Turn 1 buff, Turn 1 end +3 Str, Turn 2 attack with +3, Turn 2 end +3 Str, etc.
+
+                # Count how many times Ritual will trigger between current_turn and target_turn
+                # Ritual triggers at end of turn, so:
+                # - If we're on turn 1 predicting turn 2: Ritual triggers once (end of turn 1)
+                # - If we're on turn 1 predicting turn 3: Ritual triggers twice (end of turn 1 and 2)
+
+                ritual_triggers = target_turn - current_turn
+
+                predicted_strength = current_strength + (ritual_triggers * ritual_value)
+
+                logger.debug(f"[RITUAL_PREDICTION] {monster.name}: "
+                           f"ascension={ascension_level}, ritual_value={ritual_value}, "
+                           f"current_str={current_strength}, triggers={ritual_triggers}, "
+                           f"predicted_str={predicted_strength}")
+
+                return predicted_strength
+
+            # Handle one-time Strength gains (Louse Grow, Fungi Beast Grow)
+            # These need ascension-aware prediction too
+            if 'strength_scaler' in mech_type or 'curl_up' in mech_type:
+                # Check moves for Grow abilities with ascension modifiers
+                moves_data = monster_data.get('moves', [])
+                strength_per_trigger = 0
+
+                for move in moves_data:
+                    if move.get('name', '').lower() in ['grow', 'growth']:
+                        base_str_gain = move.get('strength_gain', 0)
+                        if base_str_gain > 0:
+                            # Check for ascension modifiers
+                            if 'ascension_modifiers' in move:
+                                asc_mods = move['ascension_modifiers']
+                                # Apply highest applicable ascension modifier
+                                if ascension_level >= 17 and '17+' in asc_mods:
+                                    strength_per_trigger = asc_mods['17+'].get('strength_gain', base_str_gain)
+                                elif ascension_level >= 2 and '2+' in asc_mods:
+                                    strength_per_trigger = asc_mods['2+'].get('strength_gain', base_str_gain)
+                                else:
+                                    strength_per_trigger = base_str_gain
+                            else:
+                                strength_per_trigger = base_str_gain
+                            break
+
+                # For one-time gains, we assume monster has already used Grow by turn 2+
+                # This is a simplification - in reality, need to track if Grow was used
+                if target_turn > current_turn:
+                    # Assume Grow was used on turn 1 or 2
+                    predicted_strength = current_strength + strength_per_trigger
+                    logger.debug(f"[GROW_PREDICTION] {monster.name}: ascension={ascension_level}, "
+                               f"strength_gain={strength_per_trigger}, predicted_str={predicted_strength}")
+                    return predicted_strength
+
+            # Handle other strength scaling mechanics
+            elif mech_type == 'strength_scaler':
+                strength_per_turn = special_mechanics.get('strength_per_turn', 0)
+                if strength_per_turn > 0:
+                    turns_passed = target_turn - current_turn
+                    return current_strength + (turns_passed * strength_per_turn)
+
+            # Default: no strength growth predicted
+            return current_strength
+
+        except Exception as e:
+            logger.warning(f"[STRENGTH_PREDICTION] Failed for {monster.name}: {e}")
+            return current_strength
 
     def _get_balance_weights_for_timing(
         self,
@@ -375,6 +572,26 @@ class TurnTimingClassifier:
             return BalanceWeights.burst_window_weights()
         else:
             return BalanceWeights.balanced_weights()
+
+    def _check_forced_classification(self, monster_hints: Dict[str, 'MonsterTimingHints']) -> Optional[TurnTiming]:
+        """
+        Check if any monster has forced classification via 'always_classify_as'.
+
+        Args:
+            monster_hints: Dictionary of monster name to timing hints
+
+        Returns:
+            TurnTiming if forced classification found, None otherwise
+        """
+        for monster_name, hints in monster_hints.items():
+            if hasattr(hints, 'raw_data') and hints.raw_data:
+                always_classify = hints.raw_data.get('always_classify_as')
+                if always_classify:
+                    try:
+                        return TurnTiming(always_classify)
+                    except ValueError:
+                        logger.warning(f"[TIMING_CLASSIFIER] Invalid forced classification: {always_classify}")
+        return None
 
     def _is_safe_intent(
         self,

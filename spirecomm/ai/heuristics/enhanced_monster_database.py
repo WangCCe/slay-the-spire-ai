@@ -43,7 +43,9 @@ class EnhancedMonsterDatabase:
             "act1_elites_bosses.json",
             "act2_elites_bosses.json",
             "act3_elites_bosses.json",
-            # "normal_monsters.json"  # Future: add normal monsters
+            "act1_normal_monsters.json",  # Added: Act 1 normal monsters (Cultist, Jaw Worm, etc.)
+            # "act2_normal_monsters.json",  # Future: add Act 2 normal monsters
+            # "act3_normal_monsters.json",  # Future: add Act 3 normal monsters
         ]
 
         for filename in data_files:
@@ -52,7 +54,18 @@ class EnhancedMonsterDatabase:
                 try:
                     with open(filepath, 'r', encoding='utf-8') as f:
                         monster_data = json.load(f)
-                        self._data.update(monster_data)
+                        # Handle both dict format (elites/bosses) and list format (normal monsters)
+                        if isinstance(monster_data, dict):
+                            # Dict format: {monster_name: monster_data}
+                            self._data.update(monster_data)
+                        elif isinstance(monster_data, list):
+                            # List format: [{monster_data}, {monster_data}, ...]
+                            # Use 'name' field as key
+                            for monster in monster_data:
+                                if 'name' in monster:
+                                    self._data[monster['name']] = monster
+                        loaded_count = len(monster_data) if isinstance(monster_data, dict) else len(monster_data)
+                        print(f"Loaded {loaded_count} monsters from {filename}")
                 except Exception as e:
                     print(f"Warning: Failed to load {filename}: {e}")
             else:
@@ -113,6 +126,23 @@ class EnhancedMonsterDatabase:
         moves = self.get_moves(monster_name)
         for move in moves:
             if move.get("move_id") == move_id:
+                return move
+        return None
+
+    def get_move_by_name(self, monster_name: str, move_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a specific move by name.
+
+        Args:
+            monster_name: Name of the monster
+            move_name: Move name
+
+        Returns:
+            Move dictionary or None if not found
+        """
+        moves = self.get_moves(monster_name)
+        for move in moves:
+            if move.get("name") == move_name:
                 return move
         return None
 
@@ -296,6 +326,43 @@ class EnhancedMonsterDatabase:
                                 "confidence": prob
                             })
                             break
+
+        # Check for opening + subsequent_pattern format (e.g., Cultist)
+        elif "opening" in pattern and "subsequent_pattern" in pattern:
+            opening_moves = pattern["opening"]
+            subsequent_pattern = pattern["subsequent_pattern"]
+
+            # Parse subsequent pattern to extract move name
+            # Format: "Dark Strike every turn" -> "Dark Strike"
+            # Split by "every" and take first part, then strip
+            if isinstance(subsequent_pattern, str):
+                parts = subsequent_pattern.split(" every")
+                subsequent_move_name = parts[0].strip() if parts else None
+            else:
+                subsequent_move_name = None
+
+            for i in range(3):
+                target_turn = current_turn + i
+
+                # Turn 1: use opening move
+                if target_turn == 1 and opening_moves:
+                    move_name = opening_moves[0]
+                    move = self.get_move_by_name(monster_name, move_name)
+                    if move:
+                        predictions.append({
+                            "turn": target_turn,
+                            "move": move,
+                            "confidence": 1.0
+                        })
+                # Turn 2+: use subsequent pattern
+                elif subsequent_move_name:
+                    move = self.get_move_by_name(monster_name, subsequent_move_name)
+                    if move:
+                        predictions.append({
+                            "turn": target_turn,
+                            "move": move,
+                            "confidence": 1.0
+                        })
 
         # Special handling for initial moves
         if "initial_move" in pattern and current_turn == 1:
