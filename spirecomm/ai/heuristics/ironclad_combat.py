@@ -973,9 +973,9 @@ class IroncladCombatPlanner(CombatPlanner):
             damage_weight = 5.0
             block_penalty = True
         elif lagavulin_hibernating:
-            # Lagavulin is hibernating, will deal massive damage when it wakes up
+            # Lagavulin is hibernating: favor damage if available, but don't punish setup blocks/draw.
             damage_weight = 5.0
-            block_penalty = True
+            block_penalty = False
         elif has_gremlin_nob or has_lagavulin or has_cultist:
             # These monsters have scaling damage or dangerous mechanics
             # Defense is not sustainable - always prioritize attacking
