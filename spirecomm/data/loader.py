@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import sys
 import re
@@ -7,6 +8,8 @@ from typing import Dict, List, Any, Optional, Tuple
 
 
 DEFAULT_EXPORT_PATH = "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export"
+
+logger = logging.getLogger(__name__)
 
 
 def convert_windows_path_to_wsl(windows_path: str) -> str:
@@ -201,6 +204,32 @@ class GameDataLoader:
                 f"Please reinstall StSExporter mod."
             )
 
+        # If the export path points to an empty StSExporter stub, fall back to parent export.
+        if not data.get('cards'):
+            parent_path = os.path.dirname(self.data_path)
+            parent_items = os.path.join(parent_path, "items.json")
+            if parent_path and parent_path != self.data_path and os.path.exists(parent_items):
+                try:
+                    with open(parent_items, 'r', encoding='utf-8') as f:
+                        parent_data = json.load(f)
+                    if parent_data.get('cards'):
+                        logger.warning(
+                            "items.json at %s has 0 cards; falling back to %s",
+                            self.items_file,
+                            parent_items,
+                        )
+                        logger.warning(
+                            "Game data fallback: using %s instead of %s",
+                            parent_items,
+                            self.items_file,
+                        )
+                        self.data_path = parent_path
+                        self.items_file = parent_items
+                        self._wiki_data_file = os.path.join(self.data_path, "wiki-card-data.txt")
+                        data = parent_data
+                except json.JSONDecodeError:
+                    pass
+
         # Validate structure
         expected_keys = ['cards', 'relics', 'potions', 'creatures', 'keywords']
         missing_keys = [k for k in expected_keys if k not in data]
@@ -241,15 +270,15 @@ class GameDataLoader:
 
         self._loaded = True
 
-        # Log success (to stderr to avoid interfering with Communication Mod)
-        print(
-            f"Game data loaded: {len(self._cards)} cards, "
-            f"{len(self._relics)} relics, "
-            f"{len(self._creatures)} creatures, "
-            f"{len(self._keywords)} keywords, "
-            f"{len(data.get('potions', []))} potions",
-            file=sys.stderr
+        logger.info(
+            "Game data loaded: %s cards, %s relics, %s creatures, %s keywords, %s potions",
+            len(self._cards),
+            len(self._relics),
+            len(self._creatures),
+            len(self._keywords),
+            len(data.get('potions', [])),
         )
+        logger.info("Game data source: %s", self.items_file)
 
     def _load_wiki_data(self) -> None:
         """
