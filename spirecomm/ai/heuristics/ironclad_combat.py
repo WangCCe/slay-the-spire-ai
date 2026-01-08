@@ -251,7 +251,7 @@ class IroncladCombatPlanner(CombatPlanner):
                             for target, target_idx, threat in targets_to_explore:
                                 # Simulate
                                 new_state = self.simulator.simulate_card_play(
-                                    state, card, target, target_idx
+                                    state, card, target, target_idx, context=context
                                 )
                                 new_state_copy = copy.deepcopy(new_state)
                                 new_state_copy.played_card_uuids.add(card_uuid)
@@ -284,7 +284,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
                             # Simulate
                             new_state = self.simulator.simulate_card_play(
-                                state, card, target, target_idx
+                                state, card, target, target_idx, context=context
                             )
                             new_state.played_card_uuids.add(card_uuid)
 
@@ -317,7 +317,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
                         # Simulate
                         new_state = self.simulator.simulate_card_play(
-                            state, card, target, target_idx
+                            state, card, target, target_idx, context=context
                         )
                         new_state.played_card_uuids.add(card_uuid)
 

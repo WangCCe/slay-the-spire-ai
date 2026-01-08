@@ -264,9 +264,30 @@ class SimpleAgent:
                 gold = self.game.gold
                 screen = self.game.screen
 
+                cancel_available = getattr(self.game, 'cancel_available', False)
+                proceed_available = getattr(self.game, 'proceed_available', False)
+                logging.info(
+                    "[SHOP_SCREEN] gold=%s cards=%s relics=%s potions=%s purge_available=%s cancel_available=%s proceed_available=%s",
+                    gold,
+                    len(getattr(screen, 'cards', []) or []),
+                    len(getattr(screen, 'relics', []) or []),
+                    len(getattr(screen, 'potions', []) or []),
+                    getattr(screen, 'purge_available', False),
+                    cancel_available,
+                    proceed_available,
+                )
+
+                def _exit_shop():
+                    if cancel_available:
+                        return CancelAction()
+                    if proceed_available:
+                        return ProceedAction()
+                    return CancelAction()
+
                 # Validate screen.cards exists
                 if not hasattr(screen, 'cards') or not screen.cards:
-                    return CancelAction()
+                    logging.warning("[SHOP_SCREEN] No cards listed, exiting shop")
+                    return _exit_shop()
 
                 # Calculate deck stats for better decision making
                 deck_size = len(self.game.deck) if hasattr(self.game, 'deck') else 0
@@ -284,7 +305,7 @@ class SimpleAgent:
 
                 if not valid_cards:
                     logging.warning("[SHOP_SCREEN] No valid cards found")
-                    return CancelAction()
+                    return _exit_shop()
 
                 # Priority 1: Purge (card removal) if needed and affordable
                 purge_cost = screen.purge_cost if screen.purge_available else float('inf')
@@ -371,7 +392,7 @@ class SimpleAgent:
                     return ChooseAction(name="purge")
 
                 # No good purchases available
-                return CancelAction()
+                return _exit_shop()
             except Exception as e:
                 import sys
                 import traceback
@@ -385,6 +406,10 @@ class SimpleAgent:
                 print(error_msg, file=sys.stderr)
                 print(f"[SHOP_SCREEN ERROR] Cards: {card_list}", file=sys.stderr)
                 traceback.print_exc(file=sys.stderr)
+                if getattr(self.game, 'cancel_available', False):
+                    return CancelAction()
+                if getattr(self.game, 'proceed_available', False):
+                    return ProceedAction()
                 return CancelAction()
         elif self.game.screen_type == ScreenType.GRID:
             if not self.game.choice_available:

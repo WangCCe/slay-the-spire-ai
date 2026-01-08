@@ -174,6 +174,11 @@ class GameDataLoader:
         self._wiki_data: Optional[Dict[str, Dict[str, Any]]] = None  # Lazy-loaded wiki card data
         self._enhanced_monster_db = None  # Lazy-loaded enhanced monster database
         self._loaded = False
+        self._logged_source = False
+        self._fallback_used = False
+        self._fallback_from = None
+        self._fallback_to = None
+        self._potions_count = 0
 
         if auto_load:
             self.load_data()
@@ -218,11 +223,9 @@ class GameDataLoader:
                             self.items_file,
                             parent_items,
                         )
-                        logger.warning(
-                            "Game data fallback: using %s instead of %s",
-                            parent_items,
-                            self.items_file,
-                        )
+                        self._fallback_used = True
+                        self._fallback_from = self.items_file
+                        self._fallback_to = parent_items
                         self.data_path = parent_path
                         self.items_file = parent_items
                         self._wiki_data_file = os.path.join(self.data_path, "wiki-card-data.txt")
@@ -269,14 +272,26 @@ class GameDataLoader:
                 self._enemies[creature_name] = creature
 
         self._loaded = True
+        self._potions_count = len(data.get('potions', []))
 
+    def _log_loaded_source_once(self) -> None:
+        """Log data source details once, after logging is configured."""
+        if not self._loaded or self._logged_source:
+            return
+        self._logged_source = True
+        if self._fallback_used:
+            logger.warning(
+                "Game data fallback: using %s instead of %s",
+                self._fallback_to,
+                self._fallback_from,
+            )
         logger.info(
             "Game data loaded: %s cards, %s relics, %s creatures, %s keywords, %s potions",
-            len(self._cards),
-            len(self._relics),
-            len(self._creatures),
-            len(self._keywords),
-            len(data.get('potions', [])),
+            len(self._cards) if self._cards is not None else 0,
+            len(self._relics) if self._relics is not None else 0,
+            len(self._creatures) if self._creatures is not None else 0,
+            len(self._keywords) if self._keywords is not None else 0,
+            self._potions_count,
         )
         logger.info("Game data source: %s", self.items_file)
 
@@ -382,6 +397,7 @@ class GameDataLoader:
             warnings.warn("GameDataLoader not initialized, call load_data() first")
             return None
 
+        self._log_loaded_source_once()
         card_name = card_name.lower()
         return self._cards.get(card_name)
 
@@ -399,6 +415,7 @@ class GameDataLoader:
             warnings.warn("GameDataLoader not initialized, call load_data() first")
             return None
 
+        self._log_loaded_source_once()
         relic_name = relic_name.lower()
         return self._relics.get(relic_name)
 
@@ -416,6 +433,7 @@ class GameDataLoader:
             warnings.warn("GameDataLoader not initialized, call load_data() first")
             return None
 
+        self._log_loaded_source_once()
         keyword = keyword.lower()
         return self._keywords.get(keyword)
 
@@ -429,6 +447,7 @@ class GameDataLoader:
         if self._cards is None:
             warnings.warn("GameDataLoader not initialized, call load_data() first")
             return {}
+        self._log_loaded_source_once()
         return self._cards
 
     def get_all_relics(self) -> Dict[str, Dict[str, Any]]:
@@ -441,6 +460,7 @@ class GameDataLoader:
         if self._relics is None:
             warnings.warn("GameDataLoader not initialized, call load_data() first")
             return {}
+        self._log_loaded_source_once()
         return self._relics
 
     def search_cards(self, **filters) -> List[Dict[str, Any]]:
@@ -457,6 +477,7 @@ class GameDataLoader:
             warnings.warn("GameDataLoader not initialized, call load_data() first")
             return []
 
+        self._log_loaded_source_once()
         results = []
         for card_data in self._cards.values():
             match = True
@@ -483,6 +504,7 @@ class GameDataLoader:
             warnings.warn("GameDataLoader not initialized, call load_data() first")
             return None
 
+        self._log_loaded_source_once()
         creature_name = creature_name.lower()
         return self._creatures.get(creature_name)
 
@@ -500,6 +522,7 @@ class GameDataLoader:
             warnings.warn("GameDataLoader not initialized, call load_data() first")
             return None
 
+        self._log_loaded_source_once()
         enemy_name = enemy_name.lower()
         return self._enemies.get(enemy_name)
 
@@ -513,6 +536,7 @@ class GameDataLoader:
         if self._creatures is None:
             warnings.warn("GameDataLoader not initialized, call load_data() first")
             return {}
+        self._log_loaded_source_once()
         return self._creatures
 
     def get_all_enemies(self) -> Dict[str, Dict[str, Any]]:
@@ -525,6 +549,7 @@ class GameDataLoader:
         if self._enemies is None:
             warnings.warn("GameDataLoader not initialized, call load_data() first")
             return {}
+        self._log_loaded_source_once()
         return self._enemies
 
     def search_enemies(self, **filters) -> List[Dict[str, Any]]:
@@ -541,6 +566,7 @@ class GameDataLoader:
             warnings.warn("GameDataLoader not initialized, call load_data() first")
             return []
 
+        self._log_loaded_source_once()
         results = []
         for enemy_data in self._enemies.values():
             match = True
