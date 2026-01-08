@@ -63,6 +63,10 @@ EXHAULT_SYNERGY_VALUE = 3.0  # Points per exhaust event (Feel No Pain)
 DRAW_SYNERGY_VALUE = 3.0  # Points per card drawn
 ENERGY_SYNERGY_VALUE = 4.0  # Points per energy gained/saved (Corruption, Bloodletting)
 
+# Debuff application bonuses
+VULNERABLE_APPLY_BONUS = 6.0
+WEAK_APPLY_BONUS = 3.0
+
 # Adaptive search parameters
 BEAM_WIDTH_ACT1 = 20  # Beam width for Act 1 (simple enemies) - increased from 12 (+67%)
 BEAM_WIDTH_ACT2 = 30  # Beam width for Act 2 (moderate complexity) - increased from 18 (+67%)
@@ -731,6 +735,25 @@ class FastCombatSimulator:
             return int(damage * 0.75)
         return damage
 
+    def _extract_debuff_stacks(self, description: str, keyword: str, upgraded: bool) -> Optional[int]:
+        """Extract debuff stacks from card description for a keyword."""
+        # Prefer [base|upgraded] notation when available.
+        bracket_match = re.search(rf'\[(\d+)\|(\d+)\]\s*{keyword}', description)
+        if bracket_match:
+            return int(bracket_match.group(2 if upgraded else 1))
+
+        patterns = [
+            rf'{keyword}\s*(\d+)',
+            rf'(\d+)\s*{keyword}',
+            rf'apply\s*(\d+)\s*{keyword}',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, description)
+            if match:
+                return int(match.group(1))
+
+        return None
+
     def _apply_frail_block(self, block: int, player_frail: int) -> int:
         """Apply frail multiplier (0.75x). Binary: any frail stacks = 0.75x block gained."""
         if player_frail > 0:
@@ -878,6 +901,35 @@ class FastCombatSimulator:
         if card.card_id == 'Rage':
             rage_gain = 5 if getattr(card, 'upgrades', 0) > 0 else 3
             state.rage_block_per_attack += rage_gain
+
+        # Apply enemy debuffs from skill cards (e.g., Shockwave).
+        try:
+            card_name = (getattr(card, 'name', None) or card.card_id).replace('+', '')
+            card_data = game_data_loader.get_card_data(card_name)
+            if card_data:
+                description = card_data.get('description', '').lower()
+                has_debuff = 'vulnerable' in description or 'weak' in description
+                if has_debuff:
+                    upgrades = getattr(card, 'upgrades', 0) > 0
+                    is_aoe = game_data_loader._is_card_aoe(card_data) or 'all enemies' in description
+                    if is_aoe:
+                        vuln_stacks = self._extract_debuff_stacks(description, 'vulnerable', upgrades)
+                        weak_stacks = self._extract_debuff_stacks(description, 'weak', upgrades)
+                        if vuln_stacks is None and card_name == 'Shockwave':
+                            vuln_stacks = 5 if upgrades else 3
+                        if weak_stacks is None and card_name == 'Shockwave':
+                            weak_stacks = 5 if upgrades else 3
+
+                        if vuln_stacks or weak_stacks:
+                            for monster in state.monsters:
+                                if monster['is_gone']:
+                                    continue
+                                if vuln_stacks:
+                                    monster['vulnerable'] += vuln_stacks
+                                if weak_stacks:
+                                    monster['weak'] += weak_stacks
+        except Exception:
+            pass
 
         # Track exhaust events (for Feel No Pain, etc.)
         try:
@@ -1432,6 +1484,17 @@ class FastCombatSimulator:
         logger.info(f"[OUTCOME_MULTIPLIER] Applied {damage_multiplier}× damage weight (base: {weights['DAMAGE_WEIGHT']})")
 
         score += total_damage * weights['DAMAGE_WEIGHT'] * damage_multiplier
+
+        # Debuff application bonus (reward setting up future damage).
+        debuff_bonus = 0.0
+        for before, after in zip(initial_state.monsters, final_state.monsters):
+            if before['is_gone'] or after['is_gone']:
+                continue
+            vuln_delta = max(0, after.get('vulnerable', 0) - before.get('vulnerable', 0))
+            weak_delta = max(0, after.get('weak', 0) - before.get('weak', 0))
+            debuff_bonus += vuln_delta * VULNERABLE_APPLY_BONUS
+            debuff_bonus += weak_delta * WEAK_APPLY_BONUS
+        score += debuff_bonus
 
         # AOE card bonus in multi-monster scenarios
         if sequence and num_monsters >= 2:
@@ -2368,6 +2431,25 @@ class HeuristicCombatPlanner(CombatPlanner):
         num_monsters = len(monsters_alive)
         if monsters_alive and hasattr(card, 'type') and card.type == CardType.ATTACK:
             score += FASTSCORE_ATTACK_BONUS
+
+        # Debuff setup bonus when attacks remain (e.g., Shockwave before attacks).
+        if monsters_alive and hasattr(card, 'type') and card.type == CardType.SKILL:
+            card_name = card.card_id.replace('+', '')
+            card_data = game_data_loader.get_card_data(card_name)
+            if card_data:
+                description = card_data.get('description', '').lower()
+                if 'vulnerable' in description or 'weak' in description:
+                    attack_cards = [c for c in context.playable_cards
+                                    if hasattr(c, 'type') and c.type == CardType.ATTACK]
+                    if attack_cards:
+                        is_aoe = game_data_loader._is_card_aoe(card_data) or 'all enemies' in description
+                        bonus = 6
+                        if 'vulnerable' in description:
+                            bonus += 4
+                        bonus += min(len(attack_cards), 3) * 2
+                        if is_aoe and num_monsters > 1:
+                            bonus += 4
+                        score += bonus
 
         # Block bonus at low HP (check by card_id since card.block is not set)
         is_block_card = any(keyword in card_name for keyword in ['Defend', 'Iron Wave', 'Flame Barrier', 'Impervious', 'Entrench'])
