@@ -267,6 +267,12 @@ if __name__ == "__main__":
 
                         agent.game_tracker.record_game_over(result, coordinator.last_game_state)
                         logging.debug("  Recorded game over via last_game_state")
+                        try:
+                            seed_played = getattr(coordinator.last_game_state, 'seed', None)
+                            if seed_played is not None:
+                                logging.info(f"  Seed played: {seed_played}")
+                        except Exception:
+                            pass
                     else:
                         # Fallback: record with minimal info
                         logging.debug("  No last_game_state, using fallback")

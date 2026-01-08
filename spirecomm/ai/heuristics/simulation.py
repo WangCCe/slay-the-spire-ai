@@ -1566,10 +1566,12 @@ class FastCombatSimulator:
             logger.warning(f"[USELESS_DEFENSE] Gained {block_gained} block when no incoming damage expected - completely wasted!")
 
         # Penalty for useless defense (block when monsters aren't attacking)
-        if expected_incoming == 0 and block_gained > 0:
-            # Heavy penalty: block cards are completely wasted this turn
-            score -= block_gained * 10.0  # 10 points per block wasted
-            logger.debug(f"[USELESS_DEFENSE_PENALTY] -{block_gained * 10.0:.1f} score for {block_gained} wasted block")
+        # Disabled: expected_incoming can be 0 when intent/attack data is missing,
+        # which incorrectly punishes defensive plays.
+        # if expected_incoming == 0 and block_gained > 0:
+        #     # Heavy penalty: block cards are completely wasted this turn
+        #     score -= block_gained * 10.0  # 10 points per block wasted
+        #     logger.debug(f"[USELESS_DEFENSE_PENALTY] -{block_gained * 10.0:.1f} score for {block_gained} wasted block")
 
         # Death penalty (infinite score = avoid at all costs)
         if hp_loss_next_turn >= final_state.player_hp:
@@ -2032,12 +2034,28 @@ class HeuristicCombatPlanner(CombatPlanner):
     def _get_incoming_damage(self, context: DecisionContext) -> int:
         """Calculate total incoming damage from all monsters."""
         incoming = 0
+        debug_entries = []
         for monster in context.game.monsters:
             if not monster.is_gone and not monster.half_dead:
                 if monster.move_adjusted_damage is not None:
                     incoming += monster.move_adjusted_damage * monster.move_hits
+                    debug_entries.append(
+                        f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "
+                        f"adjusted={monster.move_adjusted_damage} hits={monster.move_hits}"
+                    )
                 elif monster.intent == Intent.NONE:
                     incoming += 5 * context.act
+                    debug_entries.append(
+                        f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "
+                        f"adjusted=None fallback=act*5({5 * context.act})"
+                    )
+                else:
+                    debug_entries.append(
+                        f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "
+                        f"adjusted=None hits={monster.move_hits}"
+                    )
+        if debug_entries:
+            logger.debug("[INCOMING_DAMAGE] " + " | ".join(debug_entries) + f" => total={incoming}")
         return incoming
 
     def _score_potion(self, potion, context: DecisionContext, state: SimulationState) -> float:
