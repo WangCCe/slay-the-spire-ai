@@ -848,7 +848,7 @@ class FastCombatSimulator:
                 else:
                     # Not an X-block card - try to get block from game data
                     # (needed because Card objects don't have block attribute set)
-                    card_name = card.card_id.replace('+', '')
+                    card_name = (getattr(card, 'name', None) or card.card_id).replace('+', '')
                     card_data = game_data_loader.get_card_data(card_name)
                     if card_data:
                         base_block = game_data_loader._parse_card_block(card_data)
@@ -881,7 +881,7 @@ class FastCombatSimulator:
 
         # Track exhaust events (for Feel No Pain, etc.)
         try:
-            card_name = card.card_id.replace('+', '')
+            card_name = (getattr(card, 'name', None) or card.card_id).replace('+', '')
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
                 description = card_data.get('description', '').lower()
