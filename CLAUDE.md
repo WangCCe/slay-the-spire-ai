@@ -225,6 +225,46 @@ Dynamic programming to maximize node priority scores (different priorities per a
 | `ai_debug.log` | AI debugging and decision history (auto-rotates at 10MB, keeps 5 backups) |
 | `communication_mod_errors.log` | Python exceptions and stack traces |
 
+### Game Run Records (in game directory)
+
+**Location**: `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\`
+
+The game automatically saves detailed JSON records for each run, organized by character class:
+
+```
+runs/
+├── IRONCLAD/          # Ironclad runs
+├── THE_SILENT/        # Silent runs
+├── DEFECT/            # Defect runs
+├── WATCHER/           # Watcher runs
+└── DAILY/             # Daily runs
+```
+
+**File Format**: Each file is named `{timestamp}.run` and contains a JSON object with:
+- **Path Taken**: Node-by-node progression (M=Monster, $=Shop, ?=Event, R=Rest, E=Elite, T=Treasure, B=Boss)
+- **Deck Build**: Full deck list with upgrades, cards purged, cards purchased
+- **Combat Performance**: Damage taken per encounter, turns per combat
+- **Event Choices**: All event decisions and outcomes
+- **Relics/Potions**: Complete acquisition history
+- **Neow Bonus**: Initial run blessing
+- **Ascension Level**: Difficulty setting
+
+**Use Cases**:
+- **Post-Mortem Analysis**: Identify specific failure points (e.g., died to elite on floor 8)
+- **Deck Building Patterns**: Understand what cards are frequently purchased/skipped
+- **Performance Tracking**: Compare win rates across different builds
+- **Decision Validation**: Verify AI is making optimal choices at events/shops
+- **Regression Testing**: Detect if recent changes negatively impact performance
+
+**Example Analysis**:
+```bash
+# View latest Ironclad runs
+ls -lht "/mnt/d/SteamLibrary/steamapps/common/SlayTheSpire/runs/IRONCLAD" | head -10
+
+# Extract key stats from run file
+jq '{floor: .floor_reached, victory: .victory, killed_by: .killed_by, path: .path_taken}' *.run
+```
+
 ### Debugging Workflow
 
 When debugging crashes:
