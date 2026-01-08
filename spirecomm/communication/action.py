@@ -41,7 +41,17 @@ class PlayCardAction(Action):
 
     def execute(self, coordinator):
         if self.card is not None:
-            self.card_index = coordinator.last_game_state.hand.index(self.card)
+            card_uuid = getattr(self.card, 'uuid', None)
+            if card_uuid is not None:
+                for idx, hand_card in enumerate(coordinator.last_game_state.hand):
+                    if getattr(hand_card, 'uuid', None) == card_uuid:
+                        self.card = hand_card
+                        self.card_index = idx
+                        break
+                else:
+                    raise Exception("Specified card for CardAction is not in hand")
+            else:
+                self.card_index = coordinator.last_game_state.hand.index(self.card)
         if self.card_index == -1:
             raise Exception("Specified card for CardAction is not in hand")
         hand_card_index = self.card_index + 1

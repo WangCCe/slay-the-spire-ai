@@ -13,6 +13,7 @@ Key features:
 
 import json
 import os
+import logging
 from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
 
@@ -35,6 +36,7 @@ class EnhancedMonsterDatabase:
 
     def _load_all_data(self):
         """Load monster data from all JSON files."""
+        logger = logging.getLogger(__name__)
         # Base path for monster data
         base_path = Path(__file__).parent.parent.parent / "data" / "monster_wiki_data"
 
@@ -65,11 +67,11 @@ class EnhancedMonsterDatabase:
                                 if 'name' in monster:
                                     self._data[monster['name']] = monster
                         loaded_count = len(monster_data) if isinstance(monster_data, dict) else len(monster_data)
-                        print(f"Loaded {loaded_count} monsters from {filename}")
+                        logger.info("Loaded %s monsters from %s", loaded_count, filename)
                 except Exception as e:
-                    print(f"Warning: Failed to load {filename}: {e}")
+                    logger.warning("Failed to load %s: %s", filename, e)
             else:
-                print(f"Warning: Monster data file not found: {filepath}")
+                logger.warning("Monster data file not found: %s", filepath)
 
     def get_monster_data(self, monster_name: str) -> Optional[Dict[str, Any]]:
         """
