@@ -75,10 +75,10 @@ class AdaptiveMapRouter:
             if symbol == 'E':  # Elite
                 # Consistently avoid elites regardless of floor or HP
                 # Prioritize building deck strength through upgrades first
-                if floor <= 5:
+                if floor <= 6:
                     return base - 300  # Too risky early game
                 elif floor <= 10:
-                    return base - 150  # Still very cautious mid Act 1
+                    return base - 200  # Still very cautious mid Act 1
                 else:
                     # Even late Act 1, only slight consideration when very healthy
                     if hp_pct > 0.85:
