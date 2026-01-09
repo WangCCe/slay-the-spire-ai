@@ -1061,7 +1061,8 @@ class IroncladCombatPlanner(CombatPlanner):
         elif incoming_damage > initial_state.player_block:
             # Need block - value it, but less than damage
             # Defense is temporary (blocks 1 turn), attack is permanent (kills monsters)
-            score += min(block_gained, incoming_damage) * 2  # Reduced from 5 to 2
+            block_value = 3 if self._is_low_scaling_encounter(context) else 2
+            score += min(block_gained, incoming_damage) * block_value
         else:
             # Already safe - minimal value
             score += block_gained * 0.5
@@ -1249,6 +1250,34 @@ class IroncladCombatPlanner(CombatPlanner):
         )
 
         return score
+
+    def _is_low_scaling_encounter(self, context: DecisionContext) -> bool:
+        """Return True for fights without meaningful scaling or time pressure."""
+        try:
+            monsters = getattr(context, 'monsters_alive', [])
+            if not monsters:
+                return False
+
+            for monster in monsters:
+                name = getattr(monster, 'name', None)
+                if not name:
+                    return False
+
+                if game_data_loader.is_monster_summoner(name):
+                    return False
+                if game_data_loader.does_monster_have_phase_change(name):
+                    return False
+
+                threat_profile = game_data_loader.get_monster_threat_profile(name) or {}
+                scaling = threat_profile.get('scaling_threat', 0)
+                if scaling > 2:
+                    return False
+                if 'time_pressure' in threat_profile or 'echoing_doom' in threat_profile:
+                    return False
+
+            return True
+        except Exception:
+            return False
 
     def _is_draw_card(self, card: Card) -> bool:
         """Check if card draws cards."""
