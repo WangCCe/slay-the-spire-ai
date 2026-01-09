@@ -63,38 +63,10 @@ cat "/mnt/d/SteamLibrary/steamapps/common/SlayTheSpire/runs/IRONCLAD/1767889744.
 jq '{floor: .floor_reached, victory: .victory, killed_by: .killed_by, path: .path_taken}' *.run
 ```
 
-### Recent Performance Analysis
-
-As of 2026-01-09, the latest Ironclad runs show:
-
-1. **1767889744.run** - Died on floor 8 to Gremlin Nob (Elite)
-   - Path: M→M→$→?→M→R→M→?
-   - Purchased: Body Slam
-   - Issues: Elite encounter on floor 8
-
-2. **1767886025.run** - Died on floor 7 to Mushroom Lair event
-   - Path: M→M→$→M→?→E→?
-   - Purchased: Sever Soul
-   - Issues: Risky event choice led to death
-
-3. **1767885621.run** - Died on floor 16 to Slime Boss (Act 1 Boss)
-   - Path: M→?→M→?→$→R→$→M→T→M→R→?→$→M→R→B
-   - Best performance, reached Act 1 Boss
-   - Purchased: Rampage, Nunchaku relic
-
-### Common Failure Patterns
-
-| Pattern | Indicator | Potential Cause |
-|---------|-----------|-----------------|
-| **Early Death** (Floor 1-10) | `floor_reached < 10` | Combat decisions, deck building issues |
-| **Elite Death** | `killed_by` in ["Gremlin Nob", "Lagavulin"] | Over-defensive play, damage miscalculation |
-| **Event Death** | Event choice causes death | Poor risk assessment, low HP |
-| **Boss Death** | `path_taken[-1] == "B"` | Insufficient deck power, upgrade issues |
-
 ### Analysis Workflow
 
 1. **Identify Failure Mode** from run records
-2. **Check Logs** (ai_debug.log) for decision details with game_id from ai_game_stats.csv
+2. **Check Logs** (ai_debug.log in d/SteamLibrary/steamapps/common/SlayTheSpire) for decision details with game_id from ai_game_stats.csv
 3. **Locate Code** responsible for the decision
 4. **Implement Fix** in scoring/decision logic
 5. **Verify** by running new games
