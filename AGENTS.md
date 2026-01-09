@@ -94,14 +94,14 @@ As of 2026-01-09, the latest Ironclad runs show:
 ### Analysis Workflow
 
 1. **Identify Failure Mode** from run records
-2. **Check Logs** (ai_debug.log, ai_game_stats.jsonl) for decision details
+2. **Check Logs** (ai_debug.log) for decision details with game_id from ai_game_stats.csv
 3. **Locate Code** responsible for the decision
 4. **Implement Fix** in scoring/decision logic
 5. **Verify** by running new games
 
 ### Integration with Other Logs
 
-- **ai_debug.log** - Detailed decision history (search for `play_id`)
+- **ai_debug.log** - Detailed decision history (search for `game_id`)
 - **ai_game_stats.csv** - Aggregate statistics
 - **ai_game_stats.jsonl** - Per-game detailed logs
 

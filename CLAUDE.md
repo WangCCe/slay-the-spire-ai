@@ -218,12 +218,12 @@ Dynamic programming to maximize node priority scores (different priorities per a
 
 ### Log Files (in game directory)
 
-| File | Purpose |
-|------|---------|
-| `ai_game_stats.csv` | Game statistics (wins, losses, floor, class, etc.) |
-| `ai_game_stats.jsonl` | Detailed game logs (JSONL format) |
-| `ai_debug.log` | AI debugging and decision history (auto-rotates at 10MB, keeps 5 backups) |
-| `communication_mod_errors.log` | Python exceptions and stack traces |
+| File                           | Purpose                                                                                                       |
+|--------------------------------|---------------------------------------------------------------------------------------------------------------|
+| `ai_game_stats.csv`            | Game statistics (wins, losses, floor, class, etc.)                                                            |
+| `ai_game_stats.jsonl`          | Detailed game logs (JSONL format)                                                                             |
+| `ai_debug.log`                 | AI debugging and decision history (auto-rotates at 10MB, keeps 5 backups)(use game_id from ai_game_stats.csv) |
+| `communication_mod_errors.log` | Python exceptions and stack traces                                                                            |
 
 ### Game Run Records (in game directory)
 
