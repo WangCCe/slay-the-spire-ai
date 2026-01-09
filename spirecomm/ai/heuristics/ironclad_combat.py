@@ -1125,6 +1125,16 @@ class IroncladCombatPlanner(CombatPlanner):
                 if self._is_draw_card(card):
                     score += 15
 
+                # Armaments: value upgrades proportional to available targets
+                if card_id_base == 'Armaments':
+                    upgradeable = self._count_upgradeable_cards(
+                        context, exclude_uuid=getattr(card, 'uuid', None)
+                    )
+                    if upgradeable > 0:
+                        upgrades = getattr(card, 'upgrades', 0)
+                        per_card = 3 if upgrades > 0 else 2
+                        score += per_card * upgradeable
+
                 # Limit Break with high strength
                 if card_id == 'Limit Break' and context.strength >= 5:
                     score += 40
@@ -1228,6 +1238,19 @@ class IroncladCombatPlanner(CombatPlanner):
         draw_keywords = ['draw', 'pommel strike', 'shrug it off', 'battle trance']
         card_lower = card.card_id.lower()
         return any(kw in card_lower for kw in draw_keywords)
+
+    def _count_upgradeable_cards(self, context: DecisionContext, exclude_uuid=None) -> int:
+        """Count upgradeable cards in hand (excluding the Armaments card itself)."""
+        hand = getattr(context, 'hand', None)
+        if not hand:
+            hand = getattr(context, 'playable_cards', [])
+        count = 0
+        for card in hand:
+            if exclude_uuid is not None and getattr(card, 'uuid', None) == exclude_uuid:
+                continue
+            if getattr(card, 'upgrades', 0) == 0:
+                count += 1
+        return count
 
     def _fallback_plan(self, context: DecisionContext,
                        playable_cards: List[Card]) -> List[Action]:
