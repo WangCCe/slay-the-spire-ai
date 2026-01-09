@@ -29,24 +29,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-### Installation
-```bash
-python setup.py install
-```
-
 ### Running the AI
 
 **Via Communication Mod (production)**:
 1. Install [Communication Mod](https://github.com/ForgottenArbiter/CommunicationMod)
 2. Configure Communication Mod's `config.properties` (typically at `c:\Users\{USERNAME}\AppData\Local\ModTheSpire\CommunicationMod\config.properties`) to run `main.py`
-3. AI cycles through Ironclad, Silent, Defect indefinitely
 
-**Direct execution (testing)**:
-```bash
-python main.py                    # Optimized AI (auto-enabled for Ironclad)
-python main.py --simple           # Force simple AI
-python main.py --class IRONCLAD   # Set character class
-```
 
 ### Testing
 
@@ -175,16 +163,6 @@ is_aoe = game_data_loader._is_card_aoe(card_data)
 **Override**: Set `SLAY_THE_SPIRE_EXPORT_PATH` environment variable
 **Features**: Auto-initialization, WSL path conversion, 709 cards/178 relics/66 creatures, 3-stage parsing
 
-### X-Card Calculation
-
-X-cards have variable damage/block marked as "X" (Body Slam, Rage, Whirlwind, Bludgeon).
-
-**Implementation**: `spirecomm/ai/heuristics/simulation.py:FastCombatSimulator`
-- Methods: `_calculate_x_damage()`, `_calculate_x_block()`
-- Integrated into beam search and full simulation
-- Normalizes card IDs (removes '+' suffix for upgraded cards)
-
-**Supported**: Ironclad X-cards only (Silent/Defect not implemented)
 
 ### Action Execution
 
