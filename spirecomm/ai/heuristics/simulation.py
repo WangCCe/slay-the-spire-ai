@@ -1181,6 +1181,13 @@ class FastCombatSimulator:
             Total predicted damage over next N turns (discounted for uncertainty)
         """
         try:
+            logger.info(
+                "[LOOKAHEAD_ENTRY] turns=%s monsters=%s hp=%s/%s",
+                look_ahead,
+                len([m for m in state.monsters if not m['is_gone']]),
+                state.player_hp,
+                state.player_max_hp
+            )
             total_future_damage = 0
             current_turn = getattr(context, 'turn', 1)
 
