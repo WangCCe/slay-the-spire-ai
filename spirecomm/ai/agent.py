@@ -572,6 +572,15 @@ class SimpleAgent:
             hp_pct = context.player_hp_pct if context else 0
             if (self._last_route_hp_pct is None or
                     (self._last_route_hp_pct - hp_pct) >= self._map_replan_hp_drop):
+                drop = (self._last_route_hp_pct - hp_pct) if self._last_route_hp_pct is not None else None
+                drop_str = f"{drop:.1%}" if drop is not None else "n/a"
+                logging.info(
+                    "[MAP_ROUTING] Replan triggered: last_hp=%s current_hp=%.1f%% drop=%s threshold=%.1f%%\n",
+                    f"{self._last_route_hp_pct:.1%}" if self._last_route_hp_pct is not None else "n/a",
+                    hp_pct * 100,
+                    drop_str,
+                    self._map_replan_hp_drop * 100,
+                )
                 self.generate_map_route()
         if self.game.screen.boss_available:
             return ChooseMapBossAction()
