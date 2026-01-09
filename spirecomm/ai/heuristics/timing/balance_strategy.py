@@ -59,16 +59,18 @@ class CombatBalanceStrategy:
         try:
             # Check player HP (low HP = more defensive)
             player_hp_pct = self._get_player_hp_percent(context)
-            if player_hp_pct < self.player_hp_threshold:
-                # Low HP - be more defensive
-                return self._get_defensive_adjusted_weights(timing, player_hp_pct)
-
-            # Get base weights for timing
             weights = self._get_base_weights(timing)
+
+            if player_hp_pct < self.player_hp_threshold:
+                weights = self._apply_defensive_adjustment(weights, player_hp_pct)
 
             # Apply monster-specific adjustments from Wiki hints
             if timing_ctx:
                 weights = self._apply_wiki_hints_adjustments(weights, timing_ctx)
+
+            # Low-scaling encounters can afford a steadier, lower-damage approach.
+            if self._is_low_scaling_encounter(context):
+                weights = self._apply_low_scaling_adjustment(weights)
 
             return weights
 
@@ -150,9 +152,9 @@ class CombatBalanceStrategy:
         else:
             return BalanceWeights.balanced_weights()
 
-    def _get_defensive_adjusted_weights(
+    def _apply_defensive_adjustment(
         self,
-        timing: TurnTiming,
+        base_weights: BalanceWeights,
         player_hp_pct: float
     ) -> BalanceWeights:
         """
@@ -160,8 +162,6 @@ class CombatBalanceStrategy:
 
         When player HP is low, we prioritize survival over damage.
         """
-        base_weights = self._get_base_weights(timing)
-
         # Increase block priority, decrease damage priority
         adjustment_factor = 1.0 + (self.player_hp_threshold - player_hp_pct)
 
@@ -172,6 +172,47 @@ class CombatBalanceStrategy:
             lethal_detection=base_weights.lethal_detection,
             block_threshold=int(base_weights.block_threshold * 1.5),
             opportunistic_attack=base_weights.opportunistic_attack
+        )
+
+    def _is_low_scaling_encounter(self, context) -> bool:
+        """Check if all current monsters lack meaningful scaling/time pressure."""
+        try:
+            from spirecomm.data.loader import game_data_loader
+
+            monsters = getattr(context, 'monsters_alive', [])
+            if not monsters:
+                return False
+
+            for monster in monsters:
+                name = getattr(monster, 'name', None)
+                if not name:
+                    return False
+
+                if game_data_loader.is_monster_summoner(name):
+                    return False
+                if game_data_loader.does_monster_have_phase_change(name):
+                    return False
+
+                threat_profile = game_data_loader.get_monster_threat_profile(name) or {}
+                scaling = threat_profile.get('scaling_threat', 0)
+                if scaling > 2:
+                    return False
+                if 'time_pressure' in threat_profile or 'echoing_doom' in threat_profile:
+                    return False
+
+            return True
+        except Exception:
+            return False
+
+    def _apply_low_scaling_adjustment(self, weights: BalanceWeights) -> BalanceWeights:
+        """Bias toward lower damage and higher block in slow, low-scaling fights."""
+        return BalanceWeights(
+            damage_weight=weights.damage_weight * 0.9,
+            block_weight=weights.block_weight * 1.2,
+            kill_bonus=weights.kill_bonus * 0.9,
+            lethal_detection=weights.lethal_detection,
+            block_threshold=int(weights.block_threshold * 1.2),
+            opportunistic_attack=weights.opportunistic_attack
         )
 
     def _apply_wiki_hints_adjustments(

@@ -145,6 +145,7 @@ class IroncladCombatPlanner(CombatPlanner):
             context,
             timing_context
         )
+        timing_context.balance_weights = balance_weights
         logger.info(f"[TIMING_WEIGHTS] Using {timing_context.turn_timing.value} weights: "
                    f"damage={balance_weights.damage_weight:.2f}, block={balance_weights.block_weight:.2f}, "
                    f"kill_bonus={balance_weights.kill_bonus:.1f}")

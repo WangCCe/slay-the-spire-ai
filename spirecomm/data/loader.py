@@ -867,6 +867,21 @@ class GameDataLoader:
             return db.get_threat_profile(monster_name)
         return None
 
+    def get_monster_type(self, monster_name: str) -> str:
+        """
+        Get monster type (normal, elite, boss) from Wiki data.
+
+        Args:
+            monster_name: Name of the monster
+
+        Returns:
+            Monster type string (defaults to "normal" if unavailable)
+        """
+        db = self._get_enhanced_monster_db()
+        if db and isinstance(db, object):
+            return db.get_monster_type(monster_name)
+        return "normal"
+
     def predict_monster_moves(self, monster_name: str, current_turn: int,
                              monster_hp_percent: float) -> List[Dict[str, Any]]:
         """
