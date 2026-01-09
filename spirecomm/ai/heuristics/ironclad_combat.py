@@ -210,7 +210,11 @@ class IroncladCombatPlanner(CombatPlanner):
         beam = [([], initial_state, 0, float('-inf'))]  # (actions, state, energy_spent, score)
 
         best_sequence = []
-        best_score = self._score_sequence([], initial_state, initial_state, context)
+        # Only allow empty sequence when there are no playable cards.
+        if playable_cards:
+            best_score = float('-inf')
+        else:
+            best_score = self._score_sequence([], initial_state, initial_state, context)
 
         for depth in range(max_depth):
             new_candidates = []
@@ -984,6 +988,15 @@ class IroncladCombatPlanner(CombatPlanner):
         else:
             damage_weight = 3.0
             block_penalty = False
+
+        # If no attack cards are playable, don't punish defensive sequences.
+        if block_penalty:
+            has_attack_playable = any(
+                hasattr(card, 'type') and card.type == CardType.ATTACK
+                for card in context.playable_cards
+            )
+            if not has_attack_playable:
+                block_penalty = False
 
         # 1. Monsters killed (huge bonus)
         kills = final_state.monsters_killed
