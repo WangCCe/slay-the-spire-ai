@@ -9,7 +9,7 @@ import copy
 import logging
 import re
 import time
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster, Intent
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
@@ -66,6 +66,12 @@ ENERGY_SYNERGY_VALUE = 4.0  # Points per energy gained/saved (Corruption, Bloodl
 # Debuff application bonuses
 VULNERABLE_APPLY_BONUS = 6.0
 WEAK_APPLY_BONUS = 3.0
+
+# Lookahead risk adjustments for player debuffs
+LOOKAHEAD_WEAK_RISK_PER_STACK = 0.05
+LOOKAHEAD_FRAIL_RISK_PER_STACK = 0.07
+LOOKAHEAD_DEBUFF_RISK_CAP = 0.2
+LOOKAHEAD_DAMAGE_DISCOUNT = 0.8
 
 # Adaptive search parameters
 BEAM_WIDTH_ACT1 = 20  # Beam width for Act 1 (simple enemies) - increased from 12 (+67%)
@@ -729,6 +735,12 @@ class FastCombatSimulator:
             return int(damage * 1.5)
         return damage
 
+    def _apply_player_vulnerable_damage(self, damage: int, player_vulnerable: int) -> int:
+        """Apply vulnerable multiplier (1.5x) to damage taken by the player."""
+        if player_vulnerable > 0:
+            return int(damage * 1.5)
+        return damage
+
     def _apply_weak_damage(self, damage: int, player_weak: int) -> int:
         """Apply weak multiplier (0.75x). Binary: any weak stacks = 0.75x damage."""
         if player_weak > 0:
@@ -759,6 +771,31 @@ class FastCombatSimulator:
         if player_frail > 0:
             return int(block * 0.75)
         return block
+
+    def _apply_debuff_risk_multiplier(self, damage: int, player_weak: int, player_frail: int) -> int:
+        """Adjust expected damage based on player Weak/Frail stacks."""
+        risk_multiplier = 1.0
+        if player_weak > 0:
+            risk_multiplier += min(LOOKAHEAD_WEAK_RISK_PER_STACK * player_weak, LOOKAHEAD_DEBUFF_RISK_CAP)
+        if player_frail > 0:
+            risk_multiplier += min(LOOKAHEAD_FRAIL_RISK_PER_STACK * player_frail, LOOKAHEAD_DEBUFF_RISK_CAP)
+        return int(damage * risk_multiplier)
+
+    def _extract_move_debuffs(self, move: Dict[str, Any]) -> Dict[str, int]:
+        """Extract debuff stacks applied to the player from a monster move."""
+        def _get_stack(key: str) -> int:
+            value = move.get(key, 0)
+            if isinstance(value, bool):
+                return 1 if value else 0
+            if isinstance(value, (int, float)):
+                return int(value)
+            return 0
+
+        return {
+            'weak': _get_stack('weak') or _get_stack('weak_applied') or _get_stack('weak_amount'),
+            'frail': _get_stack('frail') or _get_stack('frail_applied') or _get_stack('frail_amount'),
+            'vulnerable': _get_stack('vulnerable') or _get_stack('vulnerable_applied') or _get_stack('vulnerable_amount'),
+        }
 
     def _calculate_x_damage(self, card: Card, state: SimulationState, context: DecisionContext) -> int:
         """
@@ -1118,11 +1155,22 @@ class FastCombatSimulator:
 
         return total_damage
 
-    def calculate_future_monster_damage(self, state: SimulationState, context: DecisionContext, look_ahead: int = 2) -> int:
-        """
-        Calculate future monster damage over next N turns using Wiki move predictions.
+    def _get_enemy_lookahead_depth(self, state: SimulationState, context: DecisionContext, max_depth: int = 2) -> int:
+        """Gate lookahead depth based on combat complexity and data availability."""
+        try:
+            monsters_alive = sum(1 for monster in state.monsters if not monster['is_gone'])
+            playable_cards = len(getattr(context, 'playable_cards', []))
 
-        This enables proactive AI by anticipating future threats, not just current intent.
+            if monsters_alive <= 1 and playable_cards <= 3:
+                return 1
+
+            return max_depth
+        except Exception:
+            return max_depth
+
+    def simulate_enemy_lookahead(self, state: SimulationState, context: DecisionContext, look_ahead: int = 2) -> int:
+        """
+        Simulate enemy-only lookahead for the next N turns, applying debuffs to the player.
 
         Args:
             state: Current simulation state
@@ -1130,16 +1178,16 @@ class FastCombatSimulator:
             look_ahead: Number of turns to predict (default: 2)
 
         Returns:
-            Total predicted damage over next N turns
+            Total predicted damage over next N turns (discounted for uncertainty)
         """
         try:
-            # Import required modules
-            from spirecomm.data.loader import game_data_loader
-
             total_future_damage = 0
             current_turn = getattr(context, 'turn', 1)
 
-            for monster in state.monsters:
+            predicted_by_monster: Dict[int, List[Dict[str, Any]]] = {}
+            any_predictions = False
+
+            for idx, monster in enumerate(state.monsters):
                 if monster['is_gone']:
                     continue
 
@@ -1147,54 +1195,91 @@ class FastCombatSimulator:
                 if not monster_name:
                     continue
 
-                # Calculate HP percentage for phase-based predictions
                 max_hp = monster.get('max_hp', monster['hp'])
                 hp_percent = monster['hp'] / max_hp if max_hp > 0 else 1.0
 
-                # Get current monster strength for scaling predictions
-                current_strength = monster.get('strength', 0)
-
-                # Use Wiki move predictions
                 predicted_moves = game_data_loader.predict_monster_moves(
                     monster_name, current_turn, hp_percent
                 )
+                predicted_by_monster[idx] = predicted_moves
+                if predicted_moves:
+                    any_predictions = True
 
-                if not predicted_moves:
-                    # Fallback: use current intent for all future turns
-                    predicted_damage = monster.get('move_adjusted_damage', 0)
-                    if predicted_damage == 0:
-                        predicted_damage = monster.get('move_base_damage', 0)
+            if not any_predictions:
+                look_ahead = 1
 
-                    # Apply to all look-ahead turns
-                    total_future_damage += predicted_damage * look_ahead
-                    continue
+            player_vulnerable = state.player_vulnerable
+            player_weak = state.player_weak
+            player_frail = state.player_frail
 
-                # Sum damage from predicted moves (up to look_ahead turns)
-                for i, move in enumerate(predicted_moves[:look_ahead]):
-                    move_intent = move.get('intent', '').upper()
-                    move_damage = move.get('damage', 0)
+            for step in range(look_ahead):
+                turn_damage = 0
+                pending_debuffs = {'weak': 0, 'frail': 0, 'vulnerable': 0}
 
-                    # Only count attack intents
-                    if 'ATTACK' in move_intent:
-                        # Apply strength scaling prediction
-                        if current_strength > 0:
-                            move_damage += current_strength
+                for idx, monster in enumerate(state.monsters):
+                    if monster['is_gone']:
+                        continue
 
-                        # Discount future damage (0.8^turn for uncertainty)
-                        discount = 0.8 ** i
-                        total_future_damage += int(move_damage * discount)
+                    predicted_moves = predicted_by_monster.get(idx, [])
+                    move = None
+                    if predicted_moves and step < len(predicted_moves):
+                        move = predicted_moves[step].get('move', None)
 
-                logger.debug(f"[FUTURE_DAMAGE] {monster_name}: predicted {total_future_damage} damage over {look_ahead} turns")
+                    if move:
+                        move_intent = move.get('intent', '').upper()
+                        move_damage = move.get('damage', 0)
+                        move_hits = move.get('hits', 1)
+
+                        if 'ATTACK' in move_intent and move_damage:
+                            damage = move_damage * move_hits
+                            current_strength = monster.get('strength', 0)
+                            if current_strength > 0:
+                                damage += current_strength * move_hits
+                            damage = self._apply_player_vulnerable_damage(damage, player_vulnerable)
+                            damage = self._apply_debuff_risk_multiplier(damage, player_weak, player_frail)
+                            discount = LOOKAHEAD_DAMAGE_DISCOUNT ** step
+                            turn_damage += int(damage * discount)
+
+                        move_debuffs = self._extract_move_debuffs(move)
+                        pending_debuffs['weak'] += move_debuffs['weak']
+                        pending_debuffs['frail'] += move_debuffs['frail']
+                        pending_debuffs['vulnerable'] += move_debuffs['vulnerable']
+                    else:
+                        fallback_damage = monster.get('move_adjusted_damage', 0) or monster.get('move_base_damage', 0)
+                        if fallback_damage > 0:
+                            move_hits = monster.get('move_hits', 1)
+                            damage = fallback_damage * move_hits
+                            current_strength = monster.get('strength', 0)
+                            if current_strength > 0:
+                                damage += current_strength * move_hits
+                            damage = self._apply_player_vulnerable_damage(damage, player_vulnerable)
+                            damage = self._apply_debuff_risk_multiplier(damage, player_weak, player_frail)
+                            discount = LOOKAHEAD_DAMAGE_DISCOUNT ** step
+                            turn_damage += int(damage * discount)
+
+                total_future_damage += turn_damage
+
+                player_vulnerable = max(0, player_vulnerable + pending_debuffs['vulnerable'] - 1)
+                player_weak = max(0, player_weak + pending_debuffs['weak'] - 1)
+                player_frail = max(0, player_frail + pending_debuffs['frail'] - 1)
+
+                logger.debug(
+                    f"[LOOKAHEAD_TURN] step={step + 1} damage={turn_damage} "
+                    f"debuffs=V{player_vulnerable}/W{player_weak}/F{player_frail}"
+                )
 
             if total_future_damage > 0:
-                logger.info(f"[FUTURE_DAMAGE] Total predicted damage over next {look_ahead} turns: {total_future_damage}")
+                logger.info(f"[LOOKAHEAD] Predicted damage over next {look_ahead} turns: {total_future_damage}")
 
             return total_future_damage
 
         except Exception as e:
-            logger.warning(f"[FUTURE_DAMAGE] Failed to calculate future damage: {e}")
-            # Fallback to 0 (no prediction available)
+            logger.warning(f"[LOOKAHEAD] Failed to simulate enemy lookahead: {e}")
             return 0
+
+    def calculate_future_monster_damage(self, state: SimulationState, context: DecisionContext, look_ahead: int = 2) -> int:
+        """Compatibility wrapper for future damage prediction."""
+        return self.simulate_enemy_lookahead(state, context, look_ahead)
 
     def _handle_death_split(self, state: SimulationState, monster: dict, monster_index: int):
         """
@@ -1612,15 +1697,18 @@ class FastCombatSimulator:
         # === FUTURE DAMAGE PENALTY (proactive AI using Wiki move predictions) ===
         if context is not None:
             try:
-                # Calculate future monster damage over next 2 turns using Wiki predictions
-                future_damage = self.calculate_future_monster_damage(final_state, context, look_ahead=2)
+                lookahead_turns = self._get_enemy_lookahead_depth(final_state, context)
+                future_damage = self.simulate_enemy_lookahead(final_state, context, look_ahead=lookahead_turns)
 
                 if future_damage > 0:
                     # Apply future damage penalty at 50% weight (uncertainty discount)
                     # This makes the AI proactive about preventing future threats
                     future_damage_penalty = future_damage * weights['W_DEATHRISK'] * 0.5
                     score -= future_damage_penalty
-                    logger.info(f"[FUTURE_DAMAGE_PENALTY] -{future_damage_penalty:.1f} score for {future_damage} predicted damage over next 2 turns")
+                    logger.info(
+                        f"[FUTURE_DAMAGE_PENALTY] -{future_damage_penalty:.1f} score for "
+                        f"{future_damage} predicted damage over next {lookahead_turns} turns"
+                    )
             except Exception as e:
                 logger.warning(f"[FUTURE_DAMAGE_PENALTY] Failed to apply future damage penalty: {e}")
 
