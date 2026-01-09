@@ -1034,13 +1034,24 @@ class FastCombatSimulator:
             Expected total damage
         """
         total_damage = 0
+        debug_entries = []
+        intent_present = False
+        attack_intent_present = False
 
         for monster in monsters_state:
             if monster['is_gone']:
+                debug_entries.append(
+                    f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"
+                    "skip=gone"
+                )
                 continue
 
             intent = monster.get('intent')
             if intent is None:
+                debug_entries.append(
+                    f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"
+                    "skip=intent=None"
+                )
                 continue
 
             # Import Intent enum if available
@@ -1055,14 +1066,19 @@ class FastCombatSimulator:
                 intent_str = str(intent)
 
             # Estimate damage based on intent
+            intent_present = True
             if 'ATTACK' in intent_str.upper() or 'ATTACK_BUFF' in intent_str.upper() or 'ATTACK_DEBUFF' in intent_str.upper() or 'ATTACK_DEFEND' in intent_str.upper():
+                attack_intent_present = True
                 # Use actual monster damage data from game state
                 damage = monster.get('move_adjusted_damage', 0)
+                hits = monster.get('move_hits', 1) or 1
+                damage_source = "adjusted"
 
                 # Fallback to base_damage if adjusted_damage not available
                 if damage == 0:
                     damage = monster.get('move_base_damage', 0)
                     if damage > 0:
+                        damage_source = "base"
                         logger.debug(f"[DAMAGE_FALLBACK] Monster '{monster.get('name', 'Unknown')}' using base_damage={damage}")
 
                 # If still no damage data, use conservative estimate based on monster
@@ -1071,9 +1087,11 @@ class FastCombatSimulator:
                     monster_name = monster.get('name', '')
                     if 'elite' in monster_name.lower() or 'boss' in monster_name.lower():
                         damage = 15  # Elite/boss hit harder
+                        damage_source = "fallback_elite"
                         logger.warning(f"[DAMAGE_FALLBACK] Monster '{monster_name}' using ELITE fallback damage={damage} (no damage data available)")
                     else:
                         damage = 8  # Normal monster
+                        damage_source = "fallback_normal"
                         logger.warning(f"[DAMAGE_FALLBACK] Monster '{monster_name}' using NORMAL fallback damage={damage} (no damage data available)")
 
                 # Adjust for monster strength
@@ -1082,10 +1100,21 @@ class FastCombatSimulator:
                     logger.debug(f"[DAMAGE_FALLBACK] Monster '{monster.get('name', 'Unknown')}' has Strength {strength}, damage: {damage} → {damage + strength}")
                     damage += strength
 
+                debug_entries.append(
+                    f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"
+                    f"intent={intent_str} damage={damage} hits={hits} source={damage_source}"
+                )
                 total_damage += damage
+            else:
+                debug_entries.append(
+                    f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"
+                    f"skip=intent={intent_str}"
+                )
 
         if total_damage > 0:
             logger.debug(f"[INCOMING_DAMAGE] Estimated total incoming damage: {total_damage}")
+        elif debug_entries and (attack_intent_present or intent_present):
+            logger.info("[INCOMING_DAMAGE_ZERO] " + " | ".join(debug_entries))
 
         return total_damage
 

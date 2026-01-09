@@ -113,7 +113,10 @@ class IroncladCombatPlanner(CombatPlanner):
         # Log monster intents for debugging over-defense issues
         for i, monster in enumerate(context.monsters_alive):
             intent_str = str(monster.intent) if hasattr(monster, 'intent') else 'UNKNOWN'
-            logger.info(f"[COMBAT] Monster {i+1}: {monster.name}, Intent: {intent_str}, HP: {monster.current_hp}/{monster.max_hp}")
+            logger.info(
+                f"[COMBAT] Monster {i+1}: {monster.name}({monster.monster_id}), move_id={monster.move_id}, "
+                f"Intent: {intent_str}, HP: {monster.current_hp}/{monster.max_hp}"
+            )
 
         # Step 1: Check for lethal (can we kill all monsters this turn?)
         logger.info("[COMBAT] About to check lethal...")
