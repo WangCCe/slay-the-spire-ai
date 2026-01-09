@@ -70,6 +70,8 @@ class AdaptiveMapRouter:
 
     def _adjust_act_1_priority(self, symbol: str, base: int, hp_pct: float, floor: int) -> int:
         """Act 1 priorities - Ironclad prioritizes upgrades and avoids elites."""
+        if symbol == 'E' and floor <= 7:
+            return -10000  # Hard-ban early elites
         # Ironclad prioritizes rest sites for card upgrades, avoids elites consistently
         if self.player_class == 'IRONCLAD':
             if symbol == 'E':  # Elite
