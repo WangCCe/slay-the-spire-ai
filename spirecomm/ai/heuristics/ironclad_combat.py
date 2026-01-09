@@ -17,7 +17,7 @@ import copy
 import time
 from typing import List, Tuple, Optional, Dict
 from enum import Enum
-from .simulation import CombatPlanner, SimulationState, FastCombatSimulator
+from .simulation import CombatPlanner, SimulationState, FastCombatSimulator, W_DEATHRISK
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
@@ -1065,6 +1065,22 @@ class IroncladCombatPlanner(CombatPlanner):
         else:
             # Already safe - minimal value
             score += block_gained * 0.5
+
+        # 3.5. Future damage penalty (multi-turn enemy lookahead)
+        try:
+            lookahead_turns = self.simulator._get_enemy_lookahead_depth(final_state, context)
+            future_damage = self.simulator.simulate_enemy_lookahead(final_state, context, look_ahead=lookahead_turns)
+            if future_damage > 0:
+                future_damage_penalty = future_damage * W_DEATHRISK * 0.5
+                score -= future_damage_penalty
+                logger.info(
+                    "[FUTURE_DAMAGE_PENALTY] -%.1f score for %s predicted damage over next %s turns",
+                    future_damage_penalty,
+                    future_damage,
+                    lookahead_turns
+                )
+        except Exception as e:
+            logger.warning("[FUTURE_DAMAGE_PENALTY] Failed to apply future damage penalty: %s", e)
 
         # 4. Energy efficiency
         energy_used = final_state.energy_spent
