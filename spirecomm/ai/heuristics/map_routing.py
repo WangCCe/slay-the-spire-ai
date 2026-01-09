@@ -53,10 +53,10 @@ class AdaptiveMapRouter:
         base_priority = self.BASE_NODE_PRIORITIES.get(symbol, 0)
         hp_pct = context.player_hp_pct
         act = context.act
+        floor = getattr(context, 'floor', 0) or 0
 
         # Act 1: Character-specific strategies
         if act == 1:
-            floor = getattr(context, 'floor', 0) or 0
             base_priority = self._adjust_act_1_priority(symbol, base_priority, hp_pct, floor)
 
         # Act 2+: More conservative
@@ -64,7 +64,7 @@ class AdaptiveMapRouter:
             base_priority = self._adjust_act_2_plus_priority(symbol, base_priority, hp_pct)
 
         # Generic HP-based adjustments for all acts
-        base_priority = self._adjust_for_hp(symbol, base_priority, hp_pct)
+        base_priority = self._adjust_for_hp(symbol, base_priority, hp_pct, act=act, floor=floor)
 
         return base_priority
 
@@ -75,7 +75,7 @@ class AdaptiveMapRouter:
             if symbol == 'E':  # Elite
                 # Consistently avoid elites regardless of floor or HP
                 # Prioritize building deck strength through upgrades first
-                if floor <= 6:
+                if floor <= 7:
                     return base - 300  # Too risky early game
                 elif floor <= 10:
                     return base - 200  # Still very cautious mid Act 1
@@ -137,7 +137,7 @@ class AdaptiveMapRouter:
 
         return base
 
-    def _adjust_for_hp(self, symbol: str, base: int, hp_pct: float) -> int:
+    def _adjust_for_hp(self, symbol: str, base: int, hp_pct: float, act: int = None, floor: int = None) -> int:
         """Generic HP-based adjustments."""
         # Critical HP: prioritize survival
         if hp_pct < 0.25:
@@ -150,7 +150,7 @@ class AdaptiveMapRouter:
 
         # Very healthy: can afford risks
         elif hp_pct > 0.85:
-            if symbol == 'E':
+            if symbol == 'E' and not (act == 1 and floor is not None and floor <= 7):
                 return base + 50
             elif symbol == 'R':
                 return base - 150

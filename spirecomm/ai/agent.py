@@ -47,6 +47,9 @@ class SimpleAgent:
         self.skipped_cards = False
         self.visited_shop = False
         self.map_route = []
+        self._last_route_hp_pct = None
+        self._last_route_floor = None
+        self._map_replan_hp_drop = 0.10
         self.chosen_class = chosen_class
         self.priorities = Priority()
         self.map_router = None
@@ -550,6 +553,8 @@ class SimpleAgent:
             if node:
                 path_summary.append(f"{y}:{node.symbol}")
         logging.info(f"[MAP_ROUTING] Chosen path: {' -> '.join(path_summary)}\n")
+        self._last_route_hp_pct = hp_pct
+        self._last_route_floor = floor
 
     def _calculate_map_node_priority(self, node, context):
         if self.map_router is None or context is None:
@@ -562,6 +567,12 @@ class SimpleAgent:
         if len(self.game.screen.next_nodes) > 0 and self.game.screen.next_nodes[0].y == 0:
             self.generate_map_route()
             self.game.screen.current_node.y = -1
+        else:
+            context = DecisionContext(self.game) if DecisionContext is not None else None
+            hp_pct = context.player_hp_pct if context else 0
+            if (self._last_route_hp_pct is None or
+                    (self._last_route_hp_pct - hp_pct) >= self._map_replan_hp_drop):
+                self.generate_map_route()
         if self.game.screen.boss_available:
             return ChooseMapBossAction()
         chosen_x = self.map_route[self.game.screen.current_node.y + 1]
