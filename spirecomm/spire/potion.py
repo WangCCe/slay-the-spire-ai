@@ -66,6 +66,9 @@ class Potion:
         self.target_type = effect_data["target_type"]
 
     def __eq__(self, other):
+        # Handle case where other is not a Potion object (e.g., primitive type)
+        if not hasattr(other, 'potion_id'):
+            return False
         return other.potion_id == self.potion_id
 
     @classmethod

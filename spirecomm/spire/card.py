@@ -61,4 +61,7 @@ class Card:
         )
 
     def __eq__(self, other):
+        # Handle case where other is not a Card object (e.g., primitive type)
+        if not hasattr(other, 'uuid'):
+            return False
         return self.uuid == other.uuid
