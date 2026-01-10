@@ -19,6 +19,78 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 ---
 
+## 🐍 Python Environments
+
+This project uses two separate Python environments for different purposes:
+
+### Windows Environment (Production)
+
+**Path**: `D:\anaconda\envs\stsai\python.exe`
+
+**Purpose**: Running the AI with Communication Mod during actual gameplay
+
+**Configuration**:
+- Used in: `C:\Users\20571\AppData\Local\ModTheSpire\CommunicationMod\config.properties`
+- Example command:
+  ```properties
+  command="D\:/anaconda/envs/stsai/python.exe" "D\:/PycharmProjects/slay-the-spire-ai/main.py" -a 20 --agent optimized
+  ```
+
+**Dependencies**:
+- PyTorch 2.x with CUDA support
+- All spirecomm dependencies
+- Communication Mod compatible
+
+**Performance**: Native Windows execution, minimal overhead (~100-200ms per decision)
+
+### WSL Environment (Development)
+
+**Path**: `/home/wangce/miniconda3/envs/minimind310/bin/python`
+
+**Purpose**: Development, testing, and debugging only
+
+**Used by**:
+- Development commands in terminal
+- Test scripts (`test_*.py`)
+- Code debugging and experimentation
+
+**Dependencies**:
+- PyTorch 2.3.0
+- CUDA 12.1
+- Development tools (git, vim, etc.)
+
+**Performance Warning**: ⚠️ **Do NOT use for actual gameplay**
+- WSL has ~7-38x slower decision times (0.7-3.8s vs 100-200ms)
+- Windows/WSL process boundary creates significant overhead
+- Only suitable for development/testing, not production games
+
+### Quick Reference
+
+| Environment | Path | Purpose | Performance |
+|-------------|------|---------|-------------|
+| **Windows** | `D:\anaconda\envs\stsai\python.exe` | Production gameplay | ✅ Fast (~100-200ms) |
+| **WSL** | `/home/wangce/miniconda3/envs/minimind310/bin/python` | Development only | ❌ Slow (0.7-3.8s) |
+
+### Important Notes
+
+1. **Always use Windows Python for Communication Mod**
+   - Edit `config.properties` to use `D:\anaconda\envs\stsai\python.exe`
+   - Never use WSL paths in `config.properties`
+
+2. **WSL is for development workflow**
+   - Writing code
+   - Running tests
+   - Debugging
+   - Git operations
+
+3. **Performance comparison** (from actual testing):
+   ```
+   Windows Python:  14:08:04 → 14:08:04  (~100ms)  ✅
+   WSL Python:      14:08:04 → 14:08:07  (~3s)     ❌
+   ```
+
+---
+
 # AI Agent Development Guide
 
 ## 📊 Game Run Records Analysis

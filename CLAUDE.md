@@ -29,11 +29,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
+### Python Environments
+
+This project uses two separate Python environments:
+
+**Windows Environment (Production)**:
+- Path: `D:\anaconda\envs\stsai\python.exe`
+- Purpose: Running the AI with Communication Mod (real gameplay)
+- Used by: Communication Mod's `config.properties`
+- Contains: All dependencies including PyTorch 2.x with CUDA support
+- Why: Native Windows performance, no WSL overhead
+
+**WSL Environment (Development)**:
+- Path: `/home/wangce/miniconda3/envs/minimind310/bin/python`
+- Purpose: Development, testing, debugging
+- Used by: Development commands, test scripts
+- Contains: PyTorch 2.3.0, CUDA 12.1, development tools
+- Why: Access to Linux tools, git, development workflow
+
+**Important**: Always use the Windows environment when running through Communication Mod. The WSL environment has significant performance overhead (~7-38x slower) due to Windows/WSL process boundary.
+
 ### Running the AI
 
 **Via Communication Mod (production)**:
 1. Install [Communication Mod](https://github.com/ForgottenArbiter/CommunicationMod)
 2. Configure Communication Mod's `config.properties` (typically at `c:\Users\{USERNAME}\AppData\Local\ModTheSpire\CommunicationMod\config.properties`) to run `main.py`
+3. Use Windows Python path: `D:\anaconda\envs\stsai\python.exe`
 
 
 ### Testing
