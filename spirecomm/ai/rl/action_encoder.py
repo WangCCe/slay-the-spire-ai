@@ -233,20 +233,18 @@ class ActionEncoder:
             if len(choices) == 0:
                 mask[self.CARD_REWARD_OFFSET] = True
 
-        # Combat reward screen (potions/relics after battle)
+        # Combat reward screen (potions/relics/cards/gold after battle)
         elif "COMBAT_REWARD" in str(game.screen_type):
-            # Check for potion rewards
-            potions = game.potions if game.potions else []
-            # Enable use potion actions if potions available
-            for potion_idx in range(min(len(potions), self.MAX_POTIONS)):
-                # For combat rewards, potions are typically used immediately
-                # Use potion at target -1 (no target needed for combat rewards)
-                action_idx = self.encode_use_potion(potion_idx, 0)
-                mask[action_idx] = True
+            # Use choose commands to select rewards
+            # choice_list contains available rewards (cards, relics, potions, gold)
+            choices = game.choice_list if game.choice_list else []
+            for i in range(len(choices)):
+                if i < 10:  # Max 10 reward options
+                    mask[self.CARD_REWARD_OFFSET + i] = True
 
-            # Always enable proceed to skip reward or continue after taking potion
+            # Always enable proceed to skip taking a reward
             mask[self.PROCEED_ACTION] = True
-            logger.debug(f"COMBAT_REWARD: Enabled {len(potions)} potion actions and proceed")
+            logger.debug(f"COMBAT_REWARD: Enabled {len(choices)} reward choices and proceed")
 
         # Grid screen (card selection/removal/upgrade)
         elif "GRID" in str(game.screen_type):
