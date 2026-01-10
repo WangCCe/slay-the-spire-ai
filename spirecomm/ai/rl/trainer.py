@@ -72,10 +72,14 @@ class DQNTrainer:
         self.device = device
 
         # Networks
+        logger.debug(f"Creating online network on {device}...")
         self.online_network = create_dqn("standard", state_dim, action_dim, device)
+        logger.debug(f"Creating target network on {device}...")
         self.target_network = create_dqn("standard", state_dim, action_dim, device)
+        logger.debug(f"Syncing target network with online network...")
         self.target_network.load_state_dict(self.online_network.state_dict())
         self.target_network.eval()
+        logger.debug(f"Networks created and synced successfully")
 
         # Optimizer
         self.optimizer = torch.optim.Adam(self.online_network.parameters(), lr=learning_rate)
