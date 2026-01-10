@@ -3,6 +3,7 @@ import queue
 import threading
 import json
 import collections
+import time
 
 from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
@@ -281,9 +282,27 @@ class Coordinator:
                 raise Exception("Failed to start new game")
 
         # Play until game ends
+        last_update_time = time.time()
+        consecutive_timeouts = 0
+        max_consecutive_timeouts = 6  # 6 * 10 seconds = 60 seconds total
+
         while self.in_game:
             self.execute_next_action_if_ready()
-            self.receive_game_state_update()
+
+            # Use blocking call with timeout to detect hangs
+            state_update = self.receive_game_state_update(block=True, perform_callbacks=True)
+
+            # Track last successful update
+            if state_update is not None:
+                last_update_time = time.time()
+                consecutive_timeouts = 0
+            else:
+                consecutive_timeouts += 1
+                if consecutive_timeouts >= max_consecutive_timeouts:
+                    raise Exception(
+                        f"Game appears stuck (no state update for {consecutive_timeouts * 10} seconds). "
+                        f"Last action may have caused the game to hang."
+                    )
 
         # Return victory status (handle case where screen isn't GAME_OVER)
         if hasattr(self.last_game_state, 'screen_type'):
