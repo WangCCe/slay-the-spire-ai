@@ -57,19 +57,55 @@ class StateEncoder:
         return features
 
     def _encode_single_card(self, card: Card) -> List[float]:
-        damage, block = 0, 0
-        for p in card.properties:
-            if hasattr(p, 'damage'): damage = getattr(p, 'damage', 0)
-            if hasattr(p, 'block'): block = getattr(p, 'block', 0)
+        # Safely extract card properties with error handling
+        damage = 0
+        block = 0
+
+        # Try to get damage/block from card properties if available
+        if hasattr(card, 'properties') and card.properties:
+            try:
+                for p in card.properties:
+                    if hasattr(p, 'damage'):
+                        damage = getattr(p, 'damage', 0)
+                    if hasattr(p, 'block'):
+                        block = getattr(p, 'block', 0)
+            except (AttributeError, TypeError):
+                pass  # Use default values
+
+        # Fallback: try to get directly from card
+        if damage == 0 and hasattr(card, 'damage'):
+            try:
+                damage = card.damage
+            except (AttributeError, TypeError):
+                pass
+
+        if block == 0 and hasattr(card, 'block'):
+            try:
+                block = card.block
+            except (AttributeError, TypeError):
+                pass
+
+        # Get card type safely
+        card_type_val = 0
+        if hasattr(card, 'card_type'):
+            try:
+                card_type_val = int(card.card_type) if card.card_type is not None else 0
+            except (TypeError, ValueError):
+                card_type_val = 0
+
         return [
-            hash(card.id) % 100 / 100.0,
-            min((card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost), 3) / 3.0,
+            hash(card.id) % 100 / 100.0 if hasattr(card, 'id') else 0.0,
+            min((card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost), 3) / 3.0 if hasattr(card, 'cost') else 0.0,
             min(damage, 30) / 30.0,
             min(block, 20) / 20.0,
-            *[1.0 if card.card_type == ct else 0.0 for ct in [0, 1, 2, 3]],
-            1.0 if card.upgrade != 0 else 0.0,
-            0.0, 1.0 if hasattr(card, 'exhausts') and card.exhausts else 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            1.0 if card_type_val == 0 else 0.0,  # Attack
+            1.0 if card_type_val == 1 else 0.0,  # Skill
+            1.0 if card_type_val == 2 else 0.0,  # Power
+            1.0 if card_type_val == 3 else 0.0,  # Status/Curse
+            1.0 if (hasattr(card, 'upgrade') and card.upgrade != 0) else 0.0,
+            0.0,  # placeholder
+            1.0 if (hasattr(card, 'exhausts') and card.exhausts) else 0.0 if hasattr(card, 'exhausts') else 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
         ]
 
     def _encode_deck_composition(self, game: Game) -> List[float]:
@@ -104,7 +140,21 @@ class StateEncoder:
         features = []
         for i in range(5):
             if i < len(potions):
-                name = potions[i].name if hasattr(potions[i], 'name') else str(potions[i])
+                # Safely get potion name/id
+                potion = potions[i]
+                if hasattr(potion, 'potion_id'):
+                    name = potion.potion_id
+                elif hasattr(potion, 'name'):
+                    name = potion.name
+                elif hasattr(potion, 'id'):
+                    name = potion.id
+                else:
+                    # Convert to string safely
+                    try:
+                        name = str(potion)
+                    except Exception:
+                        name = "Unknown"
+
                 features.extend([hash(name) % 30 / 30.0, 1.0, 1.0])
             else:
                 features.extend([0.0] * 3)

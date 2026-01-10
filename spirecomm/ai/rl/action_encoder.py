@@ -165,11 +165,11 @@ class ActionEncoder:
         """
         mask = [False] * self.MAX_ACTIONS
 
-        # End turn is always valid in combat
-        if game.in_combat and game.end_available:
+        # End turn is only valid in combat when end is available
+        if game.in_combat and hasattr(game, 'end_available') and game.end_available:
             mask[self.END_TURN_ACTION] = True
 
-        # Combat actions
+        # Combat actions (only valid when in combat)
         if game.in_combat:
             hand = game.hand if game.hand else []
             monsters = game.monsters if game.monsters else []
@@ -192,35 +192,63 @@ class ActionEncoder:
                     mask[action_idx] = True
 
         # Card reward screen
-        elif game.choice_available and "card" in str(game.screen_type).lower():
+        elif game.choice_available and ("card" in str(game.screen_type).lower() or "upgrade" in str(game.screen_type).lower()):
             choices = game.choice_list if game.choice_list else []
             for i in range(len(choices)):
-                if i < 10:  # Max 3 cards + skip
+                if i < 10:  # Max 10 choices
                     mask[self.CARD_REWARD_OFFSET + i] = True
+            # Fallback: ensure at least one action is valid
+            if len(choices) == 0:
+                mask[self.CARD_REWARD_OFFSET] = True
 
         # Map screen
         elif "map" in str(game.screen_type).lower():
             # Usually 1-3 path options
-            for i in range(5):
-                mask[self.MAP_PATH_OFFSET + i] = True
+            if game.choice_list and len(game.choice_list) > 0:
+                for i in range(len(game.choice_list)):
+                    if i < 5:
+                        mask[self.MAP_PATH_OFFSET + i] = True
+            else:
+                # Fallback
+                mask[self.MAP_PATH_OFFSET] = True
 
         # Event screen
         elif "event" in str(game.screen_type).lower():
             # Usually 1-3 event choices
-            for i in range(5):
-                mask[self.EVENT_CHOICE_OFFSET + i] = True
+            if game.choice_list and len(game.choice_list) > 0:
+                for i in range(len(game.choice_list)):
+                    if i < 5:
+                        mask[self.EVENT_CHOICE_OFFSET + i] = True
+            else:
+                # Fallback
+                mask[self.EVENT_CHOICE_OFFSET] = True
 
         # Shop screen
         elif "shop" in str(game.screen_type).lower():
             # Shop actions (buy cards, relics, potions, purge)
-            for i in range(10):
-                mask[self.SHOP_ACTION_OFFSET + i] = True
+            if game.choice_list and len(game.choice_list) > 0:
+                for i in range(min(len(game.choice_list), 10)):
+                    mask[self.SHOP_ACTION_OFFSET + i] = True
+            else:
+                # Fallback
+                for i in range(3):
+                    mask[self.SHOP_ACTION_OFFSET + i] = True
 
         # Rest site
         elif "rest" in str(game.screen_type).lower():
             # Rest options: rest, smith, lift, dig
-            for i in range(4):
-                mask[self.REST_OPTION_OFFSET + i] = True
+            if game.choice_list and len(game.choice_list) > 0:
+                for i in range(len(game.choice_list)):
+                    if i < 4:
+                        mask[self.REST_OPTION_OFFSET + i] = True
+            else:
+                # Fallback
+                mask[self.REST_OPTION_OFFSET] = True
+
+        # Ensure at least one action is valid (fallback)
+        if not any(mask):
+            # If nothing is valid, enable proceed action as last resort
+            mask[0] = True  # This will be handled by decode_action
 
         return mask
 
