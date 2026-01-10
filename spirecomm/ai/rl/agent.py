@@ -17,6 +17,7 @@ from .trainer import DQNTrainer
 from .network import create_dqn
 from spirecomm.spire.game import Game
 from spirecomm.communication.action import Action
+from spirecomm.spire.character import PlayerClass
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ class RLAgent:
         """
         self.device = device
         self.training_mode = training
+        self.chosen_class = PlayerClass.IRONCLAD  # Default to Ironclad
 
         # Initialize components
         self.state_encoder = StateEncoder()
@@ -164,6 +166,15 @@ class RLAgent:
         # Import StateAction to get current state instead of raising
         from spirecomm.communication.action import StateAction
         return StateAction()
+
+    def get_next_action_out_of_game(self):
+        """
+        Handle out-of-game states (main menu, character select, etc.).
+
+        Always returns StartGameAction to start a new game with the chosen character.
+        """
+        from spirecomm.communication.action import StartGameAction
+        return StartGameAction(self.chosen_class)
 
     def load_model(self, model_path: str) -> None:
         """Load model from checkpoint file."""
