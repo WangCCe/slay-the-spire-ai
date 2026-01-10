@@ -31,7 +31,7 @@ class DQNTrainer:
 
     def __init__(
         self,
-        state_dim: int = 571,
+        state_dim: int = 570,
         action_dim: int = 1000,
         hidden_dims: list = [512, 256, 128],
         learning_rate: float = 1e-4,

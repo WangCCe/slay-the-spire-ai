@@ -20,7 +20,7 @@ class DQNetwork(nn.Module):
     Outputs Q-values for all possible actions (0-999).
     """
 
-    def __init__(self, state_dim: int = 571, action_dim: int = 1000, hidden_dims: list = [512, 256, 128]):
+    def __init__(self, state_dim: int = 570, action_dim: int = 1000, hidden_dims: list = [512, 256, 128]):
         """
         Initialize DQN network.
 
@@ -115,7 +115,7 @@ class DuelingDQNetwork(nn.Module):
     Not used in current implementation but available for future experiments.
     """
 
-    def __init__(self, state_dim: int = 571, action_dim: int = 1000, hidden_dims: list = [256, 256]):
+    def __init__(self, state_dim: int = 570, action_dim: int = 1000, hidden_dims: list = [256, 256]):
         """Initialize dueling network."""
         super(DuelingDQNetwork, self).__init__()
 
@@ -167,7 +167,7 @@ class DuelingDQNetwork(nn.Module):
 
 
 # Convenience function for creating networks
-def create_dqn(network_type: str = "standard", state_dim: int = 571,
+def create_dqn(network_type: str = "standard", state_dim: int = 570,
                action_dim: int = 1000, device: str = "cpu") -> nn.Module:
     """
     Create DQN network of specified type.
