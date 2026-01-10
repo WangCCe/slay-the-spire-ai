@@ -93,8 +93,23 @@ class StateEncoder:
             except (TypeError, ValueError):
                 card_type_val = 0
 
+        # Get card ID safely - handle various types
+        card_id_hash = 0.0
+        if hasattr(card, 'id'):
+            try:
+                card_id = card.id
+                # Handle different types of card.id
+                if isinstance(card_id, (int, float, np.integer, np.floating)):
+                    # If it's a number, just use it
+                    card_id_hash = abs(int(card_id)) % 100 / 100.0
+                else:
+                    # If it's a string or object, hash it
+                    card_id_hash = hash(str(card_id)) % 100 / 100.0
+            except (AttributeError, TypeError, ValueError):
+                card_id_hash = 0.0
+
         return [
-            hash(card.id) % 100 / 100.0 if hasattr(card, 'id') else 0.0,
+            card_id_hash,
             min((card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost), 3) / 3.0 if hasattr(card, 'cost') else 0.0,
             min(damage, 30) / 30.0,
             min(block, 20) / 20.0,
