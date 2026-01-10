@@ -127,8 +127,9 @@ class DQNTrainer:
 
     def store_transition(self, state: np.ndarray, action: int, reward: float,
                          next_state: Optional[np.ndarray], done: bool) -> None:
-        """Store transition in replay buffer."""
+        """Store transition in replay buffer and increment step counter."""
         self.replay_buffer.add(state, action, reward, next_state, done)
+        self.total_steps += 1  # Count environment steps, not training steps
 
     def train_step(self) -> Optional[float]:
         """
@@ -177,7 +178,6 @@ class DQNTrainer:
         self.optimizer.step()
 
         # Update target network
-        self.total_steps += 1
         if self.total_steps % self.target_update_freq == 0:
             self.target_network.load_state_dict(self.online_network.state_dict())
             logger.debug(f"Updated target network at step {self.total_steps}")
