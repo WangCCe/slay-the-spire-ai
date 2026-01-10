@@ -128,6 +128,10 @@ class RewardCalculator:
         - Monsters killed (monster died or disappeared)
         - HP lost (player HP decrease)
         - All monsters killed (combat end)
+        - Floor advancement (game progression)
+        - Card acquisition (deck size increase)
+        - Relic acquisition (relic list growth)
+        - Gold acquisition (gold increase)
         - Game over / victory (terminal rewards)
 
         Args:
@@ -221,9 +225,51 @@ class RewardCalculator:
                 turn_ended=turn_ended
             )
 
-        # === PROGRESSION & ACQUISITION (deferred to future Phase 2) ===
-        # TODO: Add floor advancement, elite kills, boss kills
-        # TODO: Add card/relic/gold acquisition
+        # === PROGRESSION REWARDS ===
+        # Floor advancement
+        if hasattr(current_game, 'floor') and hasattr(last_game, 'floor'):
+            floor_advanced = current_game.floor > last_game.floor
+            if floor_advanced:
+                reward += self.calculate_progression_reward(
+                    current_game,
+                    floor_advanced=True,
+                    elite_killed=False,  # TODO: detect elite kills
+                    boss_killed=False    # TODO: detect boss kills
+                )
+
+        # === ACQUISITION REWARDS ===
+        # Card acquisition
+        current_deck_size = len(current_game.deck) if current_game.deck else 0
+        last_deck_size = len(last_game.deck) if last_game.deck else 0
+        if current_deck_size > last_deck_size:
+            # Agent obtained a card
+            # Simple heuristic: assume average power score of 2
+            reward += self.calculate_acquisition_reward(
+                current_game,
+                card_obtained=True,
+                card_power_score=2,  # TODO: calculate actual card power
+                relic_obtained=False
+            )
+
+        # Relic acquisition
+        current_relics = len(current_game.relics) if current_game.relics else 0
+        last_relics = len(last_game.relics) if last_game.relics else 0
+        if current_relics > last_relics:
+            # Agent obtained a relic
+            reward += self.calculate_acquisition_reward(
+                current_game,
+                card_obtained=False,
+                relic_obtained=True
+            )
+
+        # Gold acquisition (small reward)
+        if hasattr(current_game, 'gold') and hasattr(last_game, 'gold'):
+            gold_gained = current_game.gold - last_game.gold
+            if gold_gained > 0:
+                reward += self.calculate_acquisition_reward(
+                    current_game,
+                    gold_obtained=gold_gained
+                )
 
         return reward
 
