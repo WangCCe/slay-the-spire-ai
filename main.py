@@ -339,7 +339,8 @@ if __name__ == "__main__":
             )
         except Exception as e:
             # Handle communication errors or game crashes
-            logging.error(f"Game #{game_count} failed: {e}")
+            import traceback
+            logging.error(f"Game #{game_count} failed: {e}\n" + "".join(traceback.format_exc()))
 
             # Try to restart Communication Mod connection by waiting a bit
             import time

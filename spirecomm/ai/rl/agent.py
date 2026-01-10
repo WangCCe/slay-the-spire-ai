@@ -141,7 +141,8 @@ class RLAgent:
             return action
 
         except Exception as e:
-            logger.error(f"Error in get_next_action_in_game: {e}")
+            import traceback
+            logger.error(f"Error in get_next_action_in_game: {e}\n" + "".join(traceback.format_exc()))
             # Return safe fallback action
             from spirecomm.communication.action import EndTurnAction
             return EndTurnAction()
