@@ -50,23 +50,39 @@ class RLAgent:
         self.training_mode = training
         self.chosen_class = PlayerClass.IRONCLAD  # Default to Ironclad
 
+        logger.info("Initializing StateEncoder...")
         # Initialize components
         self.state_encoder = StateEncoder()
+        logger.info("StateEncoder initialized")
+
+        logger.info("Initializing ActionEncoder...")
         self.action_encoder = ActionEncoder()
+        logger.info("ActionEncoder initialized")
+
+        logger.info("Initializing RewardCalculator...")
         self.reward_calculator = RewardCalculator()
+        logger.info("RewardCalculator initialized")
 
         # Initialize trainer with correct state dimension
-        self.trainer = DQNTrainer(state_dim=self.state_encoder.feature_dim, device=device) if training else None
+        if training:
+            logger.info(f"Initializing DQNTrainer (device={device})...")
+            self.trainer = DQNTrainer(state_dim=self.state_encoder.feature_dim, device=device)
+            logger.info("DQNTrainer initialized")
+        else:
+            self.trainer = None
+            logger.info("No trainer (inference mode)")
 
         # Load model or create new network
         if model_path is not None:
+            logger.info(f"Loading model from {model_path}...")
             self.load_model(model_path)
             logger.info(f"Loaded model from {model_path}")
         else:
             # Create network for inference with correct state dimension
+            logger.info(f"Creating new network (device={device})...")
             self.network = create_dqn("standard", state_dim=self.state_encoder.feature_dim, device=device)
             self.network.eval()
-            logger.info("Initialized new network")
+            logger.info("Network initialized")
 
         self.epsilon = epsilon
         self.last_state = None
