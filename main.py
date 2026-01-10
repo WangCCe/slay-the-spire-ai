@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import logging
+import glob
 from logging.handlers import RotatingFileHandler
 
 from spirecomm.communication.coordinator import Coordinator
@@ -60,6 +61,36 @@ except ImportError:
     logging.warning("Statistics tracking not available")
 
 
+def find_latest_checkpoint():
+    """
+    Find the latest RL checkpoint file in the checkpoints directory.
+
+    Returns:
+        Path to the latest checkpoint file, or None if no checkpoints found
+    """
+    checkpoint_dir = "checkpoints"
+
+    # Check if checkpoints directory exists
+    if not os.path.exists(checkpoint_dir):
+        return None
+
+    # Find all checkpoint files matching the pattern rl_model_ep*.pth
+    pattern = os.path.join(checkpoint_dir, "rl_model_ep*.pth")
+    checkpoint_files = glob.glob(pattern)
+
+    if not checkpoint_files:
+        return None
+
+    # Sort by modification time (most recent first)
+    checkpoint_files.sort(key=os.path.getmtime, reverse=True)
+
+    latest = checkpoint_files[0]
+    logging.info(f"Found latest checkpoint: {latest}")
+    logging.info(f"  Modified: {os.path.getmtime(latest)}")
+
+    return latest
+
+
 def create_agent(agent_type="auto", use_optimized=None, player_class=None, training=False, model_path=None):
     """
     Create an agent instance.
@@ -105,6 +136,16 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
 
         try:
             logging.info(f"Creating RL Agent (training={training})")
+
+            # Auto-load latest checkpoint if in training mode and no model specified
+            if training and model_path is None:
+                auto_model_path = find_latest_checkpoint()
+                if auto_model_path:
+                    logging.info("Auto-loading latest checkpoint for continued training")
+                    model_path = auto_model_path
+                else:
+                    logging.info("No existing checkpoints found, starting fresh training")
+
             agent = create_rl_agent(training=training, model_path=model_path)
             logging.info(f"RL Agent created successfully")
             logging.info(f"  State dim: {agent.state_encoder.feature_dim}, Action dim: {agent.action_encoder.MAX_ACTIONS}")
