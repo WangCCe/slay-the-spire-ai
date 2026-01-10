@@ -154,6 +154,17 @@ class RLAgent:
         if self.training_mode and self.trainer is not None:
             self.trainer.update_episode_count()
 
+    def handle_error(self, error):
+        """
+        Handle errors from Communication Mod.
+
+        Logs the error and returns a safe action to avoid crashing.
+        """
+        logger.error(f"RL Agent error: {error}")
+        # Import StateAction to get current state instead of raising
+        from spirecomm.communication.action import StateAction
+        return StateAction()
+
     def load_model(self, model_path: str) -> None:
         """Load model from checkpoint file."""
         checkpoint = torch.load(model_path, map_location=self.device)
