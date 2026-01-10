@@ -103,26 +103,51 @@ class ActionEncoder:
         # Card reward selection
         elif self.CARD_REWARD_OFFSET <= action_index < self.MAP_PATH_OFFSET:
             choice_index = action_index - self.CARD_REWARD_OFFSET
+            # Clamp to valid range
+            if game.choice_list and len(game.choice_list) > 0:
+                choice_index = min(choice_index, len(game.choice_list) - 1)
+            else:
+                choice_index = 0
             return ChooseAction(choice_index)
 
         # Map path selection
         elif self.MAP_PATH_OFFSET <= action_index < self.EVENT_CHOICE_OFFSET:
             path_index = action_index - self.MAP_PATH_OFFSET
+            # Clamp to valid range
+            if game.choice_list and len(game.choice_list) > 0:
+                path_index = min(path_index, len(game.choice_list) - 1)
+            else:
+                path_index = 0
             return ChooseAction(path_index)
 
         # Event choice
         elif self.EVENT_CHOICE_OFFSET <= action_index < self.SHOP_ACTION_OFFSET:
             choice_index = action_index - self.EVENT_CHOICE_OFFSET
+            # Clamp to valid range
+            if game.choice_list and len(game.choice_list) > 0:
+                choice_index = min(choice_index, len(game.choice_list) - 1)
+            else:
+                choice_index = 0
             return ChooseAction(choice_index)
 
         # Shop action
         elif self.SHOP_ACTION_OFFSET <= action_index < self.REST_OPTION_OFFSET:
             shop_action = action_index - self.SHOP_ACTION_OFFSET
+            # Clamp to valid range for shop
+            if game.choice_list and len(game.choice_list) > 0:
+                shop_action = min(shop_action, len(game.choice_list) - 1)
+            else:
+                shop_action = 0
             return ChooseAction(shop_action)
 
         # Rest site option
         elif self.REST_OPTION_OFFSET <= action_index < self.MAX_ACTIONS:
             rest_option = action_index - self.REST_OPTION_OFFSET
+            # Clamp to valid range (typically 4 options: rest, smith, lift, dig)
+            if game.choice_list and len(game.choice_list) > 0:
+                rest_option = min(rest_option, len(game.choice_list) - 1)
+            else:
+                rest_option = 0
             return ChooseAction(rest_option)
 
         else:
