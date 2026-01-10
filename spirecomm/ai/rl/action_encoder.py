@@ -230,6 +230,21 @@ class ActionEncoder:
             mask[self.PROCEED_ACTION] = True
             logger.debug(f"COMBAT_REWARD: Enabled {len(potions)} potion actions and proceed")
 
+        # Grid screen (card selection/removal/upgrade)
+        elif "GRID" in str(game.screen_type):
+            # Grid screens require choose commands
+            # choice_list contains available cards/choices
+            choices = game.choice_list if game.choice_list else []
+            for i in range(len(choices)):
+                if i < 10:  # Max 10 choices
+                    mask[self.CARD_REWARD_OFFSET + i] = True
+
+            # Enable first choice if no choices available
+            if len(choices) == 0:
+                mask[self.CARD_REWARD_OFFSET] = True
+
+            logger.debug(f"GRID: Enabled {len(choices)} choose actions")
+
         # Map screen
         elif "map" in str(game.screen_type).lower():
             # Usually 1-3 path options
