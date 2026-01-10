@@ -119,8 +119,8 @@ class StateEncoder:
             1.0 if card_type_val == 3 else 0.0,  # Status/Curse
             1.0 if (hasattr(card, 'upgrade') and card.upgrade != 0) else 0.0,
             0.0,  # placeholder
-            1.0 if (hasattr(card, 'exhausts') and card.exhausts) else 0.0 if hasattr(card, 'exhausts') else 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            (1.0 if (hasattr(card, 'exhausts') and card.exhausts) else 0.0),  # exhausts (fixed - single value)
+            0.0, 0.0, 0.0, 0.0,  # placeholders to reach 15 features
         ]
 
     def _encode_deck_composition(self, game: Game) -> List[float]:

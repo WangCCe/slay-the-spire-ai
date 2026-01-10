@@ -162,9 +162,8 @@ class RLAgent:
 
         if self.training_mode and self.trainer is not None:
             self.trainer.update_episode_count()
-            # Clear replay buffer to avoid mixed dimension data from previous runs
-            self.trainer.replay_buffer.clear()
-            logger.info("Cleared replay buffer on reset")
+            # NOTE: Don't clear replay buffer - we need to accumulate experience across episodes
+            # Only clear if buffer has mixed dimension data (shouldn't happen after fixes)
 
     def handle_error(self, error):
         """
