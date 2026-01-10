@@ -41,6 +41,24 @@ class ReplayBuffer:
             next_state: Next state (512-dim vector), None if terminal
             done: Whether episode ended
         """
+        # Validate state dimension
+        if state is not None and len(state) != self.state_dim:
+            import logging
+            logging.warning(
+                f"State dimension mismatch! Expected {self.state_dim}, got {len(state)}. "
+                f"Skipping this transition to prevent buffer corruption."
+            )
+            return
+
+        # Validate next_state dimension
+        if next_state is not None and len(next_state) != self.state_dim:
+            import logging
+            logging.warning(
+                f"Next state dimension mismatch! Expected {self.state_dim}, got {len(next_state)}. "
+                f"Skipping this transition to prevent buffer corruption."
+            )
+            return
+
         transition = (state, action, reward, next_state, done)
 
         if len(self.buffer) < self.buffer_size:

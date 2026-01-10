@@ -131,9 +131,15 @@ class RLAgent:
                 )
 
                 # Train periodically
-                loss = self.trainer.train_step()
-                if loss is not None:
-                    logger.debug(f"Training step, loss: {loss:.4f}")
+                try:
+                    loss = self.trainer.train_step()
+                    if loss is not None:
+                        logger.debug(f"Training step, loss: {loss:.4f}")
+                except Exception as e:
+                    # Training error should not block decision making
+                    logger.warning(f"Training step failed (continuing with inference): {e}")
+                    import traceback
+                    logger.debug(traceback.format_exc())
 
             self.last_state = state
             self.last_action = action_idx
@@ -156,6 +162,9 @@ class RLAgent:
 
         if self.training_mode and self.trainer is not None:
             self.trainer.update_episode_count()
+            # Clear replay buffer to avoid mixed dimension data from previous runs
+            self.trainer.replay_buffer.clear()
+            logger.info("Cleared replay buffer on reset")
 
     def handle_error(self, error):
         """
