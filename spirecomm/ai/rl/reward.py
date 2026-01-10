@@ -5,8 +5,11 @@ Provides dense reward signals for combat survival, damage dealt, game progressio
 """
 
 import math
-from typing import Optional
+from typing import Optional, Iterable
 from spirecomm.spire.game import Game
+from spirecomm.spire.screen import ScreenType
+from spirecomm.ai.decision.base import DecisionContext
+from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 
 
 class RewardCalculator:
@@ -21,21 +24,24 @@ class RewardCalculator:
     """
 
     # Combat reward weights
-    DAMAGE_REWARD_SCALE = 0.1
-    KILL_REWARD = 10.0
-    ALL_LETHAL_BONUS = 50.0
-    HP_LOSS_PENALTY = 5.0
-    TURN_END_PENALTY = -0.1
+    DAMAGE_REWARD_SCALE = 0.05
+    DAMAGE_REWARD_CAP = 5.0
+    KILL_REWARD = 5.0
+    ALL_LETHAL_BONUS = 15.0
+    HP_LOSS_PENALTY = 50.0  # Applied to HP loss ratio (lost / max)
+    TURN_END_PENALTY = -0.05
 
     # Progression reward weights
-    FLOOR_REWARD_SCALE = 1.0
-    ELITE_REWARD = 30.0
-    BOSS_REWARD = 100.0
+    FLOOR_REWARD_SCALE = 3.0
+    ELITE_REWARD = 20.0
+    BOSS_REWARD = 60.0
 
     # Acquisition reward weights
-    CARD_REWARD_BASE = 5.0
-    RELIC_REWARD = 20.0
-    GOLD_REWARD_SCALE = 0.01
+    CARD_REWARD_BASE = 2.0
+    CARD_SCORE_NORMALIZER = 100.0
+    CARD_SCORE_MAX_MULT = 2.0
+    RELIC_REWARD = 10.0
+    GOLD_REWARD_SCALE = 0.005
 
     # Terminal rewards
     VICTORY_REWARD = 1000.0
@@ -43,6 +49,8 @@ class RewardCalculator:
 
     def __init__(self):
         """Initialize reward calculator with tracking."""
+        self.card_evaluator: Optional[SynergyCardEvaluator] = None
+        self.card_evaluator_class: Optional[str] = None
         self.reset()
 
     def reset(self) -> None:
@@ -67,7 +75,7 @@ class RewardCalculator:
                                 hp_lost: int = 0, turn_ended: bool = False) -> float:
         """Calculate reward for combat actions."""
         reward = 0.0
-        reward += min(damage_dealt * self.DAMAGE_REWARD_SCALE, 10.0)
+        reward += min(damage_dealt * self.DAMAGE_REWARD_SCALE, self.DAMAGE_REWARD_CAP)
         self.total_damage_dealt += damage_dealt
         if monster_killed:
             reward += self.KILL_REWARD
@@ -75,7 +83,14 @@ class RewardCalculator:
         if all_monsters_killed:
             reward += self.ALL_LETHAL_BONUS
         if hp_lost > 0:
-            reward -= self.HP_LOSS_PENALTY * hp_lost
+            max_hp = None
+            if hasattr(game, 'player') and game.player is not None and hasattr(game.player, 'max_hp'):
+                max_hp = game.player.max_hp
+            elif hasattr(game, 'max_hp'):
+                max_hp = game.max_hp
+            if max_hp:
+                hp_loss_ratio = hp_lost / max(max_hp, 1)
+                reward -= self.HP_LOSS_PENALTY * hp_loss_ratio
             self.total_damage_taken += hp_lost
         if turn_ended:
             reward += self.TURN_END_PENALTY
@@ -88,7 +103,7 @@ class RewardCalculator:
         reward = 0.0
         if floor_advanced:
             floors_gained = game.floor - self.last_floor
-            reward += floors_gained * self.FLOOR_REWARD_SCALE * game.floor
+            reward += floors_gained * self.FLOOR_REWARD_SCALE
             self.last_floor = game.floor
         if elite_killed:
             reward += self.ELITE_REWARD
@@ -99,7 +114,7 @@ class RewardCalculator:
         return reward
 
     def calculate_acquisition_reward(self, game: Game, card_obtained: bool = False,
-                                     card_power_score: int = 1,
+                                     card_power_score: float = 1.0,
                                      relic_obtained: bool = False,
                                      gold_obtained: int = 0) -> float:
         """Calculate reward for acquiring cards, relics, gold."""
@@ -224,6 +239,27 @@ class RewardCalculator:
                 hp_lost=hp_lost,
                 turn_ended=turn_ended
             )
+        elif last_game.in_combat and not current_game.in_combat:
+            combat_won = self._is_combat_victory(current_game)
+            had_alive_monsters = self._had_alive_monsters(last_game.monsters if last_game.monsters else [])
+            reward += self.calculate_combat_reward(
+                last_game,
+                damage_dealt=0,
+                monster_killed=combat_won and had_alive_monsters,
+                all_monsters_killed=combat_won,
+                hp_lost=0,
+                turn_ended=False
+            )
+            if combat_won:
+                elite_killed = self._is_elite_room(last_game)
+                boss_killed = self._is_boss_room(last_game)
+                if elite_killed or boss_killed:
+                    reward += self.calculate_progression_reward(
+                        current_game,
+                        floor_advanced=False,
+                        elite_killed=elite_killed,
+                        boss_killed=boss_killed
+                    )
 
         # === PROGRESSION REWARDS ===
         # Floor advancement
@@ -242,14 +278,7 @@ class RewardCalculator:
         current_deck_size = len(current_game.deck) if current_game.deck else 0
         last_deck_size = len(last_game.deck) if last_game.deck else 0
         if current_deck_size > last_deck_size:
-            # Agent obtained a card
-            # Simple heuristic: assume average power score of 2
-            reward += self.calculate_acquisition_reward(
-                current_game,
-                card_obtained=True,
-                card_power_score=2,  # TODO: calculate actual card power
-                relic_obtained=False
-            )
+            reward += self._calculate_card_reward(current_game, last_game)
 
         # Relic acquisition
         current_relics = len(current_game.relics) if current_game.relics else 0
@@ -305,6 +334,59 @@ class RewardCalculator:
 
         # Default: assume defeat
         return False
+
+    def _is_combat_victory(self, game: Game) -> bool:
+        screen_type = getattr(game, 'screen_type', None)
+        return screen_type in (ScreenType.COMBAT_REWARD, ScreenType.BOSS_REWARD)
+
+    def _is_elite_room(self, game: Game) -> bool:
+        room_type = str(getattr(game, 'room_type', '')).lower()
+        return "elite" in room_type
+
+    def _is_boss_room(self, game: Game) -> bool:
+        room_type = str(getattr(game, 'room_type', '')).lower()
+        return "boss" in room_type
+
+    def _had_alive_monsters(self, monsters: Iterable) -> bool:
+        for monster in monsters:
+            if hasattr(monster, 'current_hp') and monster.current_hp > 0:
+                return True
+        return False
+
+    def _get_card_evaluator(self, game: Game) -> SynergyCardEvaluator:
+        player_class = getattr(getattr(game, 'character', None), 'name', None)
+        if self.card_evaluator is None or self.card_evaluator_class != player_class:
+            self.card_evaluator = SynergyCardEvaluator(player_class=player_class)
+            self.card_evaluator_class = player_class
+        return self.card_evaluator
+
+    def _calculate_card_reward(self, current_game: Game, last_game: Game) -> float:
+        if not current_game.deck:
+            return 0.0
+        last_uuids = {card.uuid for card in last_game.deck} if last_game.deck else set()
+        new_cards = [card for card in current_game.deck if card.uuid not in last_uuids]
+        if not new_cards:
+            return 0.0
+        try:
+            context = DecisionContext(current_game)
+            evaluator = self._get_card_evaluator(current_game)
+        except Exception:
+            return 0.0
+
+        reward = 0.0
+        for card in new_cards:
+            try:
+                score = evaluator.evaluate_card(card, context)
+                normalized = max(0.0, min(score / self.CARD_SCORE_NORMALIZER, self.CARD_SCORE_MAX_MULT))
+                reward += self.calculate_acquisition_reward(
+                    current_game,
+                    card_obtained=True,
+                    card_power_score=normalized,
+                    relic_obtained=False
+                )
+            except Exception:
+                continue
+        return reward
 
 
 def calculate_step_reward(game: Game, action_type: str = "combat", **kwargs) -> float:
