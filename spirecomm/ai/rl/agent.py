@@ -132,31 +132,45 @@ class RLAgent:
             action = self.action_encoder.decode_action(action_idx, game)
 
             # Track state and action for training
-            if self.last_state is not None and self.training_mode:
-                # Calculate reward (simplified, would need game context)
-                reward = 0.0  # Placeholder
-                done = not game.in_combat if hasattr(game, 'in_combat') else False
+            if self.training_mode and self.trainer is not None:
+                # Calculate reward using RewardCalculator
+                if self.last_state is not None:
+                    # We have a previous state, can calculate reward
+                    reward = self.reward_calculator.calculate_reward(game, action)
+                    # Done = game over or screen_type is GAME_OVER
+                    done = "GAME_OVER" in str(game.screen_type) or (
+                        hasattr(game, 'player') and game.player is not None and
+                        hasattr(game.player, 'current_hp') and game.player.current_hp <= 0
+                    )
+                else:
+                    # First action, no reward yet
+                    reward = 0.0
+                    done = False
 
-                # Store transition
-                self.trainer.store_transition(
-                    self.last_state,
-                    self.last_action,
-                    reward,
-                    state,
-                    done
-                )
+                # Store transition (if we have a last_state)
+                if self.last_state is not None:
+                    self.trainer.store_transition(
+                        self.last_state,
+                        self.last_action,
+                        reward,
+                        state,
+                        done
+                    )
 
-                # Train periodically
+                # Train periodically (every step if buffer is ready and train_freq allows)
                 try:
                     loss = self.trainer.train_step()
                     if loss is not None:
-                        logger.debug(f"Training step, loss: {loss:.4f}")
+                        self.episode_reward += reward
+                        self.episode_steps += 1
+                        logger.debug(f"Training step {self.trainer.total_steps}, loss: {loss:.4f}, reward: {reward:.2f}")
                 except Exception as e:
                     # Training error should not block decision making
                     logger.warning(f"Training step failed (continuing with inference): {e}")
                     import traceback
                     logger.debug(traceback.format_exc())
 
+            # Update last state and action
             self.last_state = state
             self.last_action = action_idx
 

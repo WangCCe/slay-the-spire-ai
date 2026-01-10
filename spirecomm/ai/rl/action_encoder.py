@@ -183,6 +183,10 @@ class ActionEncoder:
         """
         Compute boolean mask of valid actions for current game state.
 
+        IMPORTANT: Screen type checks take priority over in_combat checks.
+        Some screens (CARD_REWARD, HAND_SELECT, etc.) can appear during combat
+        but only accept specific commands, not combat actions.
+
         Args:
             game: Current game state
 
@@ -195,14 +199,29 @@ class ActionEncoder:
         import logging
         logger = logging.getLogger(__name__)
 
+        # === SCREEN TYPE CHECKS (Priority 1) ===
+        # These checks must come BEFORE combat checks, even if in_combat=True
+
         # Game over screen - only proceed is valid
         if "GAME_OVER" in str(game.screen_type):
             mask[self.PROCEED_ACTION] = True
             logger.debug(f"GAME_OVER: Enabled proceed action")
-            return mask  # Early return to skip all other logic
+            return mask
 
-        # Card reward screen (including potion-related card selection)
-        # Must check BEFORE combat actions because some potions trigger CARD_REWARD in combat
+        # CHEST screen - open chest
+        if "CHEST" in str(game.screen_type):
+            # Use choose command to open chest
+            choices = game.choice_list if game.choice_list else []
+            if len(choices) > 0:
+                for i in range(min(len(choices), 5)):
+                    mask[self.CARD_REWARD_OFFSET + i] = True
+            else:
+                # Fallback
+                mask[self.CARD_REWARD_OFFSET] = True
+            logger.debug(f"CHEST: Enabled {len(choices)} choices")
+            return mask
+
+        # Card reward screen (including potion-related card selection during combat)
         if game.choice_available and ("card" in str(game.screen_type).lower() or "upgrade" in str(game.screen_type).lower()):
             choices = game.choice_list if game.choice_list else []
             for i in range(len(choices)):
@@ -217,12 +236,10 @@ class ActionEncoder:
                 mask[self.CARD_REWARD_OFFSET] = True
 
             logger.debug(f"CARD_REWARD: Enabled {len(choices)} card choices and cancel")
-            return mask  # Early return - don't enable combat actions
+            return mask
 
-        # HAND_SELECT screen (select cards for effects like "draw 2 cards from your deck")
-        # Must check BEFORE combat actions - only accepts confirm command
+        # HAND_SELECT screen (select cards for effects)
         if "HAND_SELECT" in str(game.screen_type):
-            # Enable choose actions for card selection
             choices = game.choice_list if game.choice_list else []
             for i in range(len(choices)):
                 if i < 10:  # Max 10 choices
@@ -236,133 +253,130 @@ class ActionEncoder:
                 mask[self.CONFIRM_ACTION] = True
 
             logger.debug(f"HAND_SELECT: Enabled {len(choices)} card choices and confirm")
-            return mask  # Early return - don't enable combat actions
+            return mask
 
-        # End turn is only valid in combat when end is available
-        if game.in_combat and hasattr(game, 'end_available') and game.end_available:
-            mask[self.END_TURN_ACTION] = True
-
-        # Combat actions (only valid when in combat)
-        if game.in_combat:
-            hand = game.hand if game.hand else []
-            monsters = game.monsters if game.monsters else []
-            potions = game.potions if game.potions else []
-
-            # Play card actions
-            for card_idx in range(min(len(hand), self.MAX_CARDS)):
-                for monster_idx in range(len(monsters)):
-                    action_idx = self.encode_play_card(card_idx, monster_idx)
-                    # Check if card is affordable (cost check)
-                    card = hand[card_idx]
-                    cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
-                    if game.player and game.player.energy >= cost:
-                        mask[action_idx] = True
-
-            # Use potion actions
-            for potion_idx in range(min(len(potions), self.MAX_POTIONS)):
-                for monster_idx in range(len(monsters)):
-                    action_idx = self.encode_use_potion(potion_idx, monster_idx)
-                    mask[action_idx] = True
-
-            logger.debug(f"Combat mask: {sum(mask)} valid actions out of {len(mask)}")
-
-        # Combat reward screen (potions/relics/cards/gold after battle)
-        elif "COMBAT_REWARD" in str(game.screen_type):
-            # Use choose commands to select rewards
-            # choice_list contains available rewards (cards, relics, potions, gold)
-            choices = game.choice_list if game.choice_list else []
-            for i in range(len(choices)):
-                if i < 10:  # Max 10 reward options
-                    mask[self.CARD_REWARD_OFFSET + i] = True
-
-            # Always enable proceed to skip taking a reward
-            mask[self.PROCEED_ACTION] = True
-            logger.debug(f"COMBAT_REWARD: Enabled {len(choices)} reward choices and proceed")
-
-        # Grid screen (card selection/removal/upgrade)
-        elif "GRID" in str(game.screen_type):
-            # Grid screens require choose commands
-            # choice_list contains available cards/choices
+        # GRID screen (card selection/removal/upgrade)
+        if "GRID" in str(game.screen_type):
             choices = game.choice_list if game.choice_list else []
             for i in range(len(choices)):
                 if i < 10:  # Max 10 choices
                     mask[self.CARD_REWARD_OFFSET + i] = True
 
-            # Always enable confirm action to confirm selection (or skip if nothing selected)
+            # Always enable confirm action
             mask[self.CONFIRM_ACTION] = True
-
             logger.debug(f"GRID: Enabled {len(choices)} choose actions and confirm")
-
-        # Map screen
-        elif "map" in str(game.screen_type).lower():
-            # Usually 1-3 path options
-            if game.choice_list and len(game.choice_list) > 0:
-                for i in range(len(game.choice_list)):
-                    if i < 5:
-                        mask[self.MAP_PATH_OFFSET + i] = True
-            else:
-                # Fallback
-                mask[self.MAP_PATH_OFFSET] = True
+            return mask
 
         # Event screen
-        elif "event" in str(game.screen_type).lower():
-            # Usually 1-3 event choices
+        if "event" in str(game.screen_type).lower():
             if game.choice_list and len(game.choice_list) > 0:
                 for i in range(len(game.choice_list)):
                     if i < 5:
                         mask[self.EVENT_CHOICE_OFFSET + i] = True
             else:
-                # Fallback
                 mask[self.EVENT_CHOICE_OFFSET] = True
+            logger.debug(f"EVENT: Enabled {len(game.choice_list) if game.choice_list else 1} choices")
+            return mask
 
-        # Shop screen - differentiate between SHOP_ROOM (entrance) and SHOP_SCREEN (purchase interface)
-        elif "SHOP_SCREEN" in str(game.screen_type):
-            # Actual shop interface where you buy things
-            # Shop actions (buy cards, relics, potions, purge)
+        # MAP screen
+        if "map" in str(game.screen_type).lower():
             if game.choice_list and len(game.choice_list) > 0:
-                for i in range(min(len(game.choice_list), 10)):
-                    mask[self.SHOP_ACTION_OFFSET + i] = True
+                for i in range(len(game.choice_list)):
+                    if i < 5:
+                        mask[self.MAP_PATH_OFFSET + i] = True
             else:
-                # Fallback - enable buy actions even if choice_list is empty
-                for i in range(3):
-                    mask[self.SHOP_ACTION_OFFSET + i] = True
+                mask[self.MAP_PATH_OFFSET] = True
+            logger.debug(f"MAP: Enabled {len(game.choice_list) if game.choice_list else 1} paths")
+            return mask
 
-            # Always enable leave action to exit shop
-            mask[self.LEAVE_ACTION] = True
-            logger.debug(f"SHOP_SCREEN: Enabled {len(game.choice_list) if game.choice_list else 0} buy actions and leave")
-
-        elif "SHOP_ROOM" in str(game.screen_type):
-            # Shop room entrance - choose to enter or proceed to skip
-            if game.choice_list and len(game.choice_list) > 0:
-                for i in range(min(len(game.choice_list), 5)):
-                    mask[self.SHOP_ACTION_OFFSET + i] = True
-
-            # Enable proceed to skip the shop
-            mask[self.PROCEED_ACTION] = True
-            logger.debug(f"SHOP_ROOM: Enabled {len(game.choice_list) if game.choice_list else 0} enter actions and proceed")
-
-        # Rest site
-        elif "rest" in str(game.screen_type).lower():
-            # Rest options: rest, smith, lift, dig
+        # REST screen
+        if "rest" in str(game.screen_type).lower():
             if game.choice_list and len(game.choice_list) > 0:
                 for i in range(len(game.choice_list)):
                     if i < 4:
                         mask[self.REST_OPTION_OFFSET + i] = True
             else:
-                # Fallback
                 mask[self.REST_OPTION_OFFSET] = True
+            # Note: No proceed here - must choose an option
+            logger.debug(f"REST: Enabled {len(game.choice_list) if game.choice_list else 1} options")
+            return mask
 
-            # Always enable proceed to confirm rest option choice or skip
+        # SHOP_SCREEN (purchase interface)
+        if "SHOP_SCREEN" in str(game.screen_type):
+            if game.choice_list and len(game.choice_list) > 0:
+                for i in range(min(len(game.choice_list), 10)):
+                    mask[self.SHOP_ACTION_OFFSET + i] = True
+            else:
+                for i in range(3):
+                    mask[self.SHOP_ACTION_OFFSET + i] = True
+            mask[self.LEAVE_ACTION] = True
+            logger.debug(f"SHOP_SCREEN: Enabled {len(game.choice_list) if game.choice_list else 3} buy actions and leave")
+            return mask
+
+        # SHOP_ROOM (entrance - choose to enter or skip)
+        if "SHOP_ROOM" in str(game.screen_type):
+            if game.choice_list and len(game.choice_list) > 0:
+                for i in range(min(len(game.choice_list), 5)):
+                    mask[self.SHOP_ACTION_OFFSET + i] = True
             mask[self.PROCEED_ACTION] = True
-            logger.debug(f"REST: Enabled {len(game.choice_list) if game.choice_list else 0} rest options and proceed")
+            logger.debug(f"SHOP_ROOM: Enabled {len(game.choice_list) if game.choice_list else 0} enter actions and proceed")
+            return mask
 
-        # Ensure at least one action is valid (fallback)
+        # COMBAT_REWARD screen (after battle)
+        if "COMBAT_REWARD" in str(game.screen_type):
+            choices = game.choice_list if game.choice_list else []
+            for i in range(len(choices)):
+                if i < 10:
+                    mask[self.CARD_REWARD_OFFSET + i] = True
+            mask[self.PROCEED_ACTION] = True
+            logger.debug(f"COMBAT_REWARD: Enabled {len(choices)} reward choices and proceed")
+            return mask
+
+        # === COMBAT ACTIONS (Priority 2 - only for ScreenType.NONE) ===
+        # Only enable combat actions if we haven't matched any special screen type above
+        # This prevents combat actions on screens like CARD_REWARD/HAND_SELECT during combat
+
+        if game.in_combat:
+            hand = game.hand if game.hand else []
+            monsters = game.monsters if game.monsters else []
+            potions = game.potions if game.potions else []
+
+            # End turn is only valid when end is available
+            if hasattr(game, 'end_available') and game.end_available:
+                mask[self.END_TURN_ACTION] = True
+
+            # Play card actions (only if card is affordable)
+            for card_idx in range(min(len(hand), self.MAX_CARDS)):
+                for monster_idx in range(len(monsters)):
+                    action_idx = self.encode_play_card(card_idx, monster_idx)
+                    card = hand[card_idx]
+                    cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
+                    if game.player and game.player.energy >= cost:
+                        mask[action_idx] = True
+
+            # Use potion actions (only if potions are available AND can_use=True)
+            for potion_idx in range(min(len(potions), self.MAX_POTIONS)):
+                potion = potions[potion_idx]
+                # Skip empty potion slots
+                if hasattr(potion, 'potion_id') and potion.potion_id == "Potion Slot":
+                    continue
+                # Only enable if potion can be used
+                if hasattr(potion, 'can_use') and not potion.can_use:
+                    continue
+
+                # Enable potion action for each valid target
+                for monster_idx in range(len(monsters)):
+                    action_idx = self.encode_use_potion(potion_idx, monster_idx)
+                    mask[action_idx] = True
+
+            logger.debug(f"Combat (ScreenType.NONE): {sum(mask)} valid actions")
+
+        # === FALLBACK ===
+        # Ensure at least one action is valid
         if not any(mask):
-            # If nothing is valid, log warning and enable proceed as safest fallback
-            logger.warning(f"No valid actions found! in_combat={game.in_combat}, screen_type={game.screen_type}, choice_available={game.choice_available}")
-            # Use PROCEED as safest fallback - works in most contexts
+            logger.warning(f"No valid actions found! in_combat={game.in_combat}, screen_type={game.screen_type}")
             mask[self.PROCEED_ACTION] = True
-            logger.debug(f"Enabled fallback action: PROCEED at index {self.PROCEED_ACTION}")
+            logger.debug(f"Enabled fallback action: PROCEED")
 
         logger.debug(f"Final mask: {sum(mask)} valid actions, screen={game.screen_type}")
         return mask
