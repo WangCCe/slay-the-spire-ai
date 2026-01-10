@@ -167,6 +167,10 @@ class ActionEncoder:
         """
         mask = [False] * self.MAX_ACTIONS
 
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+
         # End turn is only valid in combat when end is available
         if game.in_combat and hasattr(game, 'end_available') and game.end_available:
             mask[self.END_TURN_ACTION] = True
@@ -192,6 +196,8 @@ class ActionEncoder:
                 for monster_idx in range(len(monsters)):
                     action_idx = self.encode_use_potion(potion_idx, monster_idx)
                     mask[action_idx] = True
+
+            logger.debug(f"Combat mask: {sum(mask)} valid actions out of {len(mask)}")
 
         # Card reward screen
         elif game.choice_available and ("card" in str(game.screen_type).lower() or "upgrade" in str(game.screen_type).lower()):
@@ -249,9 +255,13 @@ class ActionEncoder:
 
         # Ensure at least one action is valid (fallback)
         if not any(mask):
-            # If nothing is valid, enable proceed action as last resort
-            mask[0] = True  # This will be handled by decode_action
+            # If nothing is valid, log warning and enable proceed
+            logger.warning(f"No valid actions found! in_combat={game.in_combat}, screen_type={game.screen_type}, choice_available={game.choice_available}")
+            # Try to find a proceed action - use CHOOSE action with index 0 as fallback
+            mask[self.CARD_REWARD_OFFSET] = True  # Use choose 0 as safest fallback
+            logger.debug(f"Enabled fallback action: CHOOSE(0) at index {self.CARD_REWARD_OFFSET}")
 
+        logger.debug(f"Final mask: {sum(mask)} valid actions, screen={game.screen_type}")
         return mask
 
     def get_valid_actions(self, game: Game) -> List[int]:
