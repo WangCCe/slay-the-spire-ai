@@ -17,15 +17,30 @@ def read_stdin(input_queue):
     :type input_queue: queue.Queue
     :return: None
     """
-    while True:
-        stdin_input = ""
+    try:
         while True:
-            input_char = sys.stdin.read(1)
-            if input_char == '\n':
-                break
-            else:
-                stdin_input += input_char
-        input_queue.put(stdin_input)
+            stdin_input = ""
+            while True:
+                input_char = sys.stdin.read(1)
+                # Detect broken pipe (game crash)
+                if input_char == '' and len(stdin_input) == 0:
+                    import logging
+                    logging.critical("STDIN PIPE BROKEN: Communication Mod or Slay the Spire crashed. "
+                                   "This is likely caused by:")
+                    logging.critical("  1. Communication Mod crash (check mod compatibility)")
+                    logging.critical("  2. Slay the Spire crash (check game logs)")
+                    logging.critical("  3. SuperFastMode + Communication Mod conflict")
+                    logging.critical("Try running without SuperFastMode to isolate the issue.")
+                    raise EOFError("Communication Mod pipe broken - game likely crashed")
+                if input_char == '\n':
+                    break
+                else:
+                    stdin_input += input_char
+            input_queue.put(stdin_input)
+    except Exception as e:
+        import logging
+        logging.critical(f"read_stdin thread crashed: {e}")
+        raise
 
 
 def write_stdout(output_queue):
@@ -35,9 +50,20 @@ def write_stdout(output_queue):
     :type output_queue: queue.Queue
     :return: None
     """
-    while True:
-        output = output_queue.get()
-        print(output, end='\n', flush=True)
+    try:
+        while True:
+            output = output_queue.get()
+            try:
+                print(output, end='\n', flush=True)
+            except BrokenPipeError:
+                import logging
+                logging.critical("STDOUT PIPE BROKEN: Cannot write to Communication Mod. "
+                               "Game likely crashed or closed.")
+                raise
+    except Exception as e:
+        import logging
+        logging.critical(f"write_stdout thread crashed: {e}")
+        raise
 
 
 class Coordinator:
@@ -61,6 +87,22 @@ class Coordinator:
         self.in_game = False
         self.last_game_state = None
         self.last_error = None
+
+    def check_communication_threads(self):
+        """Check if stdin/stdout communication threads are still alive.
+
+        :return: True if threads are alive, False if crashed
+        :rtype: bool
+        """
+        if not self.input_thread.is_alive():
+            import logging
+            logging.critical("STDIN THREAD DIED: Communication Mod or Slay the Spire crashed.")
+            return False
+        if not self.output_thread.is_alive():
+            import logging
+            logging.critical("STDOUT THREAD DIED: Communication Mod or Slay the Spire crashed.")
+            return False
+        return True
 
     def signal_ready(self):
         """Indicate to Communication Mod that setup is complete
@@ -287,6 +329,10 @@ class Coordinator:
         max_consecutive_timeouts = 6  # 6 * 10 seconds = 60 seconds total
 
         while self.in_game:
+            # Check if communication threads are still alive (detect game crashes)
+            if not self.check_communication_threads():
+                raise EOFError("Communication Mod connection lost (game crashed)")
+
             self.execute_next_action_if_ready()
 
             # Use blocking call with timeout to detect hangs

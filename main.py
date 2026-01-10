@@ -380,6 +380,24 @@ if __name__ == "__main__":
                 ascension_level=current_ascension,
                 seed=run_seed,
             )
+        except EOFError as e:
+            # Handle broken pipe (Communication Mod or game crashed)
+            import traceback
+            logging.critical(f"Game #{game_count} CRASHED: {e}")
+            logging.critical("This indicates Communication Mod or Slay the Spire terminated unexpectedly.")
+            logging.critical("Possible causes:")
+            logging.critical("  1. SuperFastMode mod conflict (try disabling it)")
+            logging.critical("  2. Communication Mod crash (check mod version)")
+            logging.critical("  3. Slay the Spire crash (check game logs)")
+            logging.critical("Action: Waiting 10 seconds before attempting to continue...")
+            logging.debug(traceback.format_exc())
+
+            # Wait for user to notice and potentially restart the game
+            import time
+            time.sleep(10)
+
+            # Try to continue (will likely fail if game isn't restarted)
+            continue
         except Exception as e:
             # Handle communication errors or game crashes
             import traceback
