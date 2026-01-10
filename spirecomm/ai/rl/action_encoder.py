@@ -6,7 +6,7 @@ Converts between discrete action indices (0-999) and Slay the Spire Action objec
 
 from typing import List, Optional, Tuple
 from spirecomm.spire.game import Game
-from spirecomm.communication.action import PlayCardAction, PotionAction, EndTurnAction, ChooseAction, ProceedAction, LeaveAction, ConfirmAction
+from spirecomm.communication.action import PlayCardAction, PotionAction, EndTurnAction, ChooseAction, ProceedAction, LeaveAction, ConfirmAction, CancelAction
 
 
 class ActionEncoder:
@@ -25,6 +25,7 @@ class ActionEncoder:
     - 155: Proceed (skip/continue button)
     - 156: Leave (e.g., leave shop)
     - 157: Confirm (e.g., confirm card selection in GRID)
+    - 158: Cancel (e.g., skip card reward)
     """
 
     MAX_ACTIONS = 1000
@@ -46,6 +47,7 @@ class ActionEncoder:
     PROCEED_ACTION = 155
     LEAVE_ACTION = 156
     CONFIRM_ACTION = 157
+    CANCEL_ACTION = 158
 
     def __init__(self):
         """Initialize action encoder."""
@@ -170,6 +172,10 @@ class ActionEncoder:
         elif action_index == self.CONFIRM_ACTION:
             return ConfirmAction()
 
+        # Cancel action (e.g., skip card reward)
+        elif action_index == self.CANCEL_ACTION:
+            return CancelAction()
+
         else:
             raise ValueError(f"Invalid action index: {action_index}")
 
@@ -194,6 +200,24 @@ class ActionEncoder:
             mask[self.PROCEED_ACTION] = True
             logger.debug(f"GAME_OVER: Enabled proceed action")
             return mask  # Early return to skip all other logic
+
+        # Card reward screen (including potion-related card selection)
+        # Must check BEFORE combat actions because some potions trigger CARD_REWARD in combat
+        if game.choice_available and ("card" in str(game.screen_type).lower() or "upgrade" in str(game.screen_type).lower()):
+            choices = game.choice_list if game.choice_list else []
+            for i in range(len(choices)):
+                if i < 10:  # Max 10 choices
+                    mask[self.CARD_REWARD_OFFSET + i] = True
+
+            # Enable cancel to skip taking a card
+            mask[self.CANCEL_ACTION] = True
+
+            # Fallback: ensure at least one action is valid
+            if len(choices) == 0:
+                mask[self.CARD_REWARD_OFFSET] = True
+
+            logger.debug(f"CARD_REWARD: Enabled {len(choices)} card choices and cancel")
+            return mask  # Early return - don't enable combat actions
 
         # End turn is only valid in combat when end is available
         if game.in_combat and hasattr(game, 'end_available') and game.end_available:
@@ -222,16 +246,6 @@ class ActionEncoder:
                     mask[action_idx] = True
 
             logger.debug(f"Combat mask: {sum(mask)} valid actions out of {len(mask)}")
-
-        # Card reward screen
-        elif game.choice_available and ("card" in str(game.screen_type).lower() or "upgrade" in str(game.screen_type).lower()):
-            choices = game.choice_list if game.choice_list else []
-            for i in range(len(choices)):
-                if i < 10:  # Max 10 choices
-                    mask[self.CARD_REWARD_OFFSET + i] = True
-            # Fallback: ensure at least one action is valid
-            if len(choices) == 0:
-                mask[self.CARD_REWARD_OFFSET] = True
 
         # Combat reward screen (potions/relics/cards/gold after battle)
         elif "COMBAT_REWARD" in str(game.screen_type):
