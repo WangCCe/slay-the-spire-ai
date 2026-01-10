@@ -6,7 +6,7 @@ Converts between discrete action indices (0-999) and Slay the Spire Action objec
 
 from typing import List, Optional, Tuple
 from spirecomm.spire.game import Game
-from spirecomm.communication.action import PlayCardAction, PotionAction, EndTurnAction, ChooseAction, ProceedAction, LeaveAction
+from spirecomm.communication.action import PlayCardAction, PotionAction, EndTurnAction, ChooseAction, ProceedAction, LeaveAction, ConfirmAction
 
 
 class ActionEncoder:
@@ -24,6 +24,7 @@ class ActionEncoder:
     - 151-154: Rest site options
     - 155: Proceed (skip/continue button)
     - 156: Leave (e.g., leave shop)
+    - 157: Confirm (e.g., confirm card selection in GRID)
     """
 
     MAX_ACTIONS = 1000
@@ -44,6 +45,7 @@ class ActionEncoder:
     REST_OPTION_OFFSET = 151
     PROCEED_ACTION = 155
     LEAVE_ACTION = 156
+    CONFIRM_ACTION = 157
 
     def __init__(self):
         """Initialize action encoder."""
@@ -164,6 +166,10 @@ class ActionEncoder:
         elif action_index == self.LEAVE_ACTION:
             return LeaveAction()
 
+        # Confirm action (e.g., confirm card selection in GRID screen)
+        elif action_index == self.CONFIRM_ACTION:
+            return ConfirmAction()
+
         else:
             raise ValueError(f"Invalid action index: {action_index}")
 
@@ -251,11 +257,10 @@ class ActionEncoder:
                 if i < 10:  # Max 10 choices
                     mask[self.CARD_REWARD_OFFSET + i] = True
 
-            # Enable first choice if no choices available
-            if len(choices) == 0:
-                mask[self.CARD_REWARD_OFFSET] = True
+            # Always enable confirm action to confirm selection (or skip if nothing selected)
+            mask[self.CONFIRM_ACTION] = True
 
-            logger.debug(f"GRID: Enabled {len(choices)} choose actions")
+            logger.debug(f"GRID: Enabled {len(choices)} choose actions and confirm")
 
         # Map screen
         elif "map" in str(game.screen_type).lower():

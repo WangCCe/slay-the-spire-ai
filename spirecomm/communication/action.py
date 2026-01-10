@@ -125,6 +125,13 @@ class LeaveAction(Action):
         super().__init__("leave")
 
 
+class ConfirmAction(Action):
+    """An action to use the CommunicationMod 'Confirm' command (e.g., confirm card selection)"""
+
+    def __init__(self):
+        super().__init__("confirm")
+
+
 class CancelAction(Action):
     """An action to use the CommunicationMod 'Cancel' command"""
 
