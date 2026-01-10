@@ -118,6 +118,39 @@ class ActionEncoder:
                 choice_index = min(choice_index, len(game.choice_list) - 1)
             else:
                 choice_index = 0
+
+            # Special handling for COMBAT_REWARD screen
+            # Must use CombatRewardAction(reward_object), not ChooseAction(choice_index)
+            if "COMBAT_REWARD" in str(game.screen_type):
+                from spirecomm.communication.action import CombatRewardAction
+                rewards = game.screen.rewards if hasattr(game.screen, 'rewards') else []
+                if choice_index < len(rewards):
+                    return CombatRewardAction(rewards[choice_index])
+                else:
+                    # Fallback to proceed if invalid index
+                    return ProceedAction()
+
+            # Special handling for SHOP_SCREEN
+            # Must use BuyCardAction/BuyPotionAction, not ChooseAction
+            if "SHOP_SCREEN" in str(game.screen_type):
+                from spirecomm.communication.action import BuyCardAction, BuyPotionAction, BuyRelicAction, BuyPurgeAction
+                from spirecomm.spire.screen import RewardType
+
+                screen = game.screen
+                if hasattr(screen, 'cards') and choice_index < len(screen.cards):
+                    # Buying a card
+                    return BuyCardAction(screen.cards[choice_index])
+                elif hasattr(screen, 'potions') and choice_index < len(screen.potions):
+                    # Buying a potion
+                    return BuyPotionAction(screen.potions[choice_index])
+                elif hasattr(screen, 'relics') and choice_index < len(screen.relics):
+                    # Buying a relic
+                    return BuyRelicAction(screen.relics[choice_index])
+                else:
+                    # Invalid choice, proceed
+                    return ProceedAction()
+
+            # Default: use ChooseAction for other screens
             return ChooseAction(choice_index)
 
         # Map path selection
@@ -148,6 +181,30 @@ class ActionEncoder:
                 shop_action = min(shop_action, len(game.choice_list) - 1)
             else:
                 shop_action = 0
+
+            # Special handling for SHOP_SCREEN
+            # Must use BuyCardAction/BuyPotionAction/BuyRelicAction, not ChooseAction
+            if "SHOP_SCREEN" in str(game.screen_type):
+                from spirecomm.communication.action import BuyCardAction, BuyPotionAction, BuyRelicAction, BuyPurgeAction
+
+                screen = game.screen
+                if hasattr(screen, 'cards') and shop_action < len(screen.cards):
+                    # Buying a card
+                    return BuyCardAction(screen.cards[shop_action])
+                elif hasattr(screen, 'potions') and shop_action < len(screen.potions):
+                    # Buying a potion (check if potions exist before cards in shop_action)
+                    return BuyPotionAction(screen.potions[shop_action - len(getattr(screen, 'cards', []))])
+                elif hasattr(screen, 'relics') and shop_action < len(screen.relics):
+                    # Buying a relic
+                    return BuyRelicAction(screen.relics[shop_action])
+                elif hasattr(screen, 'purge_available') and screen.purge_available:
+                    # Buy purge (card removal)
+                    return BuyPurgeAction()
+                else:
+                    # Invalid choice, leave shop
+                    return LeaveAction()
+
+            # Default: use ChooseAction for other screens that use SHOP_ACTION_OFFSET
             return ChooseAction(shop_action)
 
         # Rest site option
