@@ -55,16 +55,16 @@ class RLAgent:
         self.action_encoder = ActionEncoder()
         self.reward_calculator = RewardCalculator()
 
-        # Initialize trainer
-        self.trainer = DQNTrainer(device=device) if training else None
+        # Initialize trainer with correct state dimension
+        self.trainer = DQNTrainer(state_dim=self.state_encoder.feature_dim, device=device) if training else None
 
         # Load model or create new network
         if model_path is not None:
             self.load_model(model_path)
             logger.info(f"Loaded model from {model_path}")
         else:
-            # Create network for inference
-            self.network = create_dqn("standard", device=device)
+            # Create network for inference with correct state dimension
+            self.network = create_dqn("standard", state_dim=self.state_encoder.feature_dim, device=device)
             self.network.eval()
             logger.info("Initialized new network")
 
@@ -183,7 +183,7 @@ class RLAgent:
 
         # Create network if needed
         if not hasattr(self, 'network') or self.network is None:
-            self.network = create_dqn("standard", device=self.device)
+            self.network = create_dqn("standard", state_dim=self.state_encoder.feature_dim, device=self.device)
 
         # Load state dict
         if 'online_network_state_dict' in checkpoint:
