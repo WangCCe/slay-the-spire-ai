@@ -284,20 +284,31 @@ class ActionEncoder:
                 # Fallback
                 mask[self.EVENT_CHOICE_OFFSET] = True
 
-        # Shop screen
-        elif "shop" in str(game.screen_type).lower():
+        # Shop screen - differentiate between SHOP_ROOM (entrance) and SHOP_SCREEN (purchase interface)
+        elif "SHOP_SCREEN" in str(game.screen_type):
+            # Actual shop interface where you buy things
             # Shop actions (buy cards, relics, potions, purge)
             if game.choice_list and len(game.choice_list) > 0:
                 for i in range(min(len(game.choice_list), 10)):
                     mask[self.SHOP_ACTION_OFFSET + i] = True
             else:
-                # Fallback
+                # Fallback - enable buy actions even if choice_list is empty
                 for i in range(3):
                     mask[self.SHOP_ACTION_OFFSET + i] = True
 
             # Always enable leave action to exit shop
             mask[self.LEAVE_ACTION] = True
-            logger.debug(f"SHOP: Enabled {len(game.choice_list) if game.choice_list else 0} buy actions and leave")
+            logger.debug(f"SHOP_SCREEN: Enabled {len(game.choice_list) if game.choice_list else 0} buy actions and leave")
+
+        elif "SHOP_ROOM" in str(game.screen_type):
+            # Shop room entrance - choose to enter or proceed to skip
+            if game.choice_list and len(game.choice_list) > 0:
+                for i in range(min(len(game.choice_list), 5)):
+                    mask[self.SHOP_ACTION_OFFSET + i] = True
+
+            # Enable proceed to skip the shop
+            mask[self.PROCEED_ACTION] = True
+            logger.debug(f"SHOP_ROOM: Enabled {len(game.choice_list) if game.choice_list else 0} enter actions and proceed")
 
         # Rest site
         elif "rest" in str(game.screen_type).lower():
