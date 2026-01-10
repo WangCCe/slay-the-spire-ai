@@ -105,7 +105,7 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
             logging.info(f"Creating RL Agent (training={training})")
             agent = create_rl_agent(training=training, model_path=model_path)
             logging.info(f"RL Agent created successfully")
-            logging.info(f"  State dim: 571, Action dim: 1000")
+            logging.info(f"  State dim: {agent.state_encoder.feature_dim}, Action dim: {agent.action_encoder.MAX_ACTIONS}")
             logging.info(f"  Training mode: {training}")
             if model_path:
                 logging.info(f"  Loaded model: {model_path}")
