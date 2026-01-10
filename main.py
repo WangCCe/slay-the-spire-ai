@@ -8,6 +8,14 @@ from spirecomm.communication.coordinator import Coordinator
 from spirecomm.ai.agent import SimpleAgent, OptimizedAgent, OPTIMIZED_AI_AVAILABLE
 from spirecomm.spire.character import PlayerClass
 
+# Import RL agent (optional)
+try:
+    from spirecomm.ai.rl import RLAgent, create_agent as create_rl_agent, RL_AVAILABLE
+except ImportError:
+    RL_AVAILABLE = False
+    RLAgent = None
+    create_rl_agent = None
+
 # Setup logging to file with rotation (all logs go to ai_debug.log)
 # Note: We don't use StreamHandler because Communication Mod uses stdout for commands
 # Log rotation: 10MB per file, keep 5 backup files (60MB total)
@@ -50,47 +58,90 @@ except ImportError:
     logging.warning("Statistics tracking not available")
 
 
-def create_agent(use_optimized=None, player_class=None):
+def create_agent(agent_type="auto", use_optimized=None, player_class=None, training=False, model_path=None):
     """
     Create an agent instance.
 
     Args:
-        use_optimized: Force use of optimized agent (True), simple agent (False),
-                      or auto-detect (None)
-        player_class: Player class to determine if optimized AI should be used
+        agent_type: Type of agent ("simple", "optimized", "rl", "auto")
+        use_optimized: DEPRECATED - Use agent_type instead
+        player_class: Player class (required for RL agent, optional for others)
+        training: Whether RL agent should be in training mode
+        model_path: Path to pre-trained RL model checkpoint
 
     Returns:
-        Agent instance (SimpleAgent or OptimizedAgent)
+        Agent instance (SimpleAgent, OptimizedAgent, or RLAgent)
     """
-    # Auto-enable optimized AI for Ironclad
-    if use_optimized is None:
+    # Handle legacy use_optimized parameter
+    if agent_type == "auto" and use_optimized is not None:
+        agent_type = "optimized" if use_optimized else "simple"
+
+    # Auto-detect: use optimized for Ironclad, simple for others
+    if agent_type == "auto":
         if player_class == PlayerClass.IRONCLAD:
-            use_optimized = True
+            agent_type = "optimized"
             logging.info("Auto-enabling OptimizedAgent for Ironclad")
         else:
-            use_optimized = os.getenv("USE_OPTIMIZED_AI", "false").lower() == "true"
+            agent_type = "simple"
 
-    # Try to use OptimizedAgent if requested
-    if use_optimized:
-        if OPTIMIZED_AI_AVAILABLE:
-            class_name = player_class.name if player_class else "Unknown"
-            logging.info(f"Using OptimizedAgent with enhanced AI for {class_name}")
-            return OptimizedAgent(chosen_class=player_class) if player_class else OptimizedAgent()
-        else:
-            logging.warning(" OptimizedAgent requested but components not available\n")
+    # Create RL agent
+    if agent_type == "rl":
+        if not RL_AVAILABLE:
+            logging.error("RL agent requested but PyTorch/RL components not available")
+            logging.error("Please install: pip install torch numpy")
+            logging.error("Falling back to SimpleAgent")
+            return SimpleAgent(chosen_class=player_class) if player_class else SimpleAgent()
+
+        if player_class is None:
+            logging.warning("RL agent requires player_class, defaulting to IRONCLAD")
+            player_class = PlayerClass.IRONCLAD
+
+        if player_class != PlayerClass.IRONCLAD:
+            logging.warning(f"RL agent only supports IRONCLAD, got {player_class}")
+            logging.warning("Falling back to SimpleAgent")
+            return SimpleAgent(chosen_class=player_class)
+
+        try:
+            logging.info(f"Creating RL Agent (training={training})")
+            agent = create_rl_agent(training=training, model_path=model_path)
+            logging.info(f"RL Agent created successfully")
+            logging.info(f"  State dim: 571, Action dim: 1000")
+            logging.info(f"  Training mode: {training}")
+            if model_path:
+                logging.info(f"  Loaded model: {model_path}")
+            return agent
+        except Exception as e:
+            logging.error(f"Failed to create RL agent: {e}")
+            logging.error("Falling back to SimpleAgent")
+            import traceback
+            logging.debug(traceback.format_exc())
+            return SimpleAgent(chosen_class=player_class)
+
+    # Create OptimizedAgent
+    if agent_type == "optimized":
+        if not OPTIMIZED_AI_AVAILABLE:
+            logging.warning("OptimizedAgent requested but components not available")
             logging.warning("Falling back to SimpleAgent")
             return SimpleAgent(chosen_class=player_class) if player_class else SimpleAgent()
-    else:
+
         class_name = player_class.name if player_class else "Unknown"
-        logging.info(f"Using SimpleAgent (legacy AI) for {class_name}")
-        return SimpleAgent(chosen_class=player_class) if player_class else SimpleAgent()
+        logging.info(f"Using OptimizedAgent with enhanced AI for {class_name}")
+        return OptimizedAgent(chosen_class=player_class) if player_class else OptimizedAgent()
+
+    # Create SimpleAgent (default)
+    class_name = player_class.name if player_class else "Unknown"
+    logging.info(f"Using SimpleAgent (legacy AI) for {class_name}")
+    return SimpleAgent(chosen_class=player_class) if player_class else SimpleAgent()
 
 
 if __name__ == "__main__":
     # Parse command line arguments
-    use_optimized = None
+    agent_type = "auto"
+    use_optimized = None  # Deprecated but kept for compatibility
     ascension_level = 0  # Default ascension level
     run_seed = None
+    training = False
+    model_path = None
 
     parser = argparse.ArgumentParser(
         prog="python main.py",
@@ -98,27 +149,46 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Environment Variable:\n"
-            "  USE_OPTIMIZED_AI=true  Use OptimizedAgent\n\n"
+            "  USE_OPTIMIZED_AI=true  Use OptimizedAgent (deprecated, use --agent optimized)\n\n"
             "Examples:\n"
-            "  python main.py              # Auto-detect, ascension 0\n"
-            "  python main.py --optimized  # Force optimized AI\n"
-            "  python main.py -a 10        # Ascension level 10\n"
-            "  python main.py -a 20        # Ascension level 20\n"
-            "  python main.py --optimized -a 20  # Optimized AI A20\n"
+            "  python main.py                    # Auto-detect, ascension 0\n"
+            "  python main.py --agent optimized  # Force optimized AI\n"
+            "  python main.py --agent rl         # Use RL agent (inference mode)\n"
+            "  python main.py --agent rl --train # Use RL agent in training mode\n"
+            "  python main.py --agent rl --model checkpoints/model.pth  # Load trained model\n"
+            "  python main.py -a 10              # Ascension level 10\n"
+            "  python main.py -a 20              # Ascension level 20\n"
+            "  python main.py --agent optimized -a 20  # Optimized AI A20\n"
             "  python main.py --seed 7010470200064802279  # Fixed seed run\n"
         ),
+    )
+    parser.add_argument(
+        "--agent",
+        choices=["simple", "optimized", "rl", "auto"],
+        default="auto",
+        help="Agent type: simple, optimized, rl, or auto-detect (default: auto)",
     )
     parser.add_argument(
         "--optimized",
         "-o",
         action="store_true",
-        help="Use OptimizedAgent with enhanced AI",
+        help="Use OptimizedAgent with enhanced AI (deprecated, use --agent optimized)",
     )
     parser.add_argument(
         "--simple",
         "-s",
         action="store_true",
-        help="Use SimpleAgent (legacy AI)",
+        help="Use SimpleAgent (legacy AI) (deprecated, use --agent simple)",
+    )
+    parser.add_argument(
+        "--train",
+        action="store_true",
+        help="Enable RL agent training mode (requires --agent rl)",
+    )
+    parser.add_argument(
+        "--model",
+        metavar="PATH",
+        help="Path to pre-trained RL model checkpoint (requires --agent rl)",
     )
     parser.add_argument(
         "--ascension",
@@ -140,16 +210,41 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    # Handle deprecated arguments
     if args.optimized and args.simple:
         logging.error("Cannot specify both --optimized and --simple")
         sys.exit(1)
 
-    if args.optimized or args.mode == "optimized":
-        use_optimized = True
+    # Determine agent type from various arguments
+    if args.mode == "optimized" or args.optimized:
+        agent_type = "optimized"
         logging.info("Optimized AI mode enabled via command line")
-    elif args.simple or args.mode == "simple":
-        use_optimized = False
+    elif args.mode == "simple" or args.simple:
+        agent_type = "simple"
         logging.info("Simple AI mode enforced via command line")
+    elif args.agent != "auto":
+        agent_type = args.agent
+        logging.info(f"Agent type set to: {agent_type}")
+
+    # RL-specific options
+    if args.train and agent_type != "rl":
+        logging.warning("--train flag requires --agent rl, ignoring")
+        training = False
+    else:
+        training = args.train
+
+    if args.model and agent_type != "rl":
+        logging.warning("--model flag requires --agent rl, ignoring")
+        model_path = None
+    else:
+        model_path = args.model
+
+    if training:
+        logging.info("RL Agent training mode enabled")
+        logging.info("  Models will be saved to: checkpoints/")
+
+    if model_path:
+        logging.info(f"Loading RL model from: {model_path}")
 
     if args.ascension is not None:
         try:
@@ -172,8 +267,13 @@ if __name__ == "__main__":
     # Define player class before creating agent
     chosen_class = PlayerClass.IRONCLAD  # Fixed to Ironclad for testing
 
-    # Create agent with player class for auto-detection
-    agent = create_agent(use_optimized, player_class=chosen_class)
+    # Create agent with player class and RL-specific options
+    agent = create_agent(
+        agent_type=agent_type,
+        player_class=chosen_class,
+        training=training,
+        model_path=model_path
+    )
 
     # Setup statistics tracking if available
     statistics = None
@@ -201,12 +301,16 @@ if __name__ == "__main__":
 
     while True:  # Infinite loop for Ironclad only
         game_count += 1
+        is_rl_agent = RLAgent is not None and isinstance(agent, RLAgent)
+
         logging.info(f"\n{'='*60}\n")
         logging.info(f"Starting game #{game_count} as {chosen_class}")
         logging.info(f"Ascension Level: {current_ascension}")
         if run_seed is not None:
             logging.info(f"Seed: {run_seed}")
         logging.info(f"Coordinator state: in_game={coordinator.in_game}, ready={coordinator.game_is_ready}")
+        if is_rl_agent:
+            logging.info(f"RL Agent: training={training}")
         logging.info(f"{'='*60}\n")
 
         # Reset game tracker for OptimizedAgent
@@ -219,8 +323,12 @@ if __name__ == "__main__":
             except Exception as e:
                 logging.warning(f"Could not reset game tracker: {e}")
 
-        # Change agent class for this game
-        agent.change_class(chosen_class)
+        # Change agent class for this game (only for non-RL agents)
+        if not is_rl_agent and hasattr(agent, 'change_class'):
+            agent.change_class(chosen_class)
+        elif is_rl_agent:
+            # RL agent doesn't need change_class, just reset
+            agent.reset()
 
         # Play the game
         try:
@@ -240,7 +348,35 @@ if __name__ == "__main__":
             # Continue to next game instead of crashing
             continue
 
-        # Record game result if statistics available
+        # Record game result if statistics available or RL agent in training
+        if is_rl_agent and training:
+            # RL agent training checkpoint saving
+            try:
+                # Create checkpoints directory if it doesn't exist
+                os.makedirs("checkpoints", exist_ok=True)
+
+                # Save checkpoint
+                checkpoint_path = f"checkpoints/rl_model_ep{game_count}.pth"
+                agent.save_model(checkpoint_path, episode=game_count)
+
+                logging.info(f"RL Training checkpoint saved: {checkpoint_path}")
+
+                # Log training metrics
+                if hasattr(agent, 'trainer') and agent.trainer:
+                    avg_loss = agent.trainer.get_avg_loss()
+                    epsilon = agent.trainer.get_epsilon()
+                    total_steps = agent.trainer.total_steps
+                    logging.info(f"  Training steps: {total_steps}")
+                    logging.info(f"  Avg loss: {avg_loss:.4f}")
+                    logging.info(f"  Epsilon: {epsilon:.3f}")
+
+                # Reset agent for next episode
+                agent.reset()
+            except Exception as e:
+                logging.error(f"Error saving RL checkpoint: {e}")
+                import traceback
+                logging.debug(traceback.format_exc())
+
         if statistics:
             try:
                 logging.debug("Attempting to save statistics...")
