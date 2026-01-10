@@ -87,6 +87,7 @@ class RLAgent:
         self.epsilon = epsilon
         self.last_state = None
         self.last_action = None
+        self.last_game = None  # Track previous game state for reward calculation
 
         # Episode tracking
         self.episode_reward = 0.0
@@ -133,11 +134,14 @@ class RLAgent:
 
             # Track state and action for training
             if self.training_mode and self.trainer is not None:
-                # Calculate reward
-                if self.last_state is not None:
-                    # Simple reward calculation for now
-                    # TODO: Implement proper reward calculation based on game state changes
-                    reward = 0.0
+                # Calculate reward using RewardCalculator
+                if self.last_state is not None and self.last_game is not None:
+                    # Use RewardCalculator to compare game states and calculate reward
+                    reward = self.reward_calculator.calculate_step_reward(
+                        current_game=game,
+                        last_game=self.last_game,
+                        action_type="combat"
+                    )
 
                     # Check for game over
                     done = "GAME_OVER" in str(game.screen_type) or (
@@ -172,9 +176,10 @@ class RLAgent:
                     import traceback
                     logger.debug(traceback.format_exc())
 
-            # Update last state and action
+            # Update last state, action, and game
             self.last_state = state
             self.last_action = action_idx
+            self.last_game = game
 
             return action
 
@@ -189,11 +194,14 @@ class RLAgent:
         """Reset agent state for new episode."""
         self.last_state = None
         self.last_action = None
+        self.last_game = None  # Reset game state tracking
         self.episode_reward = 0.0
         self.episode_steps = 0
 
         if self.training_mode and self.trainer is not None:
             self.trainer.update_episode_count()
+            # Reset reward calculator tracking for new episode
+            self.reward_calculator.reset()
             # NOTE: Don't clear replay buffer - we need to accumulate experience across episodes
             # Only clear if buffer has mixed dimension data (shouldn't happen after fixes)
 
