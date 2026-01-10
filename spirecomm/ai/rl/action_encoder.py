@@ -6,7 +6,7 @@ Converts between discrete action indices (0-999) and Slay the Spire Action objec
 
 from typing import List, Optional, Tuple
 from spirecomm.spire.game import Game
-from spirecomm.communication.action import PlayCardAction, PotionAction, EndTurnAction, ChooseAction, ProceedAction
+from spirecomm.communication.action import PlayCardAction, PotionAction, EndTurnAction, ChooseAction, ProceedAction, LeaveAction
 
 
 class ActionEncoder:
@@ -23,6 +23,7 @@ class ActionEncoder:
     - 141-150: Shop actions
     - 151-154: Rest site options
     - 155: Proceed (skip/continue button)
+    - 156: Leave (e.g., leave shop)
     """
 
     MAX_ACTIONS = 1000
@@ -42,6 +43,7 @@ class ActionEncoder:
     SHOP_ACTION_OFFSET = 141
     REST_OPTION_OFFSET = 151
     PROCEED_ACTION = 155
+    LEAVE_ACTION = 156
 
     def __init__(self):
         """Initialize action encoder."""
@@ -157,6 +159,10 @@ class ActionEncoder:
         # Proceed action (skip/continue button)
         elif action_index == self.PROCEED_ACTION:
             return ProceedAction()
+
+        # Leave action (e.g., leave shop)
+        elif action_index == self.LEAVE_ACTION:
+            return LeaveAction()
 
         else:
             raise ValueError(f"Invalid action index: {action_index}")
@@ -283,6 +289,10 @@ class ActionEncoder:
                 # Fallback
                 for i in range(3):
                     mask[self.SHOP_ACTION_OFFSET + i] = True
+
+            # Always enable leave action to exit shop
+            mask[self.LEAVE_ACTION] = True
+            logger.debug(f"SHOP: Enabled {len(game.choice_list) if game.choice_list else 0} buy actions and leave")
 
         # Rest site
         elif "rest" in str(game.screen_type).lower():

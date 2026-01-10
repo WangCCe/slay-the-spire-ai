@@ -118,6 +118,13 @@ class ProceedAction(Action):
         super().__init__("proceed")
 
 
+class LeaveAction(Action):
+    """An action to use the CommunicationMod 'Leave' command (e.g., leave shop)"""
+
+    def __init__(self):
+        super().__init__("leave")
+
+
 class CancelAction(Action):
     """An action to use the CommunicationMod 'Cancel' command"""
 
