@@ -42,8 +42,7 @@ class StateEncoder:
             1.0 if (game.character or PlayerClass.IRONCLAD) == PlayerClass.IRONCLAD else 0.0,
             1.0 if (game.character or PlayerClass.IRONCLAD) == PlayerClass.THE_SILENT else 0.0,
             1.0 if (game.character or PlayerClass.IRONCLAD) == PlayerClass.DEFECT else 0.0,
-            0.0,  # Placeholder for 4th class
-            0.0,  # Extra feature to reach 18 dims
+            0.0,  # Placeholder for 4th class (Watcher)
         ]
 
     def _encode_hand_cards(self, game: Game) -> List[float]:
