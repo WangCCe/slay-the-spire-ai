@@ -51,7 +51,19 @@ class PlayCardAction(Action):
                 else:
                     raise Exception("Specified card for CardAction is not in hand")
             else:
-                self.card_index = coordinator.last_game_state.hand.index(self.card)
+                # If card doesn't have uuid, try to use card_index if provided
+                if self.card_index >= 0:
+                    # card_index is already set, use it
+                    pass
+                else:
+                    # Try to find card in hand (may fail if hand contains primitives)
+                    try:
+                        self.card_index = coordinator.last_game_state.hand.index(self.card)
+                    except (ValueError, AttributeError):
+                        # hand may contain primitive types instead of Card objects
+                        # Fall back to using card_index if available
+                        if self.card_index < 0:
+                            raise Exception("Specified card for CardAction is not in hand (and no valid card_index provided)")
         if self.card_index == -1:
             raise Exception("Specified card for CardAction is not in hand")
         hand_card_index = self.card_index + 1

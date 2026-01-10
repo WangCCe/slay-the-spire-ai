@@ -91,7 +91,8 @@ class ActionEncoder:
             offset = action_index - self.PLAY_CARD_OFFSET
             card_index = offset // 10
             monster_index = offset % 10
-            return PlayCardAction(card_index, monster_index if monster_index < len(game.monsters) else -1)
+            # Use named parameters: card_index=X, target_index=Y
+            return PlayCardAction(card_index=card_index, target_index=monster_index if monster_index < len(game.monsters) else -1)
 
         # Use potion
         elif self.USE_POTION_OFFSET <= action_index < self.END_TURN_ACTION:
