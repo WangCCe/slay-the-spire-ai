@@ -157,20 +157,25 @@ class StateEncoder:
             if i < len(potions):
                 # Safely get potion name/id
                 potion = potions[i]
-                if hasattr(potion, 'potion_id'):
-                    name = potion.potion_id
+
+                # Check if potion is a primitive type (number) or object
+                if isinstance(potion, (int, float, np.integer, np.floating)):
+                    # It's a number, use it directly
+                    potion_hash = abs(int(potion)) % 30 / 30.0
+                elif hasattr(potion, 'potion_id'):
+                    potion_hash = hash(str(potion.potion_id)) % 30 / 30.0
                 elif hasattr(potion, 'name'):
-                    name = potion.name
+                    potion_hash = hash(str(potion.name)) % 30 / 30.0
                 elif hasattr(potion, 'id'):
-                    name = potion.id
+                    potion_hash = hash(str(potion.id)) % 30 / 30.0
                 else:
                     # Convert to string safely
                     try:
-                        name = str(potion)
+                        potion_hash = hash(str(potion)) % 30 / 30.0
                     except Exception:
-                        name = "Unknown"
+                        potion_hash = 0.0
 
-                features.extend([hash(name) % 30 / 30.0, 1.0, 1.0])
+                features.extend([potion_hash, 1.0, 1.0])
             else:
                 features.extend([0.0] * 3)
         return features
