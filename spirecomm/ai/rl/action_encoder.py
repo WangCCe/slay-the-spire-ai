@@ -310,6 +310,10 @@ class ActionEncoder:
                 # Fallback
                 mask[self.REST_OPTION_OFFSET] = True
 
+            # Always enable proceed to confirm rest option choice or skip
+            mask[self.PROCEED_ACTION] = True
+            logger.debug(f"REST: Enabled {len(game.choice_list) if game.choice_list else 0} rest options and proceed")
+
         # Ensure at least one action is valid (fallback)
         if not any(mask):
             # If nothing is valid, log warning and enable proceed as safest fallback
