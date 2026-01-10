@@ -133,11 +133,13 @@ class RLAgent:
 
             # Track state and action for training
             if self.training_mode and self.trainer is not None:
-                # Calculate reward using RewardCalculator
+                # Calculate reward
                 if self.last_state is not None:
-                    # We have a previous state, can calculate reward
-                    reward = self.reward_calculator.calculate_reward(game, action)
-                    # Done = game over or screen_type is GAME_OVER
+                    # Simple reward calculation for now
+                    # TODO: Implement proper reward calculation based on game state changes
+                    reward = 0.0
+
+                    # Check for game over
                     done = "GAME_OVER" in str(game.screen_type) or (
                         hasattr(game, 'player') and game.player is not None and
                         hasattr(game.player, 'current_hp') and game.player.current_hp <= 0
