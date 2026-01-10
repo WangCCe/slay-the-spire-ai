@@ -177,6 +177,12 @@ class ActionEncoder:
         import logging
         logger = logging.getLogger(__name__)
 
+        # Game over screen - only proceed is valid
+        if "GAME_OVER" in str(game.screen_type):
+            mask[self.PROCEED_ACTION] = True
+            logger.debug(f"GAME_OVER: Enabled proceed action")
+            return mask  # Early return to skip all other logic
+
         # End turn is only valid in combat when end is available
         if game.in_combat and hasattr(game, 'end_available') and game.end_available:
             mask[self.END_TURN_ACTION] = True
