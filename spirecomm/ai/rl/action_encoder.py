@@ -219,6 +219,25 @@ class ActionEncoder:
             logger.debug(f"CARD_REWARD: Enabled {len(choices)} card choices and cancel")
             return mask  # Early return - don't enable combat actions
 
+        # HAND_SELECT screen (select cards for effects like "draw 2 cards from your deck")
+        # Must check BEFORE combat actions - only accepts confirm command
+        if "HAND_SELECT" in str(game.screen_type):
+            # Enable choose actions for card selection
+            choices = game.choice_list if game.choice_list else []
+            for i in range(len(choices)):
+                if i < 10:  # Max 10 choices
+                    mask[self.CARD_REWARD_OFFSET + i] = True
+
+            # Enable confirm to confirm selection
+            mask[self.CONFIRM_ACTION] = True
+
+            # Fallback: ensure at least one action is valid
+            if len(choices) == 0:
+                mask[self.CONFIRM_ACTION] = True
+
+            logger.debug(f"HAND_SELECT: Enabled {len(choices)} card choices and confirm")
+            return mask  # Early return - don't enable combat actions
+
         # End turn is only valid in combat when end is available
         if game.in_combat and hasattr(game, 'end_available') and game.end_available:
             mask[self.END_TURN_ACTION] = True
