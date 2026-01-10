@@ -6,7 +6,7 @@ Converts between discrete action indices (0-999) and Slay the Spire Action objec
 
 from typing import List, Optional, Tuple
 from spirecomm.spire.game import Game
-from spirecomm.communication.action import PlayCardAction, PotionAction, EndTurnAction, ChooseAction
+from spirecomm.communication.action import PlayCardAction, PotionAction, EndTurnAction, ChooseAction, ProceedAction
 
 
 class ActionEncoder:
@@ -22,6 +22,7 @@ class ActionEncoder:
     - 136-140: Event choices
     - 141-150: Shop actions
     - 151-154: Rest site options
+    - 155: Proceed (skip/continue button)
     """
 
     MAX_ACTIONS = 1000
@@ -40,6 +41,7 @@ class ActionEncoder:
     EVENT_CHOICE_OFFSET = 136
     SHOP_ACTION_OFFSET = 141
     REST_OPTION_OFFSET = 151
+    PROCEED_ACTION = 155
 
     def __init__(self):
         """Initialize action encoder."""
@@ -143,7 +145,7 @@ class ActionEncoder:
             return ChooseAction(shop_action)
 
         # Rest site option
-        elif self.REST_OPTION_OFFSET <= action_index < self.MAX_ACTIONS:
+        elif self.REST_OPTION_OFFSET <= action_index < self.PROCEED_ACTION:
             rest_option = action_index - self.REST_OPTION_OFFSET
             # Clamp to valid range (typically 4 options: rest, smith, lift, dig)
             if game.choice_list and len(game.choice_list) > 0:
@@ -151,6 +153,10 @@ class ActionEncoder:
             else:
                 rest_option = 0
             return ChooseAction(rest_option)
+
+        # Proceed action (skip/continue button)
+        elif action_index == self.PROCEED_ACTION:
+            return ProceedAction()
 
         else:
             raise ValueError(f"Invalid action index: {action_index}")
@@ -209,6 +215,21 @@ class ActionEncoder:
             if len(choices) == 0:
                 mask[self.CARD_REWARD_OFFSET] = True
 
+        # Combat reward screen (potions/relics after battle)
+        elif "COMBAT_REWARD" in str(game.screen_type):
+            # Check for potion rewards
+            potions = game.potions if game.potions else []
+            # Enable use potion actions if potions available
+            for potion_idx in range(min(len(potions), self.MAX_POTIONS)):
+                # For combat rewards, potions are typically used immediately
+                # Use potion at target -1 (no target needed for combat rewards)
+                action_idx = self.encode_use_potion(potion_idx, 0)
+                mask[action_idx] = True
+
+            # Always enable proceed to skip reward or continue after taking potion
+            mask[self.PROCEED_ACTION] = True
+            logger.debug(f"COMBAT_REWARD: Enabled {len(potions)} potion actions and proceed")
+
         # Map screen
         elif "map" in str(game.screen_type).lower():
             # Usually 1-3 path options
@@ -255,11 +276,11 @@ class ActionEncoder:
 
         # Ensure at least one action is valid (fallback)
         if not any(mask):
-            # If nothing is valid, log warning and enable proceed
+            # If nothing is valid, log warning and enable proceed as safest fallback
             logger.warning(f"No valid actions found! in_combat={game.in_combat}, screen_type={game.screen_type}, choice_available={game.choice_available}")
-            # Try to find a proceed action - use CHOOSE action with index 0 as fallback
-            mask[self.CARD_REWARD_OFFSET] = True  # Use choose 0 as safest fallback
-            logger.debug(f"Enabled fallback action: CHOOSE(0) at index {self.CARD_REWARD_OFFSET}")
+            # Use PROCEED as safest fallback - works in most contexts
+            mask[self.PROCEED_ACTION] = True
+            logger.debug(f"Enabled fallback action: PROCEED at index {self.PROCEED_ACTION}")
 
         logger.debug(f"Final mask: {sum(mask)} valid actions, screen={game.screen_type}")
         return mask
