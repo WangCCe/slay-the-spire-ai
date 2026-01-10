@@ -297,8 +297,9 @@ class ActionEncoder:
                         mask[self.REST_OPTION_OFFSET + i] = True
             else:
                 mask[self.REST_OPTION_OFFSET] = True
-            # Note: No proceed here - must choose an option
-            logger.debug(f"REST: Enabled {len(game.choice_list) if game.choice_list else 1} options")
+            # Always enable proceed to confirm the choice
+            mask[self.PROCEED_ACTION] = True
+            logger.debug(f"REST: Enabled {len(game.choice_list) if game.choice_list else 1} options and proceed")
             return mask
 
         # SHOP_SCREEN (purchase interface)
