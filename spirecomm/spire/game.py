@@ -124,6 +124,7 @@ class Game:
         game.proceed_available = "proceed" in available_commands or "confirm" in available_commands
         game.cancel_available = "cancel" in available_commands or "leave" in available_commands \
                                 or "return" in available_commands or "skip" in available_commands
+        game.available_commands = list(available_commands) if available_commands is not None else []
 
         return game
 

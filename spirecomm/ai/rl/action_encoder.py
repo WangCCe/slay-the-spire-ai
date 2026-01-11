@@ -167,6 +167,8 @@ class ActionEncoder:
             if "GRID" in str(game.screen_type):
                 from spirecomm.communication.action import ClickAction, KeyAction
 
+                if "choose" in getattr(game, "available_commands", []):
+                    return ChooseAction(choice_index)
                 positions = getattr(game.screen, "card_positions", []) if hasattr(game, "screen") else []
                 if positions:
                     return ClickAction(("card", choice_index, 0))

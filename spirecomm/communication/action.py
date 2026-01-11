@@ -368,6 +368,10 @@ class CardSelectAction(Action):
         chosen_indices.sort(reverse=True)
         for index in chosen_indices:
             if screen_type == ScreenType.GRID:
+                available = getattr(coordinator.last_game_state, "available_commands", [])
+                if "choose" in available:
+                    coordinator.add_action_to_queue(ChooseAction(choice_index=index))
+                    continue
                 positions = getattr(screen, "card_positions", [])
                 if positions:
                     coordinator.add_action_to_queue(ClickAction(("card", index, 0)))
