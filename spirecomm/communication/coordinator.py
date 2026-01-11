@@ -222,28 +222,28 @@ class Coordinator:
         :return: whether a message was received
         """
         message = self.get_next_raw_message(block)
-            if message is not None:
-                communication_state = json.loads(message)
-                self.last_error = communication_state.get("error", None)
-                self.game_is_ready = communication_state.get("ready_for_command")
-                if self.last_error is None:
-                    self.in_game = communication_state.get("in_game")
-                    if self.in_game:
-                        game_state = communication_state.get("game_state", {})
-                        if game_state.get("screen_type") == "GRID":
-                            import logging
-                            screen_state = game_state.get("screen_state") or {}
-                            if isinstance(screen_state, dict):
-                                logging.debug(
-                                    "GRID screen_state keys=%s",
-                                    sorted(screen_state.keys()),
-                                )
-                            else:
-                                logging.debug(
-                                    "GRID screen_state type=%s",
-                                    type(screen_state).__name__,
-                                )
-                        self.last_game_state = Game.from_json(game_state, communication_state.get("available_commands"))
+        if message is not None:
+            communication_state = json.loads(message)
+            self.last_error = communication_state.get("error", None)
+            self.game_is_ready = communication_state.get("ready_for_command")
+            if self.last_error is None:
+                self.in_game = communication_state.get("in_game")
+                if self.in_game:
+                    game_state = communication_state.get("game_state", {})
+                    if game_state.get("screen_type") == "GRID":
+                        import logging
+                        screen_state = game_state.get("screen_state") or {}
+                        if isinstance(screen_state, dict):
+                            logging.debug(
+                                "GRID screen_state keys=%s",
+                                sorted(screen_state.keys()),
+                            )
+                        else:
+                            logging.debug(
+                                "GRID screen_state type=%s",
+                                type(screen_state).__name__,
+                            )
+                    self.last_game_state = Game.from_json(game_state, communication_state.get("available_commands"))
             if perform_callbacks:
                 if self.last_error is not None:
                     self.action_queue.clear()
