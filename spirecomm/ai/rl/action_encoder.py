@@ -334,7 +334,10 @@ class ActionEncoder:
 
         # HAND_SELECT screen (select cards for effects)
         if "HAND_SELECT" in str(game.screen_type):
-            choices = game.choice_list if game.choice_list else []
+            if hasattr(game, "screen") and hasattr(game.screen, "cards") and game.screen.cards:
+                choices = game.screen.cards
+            else:
+                choices = game.choice_list if game.choice_list else []
             for i in range(len(choices)):
                 if i < 10:  # Max 10 choices
                     mask[self.CARD_REWARD_OFFSET + i] = True
