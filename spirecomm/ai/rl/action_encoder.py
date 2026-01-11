@@ -257,9 +257,9 @@ class ActionEncoder:
         # Confirm action (e.g., confirm card selection in GRID screen)
         elif action_index == self.CONFIRM_ACTION:
             if "HAND_SELECT" in str(game.screen_type):
-                from spirecomm.communication.action import StateAction
+                from spirecomm.communication.action import KeyAction
 
-                return StateAction()
+                return KeyAction("enter")
             if "GRID" in str(game.screen_type):
                 from spirecomm.communication.action import OptionalCardSelectConfirmAction
 
@@ -342,14 +342,20 @@ class ActionEncoder:
                 if i < 10:  # Max 10 choices
                     mask[self.CARD_REWARD_OFFSET + i] = True
 
-            # Allow a state poll when there are no choices or skipping is allowed.
-            state_enabled = len(choices) == 0 or getattr(game.screen, "can_pick_zero", False)
-            if state_enabled:
+            selected_cards = getattr(game.screen, "selected_cards", []) if hasattr(game, "screen") else []
+            num_required = getattr(game.screen, "num_cards", 0) if hasattr(game, "screen") else 0
+            can_pick_zero = getattr(game.screen, "can_pick_zero", False) if hasattr(game, "screen") else False
+            confirm_ready = can_pick_zero or (num_required > 0 and len(selected_cards) >= num_required)
+
+            # Allow confirm when selection can be finalized; otherwise allow a state poll.
+            if confirm_ready:
+                mask[self.CONFIRM_ACTION] = True
+            elif len(choices) == 0:
                 mask[self.CONFIRM_ACTION] = True
 
             logger.debug(
                 f"HAND_SELECT: Enabled {len(choices)} card choices"
-                f"{' and state' if state_enabled else ''}"
+                f"{' and confirm' if confirm_ready else ''}"
             )
             return mask
 
