@@ -97,6 +97,7 @@ class RLAgent:
         self.failed_actions = set()  # Set of action indices that failed recently
         self.consecutive_failures = {}  # action_index -> failure count
         self.max_consecutive_failures = 3  # Disable action after 3 consecutive failures
+        self.last_state_key = None  # Track state changes to clear failures appropriately
 
     def get_next_action_in_game(self, game: Game) -> Action:
         """
@@ -111,6 +112,21 @@ class RLAgent:
             Action object to execute
         """
         try:
+            # Check if state has changed significantly (turn, floor, screen)
+            # If so, clear failed actions as they may now be valid
+            current_state_key = (
+                getattr(game, 'turn', 0),
+                getattr(game, 'floor', 0),
+                str(getattr(game, 'screen_type', None))
+            )
+
+            if self.last_state_key != current_state_key:
+                if self.failed_actions:
+                    logger.debug(f"State changed from {self.last_state_key} to {current_state_key}, clearing {len(self.failed_actions)} failed actions")
+                    self.failed_actions.clear()
+                    self.consecutive_failures.clear()
+                self.last_state_key = current_state_key
+
             # Encode current state
             state = self.state_encoder.encode(game)
 
