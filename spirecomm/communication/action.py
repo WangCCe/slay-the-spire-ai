@@ -110,6 +110,23 @@ class EndTurnAction(Action):
     def __init__(self):
         super().__init__("end")
 
+    def execute(self, coordinator):
+        import logging
+        game = getattr(coordinator, "last_game_state", None)
+        player = getattr(game, "player", None) if game else None
+        energy = getattr(player, "energy", None)
+        turn = getattr(game, "turn", None) if game else None
+        floor = getattr(game, "floor", None) if game else None
+        hand_size = len(getattr(game, "hand", []) or [])
+        logging.info(
+            "[TURN_END] floor=%s turn=%s energy_remaining=%s hand=%s",
+            floor,
+            turn,
+            energy,
+            hand_size,
+        )
+        super().execute(coordinator)
+
 
 class ProceedAction(Action):
     """An action to use the CommunicationMod 'Proceed' command"""
