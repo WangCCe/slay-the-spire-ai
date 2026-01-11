@@ -165,9 +165,12 @@ class ActionEncoder:
 
             # Special handling for GRID screen (choose not supported)
             if "GRID" in str(game.screen_type):
-                from spirecomm.communication.action import ClickAction
+                from spirecomm.communication.action import ClickAction, KeyAction
 
-                return ClickAction(("card", choice_index, 0))
+                positions = getattr(game.screen, "card_positions", []) if hasattr(game, "screen") else []
+                if positions:
+                    return ClickAction(("card", choice_index, 0))
+                return KeyAction(f"CARD_{choice_index + 1}")
 
             # Default: use ChooseAction for other screens
             return ChooseAction(choice_index)

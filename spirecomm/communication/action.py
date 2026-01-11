@@ -353,7 +353,11 @@ class CardSelectAction(Action):
         chosen_indices.sort(reverse=True)
         for index in chosen_indices:
             if screen_type == ScreenType.GRID:
-                coordinator.add_action_to_queue(ClickAction(("card", index, 0)))
+                positions = getattr(screen, "card_positions", [])
+                if positions:
+                    coordinator.add_action_to_queue(ClickAction(("card", index, 0)))
+                else:
+                    coordinator.add_action_to_queue(KeyAction(f"CARD_{index + 1}"))
             else:
                 coordinator.add_action_to_queue(ChooseAction(choice_index=index))
         coordinator.add_action_to_queue(OptionalCardSelectConfirmAction())
