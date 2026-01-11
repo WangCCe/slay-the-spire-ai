@@ -99,8 +99,13 @@ class ActionEncoder:
             offset = action_index - self.PLAY_CARD_OFFSET
             card_index = offset // 10
             monster_index = offset % 10
+            target_index = monster_index if monster_index < len(game.monsters) else -1
+            if 0 <= card_index < len(game.hand):
+                card = game.hand[card_index]
+                if hasattr(card, "has_target") and not card.has_target:
+                    target_index = None
             # Use named parameters: card_index=X, target_index=Y
-            return PlayCardAction(card_index=card_index, target_index=monster_index if monster_index < len(game.monsters) else -1)
+            return PlayCardAction(card_index=card_index, target_index=target_index)
 
         # Use potion
         elif self.USE_POTION_OFFSET <= action_index < self.END_TURN_ACTION:
@@ -251,6 +256,14 @@ class ActionEncoder:
 
         # Confirm action (e.g., confirm card selection in GRID screen)
         elif action_index == self.CONFIRM_ACTION:
+            if "HAND_SELECT" in str(game.screen_type):
+                from spirecomm.communication.action import StateAction
+
+                return StateAction()
+            if "GRID" in str(game.screen_type):
+                from spirecomm.communication.action import OptionalCardSelectConfirmAction
+
+                return OptionalCardSelectConfirmAction()
             return ConfirmAction()
 
         # Cancel action (e.g., skip card reward)
@@ -326,14 +339,15 @@ class ActionEncoder:
                 if i < 10:  # Max 10 choices
                     mask[self.CARD_REWARD_OFFSET + i] = True
 
-            # Enable confirm to confirm selection
-            mask[self.CONFIRM_ACTION] = True
-
-            # Fallback: ensure at least one action is valid
-            if len(choices) == 0:
+            # Allow a state poll when there are no choices or skipping is allowed.
+            state_enabled = len(choices) == 0 or getattr(game.screen, "can_pick_zero", False)
+            if state_enabled:
                 mask[self.CONFIRM_ACTION] = True
 
-            logger.debug(f"HAND_SELECT: Enabled {len(choices)} card choices and confirm")
+            logger.debug(
+                f"HAND_SELECT: Enabled {len(choices)} card choices"
+                f"{' and state' if state_enabled else ''}"
+            )
             return mask
 
         # GRID screen (card selection/removal/upgrade)
@@ -464,11 +478,16 @@ class ActionEncoder:
 
             # Play card actions (only if card is affordable)
             for card_idx in range(min(len(hand), self.MAX_CARDS)):
-                for monster_idx in range(len(monsters)):
-                    action_idx = self.encode_play_card(card_idx, monster_idx)
-                    card = hand[card_idx]
-                    cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
-                    if game.player and game.player.energy >= cost:
+                card = hand[card_idx]
+                cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
+                if not (game.player and game.player.energy >= cost):
+                    continue
+                if hasattr(card, "has_target") and not card.has_target:
+                    action_idx = self.encode_play_card(card_idx, 0)
+                    mask[action_idx] = True
+                else:
+                    for monster_idx in range(len(monsters)):
+                        action_idx = self.encode_play_card(card_idx, monster_idx)
                         mask[action_idx] = True
 
             # Use potion actions (only if potions are available AND can_use=True)
