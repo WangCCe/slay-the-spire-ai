@@ -286,7 +286,7 @@ class OptionalCardSelectConfirmAction(Action):
         if screen_type == ScreenType.HAND_SELECT:
             coordinator.add_action_to_queue(KeyAction("enter"))
         elif screen_type == ScreenType.GRID and coordinator.last_game_state.screen.confirm_up:
-            coordinator.add_action_to_queue(ProceedAction())
+            coordinator.add_action_to_queue(KeyAction("enter"))
         else:
             coordinator.add_action_to_queue(StateAction())
 
