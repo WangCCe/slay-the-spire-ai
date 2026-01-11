@@ -53,6 +53,24 @@ class ActionEncoder:
         """Initialize action encoder."""
         pass
 
+    @staticmethod
+    def _is_screen_type(game: Game, screen_type: str, case_sensitive: bool = True) -> bool:
+        """Check if current screen matches the given type."""
+        screen_str = str(game.screen_type)
+        if case_sensitive:
+            return screen_type in screen_str
+        return screen_type.lower() in screen_str.lower()
+
+    @staticmethod
+    def _get_clamped_choice_index(action_index: int, offset: int, game: Game) -> int:
+        """Clamp choice index to valid range based on available choices."""
+        choice_index = action_index - offset
+        if game.choice_list and len(game.choice_list) > 0:
+            choice_index = min(choice_index, len(game.choice_list) - 1)
+        else:
+            choice_index = 0
+        return choice_index
+
     def encode_play_card(self, card_index: int, monster_index: int) -> int:
         """
         Encode play card action to action index.
@@ -117,16 +135,11 @@ class ActionEncoder:
 
         # Card reward selection
         elif self.CARD_REWARD_OFFSET <= action_index < self.MAP_PATH_OFFSET:
-            choice_index = action_index - self.CARD_REWARD_OFFSET
-            # Clamp to valid range
-            if game.choice_list and len(game.choice_list) > 0:
-                choice_index = min(choice_index, len(game.choice_list) - 1)
-            else:
-                choice_index = 0
+            choice_index = self._get_clamped_choice_index(action_index, self.CARD_REWARD_OFFSET, game)
 
             # Special handling for COMBAT_REWARD screen
             # Must use CombatRewardAction(reward_object), not ChooseAction(choice_index)
-            if "COMBAT_REWARD" in str(game.screen_type):
+            if self._is_screen_type(game, "COMBAT_REWARD"):
                 from spirecomm.communication.action import CombatRewardAction
 
                 # Get rewards list (try both screen.rewards and choice_list)
@@ -145,7 +158,7 @@ class ActionEncoder:
 
             # Special handling for SHOP_SCREEN
             # Must use BuyCardAction/BuyPotionAction, not ChooseAction
-            if "SHOP_SCREEN" in str(game.screen_type):
+            if self._is_screen_type(game, "SHOP_SCREEN"):
                 from spirecomm.communication.action import BuyCardAction, BuyPotionAction, BuyRelicAction, BuyPurgeAction
                 from spirecomm.spire.screen import RewardType
 
@@ -164,7 +177,7 @@ class ActionEncoder:
                     return ProceedAction()
 
             # Special handling for GRID/HAND_SELECT (choose not supported)
-            if "GRID" in str(game.screen_type):
+            if self._is_screen_type(game, "GRID"):
                 from spirecomm.communication.action import ClickAction, KeyAction
 
                 if "choose" in getattr(game, "available_commands", []):
@@ -173,7 +186,7 @@ class ActionEncoder:
                 if positions:
                     return ClickAction(("card", choice_index, 0))
                 return KeyAction(f"CARD_{choice_index + 1}")
-            if "HAND_SELECT" in str(game.screen_type):
+            if self._is_screen_type(game, "HAND_SELECT"):
                 from spirecomm.communication.action import KeyAction
 
                 return KeyAction(f"CARD_{choice_index + 1}")
@@ -183,36 +196,21 @@ class ActionEncoder:
 
         # Map path selection
         elif self.MAP_PATH_OFFSET <= action_index < self.EVENT_CHOICE_OFFSET:
-            path_index = action_index - self.MAP_PATH_OFFSET
-            # Clamp to valid range
-            if game.choice_list and len(game.choice_list) > 0:
-                path_index = min(path_index, len(game.choice_list) - 1)
-            else:
-                path_index = 0
+            path_index = self._get_clamped_choice_index(action_index, self.MAP_PATH_OFFSET, game)
             return ChooseAction(path_index)
 
         # Event choice
         elif self.EVENT_CHOICE_OFFSET <= action_index < self.SHOP_ACTION_OFFSET:
-            choice_index = action_index - self.EVENT_CHOICE_OFFSET
-            # Clamp to valid range
-            if game.choice_list and len(game.choice_list) > 0:
-                choice_index = min(choice_index, len(game.choice_list) - 1)
-            else:
-                choice_index = 0
+            choice_index = self._get_clamped_choice_index(action_index, self.EVENT_CHOICE_OFFSET, game)
             return ChooseAction(choice_index)
 
         # Shop action
         elif self.SHOP_ACTION_OFFSET <= action_index < self.REST_OPTION_OFFSET:
-            shop_action = action_index - self.SHOP_ACTION_OFFSET
-            # Clamp to valid range for shop
-            if game.choice_list and len(game.choice_list) > 0:
-                shop_action = min(shop_action, len(game.choice_list) - 1)
-            else:
-                shop_action = 0
+            shop_action = self._get_clamped_choice_index(action_index, self.SHOP_ACTION_OFFSET, game)
 
             # Special handling for SHOP_SCREEN
             # Must use BuyCardAction/BuyPotionAction/BuyRelicAction, not ChooseAction
-            if "SHOP_SCREEN" in str(game.screen_type):
+            if self._is_screen_type(game, "SHOP_SCREEN"):
                 from spirecomm.communication.action import BuyCardAction, BuyPotionAction, BuyRelicAction, BuyPurgeAction
 
                 screen = game.screen
@@ -237,16 +235,11 @@ class ActionEncoder:
 
         # Rest site option
         elif self.REST_OPTION_OFFSET <= action_index < self.PROCEED_ACTION:
-            rest_option_index = action_index - self.REST_OPTION_OFFSET
-            # Clamp to valid range (typically 4 options: rest, smith, lift, dig)
-            if game.choice_list and len(game.choice_list) > 0:
-                rest_option_index = min(rest_option_index, len(game.choice_list) - 1)
-            else:
-                rest_option_index = 0
+            rest_option_index = self._get_clamped_choice_index(action_index, self.REST_OPTION_OFFSET, game)
 
             # Must use RestAction(rest_option), not ChooseAction(choice_index)
             # REST screen doesn't accept "choose" command
-            if "REST" in str(game.screen_type):
+            if self._is_screen_type(game, "REST"):
                 from spirecomm.communication.action import RestAction
 
                 # Get the actual rest options from the screen
@@ -271,9 +264,7 @@ class ActionEncoder:
 
         # Confirm action (e.g., confirm card selection in GRID screen)
         elif action_index == self.CONFIRM_ACTION:
-            if "HAND_SELECT" in str(game.screen_type):
-                return ConfirmAction()
-            if "GRID" in str(game.screen_type):
+            if self._is_screen_type(game, "HAND_SELECT") or self._is_screen_type(game, "GRID"):
                 return ConfirmAction()
             return ConfirmAction()
 
@@ -308,13 +299,13 @@ class ActionEncoder:
         # These checks must come BEFORE combat checks, even if in_combat=True
 
         # Game over screen - only proceed is valid
-        if "GAME_OVER" in str(game.screen_type):
+        if self._is_screen_type(game, "GAME_OVER"):
             mask[self.PROCEED_ACTION] = True
             logger.debug(f"GAME_OVER: Enabled proceed action")
             return mask
 
         # CHEST screen - open chest
-        if "CHEST" in str(game.screen_type):
+        if self._is_screen_type(game, "CHEST"):
             # Use choose command to open chest
             choices = game.choice_list if game.choice_list else []
             if len(choices) > 0:
@@ -327,7 +318,7 @@ class ActionEncoder:
             return mask
 
         # Card reward screen (including potion-related card selection during combat)
-        if game.choice_available and ("card" in str(game.screen_type).lower() or "upgrade" in str(game.screen_type).lower()):
+        if game.choice_available and (self._is_screen_type(game, "card", case_sensitive=False) or self._is_screen_type(game, "upgrade", case_sensitive=False)):
             choices = game.choice_list if game.choice_list else []
             for i in range(len(choices)):
                 if i < 10:  # Max 10 choices
@@ -344,7 +335,7 @@ class ActionEncoder:
             return mask
 
         # HAND_SELECT screen (select cards for effects)
-        if "HAND_SELECT" in str(game.screen_type):
+        if self._is_screen_type(game, "HAND_SELECT"):
             if hasattr(game, "screen") and hasattr(game.screen, "cards") and game.screen.cards:
                 choices = game.screen.cards
             else:
@@ -371,7 +362,7 @@ class ActionEncoder:
             return mask
 
         # GRID screen (card selection/removal/upgrade)
-        if "GRID" in str(game.screen_type):
+        if self._is_screen_type(game, "GRID"):
             if hasattr(game, "screen") and hasattr(game.screen, "cards") and game.screen.cards:
                 choices = game.screen.cards
             else:
@@ -395,7 +386,7 @@ class ActionEncoder:
             return mask
 
         # Event screen
-        if "event" in str(game.screen_type).lower():
+        if self._is_screen_type(game, "event", case_sensitive=False):
             if game.choice_list and len(game.choice_list) > 0:
                 for i in range(len(game.choice_list)):
                     if i < 5:
@@ -406,7 +397,7 @@ class ActionEncoder:
             return mask
 
         # MAP screen
-        if "map" in str(game.screen_type).lower():
+        if self._is_screen_type(game, "map", case_sensitive=False):
             if game.choice_list and len(game.choice_list) > 0:
                 for i in range(len(game.choice_list)):
                     if i < 5:
@@ -417,7 +408,7 @@ class ActionEncoder:
             return mask
 
         # REST screen
-        if "rest" in str(game.screen_type).lower():
+        if self._is_screen_type(game, "rest", case_sensitive=False):
             if game.choice_list and len(game.choice_list) > 0:
                 for i in range(len(game.choice_list)):
                     if i < 4:
@@ -433,7 +424,7 @@ class ActionEncoder:
             return mask
 
         # SHOP_SCREEN (purchase interface)
-        if "SHOP_SCREEN" in str(game.screen_type):
+        if self._is_screen_type(game, "SHOP_SCREEN"):
             if game.choice_list and len(game.choice_list) > 0:
                 for i in range(min(len(game.choice_list), 10)):
                     mask[self.SHOP_ACTION_OFFSET + i] = True
@@ -445,7 +436,7 @@ class ActionEncoder:
             return mask
 
         # SHOP_ROOM (entrance - choose to enter or skip)
-        if "SHOP_ROOM" in str(game.screen_type):
+        if self._is_screen_type(game, "SHOP_ROOM"):
             if game.choice_list and len(game.choice_list) > 0:
                 for i in range(min(len(game.choice_list), 5)):
                     mask[self.SHOP_ACTION_OFFSET + i] = True
@@ -454,7 +445,7 @@ class ActionEncoder:
             return mask
 
         # COMBAT_REWARD screen (after battle or chest rewards)
-        if "COMBAT_REWARD" in str(game.screen_type):
+        if self._is_screen_type(game, "COMBAT_REWARD"):
             from spirecomm.spire.screen import RewardType
 
             rewards = []

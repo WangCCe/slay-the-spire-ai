@@ -51,23 +51,31 @@ class Priority:
             4: self.MAP_NODE_PRIORITIES_3  # Doesn't really matter anyway
         }
 
+    def _card_priority_score(self, card):
+        """Calculate priority score for a card."""
+        return self.CARD_PRIORITIES.get(card.card_id, math.inf) - 0.5 * card.upgrades
+
+    def _card_play_score(self, card):
+        """Calculate play priority score for a card."""
+        return self.PLAY_PRIORITIES.get(card.card_id, math.inf) - 0.5 * card.upgrades
+
     def get_best_card(self, card_list):
-        return min(card_list, key=lambda x: self.CARD_PRIORITIES.get(x.card_id, math.inf) - 0.5 * x.upgrades)
+        return min(card_list, key=self._card_priority_score)
 
     def get_worst_card(self, card_list):
-        return max(card_list, key=lambda x: self.CARD_PRIORITIES.get(x.card_id, math.inf) - 0.5 * x.upgrades)
+        return max(card_list, key=self._card_priority_score)
 
     def get_sorted_cards(self, card_list, reverse=False):
-        return sorted(card_list, key=lambda x: self.CARD_PRIORITIES.get(x.card_id, math.inf) - 0.5 * x.upgrades, reverse=reverse)
+        return sorted(card_list, key=self._card_priority_score, reverse=reverse)
 
     def get_sorted_cards_to_play(self, card_list, reverse=False):
-        return sorted(card_list, key=lambda x: self.PLAY_PRIORITIES.get(x.card_id, math.inf) - 0.5 * x.upgrades, reverse=reverse)
+        return sorted(card_list, key=self._card_play_score, reverse=reverse)
 
     def get_best_card_to_play(self, card_list):
-        return min(card_list, key=lambda x: self.PLAY_PRIORITIES.get(x.card_id, math.inf) - 0.5 * x.upgrades)
+        return min(card_list, key=self._card_play_score)
 
     def get_worst_card_to_play(self, card_list):
-        return max(card_list, key=lambda x: self.PLAY_PRIORITIES.get(x.card_id, math.inf) - 0.5 * x.upgrades)
+        return max(card_list, key=self._card_play_score)
 
     def should_skip(self, card):
         card_priority = self.CARD_PRIORITIES.get(card.card_id, math.inf)

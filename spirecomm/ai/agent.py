@@ -76,6 +76,79 @@ class SimpleAgent:
         # Return StateAction to get current state instead of raising
         return StateAction()
 
+    # === Shop Helper Methods ===
+
+    def _exit_shop(self):
+        """Return appropriate action to exit shop."""
+        if getattr(self.game, 'cancel_available', False):
+            return CancelAction()
+        if getattr(self.game, 'proceed_available', False):
+            return ProceedAction()
+        return CancelAction()
+
+    def _validate_shop_cards(self, screen):
+        """Validate that shop cards have required attributes."""
+        if not hasattr(screen, 'cards') or not screen.cards:
+            logging.warning("[SHOP_SCREEN] No cards listed, exiting shop")
+            return []
+
+        valid_cards = []
+        for card in screen.cards:
+            if hasattr(card, 'card_id') and hasattr(card, 'name') and hasattr(card, 'price'):
+                valid_cards.append(card)
+            else:
+                card_info = f"card_id={getattr(card, 'card_id', 'MISSING')}, name={getattr(card, 'name', 'MISSING')}, price={getattr(card, 'price', 'MISSING')}"
+                logging.warning(f"[SHOP_SCREEN] Skipping invalid card: {card_info}")
+                print(f"[SHOP_SCREEN WARNING] Skipping invalid card: {card_info}", file=sys.stderr)
+
+        if not valid_cards:
+            logging.warning("[SHOP_SCREEN] No valid cards found")
+        return valid_cards
+
+    def _should_buy_card(self, card, gold, purge_cost, screen):
+        """Determine if a card should be purchased."""
+        try:
+            if not hasattr(card, 'price') or not hasattr(card, 'card_id'):
+                return False
+
+            if gold >= card.price and not self.priorities.should_skip(card):
+                if not screen.purge_available or gold - card.price >= purge_cost:
+                    return True
+        except Exception as e:
+            card_id = getattr(card, 'card_id', 'UNKNOWN')
+            logging.error(f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}")
+            print(f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}", file=sys.stderr)
+        return False
+
+    def _should_buy_relic(self, relic, gold):
+        """Determine if a relic should be purchased."""
+        try:
+            if gold >= relic.price and relic.price <= gold * 0.7:
+                useful_relics = ['Burning Blood', 'Barricade', 'Demon Form', 'Limit Break',
+                                'Juggernaut', 'Runic Pyramid', 'Sundial', 'Twin Daggers',
+                                'Cloak Clasp', 'Gremlin Horn']
+                if relic.name in useful_relics or gold >= relic.price + 50:
+                    return True
+        except Exception as e:
+            relic_name = getattr(relic, 'name', 'UNKNOWN')
+            logging.error(f"[SHOP_SCREEN] Error evaluating relic {relic_name}: {e}")
+            print(f"[SHOP_SCREEN] Error evaluating relic {relic_name}: {e}", file=sys.stderr)
+        return False
+
+    def _log_shop_error(self, e, context=""):
+        """Log shop error with traceback."""
+        import traceback
+        error_msg = f"[SHOP_SCREEN ERROR{context}] {type(e).__name__}: {e}"
+        card_list = [getattr(c, 'card_id', 'INVALID') for c in getattr(self.game.screen, 'cards', [])] if hasattr(self.game, 'screen') else 'NO_CARDS'
+
+        logging.error(error_msg)
+        logging.error(f"[SHOP_SCREEN ERROR] Cards: {card_list}")
+        logging.error(f"[SHOP_SCREEN ERROR] Traceback:\n{traceback.format_exc()}")
+
+        print(error_msg, file=sys.stderr)
+        print(f"[SHOP_SCREEN ERROR] Cards: {card_list}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+
     def get_next_action_in_game(self, game_state):
         self.game = game_state
         #time.sleep(0.07)
@@ -263,7 +336,6 @@ class SimpleAgent:
             return BossRewardAction(best_boss_relic)
         elif self.game.screen_type == ScreenType.SHOP_SCREEN:
             try:
-                # Smart shop decision making
                 gold = self.game.gold
                 screen = self.game.screen
 
@@ -280,112 +352,46 @@ class SimpleAgent:
                     proceed_available,
                 )
 
-                def _exit_shop():
-                    if cancel_available:
-                        return CancelAction()
-                    if proceed_available:
-                        return ProceedAction()
-                    return CancelAction()
-
                 # Validate screen.cards exists
-                if not hasattr(screen, 'cards') or not screen.cards:
-                    logging.warning("[SHOP_SCREEN] No cards listed, exiting shop")
-                    return _exit_shop()
-
-                # Calculate deck stats for better decision making
-                deck_size = len(self.game.deck) if hasattr(self.game, 'deck') else 0
-
-                # Validate card objects have required attributes before processing
-                valid_cards = []
-                for card in screen.cards:
-                    if hasattr(card, 'card_id') and hasattr(card, 'name') and hasattr(card, 'price'):
-                        valid_cards.append(card)
-                    else:
-                        import sys
-                        card_info = f"card_id={getattr(card, 'card_id', 'MISSING')}, name={getattr(card, 'name', 'MISSING')}, price={getattr(card, 'price', 'MISSING')}"
-                        logging.warning(f"[SHOP_SCREEN] Skipping invalid card: {card_info}")
-                        print(f"[SHOP_SCREEN WARNING] Skipping invalid card: {card_info}", file=sys.stderr)
-
+                valid_cards = self._validate_shop_cards(screen)
                 if not valid_cards:
-                    logging.warning("[SHOP_SCREEN] No valid cards found")
-                    return _exit_shop()
+                    return self._exit_shop()
 
                 # Priority 1: Purge (card removal) if needed and affordable
                 purge_cost = screen.purge_cost if screen.purge_available else float('inf')
                 if screen.purge_available and gold >= purge_cost:
-                    # Only remove Strike_R and Defend_R (based on Tier List strategy)
-                    # Priority: Strike_R first, then Defend_R
                     strikes = [c for c in self.game.deck if c.card_id == 'Strike_R']
                     defends = [c for c in self.game.deck if c.card_id == 'Defend_R']
-
-                    # Purge if we have at least 1 strike or 1 defend
                     if len(strikes) >= 1 or len(defends) >= 1:
                         return ChooseAction(name="purge")
 
                 # Priority 2: Buy cards that are good for the deck
                 if hasattr(self.priorities, 'get_sorted_cards'):
-                    # Get sorted cards by priority (using only validated cards)
                     sorted_cards = self.priorities.get_sorted_cards(valid_cards)
                     for card in sorted_cards:
-                        try:
-                            # Validate card attributes
-                            if not hasattr(card, 'price') or not hasattr(card, 'card_id'):
-                                continue
-
-                            # Only buy if affordable and not skipping
-                            if gold >= card.price and not self.priorities.should_skip(card):
-                                # Check if we can afford it after considering purge
-                                if not screen.purge_available or gold - card.price >= purge_cost:
-                                    return BuyCardAction(card)
-                        except Exception as e:
-                            import sys
-                            card_id = card.card_id if hasattr(card, 'card_id') else 'UNKNOWN'
-                            logging.error(f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}")
-                            print(f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}", file=sys.stderr)
-                            continue
+                        if self._should_buy_card(card, gold, purge_cost, screen):
+                            return BuyCardAction(card)
                 else:
-                    # Fallback to original logic (using validated cards)
                     for card in valid_cards:
-                        try:
-                            if gold >= card.price and not self.priorities.should_skip(card):
-                                return BuyCardAction(card)
-                        except Exception as e:
-                            import sys
-                            card_id = card.card_id if hasattr(card, 'card_id') else 'UNKNOWN'
-                            logging.error(f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}")
-                            print(f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}", file=sys.stderr)
-                            continue
+                        if gold >= card.price and not self.priorities.should_skip(card):
+                            return BuyCardAction(card)
 
                 # Priority 3: Buy useful relics (consider price and value)
-                # Only buy relics if we have enough gold left (keep some for purge/cards if needed)
                 if hasattr(screen, 'relics') and screen.relics:
                     for relic in screen.relics:
-                        try:
-                            # Skip expensive relics that might prevent more important purchases
-                            if gold >= relic.price and relic.price <= gold * 0.7:  # Don't spend all gold on relics
-                                # Prioritize useful relics for Ironclad
-                                useful_relics = ['Burning Blood', 'Barricade', 'Demon Form', 'Limit Break', 'Juggernaut', 'Runic Pyramid', 'Sundial', 'Twin Daggers', 'Cloak Clasp', 'Gremlin Horn']
-                                if relic.name in useful_relics or gold >= relic.price + 50:  # Keep some gold reserve
-                                    return BuyRelicAction(relic)
-                        except Exception as e:
-                            import sys
-                            relic_name = relic.name if hasattr(relic, 'name') else 'UNKNOWN'
-                            logging.error(f"[SHOP_SCREEN] Error evaluating relic {relic_name}: {e}")
-                            print(f"[SHOP_SCREEN] Error evaluating relic {relic_name}: {e}", file=sys.stderr)
-                            continue
+                        if self._should_buy_relic(relic, gold):
+                            return BuyRelicAction(relic)
 
                 # Priority 4: Buy potions if needed and affordable
                 if hasattr(screen, 'potions') and screen.potions and not self.game.are_potions_full():
                     for potion in screen.potions:
                         try:
                             if gold >= potion.price:
-                                # Prioritize useful potions
                                 useful_potions = ['Healing Potion', 'Strength Potion', 'Fire Potion', 'Ice Potion', 'Block Potion', 'Strawberry']
                                 if potion.name in useful_potions:
                                     return BuyPotionAction(potion)
                         except Exception as e:
-                            import sys
-                            potion_name = potion.name if hasattr(potion, 'name') else 'UNKNOWN'
+                            potion_name = getattr(potion, 'name', 'UNKNOWN')
                             logging.error(f"[SHOP_SCREEN] Error evaluating potion {potion_name}: {e}")
                             print(f"[SHOP_SCREEN] Error evaluating potion {potion_name}: {e}", file=sys.stderr)
                             continue
@@ -395,25 +401,10 @@ class SimpleAgent:
                     return ChooseAction(name="purge")
 
                 # No good purchases available
-                return _exit_shop()
+                return self._exit_shop()
             except Exception as e:
-                import sys
-                import traceback
-                error_msg = f"[SHOP_SCREEN ERROR] {type(e).__name__}: {e}"
-                card_list = [c.card_id if hasattr(c, 'card_id') else 'INVALID' for c in self.game.screen.cards] if hasattr(self.game.screen, 'cards') else 'NO_CARDS'
-
-                logging.error(error_msg)
-                logging.error(f"[SHOP_SCREEN ERROR] Cards: {card_list}")
-                logging.error(f"[SHOP_SCREEN ERROR] Traceback:\n{traceback.format_exc()}")
-
-                print(error_msg, file=sys.stderr)
-                print(f"[SHOP_SCREEN ERROR] Cards: {card_list}", file=sys.stderr)
-                traceback.print_exc(file=sys.stderr)
-                if getattr(self.game, 'cancel_available', False):
-                    return CancelAction()
-                if getattr(self.game, 'proceed_available', False):
-                    return ProceedAction()
-                return CancelAction()
+                self._log_shop_error(e)
+                return self._exit_shop()
         elif self.game.screen_type == ScreenType.GRID:
             if not self.game.choice_available:
                 return ProceedAction()

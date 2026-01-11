@@ -53,6 +53,19 @@ class RewardCalculator:
         self.card_evaluator_class: Optional[str] = None
         self.reset()
 
+    @staticmethod
+    def _safe_attr(obj, *attrs, default=None):
+        """Safely get nested attribute with fallback to default."""
+        result = obj
+        for attr in attrs:
+            if hasattr(result, attr):
+                result = getattr(result, attr)
+                if result is None:
+                    return default
+            else:
+                return default
+        return result if result is not None else default
+
     def reset(self) -> None:
         """Reset tracking for new episode."""
         self.total_damage_dealt = 0
@@ -83,11 +96,7 @@ class RewardCalculator:
         if all_monsters_killed:
             reward += self.ALL_LETHAL_BONUS
         if hp_lost > 0:
-            max_hp = None
-            if hasattr(game, 'player') and game.player is not None and hasattr(game.player, 'max_hp'):
-                max_hp = game.player.max_hp
-            elif hasattr(game, 'max_hp'):
-                max_hp = game.max_hp
+            max_hp = self._safe_attr(game, 'player', 'max_hp') or self._safe_attr(game, 'max_hp')
             if max_hp:
                 hp_loss_ratio = hp_lost / max(max_hp, 1)
                 reward -= self.HP_LOSS_PENALTY * hp_loss_ratio
@@ -215,14 +224,11 @@ class RewardCalculator:
 
             # Track HP lost
             hp_lost = 0
-            if (hasattr(current_game, 'player') and current_game.player is not None and
-                hasattr(last_game, 'player') and last_game.player is not None):
+            current_hp = self._safe_attr(current_game, 'player', 'current_hp', default=0)
+            last_hp = self._safe_attr(last_game, 'player', 'current_hp', default=0)
 
-                current_hp = current_game.player.current_hp if hasattr(current_game.player, 'current_hp') else 0
-                last_hp = last_game.player.current_hp if hasattr(last_game.player, 'current_hp') else 0
-
-                if current_hp < last_hp:
-                    hp_lost = (last_hp - current_hp)
+            if current_hp < last_hp:
+                hp_lost = (last_hp - current_hp)
 
             # Detect turn end (turn number increased)
             turn_ended = False
@@ -328,8 +334,7 @@ class RewardCalculator:
 
         # Check if player is still alive at game over
         # (if game over but player HP > 0, likely won)
-        if (hasattr(game, 'player') and game.player is not None and
-            hasattr(game.player, 'current_hp') and game.player.current_hp > 0):
+        if self._safe_attr(game, 'player', 'current_hp', default=0) > 0:
             return True
 
         # Default: assume defeat

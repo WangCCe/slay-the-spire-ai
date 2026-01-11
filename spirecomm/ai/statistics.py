@@ -12,6 +12,66 @@ from typing import List, Dict, Any
 from spirecomm.ai.tracker import GameTracker
 
 
+def _find_git_executable(logger) -> str:
+    """Find git executable in PATH or common installation locations."""
+    import shutil
+    git_executable = shutil.which('git')
+
+    if not git_executable:
+        logger.info("[STATS] git not found in PATH, checking common locations")
+        common_git_paths = [
+            r"C:\Program Files\Git\bin\git.exe",
+            r"C:\Program Files\Git\cmd\git.exe",
+            r"C:\Program Files\Git\mingw64\bin\git.exe",
+            r"C:\Program Files (x86)\Git\bin\git.exe",
+            r"C:\Program Files (x86)\Git\cmd\git.exe",
+            os.path.expanduser(r"~\AppData\Local\Programs\Git\bin\git.exe"),
+        ]
+
+        for git_path in common_git_paths:
+            if os.path.exists(git_path):
+                git_executable = git_path
+                logger.info(f"[STATS] Found git at: {git_path}")
+                break
+
+    return git_executable
+
+
+def _find_git_repository(script_dir: str, logger) -> str:
+    """Find git repository root by searching upwards from script directory."""
+    git_dir = script_dir
+    for _ in range(5):  # Search up to 5 levels up
+        if os.path.exists(os.path.join(git_dir, '.git')):
+            logger.info(f"[STATS] Found git directory at: {git_dir}")
+            return git_dir
+        git_dir = os.path.dirname(git_dir)
+
+    logger.warning(f"[STATS] No .git directory found from {script_dir}")
+    return None
+
+
+def _get_git_output(git_executable: str, args: list, cwd: str, logger) -> str:
+    """Run git command with timeout and error handling."""
+    result = subprocess.check_output(
+        [git_executable] + args,
+        cwd=cwd,
+        stderr=subprocess.PIPE,
+        timeout=10
+    ).decode('utf-8').strip()
+    return result
+
+
+def _format_version(tag: str, commits: str, commit_hash: str, has_uncommitted_changes: bool) -> str:
+    """Format version string from git components."""
+    if commits == '0':
+        version = tag if not has_uncommitted_changes else f"{tag}.dirty"
+    else:
+        version = f"{tag}+{commits}.g{commit_hash}"
+        if has_uncommitted_changes:
+            version += ".dirty"
+    return version
+
+
 def get_ai_version() -> str:
     """Generate semantic version from git tags.
 
@@ -28,6 +88,7 @@ def get_ai_version() -> str:
     """
     import logging
     import shutil
+    import subprocess
     logger = logging.getLogger(__name__)
 
     try:
@@ -35,99 +96,42 @@ def get_ai_version() -> str:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         logger.info(f"[STATS] script_dir: {script_dir}")
 
-        # Find git executable - try multiple methods
-        git_executable = shutil.which('git')
-
-        # If not found in PATH, try common installation locations
-        if not git_executable:
-            logger.info("[STATS] git not found in PATH, checking common locations")
-            common_git_paths = [
-                r"C:\Program Files\Git\bin\git.exe",
-                r"C:\Program Files\Git\cmd\git.exe",
-                r"C:\Program Files\Git\mingw64\bin\git.exe",
-                r"C:\Program Files (x86)\Git\bin\git.exe",
-                r"C:\Program Files (x86)\Git\cmd\git.exe",
-                os.path.expanduser(r"~\AppData\Local\Programs\Git\bin\git.exe"),
-            ]
-
-            for git_path in common_git_paths:
-                if os.path.exists(git_path):
-                    git_executable = git_path
-                    logger.info(f"[STATS] Found git at: {git_path}")
-                    break
-
+        # Find git executable
+        git_executable = _find_git_executable(logger)
         if not git_executable:
             logger.warning("[STATS] git executable not found in PATH or common locations")
             return "3.5.9-dev-no-git"
 
         logger.info(f"[STATS] git executable: {git_executable}")
 
-        # Find git repository root (search upwards from script_dir)
-        git_dir = script_dir
-        found_git = False
-        for _ in range(5):  # Search up to 5 levels up
-            if os.path.exists(os.path.join(git_dir, '.git')):
-                found_git = True
-                break
-            git_dir = os.path.dirname(git_dir)
-
-        if not found_git:
-            logger.warning(f"[STATS] No .git directory found from {script_dir}")
+        # Find git repository root
+        git_dir = _find_git_repository(script_dir, logger)
+        if not git_dir:
             return "3.5.9-dev"
 
-        logger.info(f"[STATS] Found git directory at: {git_dir}")
-
         # Get latest tag
-        tag = subprocess.check_output(
-            [git_executable, 'describe', '--tags', '--abbrev=0'],
-            cwd=git_dir,
-            stderr=subprocess.PIPE,
-            timeout=10
-        ).decode('utf-8').strip()
+        tag = _get_git_output(git_executable, ['describe', '--tags', '--abbrev=0'], git_dir, logger)
         logger.info(f"[STATS] tag: {tag}")
 
         # Get commits since tag
-        commits = subprocess.check_output(
-            [git_executable, 'rev-list', '--count', f'{tag}..HEAD'],
-            cwd=git_dir,
-            stderr=subprocess.PIPE,
-            timeout=10
-        ).decode('utf-8').strip()
+        commits = _get_git_output(git_executable, ['rev-list', '--count', f'{tag}..HEAD'], git_dir, logger)
         logger.info(f"[STATS] commits since tag: {commits}")
 
         # Get short commit hash
-        commit_hash = subprocess.check_output(
-            [git_executable, 'rev-parse', '--short', 'HEAD'],
-            cwd=git_dir,
-            stderr=subprocess.PIPE,
-            timeout=10
-        ).decode('utf-8').strip()
+        commit_hash = _get_git_output(git_executable, ['rev-parse', '--short', 'HEAD'], git_dir, logger)
         logger.info(f"[STATS] commit hash: {commit_hash}")
 
         # Check if working directory has uncommitted changes
         has_uncommitted_changes = False
         try:
-            dirty = subprocess.check_output(
-                [git_executable, 'status', '--porcelain'],
-                cwd=git_dir,
-                stderr=subprocess.PIPE,
-                timeout=10
-            ).decode('utf-8').strip()
+            dirty = _get_git_output(git_executable, ['status', '--porcelain'], git_dir, logger)
             has_uncommitted_changes = len(dirty) > 0
             logger.info(f"[STATS] has uncommitted changes: {has_uncommitted_changes}")
         except:
             logger.info(f"[STATS] Could not check git status")
 
         # Format version string
-        if commits == '0':
-            # Exactly on tag
-            version = tag if not has_uncommitted_changes else f"{tag}.dirty"
-        else:
-            # N commits after tag
-            version = f"{tag}+{commits}.g{commit_hash}"
-            if has_uncommitted_changes:
-                version += ".dirty"
-
+        version = _format_version(tag, commits, commit_hash, has_uncommitted_changes)
         logger.info(f"[STATS] Final version: {version}")
         return version
 
@@ -140,7 +144,6 @@ def get_ai_version() -> str:
             logger.error(f"[STATS] stderr: {e.stderr.decode('utf-8', errors='ignore')}")
         return "3.5.9-dev-git-error"
     except Exception as e:
-        # Fallback if git commands fail
         logger.error(f"[STATS] Failed to get version from git: {type(e).__name__}: {e}")
         return "3.5.9-dev"
 

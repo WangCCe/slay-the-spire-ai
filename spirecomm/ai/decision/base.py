@@ -191,6 +191,28 @@ class DecisionContext:
                     total += 5 * self.act
         return total
 
+    def _compute_base_immediate_threat(self, monster) -> int:
+        """
+        Calculate base immediate threat from current monster state.
+
+        Shared logic between compute_threat() and compute_threat_v2().
+
+        Args:
+            monster: Monster to evaluate
+
+        Returns:
+            Base threat score from immediate damage and strength
+        """
+        threat = 0
+        if hasattr(monster, 'move_adjusted_damage') and monster.move_adjusted_damage is not None:
+            hits = hasattr(monster, 'move_hits') and monster.move_hits or 1
+            threat += monster.move_adjusted_damage * hits
+
+            # Add current Strength to damage
+            if hasattr(monster, 'strength') and monster.strength > 0:
+                threat += monster.strength * hits
+        return threat
+
     def compute_threat(self, monster) -> int:
         """
         Calculate the threat level of a monster for targeting decisions.
@@ -212,7 +234,7 @@ class DecisionContext:
         Returns:
             Threat score (higher = more threatening)
         """
-        threat = 0
+        threat = self._compute_base_immediate_threat(monster)
 
         # Import Intent enum for comparison
         try:
@@ -220,16 +242,6 @@ class DecisionContext:
             intent_type = monster.intent if hasattr(monster, 'intent') else None
         except:
             intent_type = None
-
-        # 1. Expected damage from intent
-        if hasattr(monster, 'move_adjusted_damage') and monster.move_adjusted_damage is not None:
-            # Use actual damage from game state
-            hits = hasattr(monster, 'move_hits') and monster.move_hits or 1
-            threat += monster.move_adjusted_damage * hits
-
-            # Add strength to damage (scaling threat)
-            if hasattr(monster, 'strength') and monster.strength > 0:
-                threat += monster.strength * hits
 
         # 2. Debuff threat (Weak/Vulnerable are dangerous)
         if intent_type:
@@ -309,14 +321,7 @@ class DecisionContext:
             return self.compute_threat(monster)
 
         # ===== Component 1: Immediate threat (current intent) =====
-        if hasattr(monster, 'move_adjusted_damage') and monster.move_adjusted_damage is not None:
-            hits = hasattr(monster, 'move_hits') and monster.move_hits or 1
-            immediate_damage = monster.move_adjusted_damage * hits
-            threat += immediate_damage
-
-            # Add current Strength to damage
-            if hasattr(monster, 'strength') and monster.strength > 0:
-                threat += monster.strength * hits
+        threat += self._compute_base_immediate_threat(monster)
 
         # ===== Component 2: Future threat (predict next 2-3 moves) =====
         # Get monster HP percentage for phase detection
