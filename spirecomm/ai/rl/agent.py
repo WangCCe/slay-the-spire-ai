@@ -112,10 +112,10 @@ class RLAgent:
             Action object to execute
         """
         try:
-            # Check if state has changed significantly (turn, floor, screen)
-            # If so, clear failed actions as they may now be valid
+            # Check if state has changed significantly (floor, screen)
+            # Don't clear on turn changes - we want to persist failures across a combat
+            # Only clear when floor changes or screen type changes (combat -> reward -> map)
             current_state_key = (
-                getattr(game, 'turn', 0),
                 getattr(game, 'floor', 0),
                 str(getattr(game, 'screen_type', None))
             )
