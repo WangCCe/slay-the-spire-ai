@@ -147,7 +147,11 @@ class ClickAction(Action):
         self.target = target
 
     def execute(self, coordinator):
-        coordinator.send_message(f"{self.command} {self.target}")
+        if isinstance(self.target, (list, tuple)):
+            payload = " ".join(str(part) for part in self.target)
+        else:
+            payload = str(self.target)
+        coordinator.send_message(f"{self.command} {payload}")
 
 
 class KeyAction(Action):
@@ -330,7 +334,7 @@ class CardSelectAction(Action):
         chosen_indices.sort(reverse=True)
         for index in chosen_indices:
             if screen_type == ScreenType.GRID:
-                coordinator.add_action_to_queue(ClickAction(f"card{index}"))
+                coordinator.add_action_to_queue(ClickAction(("card", index)))
             else:
                 coordinator.add_action_to_queue(ChooseAction(choice_index=index))
         coordinator.add_action_to_queue(OptionalCardSelectConfirmAction())
