@@ -162,8 +162,12 @@ class ClickAction(Action):
                         x = pos.get("x") or pos.get("center_x") or pos.get("cx")
                         y = pos.get("y") or pos.get("center_y") or pos.get("cy")
                         if x is not None and y is not None:
+                            import logging
+                            logging.debug(f"GRID click resolved to coordinates: index={card_index}, x={x}, y={y}")
                             return f"{x} {y}"
                     elif isinstance(pos, (list, tuple)) and len(pos) >= 2:
+                        import logging
+                        logging.debug(f"GRID click resolved to coordinates: index={card_index}, x={pos[0]}, y={pos[1]}")
                         return f"{pos[0]} {pos[1]}"
             return " ".join(str(part) for part in self.target)
         return str(self.target)
@@ -349,7 +353,7 @@ class CardSelectAction(Action):
         chosen_indices.sort(reverse=True)
         for index in chosen_indices:
             if screen_type == ScreenType.GRID:
-                coordinator.add_action_to_queue(ClickAction(("card", index)))
+                coordinator.add_action_to_queue(ClickAction(("card", index, 0)))
             else:
                 coordinator.add_action_to_queue(ChooseAction(choice_index=index))
         coordinator.add_action_to_queue(OptionalCardSelectConfirmAction())

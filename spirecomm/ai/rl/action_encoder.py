@@ -167,7 +167,7 @@ class ActionEncoder:
             if "GRID" in str(game.screen_type):
                 from spirecomm.communication.action import ClickAction
 
-                return ClickAction(("card", choice_index))
+                return ClickAction(("card", choice_index, 0))
 
             # Default: use ChooseAction for other screens
             return ChooseAction(choice_index)
@@ -369,6 +369,11 @@ class ActionEncoder:
                 choices = game.screen.cards
             else:
                 choices = game.choice_list if game.choice_list else []
+            card_positions = getattr(game.screen, "card_positions", []) if hasattr(game, "screen") else []
+            if not card_positions:
+                logger.debug("GRID: No card_positions in screen_state")
+            else:
+                logger.debug(f"GRID: card_positions count={len(card_positions)}")
             for i in range(len(choices)):
                 if i < 10:  # Max 10 choices
                     mask[self.CARD_REWARD_OFFSET + i] = True
