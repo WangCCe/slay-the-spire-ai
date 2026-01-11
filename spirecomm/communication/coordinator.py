@@ -238,12 +238,24 @@ class Coordinator:
                                 "GRID screen_state keys=%s",
                                 sorted(screen_state.keys()),
                             )
+                            logging.debug(
+                                "GRID state: cards=%s, selected=%s, num_cards=%s, any_number=%s, confirm_up=%s, for_upgrade=%s, for_transform=%s, for_purge=%s, available=%s",
+                                len(screen_state.get("cards") or []),
+                                len(screen_state.get("selected_cards") or []),
+                                screen_state.get("num_cards"),
+                                screen_state.get("any_number"),
+                                screen_state.get("confirm_up"),
+                                screen_state.get("for_upgrade"),
+                                screen_state.get("for_transform"),
+                                screen_state.get("for_purge"),
+                                communication_state.get("available_commands"),
+                            )
                         else:
                             logging.debug(
                                 "GRID screen_state type=%s",
                                 type(screen_state).__name__,
                             )
-                    self.last_game_state = Game.from_json(game_state, communication_state.get("available_commands"))
+                self.last_game_state = Game.from_json(game_state, communication_state.get("available_commands"))
             if perform_callbacks:
                 if self.last_error is not None:
                     self.action_queue.clear()

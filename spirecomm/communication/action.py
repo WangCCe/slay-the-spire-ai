@@ -169,6 +169,12 @@ class ClickAction(Action):
                         import logging
                         logging.debug(f"GRID click resolved to coordinates: index={card_index}, x={pos[0]}, y={pos[1]}")
                         return f"{pos[0]} {pos[1]}"
+                import logging
+                logging.debug(
+                    "GRID click fallback (no positions): index=%s, target=%s",
+                    card_index,
+                    self.target,
+                )
             return " ".join(str(part) for part in self.target)
         return str(self.target)
 
@@ -181,6 +187,15 @@ class KeyAction(Action):
         self.key = key
 
     def execute(self, coordinator):
+        import logging
+        screen_type = getattr(coordinator.last_game_state, "screen_type", None)
+        available = getattr(coordinator.last_game_state, "available_commands", None)
+        logging.debug(
+            "KEY action: key=%s, screen_type=%s, available=%s",
+            self.key,
+            screen_type,
+            available,
+        )
         coordinator.send_message(f"{self.command} {self.key}")
 
 
