@@ -246,17 +246,52 @@ class RLAgent:
         logger.info(f"Loaded model from {model_path}")
 
     def save_model(self, model_path: str, episode: int = 0) -> None:
-        """Save current model to checkpoint file."""
+        """
+        Save current model to checkpoint file with atomic write operation.
+
+        Uses a temporary file and atomic rename to prevent corruption if the
+        process crashes during writing.
+        """
+        import os
+        import shutil
+        import tempfile
+
         if self.training_mode and self.trainer is not None:
             self.trainer.save_checkpoint(model_path, episode)
         else:
-            # Save just the network
+            # Save just the network (inference mode)
             checkpoint = {
                 'online_network_state_dict': self.network.state_dict(),
                 'episode': episode,
             }
-            torch.save(checkpoint, model_path)
-            logger.info(f"Saved model to {model_path}")
+
+            # Atomic write: save to temporary file first, then rename
+            temp_fd, temp_path = tempfile.mkstemp(
+                dir=os.path.dirname(model_path),
+                prefix=os.path.basename(model_path) + '.tmp_'
+            )
+
+            try:
+                # Close the file descriptor (torch.save will handle opening)
+                os.close(temp_fd)
+
+                # Save to temporary file
+                torch.save(checkpoint, temp_path)
+
+                # Atomic rename (overwrites existing file if present)
+                shutil.move(temp_path, model_path)
+
+                logger.info(f"Saved model to {model_path}")
+
+            except Exception as e:
+                # Clean up temporary file if something went wrong
+                try:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                except:
+                    pass
+                raise
+
 
 
 # Convenience function for creating agents

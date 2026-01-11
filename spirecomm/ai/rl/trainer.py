@@ -215,13 +215,20 @@ class DQNTrainer:
 
     def save_checkpoint(self, filepath: str, episode: int, additional_info: dict = None) -> None:
         """
-        Save training checkpoint.
+        Save training checkpoint with atomic write operation.
+
+        Uses a temporary file and atomic rename to prevent corruption if the
+        process crashes during writing.
 
         Args:
             filepath: Path to save checkpoint
             episode: Current episode number
             additional_info: Additional metadata to save
         """
+        import os
+        import shutil
+        import tempfile
+
         checkpoint = {
             'episode': episode,
             'online_network_state_dict': self.online_network.state_dict(),
@@ -236,8 +243,33 @@ class DQNTrainer:
         if additional_info:
             checkpoint.update(additional_info)
 
-        torch.save(checkpoint, filepath)
-        logger.info(f"Saved checkpoint to {filepath}")
+        # Atomic write: save to temporary file first, then rename
+        # This prevents corrupted checkpoints if process crashes during write
+        temp_fd, temp_path = tempfile.mkstemp(
+            dir=os.path.dirname(filepath),
+            prefix=os.path.basename(filepath) + '.tmp_'
+        )
+
+        try:
+            # Close the file descriptor (torch.save will handle opening)
+            os.close(temp_fd)
+
+            # Save to temporary file
+            torch.save(checkpoint, temp_path)
+
+            # Atomic rename (overwrites existing file if present)
+            shutil.move(temp_path, filepath)
+
+            logger.info(f"Saved checkpoint to {filepath}")
+
+        except Exception as e:
+            # Clean up temporary file if something went wrong
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except:
+                pass
+            raise
 
     def load_checkpoint(self, filepath: str) -> dict:
         """
