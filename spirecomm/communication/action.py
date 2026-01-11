@@ -139,6 +139,17 @@ class CancelAction(Action):
         super().__init__("cancel")
 
 
+class ClickAction(Action):
+    """An action to use the CommunicationMod 'Click' command"""
+
+    def __init__(self, target):
+        super().__init__("click")
+        self.target = target
+
+    def execute(self, coordinator):
+        coordinator.send_message(f"{self.command} {self.target}")
+
+
 class KeyAction(Action):
     """An action to send a key command to CommunicationMod (e.g., confirm with enter)"""
 
@@ -284,9 +295,9 @@ class OptionalCardSelectConfirmAction(Action):
     def execute(self, coordinator):
         screen_type = coordinator.last_game_state.screen_type
         if screen_type == ScreenType.HAND_SELECT:
-            coordinator.add_action_to_queue(KeyAction("enter"))
+            coordinator.add_action_to_queue(ClickAction("confirm"))
         elif screen_type == ScreenType.GRID and coordinator.last_game_state.screen.confirm_up:
-            coordinator.add_action_to_queue(KeyAction("enter"))
+            coordinator.add_action_to_queue(ConfirmAction())
         else:
             coordinator.add_action_to_queue(StateAction())
 
@@ -318,7 +329,10 @@ class CardSelectAction(Action):
                 chosen_indices.append(available_cards.index(card))
         chosen_indices.sort(reverse=True)
         for index in chosen_indices:
-            coordinator.add_action_to_queue(ChooseAction(choice_index=index))
+            if screen_type == ScreenType.GRID:
+                coordinator.add_action_to_queue(ClickAction(index))
+            else:
+                coordinator.add_action_to_queue(ChooseAction(choice_index=index))
         coordinator.add_action_to_queue(OptionalCardSelectConfirmAction())
 
 
