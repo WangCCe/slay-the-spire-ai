@@ -406,14 +406,36 @@ class ActionEncoder:
 
         # COMBAT_REWARD screen (after battle or chest rewards)
         if "COMBAT_REWARD" in str(game.screen_type):
+            from spirecomm.spire.screen import RewardType
+
             rewards = []
             if hasattr(game, "screen") and hasattr(game.screen, "rewards") and game.screen.rewards:
                 rewards = game.screen.rewards
             elif game.choice_list:
                 rewards = game.choice_list
 
+            # Enable valid reward choices
+            enabled_count = 0
             for i in range(min(len(rewards), 10)):
-                mask[self.CARD_REWARD_OFFSET + i] = True
+                reward = rewards[i]
+
+                # Check if this reward is valid
+                is_valid = True
+
+                # Check if potion reward and potions are full
+                if hasattr(reward, 'reward_type'):
+                    if reward.reward_type == RewardType.POTION:
+                        # Check if player has full potion slots
+                        if hasattr(game, 'are_potions_full') and game.are_potions_full():
+                            is_valid = False
+                # Fallback: check if reward has 'potion' attribute (for choice_list rewards)
+                elif hasattr(reward, 'potion') and reward.potion is not None:
+                    if hasattr(game, 'are_potions_full') and game.are_potions_full():
+                        is_valid = False
+
+                if is_valid:
+                    mask[self.CARD_REWARD_OFFSET + i] = True
+                    enabled_count += 1
 
             if game.proceed_available:
                 mask[self.PROCEED_ACTION] = True
@@ -421,7 +443,7 @@ class ActionEncoder:
                 mask[self.CANCEL_ACTION] = True
 
             logger.debug(
-                f"COMBAT_REWARD: Enabled {len(rewards)} reward choices"
+                f"COMBAT_REWARD: Enabled {enabled_count}/{len(rewards)} reward choices"
                 f"{' and proceed' if game.proceed_available else ''}"
                 f"{' and cancel' if game.cancel_available else ''}"
             )
