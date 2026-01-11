@@ -123,7 +123,15 @@ class ActionEncoder:
             # Must use CombatRewardAction(reward_object), not ChooseAction(choice_index)
             if "COMBAT_REWARD" in str(game.screen_type):
                 from spirecomm.communication.action import CombatRewardAction
-                rewards = game.screen.rewards if hasattr(game.screen, 'rewards') else []
+
+                # Get rewards list (try both screen.rewards and choice_list)
+                # Chest rewards may use choice_list instead of screen.rewards
+                rewards = []
+                if hasattr(game.screen, 'rewards') and game.screen.rewards:
+                    rewards = game.screen.rewards
+                elif game.choice_list:
+                    rewards = game.choice_list
+
                 if choice_index < len(rewards):
                     return CombatRewardAction(rewards[choice_index])
                 else:
@@ -209,13 +217,29 @@ class ActionEncoder:
 
         # Rest site option
         elif self.REST_OPTION_OFFSET <= action_index < self.PROCEED_ACTION:
-            rest_option = action_index - self.REST_OPTION_OFFSET
+            rest_option_index = action_index - self.REST_OPTION_OFFSET
             # Clamp to valid range (typically 4 options: rest, smith, lift, dig)
             if game.choice_list and len(game.choice_list) > 0:
-                rest_option = min(rest_option, len(game.choice_list) - 1)
+                rest_option_index = min(rest_option_index, len(game.choice_list) - 1)
             else:
-                rest_option = 0
-            return ChooseAction(rest_option)
+                rest_option_index = 0
+
+            # Must use RestAction(rest_option), not ChooseAction(choice_index)
+            # REST screen doesn't accept "choose" command
+            if "REST" in str(game.screen_type):
+                from spirecomm.communication.action import RestAction
+
+                # Get the actual rest options from the screen
+                rest_options = game.screen.rest_options if hasattr(game.screen, 'rest_options') else []
+                if rest_option_index < len(rest_options):
+                    # Use the actual RestOption enum from the screen
+                    return RestAction(rest_options[rest_option_index])
+                else:
+                    # Fallback: if no options or invalid index, just proceed
+                    return ProceedAction()
+            else:
+                # For non-REST screens using this offset (if any)
+                return ChooseAction(rest_option_index)
 
         # Proceed action (skip/continue button)
         elif action_index == self.PROCEED_ACTION:
@@ -380,14 +404,27 @@ class ActionEncoder:
             logger.debug(f"SHOP_ROOM: Enabled {len(game.choice_list) if game.choice_list else 0} enter actions and proceed")
             return mask
 
-        # COMBAT_REWARD screen (after battle)
+        # COMBAT_REWARD screen (after battle or chest rewards)
         if "COMBAT_REWARD" in str(game.screen_type):
-            choices = game.choice_list if game.choice_list else []
-            for i in range(len(choices)):
-                if i < 10:
-                    mask[self.CARD_REWARD_OFFSET + i] = True
-            mask[self.PROCEED_ACTION] = True
-            logger.debug(f"COMBAT_REWARD: Enabled {len(choices)} reward choices and proceed")
+            rewards = []
+            if hasattr(game, "screen") and hasattr(game.screen, "rewards") and game.screen.rewards:
+                rewards = game.screen.rewards
+            elif game.choice_list:
+                rewards = game.choice_list
+
+            for i in range(min(len(rewards), 10)):
+                mask[self.CARD_REWARD_OFFSET + i] = True
+
+            if game.proceed_available:
+                mask[self.PROCEED_ACTION] = True
+            if game.cancel_available:
+                mask[self.CANCEL_ACTION] = True
+
+            logger.debug(
+                f"COMBAT_REWARD: Enabled {len(rewards)} reward choices"
+                f"{' and proceed' if game.proceed_available else ''}"
+                f"{' and cancel' if game.cancel_available else ''}"
+            )
             return mask
 
         # === COMBAT ACTIONS (Priority 2 - only for ScreenType.NONE) ===
