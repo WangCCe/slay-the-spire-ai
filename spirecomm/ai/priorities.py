@@ -92,9 +92,12 @@ class Priority:
             # If limit is a string, it's a group reference
             if isinstance(limit, str):
                 return self._check_group_limit(card, limit, deck)
+            # If limit is an int, do direct comparison
+            elif isinstance(limit, int):
+                return limit > num_copies
 
-        # Original logic for individual limits
-        return self.MAX_COPIES.get(card.card_id, 0) > num_copies
+        # Default: no limit specified, allow taking
+        return True
 
     def _check_group_limit(self, card, group_name, deck):
         """
