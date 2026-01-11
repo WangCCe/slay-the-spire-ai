@@ -93,6 +93,11 @@ class RLAgent:
         self.episode_reward = 0.0
         self.episode_steps = 0
 
+        # Failed action tracking to prevent action loops
+        self.failed_actions = set()  # Set of action indices that failed recently
+        self.consecutive_failures = {}  # action_index -> failure count
+        self.max_consecutive_failures = 3  # Disable action after 3 consecutive failures
+
     def get_next_action_in_game(self, game: Game) -> Action:
         """
         Get next action for current game state.
@@ -109,8 +114,20 @@ class RLAgent:
             # Encode current state
             state = self.state_encoder.encode(game)
 
-            # Get action mask
+            # Get action mask and exclude recently failed actions
             action_mask = np.array(self.action_encoder.get_action_mask(game), dtype=bool)
+
+            # Exclude actions that have failed repeatedly
+            for failed_idx in self.failed_actions:
+                if failed_idx < len(action_mask):
+                    action_mask[failed_idx] = False
+
+            # Ensure at least one action is valid
+            if not action_mask.any():
+                logger.warning(f"All actions masked, clearing failed actions set")
+                self.failed_actions.clear()
+                self.consecutive_failures.clear()
+                action_mask = np.array(self.action_encoder.get_action_mask(game), dtype=bool)
 
             # Select action
             if self.training_mode and self.trainer is not None:
@@ -128,6 +145,12 @@ class RLAgent:
 
                     with torch.no_grad():
                         action_idx = self.network.get_best_action(state_tensor, mask_tensor).item()
+
+            # Clear failure record for this action (we're trying it again)
+            if action_idx in self.failed_actions:
+                logger.debug(f"Retrying previously failed action {action_idx}")
+                self.failed_actions.discard(action_idx)
+                self.consecutive_failures.pop(action_idx, None)
 
             # Decode action to Action object
             action = self.action_encoder.decode_action(action_idx, game)
@@ -198,6 +221,10 @@ class RLAgent:
         self.episode_reward = 0.0
         self.episode_steps = 0
 
+        # Clear failed action tracking for new episode
+        self.failed_actions.clear()
+        self.consecutive_failures.clear()
+
         if self.training_mode and self.trainer is not None:
             self.trainer.update_episode_count()
             # Reset reward calculator tracking for new episode
@@ -209,9 +236,21 @@ class RLAgent:
         """
         Handle errors from Communication Mod.
 
-        Logs the error and returns a safe action to avoid crashing.
+        Logs the error, tracks failed actions to prevent loops, and returns a safe action.
         """
         logger.error(f"RL Agent error: {error}")
+
+        # Track failed action to prevent repeated failures
+        if hasattr(self, 'last_action') and self.last_action is not None:
+            action_idx = self.last_action
+            self.consecutive_failures[action_idx] = self.consecutive_failures.get(action_idx, 0) + 1
+
+            # If action has failed too many times, add to blocked set
+            if self.consecutive_failures[action_idx] >= self.max_consecutive_failures:
+                if action_idx not in self.failed_actions:
+                    logger.warning(f"Action {action_idx} failed {self.consecutive_failures[action_idx]} times, disabling temporarily")
+                self.failed_actions.add(action_idx)
+
         # Import StateAction to get current state instead of raising
         from spirecomm.communication.action import StateAction
         return StateAction()
