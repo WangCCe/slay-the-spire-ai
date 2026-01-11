@@ -163,13 +163,17 @@ class ActionEncoder:
                     # Invalid choice, proceed
                     return ProceedAction()
 
-            # Special handling for GRID screen (choose not supported)
+            # Special handling for GRID/HAND_SELECT (choose not supported)
             if "GRID" in str(game.screen_type):
                 from spirecomm.communication.action import ClickAction, KeyAction
 
                 positions = getattr(game.screen, "card_positions", []) if hasattr(game, "screen") else []
                 if positions:
                     return ClickAction(("card", choice_index, 0))
+                return KeyAction(f"CARD_{choice_index + 1}")
+            if "HAND_SELECT" in str(game.screen_type):
+                from spirecomm.communication.action import KeyAction
+
                 return KeyAction(f"CARD_{choice_index + 1}")
 
             # Default: use ChooseAction for other screens
@@ -266,9 +270,7 @@ class ActionEncoder:
         # Confirm action (e.g., confirm card selection in GRID screen)
         elif action_index == self.CONFIRM_ACTION:
             if "HAND_SELECT" in str(game.screen_type):
-                from spirecomm.communication.action import ClickAction
-
-                return ClickAction("confirm")
+                return ConfirmAction()
             if "GRID" in str(game.screen_type):
                 return ConfirmAction()
             return ConfirmAction()

@@ -318,7 +318,7 @@ class OptionalCardSelectConfirmAction(Action):
     def execute(self, coordinator):
         screen_type = coordinator.last_game_state.screen_type
         if screen_type == ScreenType.HAND_SELECT:
-            coordinator.add_action_to_queue(ClickAction("confirm"))
+            coordinator.add_action_to_queue(ConfirmAction())
         elif screen_type == ScreenType.GRID and coordinator.last_game_state.screen.confirm_up:
             coordinator.add_action_to_queue(ConfirmAction())
         else:
@@ -359,7 +359,7 @@ class CardSelectAction(Action):
                 else:
                     coordinator.add_action_to_queue(KeyAction(f"CARD_{index + 1}"))
             else:
-                coordinator.add_action_to_queue(ChooseAction(choice_index=index))
+                coordinator.add_action_to_queue(KeyAction(f"CARD_{index + 1}"))
         coordinator.add_action_to_queue(OptionalCardSelectConfirmAction())
 
 
