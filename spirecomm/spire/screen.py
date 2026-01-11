@@ -268,7 +268,7 @@ class GridSelectScreen(Screen):
 
     SCREEN_TYPE = ScreenType.GRID
 
-    def __init__(self, cards, selected_cards, num_cards, any_number, confirm_up, for_upgrade, for_transform, for_purge):
+    def __init__(self, cards, selected_cards, num_cards, any_number, confirm_up, for_upgrade, for_transform, for_purge, card_positions=None):
         super().__init__()
         self.cards = cards
         self.selected_cards = selected_cards
@@ -278,6 +278,7 @@ class GridSelectScreen(Screen):
         self.for_upgrade = for_upgrade
         self.for_transform = for_transform
         self.for_purge = for_purge
+        self.card_positions = card_positions or []
 
     @classmethod
     def from_json(cls, json_object):
@@ -289,7 +290,33 @@ class GridSelectScreen(Screen):
         for_upgrade = json_object.get("for_upgrade")
         for_transform = json_object.get("for_transform")
         for_purge = json_object.get("for_purge")
-        return cls(cards, selected_cards, num_cards, any_number, confirm_up, for_upgrade, for_transform, for_purge)
+        card_positions_raw = json_object.get("cardPositions") or json_object.get("card_positions")
+        card_positions = []
+        if isinstance(card_positions_raw, dict):
+            # Expect keys like "card0", "card1", ...
+            for key, value in card_positions_raw.items():
+                if isinstance(key, str) and key.startswith("card"):
+                    try:
+                        idx = int(key[4:])
+                    except ValueError:
+                        continue
+                    while len(card_positions) <= idx:
+                        card_positions.append(None)
+                    card_positions[idx] = value
+        elif isinstance(card_positions_raw, list):
+            card_positions = card_positions_raw
+
+        return cls(
+            cards,
+            selected_cards,
+            num_cards,
+            any_number,
+            confirm_up,
+            for_upgrade,
+            for_transform,
+            for_purge,
+            card_positions=card_positions,
+        )
 
 
 class HandSelectScreen(Screen):

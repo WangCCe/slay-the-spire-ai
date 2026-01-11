@@ -147,11 +147,26 @@ class ClickAction(Action):
         self.target = target
 
     def execute(self, coordinator):
-        if isinstance(self.target, (list, tuple)):
-            payload = " ".join(str(part) for part in self.target)
-        else:
-            payload = str(self.target)
+        payload = self._resolve_payload(coordinator)
         coordinator.send_message(f"{self.command} {payload}")
+
+    def _resolve_payload(self, coordinator):
+        if isinstance(self.target, (list, tuple)):
+            if len(self.target) >= 2 and self.target[0] == "card":
+                card_index = self.target[1]
+                screen = getattr(coordinator.last_game_state, "screen", None)
+                positions = getattr(screen, "card_positions", []) if screen else []
+                if 0 <= card_index < len(positions):
+                    pos = positions[card_index]
+                    if isinstance(pos, dict):
+                        x = pos.get("x") or pos.get("center_x") or pos.get("cx")
+                        y = pos.get("y") or pos.get("center_y") or pos.get("cy")
+                        if x is not None and y is not None:
+                            return f"{x} {y}"
+                    elif isinstance(pos, (list, tuple)) and len(pos) >= 2:
+                        return f"{pos[0]} {pos[1]}"
+            return " ".join(str(part) for part in self.target)
+        return str(self.target)
 
 
 class KeyAction(Action):
