@@ -355,14 +355,21 @@ class ActionEncoder:
 
         # GRID screen (card selection/removal/upgrade)
         if "GRID" in str(game.screen_type):
-            choices = game.choice_list if game.choice_list else []
+            if hasattr(game, "screen") and hasattr(game.screen, "cards") and game.screen.cards:
+                choices = game.screen.cards
+            else:
+                choices = game.choice_list if game.choice_list else []
             for i in range(len(choices)):
                 if i < 10:  # Max 10 choices
                     mask[self.CARD_REWARD_OFFSET + i] = True
 
-            # Always enable confirm action
-            mask[self.CONFIRM_ACTION] = True
-            logger.debug(f"GRID: Enabled {len(choices)} choose actions and confirm")
+            confirm_up = getattr(game.screen, "confirm_up", False)
+            if confirm_up or len(choices) == 0:
+                mask[self.CONFIRM_ACTION] = True
+            logger.debug(
+                f"GRID: Enabled {len(choices)} choose actions"
+                f"{' and confirm' if confirm_up or len(choices) == 0 else ''}"
+            )
             return mask
 
         # Event screen
@@ -395,9 +402,12 @@ class ActionEncoder:
                         mask[self.REST_OPTION_OFFSET + i] = True
             else:
                 mask[self.REST_OPTION_OFFSET] = True
-            # Always enable proceed to confirm the choice
-            mask[self.PROCEED_ACTION] = True
-            logger.debug(f"REST: Enabled {len(game.choice_list) if game.choice_list else 1} options and proceed")
+            if game.proceed_available:
+                mask[self.PROCEED_ACTION] = True
+            logger.debug(
+                f"REST: Enabled {len(game.choice_list) if game.choice_list else 1} options"
+                f"{' and proceed' if game.proceed_available else ''}"
+            )
             return mask
 
         # SHOP_SCREEN (purchase interface)
@@ -480,18 +490,21 @@ class ActionEncoder:
                 mask[self.END_TURN_ACTION] = True
 
             # Play card actions (only if card is affordable)
-            for card_idx in range(min(len(hand), self.MAX_CARDS)):
-                card = hand[card_idx]
-                cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
-                if not (game.player and game.player.energy >= cost):
-                    continue
-                if hasattr(card, "has_target") and not card.has_target:
-                    action_idx = self.encode_play_card(card_idx, 0)
-                    mask[action_idx] = True
-                else:
-                    for monster_idx in range(len(monsters)):
-                        action_idx = self.encode_play_card(card_idx, monster_idx)
+            if getattr(game, "play_available", True):
+                for card_idx in range(min(len(hand), self.MAX_CARDS)):
+                    card = hand[card_idx]
+                    cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
+                    if not (game.player and game.player.energy >= cost):
+                        continue
+                    if hasattr(card, "has_target") and not card.has_target:
+                        action_idx = self.encode_play_card(card_idx, 0)
                         mask[action_idx] = True
+                    else:
+                        for monster_idx, monster in enumerate(monsters):
+                            if monster.current_hp <= 0 or monster.is_gone or monster.half_dead:
+                                continue
+                            action_idx = self.encode_play_card(card_idx, monster_idx)
+                            mask[action_idx] = True
 
             # Use potion actions (only if potions are available AND can_use=True)
             for potion_idx in range(min(len(potions), self.MAX_POTIONS)):
@@ -504,7 +517,9 @@ class ActionEncoder:
                     continue
 
                 # Enable potion action for each valid target
-                for monster_idx in range(len(monsters)):
+                for monster_idx, monster in enumerate(monsters):
+                    if monster.current_hp <= 0 or monster.is_gone or monster.half_dead:
+                        continue
                     action_idx = self.encode_use_potion(potion_idx, monster_idx)
                     mask[action_idx] = True
 
