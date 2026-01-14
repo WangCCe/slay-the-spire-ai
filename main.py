@@ -11,11 +11,12 @@ from spirecomm.spire.character import PlayerClass
 
 # Import RL agent (optional)
 try:
-    from spirecomm.ai.rl import RLAgent, create_agent as create_rl_agent, RL_AVAILABLE
+    from spirecomm.ai.rl import RLAgent, create_agent as create_rl_agent, CombatRLAgent, RL_AVAILABLE
 except ImportError:
     RL_AVAILABLE = False
     RLAgent = None
     create_rl_agent = None
+    CombatRLAgent = None
 
 # Setup logging to file with rotation (all logs go to ai_debug.log)
 # Note: We don't use StreamHandler because Communication Mod uses stdout for commands
@@ -74,8 +75,8 @@ def find_latest_checkpoint():
     if not os.path.exists(checkpoint_dir):
         return None
 
-    # Find all checkpoint files matching the pattern rl_model_ep*.pth
-    pattern = os.path.join(checkpoint_dir, "rl_model_ep*.pth")
+    # Find all checkpoint files matching the pattern rl_combat_model_ep*.pth
+    pattern = os.path.join(checkpoint_dir, "rl_combat_model_ep*.pth")
     checkpoint_files = glob.glob(pattern)
 
     if not checkpoint_files:
@@ -96,14 +97,14 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
     Create an agent instance.
 
     Args:
-        agent_type: Type of agent ("simple", "optimized", "rl", "auto")
+        agent_type: Type of agent ("simple", "optimized", "rl", "combat_rl", "auto")
         use_optimized: DEPRECATED - Use agent_type instead
         player_class: Player class (required for RL agent, optional for others)
         training: Whether RL agent should be in training mode
         model_path: Path to pre-trained RL model checkpoint
 
     Returns:
-        Agent instance (SimpleAgent, OptimizedAgent, or RLAgent)
+        Agent instance (SimpleAgent, OptimizedAgent, RLAgent, or CombatRLAgent)
     """
     # Handle legacy use_optimized parameter
     if agent_type == "auto" and use_optimized is not None:
@@ -116,6 +117,53 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
             logging.info("Auto-enabling OptimizedAgent for Ironclad")
         else:
             agent_type = "simple"
+
+    # Create combat RL agent (RL for combat, OptimizedAgent for everything else)
+    if agent_type == "combat_rl":
+        if not RL_AVAILABLE:
+            logging.error("Combat RL agent requested but PyTorch/RL components not available")
+            logging.error("Please install: pip install torch numpy")
+            logging.error("Falling back to OptimizedAgent")
+            return OptimizedAgent(chosen_class=player_class) if player_class and OPTIMIZED_AI_AVAILABLE else SimpleAgent(chosen_class=player_class)
+
+        if player_class is None:
+            logging.warning("Combat RL agent requires player_class, defaulting to IRONCLAD")
+            player_class = PlayerClass.IRONCLAD
+
+        if player_class != PlayerClass.IRONCLAD:
+            logging.warning(f"Combat RL agent only supports IRONCLAD, got {player_class}")
+            logging.warning("Falling back to OptimizedAgent")
+            return OptimizedAgent(chosen_class=player_class) if OPTIMIZED_AI_AVAILABLE else SimpleAgent(chosen_class=player_class)
+
+        try:
+            logging.info(f"Creating Combat RL Agent (training={training})")
+
+            # Auto-load latest checkpoint if in training mode and no model specified
+            if training and model_path is None:
+                auto_model_path = find_latest_checkpoint()
+                if auto_model_path:
+                    logging.info("Auto-loading latest checkpoint for continued training")
+                    model_path = auto_model_path
+                else:
+                    logging.info("No existing checkpoints found, starting fresh training")
+
+            agent = CombatRLAgent(
+                player_class=player_class,
+                training=training,
+                model_path=model_path
+            )
+            logging.info(f"Combat RL Agent created successfully")
+            logging.info(f"  State dim: {agent.rl_agent.state_encoder.feature_dim}, Action dim: {agent.rl_agent.action_encoder.MAX_ACTIONS}")
+            logging.info(f"  Training mode: {training}")
+            if model_path:
+                logging.info(f"  Loaded model: {model_path}")
+            return agent
+        except Exception as e:
+            logging.error(f"Failed to create Combat RL agent: {e}")
+            logging.error("Falling back to OptimizedAgent")
+            import traceback
+            logging.debug(traceback.format_exc())
+            return OptimizedAgent(chosen_class=player_class) if OPTIMIZED_AI_AVAILABLE else SimpleAgent(chosen_class=player_class)
 
     # Create RL agent
     if agent_type == "rl":
@@ -194,22 +242,24 @@ if __name__ == "__main__":
             "Environment Variable:\n"
             "  USE_OPTIMIZED_AI=true  Use OptimizedAgent (deprecated, use --agent optimized)\n\n"
             "Examples:\n"
-            "  python main.py                    # Auto-detect, ascension 0\n"
-            "  python main.py --agent optimized  # Force optimized AI\n"
-            "  python main.py --agent rl         # Use RL agent (inference mode)\n"
-            "  python main.py --agent rl --train # Use RL agent in training mode\n"
+            "  python main.py                       # Auto-detect, ascension 0\n"
+            "  python main.py --agent optimized     # Force optimized AI\n"
+            "  python main.py --agent rl            # Use RL agent (inference mode)\n"
+            "  python main.py --agent rl --train    # Use RL agent in training mode\n"
+            "  python main.py --agent combat_rl     # Combat-only RL with OptimizedAgent fallback\n"
+            "  python main.py --agent combat_rl --train  # Train combat-only RL\n"
             "  python main.py --agent rl --model checkpoints/model.pth  # Load trained model\n"
-            "  python main.py -a 10              # Ascension level 10\n"
-            "  python main.py -a 20              # Ascension level 20\n"
+            "  python main.py -a 10                 # Ascension level 10\n"
+            "  python main.py -a 20                 # Ascension level 20\n"
             "  python main.py --agent optimized -a 20  # Optimized AI A20\n"
             "  python main.py --seed 7010470200064802279  # Fixed seed run\n"
         ),
     )
     parser.add_argument(
         "--agent",
-        choices=["simple", "optimized", "rl", "auto"],
+        choices=["simple", "optimized", "rl", "combat_rl", "auto"],
         default="auto",
-        help="Agent type: simple, optimized, rl, or auto-detect (default: auto)",
+        help="Agent type: simple, optimized, rl, combat_rl, or auto-detect (default: auto)",
     )
     parser.add_argument(
         "--optimized",
@@ -345,6 +395,7 @@ if __name__ == "__main__":
     while True:  # Infinite loop for Ironclad only
         game_count += 1
         is_rl_agent = RLAgent is not None and isinstance(agent, RLAgent)
+        is_combat_rl_agent = CombatRLAgent is not None and isinstance(agent, CombatRLAgent)
 
         logging.info(f"\n{'='*60}\n")
         logging.info(f"Starting game #{game_count} as {chosen_class}")
@@ -354,6 +405,8 @@ if __name__ == "__main__":
         logging.info(f"Coordinator state: in_game={coordinator.in_game}, ready={coordinator.game_is_ready}")
         if is_rl_agent:
             logging.info(f"RL Agent: training={training}")
+        if is_combat_rl_agent:
+            logging.info(f"Combat RL Agent: training={training}")
         logging.info(f"{'='*60}\n")
 
         # Reset game tracker for OptimizedAgent
@@ -367,9 +420,9 @@ if __name__ == "__main__":
                 logging.warning(f"Could not reset game tracker: {e}")
 
         # Change agent class for this game (only for non-RL agents)
-        if not is_rl_agent and hasattr(agent, 'change_class'):
+        if not is_rl_agent and not is_combat_rl_agent and hasattr(agent, 'change_class'):
             agent.change_class(chosen_class)
-        elif is_rl_agent:
+        elif is_rl_agent or is_combat_rl_agent:
             # RL agent doesn't need change_class, just reset
             agent.reset()
 
@@ -439,14 +492,52 @@ if __name__ == "__main__":
                 import traceback
                 logging.debug(traceback.format_exc())
 
+        # Combat RL agent training checkpoint saving
+        if is_combat_rl_agent and training:
+            # Combat RL agent training checkpoint saving
+            try:
+                # Create checkpoints directory if it doesn't exist
+                os.makedirs("checkpoints", exist_ok=True)
+
+                # Save checkpoint with combat_rl naming
+                checkpoint_path = f"checkpoints/rl_combat_model_ep{game_count}.pth"
+                agent.save_model(checkpoint_path, episode=game_count)
+
+                logging.info(f"Combat RL Training checkpoint saved: {checkpoint_path}")
+
+                # Log training metrics
+                if hasattr(agent, 'rl_agent') and hasattr(agent.rl_agent, 'trainer') and agent.rl_agent.trainer:
+                    avg_loss = agent.rl_agent.trainer.get_avg_loss()
+                    epsilon = agent.rl_agent.trainer.get_epsilon()
+                    total_steps = agent.rl_agent.trainer.total_steps
+                    logging.info(f"  Training steps: {total_steps}")
+                    logging.info(f"  Avg loss: {avg_loss:.4f}")
+                    logging.info(f"  Epsilon: {epsilon:.3f}")
+
+                # Reset agent for next episode
+                agent.reset()
+            except Exception as e:
+                logging.error(f"Error saving Combat RL checkpoint: {e}")
+                import traceback
+                logging.debug(traceback.format_exc())
+
         if statistics:
             try:
                 logging.debug("Attempting to save statistics...")
                 logging.debug(f"  agent type: {type(agent).__name__}")
                 logging.debug(f"  is OptimizedAgent: {isinstance(agent, OptimizedAgent)}")
+                logging.debug(f"  is CombatRLAgent: {is_combat_rl_agent}")
 
-                # Only OptimizedAgent has game_tracker
+                # Get game_tracker from OptimizedAgent or CombatRLAgent's fallback_agent
+                game_tracker = None
                 if isinstance(agent, OptimizedAgent) and hasattr(agent, 'game_tracker') and agent.game_tracker:
+                    game_tracker = agent.game_tracker
+                elif is_combat_rl_agent and hasattr(agent, 'fallback_agent'):
+                    fallback_agent = agent.fallback_agent
+                    if isinstance(fallback_agent, OptimizedAgent) and hasattr(fallback_agent, 'game_tracker') and fallback_agent.game_tracker:
+                        game_tracker = fallback_agent.game_tracker
+
+                if game_tracker:
                     logging.debug("  game_tracker found, saving...")
                     logging.debug(f"  result: {result}")
                     logging.debug(f"  coordinator has last_game_state: {hasattr(coordinator, 'last_game_state')}")
@@ -454,16 +545,17 @@ if __name__ == "__main__":
                     # Record game over state
                     if hasattr(coordinator, 'last_game_state') and coordinator.last_game_state is not None:
                         # Fix: Check if agent died in combat and end combat wasn't recorded
-                        if hasattr(agent, '_in_combat') and agent._in_combat:
+                        agent_to_check = agent if isinstance(agent, OptimizedAgent) else agent.fallback_agent
+                        if hasattr(agent_to_check, '_in_combat') and agent_to_check._in_combat:
                             game_state = coordinator.last_game_state
-                            agent.game_tracker.end_combat(
+                            game_tracker.end_combat(
                                 hp_remaining=game_state.current_hp if hasattr(game_state, 'current_hp') else 0,
                                 max_hp=game_state.max_hp if hasattr(game_state, 'max_hp') else 80
                             )
-                            agent._in_combat = False
+                            agent_to_check._in_combat = False
                             logging.debug("  Recorded combat end (died in combat)")
 
-                        agent.game_tracker.record_game_over(result, coordinator.last_game_state)
+                        game_tracker.record_game_over(result, coordinator.last_game_state)
                         logging.debug("  Recorded game over via last_game_state")
                         try:
                             seed_played = getattr(coordinator.last_game_state, 'seed', None)
@@ -474,18 +566,18 @@ if __name__ == "__main__":
                     else:
                         # Fallback: record with minimal info
                         logging.debug("  No last_game_state, using fallback")
-                        agent.game_tracker.victory = result
-                        agent.game_tracker.final_floor = agent.game.floor if hasattr(agent.game, 'floor') else 0
-                        agent.game_tracker.final_act = agent.game.act if hasattr(agent.game, 'act') else 1
+                        game_tracker.victory = result
+                        game_tracker.final_floor = agent.game.floor if hasattr(agent, 'floor') else 0
+                        game_tracker.final_act = agent.game.act if hasattr(agent, 'act') else 1
 
                     # Save to statistics
-                    statistics.record_game(agent.game_tracker)
+                    statistics.record_game(game_tracker)
                     logging.debug("  Saved to statistics")
 
                     # Print simple confirmation
                     result_str = "WIN" if result else "LOSS"
-                    floor = agent.game_tracker.final_floor
-                    act = agent.game_tracker.final_act
+                    floor = game_tracker.final_floor
+                    act = game_tracker.final_act
                     logging.info(f"Game #{game_count} saved: {result_str} at Act {act} Floor {floor}")
                 else:
                     logging.debug("  No game_tracker to save (not OptimizedAgent or tracker is None)")
@@ -494,7 +586,7 @@ if __name__ == "__main__":
                 import traceback
                 logging.debug(traceback.format_exc())
 
-        # Print summary if OptimizedAgent (to stderr)
+        # Print summary if OptimizedAgent or CombatRLAgent (to stderr)
         if isinstance(agent, OptimizedAgent):
             try:
                 summary = agent.get_decision_summary()
@@ -506,6 +598,25 @@ if __name__ == "__main__":
 
                 # Print deck stats if available
                 deck_stats = agent.get_deck_stats()
+                if 'error' not in deck_stats:
+                    logging.info(f"\nDeck Statistics:\n")
+                    logging.info(f"  Size: {deck_stats['size']}\n")
+                    logging.info(f"  Archetype: {deck_stats['archetype']}\n")
+                    logging.info(f"  Quality: {deck_stats['quality']:.2f}\n")
+                    logging.info(f"  Upgrade Rate: {deck_stats.get('upgrade_rate', 0):.2%}\n")
+            except Exception as e:
+                logging.info(f"Error generating summary: {e}\n")
+        elif is_combat_rl_agent and hasattr(agent, 'fallback_agent') and isinstance(agent.fallback_agent, OptimizedAgent):
+            try:
+                summary = agent.fallback_agent.get_decision_summary()
+                logging.info(f"\nGame Summary (OptimizedAgent fallback):\n")
+                logging.info(f"  Total Decisions: {summary['total_decisions']}\n")
+                logging.info(f"  Combat Decisions: {summary['combat_decisions']}\n")
+                logging.info(f"  Card Rewards: {summary['card_rewards']}\n")
+                logging.info(f"  Avg Confidence: {summary['avg_confidence']:.2f}\n")
+
+                # Print deck stats if available
+                deck_stats = agent.fallback_agent.get_deck_stats()
                 if 'error' not in deck_stats:
                     logging.info(f"\nDeck Statistics:\n")
                     logging.info(f"  Size: {deck_stats['size']}\n")

@@ -371,3 +371,210 @@ def create_agent(
         training=training,
         device=device
     )
+
+
+class CombatRLAgent:
+    """
+    Combat-only RL agent with OptimizedAgent fallback.
+
+    Delegates non-combat decisions to OptimizedAgent, uses RL only for
+    main combat loop (playing cards/potions/ending turn).
+
+    Architecture:
+    - RLAgent handles: main combat loop (play cards, use potions, end turn)
+    - OptimizedAgent handles: everything else (map, shop, events, rewards)
+
+    Fallback: If RL fails, immediately falls back to OptimizedAgent for all decisions.
+    """
+
+    def __init__(
+        self,
+        player_class: PlayerClass = PlayerClass.IRONCLAD,
+        training: bool = False,
+        model_path: Optional[str] = None,
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        epsilon: float = 0.0
+    ):
+        """
+        Initialize CombatRLAgent with RL and OptimizedAgent instances.
+
+        Args:
+            player_class: Character to play
+            training: Enable RL training mode
+            model_path: Path to pretrained RL model
+            device: Torch device
+            epsilon: Exploration rate (0.0 = greedy, 1.0 = full random)
+        """
+        self.player_class = player_class
+        self.use_rl_for_combat = True
+        self.rl_failure_count = 0
+        self.max_rl_failures = 3
+
+        # Import OptimizedAgent
+        try:
+            from spirecomm.ai.agent import OptimizedAgent, OPTIMIZED_AI_AVAILABLE
+            if OPTIMIZED_AI_AVAILABLE:
+                self.fallback_agent = OptimizedAgent(chosen_class=player_class)
+            else:
+                from spirecomm.ai.agent import SimpleAgent
+                self.fallback_agent = SimpleAgent(chosen_class=player_class)
+                logger.warning("OptimizedAgent not available, using SimpleAgent for fallback")
+        except ImportError as e:
+            logger.error(f"Failed to import OptimizedAgent: {e}")
+            from spirecomm.ai.agent import SimpleAgent
+            self.fallback_agent = SimpleAgent(chosen_class=player_class)
+
+        # Initialize RL agent
+        self.rl_agent = RLAgent(
+            model_path=model_path,
+            training=training,
+            device=device,
+            epsilon=epsilon
+        )
+
+        logger.info(f"CombatRLAgent initialized: player_class={player_class}, training={training}")
+
+    def get_next_action_in_game(self, game: Game) -> Action:
+        """
+        Route decision to RL or OptimizedAgent based on game state.
+
+        Routing logic:
+        1. If in main combat loop → RLAgent (if enabled and not failed)
+        2. All other cases → OptimizedAgent
+
+        Args:
+            game: Current game state
+
+        Returns:
+            Action to execute
+        """
+        # Check if we should use RL for combat
+        if self.use_rl_for_combat and self._is_combat_screen(game):
+            try:
+                action = self.rl_agent.get_next_action_in_game(game)
+
+                # Check if RL returned None
+                if action is None:
+                    logger.warning("RL agent returned None, falling back to OptimizedAgent")
+                    self.rl_failure_count += 1
+                elif self._is_valid_combat_action(action):
+                    # Valid combat action
+                    self.rl_failure_count = 0  # Reset on success
+                    return action
+                else:
+                    # Invalid action type
+                    logger.warning(f"RL agent returned non-combat action during combat, falling back to OptimizedAgent")
+                    self.rl_failure_count += 1
+            except Exception as e:
+                logger.error(f"RL agent failed: {e}, falling back to OptimizedAgent")
+                import traceback
+                logger.debug(traceback.format_exc())
+                self.rl_failure_count += 1
+
+            # Disable RL after too many failures
+            if self.rl_failure_count >= self.max_rl_failures:
+                logger.warning(f"RL agent failed {self.rl_failure_count} times, disabling for rest of game")
+                self.use_rl_for_combat = False
+
+        # Fallback to OptimizedAgent
+        return self.fallback_agent.get_next_action_in_game(game)
+
+    def _is_combat_screen(self, game: Game) -> bool:
+        """
+        Detect if we're in main combat loop (not reward/shop/event screens).
+
+        Combat-only conditions:
+        - game.in_combat == True
+        - screen_type == ScreenType.NONE (main gameplay)
+
+        Note: We don't check play_available because RL agent handles ending turn
+        when no cards are playable.
+
+        Args:
+            game: Current game state
+
+        Returns:
+            True if in main combat loop, False otherwise
+        """
+        from spirecomm.spire.screen import ScreenType
+
+        # Must be in combat
+        if not hasattr(game, 'in_combat') or not game.in_combat:
+            return False
+
+        # Must be main gameplay screen (not card reward, hand select, etc.)
+        if hasattr(game, 'screen_type') and game.screen_type != ScreenType.NONE:
+            return False
+
+        # This is main combat loop
+        return True
+
+    def _is_valid_combat_action(self, action: Action) -> bool:
+        """
+        Validate that RL returned a combat-appropriate action.
+
+        Args:
+            action: Action to validate
+
+        Returns:
+            True if action is valid for combat, False otherwise
+        """
+        from spirecomm.communication.action import PlayCardAction, PotionAction, EndTurnAction
+
+        # Must be a combat action type
+        if not isinstance(action, (PlayCardAction, PotionAction, EndTurnAction)):
+            return False
+
+        # Additional validation could go here (e.g., check card is in hand)
+        # For now, just check the action type
+
+        return True
+
+    def get_next_action_out_of_game(self) -> Action:
+        """Delegate out-of-game decisions to OptimizedAgent."""
+        return self.fallback_agent.get_next_action_out_of_game()
+
+    def handle_error(self, error):
+        """
+        Handle errors by routing to OptimizedAgent.
+
+        If RL agent fails, increment failure counter and potentially disable RL.
+
+        Args:
+            error: Error from Communication Mod
+
+        Returns:
+            Safe action to take
+        """
+        logger.error(f"CombatRLAgent error: {error}")
+
+        # Increment RL failure count
+        if self.use_rl_for_combat:
+            self.rl_failure_count += 1
+            if self.rl_failure_count >= self.max_rl_failures:
+                logger.warning(f"RL agent failed {self.rl_failure_count} times, disabling")
+                self.use_rl_for_combat = False
+
+        # Route to fallback agent
+        return self.fallback_agent.handle_error(error)
+
+    def reset(self) -> None:
+        """Reset both RL and OptimizedAgent for new episode."""
+        self.rl_agent.reset()
+
+        # Reset RL failure tracking for new game
+        self.use_rl_for_combat = True
+        self.rl_failure_count = 0
+
+        # Reset OptimizedAgent game tracker if available
+        if hasattr(self.fallback_agent, 'game_tracker'):
+            try:
+                from spirecomm.ai.tracker import GameTracker
+                self.fallback_agent.game_tracker = GameTracker()
+                self.fallback_agent.game_tracker.player_class = str(self.player_class).replace('PlayerClass.', '')
+            except Exception as e:
+                logger.warning(f"Failed to reset game tracker: {e}")
+
+    def save_model(self, model_path: str, episode: int = 0) -> None:
+        """Save RL model checkpoint."""
+        self.rl_agent.save_model(model_path, episode)
