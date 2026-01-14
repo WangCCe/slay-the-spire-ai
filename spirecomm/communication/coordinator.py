@@ -23,22 +23,32 @@ def read_stdin(input_queue):
             while True:
                 input_char = sys.stdin.read(1)
                 # Detect broken pipe (game crash)
-                if input_char == '' and len(stdin_input) == 0:
+                if input_char == "" and len(stdin_input) == 0:
                     import logging
-                    logging.critical("STDIN PIPE BROKEN: Communication Mod or Slay the Spire crashed. "
-                                   "This is likely caused by:")
-                    logging.critical("  1. Communication Mod crash (check mod compatibility)")
+
+                    logging.critical(
+                        "STDIN PIPE BROKEN: Communication Mod or Slay the Spire crashed. "
+                        "This is likely caused by:"
+                    )
+                    logging.critical(
+                        "  1. Communication Mod crash (check mod compatibility)"
+                    )
                     logging.critical("  2. Slay the Spire crash (check game logs)")
                     logging.critical("  3. SuperFastMode + Communication Mod conflict")
-                    logging.critical("Try running without SuperFastMode to isolate the issue.")
-                    raise EOFError("Communication Mod pipe broken - game likely crashed")
-                if input_char == '\n':
+                    logging.critical(
+                        "Try running without SuperFastMode to isolate the issue."
+                    )
+                    raise EOFError(
+                        "Communication Mod pipe broken - game likely crashed"
+                    )
+                if input_char == "\n":
                     break
                 else:
                     stdin_input += input_char
             input_queue.put(stdin_input)
     except Exception as e:
         import logging
+
         logging.critical(f"read_stdin thread crashed: {e}")
         raise
 
@@ -54,14 +64,18 @@ def write_stdout(output_queue):
         while True:
             output = output_queue.get()
             try:
-                print(output, end='\n', flush=True)
+                print(output, end="\n", flush=True)
             except BrokenPipeError:
                 import logging
-                logging.critical("STDOUT PIPE BROKEN: Cannot write to Communication Mod. "
-                               "Game likely crashed or closed.")
+
+                logging.critical(
+                    "STDOUT PIPE BROKEN: Cannot write to Communication Mod. "
+                    "Game likely crashed or closed."
+                )
                 raise
     except Exception as e:
         import logging
+
         logging.critical(f"write_stdout thread crashed: {e}")
         raise
 
@@ -72,8 +86,12 @@ class Coordinator:
     def __init__(self):
         self.input_queue = queue.Queue()
         self.output_queue = queue.Queue()
-        self.input_thread = threading.Thread(target=read_stdin, args=(self.input_queue,))
-        self.output_thread = threading.Thread(target=write_stdout, args=(self.output_queue,))
+        self.input_thread = threading.Thread(
+            target=read_stdin, args=(self.input_queue,)
+        )
+        self.output_thread = threading.Thread(
+            target=write_stdout, args=(self.output_queue,)
+        )
         self.input_thread.daemon = True
         self.input_thread.start()
         self.output_thread.daemon = True
@@ -96,11 +114,17 @@ class Coordinator:
         """
         if not self.input_thread.is_alive():
             import logging
-            logging.critical("STDIN THREAD DIED: Communication Mod or Slay the Spire crashed.")
+
+            logging.critical(
+                "STDIN THREAD DIED: Communication Mod or Slay the Spire crashed."
+            )
             return False
         if not self.output_thread.is_alive():
             import logging
-            logging.critical("STDOUT THREAD DIED: Communication Mod or Slay the Spire crashed.")
+
+            logging.critical(
+                "STDOUT THREAD DIED: Communication Mod or Slay the Spire crashed."
+            )
             return False
         return True
 
@@ -112,15 +136,23 @@ class Coordinator:
         """
         self.send_message("ready")
 
-    def send_message(self, message):
+    def send_message(self, message, wait_for_response=True):
         """Send a command to Communication Mod and start waiting for a response
 
         :param message: the message to send
         :type message: str
+        :param wait_for_response: whether to wait for response (sets game_is_ready=False)
+        :type wait_for_response: bool
         :return: None
         """
+        import logging
+
+        logging.info(
+            f"[SEND_MESSAGE] {message}, game_is_ready was={self.game_is_ready}, wait_for_response={wait_for_response}"
+        )
         self.output_queue.put(message)
-        self.game_is_ready = False
+        if wait_for_response:
+            self.game_is_ready = False
 
     def add_action_to_queue(self, action):
         """Queue an action to perform when ready
@@ -144,6 +176,11 @@ class Coordinator:
         :return: None
         """
         action = self.action_queue.popleft()
+        import logging
+
+        logging.info(
+            f"[ACTION_QUEUE] Executing {action.__class__.__name__}, queue_size={len(self.action_queue)}"
+        )
         action.execute(self)
 
     def execute_next_action_if_ready(self):
@@ -154,6 +191,7 @@ class Coordinator:
         # Skip any None values in the queue (defensive programming)
         while len(self.action_queue) > 0 and self.action_queue[0] is None:
             import logging
+
             logging.warning("Removing None from action_queue")
             self.action_queue.popleft()
 
@@ -225,13 +263,20 @@ class Coordinator:
         if message is not None:
             communication_state = json.loads(message)
             self.last_error = communication_state.get("error", None)
+            old_ready = self.game_is_ready
             self.game_is_ready = communication_state.get("ready_for_command")
+            import logging
+
+            logging.info(
+                f"[STATE_UPDATE] game_is_ready: {old_ready}→{self.game_is_ready}, action_queue_size={len(self.action_queue)}"
+            )
             if self.last_error is None:
                 self.in_game = communication_state.get("in_game")
                 if self.in_game:
                     game_state = communication_state.get("game_state", {})
                     if game_state.get("screen_type") == "GRID":
                         import logging
+
                         screen_state = game_state.get("screen_state") or {}
                         if isinstance(screen_state, dict):
                             logging.debug(
@@ -250,12 +295,18 @@ class Coordinator:
                                 screen_state.get("for_purge"),
                                 communication_state.get("available_commands"),
                             )
+                            logging.debug(
+                                "GRID choice_list present: %s",
+                                "choice_list" in game_state,
+                            )
                         else:
                             logging.debug(
                                 "GRID screen_state type=%s",
                                 type(screen_state).__name__,
                             )
-                self.last_game_state = Game.from_json(game_state, communication_state.get("available_commands"))
+                self.last_game_state = Game.from_json(
+                    game_state, communication_state.get("available_commands")
+                )
             if perform_callbacks:
                 if self.last_error is not None:
                     self.action_queue.clear()
@@ -264,6 +315,7 @@ class Coordinator:
                         self.add_action_to_queue(new_action)
                     else:
                         import logging
+
                         logging.warning("error_callback returned None - ignoring")
                 elif self.in_game:
                     if len(self.action_queue) == 0 and perform_callbacks:
@@ -272,7 +324,10 @@ class Coordinator:
                             self.add_action_to_queue(new_action)
                         else:
                             import logging
-                            logging.warning("state_change_callback returned None - ignoring")
+
+                            logging.warning(
+                                "state_change_callback returned None - ignoring"
+                            )
                 elif self.stop_after_run:
                     self.clear_actions()
                 else:
@@ -281,6 +336,7 @@ class Coordinator:
                         self.add_action_to_queue(new_action)
                     else:
                         import logging
+
                         logging.warning("out_of_game_callback returned None - ignoring")
             return True
         return False
@@ -316,14 +372,18 @@ class Coordinator:
         max_consecutive_timeouts = 10  # Increased from 3 to 10
 
         while not self.game_is_ready and timeout_counter < max_wait:
-            received = self.receive_game_state_update(block=True, perform_callbacks=False)
+            received = self.receive_game_state_update(
+                block=True, perform_callbacks=False
+            )
             if received:
                 consecutive_timeouts = 0  # Reset timeout counter on successful receive
             else:
                 consecutive_timeouts += 1
                 if consecutive_timeouts >= max_consecutive_timeouts:
                     # Only fail if we get MANY consecutive timeouts
-                    raise Exception(f"Communication Mod not responding (timeout after {consecutive_timeouts} attempts)")
+                    raise Exception(
+                        f"Communication Mod not responding (timeout after {consecutive_timeouts} attempts)"
+                    )
             timeout_counter += 1
 
         if not self.game_is_ready:
@@ -338,12 +398,16 @@ class Coordinator:
             while not self.in_game and timeout_counter < max_wait:
                 received = self.receive_game_state_update(block=True)
                 if received:
-                    consecutive_timeouts = 0  # Reset timeout counter on successful receive
+                    consecutive_timeouts = (
+                        0  # Reset timeout counter on successful receive
+                    )
                 else:
                     consecutive_timeouts += 1
                     if consecutive_timeouts >= max_consecutive_timeouts:
                         # Only fail if we get MANY consecutive timeouts
-                        raise Exception(f"Communication Mod not responding when starting game (timeout after {consecutive_timeouts} attempts)")
+                        raise Exception(
+                            f"Communication Mod not responding when starting game (timeout after {consecutive_timeouts} attempts)"
+                        )
                 timeout_counter += 1
 
             if not self.in_game:
@@ -359,10 +423,83 @@ class Coordinator:
             if not self.check_communication_threads():
                 raise EOFError("Communication Mod connection lost (game crashed)")
 
+            import logging
+
+            logging.info(
+                f"[MAIN_LOOP] execute_next_action_if_ready, queue_size={len(self.action_queue)}, game_is_ready={self.game_is_ready}"
+            )
             self.execute_next_action_if_ready()
 
             # Use blocking call with timeout to detect hangs
-            state_update = self.receive_game_state_update(block=True, perform_callbacks=True)
+            state_update = self.receive_game_state_update(
+                block=True, perform_callbacks=True
+            )
+            logging.info(
+                f"[MAIN_LOOP] after receive, state_update={state_update is not None}, queue_size={len(self.action_queue)}, game_is_ready={self.game_is_ready}"
+            )
+            self.execute_next_action_if_ready()
+
+            # Continue executing queued actions if available (for multi-step actions like card selection)
+            while (
+                len(self.action_queue) > 0
+                and not self.action_queue[0].requires_game_ready
+            ):
+                logging.info(
+                    f"[MAIN_LOOP] Executing queued action without waiting, queue_size={len(self.action_queue)}"
+                )
+                self.execute_next_action()
+
+            # Use blocking call with timeout to detect hangs
+            state_update = self.receive_game_state_update(
+                block=True, perform_callbacks=True
+            )
+            logging.info(
+                f"[MAIN_LOOP] after receive, state_update={state_update is not None}, queue_size={len(self.action_queue)}, game_is_ready={self.game_is_ready}"
+            )
+            self.execute_next_action_if_ready()
+
+            # Continue executing queued actions if available (for multi-step actions like card selection)
+            while (
+                len(self.action_queue) > 0
+                and not self.action_queue[0].requires_game_ready
+            ):
+                logging.info(
+                    f"[MAIN_LOOP] Executing queued action without waiting, queue_size={len(self.action_queue)}"
+                )
+                self.execute_next_action()
+
+            # Try non-blocking first to avoid unnecessary delays
+            state_update = self.receive_game_state_update(
+                block=False, perform_callbacks=True
+            )
+            if state_update is None:
+                # No immediate update, block with timeout
+                logging.info(
+                    "[MAIN_LOOP] No immediate update, blocking with timeout..."
+                )
+                state_update = self.receive_game_state_update(
+                    block=True, perform_callbacks=True
+                )
+            logging.info(
+                f"[MAIN_LOOP] after receive, state_update={state_update is not None}, queue_size={len(self.action_queue)}, game_is_ready={self.game_is_ready}"
+            )
+            self.execute_next_action_if_ready()
+
+            # Try non-blocking first to avoid unnecessary delays
+            state_update = self.receive_game_state_update(
+                block=False, perform_callbacks=True
+            )
+            if state_update is None:
+                # No immediate update, block with timeout
+                logging.info(
+                    "[MAIN_LOOP] No immediate update, blocking with timeout..."
+                )
+                state_update = self.receive_game_state_update(
+                    block=True, perform_callbacks=True
+                )
+            logging.info(
+                f"[MAIN_LOOP] after receive, state_update={state_update is not None}, queue_size={len(self.action_queue)}, game_is_ready={self.game_is_ready}"
+            )
 
             # Track last successful update
             if state_update is not None:
@@ -377,7 +514,7 @@ class Coordinator:
                     )
 
         # Return victory status (handle case where screen isn't GAME_OVER)
-        if hasattr(self.last_game_state, 'screen_type'):
+        if hasattr(self.last_game_state, "screen_type"):
             if self.last_game_state.screen_type == ScreenType.GAME_OVER:
                 return self.last_game_state.screen.victory
             else:
@@ -386,4 +523,3 @@ class Coordinator:
                 return False
         else:
             return False
-

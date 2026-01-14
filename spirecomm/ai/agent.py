@@ -24,6 +24,7 @@ try:
     from spirecomm.ai.heuristics.simulation import HeuristicCombatPlanner
     from spirecomm.ai.heuristics.deck import DeckAnalyzer
     from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter
+
     OPTIMIZED_AI_AVAILABLE = True
 except ImportError:
     OPTIMIZED_AI_AVAILABLE = False
@@ -37,9 +38,7 @@ except ImportError:
     GameTracker = None
 
 
-
 class SimpleAgent:
-
     def __init__(self, chosen_class=PlayerClass.THE_SILENT):
         self.game = Game()
         self.errors = 0
@@ -66,12 +65,13 @@ class SimpleAgent:
         else:
             self.priorities = random.choice(list(PlayerClass))
         if AdaptiveMapRouter is not None:
-            player_class_str = str(self.chosen_class).replace('PlayerClass.', '')
+            player_class_str = str(self.chosen_class).replace("PlayerClass.", "")
             self.map_router = AdaptiveMapRouter(player_class=player_class_str)
 
     def handle_error(self, error):
         # Log the error and return a safe action instead of raising
         import logging
+
         logging.error(f"Game error: {error}")
         # Return StateAction to get current state instead of raising
         return StateAction()
@@ -80,26 +80,33 @@ class SimpleAgent:
 
     def _exit_shop(self):
         """Return appropriate action to exit shop."""
-        if getattr(self.game, 'cancel_available', False):
+        if getattr(self.game, "cancel_available", False):
             return CancelAction()
-        if getattr(self.game, 'proceed_available', False):
+        if getattr(self.game, "proceed_available", False):
             return ProceedAction()
         return CancelAction()
 
     def _validate_shop_cards(self, screen):
         """Validate that shop cards have required attributes."""
-        if not hasattr(screen, 'cards') or not screen.cards:
+        if not hasattr(screen, "cards") or not screen.cards:
             logging.warning("[SHOP_SCREEN] No cards listed, exiting shop")
             return []
 
         valid_cards = []
         for card in screen.cards:
-            if hasattr(card, 'card_id') and hasattr(card, 'name') and hasattr(card, 'price'):
+            if (
+                hasattr(card, "card_id")
+                and hasattr(card, "name")
+                and hasattr(card, "price")
+            ):
                 valid_cards.append(card)
             else:
                 card_info = f"card_id={getattr(card, 'card_id', 'MISSING')}, name={getattr(card, 'name', 'MISSING')}, price={getattr(card, 'price', 'MISSING')}"
                 logging.warning(f"[SHOP_SCREEN] Skipping invalid card: {card_info}")
-                print(f"[SHOP_SCREEN WARNING] Skipping invalid card: {card_info}", file=sys.stderr)
+                print(
+                    f"[SHOP_SCREEN WARNING] Skipping invalid card: {card_info}",
+                    file=sys.stderr,
+                )
 
         if not valid_cards:
             logging.warning("[SHOP_SCREEN] No valid cards found")
@@ -108,38 +115,60 @@ class SimpleAgent:
     def _should_buy_card(self, card, gold, purge_cost, screen):
         """Determine if a card should be purchased."""
         try:
-            if not hasattr(card, 'price') or not hasattr(card, 'card_id'):
+            if not hasattr(card, "price") or not hasattr(card, "card_id"):
                 return False
 
             if gold >= card.price and not self.priorities.should_skip(card):
                 if not screen.purge_available or gold - card.price >= purge_cost:
                     return True
         except Exception as e:
-            card_id = getattr(card, 'card_id', 'UNKNOWN')
+            card_id = getattr(card, "card_id", "UNKNOWN")
             logging.error(f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}")
-            print(f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}", file=sys.stderr)
+            print(
+                f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}", file=sys.stderr
+            )
         return False
 
     def _should_buy_relic(self, relic, gold):
         """Determine if a relic should be purchased."""
         try:
             if gold >= relic.price and relic.price <= gold * 0.7:
-                useful_relics = ['Burning Blood', 'Barricade', 'Demon Form', 'Limit Break',
-                                'Juggernaut', 'Runic Pyramid', 'Sundial', 'Twin Daggers',
-                                'Cloak Clasp', 'Gremlin Horn']
+                useful_relics = [
+                    "Burning Blood",
+                    "Barricade",
+                    "Demon Form",
+                    "Limit Break",
+                    "Juggernaut",
+                    "Runic Pyramid",
+                    "Sundial",
+                    "Twin Daggers",
+                    "Cloak Clasp",
+                    "Gremlin Horn",
+                ]
                 if relic.name in useful_relics or gold >= relic.price + 50:
                     return True
         except Exception as e:
-            relic_name = getattr(relic, 'name', 'UNKNOWN')
+            relic_name = getattr(relic, "name", "UNKNOWN")
             logging.error(f"[SHOP_SCREEN] Error evaluating relic {relic_name}: {e}")
-            print(f"[SHOP_SCREEN] Error evaluating relic {relic_name}: {e}", file=sys.stderr)
+            print(
+                f"[SHOP_SCREEN] Error evaluating relic {relic_name}: {e}",
+                file=sys.stderr,
+            )
         return False
 
     def _log_shop_error(self, e, context=""):
         """Log shop error with traceback."""
         import traceback
+
         error_msg = f"[SHOP_SCREEN ERROR{context}] {type(e).__name__}: {e}"
-        card_list = [getattr(c, 'card_id', 'INVALID') for c in getattr(self.game.screen, 'cards', [])] if hasattr(self.game, 'screen') else 'NO_CARDS'
+        card_list = (
+            [
+                getattr(c, "card_id", "INVALID")
+                for c in getattr(self.game.screen, "cards", [])
+            ]
+            if hasattr(self.game, "screen")
+            else "NO_CARDS"
+        )
 
         logging.error(error_msg)
         logging.error(f"[SHOP_SCREEN ERROR] Cards: {card_list}")
@@ -151,7 +180,7 @@ class SimpleAgent:
 
     def get_next_action_in_game(self, game_state):
         self.game = game_state
-        #time.sleep(0.07)
+        # time.sleep(0.07)
         try:
             if self.game.choice_available:
                 return self.handle_screen()
@@ -163,7 +192,11 @@ class SimpleAgent:
                 if len(self.game.get_real_potions()) > 0:
                     danger_level = self._evaluate_combat_danger(None)
                     # Use potions in high-danger situations (>0.6) or in elite/boss fights
-                    if danger_level > 0.6 or 'Elite' in self.game.room_type or 'Boss' in self.game.room_type:
+                    if (
+                        danger_level > 0.6
+                        or "Elite" in self.game.room_type
+                        or "Boss" in self.game.room_type
+                    ):
                         potion_action = self.use_next_potion()
                         if potion_action is not None:
                             return potion_action
@@ -176,8 +209,10 @@ class SimpleAgent:
             # Fallback to safe action on error
             # Use stderr for error output to avoid interfering with Communication Mod
             import sys
+
             print(f"Error in get_next_action_in_game: {e}", file=sys.stderr)
             import traceback
+
             traceback.print_exc(file=sys.stderr)
             if self.game.end_available:
                 return EndTurnAction()
@@ -205,41 +240,73 @@ class SimpleAgent:
         return incoming_damage
 
     def get_low_hp_target(self):
-        available_monsters = [monster for monster in self.game.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+        available_monsters = [
+            monster
+            for monster in self.game.monsters
+            if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone
+        ]
         best_monster = min(available_monsters, key=lambda x: x.current_hp)
         return best_monster
 
     def get_high_hp_target(self):
-        available_monsters = [monster for monster in self.game.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+        available_monsters = [
+            monster
+            for monster in self.game.monsters
+            if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone
+        ]
         best_monster = max(available_monsters, key=lambda x: x.current_hp)
         return best_monster
 
     def many_monsters_alive(self):
-        available_monsters = [monster for monster in self.game.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+        available_monsters = [
+            monster
+            for monster in self.game.monsters
+            if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone
+        ]
         return len(available_monsters) > 1
 
     def get_play_card_action(self):
         playable_cards = [card for card in self.game.hand if card.is_playable]
         zero_cost_cards = [card for card in playable_cards if card.cost == 0]
-        zero_cost_attacks = [card for card in zero_cost_cards if card.type == spirecomm.spire.card.CardType.ATTACK]
-        zero_cost_non_attacks = [card for card in zero_cost_cards if card.type != spirecomm.spire.card.CardType.ATTACK]
+        zero_cost_attacks = [
+            card
+            for card in zero_cost_cards
+            if card.type == spirecomm.spire.card.CardType.ATTACK
+        ]
+        zero_cost_non_attacks = [
+            card
+            for card in zero_cost_cards
+            if card.type != spirecomm.spire.card.CardType.ATTACK
+        ]
         nonzero_cost_cards = [card for card in playable_cards if card.cost != 0]
-        aoe_cards = [card for card in playable_cards if self.priorities.is_card_aoe(card)]
+        aoe_cards = [
+            card for card in playable_cards if self.priorities.is_card_aoe(card)
+        ]
         # If any monsters are at 1 HP (Neow's Blessing, etc.), prioritize cleanup attacks.
         low_hp_monsters = [
-            monster for monster in self.game.monsters
-            if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone
+            monster
+            for monster in self.game.monsters
+            if monster.current_hp > 0
+            and not monster.half_dead
+            and not monster.is_gone
             and monster.current_hp <= 1
         ]
         if low_hp_monsters:
-            attack_cards = [card for card in playable_cards if card.type == spirecomm.spire.card.CardType.ATTACK]
+            attack_cards = [
+                card
+                for card in playable_cards
+                if card.type == spirecomm.spire.card.CardType.ATTACK
+            ]
             if attack_cards:
                 import logging
+
                 if self.many_monsters_alive() and aoe_cards:
                     card_to_play = self.priorities.get_best_card_to_play(aoe_cards)
                 else:
                     card_to_play = self.priorities.get_best_card_to_play(attack_cards)
-                logging.info(f"[SIMPLE_AGENT_LETHAL] Cleanup attack selected: {card_to_play.card_id}")
+                logging.info(
+                    f"[SIMPLE_AGENT_LETHAL] Cleanup attack selected: {card_to_play.card_id}"
+                )
                 if card_to_play.has_target:
                     target = self.get_low_hp_target()
                     return PlayCardAction(card=card_to_play, target_monster=target)
@@ -247,21 +314,34 @@ class SimpleAgent:
         incoming_damage = self.get_incoming_damage()
         if self.game.player.block > incoming_damage - (self.game.act + 4):
             import logging
-            logging.info(f"[SIMPLE_AGENT_DEFENSE] Skipping defensive cards - block={self.game.player.block}, "
-                        f"incoming={incoming_damage}, threshold={incoming_damage - (self.game.act + 4)}, "
-                        f"act={self.game.act}")
-            offensive_cards = [card for card in nonzero_cost_cards if not self.priorities.is_card_defensive(card)]
+
+            logging.info(
+                f"[SIMPLE_AGENT_DEFENSE] Skipping defensive cards - block={self.game.player.block}, "
+                f"incoming={incoming_damage}, threshold={incoming_damage - (self.game.act + 4)}, "
+                f"act={self.game.act}"
+            )
+            offensive_cards = [
+                card
+                for card in nonzero_cost_cards
+                if not self.priorities.is_card_defensive(card)
+            ]
             if len(offensive_cards) > 0:
                 nonzero_cost_cards = offensive_cards
             else:
-                nonzero_cost_cards = [card for card in nonzero_cost_cards if not card.exhausts]
+                nonzero_cost_cards = [
+                    card for card in nonzero_cost_cards if not card.exhausts
+                ]
         if len(playable_cards) == 0:
             return EndTurnAction()
         if len(zero_cost_non_attacks) > 0:
             card_to_play = self.priorities.get_best_card_to_play(zero_cost_non_attacks)
         elif len(nonzero_cost_cards) > 0:
             card_to_play = self.priorities.get_best_card_to_play(nonzero_cost_cards)
-            if len(aoe_cards) > 0 and self.many_monsters_alive() and card_to_play.type == spirecomm.spire.card.CardType.ATTACK:
+            if (
+                len(aoe_cards) > 0
+                and self.many_monsters_alive()
+                and card_to_play.type == spirecomm.spire.card.CardType.ATTACK
+            ):
                 card_to_play = self.priorities.get_best_card_to_play(aoe_cards)
         elif len(zero_cost_attacks) > 0:
             card_to_play = self.priorities.get_best_card_to_play(zero_cost_attacks)
@@ -269,7 +349,13 @@ class SimpleAgent:
             # This shouldn't happen!
             return EndTurnAction()
         if card_to_play.has_target:
-            available_monsters = [monster for monster in self.game.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+            available_monsters = [
+                monster
+                for monster in self.game.monsters
+                if monster.current_hp > 0
+                and not monster.half_dead
+                and not monster.is_gone
+            ]
             if len(available_monsters) == 0:
                 return EndTurnAction()
             if card_to_play.type == spirecomm.spire.card.CardType.ATTACK:
@@ -284,13 +370,24 @@ class SimpleAgent:
         for potion in self.game.get_real_potions():
             if potion.can_use:
                 if potion.requires_target:
-                    return PotionAction(True, potion=potion, target_monster=self.get_low_hp_target())
+                    return PotionAction(
+                        True, potion=potion, target_monster=self.get_low_hp_target()
+                    )
                 else:
                     return PotionAction(True, potion=potion)
 
     def handle_screen(self):
         if self.game.screen_type == ScreenType.EVENT:
-            if self.game.screen.event_id in ["Vampires", "Masked Bandits", "Knowing Skull", "Ghosts", "Liars Game", "Golden Idol", "Drug Dealer", "The Library"]:
+            if self.game.screen.event_id in [
+                "Vampires",
+                "Masked Bandits",
+                "Knowing Skull",
+                "Ghosts",
+                "Liars Game",
+                "Golden Idol",
+                "Drug Dealer",
+                "The Library",
+            ]:
                 return ChooseAction(len(self.game.screen.options) - 1)
             else:
                 return ChooseAction(0)
@@ -309,21 +406,38 @@ class SimpleAgent:
             return self.choose_card_reward()
         elif self.game.screen_type == ScreenType.COMBAT_REWARD:
             import sys
-            rewards = self.game.screen.rewards if hasattr(self.game.screen, 'rewards') else []
-            logging.info(f"[COMBAT_REWARD] Floor {self.game.floor if hasattr(self.game, 'floor') else '?'}: {len(rewards)} rewards, skipped_cards={self.skipped_cards}\n")
+
+            rewards = (
+                self.game.screen.rewards if hasattr(self.game.screen, "rewards") else []
+            )
+            logging.info(
+                f"[COMBAT_REWARD] Floor {self.game.floor if hasattr(self.game, 'floor') else '?'}: {len(rewards)} rewards, skipped_cards={self.skipped_cards}\n"
+            )
 
             for i, reward_item in enumerate(rewards):
-                skip_potion = reward_item.reward_type == RewardType.POTION and self.game.are_potions_full()
-                skip_card = reward_item.reward_type == RewardType.CARD and self.skipped_cards
-                logging.info(f"  [{i}] type={reward_item.reward_type}, skip_potion={skip_potion}, skip_card={skip_card}\n")
+                skip_potion = (
+                    reward_item.reward_type == RewardType.POTION
+                    and self.game.are_potions_full()
+                )
+                skip_card = (
+                    reward_item.reward_type == RewardType.CARD and self.skipped_cards
+                )
+                logging.info(
+                    f"  [{i}] type={reward_item.reward_type}, skip_potion={skip_potion}, skip_card={skip_card}\n"
+                )
 
             for reward_item in rewards:
-                if reward_item.reward_type == RewardType.POTION and self.game.are_potions_full():
+                if (
+                    reward_item.reward_type == RewardType.POTION
+                    and self.game.are_potions_full()
+                ):
                     continue
                 elif reward_item.reward_type == RewardType.CARD and self.skipped_cards:
                     continue
                 else:
-                    logging.info(f"[COMBAT_REWARD] Taking reward: {reward_item.reward_type}\n")
+                    logging.info(
+                        f"[COMBAT_REWARD] Taking reward: {reward_item.reward_type}\n"
+                    )
                     return CombatRewardAction(reward_item)
             logging.info(f"[COMBAT_REWARD] Proceeding (all rewards skipped)\n")
             self.skipped_cards = False
@@ -339,15 +453,15 @@ class SimpleAgent:
                 gold = self.game.gold
                 screen = self.game.screen
 
-                cancel_available = getattr(self.game, 'cancel_available', False)
-                proceed_available = getattr(self.game, 'proceed_available', False)
+                cancel_available = getattr(self.game, "cancel_available", False)
+                proceed_available = getattr(self.game, "proceed_available", False)
                 logging.info(
                     "[SHOP_SCREEN] gold=%s cards=%s relics=%s potions=%s purge_available=%s cancel_available=%s proceed_available=%s",
                     gold,
-                    len(getattr(screen, 'cards', []) or []),
-                    len(getattr(screen, 'relics', []) or []),
-                    len(getattr(screen, 'potions', []) or []),
-                    getattr(screen, 'purge_available', False),
+                    len(getattr(screen, "cards", []) or []),
+                    len(getattr(screen, "relics", []) or []),
+                    len(getattr(screen, "potions", []) or []),
+                    getattr(screen, "purge_available", False),
                     cancel_available,
                     proceed_available,
                 )
@@ -358,15 +472,17 @@ class SimpleAgent:
                     return self._exit_shop()
 
                 # Priority 1: Purge (card removal) if needed and affordable
-                purge_cost = screen.purge_cost if screen.purge_available else float('inf')
+                purge_cost = (
+                    screen.purge_cost if screen.purge_available else float("inf")
+                )
                 if screen.purge_available and gold >= purge_cost:
-                    strikes = [c for c in self.game.deck if c.card_id == 'Strike_R']
-                    defends = [c for c in self.game.deck if c.card_id == 'Defend_R']
+                    strikes = [c for c in self.game.deck if c.card_id == "Strike_R"]
+                    defends = [c for c in self.game.deck if c.card_id == "Defend_R"]
                     if len(strikes) >= 1 or len(defends) >= 1:
                         return ChooseAction(name="purge")
 
                 # Priority 2: Buy cards that are good for the deck
-                if hasattr(self.priorities, 'get_sorted_cards'):
+                if hasattr(self.priorities, "get_sorted_cards"):
                     sorted_cards = self.priorities.get_sorted_cards(valid_cards)
                     for card in sorted_cards:
                         if self._should_buy_card(card, gold, purge_cost, screen):
@@ -377,23 +493,39 @@ class SimpleAgent:
                             return BuyCardAction(card)
 
                 # Priority 3: Buy useful relics (consider price and value)
-                if hasattr(screen, 'relics') and screen.relics:
+                if hasattr(screen, "relics") and screen.relics:
                     for relic in screen.relics:
                         if self._should_buy_relic(relic, gold):
                             return BuyRelicAction(relic)
 
                 # Priority 4: Buy potions if needed and affordable
-                if hasattr(screen, 'potions') and screen.potions and not self.game.are_potions_full():
+                if (
+                    hasattr(screen, "potions")
+                    and screen.potions
+                    and not self.game.are_potions_full()
+                ):
                     for potion in screen.potions:
                         try:
                             if gold >= potion.price:
-                                useful_potions = ['Healing Potion', 'Strength Potion', 'Fire Potion', 'Ice Potion', 'Block Potion', 'Strawberry']
+                                useful_potions = [
+                                    "Healing Potion",
+                                    "Strength Potion",
+                                    "Fire Potion",
+                                    "Ice Potion",
+                                    "Block Potion",
+                                    "Strawberry",
+                                ]
                                 if potion.name in useful_potions:
                                     return BuyPotionAction(potion)
                         except Exception as e:
-                            potion_name = getattr(potion, 'name', 'UNKNOWN')
-                            logging.error(f"[SHOP_SCREEN] Error evaluating potion {potion_name}: {e}")
-                            print(f"[SHOP_SCREEN] Error evaluating potion {potion_name}: {e}", file=sys.stderr)
+                            potion_name = getattr(potion, "name", "UNKNOWN")
+                            logging.error(
+                                f"[SHOP_SCREEN] Error evaluating potion {potion_name}: {e}"
+                            )
+                            print(
+                                f"[SHOP_SCREEN] Error evaluating potion {potion_name}: {e}",
+                                file=sys.stderr,
+                            )
                             continue
 
                 # Priority 5: Purge as last resort if we have extra gold
@@ -406,16 +538,48 @@ class SimpleAgent:
                 self._log_shop_error(e)
                 return self._exit_shop()
         elif self.game.screen_type == ScreenType.GRID:
-            if not self.game.choice_available:
+            # For GRID screen, check if we can select cards based on screen state
+            can_select = self.game.choice_available or (
+                hasattr(self.game, "screen")
+                and self.game.screen is not None
+                and hasattr(self.game.screen, "num_cards")
+                and self.game.screen.num_cards > 0
+                and len(self.game.screen.cards) > 0
+            )
+            logging.debug(
+                f"[GRID_SCREEN] screen_type=GRID, choice_available={self.game.choice_available}, can_select={can_select}, for_upgrade={self.game.screen.for_upgrade if hasattr(self.game.screen, 'for_upgrade') else 'N/A'}"
+            )
+            if not can_select:
+                logging.debug(
+                    "[GRID_SCREEN] cannot select cards, returning ProceedAction()"
+                )
                 return ProceedAction()
-            if self.game.screen.for_upgrade or self.choose_good_card:
+            logging.debug(
+                f"[GRID_SCREEN] Checking for_upgrade={self.game.screen.for_upgrade if hasattr(self.game.screen, 'for_upgrade') else 'N/A'}, choose_good_card={self.choose_good_card}"
+            )
+            try:
+                for_upgrade = self.game.screen.for_upgrade
+            except Exception as e:
+                logging.error(f"[GRID_SCREEN] Error accessing for_upgrade: {e}")
+                return ProceedAction()
+            if for_upgrade or self.choose_good_card:
                 # For upgrade: pick best cards
-                available_cards = self.priorities.get_sorted_cards(self.game.screen.cards)
+                logging.debug(
+                    f"[GRID_SCREEN] Calling get_sorted_cards for {len(self.game.screen.cards)} cards"
+                )
+                available_cards = self.priorities.get_sorted_cards(
+                    self.game.screen.cards
+                )
+                logging.debug(f"[GRID_SCREEN] Got {len(available_cards)} sorted cards")
             else:
                 # For purge/remove: prioritize Strike_R, then Defend_R, then others by reverse priority
-                strikes = [c for c in self.game.screen.cards if c.card_id == 'Strike_R']
-                defends = [c for c in self.game.screen.cards if c.card_id == 'Defend_R']
-                others = [c for c in self.game.screen.cards if c.card_id not in ['Strike_R', 'Defend_R']]
+                strikes = [c for c in self.game.screen.cards if c.card_id == "Strike_R"]
+                defends = [c for c in self.game.screen.cards if c.card_id == "Defend_R"]
+                others = [
+                    c
+                    for c in self.game.screen.cards
+                    if c.card_id not in ["Strike_R", "Defend_R"]
+                ]
 
                 # Sort others by reverse priority (worst first)
                 others_sorted = self.priorities.get_sorted_cards(others, reverse=True)
@@ -424,22 +588,44 @@ class SimpleAgent:
                 available_cards = strikes + defends + others_sorted
 
             num_cards = self.game.screen.num_cards
-            return CardSelectAction(available_cards[:num_cards])
+            selected_cards = available_cards[:num_cards]
+            logging.debug(
+                f"[GRID_SCREEN] Returning CardSelectAction with {len(selected_cards)} cards: {[c.card_id for c in selected_cards]}"
+            )
+            return CardSelectAction(selected_cards)
         elif self.game.screen_type == ScreenType.HAND_SELECT:
-            if not self.game.choice_available:
+            can_select = self.game.choice_available or (
+                hasattr(self.game, "screen")
+                and self.game.screen is not None
+                and hasattr(self.game.screen, "num_cards")
+                and self.game.screen.num_cards > 0
+            )
+            if not can_select:
                 return ProceedAction()
             # Usually, we don't want to choose the whole hand for a hand select. 3 seems like a good compromise.
             num_cards = min(self.game.screen.num_cards, 3)
-            return CardSelectAction(self.priorities.get_cards_for_action(self.game.current_action, self.game.screen.cards, num_cards))
+            return CardSelectAction(
+                self.priorities.get_cards_for_action(
+                    self.game.current_action, self.game.screen.cards, num_cards
+                )
+            )
         else:
             return ProceedAction()
 
     def choose_rest_option(self):
         rest_options = self.game.screen.rest_options
         if len(rest_options) > 0 and not self.game.screen.has_rested:
-            if RestOption.REST in rest_options and self.game.current_hp < self.game.max_hp / 2:
+            if (
+                RestOption.REST in rest_options
+                and self.game.current_hp < self.game.max_hp / 2
+            ):
                 return RestAction(RestOption.REST)
-            elif RestOption.REST in rest_options and self.game.act != 1 and self.game.floor % 17 == 15 and self.game.current_hp < self.game.max_hp * 0.9:
+            elif (
+                RestOption.REST in rest_options
+                and self.game.act != 1
+                and self.game.floor % 17 == 15
+                and self.game.current_hp < self.game.max_hp * 0.9
+            ):
                 return RestAction(RestOption.REST)
             elif RestOption.SMITH in rest_options:
                 return RestAction(RestOption.SMITH)
@@ -447,7 +633,10 @@ class SimpleAgent:
                 return RestAction(RestOption.LIFT)
             elif RestOption.DIG in rest_options:
                 return RestAction(RestOption.DIG)
-            elif RestOption.REST in rest_options and self.game.current_hp < self.game.max_hp:
+            elif (
+                RestOption.REST in rest_options
+                and self.game.current_hp < self.game.max_hp
+            ):
                 return RestAction(RestOption.REST)
             else:
                 return ChooseAction(0)
@@ -463,31 +652,52 @@ class SimpleAgent:
 
     def choose_card_reward(self):
         import logging
-        logging.info(f"[SIMPLE_AGENT_CARD_REWARD] SimpleAgent.choose_card_reward called")
+
+        logging.info(
+            f"[SIMPLE_AGENT_CARD_REWARD] SimpleAgent.choose_card_reward called"
+        )
         reward_cards = self.game.screen.cards
         import sys
-        can_skip = self.game.screen.can_skip if hasattr(self.game.screen, 'can_skip') else False
-        in_combat = self.game.in_combat if hasattr(self.game, 'in_combat') else False
-        logging.info(f"[SIMPLE_AGENT_CARD_REWARD] Floor {self.game.floor if hasattr(self.game, 'floor') else '?'}: {len(reward_cards)} cards, can_skip={can_skip}, in_combat={in_combat}\n")
+
+        can_skip = (
+            self.game.screen.can_skip
+            if hasattr(self.game.screen, "can_skip")
+            else False
+        )
+        in_combat = self.game.in_combat if hasattr(self.game, "in_combat") else False
+        logging.info(
+            f"[SIMPLE_AGENT_CARD_REWARD] Floor {self.game.floor if hasattr(self.game, 'floor') else '?'}: {len(reward_cards)} cards, can_skip={can_skip}, in_combat={in_combat}\n"
+        )
 
         for i, card in enumerate(reward_cards):
             count = self.count_copies_in_deck(card)
-            needs = self.priorities.needs_more_copies(card, count) if can_skip and not in_combat else True
-            logging.info(f"  [{i}] {card.card_id} (copies={count}, needs_more={needs})\n")
+            needs = (
+                self.priorities.needs_more_copies(card, count)
+                if can_skip and not in_combat
+                else True
+            )
+            logging.info(
+                f"  [{i}] {card.card_id} (copies={count}, needs_more={needs})\n"
+            )
 
         if can_skip and not in_combat:
             pickable_cards = [
-                card for card in reward_cards
-                if self.priorities.needs_more_copies(card, self.count_copies_in_deck(card), self.game.deck)
+                card
+                for card in reward_cards
+                if self.priorities.needs_more_copies(
+                    card, self.count_copies_in_deck(card), self.game.deck
+                )
             ]
         else:
             pickable_cards = reward_cards
 
         if len(pickable_cards) > 0:
             potential_pick = self.priorities.get_best_card(pickable_cards)
-            logging.info(f"[CARD_REWARD] Choosing: {potential_pick.card_id if potential_pick else 'None'}\n")
+            logging.info(
+                f"[CARD_REWARD] Choosing: {potential_pick.card_id if potential_pick else 'None'}\n"
+            )
             return CardRewardAction(potential_pick)
-        elif hasattr(self.game.screen, 'can_bowl') and self.game.screen.can_bowl:
+        elif hasattr(self.game.screen, "can_bowl") and self.game.screen.can_bowl:
             logging.info(f"[CARD_REWARD] Using bowl\n")
             return CardRewardAction(bowl=True)
         else:
@@ -500,9 +710,11 @@ class SimpleAgent:
 
         # Log current state
         hp_pct = context.player_hp_pct if context else 0
-        act = self.game.act if hasattr(self.game, 'act') else 1
-        floor = self.game.floor if hasattr(self.game, 'floor') else 0
-        logging.info(f"[MAP_ROUTING] Generating route: Act={act}, Floor={floor}, HP={hp_pct:.1%}, Class={self.chosen_class}\n")
+        act = self.game.act if hasattr(self.game, "act") else 1
+        floor = self.game.floor if hasattr(self.game, "floor") else 0
+        logging.info(
+            f"[MAP_ROUTING] Generating route: Act={act}, Floor={floor}, HP={hp_pct:.1%}, Class={self.chosen_class}\n"
+        )
 
         best_rewards = {
             0: {
@@ -512,27 +724,35 @@ class SimpleAgent:
         }
         best_parents = {0: {node.x: 0 for node in self.game.map.nodes[0].values()}}
         map_height = max(self.game.map.nodes.keys())
-        min_reward = -10**9
+        min_reward = -(10**9)
 
         for y in range(0, map_height):
-            best_rewards[y+1] = {node.x: min_reward * 20 for node in self.game.map.nodes[y+1].values()}
-            best_parents[y+1] = {node.x: -1 for node in self.game.map.nodes[y+1].values()}
+            best_rewards[y + 1] = {
+                node.x: min_reward * 20 for node in self.game.map.nodes[y + 1].values()
+            }
+            best_parents[y + 1] = {
+                node.x: -1 for node in self.game.map.nodes[y + 1].values()
+            }
             for x in best_rewards[y]:
                 node = self.game.map.get_node(x, y)
                 best_node_reward = best_rewards[y][x]
                 for child in node.children:
                     child_priority = self._calculate_map_node_priority(child, context)
                     test_child_reward = best_node_reward + child_priority
-                    if test_child_reward > best_rewards[y+1][child.x]:
-                        best_rewards[y+1][child.x] = test_child_reward
-                        best_parents[y+1][child.x] = node.x
+                    if test_child_reward > best_rewards[y + 1][child.x]:
+                        best_rewards[y + 1][child.x] = test_child_reward
+                        best_parents[y + 1][child.x] = node.x
 
                     # Log node evaluation (first few floors)
                     if y < 5:
-                        logging.info(f"[MAP_ROUTING] Floor {y+1}: node({child.x},{child.y}) symbol={child.symbol} priority={child_priority} total_reward={test_child_reward}\n")
+                        logging.info(
+                            f"[MAP_ROUTING] Floor {y + 1}: node({child.x},{child.y}) symbol={child.symbol} priority={child_priority} total_reward={test_child_reward}\n"
+                        )
 
         best_path = [0] * (map_height + 1)
-        best_path[map_height] = max(best_rewards[map_height].keys(), key=lambda x: best_rewards[map_height][x])
+        best_path[map_height] = max(
+            best_rewards[map_height].keys(), key=lambda x: best_rewards[map_height][x]
+        )
         for y in range(map_height, 0, -1):
             best_path[y - 1] = best_parents[y][best_path[y]]
         self.map_route = best_path
@@ -555,19 +775,32 @@ class SimpleAgent:
         return self.map_router.calculate_node_priority(node, context)
 
     def make_map_choice(self):
-        if len(self.game.screen.next_nodes) > 0 and self.game.screen.next_nodes[0].y == 0:
+        if (
+            len(self.game.screen.next_nodes) > 0
+            and self.game.screen.next_nodes[0].y == 0
+        ):
             self.generate_map_route()
             self.game.screen.current_node.y = -1
         else:
-            context = DecisionContext(self.game) if DecisionContext is not None else None
+            context = (
+                DecisionContext(self.game) if DecisionContext is not None else None
+            )
             hp_pct = context.player_hp_pct if context else 0
-            if (self._last_route_hp_pct is None or
-                    (self._last_route_hp_pct - hp_pct) >= self._map_replan_hp_drop):
-                drop = (self._last_route_hp_pct - hp_pct) if self._last_route_hp_pct is not None else None
+            if (
+                self._last_route_hp_pct is None
+                or (self._last_route_hp_pct - hp_pct) >= self._map_replan_hp_drop
+            ):
+                drop = (
+                    (self._last_route_hp_pct - hp_pct)
+                    if self._last_route_hp_pct is not None
+                    else None
+                )
                 drop_str = f"{drop:.1%}" if drop is not None else "n/a"
                 logging.info(
                     "[MAP_ROUTING] Replan triggered: last_hp=%s current_hp=%.1f%% drop=%s threshold=%.1f%%\n",
-                    f"{self._last_route_hp_pct:.1%}" if self._last_route_hp_pct is not None else "n/a",
+                    f"{self._last_route_hp_pct:.1%}"
+                    if self._last_route_hp_pct is not None
+                    else "n/a",
                     hp_pct * 100,
                     drop_str,
                     self._map_replan_hp_drop * 100,
@@ -595,20 +828,24 @@ class TurnPlanSignature:
         """Create signature from current game state."""
         # Track hand cards by UUID to detect draws/exhausts
         self.hand_cards = tuple(
-            getattr(c, 'uuid', id(c)) for c in game.hand
-            if hasattr(c, 'uuid') or hasattr(c, 'card_id')
+            getattr(c, "uuid", id(c))
+            for c in game.hand
+            if hasattr(c, "uuid") or hasattr(c, "card_id")
         )
 
         # Track available energy
-        self.energy = game.player.energy if hasattr(game.player, 'energy') else 3
+        self.energy = game.player.energy if hasattr(game.player, "energy") else 3
 
         # Track monster states
-        if hasattr(game, 'monsters') and game.monsters:
+        if hasattr(game, "monsters") and game.monsters:
             self.monster_signature = tuple(
-                (m.current_hp, m.block if hasattr(m, 'block') else 0,
-                 str(m.intent) if hasattr(m, 'intent') else None,
-                 m.is_gone if hasattr(m, 'is_gone') else True,
-                 m.half_dead if hasattr(m, 'half_dead') else False)
+                (
+                    m.current_hp,
+                    m.block if hasattr(m, "block") else 0,
+                    str(m.intent) if hasattr(m, "intent") else None,
+                    m.is_gone if hasattr(m, "is_gone") else True,
+                    m.half_dead if hasattr(m, "half_dead") else False,
+                )
                 for m in game.monsters
             )
         else:
@@ -622,16 +859,25 @@ class TurnPlanSignature:
         """Check if two signatures are equal."""
         if not isinstance(other, TurnPlanSignature):
             return False
-        return (self.hand_cards == other.hand_cards and
-                self.energy == other.energy and
-                self.monster_signature == other.monster_signature and
-                self.has_drawn_cards == other.has_drawn_cards and
-                self.has_random_effects == other.has_random_effects)
+        return (
+            self.hand_cards == other.hand_cards
+            and self.energy == other.energy
+            and self.monster_signature == other.monster_signature
+            and self.has_drawn_cards == other.has_drawn_cards
+            and self.has_random_effects == other.has_random_effects
+        )
 
     def __hash__(self):
         """Make signature hashable for use in sets/dicts."""
-        return hash((self.hand_cards, self.energy, self.monster_signature,
-                     self.has_drawn_cards, self.has_random_effects))
+        return hash(
+            (
+                self.hand_cards,
+                self.energy,
+                self.monster_signature,
+                self.has_drawn_cards,
+                self.has_random_effects,
+            )
+        )
 
 
 class OptimizedAgent(SimpleAgent):
@@ -650,9 +896,12 @@ class OptimizedAgent(SimpleAgent):
         agent = OptimizedAgent(chosen_class=PlayerClass.THE_SILENT)
     """
 
-    def __init__(self, chosen_class=PlayerClass.THE_SILENT,
-                 use_optimized_combat=True,
-                 use_optimized_card_selection=True):
+    def __init__(
+        self,
+        chosen_class=PlayerClass.THE_SILENT,
+        use_optimized_combat=True,
+        use_optimized_card_selection=True,
+    ):
         """
         Initialize OptimizedAgent.
 
@@ -677,7 +926,9 @@ class OptimizedAgent(SimpleAgent):
         # Initialize game tracker
         if GameTracker is not None:
             self.game_tracker = GameTracker()
-            self.game_tracker.player_class = str(chosen_class).replace('PlayerClass.', '')
+            self.game_tracker.player_class = str(chosen_class).replace(
+                "PlayerClass.", ""
+            )
         else:
             self.game_tracker = None
         self._in_combat = False
@@ -686,34 +937,46 @@ class OptimizedAgent(SimpleAgent):
 
         # Initialize decision components if available
         if OPTIMIZED_AI_AVAILABLE:
-            player_class_str = str(chosen_class).replace('PlayerClass.', '')
+            player_class_str = str(chosen_class).replace("PlayerClass.", "")
 
             # Use class-specific components for Ironclad
-            if player_class_str == 'IRONCLAD':
-                from spirecomm.ai.heuristics.ironclad_evaluator import IroncladCardEvaluator
-                from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
-                from spirecomm.ai.heuristics.ironclad_archetype import IroncladArchetypeManager
+            if player_class_str == "IRONCLAD":
+                from spirecomm.ai.heuristics.ironclad_evaluator import (
+                    IroncladCardEvaluator,
+                )
+                from spirecomm.ai.heuristics.ironclad_combat import (
+                    IroncladCombatPlanner,
+                )
+                from spirecomm.ai.heuristics.ironclad_archetype import (
+                    IroncladArchetypeManager,
+                )
                 from spirecomm.ai.heuristics.ironclad_deck import IroncladDeckStrategy
                 from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter
 
-                self.card_evaluator = IroncladCardEvaluator(player_class=player_class_str)
-                self.combat_planner = IroncladCombatPlanner(card_evaluator=self.card_evaluator)
+                self.card_evaluator = IroncladCardEvaluator(
+                    player_class=player_class_str
+                )
+                self.combat_planner = IroncladCombatPlanner(
+                    card_evaluator=self.card_evaluator
+                )
                 self.archetype_manager = IroncladArchetypeManager()
                 self.deck_strategy = IroncladDeckStrategy()
                 self.map_router = AdaptiveMapRouter(player_class=player_class_str)
                 self.deck_analyzer = DeckAnalyzer()  # Keep for compatibility
             else:
                 # Use generic components for other classes
-                self.card_evaluator = SynergyCardEvaluator(player_class=player_class_str)
-                self.combat_planner = HeuristicCombatPlanner(
-                    card_evaluator=self.card_evaluator,
+                self.card_evaluator = SynergyCardEvaluator(
                     player_class=player_class_str
+                )
+                self.combat_planner = HeuristicCombatPlanner(
+                    card_evaluator=self.card_evaluator, player_class=player_class_str
                 )
                 self.deck_analyzer = DeckAnalyzer()
                 self.archetype_manager = None
                 self.deck_strategy = None
                 # All classes get map router
                 from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter
+
                 self.map_router = AdaptiveMapRouter(player_class=player_class_str)
 
             # Track decision history for analysis
@@ -748,7 +1011,8 @@ class OptimizedAgent(SimpleAgent):
         Returns:
             PlayCardAction or EndTurnAction
         """
-        game_id = getattr(self.game, 'game_id', None)
+        game_id = getattr(self.game, "game_id", None)
+
         def _fallback_snapshot():
             try:
                 hand_ids = [c.card_id for c in self.game.hand]
@@ -756,7 +1020,7 @@ class OptimizedAgent(SimpleAgent):
                 for m in self.game.monsters:
                     if m.is_gone or m.half_dead:
                         continue
-                    intent = str(m.intent) if hasattr(m, 'intent') else 'UNKNOWN'
+                    intent = str(m.intent) if hasattr(m, "intent") else "UNKNOWN"
                     monsters.append(f"{m.name}:{m.current_hp}/{m.max_hp}:{intent}")
                 return (
                     f"hp={self.game.current_hp}/{self.game.max_hp} "
@@ -767,26 +1031,49 @@ class OptimizedAgent(SimpleAgent):
                 )
             except Exception:
                 return "snapshot=unavailable"
+
         try:
-            if self.use_optimized_combat and self.combat_planner and OPTIMIZED_AI_AVAILABLE:
+            if (
+                self.use_optimized_combat
+                and self.combat_planner
+                and OPTIMIZED_AI_AVAILABLE
+            ):
                 return self._get_optimized_play_card_action()
             else:
                 # Log why we're falling back
                 if not self.use_optimized_combat:
-                    logger.warning("[OPTIMIZED_AI] game_id=%s use_optimized_combat is False %s", game_id, _fallback_snapshot())
+                    logger.warning(
+                        "[OPTIMIZED_AI] game_id=%s use_optimized_combat is False %s",
+                        game_id,
+                        _fallback_snapshot(),
+                    )
                 elif not self.combat_planner:
-                    logger.warning("[OPTIMIZED_AI] game_id=%s combat_planner is None %s", game_id, _fallback_snapshot())
+                    logger.warning(
+                        "[OPTIMIZED_AI] game_id=%s combat_planner is None %s",
+                        game_id,
+                        _fallback_snapshot(),
+                    )
                 elif not OPTIMIZED_AI_AVAILABLE:
-                    logger.warning("[OPTIMIZED_AI] game_id=%s OPTIMIZED_AI_AVAILABLE is False %s", game_id, _fallback_snapshot())
+                    logger.warning(
+                        "[OPTIMIZED_AI] game_id=%s OPTIMIZED_AI_AVAILABLE is False %s",
+                        game_id,
+                        _fallback_snapshot(),
+                    )
                 # Fall back to SimpleAgent logic
                 return super().get_play_card_action()
         except Exception as e:
             # On error, log and fall back to simple logic
             import sys
+
             print(f"Error in optimized combat: {e}", file=sys.stderr)
             import traceback
+
             traceback.print_exc(file=sys.stderr)
-            logger.exception("[OPTIMIZED_AI] game_id=%s Exception in optimized combat %s", game_id, _fallback_snapshot())
+            logger.exception(
+                "[OPTIMIZED_AI] game_id=%s Exception in optimized combat %s",
+                game_id,
+                _fallback_snapshot(),
+            )
             return super().get_play_card_action()
 
     def _get_optimized_play_card_action(self):
@@ -801,14 +1088,16 @@ class OptimizedAgent(SimpleAgent):
         if not self.game.play_available:
             return EndTurnAction()
 
-        game_id = getattr(self.game, 'game_id', None)
+        game_id = getattr(self.game, "game_id", None)
         try:
             # === 新增：检查是否需要重新规划 ===
             # 创建当前游戏状态的签名
             current_signature = TurnPlanSignature(self.game)
 
             # 如果有待执行的序列，检查是否仍然有效
-            if self.current_action_sequence and self.current_action_index < len(self.current_action_sequence):
+            if self.current_action_sequence and self.current_action_index < len(
+                self.current_action_sequence
+            ):
                 # 检查缓存是否失效
                 if self.should_replan(current_signature):
                     # 缓存失效 - 需要重新规划
@@ -822,8 +1111,14 @@ class OptimizedAgent(SimpleAgent):
 
                     # 验证动作仍然可执行
                     if isinstance(action, PlayCardAction):
-                        card_uuid = getattr(action.card, 'uuid', None) if action.card else None
-                        hand_uuids = [getattr(c, 'uuid', None) for c in self.game.hand if hasattr(c, 'uuid')]
+                        card_uuid = (
+                            getattr(action.card, "uuid", None) if action.card else None
+                        )
+                        hand_uuids = [
+                            getattr(c, "uuid", None)
+                            for c in self.game.hand
+                            if hasattr(c, "uuid")
+                        ]
                         if card_uuid and card_uuid in hand_uuids:
                             return action
                         else:
@@ -836,7 +1131,10 @@ class OptimizedAgent(SimpleAgent):
 
             # === Enhanced combat mode selection using Wiki monster data ===
             # Import combat mode selector
-            from spirecomm.ai.heuristics.simulation import select_combat_mode_with_monster_data, CombatMode
+            from spirecomm.ai.heuristics.simulation import (
+                select_combat_mode_with_monster_data,
+                CombatMode,
+            )
             from spirecomm.ai.decision.base import ThreatCategory
 
             # Select combat mode based on enhanced monster analysis
@@ -846,29 +1144,37 @@ class OptimizedAgent(SimpleAgent):
             except Exception as e:
                 # Fallback to original method if enhanced version fails
                 import logging
+
                 logger = logging.getLogger(__name__)
-                logger.warning(f"Enhanced combat mode selection failed: {e}, falling back to basic mode")
+                logger.warning(
+                    f"Enhanced combat mode selection failed: {e}, falling back to basic mode"
+                )
                 from spirecomm.ai.heuristics.simulation import select_combat_mode
+
                 combat_mode = select_combat_mode(context.threat_category)
 
             # Check if we need to recreate combat planner (mode changed)
-            if (not hasattr(self, '_current_combat_mode') or
-                self._current_combat_mode != combat_mode):
+            if (
+                not hasattr(self, "_current_combat_mode")
+                or self._current_combat_mode != combat_mode
+            ):
                 # Combat mode changed, recreate planner with new mode
                 # IMPORTANT: Preserve class-specific planner (e.g., IroncladCombatPlanner)
-                player_class_str = getattr(self, 'player_class', 'IRONCLAD')
-                if player_class_str == 'IRONCLAD' and OPTIMIZED_AI_AVAILABLE:
-                    from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
+                player_class_str = getattr(self, "player_class", "IRONCLAD")
+                if player_class_str == "IRONCLAD" and OPTIMIZED_AI_AVAILABLE:
+                    from spirecomm.ai.heuristics.ironclad_combat import (
+                        IroncladCombatPlanner,
+                    )
+
                     self.combat_planner = IroncladCombatPlanner(
-                        card_evaluator=self.card_evaluator,
-                        combat_mode=combat_mode
+                        card_evaluator=self.card_evaluator, combat_mode=combat_mode
                     )
                 else:
                     self.combat_planner = HeuristicCombatPlanner(
                         card_evaluator=self.card_evaluator,
                         player_class=player_class_str,
                         act=context.act,
-                        combat_mode=combat_mode
+                        combat_mode=combat_mode,
                     )
                 self._current_combat_mode = combat_mode
 
@@ -884,33 +1190,38 @@ class OptimizedAgent(SimpleAgent):
 
                 # 计算置信度
                 confidence = 0.5  # 默认值
-                if self.combat_planner and hasattr(self.combat_planner, 'get_confidence'):
+                if self.combat_planner and hasattr(
+                    self.combat_planner, "get_confidence"
+                ):
                     try:
                         confidence = self.combat_planner.get_confidence(context)
                     except:
                         pass
 
                 # 记录决策用于分析
-                self.decision_history.append({
-                    'type': 'combat',
-                    'sequence': action_sequence,
-                    'turn': context.turn,
-                    'floor': context.floor,
-                    'confidence': confidence
-                })
+                self.decision_history.append(
+                    {
+                        "type": "combat",
+                        "sequence": action_sequence,
+                        "turn": context.turn,
+                        "floor": context.floor,
+                        "confidence": confidence,
+                    }
+                )
 
                 # 记录到 game_tracker
                 if self.game_tracker:
                     self.game_tracker.record_decision(
-                        decision_type='combat',
+                        decision_type="combat",
                         confidence=confidence,
-                        used_fallback=False
+                        used_fallback=False,
                     )
 
                 # Record potion usage when beam search selects a potion action.
                 if self.game_tracker and action_sequence:
                     try:
                         from spirecomm.communication.action import PotionAction
+
                         if isinstance(action_sequence[0], PotionAction):
                             self.game_tracker.record_potion_use()
                     except Exception:
@@ -925,10 +1236,15 @@ class OptimizedAgent(SimpleAgent):
 
         except Exception as e:
             import sys
+
             print(f"Error in _get_optimized_play_card_action: {e}", file=sys.stderr)
             import traceback
+
             traceback.print_exc(file=sys.stderr)
-            logger.exception("[OPTIMIZED_AI] game_id=%s Exception in _get_optimized_play_card_action", game_id)
+            logger.exception(
+                "[OPTIMIZED_AI] game_id=%s Exception in _get_optimized_play_card_action",
+                game_id,
+            )
             self.current_action_sequence = []
             return super().get_play_card_action()
 
@@ -962,7 +1278,10 @@ class OptimizedAgent(SimpleAgent):
             # Energy changed (Bloodletting, Energy potion, etc.)
             return True
 
-        if self.current_plan_signature.monster_signature != current_signature.monster_signature:
+        if (
+            self.current_plan_signature.monster_signature
+            != current_signature.monster_signature
+        ):
             # Monster state changed (death, block, intent)
             return True
 
@@ -989,7 +1308,7 @@ class OptimizedAgent(SimpleAgent):
                 pass
 
         # 检测回合变化
-        if hasattr(game_state, 'turn') and hasattr(self.game, 'turn'):
+        if hasattr(game_state, "turn") and hasattr(self.game, "turn"):
             if game_state.turn != self.game.turn:
                 # 新回合 - 重置动作序列和签名
                 self.current_action_sequence = []
@@ -998,7 +1317,7 @@ class OptimizedAgent(SimpleAgent):
                 self.replan_count_this_turn = 0
 
         # Track game statistics if available
-        if self.game_tracker and hasattr(game_state, 'in_combat'):
+        if self.game_tracker and hasattr(game_state, "in_combat"):
             try:
                 # 检测战斗状态变化
                 current_in_combat = game_state.in_combat
@@ -1006,7 +1325,7 @@ class OptimizedAgent(SimpleAgent):
                 if current_in_combat and not self._in_combat:
                     # 战斗开始
                     room_type = "monster"
-                    if hasattr(game_state, 'room_type'):
+                    if hasattr(game_state, "room_type"):
                         rt = str(game_state.room_type)
                         if "Elite" in rt:
                             room_type = "elite"
@@ -1014,24 +1333,37 @@ class OptimizedAgent(SimpleAgent):
                             room_type = "boss"
 
                     self.game_tracker.start_combat(
-                        floor=game_state.floor if hasattr(game_state, 'floor') else 0,
-                        act=game_state.act if hasattr(game_state, 'act') else 1,
+                        floor=game_state.floor if hasattr(game_state, "floor") else 0,
+                        act=game_state.act if hasattr(game_state, "act") else 1,
                         room_type=room_type,
-                        start_turn=game_state.turn if hasattr(game_state, 'turn') else 0,
-                        current_hp=game_state.current_hp if hasattr(game_state, 'current_hp') else None
+                        start_turn=game_state.turn
+                        if hasattr(game_state, "turn")
+                        else 0,
+                        current_hp=game_state.current_hp
+                        if hasattr(game_state, "current_hp")
+                        else None,
                     )
                     self._in_combat = True
                 elif not current_in_combat and self._in_combat:
                     self.game_tracker.end_combat(
-                        hp_remaining=game_state.current_hp if hasattr(game_state, 'current_hp') else 80,
-                        max_hp=game_state.max_hp if hasattr(game_state, 'max_hp') else 80,
-                        end_turn=game_state.turn if hasattr(game_state, 'turn') else None
+                        hp_remaining=game_state.current_hp
+                        if hasattr(game_state, "current_hp")
+                        else 80,
+                        max_hp=game_state.max_hp
+                        if hasattr(game_state, "max_hp")
+                        else 80,
+                        end_turn=game_state.turn
+                        if hasattr(game_state, "turn")
+                        else None,
                     )
                     self._in_combat = False
 
                 # 检测遗物获得
-                if hasattr(game_state, 'relics'):
-                    current_relics = set(r.relic_id if hasattr(r, 'relic_id') else str(r) for r in game_state.relics)
+                if hasattr(game_state, "relics"):
+                    current_relics = set(
+                        r.relic_id if hasattr(r, "relic_id") else str(r)
+                        for r in game_state.relics
+                    )
                     new_relics = current_relics - self._last_relics
                     for relic_id in new_relics:
                         self.game_tracker.record_relic(relic_id)
@@ -1039,6 +1371,7 @@ class OptimizedAgent(SimpleAgent):
             except Exception as e:
                 # Silently fail on tracking errors to not break the game
                 import sys
+
                 print(f"Error in game tracking: {e}", file=sys.stderr)
 
         # 更新游戏状态
@@ -1058,19 +1391,35 @@ class OptimizedAgent(SimpleAgent):
         import logging
 
         # Get reward cards before they're modified
-        reward_cards = self.game.screen.cards if hasattr(self.game, 'screen') and hasattr(self.game.screen, 'cards') else []
+        reward_cards = (
+            self.game.screen.cards
+            if hasattr(self.game, "screen") and hasattr(self.game.screen, "cards")
+            else []
+        )
 
         # LOG: Entry point
         logging.info(f"[CARD_REWARD_DEBUG] choose_card_reward called")
         logging.info(f"[CARD_REWARD_DEBUG] reward_cards count: {len(reward_cards)}")
         for i, card in enumerate(reward_cards):
-            logging.info(f"[CARD_REWARD_DEBUG]   Card {i}: {card.card_id} (name={card.name})")
+            logging.info(
+                f"[CARD_REWARD_DEBUG]   Card {i}: {card.card_id} (name={card.name})"
+            )
 
         # Check conditions
-        use_optimized = self.use_optimized_card_selection and self.card_evaluator and OPTIMIZED_AI_AVAILABLE
-        logging.info(f"[CARD_REWARD_DEBUG] use_optimized_card_selection: {self.use_optimized_card_selection}")
-        logging.info(f"[CARD_REWARD_DEBUG] card_evaluator exists: {self.card_evaluator is not None}")
-        logging.info(f"[CARD_REWARD_DEBUG] OPTIMIZED_AI_AVAILABLE: {OPTIMIZED_AI_AVAILABLE}")
+        use_optimized = (
+            self.use_optimized_card_selection
+            and self.card_evaluator
+            and OPTIMIZED_AI_AVAILABLE
+        )
+        logging.info(
+            f"[CARD_REWARD_DEBUG] use_optimized_card_selection: {self.use_optimized_card_selection}"
+        )
+        logging.info(
+            f"[CARD_REWARD_DEBUG] card_evaluator exists: {self.card_evaluator is not None}"
+        )
+        logging.info(
+            f"[CARD_REWARD_DEBUG] OPTIMIZED_AI_AVAILABLE: {OPTIMIZED_AI_AVAILABLE}"
+        )
         logging.info(f"[CARD_REWARD_DEBUG] Will use optimized path: {use_optimized}")
 
         # Get action from parent (either optimized or simple logic)
@@ -1090,15 +1439,29 @@ class OptimizedAgent(SimpleAgent):
         # Record the choice for statistics
         if self.game_tracker:
             logging.info(f"[CARD_REWARD_DEBUG] game_tracker exists: True")
-            card_count_before = len(self.game_tracker.cards_obtained) if self.game_tracker.cards_obtained else 0
-            logging.info(f"[CARD_REWARD_DEBUG] Current cards_obtained count (before): {card_count_before}")
+            card_count_before = (
+                len(self.game_tracker.cards_obtained)
+                if self.game_tracker.cards_obtained
+                else 0
+            )
+            logging.info(
+                f"[CARD_REWARD_DEBUG] Current cards_obtained count (before): {card_count_before}"
+            )
         else:
-            logging.info(f"[CARD_REWARD_DEBUG] game_tracker exists: False - SKIPPING RECORDING")
+            logging.info(
+                f"[CARD_REWARD_DEBUG] game_tracker exists: False - SKIPPING RECORDING"
+            )
 
         if self.game_tracker and reward_cards:
             # Check cards_obtained count before and after to detect if optimized path already recorded
-            card_count_before = len(self.game_tracker.cards_obtained) if self.game_tracker.cards_obtained else 0
-            logging.info(f"[CARD_REWARD_DEBUG] Cards obtained so far: {card_count_before}")
+            card_count_before = (
+                len(self.game_tracker.cards_obtained)
+                if self.game_tracker.cards_obtained
+                else 0
+            )
+            logging.info(
+                f"[CARD_REWARD_DEBUG] Cards obtained so far: {card_count_before}"
+            )
 
             # Optimized path may fall back to SimpleAgent which doesn't record
             # We need to ensure recording happens regardless of path taken
@@ -1112,9 +1475,11 @@ class OptimizedAgent(SimpleAgent):
                 # Try to match the card
                 chosen_card_id = None
                 for card in reward_cards:
-                    if hasattr(card, 'name') and card.name == action.name:
+                    if hasattr(card, "name") and card.name == action.name:
                         chosen_card_id = card.card_id
-                        logging.info(f"[CARD_REWARD_DEBUG] MATCHED card: {card.card_id} with name {card.name}")
+                        logging.info(
+                            f"[CARD_REWARD_DEBUG] MATCHED card: {card.card_id} with name {card.name}"
+                        )
                         break
 
                 if chosen_card_id:
@@ -1124,25 +1489,41 @@ class OptimizedAgent(SimpleAgent):
                         last_recorded = self.game_tracker.cards_obtained[-1]
                         if last_recorded == chosen_card_id:
                             was_already_recorded = True
-                            logging.info(f"[CARD_REWARD_DEBUG] Card '{chosen_card_id}' is already the last recorded - skipping duplicate")
+                            logging.info(
+                                f"[CARD_REWARD_DEBUG] Card '{chosen_card_id}' is already the last recorded - skipping duplicate"
+                            )
 
                     if not was_already_recorded:
-                        logging.info(f"[CARD_REWARD_DEBUG] Recording card choice: {chosen_card_id}")
+                        logging.info(
+                            f"[CARD_REWARD_DEBUG] Recording card choice: {chosen_card_id}"
+                        )
                         self.game_tracker.record_card_choice(
                             chosen=chosen_card_id,
                             skipped=len(reward_cards) - 1,
-                            available=[c.card_id for c in reward_cards]
+                            available=[c.card_id for c in reward_cards],
                         )
 
-                        card_count_after = len(self.game_tracker.cards_obtained) if self.game_tracker.cards_obtained else 0
+                        card_count_after = (
+                            len(self.game_tracker.cards_obtained)
+                            if self.game_tracker.cards_obtained
+                            else 0
+                        )
                         if card_count_after > card_count_before:
-                            logging.info(f"[CARD_REWARD_DEBUG] ✓ Recording successful (count increased {card_count_before}→{card_count_after})")
+                            logging.info(
+                                f"[CARD_REWARD_DEBUG] ✓ Recording successful (count increased {card_count_before}→{card_count_after})"
+                            )
                         else:
-                            logging.info(f"[CARD_REWARD_DEBUG] ⚠ Recording attempted but count didn't increase")
+                            logging.info(
+                                f"[CARD_REWARD_DEBUG] ⚠ Recording attempted but count didn't increase"
+                            )
 
             elif isinstance(action, CancelAction):
                 # For skips, check if cards_skipped just increased
-                skipped_before = self.game_tracker.cards_skipped if hasattr(self.game_tracker, 'cards_skipped') else 0
+                skipped_before = (
+                    self.game_tracker.cards_skipped
+                    if hasattr(self.game_tracker, "cards_skipped")
+                    else 0
+                )
 
                 # Check if the last record was a skip for these exact same cards
                 # We can't easily detect this, so we'll check if count is suspicious
@@ -1150,7 +1531,9 @@ class OptimizedAgent(SimpleAgent):
                 # Actually, simplest is to check if cards_skipped is at expected value
                 # Expected would be: previous_skipped + len(reward_cards)
 
-                logging.info(f"[CARD_REWARD_DEBUG] Action is CancelAction - cards_skipped before: {skipped_before}")
+                logging.info(
+                    f"[CARD_REWARD_DEBUG] Action is CancelAction - cards_skipped before: {skipped_before}"
+                )
 
                 # Only record if this doesn't look like a duplicate
                 # We'll use a simple heuristic: only record if we're in the optimized path
@@ -1160,15 +1543,25 @@ class OptimizedAgent(SimpleAgent):
                 self.game_tracker.record_card_choice(
                     chosen=None,
                     skipped=len(reward_cards),
-                    available=[c.card_id for c in reward_cards]
+                    available=[c.card_id for c in reward_cards],
                 )
 
-                skipped_after = self.game_tracker.cards_skipped if hasattr(self.game_tracker, 'cards_skipped') else 0
-                logging.info(f"[CARD_REWARD_DEBUG] Skip recorded (skipped: {skipped_before}→{skipped_after})")
+                skipped_after = (
+                    self.game_tracker.cards_skipped
+                    if hasattr(self.game_tracker, "cards_skipped")
+                    else 0
+                )
+                logging.info(
+                    f"[CARD_REWARD_DEBUG] Skip recorded (skipped: {skipped_before}→{skipped_after})"
+                )
             else:
-                logging.warning(f"[CARD_REWARD_DEBUG] Unexpected action type: {type(action).__name__}")
+                logging.warning(
+                    f"[CARD_REWARD_DEBUG] Unexpected action type: {type(action).__name__}"
+                )
         else:
-            logging.warning(f"[CARD_REWARD_DEBUG] Cannot record - game_tracker={self.game_tracker is not None}, reward_cards={len(reward_cards)}")
+            logging.warning(
+                f"[CARD_REWARD_DEBUG] Cannot record - game_tracker={self.game_tracker is not None}, reward_cards={len(reward_cards)}"
+            )
 
         logging.info(f"[CARD_REWARD_DEBUG] choose_card_reward returning action\n")
         return action
@@ -1192,14 +1585,18 @@ class OptimizedAgent(SimpleAgent):
             except Exception as e:
                 # If context creation fails, fall back to simple logic
                 import sys
+
                 print(f"Error creating DecisionContext: {e}", file=sys.stderr)
                 return super().choose_card_reward()
 
             # Filter cards we would actually take
             if self.game.screen.can_skip and not self.game.in_combat:
                 pickable_cards = [
-                    card for card in reward_cards
-                    if self.priorities.needs_more_copies(card, self.count_copies_in_deck(card), self.game.deck)
+                    card
+                    for card in reward_cards
+                    if self.priorities.needs_more_copies(
+                        card, self.count_copies_in_deck(card), self.game.deck
+                    )
                 ]
             else:
                 pickable_cards = reward_cards
@@ -1215,34 +1612,47 @@ class OptimizedAgent(SimpleAgent):
                         self.game_tracker.record_card_choice(
                             chosen=None,
                             skipped=len(reward_cards),
-                            available=[c.card_id for c in reward_cards]
+                            available=[c.card_id for c in reward_cards],
                         )
                         # 记录跳过决策
                         self.game_tracker.record_decision(
-                            decision_type='reward',
+                            decision_type="reward",
                             confidence=0.5,  # 跳过卡牌的置信度较低
-                            used_fallback=False
+                            used_fallback=False,
                         )
                     return CancelAction()
 
             # Limit Break conditional check (A20 expert strategy)
             # Only pick Limit Break when we have Strength support
-            limit_break_card = next((c for c in pickable_cards if c.card_id == 'Limit Break'), None)
+            limit_break_card = next(
+                (c for c in pickable_cards if c.card_id == "Limit Break"), None
+            )
             if limit_break_card:
-                current_strength = context.strength if hasattr(context, 'strength') else 0
+                current_strength = (
+                    context.strength if hasattr(context, "strength") else 0
+                )
 
                 # Check if we have Strength scaling cards
-                strength_scaling_cards = ['Demon Form', 'Inflame', 'Spot Weakness']
-                has_strength_scaling = any(
-                    any(c.card_id == sc for sc in strength_scaling_cards)
-                    for c in self.game.deck
-                ) if hasattr(self.game, 'deck') and self.game.deck else False
+                strength_scaling_cards = ["Demon Form", "Inflame", "Spot Weakness"]
+                has_strength_scaling = (
+                    any(
+                        any(c.card_id == sc for sc in strength_scaling_cards)
+                        for c in self.game.deck
+                    )
+                    if hasattr(self.game, "deck") and self.game.deck
+                    else False
+                )
 
                 # Skip Limit Break if no Strength support
                 if current_strength < 5 and not has_strength_scaling:
                     import sys
-                    logging.info(f"[REWARD] Skipping Limit Break - no Strength support (Str={current_strength}, has_scaling={has_strength_scaling})\n")
-                    pickable_cards = [c for c in pickable_cards if c.card_id != 'Limit Break']
+
+                    logging.info(
+                        f"[REWARD] Skipping Limit Break - no Strength support (Str={current_strength}, has_scaling={has_strength_scaling})\n"
+                    )
+                    pickable_cards = [
+                        c for c in pickable_cards if c.card_id != "Limit Break"
+                    ]
 
                     if not pickable_cards:
                         # No other cards worth taking
@@ -1253,16 +1663,23 @@ class OptimizedAgent(SimpleAgent):
                             return CancelAction()
 
             # Deck size limit check (keep deck lean)
-            deck_size = len(self.game.deck) if hasattr(self.game, 'deck') and self.game.deck else 10
+            deck_size = (
+                len(self.game.deck)
+                if hasattr(self.game, "deck") and self.game.deck
+                else 10
+            )
             if deck_size >= 18:
                 import sys
+
                 # Be very selective - only high priority cards
                 # Get scores for all pickable cards
                 scored_cards = []
                 for card in pickable_cards:
                     try:
                         if self.card_evaluator:
-                            card_score = self.card_evaluator.evaluate_card(card, context)
+                            card_score = self.card_evaluator.evaluate_card(
+                                card, context
+                            )
                             scored_cards.append((card, card_score))
                         else:
                             # Use simple fallback: only take if score looks good
@@ -1274,16 +1691,21 @@ class OptimizedAgent(SimpleAgent):
 
                 # Filter for high priority cards (score >= 65, reduced from 75 to reduce skipping)
                 high_priority_cards = [
-                    (card, card_score) for card, card_score in scored_cards
+                    (card, card_score)
+                    for card, card_score in scored_cards
                     if card_score >= 65
                 ]
 
                 if high_priority_cards:
-                    logging.info(f"[REWARD] Deck size {deck_size}, being selective (score >= 65)\n")
+                    logging.info(
+                        f"[REWARD] Deck size {deck_size}, being selective (score >= 65)\n"
+                    )
                     pickable_cards = [card for card, _ in high_priority_cards]
                 else:
                     # No good cards - skip to keep deck lean
-                    logging.info(f"[REWARD] Deck too large ({deck_size}) and no good cards (score >= 65) - skipping\n")
+                    logging.info(
+                        f"[REWARD] Deck too large ({deck_size}) and no good cards (score >= 65) - skipping\n"
+                    )
                     # Only use bowl when not in combat
                     if self.game.screen.can_bowl and not self.game.in_combat:
                         return CardRewardAction(bowl=True)
@@ -1293,7 +1715,7 @@ class OptimizedAgent(SimpleAgent):
                             self.game_tracker.record_card_choice(
                                 chosen=None,
                                 skipped=len(reward_cards),
-                                available=[c.card_id for c in reward_cards]
+                                available=[c.card_id for c in reward_cards],
                             )
                         return CancelAction()
 
@@ -1302,6 +1724,7 @@ class OptimizedAgent(SimpleAgent):
                 best_card = self.card_evaluator.get_best_card(pickable_cards, context)
             except Exception as e:
                 import sys
+
                 print(f"Error in card evaluator: {e}", file=sys.stderr)
                 # Fall back to simple logic
                 return super().choose_card_reward()
@@ -1312,23 +1735,25 @@ class OptimizedAgent(SimpleAgent):
                     self.game_tracker.record_card_choice(
                         chosen=best_card.card_id,
                         skipped=len(reward_cards) - 1,
-                        available=[c.card_id for c in reward_cards]
+                        available=[c.card_id for c in reward_cards],
                     )
 
                 # Record decision
-                self.decision_history.append({
-                    'type': 'card_reward',
-                    'card': best_card.card_id,
-                    'floor': context.floor,
-                    'archetype': context.deck_archetype
-                })
+                self.decision_history.append(
+                    {
+                        "type": "card_reward",
+                        "card": best_card.card_id,
+                        "floor": context.floor,
+                        "archetype": context.deck_archetype,
+                    }
+                )
 
                 # Record to game_tracker
                 if self.game_tracker:
                     self.game_tracker.record_decision(
-                        decision_type='reward',
+                        decision_type="reward",
                         confidence=0.8,  # 卡牌选择默认置信度
-                        used_fallback=False
+                        used_fallback=False,
                     )
 
                 return CardRewardAction(best_card)
@@ -1336,8 +1761,10 @@ class OptimizedAgent(SimpleAgent):
                 return CancelAction()
         except Exception as e:
             import sys
+
             print(f"Error in _choose_card_reward_optimized: {e}", file=sys.stderr)
             import traceback
+
             traceback.print_exc(file=sys.stderr)
             # Fall back to parent's logic
             return super().choose_card_reward()
@@ -1363,72 +1790,97 @@ class OptimizedAgent(SimpleAgent):
         # Calculate current needs
         hp_pct = self.game.current_hp / max(self.game.max_hp, 1)
         incoming_damage = self.get_incoming_damage()
-        alive_monsters = [m for m in self.game.monsters if not m.is_gone and not m.half_dead]
-        is_elite = 'Elite' in self.game.room_type
-        is_boss = 'Boss' in self.game.room_type
-        
+        alive_monsters = [
+            m for m in self.game.monsters if not m.is_gone and not m.half_dead
+        ]
+        is_elite = "Elite" in self.game.room_type
+        is_boss = "Boss" in self.game.room_type
+
         # Evaluate combat danger
         danger_level = self._evaluate_combat_danger(None)
-        
+
         # Filter and prioritize potions based on situation
         potions_to_use = []
-        
+
         for potion in potions:
             if not potion.can_use:
                 continue
-                
+
             # Prioritize potions based on situation
             use_potion = False
-            
+
             # Healing potions - use when HP is low and in danger
-            if 'heal' in potion.name.lower() or 'health' in potion.name.lower() or 'strawberry' in potion.name.lower() or 'apple' in potion.name.lower():
+            if (
+                "heal" in potion.name.lower()
+                or "health" in potion.name.lower()
+                or "strawberry" in potion.name.lower()
+                or "apple" in potion.name.lower()
+            ):
                 # Use healing potions when HP is critical or in dangerous situations
-                if (hp_pct < 0.3 or (hp_pct < 0.5 and danger_level > 0.5)) and incoming_damage > 0:
+                if (
+                    hp_pct < 0.3 or (hp_pct < 0.5 and danger_level > 0.5)
+                ) and incoming_damage > 0:
                     use_potion = True
                     potions_to_use.append((3, potion))
-            
+
             # Damage potions - use when multiple monsters or dangerous enemies
-            elif 'damage' in potion.name.lower() or 'strength' in potion.name.lower() or 'fire' in potion.name.lower() or 'ice' in potion.name.lower() or 'lightning' in potion.name.lower():
+            elif (
+                "damage" in potion.name.lower()
+                or "strength" in potion.name.lower()
+                or "fire" in potion.name.lower()
+                or "ice" in potion.name.lower()
+                or "lightning" in potion.name.lower()
+            ):
                 # Use damage potions in elite/boss fights or when multiple monsters
-                if (is_elite or is_boss or len(alive_monsters) >= 2) and danger_level > 0.4:
+                if (
+                    is_elite or is_boss or len(alive_monsters) >= 2
+                ) and danger_level > 0.4:
                     use_potion = True
                     potions_to_use.append((2, potion))
-            
+
             # Defensive potions - use when incoming damage is high
-            elif 'block' in potion.name.lower() or 'shield' in potion.name.lower() or 'barrier' in potion.name.lower():
+            elif (
+                "block" in potion.name.lower()
+                or "shield" in potion.name.lower()
+                or "barrier" in potion.name.lower()
+            ):
                 # Use defensive potions when incoming damage exceeds current HP or block
-                current_block = sum(monster.block for monster in alive_monsters if hasattr(monster, 'block'))
+                current_block = sum(
+                    monster.block
+                    for monster in alive_monsters
+                    if hasattr(monster, "block")
+                )
                 if incoming_damage > current_block + self.game.current_hp * 0.5:
                     use_potion = True
                     potions_to_use.append((1, potion))
-            
+
             # Other potions - use based on general danger
             else:
                 if danger_level > 0.7:
                     use_potion = True
                     potions_to_use.append((0, potion))
-        
+
         # Sort potions by priority (highest first)
         potions_to_use.sort(reverse=True, key=lambda x: x[0])
-        
+
         # Use the highest priority potion
         if potions_to_use:
             _, potion = potions_to_use[0]
             if potion.requires_target:
                 # For damage potions, target highest HP monster; for others, target as appropriate
-                if 'damage' in potion.name.lower():
+                if "damage" in potion.name.lower():
                     target = max(alive_monsters, key=lambda m: m.current_hp)
                 else:
                     target = self.get_low_hp_target()
                 potion_action = PotionAction(True, potion=potion, target_monster=target)
             else:
                 potion_action = PotionAction(True, potion=potion)
-            
+
             if self.game_tracker:
                 self.game_tracker.record_potion_use()
-            
+
             return potion_action
-        
+
         # Fallback: always use potions in boss fights if nothing else
         if is_boss:
             potion_action = super().use_next_potion()
@@ -1456,7 +1908,9 @@ class OptimizedAgent(SimpleAgent):
         danger = 0.0
 
         # Monster count
-        alive_monsters = [m for m in self.game.monsters if not m.is_gone and not m.half_dead]
+        alive_monsters = [
+            m for m in self.game.monsters if not m.is_gone and not m.half_dead
+        ]
         danger += min(len(alive_monsters) * 0.15, 0.4)
 
         # Incoming damage
@@ -1470,7 +1924,7 @@ class OptimizedAgent(SimpleAgent):
             danger += 0.3
 
         # Elite or boss
-        if 'Elite' in self.game.room_type or 'Boss' in self.game.room_type:
+        if "Elite" in self.game.room_type or "Boss" in self.game.room_type:
             danger += 0.2
 
         return min(danger, 1.0)
@@ -1487,9 +1941,9 @@ class OptimizedAgent(SimpleAgent):
                 context = DecisionContext(self.game)
                 return self.deck_analyzer.get_deck_stats(context)
             except Exception as e:
-                return {'error': str(e)}
+                return {"error": str(e)}
         else:
-            return {'error': 'Deck analyzer not available'}
+            return {"error": "Deck analyzer not available"}
 
     def get_decision_summary(self):
         """
@@ -1499,18 +1953,28 @@ class OptimizedAgent(SimpleAgent):
             Dictionary with decision statistics
         """
         if not self.decision_history:
-            return {'total_decisions': 0}
+            return {"total_decisions": 0}
 
         summary = {
-            'total_decisions': len(self.decision_history),
-            'combat_decisions': sum(1 for d in self.decision_history if d.get('type') == 'combat'),
-            'card_rewards': sum(1 for d in self.decision_history if d.get('type') == 'card_reward'),
-            'avg_confidence': 0
+            "total_decisions": len(self.decision_history),
+            "combat_decisions": sum(
+                1 for d in self.decision_history if d.get("type") == "combat"
+            ),
+            "card_rewards": sum(
+                1 for d in self.decision_history if d.get("type") == "card_reward"
+            ),
+            "avg_confidence": 0,
         }
 
         # Calculate average confidence for combat decisions
-        combat_confidences = [d.get('confidence', 0) for d in self.decision_history if d.get('type') == 'combat']
+        combat_confidences = [
+            d.get("confidence", 0)
+            for d in self.decision_history
+            if d.get("type") == "combat"
+        ]
         if combat_confidences:
-            summary['avg_confidence'] = sum(combat_confidences) / len(combat_confidences)
+            summary["avg_confidence"] = sum(combat_confidences) / len(
+                combat_confidences
+            )
 
         return summary

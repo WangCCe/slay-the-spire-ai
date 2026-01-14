@@ -32,7 +32,9 @@ class Action:
 class PlayCardAction(Action):
     """An action to play a specified card from your hand"""
 
-    def __init__(self, card=None, card_index=-1, target_monster=None, target_index=None):
+    def __init__(
+        self, card=None, card_index=-1, target_monster=None, target_index=None
+    ):
         super().__init__("play")
         self.card = card
         self.card_index = card_index
@@ -41,10 +43,10 @@ class PlayCardAction(Action):
 
     def execute(self, coordinator):
         if self.card is not None:
-            card_uuid = getattr(self.card, 'uuid', None)
+            card_uuid = getattr(self.card, "uuid", None)
             if card_uuid is not None:
                 for idx, hand_card in enumerate(coordinator.last_game_state.hand):
-                    if getattr(hand_card, 'uuid', None) == card_uuid:
+                    if getattr(hand_card, "uuid", None) == card_uuid:
                         self.card = hand_card
                         self.card_index = idx
                         break
@@ -58,12 +60,16 @@ class PlayCardAction(Action):
                 else:
                     # Try to find card in hand (may fail if hand contains primitives)
                     try:
-                        self.card_index = coordinator.last_game_state.hand.index(self.card)
+                        self.card_index = coordinator.last_game_state.hand.index(
+                            self.card
+                        )
                     except (ValueError, AttributeError):
                         # hand may contain primitive types instead of Card objects
                         # Fall back to using card_index if available
                         if self.card_index < 0:
-                            raise Exception("Specified card for CardAction is not in hand (and no valid card_index provided)")
+                            raise Exception(
+                                "Specified card for CardAction is not in hand (and no valid card_index provided)"
+                            )
         if self.card_index == -1:
             raise Exception("Specified card for CardAction is not in hand")
         hand_card_index = self.card_index + 1
@@ -72,13 +78,17 @@ class PlayCardAction(Action):
         if self.target_index is None:
             coordinator.send_message("{} {}".format(self.command, hand_card_index))
         else:
-            coordinator.send_message("{} {} {}".format(self.command, hand_card_index, self.target_index))
+            coordinator.send_message(
+                "{} {} {}".format(self.command, hand_card_index, self.target_index)
+            )
 
 
 class PotionAction(Action):
     """An action to use or discard a selected potion"""
 
-    def __init__(self, use, potion=None, potion_index=-1, target_monster=None, target_index=None):
+    def __init__(
+        self, use, potion=None, potion_index=-1, target_monster=None, target_index=None
+    ):
         super().__init__("potion")
         self.use = use
         self.potion = potion
@@ -112,6 +122,7 @@ class EndTurnAction(Action):
 
     def execute(self, coordinator):
         import logging
+
         game = getattr(coordinator, "last_game_state", None)
         player = getattr(game, "player", None) if game else None
         energy = getattr(player, "energy", None)
@@ -146,7 +157,7 @@ class ConfirmAction(Action):
     """An action to use the CommunicationMod 'Confirm' command (e.g., confirm card selection)"""
 
     def __init__(self):
-        super().__init__("confirm")
+        super().__init__("confirm", requires_game_ready=False)
 
 
 class CancelAction(Action):
@@ -160,12 +171,12 @@ class ClickAction(Action):
     """An action to use the CommunicationMod 'Click' command"""
 
     def __init__(self, target):
-        super().__init__("click")
+        super().__init__("click", requires_game_ready=False)
         self.target = target
 
     def execute(self, coordinator):
         payload = self._resolve_payload(coordinator)
-        coordinator.send_message(f"{self.command} {payload}")
+        coordinator.send_message(f"{self.command} {payload}", wait_for_response=False)
 
     def _resolve_payload(self, coordinator):
         if isinstance(self.target, (list, tuple)):
@@ -180,13 +191,20 @@ class ClickAction(Action):
                         y = pos.get("y") or pos.get("center_y") or pos.get("cy")
                         if x is not None and y is not None:
                             import logging
-                            logging.debug(f"GRID click resolved to coordinates: index={card_index}, x={x}, y={y}")
+
+                            logging.debug(
+                                f"GRID click resolved to coordinates: index={card_index}, x={x}, y={y}"
+                            )
                             return f"{x} {y}"
                     elif isinstance(pos, (list, tuple)) and len(pos) >= 2:
                         import logging
-                        logging.debug(f"GRID click resolved to coordinates: index={card_index}, x={pos[0]}, y={pos[1]}")
+
+                        logging.debug(
+                            f"GRID click resolved to coordinates: index={card_index}, x={pos[0]}, y={pos[1]}"
+                        )
                         return f"{pos[0]} {pos[1]}"
                 import logging
+
                 logging.debug(
                     "GRID click fallback (no positions): index=%s, target=%s",
                     card_index,
@@ -200,11 +218,12 @@ class KeyAction(Action):
     """An action to send a key command to CommunicationMod (e.g., confirm with enter)"""
 
     def __init__(self, key):
-        super().__init__("key")
+        super().__init__("key", requires_game_ready=False)
         self.key = key
 
     def execute(self, coordinator):
         import logging
+
         screen_type = getattr(coordinator.last_game_state, "screen_type", None)
         available = getattr(coordinator.last_game_state, "available_commands", None)
         logging.debug(
@@ -213,22 +232,26 @@ class KeyAction(Action):
             screen_type,
             available,
         )
-        coordinator.send_message(f"{self.command} {self.key}")
+        coordinator.send_message(f"{self.command} {self.key}", wait_for_response=False)
 
 
 class ChooseAction(Action):
     """An action to use the CommunicationMod 'Choose' command"""
 
     def __init__(self, choice_index=0, name=None):
-        super().__init__("choose")
+        super().__init__("choose", requires_game_ready=False)
         self.choice_index = choice_index
         self.name = name
 
     def execute(self, coordinator):
         if self.name is not None:
-            coordinator.send_message("{} {}".format(self.command, self.name))
+            coordinator.send_message(
+                "{} {}".format(self.command, self.name), wait_for_response=False
+            )
         else:
-            coordinator.send_message("{} {}".format(self.command, self.choice_index))
+            coordinator.send_message(
+                "{} {}".format(self.command, self.choice_index), wait_for_response=False
+            )
 
 
 class ChooseShopkeeperAction(ChooseAction):
@@ -249,7 +272,7 @@ class BuyCardAction(ChooseAction):
     """An action to buy a card in a shop"""
 
     def __init__(self, card):
-        if not hasattr(card, 'name'):
+        if not hasattr(card, "name"):
             raise ValueError(f"Card object missing 'name' attribute: {card}")
         super().__init__(name=card.name)
 
@@ -311,7 +334,9 @@ class CardRewardAction(ChooseAction):
         elif card is not None:
             name = card.name
         else:
-            raise Exception("Must provide a card for CardRewardAction if not choosing the Singing Bowl")
+            raise Exception(
+                "Must provide a card for CardRewardAction if not choosing the Singing Bowl"
+            )
         super().__init__(name=name)
 
 
@@ -324,11 +349,18 @@ class CombatRewardAction(ChooseAction):
 
     def execute(self, coordinator):
         if coordinator.last_game_state.screen_type != ScreenType.COMBAT_REWARD:
-            raise Exception("CombatRewardAction is only available on a Combat Reward Screen.")
+            raise Exception(
+                "CombatRewardAction is only available on a Combat Reward Screen."
+            )
         reward_list = coordinator.last_game_state.screen.rewards
         if self.combat_reward not in reward_list:
-            raise Exception("Reward is not available: {}".format(self.combat_reward.reward_type))
-        if self.combat_reward.reward_type == RewardType.POTION and coordinator.last_game_state.are_potions_full():
+            raise Exception(
+                "Reward is not available: {}".format(self.combat_reward.reward_type)
+            )
+        if (
+            self.combat_reward.reward_type == RewardType.POTION
+            and coordinator.last_game_state.are_potions_full()
+        ):
             raise Exception("Cannot choose potion reward with full potion slots.")
         self.choice_index = reward_list.index(self.combat_reward)
         super().execute(coordinator)
@@ -345,16 +377,18 @@ class OptionalCardSelectConfirmAction(Action):
     """An action to click confirm on a hand or grid select screen, only if available"""
 
     def __init__(self):
-        super().__init__()
+        super().__init__(requires_game_ready=False)
 
     def execute(self, coordinator):
         screen_type = coordinator.last_game_state.screen_type
         if screen_type == ScreenType.HAND_SELECT:
             coordinator.add_action_to_queue(ConfirmAction())
-        elif screen_type == ScreenType.GRID and coordinator.last_game_state.screen.confirm_up:
+        elif (
+            screen_type == ScreenType.GRID
+            and coordinator.last_game_state.screen.confirm_up
+        ):
             coordinator.add_action_to_queue(ConfirmAction())
-        else:
-            coordinator.add_action_to_queue(StateAction())
+        # If confirm_up is False, do nothing - wait for the next state update
 
 
 class CardSelectAction(Action):
@@ -368,24 +402,44 @@ class CardSelectAction(Action):
         screen_type = coordinator.last_game_state.screen_type
         screen = coordinator.last_game_state.screen
         if screen_type not in [ScreenType.HAND_SELECT, ScreenType.GRID]:
-            raise Exception("CardSelectAction is only available on a Hand Select or Grid Select Screen.")
+            raise Exception(
+                "CardSelectAction is only available on a Hand Select or Grid Select Screen."
+            )
         num_selected_cards = len(screen.selected_cards)
         num_remaining_cards = screen.num_cards - num_selected_cards
         available_cards = screen.cards
-        if screen_type == ScreenType.GRID and not screen.any_number and len(self.cards) != num_remaining_cards:
-            raise Exception("Wrong number of cards selected for CardSelectAction (provided {}, need {})".format(len(self.cards), num_remaining_cards))
+        if (
+            screen_type == ScreenType.GRID
+            and not screen.any_number
+            and len(self.cards) != num_remaining_cards
+        ):
+            raise Exception(
+                "Wrong number of cards selected (provided {}, need {})".format(
+                    len(self.cards), num_remaining_cards
+                )
+            )
         elif len(self.cards) > num_remaining_cards:
-            raise Exception("Too many cards selected for CardSelectAction (provided {}, max {})".format(len(self.cards), num_remaining_cards))
+            raise Exception(
+                "Too many cards selected (provided {}, max {})".format(
+                    len(self.cards), num_remaining_cards
+                )
+            )
         chosen_indices = []
         for card in self.cards:
             if card not in available_cards:
-                raise Exception("Card {} is not available in the Hand Select Screen".format(card.name))
+                raise Exception(
+                    "Card {} is not available in the Hand Select Screen".format(
+                        card.name
+                    )
+                )
             else:
                 chosen_indices.append(available_cards.index(card))
         chosen_indices.sort(reverse=True)
         for index in chosen_indices:
             if screen_type == ScreenType.GRID:
-                available = getattr(coordinator.last_game_state, "available_commands", [])
+                available = getattr(
+                    coordinator.last_game_state, "available_commands", []
+                )
                 if "choose" in available:
                     coordinator.add_action_to_queue(ChooseAction(choice_index=index))
                     continue
@@ -452,4 +506,3 @@ class StateAction(Action):
 
     def __init__(self, requires_game_ready=False):
         super().__init__(command="state", requires_game_ready=False)
-
