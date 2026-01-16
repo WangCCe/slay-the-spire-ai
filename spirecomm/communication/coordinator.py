@@ -304,9 +304,9 @@ class Coordinator:
                                 "GRID screen_state type=%s",
                                 type(screen_state).__name__,
                             )
-                self.last_game_state = Game.from_json(
-                    game_state, communication_state.get("available_commands")
-                )
+                    self.last_game_state = Game.from_json(
+                        game_state, communication_state.get("available_commands")
+                    )
             if perform_callbacks:
                 if self.last_error is not None:
                     self.action_queue.clear()
