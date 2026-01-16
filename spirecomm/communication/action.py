@@ -443,10 +443,10 @@ class CardSelectAction(Action):
                 positions = getattr(screen, "card_positions", [])
                 if "click" in available and positions:
                     coordinator.add_action_to_queue(ClickAction(("card", index, 0)))
-                elif "key" in available:
-                    coordinator.add_action_to_queue(KeyAction(f"CARD_{index + 1}"))
                 elif "choose" in available:
                     coordinator.add_action_to_queue(ChooseAction(choice_index=index))
+                elif "key" in available:
+                    coordinator.add_action_to_queue(KeyAction(f"CARD_{index + 1}"))
                 else:
                     coordinator.add_action_to_queue(KeyAction(f"CARD_{index + 1}"))
             else:

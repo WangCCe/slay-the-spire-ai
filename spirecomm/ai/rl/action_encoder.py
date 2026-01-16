@@ -216,10 +216,10 @@ class ActionEncoder:
                 )
                 if "click" in available and positions:
                     return ClickAction(("card", choice_index, 0))
-                if "key" in available:
-                    return KeyAction(f"CARD_{choice_index + 1}")
                 if "choose" in available:
                     return ChooseAction(choice_index)
+                if "key" in available:
+                    return KeyAction(f"CARD_{choice_index + 1}")
                 return KeyAction(f"CARD_{choice_index + 1}")
             if self._is_screen_type(game, "HAND_SELECT"):
                 from spirecomm.communication.action import KeyAction
