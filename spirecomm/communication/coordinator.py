@@ -400,6 +400,8 @@ class Coordinator:
             raise Exception("Communication Mod not ready for new game")
 
         # Start new game if not already in one
+        import logging
+        logging.info(f"[PLAY_ONE_GAME] Before start check, in_game={self.in_game}, screen={getattr(self.last_game_state, 'screen_type', 'None') if self.last_game_state else 'None'}")
         if not self.in_game:
             StartGameAction(player_class, ascension_level, seed).execute(self)
             # Wait for game to actually start
@@ -429,11 +431,17 @@ class Coordinator:
 
             if not self.in_game:
                 raise Exception("Failed to start new game")
+        else:
+            import logging
+            logging.info(f"[PLAY_ONE_GAME] Skipping start because already in_game, screen={getattr(self.last_game_state, 'screen_type', 'None') if self.last_game_state else 'None'}")
 
         # Play until game ends
         last_update_time = time.time()
         consecutive_timeouts = 0
         max_consecutive_timeouts = 6  # 6 * 10 seconds = 60 seconds total
+
+        import logging
+        logging.info(f"[PLAY_ONE_GAME] Entering main game loop, in_game={self.in_game}, screen={getattr(self.last_game_state, 'screen_type', 'None') if self.last_game_state else 'None'}")
 
         while self.in_game:
             # Check if communication threads are still alive (detect game crashes)
