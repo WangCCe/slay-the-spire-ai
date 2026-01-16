@@ -405,8 +405,15 @@ class Coordinator:
             # Wait for game to actually start
             timeout_counter = 0
             consecutive_timeouts = 0
+            import logging
             while not self.in_game and timeout_counter < max_wait:
                 received = self.receive_game_state_update(block=True)
+                # Debug logging to diagnose Neow screen hanging
+                logging.info(
+                    f"[WAIT_FOR_GAME] received={received}, in_game={self.in_game}, "
+                    f"screen={getattr(self.last_game_state, 'screen_type', 'None') if self.last_game_state else 'None'}, "
+                    f"timeout={timeout_counter}/{max_wait}"
+                )
                 if received:
                     consecutive_timeouts = (
                         0  # Reset timeout counter on successful receive
