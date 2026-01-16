@@ -5,6 +5,7 @@ import logging
 import glob
 from logging.handlers import RotatingFileHandler
 
+from spirecomm.ai.statistics import GameStatistics
 from spirecomm.communication.coordinator import Coordinator
 from spirecomm.ai.agent import SimpleAgent, OptimizedAgent, OPTIMIZED_AI_AVAILABLE
 from spirecomm.spire.character import PlayerClass

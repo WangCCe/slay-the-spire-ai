@@ -617,16 +617,6 @@ class ActionEncoder:
                                 continue
                             action_idx = self.encode_play_card(card_idx, monster_idx)
                             mask[action_idx] = True
-                    else:
-                        for monster_idx, monster in enumerate(monsters):
-                            if (
-                                monster.current_hp <= 0
-                                or monster.is_gone
-                                or monster.half_dead
-                            ):
-                                continue
-                            action_idx = self.encode_play_card(card_idx, monster_idx)
-                            mask[action_idx] = True
 
             # Use potion actions (only if potions are available AND can_use=True)
             for potion_idx in range(min(len(potions), self.MAX_POTIONS)):
