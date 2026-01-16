@@ -84,18 +84,36 @@ class Game:
         else:
             game.character = None
         game.ascension_level = json_state.get("ascension_level")
-        game.relics = [spirecomm.spire.relic.Relic.from_json(json_relic) for json_relic in json_state.get("relics")]
-        game.deck = [spirecomm.spire.card.Card.from_json(json_card) for json_card in json_state.get("deck")]
-        game.map = spirecomm.spire.map.Map.from_json(json_state.get("map"))
-        game.potions = [spirecomm.spire.potion.Potion.from_json(potion) for potion in json_state.get("potions")]
+
+        # Handle list fields that may be None
+        relics_data = json_state.get("relics")
+        game.relics = [spirecomm.spire.relic.Relic.from_json(json_relic) for json_relic in relics_data] if relics_data else []
+
+        deck_data = json_state.get("deck")
+        game.deck = [spirecomm.spire.card.Card.from_json(json_card) for json_card in deck_data] if deck_data else []
+
+        map_data = json_state.get("map")
+        game.map = spirecomm.spire.map.Map.from_json(map_data) if map_data else None
+
+        potions_data = json_state.get("potions")
+        game.potions = [spirecomm.spire.potion.Potion.from_json(potion) for potion in potions_data] if potions_data else []
+
         game.act_boss = json_state.get("act_boss", None)
 
         # Screen State
 
         game.screen_up = json_state.get("is_screen_up", False)
-        game.screen_type = spirecomm.spire.screen.ScreenType[json_state.get("screen_type")]
-        game.screen = spirecomm.spire.screen.screen_from_json(game.screen_type, json_state.get("screen_state"))
-        game.room_phase = RoomPhase[json_state.get("room_phase")]
+
+        # Handle screen_type and room_phase that may be None
+        screen_type_name = json_state.get("screen_type")
+        game.screen_type = spirecomm.spire.screen.ScreenType[screen_type_name] if screen_type_name else None
+
+        screen_state_data = json_state.get("screen_state")
+        game.screen = spirecomm.spire.screen.screen_from_json(game.screen_type, screen_state_data) if game.screen_type else None
+
+        room_phase_name = json_state.get("room_phase")
+        game.room_phase = RoomPhase[room_phase_name] if room_phase_name else None
+
         game.room_type = json_state.get("room_type")
         game.choice_available = "choice_list" in json_state
         if game.choice_available:
@@ -103,23 +121,37 @@ class Game:
 
         # Combat state
 
-        game.in_combat = game.room_phase == RoomPhase.COMBAT
+        game.in_combat = game.room_phase == RoomPhase.COMBAT if game.room_phase else False
         if game.in_combat:
             combat_state = json_state.get("combat_state")
-            game.player = spirecomm.spire.character.Player.from_json(combat_state.get("player"))
-            game.monsters = [spirecomm.spire.character.Monster.from_json(json_monster) for json_monster in combat_state.get("monsters")]
-            for i, monster in enumerate(game.monsters):
-                monster.monster_index = i
-            game.draw_pile = [spirecomm.spire.card.Card.from_json(json_card) for json_card in combat_state.get("draw_pile")]
-            game.discard_pile = [spirecomm.spire.card.Card.from_json(json_card) for json_card in combat_state.get("discard_pile")]
-            game.exhaust_pile = [spirecomm.spire.card.Card.from_json(json_card) for json_card in combat_state.get("exhaust_pile")]
-            game.hand = [spirecomm.spire.card.Card.from_json(json_card) for json_card in combat_state.get("hand")]
-            game.limbo = [spirecomm.spire.card.Card.from_json(json_card) for json_card in combat_state.get("limbo", [])]
-            game.card_in_play = combat_state.get("card_in_play", None)
-            if game.card_in_play is not None:
-                game.card_in_play = spirecomm.spire.card.Card.from_json(game.card_in_play)
-            game.turn = combat_state.get("turn", 0)
-            game.cards_discarded_this_turn = combat_state.get("cards_discarded_this_turn", 0)
+            if combat_state:
+                game.player = spirecomm.spire.character.Player.from_json(combat_state.get("player"))
+
+                monsters_data = combat_state.get("monsters")
+                game.monsters = [spirecomm.spire.character.Monster.from_json(json_monster) for json_monster in monsters_data] if monsters_data else []
+                for i, monster in enumerate(game.monsters):
+                    monster.monster_index = i
+
+                draw_pile_data = combat_state.get("draw_pile")
+                game.draw_pile = [spirecomm.spire.card.Card.from_json(json_card) for json_card in draw_pile_data] if draw_pile_data else []
+
+                discard_pile_data = combat_state.get("discard_pile")
+                game.discard_pile = [spirecomm.spire.card.Card.from_json(json_card) for json_card in discard_pile_data] if discard_pile_data else []
+
+                exhaust_pile_data = combat_state.get("exhaust_pile")
+                game.exhaust_pile = [spirecomm.spire.card.Card.from_json(json_card) for json_card in exhaust_pile_data] if exhaust_pile_data else []
+
+                hand_data = combat_state.get("hand")
+                game.hand = [spirecomm.spire.card.Card.from_json(json_card) for json_card in hand_data] if hand_data else []
+
+                limbo_data = combat_state.get("limbo")
+                game.limbo = [spirecomm.spire.card.Card.from_json(json_card) for json_card in limbo_data] if limbo_data else []
+
+                game.card_in_play = combat_state.get("card_in_play", None)
+                if game.card_in_play is not None:
+                    game.card_in_play = spirecomm.spire.card.Card.from_json(game.card_in_play)
+                game.turn = combat_state.get("turn", 0)
+                game.cards_discarded_this_turn = combat_state.get("cards_discarded_this_turn", 0)
 
         # Available Commands
 
