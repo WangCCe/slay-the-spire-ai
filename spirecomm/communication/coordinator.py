@@ -259,7 +259,10 @@ class Coordinator:
         :type perform_callbacks: bool
         :return: whether a message was received
         """
+        import logging
+        logging.info(f"[RECEIVE_START] block={block}, perform_callbacks={perform_callbacks}")
         message = self.get_next_raw_message(block)
+        logging.info(f"[RECEIVE_AFTER] message is None: {message is None}")
         if message is not None:
             communication_state = json.loads(message)
             self.last_error = communication_state.get("error", None)
