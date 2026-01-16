@@ -446,6 +446,16 @@ class Coordinator:
             import logging
             logging.info(f"[PLAY_ONE_GAME] Skipping start because already in_game, screen={getattr(self.last_game_state, 'screen_type', 'None') if self.last_game_state else 'None'}")
 
+            # Force callback to handle the current screen (EVENT/NEOW/etc.)
+            # This fixes deadlock when Communication Mod won't send updates
+            # until AI acts on the current screen
+            if self.last_game_state is not None and len(self.action_queue) == 0:
+                logging.info("[PLAY_ONE_GAME] Forcing callback for current screen...")
+                new_action = self.state_change_callback(self.last_game_state)
+                if new_action is not None:
+                    self.add_action_to_queue(new_action)
+                    logging.info(f"[PLAY_ONE_GAME] Added action: {type(new_action).__name__}")
+
         # Play until game ends
         last_update_time = time.time()
         consecutive_timeouts = 0
