@@ -321,14 +321,14 @@ if __name__ == "__main__":
         logging.info(f"Agent type set to: {agent_type}")
 
     # RL-specific options
-    if args.train and agent_type != "rl":
-        logging.warning("--train flag requires --agent rl, ignoring")
+    if args.train and agent_type not in ["rl", "combat_rl"]:
+        logging.warning("--train flag requires --agent rl or --agent combat_rl, ignoring")
         training = False
     else:
         training = args.train
 
-    if args.model and agent_type != "rl":
-        logging.warning("--model flag requires --agent rl, ignoring")
+    if args.model and agent_type not in ["rl", "combat_rl"]:
+        logging.warning("--model flag requires --agent rl or --agent combat_rl, ignoring")
         model_path = None
     else:
         model_path = args.model
