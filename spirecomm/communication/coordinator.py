@@ -321,10 +321,17 @@ class Coordinator:
 
                         logging.warning("error_callback returned None - ignoring")
                 elif self.in_game:
-                    if len(self.action_queue) == 0 and perform_callbacks:
+                    if len(self.action_queue) == 0:
+                        import logging
+                        logging.info(
+                            f"[CALLBACK] in_game=True, queue empty, calling state_change_callback. "
+                            f"Screen: {getattr(self.last_game_state, 'screen_type', 'Unknown') if self.last_game_state else 'None'}"
+                        )
                         new_action = self.state_change_callback(self.last_game_state)
                         if new_action is not None:
                             self.add_action_to_queue(new_action)
+                            import logging
+                            logging.info(f"[CALLBACK] Got action: {type(new_action).__name__}")
                         else:
                             import logging
 

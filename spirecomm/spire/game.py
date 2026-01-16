@@ -77,7 +77,12 @@ class Game:
         game.act = json_state.get("act")
         game.gold = json_state.get("gold")
         game.seed = json_state.get("seed")
-        game.character = spirecomm.spire.character.PlayerClass[json_state.get("class")]
+        # Handle None class field (can happen on game over or special screens)
+        class_name = json_state.get("class")
+        if class_name is not None:
+            game.character = spirecomm.spire.character.PlayerClass[class_name]
+        else:
+            game.character = None
         game.ascension_level = json_state.get("ascension_level")
         game.relics = [spirecomm.spire.relic.Relic.from_json(json_relic) for json_relic in json_state.get("relics")]
         game.deck = [spirecomm.spire.card.Card.from_json(json_card) for json_card in json_state.get("deck")]
