@@ -160,10 +160,12 @@ class StateEncoder:
 
     def _encode_single_monster(self, monster: Monster) -> List[float]:
         import math
-        hp_norm = monster.current_hp / monster.max_hp if monster.max_hp > 0 else 0.0
+        max_hp = self._safe_float(getattr(monster, 'max_hp', 0.0), default=0.0)
+        current_hp = self._safe_float(getattr(monster, 'current_hp', 0.0), default=0.0)
+        hp_norm = current_hp / max_hp if max_hp > 0 else 0.0
         intent_flags = self._encode_intent(monster.intent if hasattr(monster, 'intent') else Intent.UNKNOWN)
-        move_damage = getattr(monster, 'move_adjusted_damage', 0) or 0
-        move_hits = getattr(monster, 'move_hits', 0) or 0
+        move_damage = self._safe_float(getattr(monster, 'move_adjusted_damage', 0), default=0.0)
+        move_hits = self._safe_float(getattr(monster, 'move_hits', 0), default=0.0)
         strength = self._get_power_amount(getattr(monster, 'powers', []), "Strength")
         weak = self._get_power_amount(getattr(monster, 'powers', []), "Weak")
         frail = self._get_power_amount(getattr(monster, 'powers', []), "Frail")
@@ -172,14 +174,14 @@ class StateEncoder:
         artifact = self._get_power_amount(getattr(monster, 'powers', []), "Artifact")
         metallicize = self._get_power_amount(getattr(monster, 'powers', []), "Metallicize")
         regen = self._get_power_amount(getattr(monster, 'powers', []), "Regeneration")
-        move_id = max(getattr(monster, 'move_id', -1), 0)
-        last_move_id = max(getattr(monster, 'last_move_id', -1), 0)
-        second_last_move_id = max(getattr(monster, 'second_last_move_id', -1), 0)
+        move_id = max(self._safe_int(getattr(monster, 'move_id', -1)), 0)
+        last_move_id = max(self._safe_int(getattr(monster, 'last_move_id', -1)), 0)
+        second_last_move_id = max(self._safe_int(getattr(monster, 'second_last_move_id', -1)), 0)
         return [
             self._stable_hash(getattr(monster, 'monster_id', getattr(monster, 'name', 'Unknown')), 60) / 60.0,
             hp_norm,
-            min(math.log10(monster.max_hp + 1) / 2.5, 1.0),
-            min((monster.block if hasattr(monster, 'block') else 0), 20) / 20.0,
+            min(math.log10(max_hp + 1) / 2.5, 1.0),
+            min(self._safe_float(getattr(monster, 'block', 0.0), default=0.0), 20) / 20.0,
             *intent_flags,
             min(move_damage, 50) / 50.0,
             min(move_hits, 5) / 5.0,
@@ -313,6 +315,24 @@ class StateEncoder:
         encoded = str(value).encode('utf-8')
         digest = hashlib.md5(encoded).hexdigest()
         return int(digest, 16) % modulo
+
+    @staticmethod
+    def _safe_int(value, default=-1):
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _safe_float(value, default=0.0):
+        if value is None:
+            return default
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
 
     @staticmethod
     def _get_power_amount(powers, power_id):
