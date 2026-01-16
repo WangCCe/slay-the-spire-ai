@@ -153,11 +153,17 @@ The system SHALL support both training mode (with exploration and data collectio
 
 The system SHALL route decisions to appropriate action encoders based on current screen type.
 
-#### Scenario: Combat screen routing
-- **WHEN** game.screen_type == 'COMBAT' or 'BOSS'
+#### Scenario: Combat main-loop routing
+- **WHEN** game.in_combat is True and game.screen_type == 'NONE'
 - **THEN** route to combat action encoder
 - **AND** generate combat actions (play card, use potion, end turn)
 - **AND** validate action targets are valid monsters
+
+#### Scenario: In-combat popup routing
+- **WHEN** game.in_combat is True and game.screen_type is a combat popup (HAND_SELECT, GRID, COMBAT_REWARD, CARD_REWARD)
+- **THEN** route to screen-specific action encoder (choose/confirm/cancel/proceed)
+- **AND** action masking SHALL only enable valid choices for the popup
+- **AND** the RL agent SHALL handle these screens without falling back to non-RL agents
 
 #### Scenario: Card reward screen routing
 - **WHEN** game.screen_type == 'CARD_REWARD' or 'BOSS_REWARD'

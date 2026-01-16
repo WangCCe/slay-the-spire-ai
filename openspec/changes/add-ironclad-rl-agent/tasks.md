@@ -3,14 +3,18 @@
 ## 1. Infrastructure and Data Pipeline
 
 - [ ] 1.1 Create `spirecomm/ai/rl/` module directory structure with `__init__.py`
-- [ ] 1.2 Implement `StateEncoder` class to convert Game objects to 512-dim feature vectors
+- [ ] 1.2 Implement `StateEncoder` class to convert Game objects to 570-dim feature vectors
   - [ ] 1.2.1 Encode player state (HP, energy, block, gold, etc.)
+  - [ ] 1.2.1.1 Encode player combat stats (strength, dexterity, debuffs)
   - [ ] 1.2.2 Encode hand cards (max 10 cards × 15 features)
+  - [ ] 1.2.2.1 Encode card targeting/exhaust/retain flags
   - [ ] 1.2.3 Encode deck composition (one-hot of top 120 Ironclad cards)
   - [ ] 1.2.4 Encode monster states (max 5 monsters × 30 features)
+  - [ ] 1.2.4.1 Encode intents, multi-hit counts, and key debuffs
   - [ ] 1.2.5 Encode relics (binary vector of all relics)
   - [ ] 1.2.6 Encode potions (max 5 potions × 3 features)
   - [ ] 1.2.7 Encode context (room type, turn, floor, etc.)
+  - [ ] 1.2.7.1 Encode in-combat popup context (screen type, choice counts, confirm/cancel)
   - [ ] 1.2.8 Add unit tests for encoding correctness
 - [ ] 1.3 Implement `ActionEncoder` class to map discrete actions to Action objects
   - [ ] 1.3.1 Define action space constants (max 1000 actions)
@@ -59,6 +63,7 @@
   - [ ] 3.1.3 Implement action masking for valid actions only
   - [ ] 3.1.4 Implement ε-greedy action selection during training
   - [ ] 3.1.5 Handle all screen types (COMBAT, CARD_REWARD, MAP, SHOP, etc.)
+  - [ ] 3.1.5.1 Route in-combat popup screens (HAND_SELECT/GRID/COMBAT_REWARD) through RL
   - [ ] 3.1.6 Integrate with coordinator callbacks for state updates
 - [ ] 3.2 Implement training mode vs inference mode
   - [ ] 3.2.1 Add `is_training` flag to RLAgent

@@ -466,6 +466,21 @@ class ActionEncoder:
             )
             return mask
 
+        # In-combat choice popup without a dedicated screen type
+        if game.in_combat and game.choice_available and game.choice_list:
+            from spirecomm.spire.screen import ScreenType
+
+            if getattr(game, "screen_type", None) in (None, ScreenType.NONE):
+                for i in range(min(len(game.choice_list), 10)):
+                    mask[self.CARD_REWARD_OFFSET + i] = True
+                if game.cancel_available:
+                    mask[self.CANCEL_ACTION] = True
+                logger.debug(
+                    f"IN_COMBAT_CHOICES: Enabled {len(game.choice_list)} choices"
+                    f"{' and cancel' if game.cancel_available else ''}"
+                )
+                return mask
+
         # Event screen
         if self._is_screen_type(game, "event", case_sensitive=False):
             if game.choice_list and len(game.choice_list) > 0:

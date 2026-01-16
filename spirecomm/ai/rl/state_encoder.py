@@ -1,11 +1,12 @@
 """
 State encoder - FIXED VERSION (570 dims)
 """
+import hashlib
 import numpy as np
 from typing import List
 from spirecomm.spire.game import Game
 from spirecomm.spire.card import Card
-from spirecomm.spire.character import Monster, PlayerClass
+from spirecomm.spire.character import Monster, PlayerClass, Intent
 
 class StateEncoder:
     def __init__(self):
@@ -24,9 +25,11 @@ class StateEncoder:
 
     def _encode_player_state(self, game: Game) -> List[float]:
         if game.player is None:
-            return [0.0] * 18  # Fixed to 18 dims
+            return [0.0] * 20
         player = game.player
         import math
+        strength = self._get_power_amount(getattr(player, 'powers', []), "Strength")
+        dexterity = self._get_power_amount(getattr(player, 'powers', []), "Dexterity")
         return [
             player.current_hp / player.max_hp if player.max_hp > 0 else 0.0,
             min(player.energy, 5) / 5.0,
@@ -43,6 +46,8 @@ class StateEncoder:
             1.0 if (game.character or PlayerClass.IRONCLAD) == PlayerClass.THE_SILENT else 0.0,
             1.0 if (game.character or PlayerClass.IRONCLAD) == PlayerClass.DEFECT else 0.0,
             0.0,  # Placeholder for 4th class (Watcher)
+            min(strength, 10) / 10.0,
+            min(dexterity, 10) / 10.0,
         ]
 
     def _encode_hand_cards(self, game: Game) -> List[float]:
@@ -86,44 +91,62 @@ class StateEncoder:
 
         # Get card type safely
         card_type_val = 0
-        if hasattr(card, 'card_type'):
+        if hasattr(card, 'type'):
             try:
-                card_type_val = int(card.card_type) if card.card_type is not None else 0
-            except (TypeError, ValueError):
+                card_type_val = int(card.type.value) if card.type is not None else 0
+            except (TypeError, ValueError, AttributeError):
                 card_type_val = 0
 
         # Get card ID safely - handle various types
         card_id_hash = 0.0
-        if hasattr(card, 'id'):
-            try:
-                card_id = card.id
-                # Handle different types of card.id
-                if isinstance(card_id, (int, float, np.integer, np.floating)):
-                    # If it's a number, just use it
-                    card_id_hash = abs(int(card_id)) % 100 / 100.0
-                else:
-                    # If it's a string or object, hash it
-                    card_id_hash = hash(str(card_id)) % 100 / 100.0
-            except (AttributeError, TypeError, ValueError):
-                card_id_hash = 0.0
+        card_id = getattr(card, 'card_id', None)
+        if card_id is None:
+            card_id = getattr(card, 'id', None)
+        if card_id is not None:
+            card_id_hash = self._stable_hash(card_id, 100) / 100.0
+
+        card_name = getattr(card, 'name', '') or ''
+        weak_cards = {"Clothesline", "Uppercut", "Shockwave"}
+        vulnerable_cards = {"Bash", "Uppercut", "Shockwave", "Thunderclap"}
 
         return [
             card_id_hash,
             min((card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost), 3) / 3.0 if hasattr(card, 'cost') else 0.0,
             min(damage, 30) / 30.0,
             min(block, 20) / 20.0,
-            1.0 if card_type_val == 0 else 0.0,  # Attack
-            1.0 if card_type_val == 1 else 0.0,  # Skill
-            1.0 if card_type_val == 2 else 0.0,  # Power
-            1.0 if card_type_val == 3 else 0.0,  # Status/Curse
-            1.0 if (hasattr(card, 'upgrade') and card.upgrade != 0) else 0.0,
-            0.0,  # placeholder
-            (1.0 if (hasattr(card, 'exhausts') and card.exhausts) else 0.0),  # exhausts (fixed - single value)
-            0.0, 0.0, 0.0, 0.0,  # placeholders to reach 15 features
+            1.0 if card_type_val == 1 else 0.0,  # Attack
+            1.0 if card_type_val == 2 else 0.0,  # Skill
+            1.0 if card_type_val == 3 else 0.0,  # Power
+            1.0 if card_type_val in (4, 5) else 0.0,  # Status/Curse
+            1.0 if (hasattr(card, 'upgrades') and card.upgrades != 0) else 0.0,
+            0.0,  # is_ethereal (not exposed)
+            1.0 if (hasattr(card, 'exhausts') and card.exhausts) else 0.0,
+            0.0,  # has_retain (not exposed)
+            1.0 if (hasattr(card, 'has_target') and card.has_target) else 0.0,
+            1.0 if card_name in weak_cards else 0.0,
+            1.0 if card_name in vulnerable_cards else 0.0,
         ]
 
     def _encode_deck_composition(self, game: Game) -> List[float]:
-        return [0.0] * 120
+        counts = [0.0] * 120
+        cards = game.deck if game.deck else []
+        if not cards:
+            cards = []
+            if game.draw_pile:
+                cards.extend(game.draw_pile)
+            if game.discard_pile:
+                cards.extend(game.discard_pile)
+            if game.hand:
+                cards.extend(game.hand)
+        for card in cards:
+            card_id = getattr(card, 'card_id', None)
+            if card_id is None:
+                card_id = getattr(card, 'id', None)
+            if card_id is None:
+                continue
+            idx = self._stable_hash(card_id, 120)
+            counts[idx] = min(counts[idx] + 1.0, 5.0)
+        return [count / 5.0 for count in counts]
 
     def _encode_monster_states(self, game: Game) -> List[float]:
         monsters = game.monsters if game.monsters else []
@@ -138,16 +161,55 @@ class StateEncoder:
     def _encode_single_monster(self, monster: Monster) -> List[float]:
         import math
         hp_norm = monster.current_hp / monster.max_hp if monster.max_hp > 0 else 0.0
+        intent_flags = self._encode_intent(monster.intent if hasattr(monster, 'intent') else Intent.UNKNOWN)
+        move_damage = getattr(monster, 'move_adjusted_damage', 0) or 0
+        move_hits = getattr(monster, 'move_hits', 0) or 0
+        strength = self._get_power_amount(getattr(monster, 'powers', []), "Strength")
+        weak = self._get_power_amount(getattr(monster, 'powers', []), "Weak")
+        frail = self._get_power_amount(getattr(monster, 'powers', []), "Frail")
+        vulnerable = self._get_power_amount(getattr(monster, 'powers', []), "Vulnerable")
+        poison = self._get_power_amount(getattr(monster, 'powers', []), "Poison")
+        artifact = self._get_power_amount(getattr(monster, 'powers', []), "Artifact")
+        metallicize = self._get_power_amount(getattr(monster, 'powers', []), "Metallicize")
+        regen = self._get_power_amount(getattr(monster, 'powers', []), "Regeneration")
+        move_id = max(getattr(monster, 'move_id', -1), 0)
+        last_move_id = max(getattr(monster, 'last_move_id', -1), 0)
+        second_last_move_id = max(getattr(monster, 'second_last_move_id', -1), 0)
         return [
-            hash(monster.name if hasattr(monster, 'name') else "Unknown") % 60 / 60.0,
+            self._stable_hash(getattr(monster, 'monster_id', getattr(monster, 'name', 'Unknown')), 60) / 60.0,
             hp_norm,
             min(math.log10(monster.max_hp + 1) / 2.5, 1.0),
             min((monster.block if hasattr(monster, 'block') else 0), 20) / 20.0,
-            *[0.0 for _ in range(26)],
+            *intent_flags,
+            min(move_damage, 50) / 50.0,
+            min(move_hits, 5) / 5.0,
+            0.0,  # intent block (not exposed)
+            min(strength, 20) / 20.0,
+            min(weak, 5) / 5.0,
+            min(frail, 5) / 5.0,
+            min(vulnerable, 5) / 5.0,
+            min(poison, 20) / 20.0,
+            min(artifact, 5) / 5.0,
+            min(metallicize, 10) / 10.0,
+            min(regen, 10) / 10.0,
+            min(move_id, 50) / 50.0,
+            min(last_move_id, 50) / 50.0,
+            min(second_last_move_id, 50) / 50.0,
+            1.0 if getattr(monster, 'is_gone', False) else 0.0,
+            1.0 if getattr(monster, 'is_minion', False) else 0.0,
+            1.0 if getattr(monster, 'half_dead', False) else 0.0,
+            0.0, 0.0, 0.0, 0.0,
         ]
 
     def _encode_relics(self, game: Game) -> List[float]:
-        return [0.0] * 89
+        relics = [0.0] * 89
+        for relic in game.relics if game.relics else []:
+            relic_id = getattr(relic, 'relic_id', None) or getattr(relic, 'name', None)
+            if relic_id is None:
+                continue
+            idx = self._stable_hash(relic_id, 89)
+            relics[idx] = 1.0
+        return relics
 
     def _encode_potions(self, game: Game) -> List[float]:
         potions = game.potions if game.potions else []
@@ -161,29 +223,114 @@ class StateEncoder:
                 if isinstance(potion, (int, float, np.integer, np.floating)):
                     # It's a number, use it directly
                     potion_hash = abs(int(potion)) % 30 / 30.0
+                    can_use = 0.0
                 elif hasattr(potion, 'potion_id'):
-                    potion_hash = hash(str(potion.potion_id)) % 30 / 30.0
+                    potion_hash = self._stable_hash(potion.potion_id, 30) / 30.0
+                    can_use = 1.0 if getattr(potion, 'can_use', False) else 0.0
                 elif hasattr(potion, 'name'):
-                    potion_hash = hash(str(potion.name)) % 30 / 30.0
+                    potion_hash = self._stable_hash(potion.name, 30) / 30.0
+                    can_use = 1.0 if getattr(potion, 'can_use', False) else 0.0
                 elif hasattr(potion, 'id'):
-                    potion_hash = hash(str(potion.id)) % 30 / 30.0
+                    potion_hash = self._stable_hash(potion.id, 30) / 30.0
+                    can_use = 1.0 if getattr(potion, 'can_use', False) else 0.0
                 else:
                     # Convert to string safely
                     try:
-                        potion_hash = hash(str(potion)) % 30 / 30.0
+                        potion_hash = self._stable_hash(str(potion), 30) / 30.0
                     except Exception:
                         potion_hash = 0.0
+                    can_use = 0.0
 
-                features.extend([potion_hash, 1.0, 1.0])
+                is_present = 0.0 if getattr(potion, 'potion_id', None) == "Potion Slot" else 1.0
+                features.extend([potion_hash, is_present, can_use])
             else:
                 features.extend([0.0] * 3)
         return features
 
     def _encode_context(self, game: Game) -> List[float]:
+        from spirecomm.spire.screen import ScreenType
+
         room_type = game.room_type if game.room_type else "MONSTER"
+        screen_type = getattr(game, 'screen_type', None)
+        combat_screen = game.in_combat and screen_type in (None, ScreenType.NONE)
+        combat_reward = screen_type == ScreenType.COMBAT_REWARD
+        hand_select = screen_type == ScreenType.HAND_SELECT
+        grid_select = screen_type == ScreenType.GRID
+        event_screen = screen_type == ScreenType.EVENT
+        shop_screen = screen_type in (ScreenType.SHOP_ROOM, ScreenType.SHOP_SCREEN)
+        map_screen = screen_type == ScreenType.MAP
+        rest_screen = screen_type == ScreenType.REST
+        other_screen = not any(
+            [
+                combat_screen,
+                combat_reward,
+                hand_select,
+                grid_select,
+                event_screen,
+                shop_screen,
+                map_screen,
+                rest_screen,
+            ]
+        )
+        choice_size = len(game.choice_list) if game.choice_list else 0
+        num_required = getattr(game.screen, 'num_cards', 0) if hasattr(game, 'screen') else 0
+        selected_cards = getattr(game.screen, 'selected_cards', []) if hasattr(game, 'screen') else []
+        can_confirm = 1.0 if getattr(game, 'proceed_available', False) else 0.0
+        if hand_select and hasattr(game.screen, 'can_pick_zero'):
+            if game.screen.can_pick_zero:
+                can_confirm = 1.0
+        if hand_select and num_required and len(selected_cards) >= num_required:
+            can_confirm = 1.0
+        if grid_select and getattr(game.screen, 'confirm_up', False):
+            can_confirm = 1.0
         return [
-            *[1.0 if room_type == rt else 0.0 for rt in 
+            *[1.0 if room_type == rt else 0.0 for rt in
               ["MONSTER", "EVENT", "SHOP", "REST", "TREASURE", "BOSS"]],
             min((game.turn if hasattr(game, 'turn') else 0), 20) / 20.0,
-            *[0.0 for _ in range(21)],
+            1.0 if combat_screen else 0.0,
+            1.0 if combat_reward else 0.0,
+            1.0 if hand_select else 0.0,
+            1.0 if grid_select else 0.0,
+            1.0 if event_screen else 0.0,
+            1.0 if shop_screen else 0.0,
+            1.0 if map_screen else 0.0,
+            1.0 if rest_screen else 0.0,
+            1.0 if other_screen else 0.0,
+            1.0 if game.choice_available else 0.0,
+            min(choice_size, 10) / 10.0,
+            min(num_required, 5) / 5.0,
+            min(len(selected_cards), 5) / 5.0,
+            can_confirm,
+            1.0 if getattr(game, 'cancel_available', False) else 0.0,
+            1.0 if getattr(game, 'proceed_available', False) else 0.0,
+            min(len(game.hand) if game.hand else 0, 10) / 10.0,
+            min((game.player.energy if game.player else 0), 5) / 5.0,
+            min(max((game.player.energy if game.player else 0), 3), 5) / 5.0,
         ]
+
+    @staticmethod
+    def _stable_hash(value, modulo):
+        encoded = str(value).encode('utf-8')
+        digest = hashlib.md5(encoded).hexdigest()
+        return int(digest, 16) % modulo
+
+    @staticmethod
+    def _get_power_amount(powers, power_id):
+        for power in powers or []:
+            if getattr(power, 'power_id', None) == power_id:
+                return power.amount
+            if getattr(power, 'power_name', None) == power_id:
+                return power.amount
+        return 0
+
+    @staticmethod
+    def _encode_intent(intent):
+        if intent in (Intent.ATTACK, Intent.ATTACK_BUFF, Intent.ATTACK_DEBUFF, Intent.ATTACK_DEFEND):
+            return [1.0, 0.0, 0.0, 0.0, 0.0]
+        if intent in (Intent.DEFEND, Intent.DEFEND_BUFF, Intent.DEFEND_DEBUFF):
+            return [0.0, 1.0, 0.0, 0.0, 0.0]
+        if intent == Intent.BUFF:
+            return [0.0, 0.0, 1.0, 0.0, 0.0]
+        if intent in (Intent.DEBUFF, Intent.STRONG_DEBUFF):
+            return [0.0, 0.0, 0.0, 1.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0, 1.0]

@@ -13,6 +13,8 @@ Current AI agents (SimpleAgent and OptimizedAgent) rely on hand-crafted heuristi
 - **Add RL training infrastructure**: DQN-based combat decision system with experience replay and target networks
 - **Create state representation layer**: Convert complex Game objects into fixed-size feature vectors suitable for neural networks
 - **Implement action space encoding**: Map playable cards, potions, and game commands to discrete action indices
+- **Expand combat routing**: Use RL for combat-phase popups (hand select, grid, combat rewards) instead of falling back to heuristic agents
+- **Enrich combat state features**: Add monster intents, player/monster powers, and combat context features needed for in-combat decisions
 - **Build reward shaping system**: Design reward signals for combat survival, damage dealt, game progression, and victory/defeat
 - **Add training data collection**: Record game states, actions, and outcomes during play for offline training
 - **Create RL agent interface**: New `RLAgent` class compatible with existing Communication Mod integration

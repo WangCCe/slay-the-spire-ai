@@ -4,12 +4,12 @@
 
 ### Requirement: State Representation Encoding
 
-The system SHALL encode the complete game state into a fixed-size 512-dimensional feature vector suitable for neural network input.
+The system SHALL encode the complete game state into a fixed-size 570-dimensional feature vector suitable for neural network input.
 
 #### Scenario: Encode complete game state
 - **WHEN** a game state needs to be processed by the neural network
 - **THEN** the system SHALL extract features from Game object
-- **AND** produce a fixed-size 512-dimensional vector (float32)
+- **AND** produce a fixed-size 570-dimensional vector (float32)
 - **AND** features SHALL be normalized/scaled appropriately (e.g., HP/max_hp, block/10)
 - **AND** features SHALL not contain NaN or Inf values
 
@@ -24,6 +24,8 @@ The system SHALL encode the complete game state into a fixed-size 512-dimensiona
 - **AND** include act number (1-4 one-hot encoded)
 - **AND** include ascension level (0-20 scaled to 0-1)
 - **AND** include player class (Ironclad/Silent/Defect/Watcher one-hot)
+- **AND** include player strength (scaled, cap at 10)
+- **AND** include player dexterity (scaled, cap at 10)
 
 #### Scenario: Hand cards encoding (150 dims)
 - **WHEN** encoding cards in hand
@@ -33,17 +35,14 @@ The system SHALL encode the complete game state into a fixed-size 512-dimensiona
   - Cost for turn (0-3+ scaled to 0-1)
   - Base damage (scaled to 0-1, cap at 30)
   - Base block (scaled to 0-1, cap at 20)
-  - Card type (Attack/Skill/Power/Status/Curse one-hot)
+  - Card type (Attack/Skill/Power/Status-or-Curse one-hot)
   - Is upgraded (binary)
   - Is ethereal (binary)
-  - Is temporary (exhausts this turn, binary)
+  - Exhausts (binary)
   - Has retain (binary)
-  - Energy gain (scaled)
-  - Draw amount (scaled)
-  - Discard amount (scaled)
-  - Vulnerable apply (binary)
-  - Weak apply (binary)
-  - Block gain (scaled)
+  - Is target-required (binary)
+  - Apply weak (binary)
+  - Apply vulnerable (binary)
 
 #### Scenario: Deck composition encoding (120 dims)
 - **WHEN** encoding deck composition
@@ -62,14 +61,16 @@ The system SHALL encode the complete game state into a fixed-size 512-dimensiona
   - Current block (scaled to 0-1, cap at 20)
   - Current intent (one-hot: Attack/Defend/Buff/Debuff/Unknown)
   - Intent damage (if attack, scaled to 0-1)
+  - Intent hits (if multi-hit, scaled to 0-1, cap at 5)
   - Intent block (if defend, scaled to 0-1)
-  - Last move (one-hot of previous intent)
-  - Second-to-last move (one-hot of intent two turns ago)
   - Strength (scaled, capped at 20)
   - Weak stacks (capped at 5)
   - Frail stacks (capped at 5)
   - Vulnerable stacks (capped at 5)
   - Poison stacks (capped at 20)
+  - Artifact stacks (capped at 5)
+  - Metallicize (scaled, cap at 10)
+  - Regeneration (scaled, cap at 10)
   - Is gone (dead/escaped, binary)
   - Is minion (binary)
   - Half dead (has lost half HP, binary)
@@ -88,16 +89,18 @@ The system SHALL encode the complete game state into a fixed-size 512-dimensiona
   - Count (0-5)
   - Can use this turn (binary, checks valid targets)
 
-#### Scenario: Context features encoding (28 dims)
+#### Scenario: Context features encoding (26 dims)
 - **WHEN** encoding contextual game information
 - **THEN** include room type (Monster/Event/Shop/Rest/Treasure/Boss one-hot)
 - **AND** include turn number in combat (scaled to 0-1, cap at 20)
-- **AND** include cards played this combat (scaled, cap at 20)
-- **AND** include cards drawn this combat (scaled, cap at 30)
-- **AND** include damage dealt this combat (log-scaled)
-- **AND** include damage taken this combat (scaled to 0-1)
-- **AND** include monsters killed this combat (0-5)
-- **AND** include potions remaining this combat (0-5)
+- **AND** include screen context flags (combat, combat_reward, hand_select, grid, event, shop, map, rest, other)
+- **AND** include choice_available (binary)
+- **AND** include choice list size (scaled to 0-1, cap at 10)
+- **AND** include required selections (scaled to 0-1, cap at 5)
+- **AND** include selected count (scaled to 0-1, cap at 5)
+- **AND** include can_confirm (binary)
+- **AND** include can_cancel (binary)
+- **AND** include can_proceed (binary)
 - **AND** include hand size at start of turn
 - **AND** include energy at start of turn
 - **AND** include max energy this combat (Bottled Flame/Relic effects)
