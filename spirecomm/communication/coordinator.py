@@ -272,8 +272,10 @@ class Coordinator:
             )
             if self.last_error is None:
                 self.in_game = communication_state.get("in_game")
+                # Get game_state (may be empty dict when not in game, e.g., Neow screen)
+                game_state = communication_state.get("game_state", {})
                 if self.in_game:
-                    game_state = communication_state.get("game_state", {})
+                    # Handle GRID screen logging when in game
                     if game_state.get("screen_type") == "GRID":
                         import logging
 
@@ -304,9 +306,10 @@ class Coordinator:
                                 "GRID screen_state type=%s",
                                 type(screen_state).__name__,
                             )
-                    self.last_game_state = Game.from_json(
-                        game_state, communication_state.get("available_commands")
-                    )
+                # Always update last_game_state, even when in_game=False (e.g., Neow screen)
+                self.last_game_state = Game.from_json(
+                    game_state, communication_state.get("available_commands")
+                )
             if perform_callbacks:
                 if self.last_error is not None:
                     self.action_queue.clear()
