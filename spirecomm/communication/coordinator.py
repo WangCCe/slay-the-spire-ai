@@ -310,6 +310,14 @@ class Coordinator:
                 self.last_game_state = Game.from_json(
                     game_state, communication_state.get("available_commands")
                 )
+            import logging
+            logging.info(
+                f"[CALLBACK_CHECK] perform_callbacks={perform_callbacks}, "
+                f"last_error={self.last_error}, "
+                f"in_game={self.in_game}, "
+                f"queue_size={len(self.action_queue)}, "
+                f"screen={getattr(self.last_game_state, 'screen_type', 'None') if self.last_game_state else 'None'}"
+            )
             if perform_callbacks:
                 if self.last_error is not None:
                     self.action_queue.clear()
