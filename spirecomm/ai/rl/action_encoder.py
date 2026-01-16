@@ -6,7 +6,16 @@ Converts between discrete action indices (0-999) and Slay the Spire Action objec
 
 from typing import List, Optional, Tuple
 from spirecomm.spire.game import Game
-from spirecomm.communication.action import PlayCardAction, PotionAction, EndTurnAction, ChooseAction, ProceedAction, LeaveAction, ConfirmAction, CancelAction
+from spirecomm.communication.action import (
+    PlayCardAction,
+    PotionAction,
+    EndTurnAction,
+    ChooseAction,
+    ProceedAction,
+    LeaveAction,
+    ConfirmAction,
+    CancelAction,
+)
 
 
 class ActionEncoder:
@@ -54,7 +63,9 @@ class ActionEncoder:
         pass
 
     @staticmethod
-    def _is_screen_type(game: Game, screen_type: str, case_sensitive: bool = True) -> bool:
+    def _is_screen_type(
+        game: Game, screen_type: str, case_sensitive: bool = True
+    ) -> bool:
         """Check if current screen matches the given type."""
         screen_str = str(game.screen_type)
         if case_sensitive:
@@ -117,11 +128,15 @@ class ActionEncoder:
             offset = action_index - self.PLAY_CARD_OFFSET
             card_index = offset // 10
             monster_index = offset % 10
-            target_index = monster_index if monster_index < len(game.monsters) else -1
+
+            # Determine target index based on card and monster availability
+            target_index = None
             if 0 <= card_index < len(game.hand):
                 card = game.hand[card_index]
-                if hasattr(card, "has_target") and not card.has_target:
-                    target_index = None
+                if hasattr(card, "has_target") and card.has_target:
+                    target_index = (
+                        monster_index if monster_index < len(game.monsters) else 0
+                    )
             # Use named parameters: card_index=X, target_index=Y
             return PlayCardAction(card_index=card_index, target_index=target_index)
 
@@ -131,11 +146,19 @@ class ActionEncoder:
             potion_index = offset // 10
             monster_index = offset % 10
             # Use named parameters to avoid confusion: use=True, potion_index=X, target_index=Y
-            return PotionAction(use=True, potion_index=potion_index, target_index=monster_index if monster_index < len(game.monsters) else -1)
+            return PotionAction(
+                use=True,
+                potion_index=potion_index,
+                target_index=monster_index
+                if monster_index < len(game.monsters)
+                else -1,
+            )
 
         # Card reward selection
         elif self.CARD_REWARD_OFFSET <= action_index < self.MAP_PATH_OFFSET:
-            choice_index = self._get_clamped_choice_index(action_index, self.CARD_REWARD_OFFSET, game)
+            choice_index = self._get_clamped_choice_index(
+                action_index, self.CARD_REWARD_OFFSET, game
+            )
 
             # Special handling for COMBAT_REWARD screen
             # Must use CombatRewardAction(reward_object), not ChooseAction(choice_index)
@@ -145,7 +168,7 @@ class ActionEncoder:
                 # Get rewards list (try both screen.rewards and choice_list)
                 # Chest rewards may use choice_list instead of screen.rewards
                 rewards = []
-                if hasattr(game.screen, 'rewards') and game.screen.rewards:
+                if hasattr(game.screen, "rewards") and game.screen.rewards:
                     rewards = game.screen.rewards
                 elif game.choice_list:
                     rewards = game.choice_list
@@ -159,17 +182,22 @@ class ActionEncoder:
             # Special handling for SHOP_SCREEN
             # Must use BuyCardAction/BuyPotionAction, not ChooseAction
             if self._is_screen_type(game, "SHOP_SCREEN"):
-                from spirecomm.communication.action import BuyCardAction, BuyPotionAction, BuyRelicAction, BuyPurgeAction
+                from spirecomm.communication.action import (
+                    BuyCardAction,
+                    BuyPotionAction,
+                    BuyRelicAction,
+                    BuyPurgeAction,
+                )
                 from spirecomm.spire.screen import RewardType
 
                 screen = game.screen
-                if hasattr(screen, 'cards') and choice_index < len(screen.cards):
+                if hasattr(screen, "cards") and choice_index < len(screen.cards):
                     # Buying a card
                     return BuyCardAction(screen.cards[choice_index])
-                elif hasattr(screen, 'potions') and choice_index < len(screen.potions):
+                elif hasattr(screen, "potions") and choice_index < len(screen.potions):
                     # Buying a potion
                     return BuyPotionAction(screen.potions[choice_index])
-                elif hasattr(screen, 'relics') and choice_index < len(screen.relics):
+                elif hasattr(screen, "relics") and choice_index < len(screen.relics):
                     # Buying a relic
                     return BuyRelicAction(screen.relics[choice_index])
                 else:
@@ -182,7 +210,11 @@ class ActionEncoder:
 
                 if "choose" in getattr(game, "available_commands", []):
                     return ChooseAction(choice_index)
-                positions = getattr(game.screen, "card_positions", []) if hasattr(game, "screen") else []
+                positions = (
+                    getattr(game.screen, "card_positions", [])
+                    if hasattr(game, "screen")
+                    else []
+                )
                 if positions:
                     return ClickAction(("card", choice_index, 0))
                 return KeyAction(f"CARD_{choice_index + 1}")
@@ -196,34 +228,47 @@ class ActionEncoder:
 
         # Map path selection
         elif self.MAP_PATH_OFFSET <= action_index < self.EVENT_CHOICE_OFFSET:
-            path_index = self._get_clamped_choice_index(action_index, self.MAP_PATH_OFFSET, game)
+            path_index = self._get_clamped_choice_index(
+                action_index, self.MAP_PATH_OFFSET, game
+            )
             return ChooseAction(path_index)
 
         # Event choice
         elif self.EVENT_CHOICE_OFFSET <= action_index < self.SHOP_ACTION_OFFSET:
-            choice_index = self._get_clamped_choice_index(action_index, self.EVENT_CHOICE_OFFSET, game)
+            choice_index = self._get_clamped_choice_index(
+                action_index, self.EVENT_CHOICE_OFFSET, game
+            )
             return ChooseAction(choice_index)
 
         # Shop action
         elif self.SHOP_ACTION_OFFSET <= action_index < self.REST_OPTION_OFFSET:
-            shop_action = self._get_clamped_choice_index(action_index, self.SHOP_ACTION_OFFSET, game)
+            shop_action = self._get_clamped_choice_index(
+                action_index, self.SHOP_ACTION_OFFSET, game
+            )
 
             # Special handling for SHOP_SCREEN
             # Must use BuyCardAction/BuyPotionAction/BuyRelicAction, not ChooseAction
             if self._is_screen_type(game, "SHOP_SCREEN"):
-                from spirecomm.communication.action import BuyCardAction, BuyPotionAction, BuyRelicAction, BuyPurgeAction
+                from spirecomm.communication.action import (
+                    BuyCardAction,
+                    BuyPotionAction,
+                    BuyRelicAction,
+                    BuyPurgeAction,
+                )
 
                 screen = game.screen
-                if hasattr(screen, 'cards') and shop_action < len(screen.cards):
+                if hasattr(screen, "cards") and shop_action < len(screen.cards):
                     # Buying a card
                     return BuyCardAction(screen.cards[shop_action])
-                elif hasattr(screen, 'potions') and shop_action < len(screen.potions):
+                elif hasattr(screen, "potions") and shop_action < len(screen.potions):
                     # Buying a potion (check if potions exist before cards in shop_action)
-                    return BuyPotionAction(screen.potions[shop_action - len(getattr(screen, 'cards', []))])
-                elif hasattr(screen, 'relics') and shop_action < len(screen.relics):
+                    return BuyPotionAction(
+                        screen.potions[shop_action - len(getattr(screen, "cards", []))]
+                    )
+                elif hasattr(screen, "relics") and shop_action < len(screen.relics):
                     # Buying a relic
                     return BuyRelicAction(screen.relics[shop_action])
-                elif hasattr(screen, 'purge_available') and screen.purge_available:
+                elif hasattr(screen, "purge_available") and screen.purge_available:
                     # Buy purge (card removal)
                     return BuyPurgeAction()
                 else:
@@ -235,7 +280,9 @@ class ActionEncoder:
 
         # Rest site option
         elif self.REST_OPTION_OFFSET <= action_index < self.PROCEED_ACTION:
-            rest_option_index = self._get_clamped_choice_index(action_index, self.REST_OPTION_OFFSET, game)
+            rest_option_index = self._get_clamped_choice_index(
+                action_index, self.REST_OPTION_OFFSET, game
+            )
 
             # Must use RestAction(rest_option), not ChooseAction(choice_index)
             # REST screen doesn't accept "choose" command
@@ -243,7 +290,11 @@ class ActionEncoder:
                 from spirecomm.communication.action import RestAction
 
                 # Get the actual rest options from the screen
-                rest_options = game.screen.rest_options if hasattr(game.screen, 'rest_options') else []
+                rest_options = (
+                    game.screen.rest_options
+                    if hasattr(game.screen, "rest_options")
+                    else []
+                )
                 if rest_option_index < len(rest_options):
                     # Use the actual RestOption enum from the screen
                     return RestAction(rest_options[rest_option_index])
@@ -264,7 +315,9 @@ class ActionEncoder:
 
         # Confirm action (e.g., confirm card selection in GRID screen)
         elif action_index == self.CONFIRM_ACTION:
-            if self._is_screen_type(game, "HAND_SELECT") or self._is_screen_type(game, "GRID"):
+            if self._is_screen_type(game, "HAND_SELECT") or self._is_screen_type(
+                game, "GRID"
+            ):
                 return ConfirmAction()
             return ConfirmAction()
 
@@ -293,6 +346,7 @@ class ActionEncoder:
 
         # Debug logging
         import logging
+
         logger = logging.getLogger(__name__)
 
         # === SCREEN TYPE CHECKS (Priority 1) ===
@@ -318,7 +372,10 @@ class ActionEncoder:
             return mask
 
         # Card reward screen (including potion-related card selection during combat)
-        if game.choice_available and (self._is_screen_type(game, "card", case_sensitive=False) or self._is_screen_type(game, "upgrade", case_sensitive=False)):
+        if game.choice_available and (
+            self._is_screen_type(game, "card", case_sensitive=False)
+            or self._is_screen_type(game, "upgrade", case_sensitive=False)
+        ):
             choices = game.choice_list if game.choice_list else []
             for i in range(len(choices)):
                 if i < 10:  # Max 10 choices
@@ -336,7 +393,11 @@ class ActionEncoder:
 
         # HAND_SELECT screen (select cards for effects)
         if self._is_screen_type(game, "HAND_SELECT"):
-            if hasattr(game, "screen") and hasattr(game.screen, "cards") and game.screen.cards:
+            if (
+                hasattr(game, "screen")
+                and hasattr(game.screen, "cards")
+                and game.screen.cards
+            ):
                 choices = game.screen.cards
             else:
                 choices = game.choice_list if game.choice_list else []
@@ -344,10 +405,22 @@ class ActionEncoder:
                 if i < 10:  # Max 10 choices
                     mask[self.CARD_REWARD_OFFSET + i] = True
 
-            selected_cards = getattr(game.screen, "selected_cards", []) if hasattr(game, "screen") else []
-            num_required = getattr(game.screen, "num_cards", 0) if hasattr(game, "screen") else 0
-            can_pick_zero = getattr(game.screen, "can_pick_zero", False) if hasattr(game, "screen") else False
-            confirm_ready = can_pick_zero or (num_required > 0 and len(selected_cards) >= num_required)
+            selected_cards = (
+                getattr(game.screen, "selected_cards", [])
+                if hasattr(game, "screen")
+                else []
+            )
+            num_required = (
+                getattr(game.screen, "num_cards", 0) if hasattr(game, "screen") else 0
+            )
+            can_pick_zero = (
+                getattr(game.screen, "can_pick_zero", False)
+                if hasattr(game, "screen")
+                else False
+            )
+            confirm_ready = can_pick_zero or (
+                num_required > 0 and len(selected_cards) >= num_required
+            )
 
             # Allow confirm when selection can be finalized; otherwise allow a state poll.
             if confirm_ready:
@@ -363,11 +436,19 @@ class ActionEncoder:
 
         # GRID screen (card selection/removal/upgrade)
         if self._is_screen_type(game, "GRID"):
-            if hasattr(game, "screen") and hasattr(game.screen, "cards") and game.screen.cards:
+            if (
+                hasattr(game, "screen")
+                and hasattr(game.screen, "cards")
+                and game.screen.cards
+            ):
                 choices = game.screen.cards
             else:
                 choices = game.choice_list if game.choice_list else []
-            card_positions = getattr(game.screen, "card_positions", []) if hasattr(game, "screen") else []
+            card_positions = (
+                getattr(game.screen, "card_positions", [])
+                if hasattr(game, "screen")
+                else []
+            )
             if not card_positions:
                 logger.debug("GRID: No card_positions in screen_state")
             else:
@@ -393,7 +474,9 @@ class ActionEncoder:
                         mask[self.EVENT_CHOICE_OFFSET + i] = True
             else:
                 mask[self.EVENT_CHOICE_OFFSET] = True
-            logger.debug(f"EVENT: Enabled {len(game.choice_list) if game.choice_list else 1} choices")
+            logger.debug(
+                f"EVENT: Enabled {len(game.choice_list) if game.choice_list else 1} choices"
+            )
             return mask
 
         # MAP screen
@@ -404,7 +487,9 @@ class ActionEncoder:
                         mask[self.MAP_PATH_OFFSET + i] = True
             else:
                 mask[self.MAP_PATH_OFFSET] = True
-            logger.debug(f"MAP: Enabled {len(game.choice_list) if game.choice_list else 1} paths")
+            logger.debug(
+                f"MAP: Enabled {len(game.choice_list) if game.choice_list else 1} paths"
+            )
             return mask
 
         # REST screen
@@ -432,7 +517,9 @@ class ActionEncoder:
                 for i in range(3):
                     mask[self.SHOP_ACTION_OFFSET + i] = True
             mask[self.LEAVE_ACTION] = True
-            logger.debug(f"SHOP_SCREEN: Enabled {len(game.choice_list) if game.choice_list else 3} buy actions and leave")
+            logger.debug(
+                f"SHOP_SCREEN: Enabled {len(game.choice_list) if game.choice_list else 3} buy actions and leave"
+            )
             return mask
 
         # SHOP_ROOM (entrance - choose to enter or skip)
@@ -441,7 +528,9 @@ class ActionEncoder:
                 for i in range(min(len(game.choice_list), 5)):
                     mask[self.SHOP_ACTION_OFFSET + i] = True
             mask[self.PROCEED_ACTION] = True
-            logger.debug(f"SHOP_ROOM: Enabled {len(game.choice_list) if game.choice_list else 0} enter actions and proceed")
+            logger.debug(
+                f"SHOP_ROOM: Enabled {len(game.choice_list) if game.choice_list else 0} enter actions and proceed"
+            )
             return mask
 
         # COMBAT_REWARD screen (after battle or chest rewards)
@@ -449,7 +538,11 @@ class ActionEncoder:
             from spirecomm.spire.screen import RewardType
 
             rewards = []
-            if hasattr(game, "screen") and hasattr(game.screen, "rewards") and game.screen.rewards:
+            if (
+                hasattr(game, "screen")
+                and hasattr(game.screen, "rewards")
+                and game.screen.rewards
+            ):
                 rewards = game.screen.rewards
             elif game.choice_list:
                 rewards = game.choice_list
@@ -463,14 +556,17 @@ class ActionEncoder:
                 is_valid = True
 
                 # Check if potion reward and potions are full
-                if hasattr(reward, 'reward_type'):
+                if hasattr(reward, "reward_type"):
                     if reward.reward_type == RewardType.POTION:
                         # Check if player has full potion slots
-                        if hasattr(game, 'are_potions_full') and game.are_potions_full():
+                        if (
+                            hasattr(game, "are_potions_full")
+                            and game.are_potions_full()
+                        ):
                             is_valid = False
                 # Fallback: check if reward has 'potion' attribute (for choice_list rewards)
-                elif hasattr(reward, 'potion') and reward.potion is not None:
-                    if hasattr(game, 'are_potions_full') and game.are_potions_full():
+                elif hasattr(reward, "potion") and reward.potion is not None:
+                    if hasattr(game, "are_potions_full") and game.are_potions_full():
                         is_valid = False
 
                 if is_valid:
@@ -499,13 +595,16 @@ class ActionEncoder:
             potions = game.potions if game.potions else []
 
             # End turn is only valid when end is available
-            if hasattr(game, 'end_available') and game.end_available:
+            if hasattr(game, "end_available") and game.end_available:
                 mask[self.END_TURN_ACTION] = True
 
-            # Play card actions (only if card is affordable)
+            # Play card actions (only if card is affordable and playable)
             if getattr(game, "play_available", True):
                 for card_idx in range(min(len(hand), self.MAX_CARDS)):
                     card = hand[card_idx]
+                    # Check if card is playable (skip curses like Dazed)
+                    if hasattr(card, "is_playable") and not card.is_playable:
+                        continue
                     cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
                     if not (game.player and game.player.energy >= cost):
                         continue
@@ -518,15 +617,25 @@ class ActionEncoder:
                                 continue
                             action_idx = self.encode_play_card(card_idx, monster_idx)
                             mask[action_idx] = True
+                    else:
+                        for monster_idx, monster in enumerate(monsters):
+                            if (
+                                monster.current_hp <= 0
+                                or monster.is_gone
+                                or monster.half_dead
+                            ):
+                                continue
+                            action_idx = self.encode_play_card(card_idx, monster_idx)
+                            mask[action_idx] = True
 
             # Use potion actions (only if potions are available AND can_use=True)
             for potion_idx in range(min(len(potions), self.MAX_POTIONS)):
                 potion = potions[potion_idx]
                 # Skip empty potion slots
-                if hasattr(potion, 'potion_id') and potion.potion_id == "Potion Slot":
+                if hasattr(potion, "potion_id") and potion.potion_id == "Potion Slot":
                     continue
                 # Only enable if potion can be used
-                if hasattr(potion, 'can_use') and not potion.can_use:
+                if hasattr(potion, "can_use") and not potion.can_use:
                     continue
 
                 # Enable potion action for each valid target
@@ -541,11 +650,15 @@ class ActionEncoder:
         # === FALLBACK ===
         # Ensure at least one action is valid
         if not any(mask):
-            logger.warning(f"No valid actions found! in_combat={game.in_combat}, screen_type={game.screen_type}")
+            logger.warning(
+                f"No valid actions found! in_combat={game.in_combat}, screen_type={game.screen_type}"
+            )
             mask[self.PROCEED_ACTION] = True
             logger.debug(f"Enabled fallback action: PROCEED")
 
-        logger.debug(f"Final mask: {sum(mask)} valid actions, screen={game.screen_type}")
+        logger.debug(
+            f"Final mask: {sum(mask)} valid actions, screen={game.screen_type}"
+        )
         return mask
 
     def get_valid_actions(self, game: Game) -> List[int]:
