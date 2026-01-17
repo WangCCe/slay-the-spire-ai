@@ -167,6 +167,13 @@ class CancelAction(Action):
         super().__init__("cancel")
 
 
+class WaitAction(Action):
+    """An action to use the CommunicationMod 'Wait' command to trigger a state update"""
+
+    def __init__(self):
+        super().__init__("wait", requires_game_ready=False)
+
+
 class ClickAction(Action):
     """An action to use the CommunicationMod 'Click' command"""
 
@@ -383,12 +390,13 @@ class OptionalCardSelectConfirmAction(Action):
         screen_type = coordinator.last_game_state.screen_type
         if screen_type == ScreenType.HAND_SELECT:
             coordinator.add_action_to_queue(ConfirmAction())
-        elif (
-            screen_type == ScreenType.GRID
-            and coordinator.last_game_state.screen.confirm_up
-        ):
-            coordinator.add_action_to_queue(ConfirmAction())
-        # If confirm_up is False, do nothing - wait for the next state update
+        elif screen_type == ScreenType.GRID:
+            if coordinator.last_game_state.screen.confirm_up:
+                coordinator.add_action_to_queue(ConfirmAction())
+            else:
+                # confirm_up is False - send 'wait' command to trigger state update
+                # After selecting cards, the game may not automatically push updates
+                coordinator.add_action_to_queue(WaitAction())
 
 
 class CardSelectAction(Action):
