@@ -361,13 +361,25 @@ if __name__ == "__main__":
     # Define player class before creating agent
     chosen_class = PlayerClass.IRONCLAD  # Fixed to Ironclad for testing
 
+    # CRITICAL: Setup coordinator and signal ready BEFORE creating agent
+    # Communication Mod has ~10 second timeout waiting for 'ready' signal
+    # RL agent creation (PyTorch import, model loading) can take 5-15 seconds
+    coordinator = Coordinator()
+    coordinator.signal_ready()
+
     # Create agent with player class and RL-specific options
+    # This may take several seconds for RL agents (PyTorch, model loading)
     agent = create_agent(
         agent_type=agent_type,
         player_class=chosen_class,
         training=training,
         model_path=model_path
     )
+
+    # Register callbacks after agent is created
+    coordinator.register_command_error_callback(agent.handle_error)
+    coordinator.register_state_change_callback(agent.get_next_action_in_game)
+    coordinator.register_out_of_game_callback(agent.get_next_action_out_of_game)
 
     # Setup statistics tracking if available
     statistics = None
@@ -377,13 +389,6 @@ if __name__ == "__main__":
         logging.info(f"  Logging to: {statistics.log_file}")
         logging.info(f"  CSV export: {statistics.csv_file}")
         logging.info(f"  All logs written to: ai_debug.log")
-
-    # Setup coordinator
-    coordinator = Coordinator()
-    coordinator.signal_ready()
-    coordinator.register_command_error_callback(agent.handle_error)
-    coordinator.register_state_change_callback(agent.get_next_action_in_game)
-    coordinator.register_out_of_game_callback(agent.get_next_action_out_of_game)
 
     # Play games forever - IRONCLAD ONLY for testing
     game_count = 0
