@@ -150,3 +150,60 @@ jq '{floor: .floor_reached, victory: .victory, killed_by: .killed_by, path: .pat
 - **ai_game_stats.jsonl** - Per-game detailed logs
 
 Use run records to find problematic games, then cross-reference with logs to understand the AI's reasoning.
+
+---
+
+## 🔌 Communication Mod Reference
+
+### Source Code Location
+
+**Path**: `D:\IdeaProjects\CommunicationMod`
+
+The Communication Mod source code is available locally for deep-dive debugging and protocol understanding.
+
+### When to Reference the Source Code
+
+Consult the Communication Mod source when:
+
+1. **Debugging Protocol Issues**
+   - Actions being rejected without clear error messages
+   - Unexpected game state transitions
+   - Missing or malformed JSON fields
+
+2. **Understanding Command Behavior**
+   - Exact parameter requirements for actions
+   - Preconditions for valid commands
+   - Side effects of specific actions
+
+3. **Extending Functionality**
+   - Adding support for new game features
+   - Handling edge cases in game states
+   - Implementing new action types
+
+4. **Performance Optimization**
+   - Understanding message overhead
+   - Identifying bottlenecks in state transmission
+   - Optimizing action sequences
+
+### Key Areas to Explore
+
+- **Protocol Handlers**: How stdin/stdout messages are parsed and executed
+- **State Serialization**: JSON structure for game objects
+- **Command Validation**: What makes an action valid/invalid
+- **Event System**: How game events trigger state updates
+
+### Integration with spirecomm
+
+The `spirecomm` package (`spirecomm/communication/coordinator.py`) handles the Python side of this protocol:
+
+```
+Communication Mod (Java)
+    ↓ stdin: JSON game state
+Coordinator.receive_game_state_update()
+    ↓ callbacks
+Agent.get_next_action_in_game()
+    ↓
+Action → action_queue
+    ↓ stdout: text commands
+Communication Mod executes action
+```

@@ -69,6 +69,24 @@ python test_optimized_ai.py      # Optimized agent
 
 **Note**: No unit test framework - tests require running Slay the Spire instance.
 
+### Communication Mod Source Code
+
+**Location**: `D:\IdeaProjects\CommunicationMod`
+
+The Communication Mod source code is available locally for reference when debugging protocol issues or understanding game state format.
+
+**Key areas**:
+- Protocol implementation and command handling
+- Game state serialization format
+- Available commands and their parameters
+- Message types and validation
+
+**Use cases**:
+- Understanding why certain actions are rejected
+- Verifying JSON field names and structures
+- Checking available commands for specific game states
+- Debugging communication protocol issues
+
 ## Architecture
 
 ### Three-Layer Architecture
