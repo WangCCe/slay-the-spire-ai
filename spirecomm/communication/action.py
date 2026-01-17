@@ -170,8 +170,12 @@ class CancelAction(Action):
 class WaitAction(Action):
     """An action to use the CommunicationMod 'Wait' command to trigger a state update"""
 
-    def __init__(self):
+    def __init__(self, timeout=1):
         super().__init__("wait", requires_game_ready=False)
+        self.timeout = timeout
+
+    def execute(self, coordinator):
+        coordinator.send_message(f"{self.command} {self.timeout}", wait_for_response=False)
 
 
 class ClickAction(Action):
