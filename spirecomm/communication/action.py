@@ -388,19 +388,16 @@ class OptionalCardSelectConfirmAction(Action):
     """An action to click confirm on a hand or grid select screen, only if available"""
 
     def __init__(self):
-        super().__init__(requires_game_ready=False)
+        super().__init__()
 
     def execute(self, coordinator):
         screen_type = coordinator.last_game_state.screen_type
         if screen_type == ScreenType.HAND_SELECT:
-            coordinator.add_action_to_queue(ConfirmAction())
-        elif screen_type == ScreenType.GRID:
-            if coordinator.last_game_state.screen.confirm_up:
-                coordinator.add_action_to_queue(ConfirmAction())
-            else:
-                # confirm_up is False - send 'wait' command to trigger state update
-                # After selecting cards, the game may not automatically push updates
-                coordinator.add_action_to_queue(WaitAction())
+            coordinator.add_action_to_queue(ProceedAction())
+        elif screen_type == ScreenType.GRID and coordinator.last_game_state.screen.confirm_up:
+            coordinator.add_action_to_queue(ProceedAction())
+        else:
+            coordinator.add_action_to_queue(StateAction())
 
 
 class CardSelectAction(Action):
