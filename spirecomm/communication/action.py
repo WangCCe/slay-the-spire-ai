@@ -252,7 +252,7 @@ class ChooseAction(Action):
     """An action to use the CommunicationMod 'Choose' command"""
 
     def __init__(self, choice_index=0, name=None):
-        super().__init__("choose", requires_game_ready=False)
+        super().__init__("choose", requires_game_ready=True)
         self.choice_index = choice_index
         self.name = name
 
