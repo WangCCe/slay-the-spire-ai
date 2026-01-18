@@ -392,23 +392,13 @@ class OptionalCardSelectConfirmAction(Action):
     """An action to click confirm on a hand or grid select screen, only if available"""
 
     def __init__(self):
-        super().__init__()
+        super().__init__("confirm", requires_game_ready=False)
 
     def execute(self, coordinator):
-        screen_type = coordinator.last_game_state.screen_type
-        screen = coordinator.last_game_state.screen
-        available = getattr(coordinator.last_game_state, "available_commands", [])
-
-        # Check if we need to confirm card selection
-        if screen_type in [ScreenType.HAND_SELECT, ScreenType.GRID]:
-            if hasattr(screen, 'selected_cards') and hasattr(screen, 'num_cards'):
-                num_selected = len(screen.selected_cards)
-                num_required = screen.num_cards
-                confirm_up = getattr(screen, 'confirm_up', False)
-
-                # If we've selected enough cards and confirm is available, send confirm command
-                if num_selected >= num_required and confirm_up and "confirm" in available:
-                    coordinator.add_action_to_queue(ConfirmAction())
+        # This action sends a confirm command to CommunicationMod
+        # It's used after card selection to confirm the choices
+        # CommunicationMod will handle whether confirm is actually available
+        pass
 
 
 
