@@ -511,6 +511,17 @@ if __name__ == "__main__":
 
                 logging.info(f"Combat RL Training checkpoint saved: {checkpoint_path}")
 
+                # Clean up old checkpoints, keep only the most recent N
+                MAX_CHECKPOINTS = 5
+                checkpoint_files = sorted(
+                    glob.glob("checkpoints/rl_combat_model_ep*.pth"),
+                    key=os.path.getmtime
+                )
+                if len(checkpoint_files) > MAX_CHECKPOINTS:
+                    for old_checkpoint in checkpoint_files[:-MAX_CHECKPOINTS]:
+                        os.remove(old_checkpoint)
+                        logging.info(f"Removed old checkpoint: {old_checkpoint}")
+
                 # Log training metrics
                 if hasattr(agent, 'rl_agent') and hasattr(agent.rl_agent, 'trainer') and agent.rl_agent.trainer:
                     avg_loss = agent.rl_agent.trainer.get_avg_loss()
