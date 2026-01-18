@@ -259,11 +259,11 @@ class ChooseAction(Action):
     def execute(self, coordinator):
         if self.name is not None:
             coordinator.send_message(
-                "{} {}".format(self.command, self.name), wait_for_response=True
+                "{} {}".format(self.command, self.name), wait_for_response=False
             )
         else:
             coordinator.send_message(
-                "{} {}".format(self.command, self.choice_index), wait_for_response=True
+                "{} {}".format(self.command, self.choice_index), wait_for_response=False
             )
 
 
@@ -376,6 +376,8 @@ class CombatRewardAction(ChooseAction):
         ):
             raise Exception("Cannot choose potion reward with full potion slots.")
         self.choice_index = reward_list.index(self.combat_reward)
+        # Don't wait for response - combat reward selection often doesn't trigger state updates
+        # Instead, rely on the next callback to continue
         super().execute(coordinator)
 
 

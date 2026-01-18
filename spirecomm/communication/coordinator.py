@@ -236,7 +236,7 @@ class Coordinator:
         if block:
             # Blocking call with timeout
             try:
-                return self.input_queue.get(timeout=10.0)  # Increased to 10 seconds
+                return self.input_queue.get(timeout=2.0)  # Reduced from 10 to 2 seconds for faster response
             except queue.Empty:
                 return None
         elif not self.input_queue.empty():
@@ -459,7 +459,7 @@ class Coordinator:
         # Play until game ends
         last_update_time = time.time()
         consecutive_timeouts = 0
-        max_consecutive_timeouts = 6  # 6 * 10 seconds = 60 seconds total
+        max_consecutive_timeouts = 10  # 10 * 2 seconds = 20 seconds total
 
         import logging
         logging.info(f"[PLAY_ONE_GAME] Entering main game loop, in_game={self.in_game}, screen={getattr(self.last_game_state, 'screen_type', 'None') if self.last_game_state else 'None'}")
@@ -509,9 +509,25 @@ class Coordinator:
                 consecutive_timeouts = 0
             else:
                 consecutive_timeouts += 1
+
+                # Special handling for COMBAT_REWARD screen: auto-proceed after 1 timeout
+                # (Communication Mod sometimes doesn't send state updates after reward selection)
+                # This is especially common in chest rooms where rewards are mutually exclusive
+                if consecutive_timeouts >= 1:
+                    if (self.last_game_state and
+                        hasattr(self.last_game_state, 'screen_type') and
+                        self.last_game_state.screen_type == ScreenType.COMBAT_REWARD):
+                        logging.warning(
+                            f"[COMBAT_REWARD] No state update after {consecutive_timeouts * 2} seconds, "
+                            f"sending proceed to continue"
+                        )
+                        self.send_message("proceed", wait_for_response=False)
+                        consecutive_timeouts = 0  # Reset counter
+                        continue
+
                 if consecutive_timeouts >= max_consecutive_timeouts:
                     raise Exception(
-                        f"Game appears stuck (no state update for {consecutive_timeouts * 10} seconds). "
+                        f"Game appears stuck (no state update for {consecutive_timeouts * 2} seconds). "
                         f"Last action may have caused the game to hang."
                     )
 
