@@ -394,12 +394,6 @@ class OptionalCardSelectConfirmAction(Action):
     def __init__(self):
         super().__init__("confirm", requires_game_ready=False)
 
-    def execute(self, coordinator):
-        # This action sends a confirm command to CommunicationMod
-        # It's used after card selection to confirm the choices
-        # CommunicationMod will handle whether confirm is actually available
-        pass
-
 
 
 class CardSelectAction(Action):
