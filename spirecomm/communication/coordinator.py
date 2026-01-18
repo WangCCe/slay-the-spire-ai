@@ -510,20 +510,37 @@ class Coordinator:
             else:
                 consecutive_timeouts += 1
 
-                # Special handling for COMBAT_REWARD screen: auto-proceed after 1 timeout
-                # (Communication Mod sometimes doesn't send state updates after reward selection)
-                # This is especially common in chest rooms where rewards are mutually exclusive
+                # Special handling for screens that may not send state updates after selections
+                # COMBAT_REWARD: especially in chest rooms with mutually exclusive rewards
+                # GRID: event screens for card removal/battle circle where selection doesn't trigger update
                 if consecutive_timeouts >= 1:
-                    if (self.last_game_state and
-                        hasattr(self.last_game_state, 'screen_type') and
-                        self.last_game_state.screen_type == ScreenType.COMBAT_REWARD):
-                        logging.warning(
-                            f"[COMBAT_REWARD] No state update after {consecutive_timeouts * 2} seconds, "
-                            f"sending proceed to continue"
-                        )
-                        self.send_message("proceed", wait_for_response=False)
-                        consecutive_timeouts = 0  # Reset counter
-                        continue
+                    if self.last_game_state and hasattr(self.last_game_state, 'screen_type'):
+                        screen_type = self.last_game_state.screen_type
+
+                        # Handle COMBAT_REWARD screen
+                        if screen_type == ScreenType.COMBAT_REWARD:
+                            logging.warning(
+                                f"[COMBAT_REWARD] No state update after {consecutive_timeouts * 2} seconds, "
+                                f"sending proceed to continue"
+                            )
+                            self.send_message("proceed", wait_for_response=False)
+                            consecutive_timeouts = 0
+                            continue
+
+                        # Handle GRID screen (card removal/upgrade events) - check if cards are selected
+                        elif screen_type == ScreenType.GRID:
+                            screen = self.last_game_state.screen
+                            if (hasattr(screen, 'selected_cards') and hasattr(screen, 'num_cards')
+                                and len(screen.selected_cards) >= screen.num_cards
+                                and screen.confirm_up):
+                                # Cards have been selected but no state update - send confirm
+                                logging.warning(
+                                    f"[GRID] No state update after {consecutive_timeouts * 2} seconds, "
+                                    f"sending confirm to complete selection"
+                                )
+                                self.send_message("confirm", wait_for_response=False)
+                                consecutive_timeouts = 0
+                                continue
 
                 if consecutive_timeouts >= max_consecutive_timeouts:
                     raise Exception(
