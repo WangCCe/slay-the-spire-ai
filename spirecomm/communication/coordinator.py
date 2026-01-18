@@ -476,10 +476,18 @@ class Coordinator:
             )
             self.execute_next_action_if_ready()
 
-            # Use blocking call with timeout to detect hangs
+            # Try non-blocking first to avoid unnecessary delays
             state_update = self.receive_game_state_update(
-                block=True, perform_callbacks=True
+                block=False, perform_callbacks=True
             )
+            if state_update is None:
+                # No immediate update, block with timeout
+                logging.info(
+                    "[MAIN_LOOP] No immediate update, blocking with timeout..."
+                )
+                state_update = self.receive_game_state_update(
+                    block=True, perform_callbacks=True
+                )
             logging.info(
                 f"[MAIN_LOOP] after receive, state_update={state_update is not None}, queue_size={len(self.action_queue)}, game_is_ready={self.game_is_ready}"
             )
@@ -495,10 +503,18 @@ class Coordinator:
                 )
                 self.execute_next_action()
 
-            # Use blocking call with timeout to detect hangs
+            # Try non-blocking first to avoid unnecessary delays
             state_update = self.receive_game_state_update(
-                block=True, perform_callbacks=True
+                block=False, perform_callbacks=True
             )
+            if state_update is None:
+                # No immediate update, block with timeout
+                logging.info(
+                    "[MAIN_LOOP] No immediate update, blocking with timeout..."
+                )
+                state_update = self.receive_game_state_update(
+                    block=True, perform_callbacks=True
+                )
             logging.info(
                 f"[MAIN_LOOP] after receive, state_update={state_update is not None}, queue_size={len(self.action_queue)}, game_is_ready={self.game_is_ready}"
             )
