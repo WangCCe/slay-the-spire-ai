@@ -471,9 +471,7 @@ class Coordinator:
 
             import logging
 
-            logging.info(
-                f"[MAIN_LOOP] execute_next_action_if_ready, queue_size={len(self.action_queue)}, game_is_ready={self.game_is_ready}"
-            )
+            # Execute any pending actions first
             self.execute_next_action_if_ready()
 
             # Try non-blocking first to avoid unnecessary delays
@@ -491,33 +489,8 @@ class Coordinator:
             logging.info(
                 f"[MAIN_LOOP] after receive, state_update={state_update is not None}, queue_size={len(self.action_queue)}, game_is_ready={self.game_is_ready}"
             )
-            self.execute_next_action_if_ready()
 
-            # Continue executing queued actions if available (for multi-step actions like card selection)
-            while (
-                len(self.action_queue) > 0
-                and not self.action_queue[0].requires_game_ready
-            ):
-                logging.info(
-                    f"[MAIN_LOOP] Executing queued action without waiting, queue_size={len(self.action_queue)}"
-                )
-                self.execute_next_action()
-
-            # Try non-blocking first to avoid unnecessary delays
-            state_update = self.receive_game_state_update(
-                block=False, perform_callbacks=True
-            )
-            if not state_update:
-                # No immediate update, block with timeout
-                logging.info(
-                    "[MAIN_LOOP] No immediate update, blocking with timeout..."
-                )
-                state_update = self.receive_game_state_update(
-                    block=True, perform_callbacks=True
-                )
-            logging.info(
-                f"[MAIN_LOOP] after receive, state_update={state_update is not None}, queue_size={len(self.action_queue)}, game_is_ready={self.game_is_ready}"
-            )
+            # Execute action after receiving update
             self.execute_next_action_if_ready()
 
             # Continue executing queued actions if available (for multi-step actions like card selection)
@@ -529,39 +502,6 @@ class Coordinator:
                     f"[MAIN_LOOP] Executing queued action without waiting, queue_size={len(self.action_queue)}"
                 )
                 self.execute_next_action()
-
-            # Try non-blocking first to avoid unnecessary delays
-            state_update = self.receive_game_state_update(
-                block=False, perform_callbacks=True
-            )
-            if not state_update:
-                # No immediate update, block with timeout
-                logging.info(
-                    "[MAIN_LOOP] No immediate update, blocking with timeout..."
-                )
-                state_update = self.receive_game_state_update(
-                    block=True, perform_callbacks=True
-                )
-            logging.info(
-                f"[MAIN_LOOP] after receive, state_update={state_update is not None}, queue_size={len(self.action_queue)}, game_is_ready={self.game_is_ready}"
-            )
-            self.execute_next_action_if_ready()
-
-            # Try non-blocking first to avoid unnecessary delays
-            state_update = self.receive_game_state_update(
-                block=False, perform_callbacks=True
-            )
-            if not state_update:
-                # No immediate update, block with timeout
-                logging.info(
-                    "[MAIN_LOOP] No immediate update, blocking with timeout..."
-                )
-                state_update = self.receive_game_state_update(
-                    block=True, perform_callbacks=True
-                )
-            logging.info(
-                f"[MAIN_LOOP] after receive, state_update={state_update is not None}, queue_size={len(self.action_queue)}, game_is_ready={self.game_is_ready}"
-            )
 
             # Track last successful update
             if state_update is not None:
