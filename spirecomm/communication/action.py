@@ -416,7 +416,6 @@ class CardSelectAction(Action):
         super().__init__()
 
     def execute(self, coordinator):
-        time.sleep(0.01) # sometimes we need to wait for the screen to update
         screen_type = coordinator.last_game_state.screen_type
         screen = coordinator.last_game_state.screen
         if screen_type not in [ScreenType.HAND_SELECT, ScreenType.GRID]:
