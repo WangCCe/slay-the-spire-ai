@@ -570,7 +570,7 @@ class SimpleAgent:
                 available_cards = self.priorities.get_sorted_cards(
                     self.game.screen.cards
                 )
-                logging.debug(f"[GRID_SCREEN] Got {len(available_cards)} sorted cards")
+                logging.debug(f"[GRID_SCREEN] Got {len(available_cards)} sorted cards: {[c.card_id for c in available_cards]}")
             else:
                 # For purge/remove: prioritize Strike_R, then Defend_R, then others by reverse priority
                 strikes = [c for c in self.game.screen.cards if c.card_id == "Strike_R"]
@@ -586,6 +586,7 @@ class SimpleAgent:
 
                 # Combine: strikes first, then defends, then others
                 available_cards = strikes + defends + others_sorted
+                logging.debug(f"[GRID_SCREEN] Got {len(available_cards)} cards: {[c.card_id for c in available_cards]}")
 
             num_cards = self.game.screen.num_cards
             selected_cards = available_cards[:num_cards]
