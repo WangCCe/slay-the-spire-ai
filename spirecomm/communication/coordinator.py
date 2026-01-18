@@ -480,7 +480,7 @@ class Coordinator:
             state_update = self.receive_game_state_update(
                 block=False, perform_callbacks=True
             )
-            if state_update is None:
+            if not state_update:
                 # No immediate update, block with timeout
                 logging.info(
                     "[MAIN_LOOP] No immediate update, blocking with timeout..."
@@ -507,7 +507,7 @@ class Coordinator:
             state_update = self.receive_game_state_update(
                 block=False, perform_callbacks=True
             )
-            if state_update is None:
+            if not state_update:
                 # No immediate update, block with timeout
                 logging.info(
                     "[MAIN_LOOP] No immediate update, blocking with timeout..."
@@ -534,7 +534,7 @@ class Coordinator:
             state_update = self.receive_game_state_update(
                 block=False, perform_callbacks=True
             )
-            if state_update is None:
+            if not state_update:
                 # No immediate update, block with timeout
                 logging.info(
                     "[MAIN_LOOP] No immediate update, blocking with timeout..."
@@ -551,7 +551,7 @@ class Coordinator:
             state_update = self.receive_game_state_update(
                 block=False, perform_callbacks=True
             )
-            if state_update is None:
+            if not state_update:
                 # No immediate update, block with timeout
                 logging.info(
                     "[MAIN_LOOP] No immediate update, blocking with timeout..."
