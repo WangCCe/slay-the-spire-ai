@@ -396,10 +396,20 @@ class OptionalCardSelectConfirmAction(Action):
 
     def execute(self, coordinator):
         screen_type = coordinator.last_game_state.screen_type
+        screen = coordinator.last_game_state.screen
         available = getattr(coordinator.last_game_state, "available_commands", [])
 
         if screen_type in (ScreenType.HAND_SELECT, ScreenType.GRID):
-            if "confirm" in available:
+            # Check if we've selected enough cards (confirm should be available)
+            num_selected = len(screen.selected_cards) if hasattr(screen, 'selected_cards') else 0
+            num_required = screen.num_cards if hasattr(screen, 'num_cards') else 0
+            confirm_up = screen.confirm_up if hasattr(screen, 'confirm_up') else False
+
+            # If we've selected the required number of cards, confirm should be pressed
+            # Note: confirm may not be in available_commands yet if the previous choose command hasn't been processed
+            if num_selected >= num_required and confirm_up:
+                coordinator.add_action_to_queue(ConfirmAction())
+            elif "confirm" in available:
                 coordinator.add_action_to_queue(ConfirmAction())
             elif "proceed" in available:
                 coordinator.add_action_to_queue(ProceedAction())
