@@ -464,7 +464,7 @@ class TurnTimingClassifier:
             from spirecomm.data.loader import game_data_loader
 
             # Get monster's special mechanics
-            monster_data = game_data_loader.get_monster_data(monster.name)
+            monster_data = game_data_loader.get_enhanced_monster_data(monster.name)
             if not monster_data:
                 return current_strength
 
@@ -668,7 +668,7 @@ class TurnTimingClassifier:
 
                     if predicted_moves and turn_offset <= len(predicted_moves):
                         move = predicted_moves[turn_offset - 1].get('move', {})
-                        damage = move.get('damage', 0)
+                        damage = move.get('damage') or 0
 
                         if damage >= 20:
                             # Big attack imminent
