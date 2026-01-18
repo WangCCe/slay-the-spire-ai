@@ -538,6 +538,21 @@ class SimpleAgent:
                 self._log_shop_error(e)
                 return self._exit_shop()
         elif self.game.screen_type == ScreenType.GRID:
+            # Check if we've already selected enough cards and should confirm
+            screen = self.game.screen
+            if hasattr(screen, 'selected_cards') and hasattr(screen, 'num_cards'):
+                num_selected = len(screen.selected_cards)
+                num_required = screen.num_cards
+                confirm_up = screen.confirm_up if hasattr(screen, 'confirm_up') else False
+                available = getattr(self.game, 'available_commands', [])
+
+                # If we've selected enough cards and confirm is available, confirm immediately
+                if num_selected >= num_required and confirm_up and "confirm" in available:
+                    logging.info(
+                        f"[GRID_SCREEN] Already selected {num_selected}/{num_required} cards, confirming"
+                    )
+                    return ConfirmAction()
+
             # For GRID screen, check if we can select cards based on screen state
             can_select = self.game.choice_available or (
                 hasattr(self.game, "screen")
