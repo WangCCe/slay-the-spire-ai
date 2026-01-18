@@ -259,11 +259,11 @@ class ChooseAction(Action):
     def execute(self, coordinator):
         if self.name is not None:
             coordinator.send_message(
-                "{} {}".format(self.command, self.name), wait_for_response=False
+                "{} {}".format(self.command, self.name), wait_for_response=True
             )
         else:
             coordinator.send_message(
-                "{} {}".format(self.command, self.choice_index), wait_for_response=False
+                "{} {}".format(self.command, self.choice_index), wait_for_response=True
             )
 
 

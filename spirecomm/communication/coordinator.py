@@ -504,7 +504,7 @@ class Coordinator:
                 self.execute_next_action()
 
             # Track last successful update
-            if state_update is not None:
+            if state_update:
                 last_update_time = time.time()
                 consecutive_timeouts = 0
             else:
