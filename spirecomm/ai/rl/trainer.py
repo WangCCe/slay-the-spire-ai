@@ -101,8 +101,13 @@ class DQNTrainer:
 
         logger.info(f"Initialized DQNTrainer on device: {device}")
 
-    def select_action(self, state: np.ndarray, action_mask: np.ndarray,
-                     training: bool = True) -> int:
+    def select_action(
+        self,
+        state: np.ndarray,
+        action_mask: np.ndarray,
+        training: bool = True,
+        epsilon_override: Optional[float] = None,
+    ) -> int:
         """
         Select action using ε-greedy policy.
 
@@ -110,12 +115,14 @@ class DQNTrainer:
             state: Current state (state_dim,)
             action_mask: Boolean mask of valid actions (action_dim,)
             training: Whether in training mode (affects exploration)
+            epsilon_override: Optional epsilon to use for this decision
 
         Returns:
             Selected action index
         """
+        epsilon = self.epsilon if epsilon_override is None else epsilon_override
         # Exploration: random action
-        if training and np.random.random() < self.epsilon:
+        if training and np.random.random() < epsilon:
             valid_actions = np.where(action_mask)[0]
             if len(valid_actions) == 0:
                 return 0  # Fallback

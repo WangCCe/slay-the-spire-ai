@@ -88,6 +88,9 @@ class RLAgent:
         self.last_state = None
         self.last_action = None
         self.last_game = None  # Track previous game state for reward calculation
+        self.preboss_floor_max = 16
+        self.preboss_epsilon_cap = 0.2
+        self.boss_min_epsilon = 0.3
 
         # Episode tracking
         self.episode_reward = 0.0
@@ -145,9 +148,31 @@ class RLAgent:
                 self.consecutive_failures.clear()
                 action_mask = np.array(self.action_encoder.get_action_mask(game), dtype=bool)
 
+            # If a HAND_SELECT screen is ready to confirm, bypass RL to avoid loops.
+            from spirecomm.spire.screen import ScreenType
+            if getattr(game, "screen_type", None) == ScreenType.HAND_SELECT:
+                screen = getattr(game, "screen", None)
+                selected_cards = getattr(screen, "selected_cards", []) if screen else []
+                num_required = getattr(screen, "num_cards", 0) if screen else 0
+                can_pick_zero = getattr(screen, "can_pick_zero", False) if screen else False
+                confirm_ready = can_pick_zero or (
+                    num_required > 0 and len(selected_cards) >= num_required
+                )
+                confirm_idx = getattr(self.action_encoder, "CONFIRM_ACTION", None)
+                if confirm_ready and confirm_idx is not None and confirm_idx < len(action_mask):
+                    if action_mask[confirm_idx]:
+                        from spirecomm.communication.action import ConfirmAction
+
+                        return ConfirmAction()
+
             # Select action
             if self.training_mode and self.trainer is not None:
-                action_idx = self.trainer.select_action(state, action_mask, training=True)
+                action_idx = self.trainer.select_action(
+                    state,
+                    action_mask,
+                    training=True,
+                    epsilon_override=self._get_training_epsilon(game),
+                )
             else:
                 # Inference mode with optional exploration
                 if np.random.random() < self.epsilon:
@@ -247,6 +272,20 @@ class RLAgent:
             self.reward_calculator.reset()
             # NOTE: Don't clear replay buffer - we need to accumulate experience across episodes
             # Only clear if buffer has mixed dimension data (shouldn't happen after fixes)
+
+    def _get_training_epsilon(self, game: Game) -> float:
+        base_epsilon = self.trainer.epsilon if self.trainer is not None else 0.0
+        room_type = str(getattr(game, 'room_type', '') or '').lower()
+        is_boss = "boss" in room_type
+        floor = getattr(game, 'floor', 0) or 0
+
+        if is_boss:
+            return min(1.0, max(base_epsilon, self.boss_min_epsilon))
+
+        if floor <= self.preboss_floor_max:
+            return min(base_epsilon, self.preboss_epsilon_cap)
+
+        return base_epsilon
 
     def handle_error(self, error):
         """
