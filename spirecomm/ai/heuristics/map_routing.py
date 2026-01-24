@@ -83,11 +83,8 @@ class AdaptiveMapRouter:
             if symbol == 'E':  # Elite
                 # Optional elite routing mode for experimentation.
                 if self.elite_mode == "aggressive":
-                    if hp_pct >= 0.65:
-                        return base + 200
-                    if hp_pct >= 0.5:
-                        return base + 80
-                    return base - 50
+                    # Strongly prefer elites regardless of HP in Act 1.
+                    return base + 1000
                 # Consistently avoid elites regardless of floor or HP
                 # Prioritize building deck strength through upgrades first
                 if floor <= 7:
