@@ -36,6 +36,7 @@ class RewardCalculator:
     FLOOR_REWARD_SCALE = 3.0
     ELITE_REWARD = 20.0
     BOSS_REWARD = 60.0
+    BOSS_REWARD_MULT = 1.2
 
     # Acquisition reward weights
     CARD_REWARD_BASE = 2.0
@@ -123,7 +124,7 @@ class RewardCalculator:
             reward += self.ELITE_REWARD
             self.elites_killed += 1
         if boss_killed:
-            reward += self.BOSS_REWARD
+            reward += self.BOSS_REWARD * self.BOSS_REWARD_MULT
             self.bosses_killed += 1
         return reward
 

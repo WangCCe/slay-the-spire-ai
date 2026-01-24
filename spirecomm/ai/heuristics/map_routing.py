@@ -8,7 +8,9 @@ Implements expert strategies for map navigation:
 - Smart campfire choices
 """
 
+import os
 import sys
+import logging
 from typing import List, Dict
 from ..decision.base import DecisionContext
 from spirecomm.spire.map import Node
@@ -36,9 +38,15 @@ class AdaptiveMapRouter:
         'R': 25,      # Rest
     }
 
-    def __init__(self, player_class='IRONCLAD'):
+    def __init__(self, player_class='IRONCLAD', elite_mode: str = None):
         """Initialize map router."""
         self.player_class = player_class
+        self.elite_mode = (elite_mode or os.getenv("ELITE_ROUTE", "conservative")).lower()
+        logging.getLogger(__name__).info(
+            "[MAP_ROUTING] elite_mode=%s (ELITE_ROUTE=%s)",
+            self.elite_mode,
+            os.getenv("ELITE_ROUTE"),
+        )
 
     def calculate_node_priority(self, node: Node, context: DecisionContext) -> int:
         """
@@ -69,12 +77,17 @@ class AdaptiveMapRouter:
         return base_priority
 
     def _adjust_act_1_priority(self, symbol: str, base: int, hp_pct: float, floor: int) -> int:
-        """Act 1 priorities - Ironclad prioritizes upgrades and avoids elites."""
-        if symbol == 'E' and floor <= 7:
-            return -10000  # Hard-ban early elites
+        """Act 1 priorities - Ironclad prioritizes upgrades and avoids elites by default."""
         # Ironclad prioritizes rest sites for card upgrades, avoids elites consistently
         if self.player_class == 'IRONCLAD':
             if symbol == 'E':  # Elite
+                # Optional elite routing mode for experimentation.
+                if self.elite_mode == "aggressive":
+                    if hp_pct >= 0.65:
+                        return base + 200
+                    if hp_pct >= 0.5:
+                        return base + 80
+                    return base - 50
                 # Consistently avoid elites regardless of floor or HP
                 # Prioritize building deck strength through upgrades first
                 if floor <= 7:
