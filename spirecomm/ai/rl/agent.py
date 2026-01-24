@@ -488,7 +488,7 @@ class CombatRLAgent:
             Action to execute
         """
         # Check if we should use RL for any in-combat screen
-        if self.use_rl_for_combat and self._is_in_combat_context(game):
+        if self.use_rl_for_combat and self._is_rl_context(game):
             try:
                 action = self.rl_agent.get_next_action_in_game(game)
 
@@ -526,6 +526,17 @@ class CombatRLAgent:
         agent to handle in-combat popup screens like HAND_SELECT/GRID.
         """
         return hasattr(game, 'in_combat') and game.in_combat
+
+    def _is_rl_context(self, game: Game) -> bool:
+        """
+        Extend RL usage beyond combat to include card rewards.
+        """
+        from spirecomm.spire.screen import ScreenType
+
+        if self._is_in_combat_context(game):
+            return True
+
+        return getattr(game, 'screen_type', None) == ScreenType.CARD_REWARD
 
     def _is_valid_combat_action(self, action: Action, game: Game) -> bool:
         """
