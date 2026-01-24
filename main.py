@@ -367,6 +367,7 @@ if __name__ == "__main__":
     coordinator = Coordinator()
     coordinator.signal_ready()
 
+    logging.info("Startup env: ELITE_ROUTE=%s", os.getenv("ELITE_ROUTE"))
     # Create agent with player class and RL-specific options
     # This may take several seconds for RL agents (PyTorch, model loading)
     agent = create_agent(
