@@ -8,6 +8,7 @@ import math
 from typing import Optional, Iterable
 from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
+from spirecomm.spire.card import CardRarity
 from spirecomm.ai.decision.base import DecisionContext
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 
@@ -40,6 +41,10 @@ class RewardCalculator:
     CARD_REWARD_BASE = 2.0
     CARD_SCORE_NORMALIZER = 100.0
     CARD_SCORE_MAX_MULT = 2.0
+    CARD_SKIP_REWARD = 0.02
+    CARD_SKIP_PENALTY = 0.02
+    CARD_DECK_SIZE_THRESHOLD = 20
+    CARD_DECK_SIZE_PENALTY = 0.01
     RELIC_REWARD = 10.0
     GOLD_REWARD_SCALE = 0.005
 
@@ -285,6 +290,8 @@ class RewardCalculator:
         last_deck_size = len(last_game.deck) if last_game.deck else 0
         if current_deck_size > last_deck_size:
             reward += self._calculate_card_reward(current_game, last_game)
+        if last_game.screen_type == ScreenType.CARD_REWARD and current_game.screen_type != ScreenType.CARD_REWARD:
+            reward += self._calculate_card_choice_reward(current_game, last_game)
 
         # Relic acquisition
         current_relics = len(current_game.relics) if current_game.relics else 0
@@ -391,6 +398,37 @@ class RewardCalculator:
                 )
             except Exception:
                 continue
+        return reward
+
+    def _calculate_card_choice_reward(self, current_game: Game, last_game: Game) -> float:
+        screen = getattr(last_game, 'screen', None)
+        candidates = getattr(screen, 'cards', None) if screen else None
+        if not candidates:
+            return 0.0
+
+        last_uuids = {card.uuid for card in last_game.deck} if last_game.deck else set()
+        new_cards = [card for card in current_game.deck if card.uuid not in last_uuids] if current_game.deck else []
+        chosen_card = new_cards[0] if new_cards else None
+
+        reward = 0.0
+        has_uncommon_or_rare = any(
+            getattr(card, 'rarity', None) in (CardRarity.UNCOMMON, CardRarity.RARE)
+            for card in candidates
+        )
+        if chosen_card is None:
+            if not has_uncommon_or_rare:
+                reward += self.CARD_SKIP_REWARD
+            else:
+                reward -= self.CARD_SKIP_PENALTY
+            return reward
+
+        deck_size = len(current_game.deck) if current_game.deck else 0
+        if (
+            deck_size > self.CARD_DECK_SIZE_THRESHOLD
+            and getattr(chosen_card, 'rarity', None) in (CardRarity.BASIC, CardRarity.COMMON)
+        ):
+            reward -= self.CARD_DECK_SIZE_PENALTY
+
         return reward
 
 
