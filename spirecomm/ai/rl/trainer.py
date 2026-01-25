@@ -38,11 +38,11 @@ class DQNTrainer:
         gamma: float = 0.99,
         buffer_size: int = 100000,
         batch_size: int = 128,
-        target_update_freq: int = 1000,
+        target_update_freq: int = 2000,
         train_freq: int = 4,
         epsilon_start: float = 1.0,
-        epsilon_end: float = 0.1,
-        epsilon_decay: int = 50000,
+        epsilon_end: float = 0.05,
+        epsilon_decay: int = 25000,
         device: str = "cuda" if torch.cuda.is_available() else "cpu"
     ):
         """

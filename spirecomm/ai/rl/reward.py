@@ -25,11 +25,11 @@ class RewardCalculator:
     """
 
     # Combat reward weights
-    DAMAGE_REWARD_SCALE = 0.05
+    DAMAGE_REWARD_SCALE = 0.07
     DAMAGE_REWARD_CAP = 5.0
     KILL_REWARD = 5.0
     ALL_LETHAL_BONUS = 15.0
-    HP_LOSS_PENALTY = 50.0  # Applied to HP loss ratio (lost / max)
+    HP_LOSS_PENALTY = 35.0  # Applied to HP loss ratio (lost / max)
     TURN_END_PENALTY = -0.05
 
     # Progression reward weights
@@ -50,8 +50,8 @@ class RewardCalculator:
     GOLD_REWARD_SCALE = 0.005
 
     # Terminal rewards
-    VICTORY_REWARD = 1000.0
-    DEFEAT_PENALTY = -500.0
+    VICTORY_REWARD = 300.0
+    DEFEAT_PENALTY = -250.0
 
     def __init__(self):
         """Initialize reward calculator with tracking."""
