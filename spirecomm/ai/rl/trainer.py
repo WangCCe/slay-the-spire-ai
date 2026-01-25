@@ -189,9 +189,12 @@ class DQNTrainer:
 
         # Compute TD targets
         with torch.no_grad():
-            next_q_values = self.target_network(next_states, action_mask=next_action_masks)
-            max_next_q = next_q_values.max(1)[0]
-            target_q = rewards + (1 - dones) * self.gamma * max_next_q
+            # Double DQN: select with online network, evaluate with target network.
+            next_online_q = self.online_network(next_states, action_mask=next_action_masks)
+            next_actions = next_online_q.argmax(dim=1, keepdim=True)
+            next_target_q = self.target_network(next_states, action_mask=next_action_masks)
+            next_q = next_target_q.gather(1, next_actions).squeeze(1)
+            target_q = rewards + (1 - dones) * self.gamma * next_q
 
         # Compute loss (Huber loss)
         loss = F.smooth_l1_loss(current_q, target_q)
