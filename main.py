@@ -601,16 +601,20 @@ if __name__ == "__main__":
                         game_tracker.record_game_over(result, final_state)
                         logging.debug(f"  Recorded game over via {'game_over_state' if coordinator.game_over_state else 'last_game_state'}")
                         try:
-                            seed_played = getattr(coordinator.last_game_state, 'seed', None)
-                            if seed_played is not None:
-                                logging.info(f"  Seed played: {seed_played}")
-                                # Mark this game as AI-played
-                                from pathlib import Path
-                                ai_games_file = Path("D:/SteamLibrary/steamapps/common/SlayTheSpire/runs/ai_games.txt")
-                                ai_games_file.parent.mkdir(parents=True, exist_ok=True)
-                                with open(ai_games_file, 'a') as f:
-                                    f.write(f"{seed_played}\n")
-                                logging.debug(f"  Marked as AI game in {ai_games_file}")
+                            # Use current timestamp to mark AI game
+                            from pathlib import Path
+                            from datetime import datetime
+                            import time
+
+                            game_timestamp = int(time.time())
+                            logging.info(f"  Game timestamp: {game_timestamp}")
+
+                            # Mark this game as AI-played (relative path, runs from game directory)
+                            ai_games_file = Path("runs/ai_games.txt")
+                            ai_games_file.parent.mkdir(parents=True, exist_ok=True)
+                            with open(ai_games_file, 'a') as f:
+                                f.write(f"{game_timestamp}\n")
+                            logging.debug(f"  Marked as AI game in runs/ai_games.txt")
                         except Exception:
                             pass
                     else:

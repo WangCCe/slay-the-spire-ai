@@ -2,7 +2,8 @@
 分析 Slay the Spire AI 游戏记录
 
 用法:
-    python analysis_scripts/analyze_ai_runs.py
+    cd D:/SteamLibrary/steamapps/common/SlayTheSpire
+    python D:/PycharmProjects/slay-the-spire-ai/analysis_scripts/analyze_ai_runs.py
 
 功能:
     - 读取 runs/ai_games.txt 获取 AI 游戏列表
@@ -15,8 +16,8 @@ from pathlib import Path
 from datetime import datetime
 from collections import Counter
 
-# 配置路径
-RUNS_DIR = Path("D:/SteamLibrary/steamapps/common/SlayTheSpire/runs")
+# 配置路径 (从游戏目录运行，所以用相对路径)
+RUNS_DIR = Path("runs")
 AI_GAMES_FILE = RUNS_DIR / "ai_games.txt"
 CHARACTER = "IRONCLAD"  # 修改这个来分析其他角色
 
@@ -32,14 +33,30 @@ def load_ai_games():
         return [line.strip() for line in f if line.strip()]
 
 
-def load_run_data(game_id):
-    """读取单个游戏的详细数据"""
-    run_file = RUNS_DIR / CHARACTER / f"{game_id}.run"
-    if not run_file.exists():
-        return None
+def load_run_data(game_timestamp):
+    """读取单个游戏的详细数据（时间戳模糊匹配）"""
+    # 查找最接近的 .run 文件（允许 5 分钟误差）
+    timestamp_int = int(game_timestamp)
 
-    with open(run_file) as f:
-        return json.load(f)
+    # 列出所有 .run 文件，找最接近的
+    closest_file = None
+    min_diff = float('inf')
+
+    for run_file in (RUNS_DIR / CHARACTER).glob("*.run"):
+        # 从文件名提取时间戳
+        try:
+            file_timestamp = int(run_file.stem)
+            time_diff = abs(file_timestamp - timestamp_int)
+            if time_diff < min_diff and time_diff < 300:  # 5 分钟内
+                min_diff = time_diff
+                closest_file = run_file
+        except ValueError:
+            continue
+
+    if closest_file:
+        with open(closest_file) as f:
+            return json.load(f)
+    return None
 
 
 def analyze_ai_games():
