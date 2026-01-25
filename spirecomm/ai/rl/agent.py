@@ -91,8 +91,9 @@ class RLAgent:
         self.preboss_floor_max = 16
         self.preboss_epsilon_cap = 0.2
         self.boss_min_epsilon = 0.3
-        self.elite_min_epsilon = 0.35  # Elite fights need more exploration than bosses
-        self.elite_floor_bonus = 0.15  # Extra exploration for elites in early floors
+        self.elite_min_epsilon = 0.15  # Moderate elite exploration (leverage normal combat experience)
+        self.elite_floor_bonus = 0.10  # Small bonus for early elites (not too high to avoid deaths)
+        self.elite_epsilon_cap = 0.30  # Cap elite exploration to avoid excessive randomness
 
         # Episode tracking
         self.episode_reward = 0.0
@@ -286,10 +287,10 @@ class RLAgent:
             return min(1.0, max(base_epsilon, self.boss_min_epsilon))
 
         if is_elite:
-            # Elite fights: minimum exploration + bonus on early floors
+            # Elite fights: minimum exploration + bonus on early floors (capped)
             elite_epsilon = max(base_epsilon, self.elite_min_epsilon)
             if floor <= self.preboss_floor_max:
-                elite_epsilon = min(1.0, elite_epsilon + self.elite_floor_bonus)
+                elite_epsilon = min(elite_epsilon + self.elite_floor_bonus, self.elite_epsilon_cap)
             return elite_epsilon
 
         if floor <= self.preboss_floor_max:
