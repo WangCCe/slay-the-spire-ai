@@ -91,6 +91,8 @@ class RLAgent:
         self.preboss_floor_max = 16
         self.preboss_epsilon_cap = 0.2
         self.boss_min_epsilon = 0.3
+        self.elite_min_epsilon = 0.35  # Elite fights need more exploration than bosses
+        self.elite_floor_bonus = 0.15  # Extra exploration for elites in early floors
 
         # Episode tracking
         self.episode_reward = 0.0
@@ -277,10 +279,18 @@ class RLAgent:
         base_epsilon = self.trainer.epsilon if self.trainer is not None else 0.0
         room_type = str(getattr(game, 'room_type', '') or '').lower()
         is_boss = "boss" in room_type
+        is_elite = "elite" in room_type
         floor = getattr(game, 'floor', 0) or 0
 
         if is_boss:
             return min(1.0, max(base_epsilon, self.boss_min_epsilon))
+
+        if is_elite:
+            # Elite fights: minimum exploration + bonus on early floors
+            elite_epsilon = max(base_epsilon, self.elite_min_epsilon)
+            if floor <= self.preboss_floor_max:
+                elite_epsilon = min(1.0, elite_epsilon + self.elite_floor_bonus)
+            return elite_epsilon
 
         if floor <= self.preboss_floor_max:
             return min(base_epsilon, self.preboss_epsilon_cap)
@@ -432,7 +442,8 @@ class CombatRLAgent:
         training: bool = False,
         model_path: Optional[str] = None,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
-        epsilon: float = 0.0
+        epsilon: float = 0.0,
+        elite_mode: Optional[str] = None,
     ):
         """
         Initialize CombatRLAgent with RL and OptimizedAgent instances.
@@ -443,6 +454,7 @@ class CombatRLAgent:
             model_path: Path to pretrained RL model
             device: Torch device
             epsilon: Exploration rate (0.0 = greedy, 1.0 = full random)
+            elite_mode: Elite routing mode ("conservative" or "aggressive")
         """
         self.player_class = player_class
         self.use_rl_for_combat = True
@@ -453,15 +465,15 @@ class CombatRLAgent:
         try:
             from spirecomm.ai.agent import OptimizedAgent, OPTIMIZED_AI_AVAILABLE
             if OPTIMIZED_AI_AVAILABLE:
-                self.fallback_agent = OptimizedAgent(chosen_class=player_class)
+                self.fallback_agent = OptimizedAgent(chosen_class=player_class, elite_mode=elite_mode)
             else:
                 from spirecomm.ai.agent import SimpleAgent
-                self.fallback_agent = SimpleAgent(chosen_class=player_class)
+                self.fallback_agent = SimpleAgent(chosen_class=player_class, elite_mode=elite_mode)
                 logger.warning("OptimizedAgent not available, using SimpleAgent for fallback")
         except ImportError as e:
             logger.error(f"Failed to import OptimizedAgent: {e}")
             from spirecomm.ai.agent import SimpleAgent
-            self.fallback_agent = SimpleAgent(chosen_class=player_class)
+            self.fallback_agent = SimpleAgent(chosen_class=player_class, elite_mode=elite_mode)
 
         # Initialize RL agent
         self.rl_agent = RLAgent(

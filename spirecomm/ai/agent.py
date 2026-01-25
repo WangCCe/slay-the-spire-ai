@@ -39,7 +39,7 @@ except ImportError:
 
 
 class SimpleAgent:
-    def __init__(self, chosen_class=PlayerClass.THE_SILENT):
+    def __init__(self, chosen_class=PlayerClass.THE_SILENT, elite_mode=None):
         self.game = Game()
         self.errors = 0
         self.choose_good_card = False
@@ -52,6 +52,7 @@ class SimpleAgent:
         self.chosen_class = chosen_class
         self.priorities = Priority()
         self.map_router = None
+        self.elite_mode = elite_mode
         self.change_class(chosen_class)
 
     def change_class(self, new_class):
@@ -66,7 +67,7 @@ class SimpleAgent:
             self.priorities = random.choice(list(PlayerClass))
         if AdaptiveMapRouter is not None:
             player_class_str = str(self.chosen_class).replace("PlayerClass.", "")
-            self.map_router = AdaptiveMapRouter(player_class=player_class_str)
+            self.map_router = AdaptiveMapRouter(player_class=player_class_str, elite_mode=self.elite_mode)
 
     def handle_error(self, error):
         # Log the error and return a safe action instead of raising
@@ -917,6 +918,7 @@ class OptimizedAgent(SimpleAgent):
         chosen_class=PlayerClass.THE_SILENT,
         use_optimized_combat=True,
         use_optimized_card_selection=True,
+        elite_mode=None,
     ):
         """
         Initialize OptimizedAgent.
@@ -925,9 +927,10 @@ class OptimizedAgent(SimpleAgent):
             chosen_class: Player class to use
             use_optimized_combat: Use enhanced combat planning (default: True)
             use_optimized_card_selection: Use synergy-based card evaluation (default: True)
+            elite_mode: Elite routing mode ("conservative" or "aggressive", default: None)
         """
         # Initialize parent class
-        super().__init__(chosen_class)
+        super().__init__(chosen_class, elite_mode=elite_mode)
 
         # Check if optimized components are available
         if not OPTIMIZED_AI_AVAILABLE:
@@ -977,7 +980,7 @@ class OptimizedAgent(SimpleAgent):
                 )
                 self.archetype_manager = IroncladArchetypeManager()
                 self.deck_strategy = IroncladDeckStrategy()
-                self.map_router = AdaptiveMapRouter(player_class=player_class_str)
+                self.map_router = AdaptiveMapRouter(player_class=player_class_str, elite_mode=self.elite_mode)
                 self.deck_analyzer = DeckAnalyzer()  # Keep for compatibility
             else:
                 # Use generic components for other classes
@@ -993,7 +996,7 @@ class OptimizedAgent(SimpleAgent):
                 # All classes get map router
                 from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter
 
-                self.map_router = AdaptiveMapRouter(player_class=player_class_str)
+                self.map_router = AdaptiveMapRouter(player_class=player_class_str, elite_mode=self.elite_mode)
 
             # Track decision history for analysis
             self.decision_history = []

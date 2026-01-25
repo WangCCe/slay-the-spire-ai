@@ -93,7 +93,7 @@ def find_latest_checkpoint():
     return latest
 
 
-def create_agent(agent_type="auto", use_optimized=None, player_class=None, training=False, model_path=None):
+def create_agent(agent_type="auto", use_optimized=None, player_class=None, training=False, model_path=None, elite_mode=None):
     """
     Create an agent instance.
 
@@ -103,6 +103,7 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
         player_class: Player class (required for RL agent, optional for others)
         training: Whether RL agent should be in training mode
         model_path: Path to pre-trained RL model checkpoint
+        elite_mode: Elite routing mode ("conservative" or "aggressive", default: "aggressive")
 
     Returns:
         Agent instance (SimpleAgent, OptimizedAgent, RLAgent, or CombatRLAgent)
@@ -125,7 +126,7 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
             logging.error("Combat RL agent requested but PyTorch/RL components not available")
             logging.error("Please install: pip install torch numpy")
             logging.error("Falling back to OptimizedAgent")
-            return OptimizedAgent(chosen_class=player_class) if player_class and OPTIMIZED_AI_AVAILABLE else SimpleAgent(chosen_class=player_class)
+            return OptimizedAgent(chosen_class=player_class, elite_mode=elite_mode) if player_class and OPTIMIZED_AI_AVAILABLE else SimpleAgent(chosen_class=player_class, elite_mode=elite_mode)
 
         if player_class is None:
             logging.warning("Combat RL agent requires player_class, defaulting to IRONCLAD")
@@ -134,7 +135,7 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
         if player_class != PlayerClass.IRONCLAD:
             logging.warning(f"Combat RL agent only supports IRONCLAD, got {player_class}")
             logging.warning("Falling back to OptimizedAgent")
-            return OptimizedAgent(chosen_class=player_class) if OPTIMIZED_AI_AVAILABLE else SimpleAgent(chosen_class=player_class)
+            return OptimizedAgent(chosen_class=player_class, elite_mode=elite_mode) if OPTIMIZED_AI_AVAILABLE else SimpleAgent(chosen_class=player_class, elite_mode=elite_mode)
 
         try:
             logging.info(f"Creating Combat RL Agent (training={training})")
@@ -151,7 +152,8 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
             agent = CombatRLAgent(
                 player_class=player_class,
                 training=training,
-                model_path=model_path
+                model_path=model_path,
+                elite_mode=elite_mode
             )
             logging.info(f"Combat RL Agent created successfully")
             logging.info(f"  State dim: {agent.rl_agent.state_encoder.feature_dim}, Action dim: {agent.rl_agent.action_encoder.MAX_ACTIONS}")
@@ -164,7 +166,7 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
             logging.error("Falling back to OptimizedAgent")
             import traceback
             logging.debug(traceback.format_exc())
-            return OptimizedAgent(chosen_class=player_class) if OPTIMIZED_AI_AVAILABLE else SimpleAgent(chosen_class=player_class)
+            return OptimizedAgent(chosen_class=player_class, elite_mode=elite_mode) if OPTIMIZED_AI_AVAILABLE else SimpleAgent(chosen_class=player_class, elite_mode=elite_mode)
 
     # Create RL agent
     if agent_type == "rl":
@@ -172,7 +174,7 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
             logging.error("RL agent requested but PyTorch/RL components not available")
             logging.error("Please install: pip install torch numpy")
             logging.error("Falling back to SimpleAgent")
-            return SimpleAgent(chosen_class=player_class) if player_class else SimpleAgent()
+            return SimpleAgent(chosen_class=player_class, elite_mode=elite_mode) if player_class else SimpleAgent(elite_mode=elite_mode)
 
         if player_class is None:
             logging.warning("RL agent requires player_class, defaulting to IRONCLAD")
@@ -181,7 +183,7 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
         if player_class != PlayerClass.IRONCLAD:
             logging.warning(f"RL agent only supports IRONCLAD, got {player_class}")
             logging.warning("Falling back to SimpleAgent")
-            return SimpleAgent(chosen_class=player_class)
+            return SimpleAgent(chosen_class=player_class, elite_mode=elite_mode)
 
         try:
             logging.info(f"Creating RL Agent (training={training})")
@@ -207,23 +209,23 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
             logging.error("Falling back to SimpleAgent")
             import traceback
             logging.debug(traceback.format_exc())
-            return SimpleAgent(chosen_class=player_class)
+            return SimpleAgent(chosen_class=player_class, elite_mode=elite_mode)
 
     # Create OptimizedAgent
     if agent_type == "optimized":
         if not OPTIMIZED_AI_AVAILABLE:
             logging.warning("OptimizedAgent requested but components not available")
             logging.warning("Falling back to SimpleAgent")
-            return SimpleAgent(chosen_class=player_class) if player_class else SimpleAgent()
+            return SimpleAgent(chosen_class=player_class, elite_mode=elite_mode) if player_class else SimpleAgent(elite_mode=elite_mode)
 
         class_name = player_class.name if player_class else "Unknown"
         logging.info(f"Using OptimizedAgent with enhanced AI for {class_name}")
-        return OptimizedAgent(chosen_class=player_class) if player_class else OptimizedAgent()
+        return OptimizedAgent(chosen_class=player_class, elite_mode=elite_mode) if player_class else OptimizedAgent(elite_mode=elite_mode)
 
     # Create SimpleAgent (default)
     class_name = player_class.name if player_class else "Unknown"
     logging.info(f"Using SimpleAgent (legacy AI) for {class_name}")
-    return SimpleAgent(chosen_class=player_class) if player_class else SimpleAgent()
+    return SimpleAgent(chosen_class=player_class, elite_mode=elite_mode) if player_class else SimpleAgent(elite_mode=elite_mode)
 
 
 if __name__ == "__main__":
@@ -240,20 +242,20 @@ if __name__ == "__main__":
         description="Slay the Spire AI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
-            "Environment Variable:\n"
-            "  USE_OPTIMIZED_AI=true  Use OptimizedAgent (deprecated, use --agent optimized)\n\n"
             "Examples:\n"
-            "  python main.py                       # Auto-detect, ascension 0\n"
-            "  python main.py --agent optimized     # Force optimized AI\n"
-            "  python main.py --agent rl            # Use RL agent (inference mode)\n"
-            "  python main.py --agent rl --train    # Use RL agent in training mode\n"
-            "  python main.py --agent combat_rl     # Combat-only RL with OptimizedAgent fallback\n"
-            "  python main.py --agent combat_rl --train  # Train combat-only RL\n"
+            "  python main.py                                  # Auto-detect, ascension 0, aggressive elites\n"
+            "  python main.py --agent optimized                # Force optimized AI\n"
+            "  python main.py --agent rl                       # Use RL agent (inference mode)\n"
+            "  python main.py --agent rl --train               # Use RL agent in training mode\n"
+            "  python main.py --agent combat_rl                # Combat-only RL with OptimizedAgent fallback\n"
+            "  python main.py --agent combat_rl --train        # Train combat-only RL\n"
             "  python main.py --agent rl --model checkpoints/model.pth  # Load trained model\n"
-            "  python main.py -a 10                 # Ascension level 10\n"
-            "  python main.py -a 20                 # Ascension level 20\n"
-            "  python main.py --agent optimized -a 20  # Optimized AI A20\n"
-            "  python main.py --seed 7010470200064802279  # Fixed seed run\n"
+            "  python main.py -a 10                            # Ascension level 10\n"
+            "  python main.py -a 20                            # Ascension level 20\n"
+            "  python main.py --agent optimized -a 20          # Optimized AI A20\n"
+            "  python main.py --seed 7010470200064802279       # Fixed seed run\n"
+            "  python main.py --elite-route conservative -a 20 # Conservative elite routing (avoid elites)\n"
+            "  python main.py --elite-route aggressive         # Aggressive elite routing (seek elites)\n"
         ),
     )
     parser.add_argument(
@@ -295,6 +297,12 @@ if __name__ == "__main__":
         "--seed",
         metavar="SEED",
         help="Set a fixed run seed (alphanumeric string)",
+    )
+    parser.add_argument(
+        "--elite-route",
+        choices=["conservative", "aggressive"],
+        default="aggressive",
+        help="Map routing strategy for elites: conservative (avoid) or aggressive (seek) (default: aggressive)",
     )
     parser.add_argument(
         "mode",
@@ -358,6 +366,9 @@ if __name__ == "__main__":
             sys.exit(1)
         logging.info(f"Run seed set to {run_seed}")
 
+    elite_route_mode = args.elite_route
+    logging.info(f"Elite route mode: {elite_route_mode}")
+
     # Define player class before creating agent
     chosen_class = PlayerClass.IRONCLAD  # Fixed to Ironclad for testing
 
@@ -367,14 +378,14 @@ if __name__ == "__main__":
     coordinator = Coordinator()
     coordinator.signal_ready()
 
-    logging.info("Startup env: ELITE_ROUTE=%s", os.getenv("ELITE_ROUTE"))
     # Create agent with player class and RL-specific options
     # This may take several seconds for RL agents (PyTorch, model loading)
     agent = create_agent(
         agent_type=agent_type,
         player_class=chosen_class,
         training=training,
-        model_path=model_path
+        model_path=model_path,
+        elite_mode=elite_route_mode
     )
 
     # Register callbacks after agent is created

@@ -8,7 +8,6 @@ Implements expert strategies for map navigation:
 - Smart campfire choices
 """
 
-import os
 import sys
 import logging
 from typing import List, Dict
@@ -39,13 +38,18 @@ class AdaptiveMapRouter:
     }
 
     def __init__(self, player_class='IRONCLAD', elite_mode: str = None):
-        """Initialize map router."""
+        """Initialize map router.
+
+        Args:
+            player_class: Character class (IRONCLAD, THE_SILENT, THE_DEFECT)
+            elite_mode: Elite routing strategy ("conservative" or "aggressive", default: "aggressive")
+        """
         self.player_class = player_class
-        self.elite_mode = (elite_mode or os.getenv("ELITE_ROUTE", "conservative")).lower()
+        self.elite_mode = (elite_mode or "aggressive").lower()
         logging.getLogger(__name__).info(
-            "[MAP_ROUTING] elite_mode=%s (ELITE_ROUTE=%s)",
+            "[MAP_ROUTING] elite_mode=%s (player_class=%s)",
             self.elite_mode,
-            os.getenv("ELITE_ROUTE"),
+            self.player_class,
         )
 
     def calculate_node_priority(self, node: Node, context: DecisionContext) -> int:
