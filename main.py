@@ -22,16 +22,77 @@ except ImportError:
 # Note: We don't use StreamHandler because Communication Mod uses stdout for commands
 # Log rotation: 10MB per file, keep 5 backup files (60MB total)
 # Python 3.7 compatibility: force parameter not available, check if already configured
-if not logging.getLogger().hasHandlers():
-    handler = RotatingFileHandler(
-        'ai_debug.log',
-        maxBytes=10*1024*1024,  # 10MB
-        backupCount=5,  # Keep 5 backups
+LOG_PATH = os.environ.get("STS_AI_LOG_FILE", "ai_debug.log")
+LOG_LEVEL_NAME = os.environ.get("STS_AI_LOG_LEVEL", "INFO").upper()
+LOG_LEVEL = getattr(logging, LOG_LEVEL_NAME, logging.INFO)
+LOG_MAX_BYTES = int(os.environ.get("STS_AI_LOG_MAX_BYTES", str(10 * 1024 * 1024)))
+LOG_BACKUP_COUNT = int(os.environ.get("STS_AI_LOG_BACKUP_COUNT", "5"))
+LOG_FILTER_NOISE = os.environ.get("STS_AI_LOG_FILTER_NOISE", "1") != "0"
+
+
+class SafeRotatingFileHandler(RotatingFileHandler):
+    """Rotating handler that avoids crashing on Windows file locks."""
+
+    def doRollover(self):
+        try:
+            super().doRollover()
+        except PermissionError:
+            # If another process is holding the log file, switch to a new file.
+            try:
+                import time
+
+                ts = time.strftime("%Y%m%d-%H%M%S")
+                pid = os.getpid()
+                base, ext = os.path.splitext(self.baseFilename)
+                new_name = f"{base}_{ts}_{pid}{ext}"
+                if self.stream:
+                    self.stream.close()
+                    self.stream = None
+                self.baseFilename = os.path.abspath(new_name)
+                self.mode = 'a'
+                self.stream = self._open()
+            except Exception:
+                # Fall back to continuing without rotation if all else fails.
+                if self.stream is None:
+                    self.stream = self._open()
+
+
+class NoiseFilter(logging.Filter):
+    """Filter out high-frequency coordinator logs to reduce log volume."""
+
+    def __init__(self, substrings):
+        super().__init__()
+        self.substrings = substrings
+
+    def filter(self, record):
+        msg = record.getMessage()
+        return not any(sub in msg for sub in self.substrings)
+
+
+def _create_log_handler():
+    handler = SafeRotatingFileHandler(
+        LOG_PATH,
+        maxBytes=LOG_MAX_BYTES,
+        backupCount=LOG_BACKUP_COUNT,
         encoding='utf-8',
         mode='a'
     )
+    if LOG_FILTER_NOISE:
+        noisy = [
+            "[RECEIVE_START]",
+            "[RECEIVE_AFTER]",
+            "[SEND_MESSAGE]",
+            "[MAIN_LOOP] No immediate update",
+            "[ACTION_QUEUE]",
+        ]
+        handler.addFilter(NoiseFilter(noisy))
+    return handler
+
+
+if not logging.getLogger().hasHandlers():
+    handler = _create_log_handler()
     logging.basicConfig(
-        level=logging.DEBUG,  # TEMPORARY: Set to DEBUG to see defense analysis logs
+        level=LOG_LEVEL,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
             handler,
@@ -42,13 +103,7 @@ else:
     logger = logging.getLogger()
     has_rotating_handler = any(isinstance(h, RotatingFileHandler) for h in logger.handlers)
     if not has_rotating_handler:
-        rotating_handler = RotatingFileHandler(
-            'ai_debug.log',
-            maxBytes=10*1024*1024,  # 10MB
-            backupCount=5,  # Keep 5 backups
-            encoding='utf-8',
-            mode='a'
-        )
+        rotating_handler = _create_log_handler()
         logger.addHandler(rotating_handler)
 
 
