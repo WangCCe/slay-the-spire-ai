@@ -181,19 +181,23 @@ class ActionEncoder:
 
             # Special handling for SHOP_SCREEN
             # Must use BuyCardAction/BuyPotionAction, not ChooseAction
-            if self._is_screen_type(game, "SHOP_SCREEN"):
-                from spirecomm.communication.action import (
-                    BuyCardAction,
-                    BuyPotionAction,
-                    BuyRelicAction,
-                    BuyPurgeAction,
-                )
-                from spirecomm.spire.screen import RewardType
+        if self._is_screen_type(game, "SHOP_SCREEN"):
+            from spirecomm.communication.action import (
+                BuyCardAction,
+                BuyPotionAction,
+                BuyRelicAction,
+                BuyPurgeAction,
+            )
+            from spirecomm.spire.screen import RewardType
 
-                screen = game.screen
-                if hasattr(screen, "cards") and choice_index < len(screen.cards):
-                    # Buying a card
-                    return BuyCardAction(screen.cards[choice_index])
+            available = getattr(game, "available_commands", []) or []
+            if "choose" not in available:
+                return LeaveAction()
+
+            screen = game.screen
+            if hasattr(screen, "cards") and choice_index < len(screen.cards):
+                # Buying a card
+                return BuyCardAction(screen.cards[choice_index])
                 elif hasattr(screen, "potions") and choice_index < len(screen.potions):
                     # Buying a potion
                     return BuyPotionAction(screen.potions[choice_index])
@@ -251,18 +255,22 @@ class ActionEncoder:
 
             # Special handling for SHOP_SCREEN
             # Must use BuyCardAction/BuyPotionAction/BuyRelicAction, not ChooseAction
-            if self._is_screen_type(game, "SHOP_SCREEN"):
-                from spirecomm.communication.action import (
-                    BuyCardAction,
-                    BuyPotionAction,
-                    BuyRelicAction,
-                    BuyPurgeAction,
-                )
+        if self._is_screen_type(game, "SHOP_SCREEN"):
+            from spirecomm.communication.action import (
+                BuyCardAction,
+                BuyPotionAction,
+                BuyRelicAction,
+                BuyPurgeAction,
+            )
 
-                screen = game.screen
-                if hasattr(screen, "cards") and shop_action < len(screen.cards):
-                    # Buying a card
-                    return BuyCardAction(screen.cards[shop_action])
+            available = getattr(game, "available_commands", []) or []
+            if "choose" not in available:
+                return LeaveAction()
+
+            screen = game.screen
+            if hasattr(screen, "cards") and shop_action < len(screen.cards):
+                # Buying a card
+                return BuyCardAction(screen.cards[shop_action])
                 elif hasattr(screen, "potions") and shop_action < len(screen.potions):
                     # Buying a potion (check if potions exist before cards in shop_action)
                     return BuyPotionAction(
@@ -528,16 +536,23 @@ class ActionEncoder:
 
         # SHOP_SCREEN (purchase interface)
         if self._is_screen_type(game, "SHOP_SCREEN"):
-            if game.choice_list and len(game.choice_list) > 0:
-                for i in range(min(len(game.choice_list), 10)):
-                    mask[self.SHOP_ACTION_OFFSET + i] = True
+            available = getattr(game, "available_commands", []) or []
+            if "choose" in available:
+                if game.choice_list and len(game.choice_list) > 0:
+                    for i in range(min(len(game.choice_list), 10)):
+                        mask[self.SHOP_ACTION_OFFSET + i] = True
+                else:
+                    for i in range(3):
+                        mask[self.SHOP_ACTION_OFFSET + i] = True
+                logger.debug(
+                    f"SHOP_SCREEN: Enabled {len(game.choice_list) if game.choice_list else 3} buy actions"
+                )
             else:
-                for i in range(3):
-                    mask[self.SHOP_ACTION_OFFSET + i] = True
+                logger.debug(
+                    "SHOP_SCREEN: 'choose' unavailable, disabling buy actions"
+                )
+
             mask[self.LEAVE_ACTION] = True
-            logger.debug(
-                f"SHOP_SCREEN: Enabled {len(game.choice_list) if game.choice_list else 3} buy actions and leave"
-            )
             return mask
 
         # SHOP_ROOM (entrance - choose to enter or skip)
