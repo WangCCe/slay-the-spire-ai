@@ -85,7 +85,7 @@ class DQNTrainer:
         self.optimizer = torch.optim.Adam(self.online_network.parameters(), lr=learning_rate)
 
         # Replay buffer
-        self.replay_buffer = ReplayBuffer(buffer_size, state_dim)
+        self.replay_buffer = ReplayBuffer(buffer_size, state_dim, action_dim)
 
         # Exploration
         self.epsilon = epsilon_start
@@ -157,13 +157,14 @@ class DQNTrainer:
             return None
 
         # Sample batch from replay buffer
-        states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
+        states, actions, rewards, next_states, dones, _, next_action_masks = self.replay_buffer.sample(self.batch_size)
 
         # Convert to tensors
         states = torch.from_numpy(states).float().to(self.device)
         actions = torch.from_numpy(actions).long().to(self.device)
         rewards = torch.from_numpy(rewards).float().to(self.device)
         next_states = torch.from_numpy(next_states).float().to(self.device)
+        next_action_masks = torch.from_numpy(next_action_masks).to(self.device)
         dones = torch.from_numpy(dones).float().to(self.device)
 
         # Compute Q-values for current states
@@ -172,7 +173,7 @@ class DQNTrainer:
 
         # Compute TD targets
         with torch.no_grad():
-            next_q_values = self.target_network(next_states)
+            next_q_values = self.target_network(next_states, action_mask=next_action_masks)
             max_next_q = next_q_values.max(1)[0]
             target_q = rewards + (1 - dones) * self.gamma * max_next_q
 

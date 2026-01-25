@@ -16,7 +16,7 @@ class ReplayBuffer:
     Stores up to buffer_size transitions and samples uniform random batches.
     """
 
-    def __init__(self, buffer_size: int = 100000, state_dim: int = 512):
+    def __init__(self, buffer_size: int = 100000, state_dim: int = 512, action_dim: int = 1000):
         """
         Initialize replay buffer.
 
@@ -26,11 +26,20 @@ class ReplayBuffer:
         """
         self.buffer_size = buffer_size
         self.state_dim = state_dim
+        self.action_dim = action_dim
         self.buffer = []
         self.position = 0
 
-    def add(self, state: np.ndarray, action: int, reward: float,
-             next_state: np.ndarray, done: bool) -> None:
+    def add(
+        self,
+        state: np.ndarray,
+        action: int,
+        reward: float,
+        next_state: np.ndarray,
+        done: bool,
+        action_mask: np.ndarray = None,
+        next_action_mask: np.ndarray = None,
+    ) -> None:
         """
         Add a transition to the buffer.
 
@@ -59,7 +68,24 @@ class ReplayBuffer:
             )
             return
 
-        transition = (state, action, reward, next_state, done)
+        # Validate action mask dimension if provided
+        if action_mask is not None and len(action_mask) != self.action_dim:
+            import logging
+            logging.warning(
+                f"Action mask dimension mismatch! Expected {self.action_dim}, got {len(action_mask)}. "
+                f"Skipping this transition to prevent buffer corruption."
+            )
+            return
+
+        if next_action_mask is not None and len(next_action_mask) != self.action_dim:
+            import logging
+            logging.warning(
+                f"Next action mask dimension mismatch! Expected {self.action_dim}, got {len(next_action_mask)}. "
+                f"Skipping this transition to prevent buffer corruption."
+            )
+            return
+
+        transition = (state, action, reward, next_state, done, action_mask, next_action_mask)
 
         if len(self.buffer) < self.buffer_size:
             self.buffer.append(transition)
@@ -69,7 +95,9 @@ class ReplayBuffer:
 
         self.position = (self.position + 1) % self.buffer_size
 
-    def sample(self, batch_size: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def sample(
+        self, batch_size: int
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Sample a batch of transitions uniformly at random.
 
@@ -88,11 +116,21 @@ class ReplayBuffer:
         states = np.array([t[0] for t in transitions], dtype=np.float32)
         actions = np.array([t[1] for t in transitions], dtype=np.int64)
         rewards = np.array([t[2] for t in transitions], dtype=np.float32)
-        next_states = np.array([t[3] if t[3] is not None else np.zeros(self.state_dim)
-                               for t in transitions], dtype=np.float32)
+        next_states = np.array(
+            [t[3] if t[3] is not None else np.zeros(self.state_dim) for t in transitions],
+            dtype=np.float32
+        )
         dones = np.array([t[4] for t in transitions], dtype=np.float32)
+        action_masks = np.array(
+            [t[5] if t[5] is not None else np.ones(self.action_dim, dtype=bool) for t in transitions],
+            dtype=bool
+        )
+        next_action_masks = np.array(
+            [t[6] if t[6] is not None else np.ones(self.action_dim, dtype=bool) for t in transitions],
+            dtype=bool
+        )
 
-        return states, actions, rewards, next_states, dones
+        return states, actions, rewards, next_states, dones, action_masks, next_action_masks
 
     def __len__(self) -> int:
         """Return current buffer size."""
@@ -120,9 +158,16 @@ class ReplayBuffer:
         states = np.array([t[0] for t in self.buffer])
         actions = np.array([t[1] for t in self.buffer])
         rewards = np.array([t[2] for t in self.buffer])
-        next_states = np.array([t[3] if t[3] is not None else np.zeros(self.state_dim)
-                                for t in self.buffer])
+        next_states = np.array(
+            [t[3] if t[3] is not None else np.zeros(self.state_dim) for t in self.buffer]
+        )
         dones = np.array([t[4] for t in self.buffer])
+        action_masks = np.array(
+            [t[5] if t[5] is not None else np.ones(self.action_dim, dtype=bool) for t in self.buffer]
+        )
+        next_action_masks = np.array(
+            [t[6] if t[6] is not None else np.ones(self.action_dim, dtype=bool) for t in self.buffer]
+        )
 
         np.savez_compressed(
             filepath,
@@ -130,7 +175,9 @@ class ReplayBuffer:
             actions=actions,
             rewards=rewards,
             next_states=next_states,
-            dones=dones
+            dones=dones,
+            action_masks=action_masks,
+            next_action_masks=next_action_masks,
         )
 
     def load(self, filepath: str) -> None:
@@ -143,6 +190,7 @@ class ReplayBuffer:
         data = np.load(filepath)
 
         num_transitions = len(data['states'])
+        has_masks = 'action_masks' in data and 'next_action_masks' in data
         for i in range(num_transitions):
             next_state = data['next_states'][i]
             # Check if next_state is all zeros (terminal state)
@@ -154,5 +202,7 @@ class ReplayBuffer:
                 int(data['actions'][i]),
                 float(data['rewards'][i]),
                 next_state,
-                bool(data['dones'][i])
+                bool(data['dones'][i]),
+                data['action_masks'][i] if has_masks else None,
+                data['next_action_masks'][i] if has_masks else None,
             )

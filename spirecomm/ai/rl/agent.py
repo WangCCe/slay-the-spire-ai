@@ -87,6 +87,7 @@ class RLAgent:
         self.epsilon = epsilon
         self.last_state = None
         self.last_action = None
+        self.last_action_mask = None
         self.last_game = None  # Track previous game state for reward calculation
         self.preboss_floor_max = 16
         self.preboss_epsilon_cap = 0.2
@@ -227,7 +228,9 @@ class RLAgent:
                         self.last_action,
                         reward,
                         state,
-                        done
+                        done,
+                        action_mask=self.last_action_mask,
+                        next_action_mask=action_mask,
                     )
 
                 # Train periodically (every step if buffer is ready and train_freq allows)
@@ -246,6 +249,7 @@ class RLAgent:
             # Update last state, action, and game
             self.last_state = state
             self.last_action = action_idx
+            self.last_action_mask = action_mask
             self.last_game = game
 
             return action
@@ -261,6 +265,7 @@ class RLAgent:
         """Reset agent state for new episode."""
         self.last_state = None
         self.last_action = None
+        self.last_action_mask = None
         self.last_game = None  # Reset game state tracking
         self.episode_reward = 0.0
         self.episode_steps = 0
