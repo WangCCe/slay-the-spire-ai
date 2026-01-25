@@ -238,10 +238,10 @@ class GameTracker:
         if not victory and hasattr(final_state, 'screen'):
             # Could extract from screen info if available
             # For now, use simple heuristics
-            if self.boss_kills > 0 and self.final_floor % 17 == 0:
+            if self.final_floor is not None and self.boss_kills > 0 and self.final_floor % 17 == 0:
                 # Died on boss floor
                 self.death_cause = "boss"
-            elif self.elite_kills > 0 and self.final_floor in [5, 13, 16, 19, 26, 34, 37, 45]:
+            elif self.final_floor is not None and self.elite_kills > 0 and self.final_floor in [5, 13, 16, 19, 26, 34, 37, 45]:
                 # Died on elite floor
                 self.death_cause = "elite"
             else:
