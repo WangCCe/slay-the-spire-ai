@@ -583,8 +583,10 @@ if __name__ == "__main__":
                             agent_to_check._in_combat = False
                             logging.debug("  Recorded combat end (died in combat)")
 
-                        game_tracker.record_game_over(result, coordinator.last_game_state)
-                        logging.debug("  Recorded game over via last_game_state")
+                        # Use saved game_over_state if available (has HP info), otherwise fall back to last_game_state
+                        final_state = coordinator.game_over_state if coordinator.game_over_state is not None else coordinator.last_game_state
+                        game_tracker.record_game_over(result, final_state)
+                        logging.debug(f"  Recorded game over via {'game_over_state' if coordinator.game_over_state else 'last_game_state'}")
                         try:
                             seed_played = getattr(coordinator.last_game_state, 'seed', None)
                             if seed_played is not None:

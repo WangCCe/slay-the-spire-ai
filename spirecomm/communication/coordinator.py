@@ -105,6 +105,8 @@ class Coordinator:
         self.in_game = False
         self.last_game_state = None
         self.last_error = None
+        # Save game state when GAME_OVER screen appears (before clicking proceed)
+        self.game_over_state = None
 
     def check_communication_threads(self):
         """Check if stdin/stdout communication threads are still alive.
@@ -309,22 +311,24 @@ class Coordinator:
                                 "GRID screen_state type=%s",
                                 type(screen_state).__name__,
                             )
-                # Debug: Log raw JSON for GAME_OVER to understand what fields are sent
-                if game_state.get("screen_type") == "GAME_OVER":
-                    import logging
-                    logging.info(f"[GAME_OVER_JSON] screen_type={game_state.get('screen_type')}")
-                    logging.info(f"[GAME_OVER_JSON] has current_hp: {'current_hp' in game_state}")
-                    logging.info(f"[GAME_OVER_JSON] has max_hp: {'max_hp' in game_state}")
-                    logging.info(f"[GAME_OVER_JSON] has combat_state: {'combat_state' in game_state}")
-                    logging.info(f"[GAME_OVER_JSON] current_hp value: {game_state.get('current_hp')}")
-                    logging.info(f"[GAME_OVER_JSON] max_hp value: {game_state.get('max_hp')}")
-                    # Log top-level keys
-                    logging.info(f"[GAME_OVER_JSON] top-level keys: {sorted(game_state.keys())}")
+
+                # Save GAME_OVER state before it gets overwritten by menu state
+                if game_state.get("screen_type") == "GAME_OVER" and self.in_game:
+                    # Mark that we're processing GAME_OVER (will save after from_json)
+                    self._saving_game_over = True
 
                 # Always update last_game_state, even when in_game=False (e.g., Neow screen)
                 self.last_game_state = Game.from_json(
                     game_state, communication_state.get("available_commands")
                 )
+
+                # Save the parsed GAME_OVER state (after from_json, before callbacks)
+                if hasattr(self, '_saving_game_over'):
+                    # We just processed GAME_OVER screen, save the parsed state
+                    self.game_over_state = self.last_game_state
+                    delattr(self, '_saving_game_over')
+                    import logging
+                    logging.info(f"[GAME_OVER] Saved state with HP: current={self.game_over_state.current_hp}/{self.game_over_state.max_hp}")
             import logging
             logging.info(
                 f"[CALLBACK_CHECK] perform_callbacks={perform_callbacks}, "
@@ -397,6 +401,9 @@ class Coordinator:
         """
         # Clear any pending actions from previous game
         self.clear_actions()
+
+        # Reset saved game over state from previous game
+        self.game_over_state = None
 
         # Wait for ready state (with timeout to prevent hanging)
         timeout_counter = 0
