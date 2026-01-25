@@ -434,12 +434,18 @@ if __name__ == "__main__":
                 agent.game_tracker = GameTracker()
                 agent.game_tracker.player_class = str(chosen_class).replace('PlayerClass.', '')
                 agent.game_tracker.ascension_level = current_ascension
+                # Reset tracking state flags
+                agent._in_combat = False
+                agent._last_relics = set()
             elif is_combat_rl_agent and hasattr(agent, 'fallback_agent'):
                 fallback = agent.fallback_agent
                 if isinstance(fallback, OptimizedAgent) and hasattr(fallback, 'game_tracker'):
                     fallback.game_tracker = GameTracker()
                     fallback.game_tracker.player_class = str(chosen_class).replace('PlayerClass.', '')
                     fallback.game_tracker.ascension_level = current_ascension
+                    # Reset tracking state flags
+                    fallback._in_combat = False
+                    fallback._last_relics = set()
         except Exception as e:
             logging.warning(f"Could not reset game tracker: {e}")
 
