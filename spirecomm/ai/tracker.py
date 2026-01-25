@@ -232,7 +232,10 @@ class GameTracker:
 
         if hasattr(final_state, 'current_hp') and hasattr(final_state, 'max_hp'):
             self.current_hp_at_death = final_state.current_hp
-            self.death_hp_pct = final_state.current_hp / final_state.max_hp if final_state.max_hp > 0 else 0
+            if final_state.current_hp is not None and final_state.max_hp is not None and final_state.max_hp > 0:
+                self.death_hp_pct = final_state.current_hp / final_state.max_hp
+            else:
+                self.death_hp_pct = 0.0
 
         # Determine death cause from room type
         if not victory and hasattr(final_state, 'screen'):
