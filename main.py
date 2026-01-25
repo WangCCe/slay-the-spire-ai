@@ -54,10 +54,9 @@ else:
 
 # Import statistics components
 try:
-    # Temporarily disable stats due to git command hanging on Windows
-    # from spirecomm.ai.statistics import GameStatistics
-    STATISTICS_AVAILABLE = False
-    logging.warning("Statistics tracking temporarily disabled due to git subprocess issue")
+    from spirecomm.ai.statistics import GameStatistics
+    STATISTICS_AVAILABLE = True
+    logging.info("Statistics tracking enabled")
 except ImportError:
     STATISTICS_AVAILABLE = False
     logging.warning("Statistics tracking not available")
