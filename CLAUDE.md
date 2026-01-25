@@ -233,6 +233,38 @@ Dynamic programming to maximize node priority scores (different priorities per a
 
 **Important**: Log files use relative paths, written to **current working directory** (typically `D:\SteamLibrary\steamapps\common\SlayTheSpire\` when launched via CommunicationMod).
 
+### 📁 Important Paths
+
+**Game Directory** (logs and checkpoints):
+```
+D:\SteamLibrary\steamapps\common\SlayTheSpire\
+```
+
+**Log Files** (in game directory):
+```
+D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug.log
+D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_game_stats.csv
+D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_game_stats.jsonl
+D:\SteamLibrary\steamapps\common\SlayTheSpire\communication_mod_errors.log
+```
+
+**RL Checkpoints** (in game directory):
+```
+D:\SteamLibrary\steamapps\common\SlayTheSpire\checkpoints\
+  ├── rl_combat_model_ep1.pth
+  ├── rl_combat_model_ep2.pth
+  └── ... (keeps latest 5 checkpoints)
+```
+
+**Game Run Records** (in game directory):
+```
+D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\
+  ├── IRONCLAD/
+  ├── THE_SILENT/
+  ├── DEFECT/
+  └── WATCHER/
+```
+
 ### Log Files (in game directory)
 
 | File                           | Purpose                                                                                                       |

@@ -93,6 +93,80 @@ This project uses two separate Python environments for different purposes:
 
 # AI Agent Development Guide
 
+## 📁 Log Files and Checkpoints
+
+### Game Directory
+
+**Important**: All logs and checkpoints are written to the Slay the Spire game directory (not the project directory).
+
+```
+D:\SteamLibrary\steamapps\common\SlayTheSpire\
+```
+
+### Log Files
+
+| File | Path | Purpose |
+|------|------|---------|
+| **AI Debug Log** | `D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug.log` | AI decisions, game state tracking, map routing choices (auto-rotates at 10MB) |
+| **Game Stats CSV** | `D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_game_stats.csv` | Aggregate statistics: wins, losses, floors, classes |
+| **Game Stats JSONL** | `D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_game_stats.jsonl` | Detailed per-game logs in JSONL format |
+| **Error Log** | `D:\SteamLibrary\steamapps\common\SlayTheSpire\communication_mod_errors.log` | Python exceptions and stack traces |
+
+### RL Training Checkpoints
+
+**Location**: `D:\SteamLibrary\steamapps\common\SlayTheSpire\checkpoints\`
+
+```
+checkpoints/
+├── rl_combat_model_ep1.pth
+├── rl_combat_model_ep2.pth
+├── rl_combat_model_ep3.pth
+├── rl_combat_model_ep4.pth
+└── rl_combat_model_ep5.pth  (keeps latest 5)
+```
+
+**Auto-loading**: When running with `--train`, the agent automatically loads the latest checkpoint for continued training.
+
+### Game Run Records
+
+**Location**: `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\`
+
+Organized by character class:
+```
+runs/
+├── IRONCLAD/
+├── THE_SILENT/
+├── DEFECT/
+├── WATCHER/
+└── DAILY/
+```
+
+Each file is `{timestamp}.run` containing:
+- Path taken (M/$/?/R/E/T/B notation)
+- Deck build (cards, upgrades, purges)
+- Combat performance (damage, turns)
+- Event choices
+- Relics/potions acquired
+- Ascension level
+
+### Quick Commands
+
+```bash
+# View latest AI decisions
+tail -100 "D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug.log"
+
+# Check recent training progress
+tail -50 "D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_game_stats.csv"
+
+# List checkpoints
+ls -lh "D:\SteamLibrary\steamapps\common\SlayTheSpire\checkpoints/"
+
+# View latest Ironclad runs
+ls -lht "D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD" | head -10
+```
+
+---
+
 ## 📊 Game Run Records Analysis
 
 ### Overview
