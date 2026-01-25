@@ -38,10 +38,18 @@ class GameStatistics:
 
     Manages:
     - In-memory game history
-    - JSONL file logging (append-only)
-    - CSV file export
+    - JSONL file logging (append-only, daily files)
+    - CSV file export (daily files)
     - Loading historical data
+    - Automatic cleanup of old stats
+
+    Files are organized by date in stats/ directory:
+    - stats/ai_game_stats_YYYYMMDD.csv
+    - stats/ai_game_stats_YYYYMMDD.jsonl
     """
+
+    STATS_DIR = "stats"
+    MAX_DAYS_TO_KEEP = 30  # Auto-delete stats older than 30 days
 
     CSV_HEADER = ','.join([
         'game_id',
@@ -73,17 +81,59 @@ class GameStatistics:
         Initialize statistics manager.
 
         Args:
-            log_file: Path to JSONL log file
+            log_file: Base filename for JSONL log (will be augmented with date)
         """
-        self.log_file = log_file
-        self.csv_file = log_file.replace('.jsonl', '.csv')
+        import logging
+        self.logger = logging.getLogger(__name__)
+
+        # Create stats directory
+        if not os.path.exists(self.STATS_DIR):
+            os.makedirs(self.STATS_DIR)
+            self.logger.info(f"[STATS] Created stats directory: {self.STATS_DIR}")
+
+        # Generate daily file names
+        self.date_str = datetime.now().strftime("%Y%m%d")
+        base_name = log_file.replace('.jsonl', '')
+        self.log_file = os.path.join(self.STATS_DIR, f"{base_name}_{self.date_str}.jsonl")
+        self.csv_file = os.path.join(self.STATS_DIR, f"{base_name}_{self.date_str}.csv")
+
+        self.logger.info(f"[STATS] Daily stats files:")
+        self.logger.info(f"[STATS]   JSONL: {self.log_file}")
+        self.logger.info(f"[STATS]   CSV:   {self.csv_file}")
+
         self.games: List[Dict[str, Any]] = []
 
         # Create CSV with header if it doesn't exist
         self._initialize_csv()
 
-        # Load existing history
+        # Clean up old stats files
+        self._cleanup_old_stats()
+
+        # Load existing history from today's file
         self.load_history()
+
+    def _cleanup_old_stats(self):
+        """Remove stats files older than MAX_DAYS_TO_KEEP."""
+        import glob
+        try:
+            all_files = glob.glob(os.path.join(self.STATS_DIR, "ai_game_stats_*.*"))
+            for file_path in all_files:
+                # Extract date from filename (format: ai_game_stats_YYYYMMDD.xxx)
+                basename = os.path.basename(file_path)
+                parts = basename.split('_')
+                if len(parts) >= 3:
+                    file_date_str = parts[2].split('.')[0]  # Get YYYYMMDD
+                    try:
+                        file_date = datetime.strptime(file_date_str, "%Y%m%d")
+                        days_old = (datetime.now() - file_date).days
+                        if days_old > self.MAX_DAYS_TO_KEEP:
+                            os.remove(file_path)
+                            self.logger.info(f"[STATS] Removed old stats file: {basename} ({days_old} days old)")
+                    except ValueError:
+                        # Filename doesn't match expected format, skip
+                        pass
+        except Exception as e:
+            self.logger.warning(f"[STATS] Failed to cleanup old stats: {e}")
 
     def _initialize_csv(self):
         """Create CSV file with header if it doesn't exist."""

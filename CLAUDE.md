@@ -243,9 +243,17 @@ D:\SteamLibrary\steamapps\common\SlayTheSpire\
 **Log Files** (in game directory):
 ```
 D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug.log
-D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_game_stats.csv
-D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_game_stats.jsonl
 D:\SteamLibrary\steamapps\common\SlayTheSpire\communication_mod_errors.log
+```
+
+**Game Statistics** (daily files in stats/ directory):
+```
+D:\SteamLibrary\steamapps\common\SlayTheSpire\stats\
+  ├── ai_game_stats_20260125.csv
+  ├── ai_game_stats_20260125.jsonl
+  ├── ai_game_stats_20260126.csv
+  ├── ai_game_stats_20260126.jsonl
+  └── ... (auto-deletes files older than 30 days)
 ```
 
 **RL Checkpoints** (in game directory):
@@ -269,10 +277,20 @@ D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\
 
 | File                           | Purpose                                                                                                       |
 |--------------------------------|---------------------------------------------------------------------------------------------------------------|
-| `ai_game_stats.csv`            | Game statistics (wins, losses, floor, class, etc.)                                                            |
-| `ai_game_stats.jsonl`          | Detailed game logs (JSONL format)                                                                             |
-| `ai_debug.log`                 | AI debugging and decision history (auto-rotates at 10MB, keeps 5 backups)(use game_id from ai_game_stats.csv) |
+| `ai_debug.log`                 | AI debugging and decision history (auto-rotates at 10MB, keeps 5 backups)                                      |
 | `communication_mod_errors.log` | Python exceptions and stack traces                                                                            |
+
+### Game Statistics (daily files in stats/ directory)
+
+| File | Format | Purpose |
+|------|--------|---------|
+| `stats/ai_game_stats_YYYYMMDD.csv` | CSV | Aggregate statistics for quick viewing (Excel friendly) |
+| `stats/ai_game_stats_YYYYMMDD.jsonl` | JSONL | Detailed per-game logs with full data structure |
+
+**Auto-management**:
+- Creates new file each day (YYYYMMDD format)
+- Automatically deletes files older than 30 days
+- Located in `stats/` subdirectory of game folder
 
 ### Game Run Records (in game directory)
 

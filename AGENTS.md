@@ -108,9 +108,25 @@ D:\SteamLibrary\steamapps\common\SlayTheSpire\
 | File | Path | Purpose |
 |------|------|---------|
 | **AI Debug Log** | `D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug.log` | AI decisions, game state tracking, map routing choices (auto-rotates at 10MB) |
-| **Game Stats CSV** | `D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_game_stats.csv` | Aggregate statistics: wins, losses, floors, classes |
-| **Game Stats JSONL** | `D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_game_stats.jsonl` | Detailed per-game logs in JSONL format |
 | **Error Log** | `D:\SteamLibrary\steamapps\common\SlayTheSpire\communication_mod_errors.log` | Python exceptions and stack traces |
+
+### Game Statistics (Daily Files)
+
+**Location**: `D:\SteamLibrary\steamapps\common\SlayTheSpire\stats\`
+
+Organized by date (auto-deletes files older than 30 days):
+```
+stats/
+├── ai_game_stats_20260125.csv
+├── ai_game_stats_20260125.jsonl
+├── ai_game_stats_20260126.csv
+├── ai_game_stats_20260126.jsonl
+└── ...
+```
+
+**File Formats**:
+- **CSV**: Aggregate statistics for quick viewing (Excel/Pandas friendly)
+- **JSONL**: Detailed per-game logs with full data structure (programmer friendly)
 
 ### RL Training Checkpoints
 
@@ -155,8 +171,11 @@ Each file is `{timestamp}.run` containing:
 # View latest AI decisions
 tail -100 "D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug.log"
 
-# Check recent training progress
-tail -50 "D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_game_stats.csv"
+# Check today's stats
+tail -50 "D:\SteamLibrary\steamapps\common\SlayTheSpire\stats\ai_game_stats_$(date +%Y%m%d).csv"
+
+# List all stats files
+ls -lh "D:\SteamLibrary\steamapps\common\SlayTheSpire\stats/"
 
 # List checkpoints
 ls -lh "D:\SteamLibrary\steamapps\common\SlayTheSpire\checkpoints/"
