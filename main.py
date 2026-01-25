@@ -5,7 +5,6 @@ import logging
 import glob
 from logging.handlers import RotatingFileHandler
 
-from spirecomm.ai.statistics import GameStatistics
 from spirecomm.communication.coordinator import Coordinator
 from spirecomm.ai.agent import SimpleAgent, OptimizedAgent, OPTIMIZED_AI_AVAILABLE
 from spirecomm.spire.character import PlayerClass
@@ -51,15 +50,6 @@ else:
             mode='a'
         )
         logger.addHandler(rotating_handler)
-
-# Import statistics components
-try:
-    from spirecomm.ai.statistics import GameStatistics
-    STATISTICS_AVAILABLE = True
-    logging.info("Statistics tracking enabled")
-except ImportError:
-    STATISTICS_AVAILABLE = False
-    logging.warning("Statistics tracking not available")
 
 
 def find_latest_checkpoint():
@@ -392,15 +382,6 @@ if __name__ == "__main__":
     coordinator.register_state_change_callback(agent.get_next_action_in_game)
     coordinator.register_out_of_game_callback(agent.get_next_action_out_of_game)
 
-    # Setup statistics tracking if available
-    statistics = None
-    if STATISTICS_AVAILABLE:
-        statistics = GameStatistics()
-        logging.info("Statistics tracking enabled")
-        logging.info(f"  Logging to: {statistics.log_file}")
-        logging.info(f"  CSV export: {statistics.csv_file}")
-        logging.info(f"  All logs written to: ai_debug.log")
-
     # Play games forever - IRONCLAD ONLY for testing
     game_count = 0
 
@@ -562,83 +543,23 @@ if __name__ == "__main__":
                 import traceback
                 logging.debug(traceback.format_exc())
 
-        if statistics:
-            try:
-                logging.debug("Attempting to save statistics...")
-                logging.debug(f"  agent type: {type(agent).__name__}")
-                logging.debug(f"  is OptimizedAgent: {isinstance(agent, OptimizedAgent)}")
-                logging.debug(f"  is CombatRLAgent: {is_combat_rl_agent}")
+        # Mark AI games (always do this, independent of statistics)
+        try:
+            # Use current timestamp to mark AI game
+            from pathlib import Path
+            import time
 
-                # Get game_tracker from OptimizedAgent or CombatRLAgent's fallback_agent
-                game_tracker = None
-                if isinstance(agent, OptimizedAgent) and hasattr(agent, 'game_tracker') and agent.game_tracker:
-                    game_tracker = agent.game_tracker
-                elif is_combat_rl_agent and hasattr(agent, 'fallback_agent'):
-                    fallback_agent = agent.fallback_agent
-                    if isinstance(fallback_agent, OptimizedAgent) and hasattr(fallback_agent, 'game_tracker') and fallback_agent.game_tracker:
-                        game_tracker = fallback_agent.game_tracker
+            game_timestamp = int(time.time())
+            logging.info(f"  Game timestamp: {game_timestamp}")
 
-                if game_tracker:
-                    logging.debug("  game_tracker found, saving...")
-                    logging.debug(f"  result: {result}")
-                    logging.debug(f"  coordinator has last_game_state: {hasattr(coordinator, 'last_game_state')}")
-
-                    # Record game over state
-                    if hasattr(coordinator, 'last_game_state') and coordinator.last_game_state is not None:
-                        # Fix: Check if agent died in combat and end combat wasn't recorded
-                        agent_to_check = agent if isinstance(agent, OptimizedAgent) else agent.fallback_agent
-                        if hasattr(agent_to_check, '_in_combat') and agent_to_check._in_combat:
-                            game_state = coordinator.last_game_state
-                            game_tracker.end_combat(
-                                hp_remaining=game_state.current_hp if hasattr(game_state, 'current_hp') else 0,
-                                max_hp=game_state.max_hp if hasattr(game_state, 'max_hp') else 80
-                            )
-                            agent_to_check._in_combat = False
-                            logging.debug("  Recorded combat end (died in combat)")
-
-                        # Use saved game_over_state if available (has HP info), otherwise fall back to last_game_state
-                        final_state = coordinator.game_over_state if coordinator.game_over_state is not None else coordinator.last_game_state
-                        game_tracker.record_game_over(result, final_state)
-                        logging.debug(f"  Recorded game over via {'game_over_state' if coordinator.game_over_state else 'last_game_state'}")
-                        try:
-                            # Use current timestamp to mark AI game
-                            from pathlib import Path
-                            from datetime import datetime
-                            import time
-
-                            game_timestamp = int(time.time())
-                            logging.info(f"  Game timestamp: {game_timestamp}")
-
-                            # Mark this game as AI-played (relative path, runs from game directory)
-                            ai_games_file = Path("runs/ai_games.txt")
-                            ai_games_file.parent.mkdir(parents=True, exist_ok=True)
-                            with open(ai_games_file, 'a') as f:
-                                f.write(f"{game_timestamp}\n")
-                            logging.debug(f"  Marked as AI game in runs/ai_games.txt")
-                        except Exception:
-                            pass
-                    else:
-                        # Fallback: record with minimal info
-                        logging.debug("  No last_game_state, using fallback")
-                        game_tracker.victory = result
-                        game_tracker.final_floor = agent.game.floor if hasattr(agent, 'floor') else 0
-                        game_tracker.final_act = agent.game.act if hasattr(agent, 'act') else 1
-
-                    # Save to statistics
-                    statistics.record_game(game_tracker)
-                    logging.debug("  Saved to statistics")
-
-                    # Print simple confirmation
-                    result_str = "WIN" if result else "LOSS"
-                    floor = game_tracker.final_floor
-                    act = game_tracker.final_act
-                    logging.info(f"Game #{game_count} saved: {result_str} at Act {act} Floor {floor}")
-                else:
-                    logging.debug("  No game_tracker to save (not OptimizedAgent or tracker is None)")
-            except Exception as e:
-                logging.error(f"Error saving statistics: {e}")
-                import traceback
-                logging.debug(traceback.format_exc())
+            # Mark this game as AI-played (relative path, runs from game directory)
+            ai_games_file = Path("runs/ai_games.txt")
+            ai_games_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(ai_games_file, 'a') as f:
+                f.write(f"{game_timestamp}\n")
+            logging.debug(f"  Marked as AI game in runs/ai_games.txt")
+        except Exception:
+            pass
 
         # Print summary if OptimizedAgent or CombatRLAgent (to stderr)
         if isinstance(agent, OptimizedAgent):
