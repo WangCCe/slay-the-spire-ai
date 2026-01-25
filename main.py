@@ -604,6 +604,13 @@ if __name__ == "__main__":
                             seed_played = getattr(coordinator.last_game_state, 'seed', None)
                             if seed_played is not None:
                                 logging.info(f"  Seed played: {seed_played}")
+                                # Mark this game as AI-played
+                                from pathlib import Path
+                                ai_games_file = Path("D:/SteamLibrary/steamapps/common/SlayTheSpire/runs/ai_games.txt")
+                                ai_games_file.parent.mkdir(parents=True, exist_ok=True)
+                                with open(ai_games_file, 'a') as f:
+                                    f.write(f"{seed_played}\n")
+                                logging.debug(f"  Marked as AI game in {ai_games_file}")
                         except Exception:
                             pass
                     else:
