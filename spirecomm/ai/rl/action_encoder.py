@@ -181,23 +181,23 @@ class ActionEncoder:
 
             # Special handling for SHOP_SCREEN
             # Must use BuyCardAction/BuyPotionAction, not ChooseAction
-        if self._is_screen_type(game, "SHOP_SCREEN"):
-            from spirecomm.communication.action import (
-                BuyCardAction,
-                BuyPotionAction,
-                BuyRelicAction,
-                BuyPurgeAction,
-            )
-            from spirecomm.spire.screen import RewardType
+            if self._is_screen_type(game, "SHOP_SCREEN"):
+                from spirecomm.communication.action import (
+                    BuyCardAction,
+                    BuyPotionAction,
+                    BuyRelicAction,
+                    BuyPurgeAction,
+                )
+                from spirecomm.spire.screen import RewardType
 
-            available = getattr(game, "available_commands", []) or []
-            if "choose" not in available:
-                return LeaveAction()
+                available = getattr(game, "available_commands", []) or []
+                if "choose" not in available:
+                    return LeaveAction()
 
-            screen = game.screen
-            if hasattr(screen, "cards") and choice_index < len(screen.cards):
-                # Buying a card
-                return BuyCardAction(screen.cards[choice_index])
+                screen = game.screen
+                if hasattr(screen, "cards") and choice_index < len(screen.cards):
+                    # Buying a card
+                    return BuyCardAction(screen.cards[choice_index])
                 elif hasattr(screen, "potions") and choice_index < len(screen.potions):
                     # Buying a potion
                     return BuyPotionAction(screen.potions[choice_index])
@@ -255,22 +255,22 @@ class ActionEncoder:
 
             # Special handling for SHOP_SCREEN
             # Must use BuyCardAction/BuyPotionAction/BuyRelicAction, not ChooseAction
-        if self._is_screen_type(game, "SHOP_SCREEN"):
-            from spirecomm.communication.action import (
-                BuyCardAction,
-                BuyPotionAction,
-                BuyRelicAction,
-                BuyPurgeAction,
-            )
+            if self._is_screen_type(game, "SHOP_SCREEN"):
+                from spirecomm.communication.action import (
+                    BuyCardAction,
+                    BuyPotionAction,
+                    BuyRelicAction,
+                    BuyPurgeAction,
+                )
 
-            available = getattr(game, "available_commands", []) or []
-            if "choose" not in available:
-                return LeaveAction()
+                available = getattr(game, "available_commands", []) or []
+                if "choose" not in available:
+                    return LeaveAction()
 
-            screen = game.screen
-            if hasattr(screen, "cards") and shop_action < len(screen.cards):
-                # Buying a card
-                return BuyCardAction(screen.cards[shop_action])
+                screen = game.screen
+                if hasattr(screen, "cards") and shop_action < len(screen.cards):
+                    # Buying a card
+                    return BuyCardAction(screen.cards[shop_action])
                 elif hasattr(screen, "potions") and shop_action < len(screen.potions):
                     # Buying a potion (check if potions exist before cards in shop_action)
                     return BuyPotionAction(
