@@ -1399,6 +1399,74 @@ class OptimizedAgent(SimpleAgent):
         # 调用父类方法
         return super().get_next_action_in_game(game_state)
 
+    def _track_game_state(self, game_state):
+        """
+        Track game state statistics without making decisions.
+
+        This method is called by CombatRLAgent to ensure statistics
+        are collected even when RL makes the decisions.
+
+        Args:
+            game_state: Current game state
+        """
+        if not self.game_tracker or not hasattr(game_state, "in_combat"):
+            return
+
+        try:
+            # 检测战斗状态变化
+            current_in_combat = game_state.in_combat
+
+            if current_in_combat and not self._in_combat:
+                # 战斗开始
+                room_type = "monster"
+                if hasattr(game_state, "room_type"):
+                    rt = str(game_state.room_type)
+                    if "Elite" in rt:
+                        room_type = "elite"
+                    elif "Boss" in rt:
+                        room_type = "boss"
+
+                self.game_tracker.start_combat(
+                    floor=game_state.floor if hasattr(game_state, "floor") else 0,
+                    act=game_state.act if hasattr(game_state, "act") else 1,
+                    room_type=room_type,
+                    start_turn=game_state.turn
+                    if hasattr(game_state, "turn")
+                    else 0,
+                    current_hp=game_state.current_hp
+                    if hasattr(game_state, "current_hp")
+                    else None,
+                )
+                self._in_combat = True
+            elif not current_in_combat and self._in_combat:
+                self.game_tracker.end_combat(
+                    hp_remaining=game_state.current_hp
+                    if hasattr(game_state, "current_hp")
+                    else 80,
+                    max_hp=game_state.max_hp
+                    if hasattr(game_state, "max_hp")
+                    else 80,
+                    end_turn=game_state.turn
+                    if hasattr(game_state, "turn")
+                    else None,
+                )
+                self._in_combat = False
+
+            # 检测遗物获得
+            if hasattr(game_state, "relics"):
+                current_relics = set(
+                    r.relic_id if hasattr(r, "relic_id") else str(r)
+                    for r in game_state.relics
+                )
+                new_relics = current_relics - self._last_relics
+                for relic_id in new_relics:
+                    self.game_tracker.record_relic(relic_id)
+                self._last_relics = current_relics
+        except Exception as e:
+            # Silently fail on tracking errors to not break the game
+            import sys
+            print(f"Error in game tracking: {e}", file=sys.stderr)
+
     def choose_card_reward(self):
         """
         Override with optimized card selection if enabled.

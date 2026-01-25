@@ -426,15 +426,22 @@ if __name__ == "__main__":
             logging.info(f"Combat RL Agent: training={training}")
         logging.info(f"{'='*60}\n")
 
-        # Reset game tracker for OptimizedAgent
-        if isinstance(agent, OptimizedAgent) and hasattr(agent, 'game_tracker'):
-            try:
-                from spirecomm.ai.tracker import GameTracker
+        # Reset game tracker for OptimizedAgent and CombatRLAgent's fallback
+        try:
+            from spirecomm.ai.tracker import GameTracker
+
+            if isinstance(agent, OptimizedAgent) and hasattr(agent, 'game_tracker'):
                 agent.game_tracker = GameTracker()
                 agent.game_tracker.player_class = str(chosen_class).replace('PlayerClass.', '')
                 agent.game_tracker.ascension_level = current_ascension
-            except Exception as e:
-                logging.warning(f"Could not reset game tracker: {e}")
+            elif is_combat_rl_agent and hasattr(agent, 'fallback_agent'):
+                fallback = agent.fallback_agent
+                if isinstance(fallback, OptimizedAgent) and hasattr(fallback, 'game_tracker'):
+                    fallback.game_tracker = GameTracker()
+                    fallback.game_tracker.player_class = str(chosen_class).replace('PlayerClass.', '')
+                    fallback.game_tracker.ascension_level = current_ascension
+        except Exception as e:
+            logging.warning(f"Could not reset game tracker: {e}")
 
         # Change agent class for this game (only for non-RL agents)
         if not is_rl_agent and not is_combat_rl_agent and hasattr(agent, 'change_class'):

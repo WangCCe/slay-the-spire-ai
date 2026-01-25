@@ -500,6 +500,14 @@ class CombatRLAgent:
         Returns:
             Action to execute
         """
+        # Run tracking logic from fallback_agent before any decision
+        # This ensures statistics are collected even when RL is used
+        if hasattr(self.fallback_agent, '_track_game_state'):
+            try:
+                self.fallback_agent._track_game_state(game)
+            except Exception as e:
+                logger.debug(f"Tracking failed: {e}")
+
         # Check if we should use RL for any in-combat screen
         if self.use_rl_for_combat and self._is_rl_context(game):
             try:
