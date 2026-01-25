@@ -80,7 +80,7 @@ class RLAgent:
         else:
             # Create network for inference with correct state dimension
             logger.info(f"Creating new network (device={device})...")
-            self.network = create_dqn("standard", state_dim=self.state_encoder.feature_dim, device=device)
+            self.network = create_dqn("dueling", state_dim=self.state_encoder.feature_dim, device=device)
             self.network.eval()
             logger.info("Network initialized")
 
@@ -341,7 +341,7 @@ class RLAgent:
 
         # Create network if needed
         if not hasattr(self, 'network') or self.network is None:
-            self.network = create_dqn("standard", state_dim=self.state_encoder.feature_dim, device=self.device)
+            self.network = create_dqn("dueling", state_dim=self.state_encoder.feature_dim, device=self.device)
 
         # Load state dict
         if 'online_network_state_dict' in checkpoint:

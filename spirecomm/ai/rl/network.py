@@ -15,17 +15,17 @@ class DQNetwork(nn.Module):
     Deep Q-Network for estimating action values.
 
     Architecture:
-        Input (570) → Hidden (512) → Hidden (256) → Hidden (128) → Output (1000)
+        Input (577) → Hidden (512) → Hidden (256) → Hidden (128) → Output (1000)
 
     Outputs Q-values for all possible actions (0-999).
     """
 
-    def __init__(self, state_dim: int = 570, action_dim: int = 1000, hidden_dims: list = [512, 256, 128]):
+    def __init__(self, state_dim: int = 577, action_dim: int = 1000, hidden_dims: list = [512, 256, 128]):
         """
         Initialize DQN network.
 
         Args:
-            state_dim: Dimension of state vector (default 570)
+            state_dim: Dimension of state vector (default 577)
             action_dim: Dimension of action space (default 1000)
             hidden_dims: List of hidden layer dimensions
         """
@@ -40,7 +40,7 @@ class DQNetwork(nn.Module):
         for hidden_dim in hidden_dims:
             layers.append(nn.Linear(input_dim, hidden_dim))
             layers.append(nn.ReLU())
-            layers.append(nn.Dropout(0.1))
+            layers.append(nn.Dropout(0.05))
             input_dim = hidden_dim
 
         self.hidden_layers = nn.Sequential(*layers)
@@ -109,13 +109,13 @@ class DQNetwork(nn.Module):
 
 class DuelingDQNetwork(nn.Module):
     """
-    Dueling DQN architecture (optional enhancement).
+    Dueling DQN architecture.
 
     Separates value and advantage streams for better learning.
     Not used in current implementation but available for future experiments.
     """
 
-    def __init__(self, state_dim: int = 570, action_dim: int = 1000, hidden_dims: list = [256, 256]):
+    def __init__(self, state_dim: int = 577, action_dim: int = 1000, hidden_dims: list = [256, 256]):
         """Initialize dueling network."""
         super(DuelingDQNetwork, self).__init__()
 
@@ -123,7 +123,7 @@ class DuelingDQNetwork(nn.Module):
         self.feature_layers = nn.Sequential(
             nn.Linear(state_dim, hidden_dims[0]),
             nn.ReLU(),
-            nn.Dropout(0.1),
+            nn.Dropout(0.05),
         )
 
         # Value stream
@@ -167,7 +167,7 @@ class DuelingDQNetwork(nn.Module):
 
 
 # Convenience function for creating networks
-def create_dqn(network_type: str = "standard", state_dim: int = 570,
+def create_dqn(network_type: str = "dueling", state_dim: int = 577,
                action_dim: int = 1000, device: str = "cpu") -> nn.Module:
     """
     Create DQN network of specified type.
@@ -203,7 +203,7 @@ if __name__ == "__main__":
 
     # Test forward pass
     batch_size = 4
-    state = torch.randn(batch_size, 570)
+    state = torch.randn(batch_size, 577)
     action_mask = torch.ones(batch_size, 1000, dtype=torch.bool)
     action_mask[:, 500:] = False  # Mask some actions
 

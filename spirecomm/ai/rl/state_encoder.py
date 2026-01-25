@@ -1,5 +1,5 @@
 """
-State encoder - FIXED VERSION (570 dims)
+State encoder - FIXED VERSION (577 dims)
 """
 import hashlib
 import numpy as np
@@ -10,7 +10,7 @@ from spirecomm.spire.character import Monster, PlayerClass, Intent
 
 class StateEncoder:
     def __init__(self):
-        self.feature_dim = 570
+        self.feature_dim = 577
 
     def encode(self, game: Game) -> np.ndarray:
         features = []
@@ -285,6 +285,9 @@ class StateEncoder:
             can_confirm = 1.0
         if grid_select and getattr(game.screen, 'confirm_up', False):
             can_confirm = 1.0
+        available = getattr(game, "available_commands", []) or []
+        available_set = {str(cmd).lower() for cmd in available}
+
         return [
             *[1.0 if room_type == rt else 0.0 for rt in
               ["MONSTER", "EVENT", "SHOP", "REST", "TREASURE", "BOSS"]],
@@ -308,6 +311,13 @@ class StateEncoder:
             min(len(game.hand) if game.hand else 0, 10) / 10.0,
             min((game.player.energy if game.player else 0), 5) / 5.0,
             min(max((game.player.energy if game.player else 0), 3), 5) / 5.0,
+            1.0 if "confirm" in available_set else 0.0,
+            1.0 if "proceed" in available_set else 0.0,
+            1.0 if "cancel" in available_set else 0.0,
+            1.0 if "choose" in available_set else 0.0,
+            1.0 if "click" in available_set else 0.0,
+            1.0 if "key" in available_set else 0.0,
+            min(len(available_set), 10) / 10.0,
         ]
 
     @staticmethod

@@ -31,7 +31,7 @@ class DQNTrainer:
 
     def __init__(
         self,
-        state_dim: int = 570,
+        state_dim: int = 577,
         action_dim: int = 1000,
         hidden_dims: list = [512, 256, 128],
         learning_rate: float = 1e-4,
@@ -73,9 +73,9 @@ class DQNTrainer:
 
         # Networks
         logger.debug(f"Creating online network on {device}...")
-        self.online_network = create_dqn("standard", state_dim, action_dim, device)
+        self.online_network = create_dqn("dueling", state_dim, action_dim, device)
         logger.debug(f"Creating target network on {device}...")
-        self.target_network = create_dqn("standard", state_dim, action_dim, device)
+        self.target_network = create_dqn("dueling", state_dim, action_dim, device)
         logger.debug(f"Syncing target network with online network...")
         self.target_network.load_state_dict(self.online_network.state_dict())
         self.target_network.eval()
