@@ -309,6 +309,18 @@ class Coordinator:
                                 "GRID screen_state type=%s",
                                 type(screen_state).__name__,
                             )
+                # Debug: Log raw JSON for GAME_OVER to understand what fields are sent
+                if game_state.get("screen_type") == "GAME_OVER":
+                    import logging
+                    logging.info(f"[GAME_OVER_JSON] screen_type={game_state.get('screen_type')}")
+                    logging.info(f"[GAME_OVER_JSON] has current_hp: {'current_hp' in game_state}")
+                    logging.info(f"[GAME_OVER_JSON] has max_hp: {'max_hp' in game_state}")
+                    logging.info(f"[GAME_OVER_JSON] has combat_state: {'combat_state' in game_state}")
+                    logging.info(f"[GAME_OVER_JSON] current_hp value: {game_state.get('current_hp')}")
+                    logging.info(f"[GAME_OVER_JSON] max_hp value: {game_state.get('max_hp')}")
+                    # Log top-level keys
+                    logging.info(f"[GAME_OVER_JSON] top-level keys: {sorted(game_state.keys())}")
+
                 # Always update last_game_state, even when in_game=False (e.g., Neow screen)
                 self.last_game_state = Game.from_json(
                     game_state, communication_state.get("available_commands")

@@ -215,8 +215,23 @@ class GameTracker:
             victory: Whether the game was won
             final_state: Final game state object
         """
+        import logging
         self.game_end_time = datetime.now()
         self.victory = victory
+
+        # Debug: Log what fields are available in final_state
+        logging.info(f"[TRACKER] record_game_over called, victory={victory}")
+        logging.info(f"[TRACKER] final_state type: {type(final_state)}")
+        logging.info(f"[TRACKER] hasattr current_hp: {hasattr(final_state, 'current_hp')}")
+        logging.info(f"[TRACKER] hasattr max_hp: {hasattr(final_state, 'max_hp')}")
+        logging.info(f"[TRACKER] hasattr player: {hasattr(final_state, 'player')}")
+        logging.info(f"[TRACKER] hasattr floor: {hasattr(final_state, 'floor')}")
+        if hasattr(final_state, 'current_hp'):
+            logging.info(f"[TRACKER] final_state.current_hp = {final_state.current_hp}")
+        if hasattr(final_state, 'max_hp'):
+            logging.info(f"[TRACKER] final_state.max_hp = {final_state.max_hp}")
+        if hasattr(final_state, 'player'):
+            logging.info(f"[TRACKER] final_state.player = {final_state.player}")
 
         # Extract info from final state
         if hasattr(final_state, 'floor'):
