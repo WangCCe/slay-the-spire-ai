@@ -504,15 +504,9 @@ class CombatRLAgent:
         # This ensures statistics are collected even when RL is used
         if hasattr(self.fallback_agent, '_track_game_state'):
             try:
-                logger.debug(f"[COMBAT_RL] Calling _track_game_state, in_combat={game.in_combat if hasattr(game, 'in_combat') else 'N/A'}")
                 self.fallback_agent._track_game_state(game)
-                logger.debug(f"[COMBAT_RL] _track_game_state completed")
             except Exception as e:
-                logger.error(f"Tracking failed: {e}")
-                import traceback
-                logger.debug(traceback.format_exc())
-        else:
-            logger.warning(f"[COMBAT_RL] fallback_agent does not have _track_game_state method! type={type(self.fallback_agent)}")
+                logger.debug(f"Tracking failed: {e}")
 
         # Check if we should use RL for any in-combat screen
         if self.use_rl_for_combat and self._is_rl_context(game):
