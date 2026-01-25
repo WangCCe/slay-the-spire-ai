@@ -1410,6 +1410,8 @@ class OptimizedAgent(SimpleAgent):
             game_state: Current game state
         """
         import logging
+        logging.debug(f"[_track_game_state] Called: game_tracker={self.game_tracker is not None}, has_in_combat={hasattr(game_state, 'in_combat')}, _in_combat={self._in_combat}")
+
         if not self.game_tracker or not hasattr(game_state, "in_combat"):
             logging.debug(f"[_track_game_state] Early return: game_tracker={self.game_tracker is not None}, has_in_combat={hasattr(game_state, 'in_combat')}")
             return
@@ -1417,6 +1419,7 @@ class OptimizedAgent(SimpleAgent):
         try:
             # 检测战斗状态变化
             current_in_combat = game_state.in_combat
+            logging.debug(f"[_track_game_state] State check: current_in_combat={current_in_combat}, _in_combat={self._in_combat}")
 
             if current_in_combat and not self._in_combat:
                 # 战斗开始
