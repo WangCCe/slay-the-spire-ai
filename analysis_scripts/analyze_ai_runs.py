@@ -17,23 +17,22 @@ from datetime import datetime
 from collections import Counter
 
 # 配置路径 (从游戏目录运行，所以用相对路径)
-RUNS_DIR = Path("runs")
-AI_GAMES_FILE = RUNS_DIR / "ai_games.txt"
+DEFAULT_GAME_DIR = Path(r"D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire")
 CHARACTER = "IRONCLAD"  # 修改这个来分析其他角色
 
 
-def load_ai_games():
+def load_ai_games(ai_games_file: Path):
     """读取 AI 游戏列表"""
-    if not AI_GAMES_FILE.exists():
-        print(f"未找到 AI 游戏记录: {AI_GAMES_FILE}")
+    if not ai_games_file.exists():
+        print(f"未找到 AI 游戏记录: {ai_games_file}")
         print("请先运行 AI，让它记录一些游戏")
         return []
 
-    with open(AI_GAMES_FILE) as f:
+    with open(ai_games_file) as f:
         return [line.strip() for line in f if line.strip()]
 
 
-def load_run_data(game_timestamp):
+def load_run_data(runs_dir: Path, character: str, game_timestamp):
     """读取单个游戏的详细数据（时间戳模糊匹配）"""
     # 查找最接近的 .run 文件（允许 5 分钟误差）
     timestamp_int = int(game_timestamp)
@@ -42,7 +41,7 @@ def load_run_data(game_timestamp):
     closest_file = None
     min_diff = float('inf')
 
-    for run_file in (RUNS_DIR / CHARACTER).glob("*.run"):
+    for run_file in (runs_dir / character).glob("*.run"):
         # 从文件名提取时间戳
         try:
             file_timestamp = int(run_file.stem)
@@ -59,9 +58,11 @@ def load_run_data(game_timestamp):
     return None
 
 
-def analyze_ai_games():
+def analyze_ai_games(game_dir: Path, character: str):
     """分析 AI 游戏数据"""
-    ai_game_ids = load_ai_games()
+    runs_dir = game_dir / "runs"
+    ai_games_file = runs_dir / "ai_games.txt"
+    ai_game_ids = load_ai_games(ai_games_file)
 
     if not ai_game_ids:
         return
@@ -80,7 +81,7 @@ def analyze_ai_games():
     recent_games = []
 
     for game_id in ai_game_ids[-10:]:  # 最近10局
-        data = load_run_data(game_id)
+        data = load_run_data(runs_dir, character, game_id)
         if not data:
             continue
 
@@ -137,9 +138,11 @@ def analyze_ai_games():
     print("\n" + "=" * 60)
 
 
-def show_all_ai_games():
+def show_all_ai_games(game_dir: Path, character: str):
     """显示所有 AI 游戏（简化版）"""
-    ai_game_ids = load_ai_games()
+    runs_dir = game_dir / "runs"
+    ai_games_file = runs_dir / "ai_games.txt"
+    ai_game_ids = load_ai_games(ai_games_file)
 
     if not ai_game_ids:
         return
@@ -148,7 +151,7 @@ def show_all_ai_games():
     print("=" * 60)
 
     for game_id in ai_game_ids:
-        data = load_run_data(game_id)
+        data = load_run_data(runs_dir, character, game_id)
         if data:
             floor = data.get('floor_reached', 0)
             victory = "WIN" if data.get('victory', False) else "LOSS"
@@ -160,7 +163,22 @@ def show_all_ai_games():
 if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) > 1 and sys.argv[1] == "--all":
-        show_all_ai_games()
+    game_dir = DEFAULT_GAME_DIR
+    args = sys.argv[1:]
+    if "--game-dir" in args:
+        idx = args.index("--game-dir")
+        if idx + 1 < len(args):
+            game_dir = Path(args[idx + 1])
+            args.pop(idx + 1)
+            args.pop(idx)
+    if "--character" in args:
+        idx = args.index("--character")
+        if idx + 1 < len(args):
+            CHARACTER = args[idx + 1]
+            args.pop(idx + 1)
+            args.pop(idx)
+
+    if args and args[0] == "--all":
+        show_all_ai_games(game_dir, CHARACTER)
     else:
-        analyze_ai_games()
+        analyze_ai_games(game_dir, CHARACTER)

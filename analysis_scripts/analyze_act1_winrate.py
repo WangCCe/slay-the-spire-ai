@@ -1,8 +1,9 @@
 """
 Compute Act 1 win rate for AI games.
 
-Usage (run from game directory):
+Usage (run from project directory or anywhere):
     python D:/PycharmProjects/slay-the-spire-ai/analysis_scripts/analyze_act1_winrate.py
+    python D:/PycharmProjects/slay-the-spire-ai/analysis_scripts/analyze_act1_winrate.py --game-dir "D:/SteamLibrary/steamapps/common/SlayTheSpire"
 
 Optional:
     --character IRONCLAD
@@ -18,8 +19,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 
-RUNS_DIR = Path("runs")
-AI_GAMES_FILE = RUNS_DIR / "ai_games.txt"
+DEFAULT_GAME_DIR = Path(r"D:\SteamLibrary\steamapps\common\SlayTheSpire")
 
 
 def load_ai_games(ai_file: Path) -> List[int]:
@@ -87,19 +87,22 @@ def load_run_data(run_file: Path) -> Optional[dict]:
 
 
 def analyze_act1_winrate(
+    game_dir: Path,
     character: str,
     window: int,
     tolerance: int,
     min_floor: int,
 ) -> None:
-    ai_game_ids = load_ai_games(AI_GAMES_FILE)
+    runs_dir = game_dir / "runs"
+    ai_games_file = runs_dir / "ai_games.txt"
+    ai_game_ids = load_ai_games(ai_games_file)
     if not ai_game_ids:
         return
 
     if window > 0:
         ai_game_ids = ai_game_ids[-window:]
 
-    timestamps, mapping = index_run_files(RUNS_DIR, character)
+    timestamps, mapping = index_run_files(runs_dir, character)
     if not mapping:
         print(f"No run files found for character: {character}")
         return
@@ -141,6 +144,7 @@ def analyze_act1_winrate(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Analyze Act 1 win rate for AI runs.")
+    parser.add_argument("--game-dir", default=str(DEFAULT_GAME_DIR), help="Slay the Spire game directory")
     parser.add_argument("--character", default="IRONCLAD", help="Character folder under runs/")
     parser.add_argument("--window", type=int, default=0, help="Analyze only last N AI games (0 = all)")
     parser.add_argument("--tolerance", type=int, default=300, help="Timestamp match tolerance in seconds")
@@ -151,6 +155,7 @@ def parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     args = parse_args()
     analyze_act1_winrate(
+        game_dir=Path(args.game_dir),
         character=args.character,
         window=args.window,
         tolerance=args.tolerance,
