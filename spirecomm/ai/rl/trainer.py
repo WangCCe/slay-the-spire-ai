@@ -136,10 +136,26 @@ class DQNTrainer:
             action = self.online_network.get_best_action(state_tensor, mask_tensor)
             return action.item()
 
-    def store_transition(self, state: np.ndarray, action: int, reward: float,
-                         next_state: Optional[np.ndarray], done: bool) -> None:
+    def store_transition(
+        self,
+        state: np.ndarray,
+        action: int,
+        reward: float,
+        next_state: Optional[np.ndarray],
+        done: bool,
+        action_mask: Optional[np.ndarray] = None,
+        next_action_mask: Optional[np.ndarray] = None,
+    ) -> None:
         """Store transition in replay buffer and increment step counter."""
-        self.replay_buffer.add(state, action, reward, next_state, done)
+        self.replay_buffer.add(
+            state,
+            action,
+            reward,
+            next_state,
+            done,
+            action_mask=action_mask,
+            next_action_mask=next_action_mask,
+        )
         self.total_steps += 1  # Count environment steps, not training steps
 
     def train_step(self) -> Optional[float]:
