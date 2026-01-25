@@ -246,14 +246,10 @@ D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug.log
 D:\SteamLibrary\steamapps\common\SlayTheSpire\communication_mod_errors.log
 ```
 
-**Game Statistics** (daily files in stats/ directory):
+**AI Game Marking** (in game directory):
 ```
-D:\SteamLibrary\steamapps\common\SlayTheSpire\stats\
-  ├── ai_game_stats_20260125.csv
-  ├── ai_game_stats_20260125.jsonl
-  ├── ai_game_stats_20260126.csv
-  ├── ai_game_stats_20260126.jsonl
-  └── ... (auto-deletes files older than 30 days)
+D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\
+  └── ai_games.txt  (one timestamp per line, marks AI games)
 ```
 
 **RL Checkpoints** (in game directory):
@@ -280,17 +276,24 @@ D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\
 | `ai_debug.log`                 | AI debugging and decision history (auto-rotates at 10MB, keeps 5 backups)                                      |
 | `communication_mod_errors.log` | Python exceptions and stack traces                                                                            |
 
-### Game Statistics (daily files in stats/ directory)
+### AI Game Marking (in game directory)
 
-| File | Format | Purpose |
-|------|--------|---------|
-| `stats/ai_game_stats_YYYYMMDD.csv` | CSV | Aggregate statistics for quick viewing (Excel friendly) |
-| `stats/ai_game_stats_YYYYMMDD.jsonl` | JSONL | Detailed per-game logs with full data structure |
+**Location**: `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\ai_games.txt`
 
-**Auto-management**:
-- Creates new file each day (YYYYMMDD format)
-- Automatically deletes files older than 30 days
-- Located in `stats/` subdirectory of game folder
+**Format**: One Unix timestamp per line, marking games played by AI:
+```
+1769332451
+1769332482
+1769332514
+```
+
+**Purpose**: Distinguish AI games from user-played games. Each timestamp corresponds to a `.run` file in `runs/IRONCLAD/`.
+
+**Analysis**: Use `analysis_scripts/analyze_ai_runs.py` to view statistics:
+```bash
+cd D:\SteamLibrary\steamapps\common\SlayTheSpire
+python D:\PycharmProjects\slay-the-spire-ai\analysis_scripts\analyze_ai_runs.py
+```
 
 ### Game Run Records (in game directory)
 
@@ -337,7 +340,8 @@ jq '{floor: .floor_reached, victory: .victory, killed_by: .killed_by, path: .pat
 When debugging crashes:
 1. Check `communication_mod_errors.log` - Python exceptions
 2. Check `ai_debug.log` - game state tracking and decisions
-3. Use `ai_game_stats.csv` - analyze win rates and trends
+3. Check `runs/ai_games.txt` - verify AI games are being marked
+4. Use `analysis_scripts/analyze_ai_runs.py` - analyze AI performance
 
 ### Common Issues
 
