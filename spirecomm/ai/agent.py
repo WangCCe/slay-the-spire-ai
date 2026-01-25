@@ -1409,7 +1409,9 @@ class OptimizedAgent(SimpleAgent):
         Args:
             game_state: Current game state
         """
+        import logging
         if not self.game_tracker or not hasattr(game_state, "in_combat"):
+            logging.debug(f"[_track_game_state] Early return: game_tracker={self.game_tracker is not None}, has_in_combat={hasattr(game_state, 'in_combat')}")
             return
 
         try:
@@ -1426,6 +1428,7 @@ class OptimizedAgent(SimpleAgent):
                     elif "Boss" in rt:
                         room_type = "boss"
 
+                logging.info(f"[_track_game_state] Starting combat: floor={game_state.floor if hasattr(game_state, 'floor') else '?'}, type={room_type}")
                 self.game_tracker.start_combat(
                     floor=game_state.floor if hasattr(game_state, "floor") else 0,
                     act=game_state.act if hasattr(game_state, "act") else 1,
