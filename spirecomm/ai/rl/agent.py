@@ -14,7 +14,11 @@ from .state_encoder import StateEncoder
 from .action_encoder import ActionEncoder
 from .reward import RewardCalculator
 from .trainer import DQNTrainer
-from .network import create_dqn, align_state_dict_input
+from .network import (
+    create_dqn,
+    align_state_dict_input,
+    detect_network_type_from_checkpoint,
+)
 from spirecomm.spire.game import Game
 from spirecomm.communication.action import Action
 from spirecomm.spire.character import PlayerClass
@@ -49,6 +53,7 @@ class RLAgent:
         self.device = device
         self.training_mode = training
         self.chosen_class = PlayerClass.IRONCLAD  # Default to Ironclad
+        self.network_type = "dueling"
 
         logger.info("Initializing StateEncoder...")
         # Initialize components
@@ -63,10 +68,17 @@ class RLAgent:
         self.reward_calculator = RewardCalculator()
         logger.info("RewardCalculator initialized")
 
+        if model_path is not None:
+            self.network_type = self._infer_network_type(model_path)
+
         # Initialize trainer with correct state dimension
         if training:
             logger.info(f"Initializing DQNTrainer (device={device})...")
-            self.trainer = DQNTrainer(state_dim=self.state_encoder.feature_dim, device=device)
+            self.trainer = DQNTrainer(
+                state_dim=self.state_encoder.feature_dim,
+                device=device,
+                network_type=self.network_type,
+            )
             logger.info("DQNTrainer initialized")
         else:
             self.trainer = None
@@ -80,7 +92,7 @@ class RLAgent:
         else:
             # Create network for inference with correct state dimension
             logger.info(f"Creating new network (device={device})...")
-            self.network = create_dqn("dueling", state_dim=self.state_encoder.feature_dim, device=device)
+            self.network = create_dqn(self.network_type, state_dim=self.state_encoder.feature_dim, device=device)
             self.network.eval()
             logger.info("Network initialized")
 
@@ -321,10 +333,23 @@ class RLAgent:
     def load_model(self, model_path: str) -> None:
         """Load model from checkpoint file."""
         checkpoint = torch.load(model_path, map_location=self.device)
+        detected_type = detect_network_type_from_checkpoint(checkpoint)
+        if detected_type != self.network_type:
+            logger.warning(
+                "Checkpoint network type %s differs from current %s; switching.",
+                detected_type,
+                self.network_type,
+            )
+            self.network_type = detected_type
 
         # Create network if needed
         if not hasattr(self, 'network') or self.network is None:
-            self.network = create_dqn("dueling", state_dim=self.state_encoder.feature_dim, device=self.device)
+            self.network = create_dqn(self.network_type, state_dim=self.state_encoder.feature_dim, device=self.device)
+        else:
+            current_type = self.network.__class__.__name__
+            expected_type = "DuelingDQNetwork" if self.network_type == "dueling" else "DQNetwork"
+            if current_type != expected_type:
+                self.network = create_dqn(self.network_type, state_dim=self.state_encoder.feature_dim, device=self.device)
 
         # Load state dict
         if 'online_network_state_dict' in checkpoint:
@@ -341,6 +366,14 @@ class RLAgent:
                 logger.warning("Checkpoint input dim mismatch; aligning weights to current model.")
             self.network.load_state_dict(state_dict, strict=not updated)
             self.network.eval()
+
+    def _infer_network_type(self, model_path: str) -> str:
+        try:
+            checkpoint = torch.load(model_path, map_location="cpu")
+            return detect_network_type_from_checkpoint(checkpoint)
+        except Exception as e:
+            logger.warning("Failed to infer network type, defaulting to dueling: %s", e)
+            return "dueling"
 
         logger.info(f"Loaded model from {model_path}")
 

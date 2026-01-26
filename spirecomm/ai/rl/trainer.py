@@ -10,7 +10,12 @@ import numpy as np
 from typing import Optional, Tuple
 import logging
 
-from .network import DQNetwork, create_dqn, align_state_dict_input
+from .network import (
+    DQNetwork,
+    create_dqn,
+    align_state_dict_input,
+    detect_network_type_from_checkpoint,
+)
 from .replay_buffer import ReplayBuffer
 from .reward import RewardCalculator
 
@@ -43,7 +48,8 @@ class DQNTrainer:
         epsilon_start: float = 1.0,
         epsilon_end: float = 0.05,
         epsilon_decay: int = 25000,
-        device: str = "cuda" if torch.cuda.is_available() else "cpu"
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        network_type: str = "dueling",
     ):
         """
         Initialize DQN trainer.
@@ -70,12 +76,14 @@ class DQNTrainer:
         self.target_update_freq = target_update_freq
         self.train_freq = train_freq
         self.device = device
+        self.learning_rate = learning_rate
+        self.network_type = network_type
 
         # Networks
         logger.debug(f"Creating online network on {device}...")
-        self.online_network = create_dqn("dueling", state_dim, action_dim, device)
+        self.online_network = create_dqn(self.network_type, state_dim, action_dim, device)
         logger.debug(f"Creating target network on {device}...")
-        self.target_network = create_dqn("dueling", state_dim, action_dim, device)
+        self.target_network = create_dqn(self.network_type, state_dim, action_dim, device)
         logger.debug(f"Syncing target network with online network...")
         self.target_network.load_state_dict(self.online_network.state_dict())
         self.target_network.eval()
@@ -309,6 +317,18 @@ class DQNTrainer:
             Checkpoint dictionary with metadata
         """
         checkpoint = torch.load(filepath, map_location=self.device)
+        detected_type = detect_network_type_from_checkpoint(checkpoint)
+        if detected_type != self.network_type:
+            logger.warning(
+                "Checkpoint network type %s differs from current %s; rebuilding networks.",
+                detected_type,
+                self.network_type,
+            )
+            self.network_type = detected_type
+            self.online_network = create_dqn(self.network_type, self.state_dim, self.action_dim, self.device)
+            self.target_network = create_dqn(self.network_type, self.state_dim, self.action_dim, self.device)
+            self.target_network.eval()
+            self.optimizer = torch.optim.Adam(self.online_network.parameters(), lr=self.learning_rate)
 
         online_state, online_updated = align_state_dict_input(
             checkpoint['online_network_state_dict'], self.online_network

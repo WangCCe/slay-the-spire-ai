@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import logging
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -232,6 +232,31 @@ def align_state_dict_input(
             aligned[name] = tensor
 
     return aligned, updated
+
+
+def detect_network_type_from_state_dict(state_dict: Dict[str, torch.Tensor]) -> str:
+    keys = state_dict.keys()
+    if any(
+        k.startswith("feature_layers.")
+        or k.startswith("advantage_stream.")
+        or k.startswith("value_stream.")
+        for k in keys
+    ):
+        return "dueling"
+    if any(
+        k.startswith("hidden_layers.") or k.startswith("output_layer.")
+        for k in keys
+    ):
+        return "standard"
+    return "dueling"
+
+
+def detect_network_type_from_checkpoint(checkpoint: Any) -> str:
+    if isinstance(checkpoint, dict) and "online_network_state_dict" in checkpoint:
+        return detect_network_type_from_state_dict(checkpoint["online_network_state_dict"])
+    if isinstance(checkpoint, dict):
+        return detect_network_type_from_state_dict(checkpoint)
+    return "dueling"
 
 
 if __name__ == "__main__":
