@@ -1,5 +1,5 @@
 """
-State encoder - FIXED VERSION (577 dims)
+State encoder - FIXED VERSION (781 dims)
 """
 import hashlib
 import numpy as np
@@ -10,7 +10,7 @@ from spirecomm.spire.character import Monster, PlayerClass, Intent
 
 class StateEncoder:
     def __init__(self):
-        self.feature_dim = 577
+        self.feature_dim = 781
 
     def encode(self, game: Game) -> np.ndarray:
         features = []
@@ -21,6 +21,12 @@ class StateEncoder:
         features.extend(self._encode_relics(game))
         features.extend(self._encode_potions(game))
         features.extend(self._encode_context(game))
+        features.extend(self._encode_player_powers(game))
+        features.extend(self._encode_orbs(game))
+        features.extend(self._encode_combat_piles(game))
+        features.extend(self._encode_screen_meta(game))
+        features.extend(self._encode_choice_buckets(game))
+        features.extend(self._encode_future_reserved())
         return np.array(features, dtype=np.float32)
 
     def _encode_player_state(self, game: Game) -> List[float]:
@@ -319,6 +325,119 @@ class StateEncoder:
             1.0 if "key" in available_set else 0.0,
             min(len(available_set), 10) / 10.0,
         ]
+
+    def _encode_player_powers(self, game: Game) -> List[float]:
+        if game.player is None:
+            return [0.0] * 12
+        player = game.player
+        weak = self._get_power_amount(getattr(player, 'powers', []), "Weak")
+        vulnerable = self._get_power_amount(getattr(player, 'powers', []), "Vulnerable")
+        frail = self._get_power_amount(getattr(player, 'powers', []), "Frail")
+        poison = self._get_power_amount(getattr(player, 'powers', []), "Poison")
+        artifact = self._get_power_amount(getattr(player, 'powers', []), "Artifact")
+        plated_armor = self._get_power_amount(getattr(player, 'powers', []), "Plated Armor")
+        intangible = self._get_power_amount(getattr(player, 'powers', []), "Intangible")
+        buffer = self._get_power_amount(getattr(player, 'powers', []), "Buffer")
+        metallicize = self._get_power_amount(getattr(player, 'powers', []), "Metallicize")
+        regen = self._get_power_amount(getattr(player, 'powers', []), "Regeneration")
+        ritual = self._get_power_amount(getattr(player, 'powers', []), "Ritual")
+        thorns = self._get_power_amount(getattr(player, 'powers', []), "Thorns")
+        return [
+            min(weak, 5) / 5.0,
+            min(vulnerable, 5) / 5.0,
+            min(frail, 5) / 5.0,
+            min(poison, 30) / 30.0,
+            min(artifact, 5) / 5.0,
+            min(plated_armor, 20) / 20.0,
+            min(intangible, 5) / 5.0,
+            min(buffer, 5) / 5.0,
+            min(metallicize, 20) / 20.0,
+            min(regen, 20) / 20.0,
+            min(ritual, 20) / 20.0,
+            min(thorns, 20) / 20.0,
+        ]
+
+    def _encode_orbs(self, game: Game) -> List[float]:
+        if game.player is None:
+            return [0.0] * 16
+        orbs = getattr(game.player, 'orbs', []) or []
+        features = []
+        for i in range(4):
+            if i < len(orbs):
+                orb = orbs[i]
+                orb_id = getattr(orb, 'orb_id', None) or getattr(orb, 'name', None)
+                orb_hash = self._stable_hash(orb_id, 20) / 20.0 if orb_id else 0.0
+                evoke_amount = self._safe_float(getattr(orb, 'evoke_amount', 0.0), default=0.0)
+                passive_amount = self._safe_float(getattr(orb, 'passive_amount', 0.0), default=0.0)
+                features.extend([
+                    orb_hash,
+                    min(evoke_amount, 20) / 20.0,
+                    min(passive_amount, 20) / 20.0,
+                    0.0,
+                ])
+            else:
+                features.extend([0.0, 0.0, 0.0, 1.0])
+        return features
+
+    def _encode_combat_piles(self, game: Game) -> List[float]:
+        exhaust_size = len(game.exhaust_pile) if game.exhaust_pile else 0
+        limbo_size = len(game.limbo) if game.limbo else 0
+        discarded = getattr(game, 'cards_discarded_this_turn', 0) or 0
+        card_in_play = getattr(game, 'card_in_play', None)
+        card_in_play_id = getattr(card_in_play, 'card_id', None) if card_in_play else None
+        if card_in_play_id is None and card_in_play is not None:
+            card_in_play_id = getattr(card_in_play, 'id', None)
+        card_in_play_hash = self._stable_hash(card_in_play_id, 50) / 50.0 if card_in_play_id else 0.0
+
+        potions = game.potions if game.potions else []
+        real_potions = [p for p in potions if getattr(p, 'potion_id', None) != "Potion Slot"]
+        empty_slots = len(potions) - len(real_potions)
+        potions_full = 1.0 if hasattr(game, 'are_potions_full') and game.are_potions_full() else 0.0
+        potion_available = 1.0 if getattr(game, 'potion_available', False) else 0.0
+
+        return [
+            min(exhaust_size, 30) / 30.0,
+            min(limbo_size, 10) / 10.0,
+            min(discarded, 10) / 10.0,
+            card_in_play_hash,
+            min(len(real_potions), 5) / 5.0,
+            min(empty_slots, 5) / 5.0,
+            potions_full,
+            potion_available,
+        ]
+
+    def _encode_screen_meta(self, game: Game) -> List[float]:
+        from spirecomm.spire.game import RoomPhase
+
+        room_phase = getattr(game, 'room_phase', None)
+        screen_up = 1.0 if getattr(game, 'screen_up', False) else 0.0
+        play_available = 1.0 if getattr(game, 'play_available', False) else 0.0
+        end_available = 1.0 if getattr(game, 'end_available', False) else 0.0
+        act_boss = getattr(game, 'act_boss', None)
+        act_boss_hash = self._stable_hash(act_boss, 20) / 20.0 if act_boss else 0.0
+
+        return [
+            1.0 if room_phase == RoomPhase.COMBAT else 0.0,
+            1.0 if room_phase == RoomPhase.EVENT else 0.0,
+            1.0 if room_phase == RoomPhase.COMPLETE else 0.0,
+            1.0 if room_phase == RoomPhase.INCOMPLETE else 0.0,
+            screen_up,
+            play_available,
+            end_available,
+            act_boss_hash,
+        ]
+
+    def _encode_choice_buckets(self, game: Game) -> List[float]:
+        buckets = [0.0] * 32
+        choices = game.choice_list if game.choice_list else []
+        for choice in choices:
+            key = str(choice)
+            idx = self._stable_hash(key, 32)
+            buckets[idx] = min(buckets[idx] + 1.0, 3.0)
+        return [val / 3.0 for val in buckets]
+
+    def _encode_future_reserved(self) -> List[float]:
+        return [0.0] * 128
 
     @staticmethod
     def _stable_hash(value, modulo):

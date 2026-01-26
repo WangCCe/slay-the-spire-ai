@@ -14,7 +14,7 @@ from .state_encoder import StateEncoder
 from .action_encoder import ActionEncoder
 from .reward import RewardCalculator
 from .trainer import DQNTrainer
-from .network import create_dqn
+from .network import create_dqn, align_state_dict_input
 from spirecomm.spire.game import Game
 from spirecomm.communication.action import Action
 from spirecomm.spire.character import PlayerClass
@@ -329,11 +329,17 @@ class RLAgent:
         # Load state dict
         if 'online_network_state_dict' in checkpoint:
             # Full checkpoint from trainer
-            self.network.load_state_dict(checkpoint['online_network_state_dict'])
+            state_dict, updated = align_state_dict_input(checkpoint['online_network_state_dict'], self.network)
+            if updated:
+                logger.warning("Checkpoint input dim mismatch; aligning weights to current model.")
+            self.network.load_state_dict(state_dict, strict=not updated)
             self.network.eval()
         else:
             # Network state dict only
-            self.network.load_state_dict(checkpoint)
+            state_dict, updated = align_state_dict_input(checkpoint, self.network)
+            if updated:
+                logger.warning("Checkpoint input dim mismatch; aligning weights to current model.")
+            self.network.load_state_dict(state_dict, strict=not updated)
             self.network.eval()
 
         logger.info(f"Loaded model from {model_path}")

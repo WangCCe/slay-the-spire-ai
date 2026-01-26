@@ -10,7 +10,7 @@ import numpy as np
 from typing import Optional, Tuple
 import logging
 
-from .network import DQNetwork, create_dqn
+from .network import DQNetwork, create_dqn, align_state_dict_input
 from .replay_buffer import ReplayBuffer
 from .reward import RewardCalculator
 
@@ -310,9 +310,25 @@ class DQNTrainer:
         """
         checkpoint = torch.load(filepath, map_location=self.device)
 
-        self.online_network.load_state_dict(checkpoint['online_network_state_dict'])
-        self.target_network.load_state_dict(checkpoint['target_network_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        online_state, online_updated = align_state_dict_input(
+            checkpoint['online_network_state_dict'], self.online_network
+        )
+        target_state, target_updated = align_state_dict_input(
+            checkpoint['target_network_state_dict'], self.target_network
+        )
+        updated = online_updated or target_updated
+
+        if updated:
+            logger.warning("Checkpoint input dim mismatch; aligning weights to current model.")
+
+        self.online_network.load_state_dict(online_state, strict=not updated)
+        self.target_network.load_state_dict(target_state, strict=not updated)
+
+        if not updated:
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        else:
+            logger.warning("Optimizer state not loaded due to shape changes.")
+
         self.epsilon = checkpoint['epsilon']
         self.total_steps = checkpoint['total_steps']
         self.total_updates = checkpoint['total_updates']

@@ -7,7 +7,10 @@ PyTorch neural network for Q-value estimation.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional
+import logging
+from typing import Optional, Tuple, Dict
+
+logger = logging.getLogger(__name__)
 
 
 class DQNetwork(nn.Module):
@@ -190,6 +193,45 @@ def create_dqn(network_type: str = "dueling", state_dim: int = 577,
 
     network = network.to(device)
     return network
+
+
+def align_state_dict_input(
+    state_dict: Dict[str, torch.Tensor],
+    model: nn.Module,
+) -> Tuple[Dict[str, torch.Tensor], bool]:
+    """
+    Align checkpoint tensors to model shapes by padding/truncating input dims.
+    """
+    model_state = model.state_dict()
+    updated = False
+    aligned = {}
+
+    for name, tensor in state_dict.items():
+        if name not in model_state:
+            aligned[name] = tensor
+            continue
+        target = model_state[name]
+        if tensor.shape == target.shape:
+            aligned[name] = tensor
+            continue
+
+        if tensor.dim() == 2 and target.dim() == 2:
+            new_tensor = torch.zeros(target.shape, dtype=tensor.dtype)
+            out_min = min(tensor.shape[0], target.shape[0])
+            in_min = min(tensor.shape[1], target.shape[1])
+            new_tensor[:out_min, :in_min] = tensor[:out_min, :in_min]
+            aligned[name] = new_tensor
+            updated = True
+        elif tensor.dim() == 1 and target.dim() == 1:
+            new_tensor = torch.zeros(target.shape, dtype=tensor.dtype)
+            out_min = min(tensor.shape[0], target.shape[0])
+            new_tensor[:out_min] = tensor[:out_min]
+            aligned[name] = new_tensor
+            updated = True
+        else:
+            aligned[name] = tensor
+
+    return aligned, updated
 
 
 if __name__ == "__main__":
