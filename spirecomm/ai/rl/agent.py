@@ -103,6 +103,9 @@ class RLAgent:
         self.last_game = None  # Track previous game state for reward calculation
         self.boss_min_epsilon = 0.3
         self.last_logged_turn = None
+        self.pending_reward_action = None
+        self.pending_reward_mask = None
+        self.pending_reward_game = None
 
         # Episode tracking
         self.episode_reward = 0.0
@@ -236,29 +239,31 @@ class RLAgent:
             # Track state and action for training
             if self.training_mode and self.trainer is not None:
                 # Calculate reward using RewardCalculator
-                if self.last_state is not None and self.last_game is not None:
+                if self.pending_reward_action is not None and self.pending_reward_game is not None:
                     # Use RewardCalculator to compare game states and calculate reward
                     reward_info = {}
-                    last_action_idx = self.last_action
+                    last_action_idx = self.pending_reward_action
                     last_action_name = "Unknown"
+                    last_game_for_reward = self.pending_reward_game
+                    last_action_mask = self.pending_reward_mask
                     had_play_options = False
-                    if self.last_action_mask is not None:
+                    if last_action_mask is not None:
                         try:
                             had_play_options = bool(
-                                self.last_action_mask[: self.action_encoder.USE_POTION_OFFSET].any()
+                                last_action_mask[: self.action_encoder.USE_POTION_OFFSET].any()
                             )
                         except Exception:
                             had_play_options = False
                     try:
                         last_action_obj = self.action_encoder.decode_action(
-                            last_action_idx, self.last_game
+                            last_action_idx, last_game_for_reward
                         )
                         last_action_name = type(last_action_obj).__name__
                     except Exception:
                         last_action_name = "DecodeError"
                     reward = self.reward_calculator.calculate_step_reward(
                         current_game=game,
-                        last_game=self.last_game,
+                        last_game=last_game_for_reward,
                         action_type="combat",
                         debug_info=reward_info,
                         action_context={
@@ -275,7 +280,7 @@ class RLAgent:
                                     card = last_action_obj.card
                                 elif hasattr(last_action_obj, "card_index"):
                                     idx = int(last_action_obj.card_index)
-                                    hand = getattr(self.last_game, "hand", []) or []
+                                    hand = getattr(last_game_for_reward, "hand", []) or []
                                     if 0 <= idx < len(hand):
                                         card = hand[idx]
                                 if card is not None:
@@ -293,8 +298,8 @@ class RLAgent:
                             "energy_spent=%s block_delta=%s hp_delta=%s "
                             "progress=%.4f acquisition=%.4f card_choice=%.4f terminal=%.4f "
                             "action_bonus=%.4f end_turn_penalty=%.4f",
-                            getattr(self.last_game, "floor", 0),
-                            getattr(self.last_game, "turn", 0),
+                            getattr(last_game_for_reward, "floor", 0),
+                            getattr(last_game_for_reward, "turn", 0),
                             last_action_idx,
                             last_action_name,
                             action_detail,
@@ -325,14 +330,14 @@ class RLAgent:
                     done = False
 
                 # Store transition (if we have a last_state)
-                if self.last_state is not None:
+                if self.last_state is not None and self.pending_reward_action is not None:
                     self.trainer.store_transition(
                         self.last_state,
-                        self.last_action,
+                        self.pending_reward_action,
                         reward,
                         state,
                         done,
-                        action_mask=self.last_action_mask,
+                        action_mask=self.pending_reward_mask,
                         next_action_mask=action_mask,
                     )
 
@@ -354,6 +359,10 @@ class RLAgent:
             self.last_action = action_idx
             self.last_action_mask = action_mask
             self.last_game = game
+            if self.training_mode and self.trainer is not None:
+                self.pending_reward_action = action_idx
+                self.pending_reward_mask = action_mask
+                self.pending_reward_game = game
 
             return action
 
@@ -372,6 +381,9 @@ class RLAgent:
         self.last_game = None  # Reset game state tracking
         self.episode_reward = 0.0
         self.episode_steps = 0
+        self.pending_reward_action = None
+        self.pending_reward_mask = None
+        self.pending_reward_game = None
 
         # Clear failed action tracking for new episode
         self.failed_actions.clear()
