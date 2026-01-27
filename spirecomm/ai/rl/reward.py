@@ -5,7 +5,7 @@ Provides dense reward signals for combat survival, damage dealt, game progressio
 """
 
 import math
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Dict
 from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
 from spirecomm.spire.card import CardRarity
@@ -149,7 +149,13 @@ class RewardCalculator:
         """Calculate terminal reward for episode end."""
         return self.VICTORY_REWARD if victory else self.DEFEAT_PENALTY
 
-    def calculate_step_reward(self, current_game: Game, last_game: Game, action_type: str = "combat") -> float:
+    def calculate_step_reward(
+        self,
+        current_game: Game,
+        last_game: Game,
+        action_type: str = "combat",
+        debug_info: Optional[Dict] = None,
+    ) -> float:
         """
         Calculate reward for a single step by comparing game states.
 
@@ -173,13 +179,41 @@ class RewardCalculator:
             Calculated reward for this step
         """
         reward = 0.0
+        info = debug_info
+        if info is not None:
+            info.clear()
+            info.update(
+                {
+                    "terminal_reward": 0.0,
+                    "combat_reward": 0.0,
+                    "progress_reward": 0.0,
+                    "acquisition_reward": 0.0,
+                    "card_choice_reward": 0.0,
+                    "damage_dealt": 0,
+                    "hp_lost": 0,
+                    "turn_ended": False,
+                    "monster_killed": False,
+                    "all_monsters_killed": False,
+                    "floor_advanced": False,
+                    "elite_killed": False,
+                    "boss_killed": False,
+                    "card_reward": 0.0,
+                    "relic_reward": 0.0,
+                    "gold_reward": 0.0,
+                    "reward_total": 0.0,
+                }
+            )
 
         # === TERMINAL REWARDS (highest priority) ===
         # Check for game over first
         if "GAME_OVER" in str(current_game.screen_type):
             # Determine victory vs defeat
             victory = self._is_victory(current_game)
-            reward += self.calculate_terminal_reward(victory)
+            terminal_reward = self.calculate_terminal_reward(victory)
+            reward += terminal_reward
+            if info is not None:
+                info["terminal_reward"] = terminal_reward
+                info["reward_total"] = reward
             return reward  # Terminal reward is final, no other rewards
 
         # === COMBAT REWARDS (dense) ===
@@ -243,7 +277,7 @@ class RewardCalculator:
                 turn_ended = True
 
             # Calculate combat reward
-            reward += self.calculate_combat_reward(
+            combat_reward = self.calculate_combat_reward(
                 current_game,
                 damage_dealt=damage_dealt,
                 monster_killed=monster_killed,
@@ -251,10 +285,18 @@ class RewardCalculator:
                 hp_lost=hp_lost,
                 turn_ended=turn_ended
             )
+            reward += combat_reward
+            if info is not None:
+                info["combat_reward"] += combat_reward
+                info["damage_dealt"] += damage_dealt
+                info["hp_lost"] += hp_lost
+                info["turn_ended"] = turn_ended
+                info["monster_killed"] = info["monster_killed"] or monster_killed
+                info["all_monsters_killed"] = info["all_monsters_killed"] or all_monsters_killed
         elif last_game.in_combat and not current_game.in_combat:
             combat_won = self._is_combat_victory(current_game)
             had_alive_monsters = self._had_alive_monsters(last_game.monsters if last_game.monsters else [])
-            reward += self.calculate_combat_reward(
+            combat_reward = self.calculate_combat_reward(
                 last_game,
                 damage_dealt=0,
                 monster_killed=combat_won and had_alive_monsters,
@@ -262,57 +304,89 @@ class RewardCalculator:
                 hp_lost=0,
                 turn_ended=False
             )
+            reward += combat_reward
+            if info is not None:
+                info["combat_reward"] += combat_reward
+                info["monster_killed"] = info["monster_killed"] or (combat_won and had_alive_monsters)
+                info["all_monsters_killed"] = info["all_monsters_killed"] or combat_won
             if combat_won:
                 elite_killed = self._is_elite_room(last_game)
                 boss_killed = self._is_boss_room(last_game)
                 if elite_killed or boss_killed:
-                    reward += self.calculate_progression_reward(
+                    progress_reward = self.calculate_progression_reward(
                         current_game,
                         floor_advanced=False,
                         elite_killed=elite_killed,
                         boss_killed=boss_killed
                     )
+                    reward += progress_reward
+                    if info is not None:
+                        info["progress_reward"] += progress_reward
+                        info["elite_killed"] = info["elite_killed"] or elite_killed
+                        info["boss_killed"] = info["boss_killed"] or boss_killed
 
         # === PROGRESSION REWARDS ===
         # Floor advancement
         if hasattr(current_game, 'floor') and hasattr(last_game, 'floor'):
             floor_advanced = current_game.floor > last_game.floor
             if floor_advanced:
-                reward += self.calculate_progression_reward(
+                progress_reward = self.calculate_progression_reward(
                     current_game,
                     floor_advanced=True,
                     elite_killed=False,  # TODO: detect elite kills
                     boss_killed=False    # TODO: detect boss kills
                 )
+                reward += progress_reward
+                if info is not None:
+                    info["progress_reward"] += progress_reward
+                    info["floor_advanced"] = True
 
         # === ACQUISITION REWARDS ===
         # Card acquisition
         current_deck_size = len(current_game.deck) if current_game.deck else 0
         last_deck_size = len(last_game.deck) if last_game.deck else 0
         if current_deck_size > last_deck_size:
-            reward += self._calculate_card_reward(current_game, last_game)
+            card_reward = self._calculate_card_reward(current_game, last_game)
+            reward += card_reward
+            if info is not None:
+                info["card_reward"] += card_reward
+                info["acquisition_reward"] += card_reward
         if last_game.screen_type == ScreenType.CARD_REWARD and current_game.screen_type != ScreenType.CARD_REWARD:
-            reward += self._calculate_card_choice_reward(current_game, last_game)
+            card_choice_reward = self._calculate_card_choice_reward(current_game, last_game)
+            reward += card_choice_reward
+            if info is not None:
+                info["card_choice_reward"] += card_choice_reward
 
         # Relic acquisition
         current_relics = len(current_game.relics) if current_game.relics else 0
         last_relics = len(last_game.relics) if last_game.relics else 0
         if current_relics > last_relics:
             # Agent obtained a relic
-            reward += self.calculate_acquisition_reward(
+            relic_reward = self.calculate_acquisition_reward(
                 current_game,
                 card_obtained=False,
                 relic_obtained=True
             )
+            reward += relic_reward
+            if info is not None:
+                info["relic_reward"] += relic_reward
+                info["acquisition_reward"] += relic_reward
 
         # Gold acquisition (small reward)
         if hasattr(current_game, 'gold') and hasattr(last_game, 'gold'):
             gold_gained = current_game.gold - last_game.gold
             if gold_gained > 0:
-                reward += self.calculate_acquisition_reward(
+                gold_reward = self.calculate_acquisition_reward(
                     current_game,
                     gold_obtained=gold_gained
                 )
+                reward += gold_reward
+                if info is not None:
+                    info["gold_reward"] += gold_reward
+                    info["acquisition_reward"] += gold_reward
+
+        if info is not None:
+            info["reward_total"] = reward
 
         return reward
 

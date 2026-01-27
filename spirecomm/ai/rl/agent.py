@@ -238,11 +238,41 @@ class RLAgent:
                 # Calculate reward using RewardCalculator
                 if self.last_state is not None and self.last_game is not None:
                     # Use RewardCalculator to compare game states and calculate reward
+                    reward_info = {}
                     reward = self.reward_calculator.calculate_step_reward(
                         current_game=game,
                         last_game=self.last_game,
-                        action_type="combat"
+                        action_type="combat",
+                        debug_info=reward_info,
                     )
+                    if reward_info:
+                        last_action_idx = self.last_action
+                        last_action_name = "Unknown"
+                        try:
+                            last_action_obj = self.action_encoder.decode_action(
+                                last_action_idx, self.last_game
+                            )
+                            last_action_name = type(last_action_obj).__name__
+                        except Exception:
+                            last_action_name = "DecodeError"
+                        logger.info(
+                            "[RL_REWARD] floor=%s turn=%s action_idx=%s action=%s "
+                            "reward=%.4f combat=%.4f dmg=%s hp_lost=%s turn_end=%s "
+                            "progress=%.4f acquisition=%.4f card_choice=%.4f terminal=%.4f",
+                            getattr(self.last_game, "floor", 0),
+                            getattr(self.last_game, "turn", 0),
+                            last_action_idx,
+                            last_action_name,
+                            reward_info.get("reward_total", reward),
+                            reward_info.get("combat_reward", 0.0),
+                            reward_info.get("damage_dealt", 0),
+                            reward_info.get("hp_lost", 0),
+                            reward_info.get("turn_ended", False),
+                            reward_info.get("progress_reward", 0.0),
+                            reward_info.get("acquisition_reward", 0.0),
+                            reward_info.get("card_choice_reward", 0.0),
+                            reward_info.get("terminal_reward", 0.0),
+                        )
 
                     # Check for game over
                     done = "GAME_OVER" in str(game.screen_type) or (
