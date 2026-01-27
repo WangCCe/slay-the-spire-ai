@@ -168,6 +168,25 @@ class DuelingDQNetwork(nn.Module):
 
         return q_values
 
+    def get_best_action(self, state: torch.Tensor, action_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+        """
+        Get action with highest Q-value for given state.
+
+        Args:
+            state: Input state tensor of shape (batch_size, state_dim) or (state_dim,)
+            action_mask: Boolean mask of invalid actions
+
+        Returns:
+            Action indices tensor of shape (batch_size,) or scalar
+        """
+        with torch.no_grad():
+            if state.dim() == 1:
+                state = state.unsqueeze(0)
+                q_values = self.forward(state, action_mask)
+                return q_values.argmax(dim=1).squeeze(0)
+            q_values = self.forward(state, action_mask)
+            return q_values.argmax(dim=1)
+
 
 # Convenience function for creating networks
 def create_dqn(network_type: str = "dueling", state_dim: int = 577,
