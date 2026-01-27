@@ -102,6 +102,7 @@ class RLAgent:
         self.last_action_mask = None
         self.last_game = None  # Track previous game state for reward calculation
         self.boss_min_epsilon = 0.3
+        self.last_logged_turn = None
 
         # Episode tracking
         self.episode_reward = 0.0
@@ -176,6 +177,23 @@ class RLAgent:
 
                         return ConfirmAction()
 
+            # Log action mask stats once per combat turn.
+            if getattr(game, "screen_type", None) in (None, ScreenType.NONE) and getattr(game, "in_combat", False):
+                turn_id = (getattr(game, "floor", 0), getattr(game, "turn", 0))
+                if self.last_logged_turn != turn_id:
+                    self.last_logged_turn = turn_id
+                    valid_actions = int(action_mask.sum())
+                    play_actions = int(action_mask[: self.action_encoder.USE_POTION_OFFSET].sum())
+                    end_turn_valid = bool(action_mask[self.action_encoder.END_TURN_ACTION]) if self.action_encoder.END_TURN_ACTION < len(action_mask) else False
+                    logger.info(
+                        "[RL_MASK] floor=%s turn=%s valid=%s play=%s end_turn=%s",
+                        getattr(game, "floor", 0),
+                        getattr(game, "turn", 0),
+                        valid_actions,
+                        play_actions,
+                        end_turn_valid,
+                    )
+
             # Select action
             if self.training_mode and self.trainer is not None:
                 action_idx = self.trainer.select_action(
@@ -206,6 +224,14 @@ class RLAgent:
 
             # Decode action to Action object
             action = self.action_encoder.decode_action(action_idx, game)
+            if getattr(game, "screen_type", None) in (None, ScreenType.NONE) and getattr(game, "in_combat", False):
+                logger.info(
+                    "[RL_CHOICE] floor=%s turn=%s action_idx=%s action=%s",
+                    getattr(game, "floor", 0),
+                    getattr(game, "turn", 0),
+                    action_idx,
+                    type(action).__name__,
+                )
 
             # Track state and action for training
             if self.training_mode and self.trainer is not None:
