@@ -155,6 +155,7 @@ class RewardCalculator:
         last_game: Game,
         action_type: str = "combat",
         debug_info: Optional[Dict] = None,
+        action_context: Optional[Dict] = None,
     ) -> float:
         """
         Calculate reward for a single step by comparing game states.
@@ -190,7 +191,12 @@ class RewardCalculator:
                     "acquisition_reward": 0.0,
                     "card_choice_reward": 0.0,
                     "damage_dealt": 0,
+                    "total_monster_hp_delta": 0,
+                    "monster_count_last": 0,
+                    "monster_count_current": 0,
                     "hp_lost": 0,
+                    "energy_spent": 0,
+                    "block_delta": 0,
                     "turn_ended": False,
                     "monster_killed": False,
                     "all_monsters_killed": False,
@@ -200,6 +206,8 @@ class RewardCalculator:
                     "card_reward": 0.0,
                     "relic_reward": 0.0,
                     "gold_reward": 0.0,
+                    "action_bonus": 0.0,
+                    "end_turn_penalty": 0.0,
                     "reward_total": 0.0,
                 }
             )
@@ -226,6 +234,16 @@ class RewardCalculator:
             # Get current monsters
             current_monsters = current_game.monsters if current_game.monsters else []
             last_monsters = last_game.monsters if last_game.monsters else []
+            if info is not None:
+                info["monster_count_last"] = len(last_monsters)
+                info["monster_count_current"] = len(current_monsters)
+                last_total_hp = sum(
+                    m.current_hp for m in last_monsters if hasattr(m, "current_hp")
+                )
+                current_total_hp = sum(
+                    m.current_hp for m in current_monsters if hasattr(m, "current_hp")
+                )
+                info["total_monster_hp_delta"] = last_total_hp - current_total_hp
 
             # Build mapping of monster_index -> HP for comparison
             current_monster_hp = {}
@@ -275,6 +293,16 @@ class RewardCalculator:
             if (hasattr(current_game, 'turn') and hasattr(last_game, 'turn') and
                 current_game.turn > last_game.turn):
                 turn_ended = True
+
+            if info is not None:
+                # Energy spent and block delta only make sense within the same turn.
+                last_energy = self._safe_attr(last_game, 'player', 'energy', default=0)
+                current_energy = self._safe_attr(current_game, 'player', 'energy', default=0)
+                if hasattr(current_game, 'turn') and hasattr(last_game, 'turn') and current_game.turn == last_game.turn:
+                    info["energy_spent"] = max(0, int(last_energy) - int(current_energy))
+                    last_block = self._safe_attr(last_game, 'player', 'block', default=0)
+                    current_block = self._safe_attr(current_game, 'player', 'block', default=0)
+                    info["block_delta"] = int(current_block) - int(last_block)
 
             # Calculate combat reward
             combat_reward = self.calculate_combat_reward(
@@ -384,6 +412,31 @@ class RewardCalculator:
                 if info is not None:
                     info["gold_reward"] += gold_reward
                     info["acquisition_reward"] += gold_reward
+
+        # === ACTION-LEVEL SHAPING ===
+        if action_context and current_game.in_combat and last_game.in_combat:
+            action_name = action_context.get("action_name")
+            had_play_options = bool(action_context.get("had_play_options", False))
+
+            action_bonus = 0.0
+            end_turn_penalty = 0.0
+
+            if action_name == "PlayCardAction":
+                # Small positive feedback for taking an action.
+                action_bonus += 0.03
+                if info is not None:
+                    action_bonus += 0.02 * info.get("energy_spent", 0)
+            elif action_name == "PotionAction":
+                action_bonus += 0.02
+
+            if action_name == "EndTurnAction" and had_play_options:
+                end_turn_penalty = -0.2
+
+            if action_bonus or end_turn_penalty:
+                reward += action_bonus + end_turn_penalty
+                if info is not None:
+                    info["action_bonus"] += action_bonus
+                    info["end_turn_penalty"] += end_turn_penalty
 
         if info is not None:
             info["reward_total"] = reward
