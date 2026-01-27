@@ -323,10 +323,16 @@ class RewardCalculator:
                 info["all_monsters_killed"] = info["all_monsters_killed"] or all_monsters_killed
         elif last_game.in_combat and not current_game.in_combat:
             combat_won = self._is_combat_victory(current_game)
-            had_alive_monsters = self._had_alive_monsters(last_game.monsters if last_game.monsters else [])
+            last_monsters = last_game.monsters if last_game.monsters else []
+            had_alive_monsters = self._had_alive_monsters(last_monsters)
+            finishing_damage = 0
+            if had_alive_monsters:
+                for monster in last_monsters:
+                    if hasattr(monster, "current_hp") and monster.current_hp > 0:
+                        finishing_damage += monster.current_hp
             combat_reward = self.calculate_combat_reward(
                 last_game,
-                damage_dealt=0,
+                damage_dealt=finishing_damage,
                 monster_killed=combat_won and had_alive_monsters,
                 all_monsters_killed=combat_won,
                 hp_lost=0,
@@ -335,6 +341,10 @@ class RewardCalculator:
             reward += combat_reward
             if info is not None:
                 info["combat_reward"] += combat_reward
+                info["monster_count_last"] = len(last_monsters)
+                info["monster_count_current"] = 0
+                info["total_monster_hp_delta"] = finishing_damage
+                info["damage_dealt"] += finishing_damage
                 info["monster_killed"] = info["monster_killed"] or (combat_won and had_alive_monsters)
                 info["all_monsters_killed"] = info["all_monsters_killed"] or combat_won
             if combat_won:
