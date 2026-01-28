@@ -3,6 +3,8 @@ import os
 import sys
 import logging
 import glob
+import shutil
+from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
 from spirecomm.communication.coordinator import Coordinator
@@ -135,6 +137,42 @@ def find_latest_checkpoint():
     logging.info(f"  Modified: {os.path.getmtime(latest)}")
 
     return latest
+
+
+def archive_old_runs(character, keep=1000):
+    """Archive older run files to keep the active runs directory small."""
+    try:
+        runs_root = Path("runs")
+        runs_dir = runs_root / character
+        if not runs_dir.exists():
+            logging.warning(f"Runs directory not found: {runs_dir}")
+            return 0, 0
+
+        run_files = sorted(runs_dir.glob("*.run"), key=lambda p: p.stat().st_mtime)
+        if len(run_files) <= keep:
+            return 0, len(run_files)
+
+        archive_root = runs_root.parent / "runs_archive"
+        archive_dir = archive_root / character
+        archive_dir.mkdir(parents=True, exist_ok=True)
+
+        to_archive = run_files[:-keep]
+        archived = 0
+        for path in to_archive:
+            dest = archive_dir / path.name
+            if dest.exists():
+                logging.warning(f"Archive destination exists, skipping: {dest}")
+                continue
+            try:
+                shutil.move(str(path), str(dest))
+                archived += 1
+            except Exception as move_error:
+                logging.warning(f"Failed to archive {path.name}: {move_error}")
+
+        return archived, len(run_files) - archived
+    except Exception as e:
+        logging.warning(f"Run archiving failed: {e}")
+        return 0, 0
 
 
 def create_agent(agent_type="auto", use_optimized=None, player_class=None, training=False, model_path=None, elite_mode=None):
@@ -601,7 +639,6 @@ if __name__ == "__main__":
         # Mark AI games (always do this, independent of statistics)
         try:
             # Use current timestamp to mark AI game
-            from pathlib import Path
             import time
 
             game_timestamp = int(time.time())
@@ -615,6 +652,14 @@ if __name__ == "__main__":
             logging.debug(f"  Marked as AI game in runs/ai_games.txt")
         except Exception:
             pass
+
+        # Periodic run archiving during training
+        if training and (is_rl_agent or is_combat_rl_agent) and game_count % 200 == 0:
+            character_dir = chosen_class.name if hasattr(chosen_class, "name") else str(chosen_class)
+            archived, kept = archive_old_runs(character_dir, keep=1000)
+            logging.info(
+                f"Run archive maintenance: archived={archived} kept={kept} character={character_dir}"
+            )
 
         # Print summary if OptimizedAgent or CombatRLAgent (to stderr)
         if isinstance(agent, OptimizedAgent):
