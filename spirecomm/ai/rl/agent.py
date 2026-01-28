@@ -87,8 +87,27 @@ class RLAgent:
         # Load model or create new network
         if model_path is not None:
             logger.info(f"Loading model from {model_path}...")
-            self.load_model(model_path)
-            logger.info(f"Loaded model from {model_path}")
+            if self.training_mode and self.trainer is not None:
+                try:
+                    checkpoint = self.trainer.load_checkpoint(model_path)
+                    self.network = self.trainer.online_network
+                    self.network.eval()
+                    logger.info(
+                        "Loaded trainer checkpoint: episode=%s epsilon=%.3f steps=%s",
+                        checkpoint.get("episode"),
+                        self.trainer.epsilon,
+                        self.trainer.total_steps,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Trainer checkpoint load failed, falling back to weights-only: %s",
+                        e,
+                    )
+                    self.load_model(model_path)
+                    logger.info(f"Loaded model weights from {model_path}")
+            else:
+                self.load_model(model_path)
+                logger.info(f"Loaded model weights from {model_path}")
         else:
             # Create network for inference with correct state dimension
             logger.info(f"Creating new network (device={device})...")
