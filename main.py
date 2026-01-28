@@ -4,6 +4,7 @@ import sys
 import logging
 import glob
 import shutil
+import time
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
@@ -173,6 +174,30 @@ def archive_old_runs(character, keep=1000):
     except Exception as e:
         logging.warning(f"Run archiving failed: {e}")
         return 0, 0
+
+
+def backup_latest_checkpoint(backup_dir, pattern):
+    """Copy the latest checkpoint to a backup directory."""
+    checkpoint_files = glob.glob(pattern)
+    if not checkpoint_files:
+        logging.warning("No existing checkpoints found for backup")
+        return None
+
+    checkpoint_files.sort(key=os.path.getmtime, reverse=True)
+    latest = checkpoint_files[0]
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    base_name = os.path.basename(latest)
+    backup_name = f"{base_name}.{timestamp}.bak"
+    backup_path = os.path.join(backup_dir, backup_name)
+
+    try:
+        os.makedirs(backup_dir, exist_ok=True)
+        shutil.copy2(latest, backup_path)
+        logging.info(f"Checkpoint backup saved: {backup_path}")
+        return backup_path
+    except Exception as e:
+        logging.warning(f"Checkpoint backup failed: {e}")
+        return None
 
 
 def create_agent(agent_type="auto", use_optimized=None, player_class=None, training=False, model_path=None, elite_mode=None):
@@ -426,6 +451,14 @@ if __name__ == "__main__":
     if training:
         logging.info("RL Agent training mode enabled")
         logging.info("  Models will be saved to: checkpoints/")
+        backup_latest_checkpoint(
+            os.path.join("checkpoints_archive", "combat_rl"),
+            os.path.join("checkpoints", "rl_combat_model_ep*.pth"),
+        )
+        backup_latest_checkpoint(
+            os.path.join("checkpoints_archive", "rl"),
+            os.path.join("checkpoints", "rl_model_ep*.pth"),
+        )
 
     if model_path:
         logging.info(f"Loading RL model from: {model_path}")
