@@ -596,6 +596,9 @@ class CombatRLAgent:
         self.use_rl_for_combat = True
         self.rl_failure_count = 0
         self.max_rl_failures = 3
+        self.reward_screen_wait = 0.2
+        self._reward_screen_key = None
+        self._reward_screen_waited = False
 
         # Import OptimizedAgent
         try:
@@ -643,6 +646,10 @@ class CombatRLAgent:
             except Exception as e:
                 logger.debug(f"Tracking failed: {e}")
 
+        debounce_action = self._maybe_debounce_reward_screen(game)
+        if debounce_action is not None:
+            return debounce_action
+
         # Check if we should use RL for any in-combat screen
         if self.use_rl_for_combat and self._is_rl_context(game):
             try:
@@ -673,6 +680,38 @@ class CombatRLAgent:
 
         # Fallback to OptimizedAgent
         return self.fallback_agent.get_next_action_in_game(game)
+
+    def _maybe_debounce_reward_screen(self, game: Game) -> Optional[Action]:
+        from spirecomm.spire.screen import ScreenType
+
+        screen_type = getattr(game, "screen_type", None)
+        if screen_type not in (ScreenType.COMBAT_REWARD, ScreenType.CARD_REWARD):
+            self._reward_screen_key = None
+            self._reward_screen_waited = False
+            return None
+
+        reward_count = 0
+        screen = getattr(game, "screen", None)
+        if screen_type == ScreenType.COMBAT_REWARD:
+            rewards = getattr(screen, "rewards", None) or []
+            reward_count = len(rewards) if rewards else len(getattr(game, "choice_list", []) or [])
+        elif screen_type == ScreenType.CARD_REWARD:
+            cards = getattr(screen, "cards", None) or []
+            reward_count = len(cards) if cards else len(getattr(game, "choice_list", []) or [])
+
+        key = (getattr(game, "floor", None), str(screen_type), reward_count)
+        if key != self._reward_screen_key:
+            self._reward_screen_key = key
+            self._reward_screen_waited = False
+
+        if not self._reward_screen_waited:
+            self._reward_screen_waited = True
+            import time
+
+            time.sleep(self.reward_screen_wait)
+            return None
+
+        return None
 
     def _is_in_combat_context(self, game: Game) -> bool:
         """
@@ -767,6 +806,8 @@ class CombatRLAgent:
         # Reset RL failure tracking for new game
         self.use_rl_for_combat = True
         self.rl_failure_count = 0
+        self._reward_screen_key = None
+        self._reward_screen_waited = False
 
         # Reset OptimizedAgent game tracker if available
         if hasattr(self.fallback_agent, 'game_tracker'):
