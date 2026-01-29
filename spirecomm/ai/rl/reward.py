@@ -5,12 +5,10 @@ Provides dense reward signals for combat survival, damage dealt, game progressio
 """
 
 import math
-from typing import Optional, Iterable, Dict
+from typing import Optional, Iterable, Dict, Tuple
 from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
 from spirecomm.spire.card import CardRarity
-from spirecomm.ai.decision.base import DecisionContext
-from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 
 
 class RewardCalculator:
@@ -40,8 +38,9 @@ class RewardCalculator:
 
     # Acquisition reward weights
     CARD_REWARD_BASE = 2.0
-    CARD_SCORE_NORMALIZER = 100.0
+    CARD_SIMPLE_SCORE_NORMALIZER = 2.5
     CARD_SCORE_MAX_MULT = 2.0
+    CARD_CHOICE_RELATIVE_SCALE = 0.2
     CARD_SKIP_REWARD = 0.02
     CARD_SKIP_PENALTY = 0.02
     CARD_DECK_SIZE_THRESHOLD = 20
@@ -55,8 +54,6 @@ class RewardCalculator:
 
     def __init__(self):
         """Initialize reward calculator with tracking."""
-        self.card_evaluator: Optional[SynergyCardEvaluator] = None
-        self.card_evaluator_class: Optional[str] = None
         self.reset()
 
     @staticmethod
@@ -503,13 +500,6 @@ class RewardCalculator:
                 return True
         return False
 
-    def _get_card_evaluator(self, game: Game) -> SynergyCardEvaluator:
-        player_class = getattr(getattr(game, 'character', None), 'name', None)
-        if self.card_evaluator is None or self.card_evaluator_class != player_class:
-            self.card_evaluator = SynergyCardEvaluator(player_class=player_class)
-            self.card_evaluator_class = player_class
-        return self.card_evaluator
-
     def _calculate_card_reward(self, current_game: Game, last_game: Game) -> float:
         if not current_game.deck:
             return 0.0
@@ -517,25 +507,20 @@ class RewardCalculator:
         new_cards = [card for card in current_game.deck if card.uuid not in last_uuids]
         if not new_cards:
             return 0.0
-        try:
-            context = DecisionContext(current_game)
-            evaluator = self._get_card_evaluator(current_game)
-        except Exception:
-            return 0.0
 
         reward = 0.0
         for card in new_cards:
-            try:
-                score = evaluator.evaluate_card(card, context)
-                normalized = max(0.0, min(score / self.CARD_SCORE_NORMALIZER, self.CARD_SCORE_MAX_MULT))
-                reward += self.calculate_acquisition_reward(
-                    current_game,
-                    card_obtained=True,
-                    card_power_score=normalized,
-                    relic_obtained=False
-                )
-            except Exception:
-                continue
+            score = self._simple_card_score(card)
+            normalized = max(
+                0.0,
+                min(score / self.CARD_SIMPLE_SCORE_NORMALIZER, self.CARD_SCORE_MAX_MULT),
+            )
+            reward += self.calculate_acquisition_reward(
+                current_game,
+                card_obtained=True,
+                card_power_score=normalized,
+                relic_obtained=False
+            )
         return reward
 
     def _calculate_card_choice_reward(self, current_game: Game, last_game: Game) -> float:
@@ -549,6 +534,29 @@ class RewardCalculator:
         chosen_card = new_cards[0] if new_cards else None
 
         reward = 0.0
+        relative_reward = 0.0
+        scores = []
+        score_by_uuid = {}
+        for card in candidates:
+            score = self._simple_card_score(card)
+            scores.append(score)
+            if hasattr(card, 'uuid'):
+                score_by_uuid[card.uuid] = score
+
+        if scores:
+            if chosen_card is not None:
+                chosen_score = score_by_uuid.get(getattr(chosen_card, 'uuid', None))
+                if chosen_score is None:
+                    chosen_score = self._simple_card_score(chosen_card)
+            else:
+                chosen_score = min(scores)
+
+            relative_reward = (
+                self._relative_rank_score(chosen_score, scores)
+                * self.CARD_CHOICE_RELATIVE_SCALE
+            )
+            reward += relative_reward
+
         has_uncommon_or_rare = any(
             getattr(card, 'rarity', None) in (CardRarity.UNCOMMON, CardRarity.RARE)
             for card in candidates
@@ -568,6 +576,88 @@ class RewardCalculator:
             reward -= self.CARD_DECK_SIZE_PENALTY
 
         return reward
+
+    @staticmethod
+    def _relative_rank_score(chosen_score: float, scores: Iterable[float]) -> float:
+        scores_list = list(scores)
+        if not scores_list:
+            return 0.0
+        if len(scores_list) == 1:
+            return 1.0
+
+        scores_list.sort()
+        lower = sum(1 for score in scores_list if score < chosen_score)
+        equal = sum(1 for score in scores_list if score == chosen_score)
+
+        if equal == 0:
+            if chosen_score <= scores_list[0]:
+                rank = 0.0
+            elif chosen_score >= scores_list[-1]:
+                rank = len(scores_list) - 1.0
+            else:
+                rank = float(lower)
+        else:
+            rank = lower + (equal - 1) / 2.0
+
+        return (rank / (len(scores_list) - 1)) * 2.0 - 1.0
+
+    def _simple_card_score(self, card) -> float:
+        rarity = getattr(card, 'rarity', None)
+        rarity_score = {
+            CardRarity.BASIC: 0.0,
+            CardRarity.COMMON: 0.5,
+            CardRarity.UNCOMMON: 1.0,
+            CardRarity.RARE: 1.5,
+            CardRarity.SPECIAL: 1.0,
+            CardRarity.CURSE: -1.0,
+        }.get(rarity, 0.0)
+
+        upgrades = 1.0 if getattr(card, 'upgrades', 0) else 0.0
+        damage, block = self._extract_card_damage_block(card)
+        stats = float(damage) + float(block)
+
+        cost = getattr(card, 'cost_for_turn', None)
+        if cost is None:
+            cost = getattr(card, 'cost', 0)
+        try:
+            cost_value = int(cost)
+        except (TypeError, ValueError):
+            cost_value = 1
+        if cost_value < 0:
+            cost_value = 1
+
+        effective_cost = 0.5 if cost_value == 0 else cost_value
+        efficiency = (stats / effective_cost) * 0.1
+
+        return rarity_score + (upgrades * 0.2) + efficiency
+
+    @staticmethod
+    def _extract_card_damage_block(card) -> Tuple[float, float]:
+        damage = 0
+        block = 0
+        if hasattr(card, 'properties') and card.properties:
+            try:
+                for prop in card.properties:
+                    if hasattr(prop, 'damage'):
+                        damage = getattr(prop, 'damage', 0)
+                    if hasattr(prop, 'block'):
+                        block = getattr(prop, 'block', 0)
+            except (AttributeError, TypeError):
+                pass
+
+        if damage == 0 and hasattr(card, 'damage'):
+            try:
+                damage = card.damage
+            except (AttributeError, TypeError):
+                pass
+
+        if block == 0 and hasattr(card, 'block'):
+            try:
+                block = card.block
+            except (AttributeError, TypeError):
+                pass
+
+        return damage, block
 
 
 def calculate_step_reward(game: Game, action_type: str = "combat", **kwargs) -> float:

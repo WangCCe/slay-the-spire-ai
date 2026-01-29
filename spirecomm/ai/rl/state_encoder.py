@@ -3,12 +3,16 @@ State encoder - FIXED VERSION (781 dims)
 """
 import hashlib
 import numpy as np
-from typing import List
+from typing import List, Tuple
 from spirecomm.spire.game import Game
-from spirecomm.spire.card import Card
+from spirecomm.spire.card import Card, CardType, CardRarity
 from spirecomm.spire.character import Monster, PlayerClass, Intent
 
 class StateEncoder:
+    CARD_REWARD_MAX_OPTIONS = 3
+    CARD_REWARD_FEATURES_PER_CARD = 12
+    FUTURE_RESERVED_SIZE = 128
+
     def __init__(self):
         self.feature_dim = 781
 
@@ -26,7 +30,7 @@ class StateEncoder:
         features.extend(self._encode_combat_piles(game))
         features.extend(self._encode_screen_meta(game))
         features.extend(self._encode_choice_buckets(game))
-        features.extend(self._encode_future_reserved())
+        features.extend(self._encode_future_reserved(game))
         return np.array(features, dtype=np.float32)
 
     def _encode_player_state(self, game: Game) -> List[float]:
@@ -67,33 +71,7 @@ class StateEncoder:
         return features
 
     def _encode_single_card(self, card: Card) -> List[float]:
-        # Safely extract card properties with error handling
-        damage = 0
-        block = 0
-
-        # Try to get damage/block from card properties if available
-        if hasattr(card, 'properties') and card.properties:
-            try:
-                for p in card.properties:
-                    if hasattr(p, 'damage'):
-                        damage = getattr(p, 'damage', 0)
-                    if hasattr(p, 'block'):
-                        block = getattr(p, 'block', 0)
-            except (AttributeError, TypeError):
-                pass  # Use default values
-
-        # Fallback: try to get directly from card
-        if damage == 0 and hasattr(card, 'damage'):
-            try:
-                damage = card.damage
-            except (AttributeError, TypeError):
-                pass
-
-        if block == 0 and hasattr(card, 'block'):
-            try:
-                block = card.block
-            except (AttributeError, TypeError):
-                pass
+        damage, block = self._extract_card_damage_block(card)
 
         # Get card type safely
         card_type_val = 0
@@ -436,8 +414,104 @@ class StateEncoder:
             buckets[idx] = min(buckets[idx] + 1.0, 3.0)
         return [val / 3.0 for val in buckets]
 
-    def _encode_future_reserved(self) -> List[float]:
-        return [0.0] * 128
+    def _encode_future_reserved(self, game: Game) -> List[float]:
+        reserved = [0.0] * self.FUTURE_RESERVED_SIZE
+        card_reward_features = self._encode_card_reward_options(game)
+        if card_reward_features:
+            reserved[:len(card_reward_features)] = card_reward_features
+        return reserved
+
+    def _encode_card_reward_options(self, game: Game) -> List[float]:
+        from spirecomm.spire.screen import ScreenType
+
+        total = self.CARD_REWARD_FEATURES_PER_CARD * self.CARD_REWARD_MAX_OPTIONS
+        if getattr(game, 'screen_type', None) != ScreenType.CARD_REWARD:
+            return [0.0] * total
+
+        screen = getattr(game, 'screen', None)
+        candidates = getattr(screen, 'cards', None) if screen else None
+        if not candidates:
+            return [0.0] * total
+
+        features = []
+        for i in range(self.CARD_REWARD_MAX_OPTIONS):
+            if i < len(candidates):
+                features.extend(self._encode_card_reward_card(candidates[i]))
+            else:
+                features.extend([0.0] * self.CARD_REWARD_FEATURES_PER_CARD)
+        return features
+
+    def _encode_card_reward_card(self, card: Card) -> List[float]:
+        damage, block = self._extract_card_damage_block(card)
+        cost = getattr(card, 'cost_for_turn', None)
+        if cost is None:
+            cost = getattr(card, 'cost', 0)
+        cost = self._safe_int(cost, default=0)
+
+        card_type = getattr(card, 'type', None)
+        type_flags = [0.0, 0.0, 0.0, 0.0]
+        if card_type == CardType.ATTACK:
+            type_flags[0] = 1.0
+        elif card_type == CardType.SKILL:
+            type_flags[1] = 1.0
+        elif card_type == CardType.POWER:
+            type_flags[2] = 1.0
+        elif card_type in (CardType.STATUS, CardType.CURSE):
+            type_flags[3] = 1.0
+
+        rarity = getattr(card, 'rarity', None)
+        rarity_flags = [0.0, 0.0, 0.0, 0.0]
+        if rarity == CardRarity.BASIC:
+            rarity_flags[0] = 1.0
+        elif rarity == CardRarity.COMMON:
+            rarity_flags[1] = 1.0
+        elif rarity == CardRarity.UNCOMMON:
+            rarity_flags[2] = 1.0
+        elif rarity == CardRarity.RARE:
+            rarity_flags[3] = 1.0
+
+        upgrades_flag = 1.0 if getattr(card, 'upgrades', 0) else 0.0
+
+        return [
+            min(cost, 3) / 3.0,
+            *type_flags,
+            *rarity_flags,
+            min(damage, 30) / 30.0,
+            min(block, 20) / 20.0,
+            upgrades_flag,
+        ]
+
+    @staticmethod
+    def _extract_card_damage_block(card: Card) -> Tuple[float, float]:
+        # Safely extract card properties with error handling
+        damage = 0
+        block = 0
+
+        # Try to get damage/block from card properties if available
+        if hasattr(card, 'properties') and card.properties:
+            try:
+                for p in card.properties:
+                    if hasattr(p, 'damage'):
+                        damage = getattr(p, 'damage', 0)
+                    if hasattr(p, 'block'):
+                        block = getattr(p, 'block', 0)
+            except (AttributeError, TypeError):
+                pass  # Use default values
+
+        # Fallback: try to get directly from card
+        if damage == 0 and hasattr(card, 'damage'):
+            try:
+                damage = card.damage
+            except (AttributeError, TypeError):
+                pass
+
+        if block == 0 and hasattr(card, 'block'):
+            try:
+                block = card.block
+            except (AttributeError, TypeError):
+                pass
+
+        return damage, block
 
     @staticmethod
     def _stable_hash(value, modulo):
