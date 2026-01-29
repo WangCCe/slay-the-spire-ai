@@ -4,11 +4,15 @@ Reward calculator for shaping rewards in RL training.
 Provides dense reward signals for combat survival, damage dealt, game progression, etc.
 """
 
+import logging
 import math
+import os
 from typing import Optional, Iterable, Dict, Tuple
 from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
 from spirecomm.spire.card import CardRarity
+
+logger = logging.getLogger(__name__)
 
 
 class RewardCalculator:
@@ -54,6 +58,7 @@ class RewardCalculator:
 
     def __init__(self):
         """Initialize reward calculator with tracking."""
+        self._card_reward_debug = self._is_truthy(os.getenv("RL_CARD_REWARD_DEBUG", "1"))
         self.reset()
 
     @staticmethod
@@ -68,6 +73,10 @@ class RewardCalculator:
             else:
                 return default
         return result if result is not None else default
+
+    @staticmethod
+    def _is_truthy(value: str) -> bool:
+        return str(value).strip().lower() in ("1", "true", "yes", "y", "on")
 
     def reset(self) -> None:
         """Reset tracking for new episode."""
@@ -515,12 +524,32 @@ class RewardCalculator:
                 0.0,
                 min(score / self.CARD_SIMPLE_SCORE_NORMALIZER, self.CARD_SCORE_MAX_MULT),
             )
-            reward += self.calculate_acquisition_reward(
+            card_reward = self.calculate_acquisition_reward(
                 current_game,
                 card_obtained=True,
                 card_power_score=normalized,
                 relic_obtained=False
             )
+            reward += card_reward
+            if self._card_reward_debug:
+                card_name = getattr(card, 'card_id', None) or getattr(card, 'name', 'Unknown')
+                rarity = getattr(card, 'rarity', None)
+                rarity_name = getattr(rarity, 'name', str(rarity))
+                cost = getattr(card, 'cost_for_turn', None)
+                if cost is None:
+                    cost = getattr(card, 'cost', 0)
+                damage, block = self._extract_card_damage_block(card)
+                logger.info(
+                    "[CARD_REWARD] card=%s rarity=%s cost=%s dmg=%s block=%s score=%.3f normalized=%.3f reward=%.3f",
+                    card_name,
+                    rarity_name,
+                    cost,
+                    damage,
+                    block,
+                    score,
+                    normalized,
+                    card_reward,
+                )
         return reward
 
     def _calculate_card_choice_reward(self, current_game: Game, last_game: Game) -> float:
@@ -551,11 +580,26 @@ class RewardCalculator:
             else:
                 chosen_score = min(scores)
 
-            relative_reward = (
-                self._relative_rank_score(chosen_score, scores)
-                * self.CARD_CHOICE_RELATIVE_SCALE
-            )
+            rank_score = self._relative_rank_score(chosen_score, scores)
+            relative_reward = rank_score * self.CARD_CHOICE_RELATIVE_SCALE
             reward += relative_reward
+            if self._card_reward_debug:
+                chosen_name = "SKIP" if chosen_card is None else (
+                    getattr(chosen_card, 'card_id', None) or getattr(chosen_card, 'name', 'Unknown')
+                )
+                candidate_entries = []
+                for card in candidates:
+                    card_name = getattr(card, 'card_id', None) or getattr(card, 'name', 'Unknown')
+                    candidate_entries.append(f"{card_name}:{self._simple_card_score(card):.2f}")
+                logger.info(
+                    "[CARD_CHOICE] chosen=%s chosen_score=%.3f rank=%.3f scale=%.3f reward=%.3f candidates=%s",
+                    chosen_name,
+                    chosen_score,
+                    rank_score,
+                    self.CARD_CHOICE_RELATIVE_SCALE,
+                    relative_reward,
+                    ", ".join(candidate_entries),
+                )
 
         has_uncommon_or_rare = any(
             getattr(card, 'rarity', None) in (CardRarity.UNCOMMON, CardRarity.RARE)
