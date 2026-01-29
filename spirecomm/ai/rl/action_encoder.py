@@ -82,6 +82,14 @@ class ActionEncoder:
             choice_index = 0
         return choice_index
 
+    @staticmethod
+    def _has_potion_space(game: Game) -> bool:
+        if hasattr(game, "has_potion_space"):
+            return game.has_potion_space()
+        if hasattr(game, "are_potions_full"):
+            return not game.are_potions_full()
+        return False
+
     def encode_play_card(self, card_index: int, monster_index: int) -> int:
         """
         Encode play card action to action index.
@@ -200,6 +208,8 @@ class ActionEncoder:
                     return BuyCardAction(screen.cards[choice_index])
                 elif hasattr(screen, "potions") and choice_index < len(screen.potions):
                     # Buying a potion
+                    if not self._has_potion_space(game):
+                        return LeaveAction()
                     return BuyPotionAction(screen.potions[choice_index])
                 elif hasattr(screen, "relics") and choice_index < len(screen.relics):
                     # Buying a relic
@@ -273,6 +283,8 @@ class ActionEncoder:
                     return BuyCardAction(screen.cards[shop_action])
                 elif hasattr(screen, "potions") and shop_action < len(screen.potions):
                     # Buying a potion (check if potions exist before cards in shop_action)
+                    if not self._has_potion_space(game):
+                        return LeaveAction()
                     return BuyPotionAction(
                         screen.potions[shop_action - len(getattr(screen, "cards", []))]
                     )

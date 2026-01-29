@@ -297,7 +297,11 @@ class BuyPotionAction(ChooseAction):
         super().__init__(name=potion.name)
 
     def execute(self, coordinator):
-        if coordinator.last_game_state.are_potions_full():
+        if hasattr(coordinator.last_game_state, "has_potion_space"):
+            has_space = coordinator.last_game_state.has_potion_space()
+        else:
+            has_space = not coordinator.last_game_state.are_potions_full()
+        if not has_space:
             raise Exception("Cannot buy potion because potion slots are full.")
         super().execute(coordinator)
 

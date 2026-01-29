@@ -113,6 +113,12 @@ class SimpleAgent:
             logging.warning("[SHOP_SCREEN] No valid cards found")
         return valid_cards
 
+    def _has_potion_space(self):
+        """Check if there is room for another potion."""
+        if hasattr(self.game, "has_potion_space"):
+            return self.game.has_potion_space()
+        return not self.game.are_potions_full()
+
     def _should_buy_card(self, card, gold, purge_cost, screen):
         """Determine if a card should be purchased."""
         try:
@@ -503,7 +509,7 @@ class SimpleAgent:
                 if (
                     hasattr(screen, "potions")
                     and screen.potions
-                    and not self.game.are_potions_full()
+                    and self._has_potion_space()
                 ):
                     for potion in screen.potions:
                         try:

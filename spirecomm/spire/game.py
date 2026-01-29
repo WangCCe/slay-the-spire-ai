@@ -171,6 +171,32 @@ class Game:
                 return False
         return True
 
+    def has_potion_space(self):
+        """Return True if the player can obtain another potion."""
+        relic_ids = {
+            getattr(relic, "relic_id", None) or getattr(relic, "name", None)
+            for relic in self.relics or []
+        }
+        if "Sozu" in relic_ids:
+            return False
+
+        potions = self.potions or []
+        for potion in potions:
+            if getattr(potion, "potion_id", None) == "Potion Slot":
+                return True
+
+        ascension = self.ascension_level or 0
+        base_slots = 2 if ascension >= 11 else 3
+        if "Potion Belt" in relic_ids:
+            base_slots += 2
+
+        real_potions = [
+            potion
+            for potion in potions
+            if getattr(potion, "potion_id", None) != "Potion Slot"
+        ]
+        return len(real_potions) < base_slots
+
     def get_real_potions(self):
         potions = []
         for potion in self.potions:
