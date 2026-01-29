@@ -681,6 +681,15 @@ class CombatRLAgent:
                 elif self._is_valid_combat_action(action, game):
                     # Valid action for current combat context
                     self.rl_failure_count = 0  # Reset on success
+                    from spirecomm.spire.screen import ScreenType
+
+                    if getattr(game, "screen_type", None) == ScreenType.CARD_REWARD:
+                        from spirecomm.communication.action import CancelAction
+
+                        if isinstance(action, CancelAction) and hasattr(
+                            self.fallback_agent, "skipped_cards"
+                        ):
+                            self.fallback_agent.skipped_cards = True
                     return action
                 else:
                     # Invalid action type
