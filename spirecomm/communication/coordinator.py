@@ -7,7 +7,7 @@ import time
 
 from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
-from spirecomm.communication.action import Action, StartGameAction
+from spirecomm.communication.action import Action, StartGameAction, WaitAction
 
 
 def read_stdin(input_queue):
@@ -107,6 +107,26 @@ class Coordinator:
         self.last_error = None
         # Save game state when GAME_OVER screen appears (before clicking proceed)
         self.game_over_state = None
+        # Delay actions on sensitive screens to let combat cleanup finish
+        self._last_screen_type = None
+        self._stability_wait_done = False
+        self._stability_wait_screens = {ScreenType.COMBAT_REWARD, ScreenType.MAP}
+        self._stability_wait_timeout = 5
+
+    def _maybe_queue_stability_wait(self):
+        screen_type = getattr(self.last_game_state, "screen_type", None)
+        if screen_type in self._stability_wait_screens and not self._stability_wait_done:
+            import logging
+
+            logging.info(
+                "[STABILITY_WAIT] screen=%s, inserting wait=%s",
+                screen_type,
+                self._stability_wait_timeout,
+            )
+            self._stability_wait_done = True
+            self.add_action_to_queue(WaitAction(timeout=self._stability_wait_timeout))
+            return True
+        return False
 
     def check_communication_threads(self):
         """Check if stdin/stdout communication threads are still alive.
@@ -321,6 +341,11 @@ class Coordinator:
                 self.last_game_state = Game.from_json(
                     game_state, communication_state.get("available_commands")
                 )
+                # Track screen transitions to reset stability waits
+                current_screen = getattr(self.last_game_state, "screen_type", None)
+                if current_screen != self._last_screen_type:
+                    self._stability_wait_done = False
+                    self._last_screen_type = current_screen
 
                 # Save the parsed GAME_OVER state (after from_json, before callbacks)
                 if hasattr(self, '_saving_game_over'):
@@ -356,9 +381,10 @@ class Coordinator:
                         )
                         new_action = self.state_change_callback(self.last_game_state)
                         if new_action is not None:
-                            self.add_action_to_queue(new_action)
-                            import logging
-                            logging.info(f"[CALLBACK] Got action: {type(new_action).__name__}")
+                            if not self._maybe_queue_stability_wait():
+                                self.add_action_to_queue(new_action)
+                                import logging
+                                logging.info(f"[CALLBACK] Got action: {type(new_action).__name__}")
                         else:
                             import logging
 

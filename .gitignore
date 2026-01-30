@@ -131,3 +131,4 @@ dmypy.json
 .claude/settings.local.json
 /.serena/
 /.trae/
+/.tools/
