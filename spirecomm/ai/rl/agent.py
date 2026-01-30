@@ -176,6 +176,12 @@ class RLAgent:
             # Get action mask and exclude recently failed actions
             action_mask = np.array(self.action_encoder.get_action_mask(game), dtype=bool)
 
+            # Log action mask stats for debugging
+            if screen_type not in (None, ScreenType.NONE):
+                valid_count = int(action_mask.sum())
+                valid_indices = np.where(action_mask)[0].tolist()[:20]
+                logger.info(f"[RLAgent] action_mask: total_valid={valid_count}, sample_indices={valid_indices}")
+
             # Exclude actions that have failed repeatedly
             for failed_idx in self.failed_actions:
                 if failed_idx < len(action_mask):

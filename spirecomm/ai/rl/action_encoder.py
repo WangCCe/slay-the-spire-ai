@@ -411,6 +411,9 @@ class ActionEncoder:
             if len(choices) == 0:
                 mask[self.CARD_REWARD_OFFSET] = True
 
+            # Log action mask for debugging
+            enabled_actions = [i for i, val in enumerate(mask) if val]
+            logger.info(f"[ACTION_MASK] CARD_REWARD: choices={len(choices)}, enabled_actions={enabled_actions[:20]}...")
             logger.debug(f"CARD_REWARD: Enabled {len(choices)} card choices and cancel")
             return mask
 
