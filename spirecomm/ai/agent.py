@@ -447,9 +447,10 @@ class SimpleAgent:
                     )
                     return CombatRewardAction(reward_item)
             logging.info(f"[COMBAT_REWARD] Proceeding (all rewards skipped)\n")
-            self.skipped_cards = False
             return ProceedAction()
         elif self.game.screen_type == ScreenType.MAP:
+            # Reset skipped_cards flag when we reach the map (combat rewards fully processed)
+            self.skipped_cards = False
             return self.make_map_choice()
         elif self.game.screen_type == ScreenType.BOSS_REWARD:
             relics = self.game.screen.relics
