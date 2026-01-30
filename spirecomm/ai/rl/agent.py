@@ -148,6 +148,12 @@ class RLAgent:
         Returns:
             Action object to execute
         """
+        from spirecomm.spire.screen import ScreenType
+        screen_type = getattr(game, 'screen_type', None)
+        in_combat = getattr(game, 'in_combat', False)
+
+        logger.info(f"[RLAgent] get_next_action_in_game called: screen={screen_type}, in_combat={in_combat}")
+
         try:
             # Check if state has changed significantly (floor, screen)
             # Don't clear on turn changes - we want to persist failures across a combat
@@ -246,11 +252,23 @@ class RLAgent:
 
             # Decode action to Action object
             action = self.action_encoder.decode_action(action_idx, game)
+
+            # Log RL choice for all screen types, not just combat
             if getattr(game, "screen_type", None) in (None, ScreenType.NONE) and getattr(game, "in_combat", False):
+                # Main combat loop - log with turn info
                 logger.info(
                     "[RL_CHOICE] floor=%s turn=%s action_idx=%s action=%s",
                     getattr(game, "floor", 0),
                     getattr(game, "turn", 0),
+                    action_idx,
+                    type(action).__name__,
+                )
+            else:
+                # Non-combat screens - log with screen type
+                logger.info(
+                    "[RL_CHOICE_NON_COMBAT] screen=%s floor=%s action_idx=%s action=%s",
+                    screen_type,
+                    getattr(game, "floor", 0),
                     action_idx,
                     type(action).__name__,
                 )
@@ -670,15 +688,23 @@ class CombatRLAgent:
             return debounce_action
 
         # Check if we should use RL for any in-combat screen
+        from spirecomm.spire.screen import ScreenType
+        current_screen = getattr(game, 'screen_type', None)
+        logger.info(f"[CombatRLAgent] screen={current_screen}, use_rl_for_combat={self.use_rl_for_combat}, rl_failure_count={self.rl_failure_count}")
+
         if self.use_rl_for_combat and self._is_rl_context(game):
+            logger.info(f"[CombatRLAgent] Calling RL agent for decision")
             try:
                 action = self.rl_agent.get_next_action_in_game(game)
+
+                logger.info(f"[CombatRLAgent] RL returned: {type(action).__name__} - {action}")
 
                 # Check if RL returned None
                 if action is None:
                     logger.warning("RL agent returned None, falling back to OptimizedAgent")
                     self.rl_failure_count += 1
                 elif self._is_valid_combat_action(action, game):
+                    logger.info(f"[CombatRLAgent] RL action validated, returning it")
                     # Valid action for current combat context
                     self.rl_failure_count = 0  # Reset on success
                     from spirecomm.spire.screen import ScreenType
@@ -756,10 +782,18 @@ class CombatRLAgent:
         """
         from spirecomm.spire.screen import ScreenType
 
-        if self._is_in_combat_context(game):
+        in_combat = self._is_in_combat_context(game)
+        screen_type = getattr(game, 'screen_type', None)
+
+        logger.info(f"[RL_CONTEXT] in_combat={in_combat}, screen_type={screen_type}")
+
+        if in_combat:
+            logger.info(f"[RL_CONTEXT] Returning True (in combat)")
             return True
 
-        return getattr(game, 'screen_type', None) == ScreenType.CARD_REWARD
+        result = screen_type == ScreenType.CARD_REWARD
+        logger.info(f"[RL_CONTEXT] CARD_REWARD check: {result} (expected True for card rewards)")
+        return result
 
     def _is_valid_combat_action(self, action: Action, game: Game) -> bool:
         """
