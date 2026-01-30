@@ -10,11 +10,11 @@ from spirecomm.spire.character import Monster, PlayerClass, Intent
 
 class StateEncoder:
     CARD_REWARD_MAX_OPTIONS = 3
-    CARD_REWARD_FEATURES_PER_CARD = 12
+    CARD_REWARD_FEATURES_PER_CARD = 15  # Increased from 12 to 15 (added exhausts, card_id_hash, magic_number)
     FUTURE_RESERVED_SIZE = 128
 
     def __init__(self):
-        self.feature_dim = 781
+        self.feature_dim = 781  # UNCHANGED - using reserved space for new features
 
     def encode(self, game: Game) -> np.ndarray:
         features = []
@@ -471,6 +471,24 @@ class StateEncoder:
             rarity_flags[3] = 1.0
 
         upgrades_flag = 1.0 if getattr(card, 'upgrades', 0) else 0.0
+        exhausts_flag = 1.0 if getattr(card, 'exhausts', False) else 0.0
+
+        # NEW: Add card ID hash to let network learn card-specific patterns
+        card_id = getattr(card, 'card_id', None)
+        card_id_hash = 0.0
+        if card_id:
+            card_id_hash = self._stable_hash(card_id, 500) / 500.0
+
+        # NEW: Extract magic number (skill values) from properties
+        magic_number = 0.0
+        if hasattr(card, 'properties') and card.properties:
+            try:
+                for prop in card.properties:
+                    if hasattr(prop, 'magic_number'):
+                        magic_number = min(abs(getattr(prop, 'magic_number', 0)), 20) / 20.0
+                        break
+            except:
+                pass
 
         return [
             min(cost, 3) / 3.0,
@@ -479,6 +497,9 @@ class StateEncoder:
             min(damage, 30) / 30.0,
             min(block, 20) / 20.0,
             upgrades_flag,
+            exhausts_flag,  # NEW: Exhaust cards are powerful
+            card_id_hash,  # NEW: Let network learn card-specific value
+            magic_number,  # NEW: Skill effect magnitude
         ]
 
     @staticmethod

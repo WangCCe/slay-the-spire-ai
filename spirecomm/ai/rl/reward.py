@@ -41,14 +41,16 @@ class RewardCalculator:
     BOSS_REWARD_MULT = 1.2
 
     # Acquisition reward weights
-    CARD_REWARD_BASE = 2.0
-    CARD_SIMPLE_SCORE_NORMALIZER = 2.5
-    CARD_SCORE_MAX_MULT = 2.0
-    CARD_CHOICE_RELATIVE_SCALE = 0.2
-    CARD_SKIP_REWARD = 0.02
-    CARD_SKIP_PENALTY = 0.02
-    CARD_DECK_SIZE_THRESHOLD = 20
-    CARD_DECK_SIZE_PENALTY = 0.01
+    CARD_REWARD_BASE = 2.0  # Still used - base reward for getting any card
+    # REMOVED: Heuristic card scoring constants (now using pure RL)
+    # CARD_SIMPLE_SCORE_NORMALIZER = 2.5
+    # CARD_SCORE_MAX_MULT = 2.0
+    # REMOVED: Heuristic card reward constants (now using pure RL)
+    # CARD_CHOICE_RELATIVE_SCALE = 0.2
+    # CARD_SKIP_REWARD = 0.02
+    # CARD_SKIP_PENALTY = 0.02
+    # CARD_DECK_SIZE_THRESHOLD = 20
+    # CARD_DECK_SIZE_PENALTY = 0.01
     RELIC_REWARD = 10.0
     GOLD_REWARD_SCALE = 0.005
 
@@ -510,6 +512,11 @@ class RewardCalculator:
         return False
 
     def _calculate_card_reward(self, current_game: Game, last_game: Game) -> float:
+        """
+        Calculate reward for card acquisition using PURE RL (no heuristic scoring).
+
+        Called whenever a card is added to the deck (from any source).
+        """
         if not current_game.deck:
             return 0.0
         last_uuids = {card.uuid for card in last_game.deck} if last_game.deck else set()
@@ -517,110 +524,76 @@ class RewardCalculator:
         if not new_cards:
             return 0.0
 
+        # Fixed reward for card acquisition (network learns value from outcomes)
         reward = 0.0
         for card in new_cards:
-            score = self._simple_card_score(card)
-            normalized = max(
-                0.0,
-                min(score / self.CARD_SIMPLE_SCORE_NORMALIZER, self.CARD_SCORE_MAX_MULT),
-            )
+            # Small constant reward for obtaining any card
+            # The network will learn which cards are actually valuable through gameplay
             card_reward = self.calculate_acquisition_reward(
                 current_game,
                 card_obtained=True,
-                card_power_score=normalized,
+                card_power_score=1.0,  # Constant - no heuristic adjustment
                 relic_obtained=False
             )
             reward += card_reward
+
             if self._card_reward_debug:
                 card_name = getattr(card, 'card_id', None) or getattr(card, 'name', 'Unknown')
                 rarity = getattr(card, 'rarity', None)
-                rarity_name = getattr(rarity, 'name', str(rarity))
-                cost = getattr(card, 'cost_for_turn', None)
-                if cost is None:
-                    cost = getattr(card, 'cost', 0)
-                damage, block = self._extract_card_damage_block(card)
+                rarity_name = getattr(rarity, 'name', str(rarity)) if rarity else "UNKNOWN"
                 logger.info(
-                    "[CARD_REWARD] card=%s rarity=%s cost=%s dmg=%s block=%s score=%.3f normalized=%.3f reward=%.3f",
+                    "[CARD_REWARD_PURE_RL] card=%s rarity=%s reward=%.3f [no heuristic score - network learns from gameplay]",
                     card_name,
                     rarity_name,
-                    cost,
-                    damage,
-                    block,
-                    score,
-                    normalized,
                     card_reward,
                 )
         return reward
 
     def _calculate_card_choice_reward(self, current_game: Game, last_game: Game) -> float:
+        """
+        Calculate reward for card choice using PURE RL (no heuristic scoring).
+
+        The neural network will learn card value through:
+        1. Game outcomes (win/loss, damage dealt, floors cleared)
+        2. Future rewards (acquiring more relics/gold/cards)
+        3. Deck building efficiency (deck size, synergy)
+
+        NO heuristic card scoring - let the network learn from experience!
+        """
         screen = getattr(last_game, 'screen', None)
         candidates = getattr(screen, 'cards', None) if screen else None
         if not candidates:
             return 0.0
 
+        # Track what was chosen (for logging only)
         last_uuids = {card.uuid for card in last_game.deck} if last_game.deck else set()
         new_cards = [card for card in current_game.deck if card.uuid not in last_uuids] if current_game.deck else []
         chosen_card = new_cards[0] if new_cards else None
 
+        # MINIMAL reward shaping - just acknowledge the choice
+        # The network will learn true value from game outcomes
         reward = 0.0
-        relative_reward = 0.0
-        scores = []
-        score_by_uuid = {}
-        for card in candidates:
-            score = self._simple_card_score(card)
-            scores.append(score)
-            if hasattr(card, 'uuid'):
-                score_by_uuid[card.uuid] = score
 
-        if scores:
-            if chosen_card is not None:
-                chosen_score = score_by_uuid.get(getattr(chosen_card, 'uuid', None))
-                if chosen_score is None:
-                    chosen_score = self._simple_card_score(chosen_card)
-            else:
-                chosen_score = min(scores)
-
-            rank_score = self._relative_rank_score(chosen_score, scores)
-            relative_reward = rank_score * self.CARD_CHOICE_RELATIVE_SCALE
-            reward += relative_reward
-            if self._card_reward_debug:
-                chosen_name = "SKIP" if chosen_card is None else (
-                    getattr(chosen_card, 'card_id', None) or getattr(chosen_card, 'name', 'Unknown')
-                )
-                candidate_entries = []
-                for card in candidates:
-                    card_name = getattr(card, 'card_id', None) or getattr(card, 'name', 'Unknown')
-                    candidate_entries.append(f"{card_name}:{self._simple_card_score(card):.2f}")
-                logger.info(
-                    "[CARD_CHOICE] chosen=%s chosen_score=%.3f rank=%.3f scale=%.3f reward=%.3f candidates=%s",
-                    chosen_name,
-                    chosen_score,
-                    rank_score,
-                    self.CARD_CHOICE_RELATIVE_SCALE,
-                    relative_reward,
-                    ", ".join(candidate_entries),
-                )
-
-        has_uncommon_or_rare = any(
-            getattr(card, 'rarity', None) in (CardRarity.UNCOMMON, CardRarity.RARE)
-            for card in candidates
-        )
-        if chosen_card is None:
-            if not has_uncommon_or_rare:
-                reward += self.CARD_SKIP_REWARD
-            else:
-                reward -= self.CARD_SKIP_PENALTY
-            return reward
-
-        deck_size = len(current_game.deck) if current_game.deck else 0
-        if (
-            deck_size > self.CARD_DECK_SIZE_THRESHOLD
-            and getattr(chosen_card, 'rarity', None) in (CardRarity.BASIC, CardRarity.COMMON)
-        ):
-            reward -= self.CARD_DECK_SIZE_PENALTY
+        if self._card_reward_debug:
+            chosen_name = "SKIP" if chosen_card is None else (
+                getattr(chosen_card, 'card_id', None) or getattr(chosen_card, 'name', 'Unknown')
+            )
+            candidate_entries = []
+            for card in candidates:
+                card_name = getattr(card, 'card_id', None) or getattr(card, 'name', 'Unknown')
+                rarity = getattr(card, 'rarity', None)
+                rarity_name = rarity.name if rarity else "UNKNOWN"
+                candidate_entries.append(f"{card_name}({rarity_name})")
+            logger.info(
+                "[CARD_CHOICE_PURE_RL] chosen=%s candidates=%s [no heuristic reward - network learns from gameplay]",
+                chosen_name,
+                ", ".join(candidate_entries),
+            )
 
         return reward
 
+    # DEPRECATED: Heuristic card scoring methods (no longer used - pure RL approach)
+    # Kept for reference/backward compatibility
     @staticmethod
     def _relative_rank_score(chosen_score: float, scores: Iterable[float]) -> float:
         scores_list = list(scores)
@@ -645,6 +618,9 @@ class RewardCalculator:
 
         return (rank / (len(scores_list) - 1)) * 2.0 - 1.0
 
+    # DEPRECATED: Heuristic card scoring (no longer used - pure RL approach)
+    # Kept for reference/backward compatibility
+    @staticmethod
     def _simple_card_score(self, card) -> float:
         rarity = getattr(card, 'rarity', None)
         rarity_score = {
