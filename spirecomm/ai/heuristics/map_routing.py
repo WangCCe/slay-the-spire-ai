@@ -130,7 +130,7 @@ class AdaptiveMapRouter:
         """Act 2+ priorities - favor elites and events, avoid normal monsters."""
         if symbol == 'E':  # Elite
             # Aggressive elite routing in Act 2
-            if hp_pct < 0.4:
+            if hp_pct < 0.2:
                 return base - 100  # Avoid elites when very low HP
             elif hp_pct < 0.65:
                 return base + 50   # Cautious but willing
@@ -139,12 +139,7 @@ class AdaptiveMapRouter:
 
         elif symbol == 'M':  # Monster
             # Avoid normal monsters in Act 2
-            if hp_pct > 0.7:
-                return base - 100  # Skip when healthy (prefer elites/events)
-            elif hp_pct > 0.5:
-                return base - 50   # Still avoid
-            else:
-                return base  # Accept when low HP for safer fights
+            return base - 100
 
         elif symbol == 'R':  # Rest
             if hp_pct < 0.5:
