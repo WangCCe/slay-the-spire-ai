@@ -200,6 +200,25 @@ def backup_latest_checkpoint(backup_dir, pattern):
         return None
 
 
+def load_seed_pool(seed_pool_path):
+    """Load a seed pool file (one seed per line, # for comments)."""
+    path = Path(seed_pool_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Seed pool file not found: {path}")
+
+    seeds = []
+    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if "#" in line:
+            line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        seeds.append(line)
+    return seeds
+
+
 def create_agent(agent_type="auto", use_optimized=None, player_class=None, training=False, model_path=None, elite_mode=None):
     """
     Create an agent instance.
@@ -341,6 +360,9 @@ if __name__ == "__main__":
     use_optimized = None  # Deprecated but kept for compatibility
     ascension_level = 0  # Default ascension level
     run_seed = None
+    seed_pool = None
+    seed_pool_path = None
+    max_games = None
     training = False
     model_path = None
 
@@ -361,6 +383,7 @@ if __name__ == "__main__":
             "  python main.py -a 20                            # Ascension level 20\n"
             "  python main.py --agent optimized -a 20          # Optimized AI A20\n"
             "  python main.py --seed 7010470200064802279       # Fixed seed run\n"
+            "  python main.py --seed-pool analysis_scripts/seed_pool.txt --max-games 20\n"
             "  python main.py --elite-route conservative -a 20 # Conservative elite routing (avoid elites)\n"
             "  python main.py --elite-route aggressive         # Aggressive elite routing (seek elites)\n"
         ),
@@ -404,6 +427,16 @@ if __name__ == "__main__":
         "--seed",
         metavar="SEED",
         help="Set a fixed run seed (alphanumeric string)",
+    )
+    parser.add_argument(
+        "--seed-pool",
+        metavar="PATH",
+        help="Path to seed pool file (one seed per line, # for comments)",
+    )
+    parser.add_argument(
+        "--max-games",
+        metavar="N",
+        help="Stop after N games are completed (default: run forever)",
     )
     parser.add_argument(
         "--elite-route",
@@ -481,6 +514,35 @@ if __name__ == "__main__":
             sys.exit(1)
         logging.info(f"Run seed set to {run_seed}")
 
+    if args.seed_pool is not None:
+        seed_pool_path = str(args.seed_pool).strip()
+        if not seed_pool_path:
+            logging.error("Seed pool path cannot be empty")
+            sys.exit(1)
+        try:
+            seed_pool = load_seed_pool(seed_pool_path)
+        except Exception as e:
+            logging.error(f"Failed to load seed pool: {e}")
+            sys.exit(1)
+        if not seed_pool:
+            logging.error(f"Seed pool is empty: {seed_pool_path}")
+            sys.exit(1)
+        logging.info(f"Seed pool loaded: {len(seed_pool)} seeds from {seed_pool_path}")
+
+    if args.max_games is not None:
+        try:
+            max_games = int(args.max_games)
+            if max_games <= 0:
+                raise ValueError("max-games must be positive")
+            logging.info(f"Max games set to {max_games}")
+        except ValueError:
+            logging.error(f"Invalid --max-games value: {args.max_games}")
+            sys.exit(1)
+
+    if seed_pool and run_seed is not None:
+        logging.warning("Both --seed and --seed-pool provided; ignoring --seed")
+        run_seed = None
+
     elite_route_mode = args.elite_route
     logging.info(f"Elite route mode: {elite_route_mode}")
 
@@ -520,12 +582,21 @@ if __name__ == "__main__":
         game_count += 1
         is_rl_agent = RLAgent is not None and isinstance(agent, RLAgent)
         is_combat_rl_agent = CombatRLAgent is not None and isinstance(agent, CombatRLAgent)
+        active_seed = run_seed
+        seed_pool_index = None
+        if seed_pool:
+            seed_pool_index = (game_count - 1) % len(seed_pool)
+            active_seed = seed_pool[seed_pool_index]
 
         logging.info(f"\n{'='*60}\n")
         logging.info(f"Starting game #{game_count} as {chosen_class}")
         logging.info(f"Ascension Level: {current_ascension}")
-        if run_seed is not None:
-            logging.info(f"Seed: {run_seed}")
+        if active_seed is not None:
+            logging.info(f"Seed: {active_seed}")
+        if seed_pool_index is not None:
+            logging.info(
+                f"Seed pool: {seed_pool_index + 1}/{len(seed_pool)} ({seed_pool_path})"
+            )
         logging.info(f"Coordinator state: in_game={coordinator.in_game}, ready={coordinator.game_is_ready}")
         if is_rl_agent:
             logging.info(f"RL Agent: training={training}")
@@ -568,7 +639,7 @@ if __name__ == "__main__":
             result = coordinator.play_one_game(
                 chosen_class,
                 ascension_level=current_ascension,
-                seed=run_seed,
+                seed=active_seed,
             )
         except EOFError as e:
             # Handle broken pipe (Communication Mod or game crashed)
@@ -733,3 +804,7 @@ if __name__ == "__main__":
                     logging.info(f"  Upgrade Rate: {deck_stats.get('upgrade_rate', 0):.2%}\n")
             except Exception as e:
                 logging.info(f"Error generating summary: {e}\n")
+
+        if max_games is not None and game_count >= max_games:
+            logging.info(f"Max games reached ({max_games}); exiting.")
+            break
