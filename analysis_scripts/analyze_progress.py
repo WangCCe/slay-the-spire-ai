@@ -228,18 +228,40 @@ def generate_sign(timestamp, key):
     return sign
 
 
-def send_feishu_message(summary_text):
-    """发送飞书群消息（带签名验证）"""
+def send_feishu_message(summary_text, at_all=False, at_mobiles=None):
+    """发送飞书群消息（带签名验证）
+
+    Args:
+        summary_text: 消息文本
+        at_all: 是否@所有人
+        at_mobiles: 要@的用户ID列表（open_id或union_id）
+    """
     timestamp = int(time.time())
     sign = generate_sign(timestamp, FEISHU_SIGN_KEY)
 
-    headers = {"Content-Type": "application/json"}
+    # 构建 @ 内容
+    at_text = ""
+    if at_all:
+        at_text = '<at user_id="all">所有人</at>\n'
+
+    if at_mobiles:
+        for user_id in at_mobiles:
+            at_text += f'<at user_id="{user_id}"></at>\n'
+
+    # 组合最终内容
+    content = at_text + summary_text
+
+    # 使用 text 类型 + lark_md 格式
     data = {
         "msg_type": "text",
-        "content": {"text": summary_text},
+        "content": {
+            "text": content
+        },
         "timestamp": str(timestamp),
         "sign": sign
     }
+
+    headers = {"Content-Type": "application/json"}
 
     try:
         response = requests.post(FEISHU_WEBHOOK, headers=headers, json=data, timeout=10)
@@ -324,6 +346,17 @@ def main():
         action="store_true",
         help="发送飞书通知",
     )
+    parser.add_argument(
+        "--at-all",
+        action="store_true",
+        help="@所有人",
+    )
+    parser.add_argument(
+        "--at",
+        type=str,
+        nargs="*",
+        help="@指定人（手机号）",
+    )
     args = parser.parse_args()
 
     runs_dir = (
@@ -343,7 +376,7 @@ def main():
     # 发送飞书通知
     if args.notify:
         summary = generate_summary(buckets, args.character, len(runs))
-        send_feishu_message(summary)
+        send_feishu_message(summary, at_all=args.at_all, at_mobiles=args.at)
 
 
 if __name__ == "__main__":
