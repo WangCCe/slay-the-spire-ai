@@ -33,6 +33,8 @@ class RewardCalculator:
     ALL_LETHAL_BONUS = 15.0
     HP_LOSS_PENALTY = 35.0  # Applied to HP loss ratio (lost / max)
     TURN_END_PENALTY = -0.05
+    ENEMY_STRENGTH_GAIN_PENALTY = 0.5
+    ENEMY_STRENGTH_GAIN_CAP = 3.0
 
     # Progression reward weights
     FLOOR_REWARD_SCALE = 3.0
@@ -216,6 +218,8 @@ class RewardCalculator:
                     "gold_reward": 0.0,
                     "action_bonus": 0.0,
                     "end_turn_penalty": 0.0,
+                    "enemy_strength_gained": 0.0,
+                    "enemy_strength_gain_penalty": 0.0,
                     "reward_total": 0.0,
                 }
             )
@@ -435,9 +439,11 @@ class RewardCalculator:
         if action_context and current_game.in_combat and last_game.in_combat:
             action_name = action_context.get("action_name")
             had_play_options = bool(action_context.get("had_play_options", False))
+            played_card_type = action_context.get("played_card_type")
 
             action_bonus = 0.0
             end_turn_penalty = 0.0
+            enemy_strength_gain_penalty = 0.0
 
             if action_name == "PlayCardAction":
                 # Small positive feedback for taking an action.
@@ -449,6 +455,18 @@ class RewardCalculator:
 
             if action_name == "EndTurnAction" and had_play_options:
                 end_turn_penalty = -0.2
+
+            if action_name == "PlayCardAction" and played_card_type == "SKILL":
+                strength_gained = self._calculate_enemy_strength_gain(last_game, current_game)
+                if strength_gained > 0:
+                    enemy_strength_gain_penalty = -min(
+                        strength_gained * self.ENEMY_STRENGTH_GAIN_PENALTY,
+                        self.ENEMY_STRENGTH_GAIN_CAP,
+                    )
+                    reward += enemy_strength_gain_penalty
+                    if info is not None:
+                        info["enemy_strength_gained"] += strength_gained
+                        info["enemy_strength_gain_penalty"] += enemy_strength_gain_penalty
 
             if action_bonus or end_turn_penalty:
                 reward += action_bonus + end_turn_penalty
@@ -591,6 +609,39 @@ class RewardCalculator:
             )
 
         return reward
+
+    @staticmethod
+    def _get_power_amount(entity, power_id: str) -> int:
+        powers = getattr(entity, "powers", []) or []
+        for power in powers:
+            if getattr(power, "power_id", None) == power_id:
+                return getattr(power, "amount", 0) or 0
+            if getattr(power, "power_name", None) == power_id:
+                return getattr(power, "amount", 0) or 0
+        return 0
+
+    def _calculate_enemy_strength_gain(self, last_game: Game, current_game: Game) -> int:
+        last_monsters = last_game.monsters if last_game.monsters else []
+        current_monsters = current_game.monsters if current_game.monsters else []
+
+        last_strengths = {}
+        for idx, monster in enumerate(last_monsters):
+            key = getattr(monster, "monster_index", None)
+            if key is None:
+                key = idx
+            last_strengths[key] = self._get_power_amount(monster, "Strength")
+
+        strength_gained = 0
+        for idx, monster in enumerate(current_monsters):
+            key = getattr(monster, "monster_index", None)
+            if key is None:
+                key = idx
+            current_strength = self._get_power_amount(monster, "Strength")
+            last_strength = last_strengths.get(key, 0)
+            if current_strength > last_strength:
+                strength_gained += (current_strength - last_strength)
+
+        return strength_gained
 
     # DEPRECATED: Heuristic card scoring methods (no longer used - pure RL approach)
     # Kept for reference/backward compatibility

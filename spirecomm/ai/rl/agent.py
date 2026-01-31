@@ -304,6 +304,28 @@ class RLAgent:
                         last_action_name = type(last_action_obj).__name__
                     except Exception:
                         last_action_name = "DecodeError"
+                    card = None
+                    card_name = None
+                    card_type_name = None
+                    card_cost = None
+                    if last_action_name == "PlayCardAction":
+                        try:
+                            if hasattr(last_action_obj, "card") and last_action_obj.card is not None:
+                                card = last_action_obj.card
+                            elif hasattr(last_action_obj, "card_index"):
+                                idx = int(last_action_obj.card_index)
+                                hand = getattr(last_game_for_reward, "hand", []) or []
+                                if 0 <= idx < len(hand):
+                                    card = hand[idx]
+                            if card is not None:
+                                card_name = getattr(card, "name", None) or getattr(card, "card_id", None)
+                                card_type = getattr(card, "type", None)
+                                card_type_name = getattr(card_type, "name", None) if card_type is not None else None
+                                card_cost = getattr(card, "cost_for_turn", None)
+                                if card_cost is None:
+                                    card_cost = getattr(card, "cost", None)
+                        except Exception:
+                            card = None
                     reward = self.reward_calculator.calculate_step_reward(
                         current_game=game,
                         last_game=last_game_for_reward,
@@ -312,35 +334,21 @@ class RLAgent:
                         action_context={
                             "action_name": last_action_name,
                             "had_play_options": had_play_options,
+                            "played_card_type": card_type_name,
                         },
                     )
                     if reward_info:
                         action_detail = ""
                         if last_action_name == "PlayCardAction":
-                            try:
-                                card = None
-                                if hasattr(last_action_obj, "card") and last_action_obj.card is not None:
-                                    card = last_action_obj.card
-                                elif hasattr(last_action_obj, "card_index"):
-                                    idx = int(last_action_obj.card_index)
-                                    hand = getattr(last_game_for_reward, "hand", []) or []
-                                    if 0 <= idx < len(hand):
-                                        card = hand[idx]
-                                if card is not None:
-                                    card_name = getattr(card, "name", None) or getattr(card, "card_id", None)
-                                    card_type = getattr(getattr(card, "type", None), "name", None)
-                                    cost = getattr(card, "cost_for_turn", None)
-                                    if cost is None:
-                                        cost = getattr(card, "cost", None)
-                                    action_detail = f" card={card_name} type={card_type} cost={cost}"
-                            except Exception:
-                                action_detail = ""
+                            if card_name is not None:
+                                action_detail = f" card={card_name} type={card_type_name} cost={card_cost}"
                         logger.info(
                             "[RL_REWARD] floor=%s turn=%s action_idx=%s action=%s"
                             "%s reward=%.4f combat=%.4f dmg=%s hp_lost=%s turn_end=%s "
                             "energy_spent=%s block_delta=%s hp_delta=%s "
                             "progress=%.4f acquisition=%.4f card_choice=%.4f terminal=%.4f "
-                            "action_bonus=%.4f end_turn_penalty=%.4f",
+                            "action_bonus=%.4f end_turn_penalty=%.4f "
+                            "enemy_str=%s enemy_str_penalty=%.4f",
                             getattr(last_game_for_reward, "floor", 0),
                             getattr(last_game_for_reward, "turn", 0),
                             last_action_idx,
@@ -360,6 +368,8 @@ class RLAgent:
                             reward_info.get("terminal_reward", 0.0),
                             reward_info.get("action_bonus", 0.0),
                             reward_info.get("end_turn_penalty", 0.0),
+                            reward_info.get("enemy_strength_gained", 0),
+                            reward_info.get("enemy_strength_gain_penalty", 0.0),
                         )
 
                     # Check for game over
