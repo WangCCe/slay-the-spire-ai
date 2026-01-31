@@ -587,6 +587,228 @@ class RLAgent:
 
 
 
+class MapRLAgent:
+    """
+    Minimal RL agent for MAP screen decisions only.
+
+    Uses the same StateEncoder/ActionEncoder and DQNTrainer but only acts on
+    ScreenType.MAP and learns from map transitions.
+    """
+
+    def __init__(
+        self,
+        model_path: Optional[str] = None,
+        training: bool = False,
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        epsilon: float = 0.1,
+    ):
+        self.device = device
+        self.training_mode = training
+        self.network_type = "dueling"
+        self.state_encoder = StateEncoder()
+        self.action_encoder = ActionEncoder()
+
+        if model_path is not None:
+            self.network_type = self._infer_network_type(model_path)
+
+        if training:
+            self.trainer = DQNTrainer(
+                state_dim=self.state_encoder.feature_dim,
+                device=device,
+                network_type=self.network_type,
+            )
+        else:
+            self.trainer = None
+
+        if model_path is not None:
+            self.load_model(model_path)
+        else:
+            self.network = create_dqn(
+                self.network_type,
+                state_dim=self.state_encoder.feature_dim,
+                device=device,
+            )
+            self.network.eval()
+
+        self.epsilon = epsilon
+        self.last_state = None
+        self.pending_action = None
+        self.pending_game = None
+        self.pending_action_mask = None
+        self.episode_steps = 0
+
+    def observe_game(self, game: Game) -> None:
+        """Update replay buffer based on the last MAP action."""
+        if not self.training_mode or self.trainer is None:
+            return
+        if (
+            self.pending_action is None
+            or self.last_state is None
+            or self.pending_game is None
+        ):
+            return
+
+        try:
+            reward = self._compute_reward(game, self.pending_game)
+            done = self._is_terminal(game)
+            next_state = self.state_encoder.encode(game)
+            next_mask = np.array(self.action_encoder.get_action_mask(game), dtype=bool)
+
+            self.trainer.store_transition(
+                self.last_state,
+                self.pending_action,
+                reward,
+                next_state,
+                done,
+                action_mask=self.pending_action_mask,
+                next_action_mask=next_mask,
+            )
+
+            loss = self.trainer.train_step()
+            if loss is not None:
+                self.episode_steps += 1
+        except Exception as e:
+            logger.warning(f"[MAP_RL] observe_game failed: {e}")
+            import traceback
+
+            logger.debug(traceback.format_exc())
+        finally:
+            self.last_state = None
+            self.pending_action = None
+            self.pending_game = None
+            self.pending_action_mask = None
+
+    def get_next_action_in_game(self, game: Game) -> Optional[Action]:
+        from spirecomm.spire.screen import ScreenType
+
+        if getattr(game, "screen_type", None) != ScreenType.MAP:
+            return None
+
+        state = self.state_encoder.encode(game)
+        action_mask = np.array(self.action_encoder.get_action_mask(game), dtype=bool)
+        if not action_mask.any():
+            return None
+
+        if self.training_mode and self.trainer is not None:
+            action_idx = self.trainer.select_action(
+                state,
+                action_mask,
+                training=True,
+            )
+        else:
+            if np.random.random() < self.epsilon:
+                valid_actions = np.where(action_mask)[0]
+                action_idx = (
+                    np.random.choice(valid_actions) if len(valid_actions) > 0 else 0
+                )
+            else:
+                state_tensor = torch.from_numpy(state).float().unsqueeze(0).to(
+                    self.device
+                )
+                mask_tensor = (
+                    torch.from_numpy(action_mask).unsqueeze(0).to(self.device)
+                )
+                with torch.no_grad():
+                    action_idx = (
+                        self.network.get_best_action(state_tensor, mask_tensor).item()
+                    )
+
+        action = self.action_encoder.decode_action(action_idx, game)
+
+        self.last_state = state
+        self.pending_action = action_idx
+        self.pending_game = game
+        self.pending_action_mask = action_mask
+        return action
+
+    def reset(self) -> None:
+        self.last_state = None
+        self.pending_action = None
+        self.pending_game = None
+        self.pending_action_mask = None
+        self.episode_steps = 0
+        if self.training_mode and self.trainer is not None:
+            self.trainer.update_episode_count()
+
+    def save_model(self, model_path: str, episode: int = 0) -> None:
+        if self.training_mode and self.trainer is not None:
+            self.trainer.save_checkpoint(model_path, episode)
+        else:
+            checkpoint = {
+                "online_network_state_dict": self.network.state_dict(),
+                "episode": episode,
+            }
+            torch.save(checkpoint, model_path)
+
+    def load_model(self, model_path: str) -> None:
+        checkpoint = torch.load(model_path, map_location=self.device)
+        detected_type = detect_network_type_from_checkpoint(checkpoint)
+        if detected_type != self.network_type:
+            self.network_type = detected_type
+        if not hasattr(self, "network") or self.network is None:
+            self.network = create_dqn(
+                self.network_type,
+                state_dim=self.state_encoder.feature_dim,
+                device=self.device,
+            )
+        state_dict_key = (
+            "online_network_state_dict"
+            if "online_network_state_dict" in checkpoint
+            else None
+        )
+        state_dict = checkpoint[state_dict_key] if state_dict_key else checkpoint
+        state_dict, updated = align_state_dict_input(state_dict, self.network)
+        self.network.load_state_dict(state_dict, strict=not updated)
+        self.network.eval()
+
+    def _infer_network_type(self, model_path: str) -> str:
+        try:
+            checkpoint = torch.load(model_path, map_location="cpu")
+            return detect_network_type_from_checkpoint(checkpoint)
+        except Exception:
+            return "dueling"
+
+    def _is_terminal(self, game: Game) -> bool:
+        return "GAME_OVER" in str(getattr(game, "screen_type", ""))
+
+    def _compute_reward(self, current_game: Game, last_game: Game) -> float:
+        current_floor = getattr(current_game, "floor", 0) or 0
+        last_floor = getattr(last_game, "floor", 0) or 0
+        floor_delta = max(0, current_floor - last_floor)
+
+        current_act = getattr(current_game, "act", 1) or 1
+        last_act = getattr(last_game, "act", 1) or 1
+
+        current_hp = getattr(current_game, "current_hp", None)
+        current_max = getattr(current_game, "max_hp", None)
+        if current_hp is None and getattr(current_game, "player", None) is not None:
+            current_hp = getattr(current_game.player, "current_hp", None)
+        if current_max is None and getattr(current_game, "player", None) is not None:
+            current_max = getattr(current_game.player, "max_hp", None)
+
+        last_hp = getattr(last_game, "current_hp", None)
+        last_max = getattr(last_game, "max_hp", None)
+        if last_hp is None and getattr(last_game, "player", None) is not None:
+            last_hp = getattr(last_game.player, "current_hp", None)
+        if last_max is None and getattr(last_game, "player", None) is not None:
+            last_max = getattr(last_game.player, "max_hp", None)
+
+        reward = 0.0
+        reward += 0.05 * float(floor_delta)
+        if current_act > last_act:
+            reward += 1.0
+
+        if current_hp is not None and last_hp is not None:
+            max_hp = max(float(last_max or current_max or 1), 1.0)
+            hp_loss = max(0.0, float(last_hp) - float(current_hp))
+            reward -= 0.2 * (hp_loss / max_hp)
+
+        if self._is_terminal(current_game):
+            reward -= 1.0
+
+        return reward
+
+
 # Convenience function for creating agents
 def create_agent(
     model_path: Optional[str] = None,
@@ -620,7 +842,8 @@ class CombatRLAgent:
 
     Architecture:
     - RLAgent handles: main combat loop (play cards, use potions, end turn)
-    - OptimizedAgent handles: everything else (map, shop, events, rewards)
+    - MapRLAgent handles: MAP routing decisions
+    - OptimizedAgent handles: everything else (shop, events, rewards)
 
     Fallback: If RL fails, immediately falls back to OptimizedAgent for all decisions.
     """
@@ -675,6 +898,13 @@ class CombatRLAgent:
             epsilon=epsilon
         )
 
+        # Initialize MAP-only RL agent (non-combat routing)
+        self.map_rl_agent = MapRLAgent(
+            training=training,
+            device=device,
+            epsilon=epsilon,
+        )
+
         logger.info(f"CombatRLAgent initialized: player_class={player_class}, training={training}")
 
     def get_next_action_in_game(self, game: Game) -> Action:
@@ -707,6 +937,22 @@ class CombatRLAgent:
         from spirecomm.spire.screen import ScreenType
         current_screen = getattr(game, 'screen_type', None)
         logger.info(f"[CombatRLAgent] screen={current_screen}, use_rl_for_combat={self.use_rl_for_combat}, rl_failure_count={self.rl_failure_count}")
+
+        # Observe MAP transitions for training before any routing decisions.
+        if self.map_rl_agent is not None:
+            try:
+                self.map_rl_agent.observe_game(game)
+            except Exception as e:
+                logger.debug(f"[MAP_RL] observe_game failed: {e}")
+
+        if current_screen == ScreenType.MAP and self.map_rl_agent is not None:
+            logger.info("[CombatRLAgent] MAP screen detected, using MapRLAgent")
+            try:
+                map_action = self.map_rl_agent.get_next_action_in_game(game)
+                if map_action is not None:
+                    return map_action
+            except Exception as e:
+                logger.warning(f"MapRLAgent failed: {e}, falling back to OptimizedAgent")
 
         if self.use_rl_for_combat and self._is_rl_context(game):
             logger.info(f"[CombatRLAgent] Calling RL agent for decision")
@@ -880,6 +1126,8 @@ class CombatRLAgent:
     def reset(self) -> None:
         """Reset both RL and OptimizedAgent for new episode."""
         self.rl_agent.reset()
+        if self.map_rl_agent is not None:
+            self.map_rl_agent.reset()
 
         # Reset RL failure tracking for new game
         self.use_rl_for_combat = True
@@ -899,3 +1147,15 @@ class CombatRLAgent:
     def save_model(self, model_path: str, episode: int = 0) -> None:
         """Save RL model checkpoint."""
         self.rl_agent.save_model(model_path, episode)
+        if self.map_rl_agent is not None:
+            import os
+
+            base = os.path.basename(model_path)
+            if "rl_combat_model" in base:
+                base = base.replace("rl_combat_model", "rl_map_model")
+            elif "rl_model" in base:
+                base = base.replace("rl_model", "rl_map_model")
+            else:
+                base = base.replace(".pth", "_map.pth")
+            map_path = os.path.join(os.path.dirname(model_path), base)
+            self.map_rl_agent.save_model(map_path, episode)

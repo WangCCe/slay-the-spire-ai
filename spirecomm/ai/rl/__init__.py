@@ -11,7 +11,7 @@ try:
     from .action_encoder import ActionEncoder
     from .reward import RewardCalculator
     from .replay_buffer import ReplayBuffer
-    from .agent import RLAgent, create_agent, CombatRLAgent
+    from .agent import RLAgent, create_agent, CombatRLAgent, MapRLAgent
     RL_AVAILABLE = True
 except ImportError as e:
     # PyTorch or other dependencies not installed
@@ -23,6 +23,7 @@ except ImportError as e:
     RLAgent = None
     create_agent = None
     CombatRLAgent = None
+    MapRLAgent = None
 
 __all__ = [
     'StateEncoder',
@@ -32,5 +33,6 @@ __all__ = [
     'RLAgent',
     'create_agent',
     'CombatRLAgent',
+    'MapRLAgent',
     'RL_AVAILABLE',
 ]
