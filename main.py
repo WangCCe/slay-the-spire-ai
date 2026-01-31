@@ -572,7 +572,6 @@ if __name__ == "__main__":
 
     # Play games forever - IRONCLAD ONLY for testing
     game_count = 0
-    logged_state_fields = False
 
     # Set ascension level (default to 20 if not specified)
     current_ascension = ascension_level if ascension_level is not None else 20
@@ -671,38 +670,6 @@ if __name__ == "__main__":
 
             # Continue to next game instead of crashing
             continue
-
-        try:
-            final_state = getattr(coordinator, "last_game_state", None)
-            if final_state is None:
-                logging.info(
-                    "Seed (game state): <no state> | Seed (requested): %s | unknown",
-                    active_seed,
-                )
-            else:
-                game_state_seed = getattr(final_state, "seed", None)
-                if game_state_seed is None or active_seed is None:
-                    matches = "unknown"
-                else:
-                    matches = "match" if str(game_state_seed) == str(active_seed) else "mismatch"
-                logging.info(
-                    "Seed (game state): %s | Seed (requested): %s | %s",
-                    game_state_seed,
-                    active_seed,
-                    matches,
-                )
-            if final_state is not None and not logged_state_fields:
-                field_names = sorted(
-                    [
-                        name
-                        for name in dir(final_state)
-                        if not name.startswith("_") and not callable(getattr(final_state, name, None))
-                    ]
-                )
-                logging.info("Game state fields: %s", ", ".join(field_names))
-                logged_state_fields = True
-        except Exception as e:
-            logging.debug(f"Failed to read seed_played from game state: {e}")
 
         # Record game result if statistics available or RL agent in training
         if is_rl_agent and training:
