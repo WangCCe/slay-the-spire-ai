@@ -671,6 +671,14 @@ if __name__ == "__main__":
             # Continue to next game instead of crashing
             continue
 
+        try:
+            final_state = getattr(coordinator, "last_game_state", None)
+            seed_played = getattr(final_state, "seed_played", None) if final_state else None
+            if seed_played is not None:
+                logging.info(f"Seed played (game state): {seed_played}")
+        except Exception as e:
+            logging.debug(f"Failed to read seed_played from game state: {e}")
+
         # Record game result if statistics available or RL agent in training
         if is_rl_agent and training:
             # RL agent training checkpoint saving
