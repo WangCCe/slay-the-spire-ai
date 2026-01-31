@@ -117,6 +117,7 @@ class Coordinator:
         self._last_logged_seed = object()
         self._last_logged_seed_played = object()
         self._last_logged_chose_seed = object()
+        self.pending_seed = None
 
     def _maybe_queue_stability_wait(self):
         screen_type = getattr(self.last_game_state, "screen_type", None)
@@ -432,6 +433,18 @@ class Coordinator:
                 else:
                     new_action = self.out_of_game_callback()
                     if new_action is not None:
+                        if (
+                            isinstance(new_action, StartGameAction)
+                            and new_action.seed is None
+                            and self.pending_seed is not None
+                        ):
+                            import logging
+
+                            logging.info(
+                                "[OUT_OF_GAME] Injecting pending seed into StartGameAction: %s",
+                                self.pending_seed,
+                            )
+                            new_action.seed = self.pending_seed
                         self.add_action_to_queue(new_action)
                     else:
                         import logging
@@ -466,6 +479,7 @@ class Coordinator:
 
         # Reset saved game over state from previous game
         self.game_over_state = None
+        self.pending_seed = seed
 
         # Wait for ready state (with timeout to prevent hanging)
         timeout_counter = 0
