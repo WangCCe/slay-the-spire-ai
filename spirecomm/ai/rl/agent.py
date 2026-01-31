@@ -898,12 +898,8 @@ class CombatRLAgent:
             epsilon=epsilon
         )
 
-        # Initialize MAP-only RL agent (non-combat routing)
-        self.map_rl_agent = MapRLAgent(
-            training=training,
-            device=device,
-            epsilon=epsilon,
-        )
+        # MAP routing currently handled by fallback agent
+        self.map_rl_agent = None
 
         logger.info(f"CombatRLAgent initialized: player_class={player_class}, training={training}")
 
@@ -937,22 +933,6 @@ class CombatRLAgent:
         from spirecomm.spire.screen import ScreenType
         current_screen = getattr(game, 'screen_type', None)
         logger.info(f"[CombatRLAgent] screen={current_screen}, use_rl_for_combat={self.use_rl_for_combat}, rl_failure_count={self.rl_failure_count}")
-
-        # Observe MAP transitions for training before any routing decisions.
-        if self.map_rl_agent is not None:
-            try:
-                self.map_rl_agent.observe_game(game)
-            except Exception as e:
-                logger.debug(f"[MAP_RL] observe_game failed: {e}")
-
-        if current_screen == ScreenType.MAP and self.map_rl_agent is not None:
-            logger.info("[CombatRLAgent] MAP screen detected, using MapRLAgent")
-            try:
-                map_action = self.map_rl_agent.get_next_action_in_game(game)
-                if map_action is not None:
-                    return map_action
-            except Exception as e:
-                logger.warning(f"MapRLAgent failed: {e}, falling back to OptimizedAgent")
 
         if self.use_rl_for_combat and self._is_rl_context(game):
             logger.info(f"[CombatRLAgent] Calling RL agent for decision")
@@ -1126,9 +1106,6 @@ class CombatRLAgent:
     def reset(self) -> None:
         """Reset both RL and OptimizedAgent for new episode."""
         self.rl_agent.reset()
-        if self.map_rl_agent is not None:
-            self.map_rl_agent.reset()
-
         # Reset RL failure tracking for new game
         self.use_rl_for_combat = True
         self.rl_failure_count = 0
@@ -1147,15 +1124,3 @@ class CombatRLAgent:
     def save_model(self, model_path: str, episode: int = 0) -> None:
         """Save RL model checkpoint."""
         self.rl_agent.save_model(model_path, episode)
-        if self.map_rl_agent is not None:
-            import os
-
-            base = os.path.basename(model_path)
-            if "rl_combat_model" in base:
-                base = base.replace("rl_combat_model", "rl_map_model")
-            elif "rl_model" in base:
-                base = base.replace("rl_model", "rl_map_model")
-            else:
-                base = base.replace(".pth", "_map.pth")
-            map_path = os.path.join(os.path.dirname(model_path), base)
-            self.map_rl_agent.save_model(map_path, episode)
