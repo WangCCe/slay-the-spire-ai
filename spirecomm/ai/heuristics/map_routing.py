@@ -127,15 +127,24 @@ class AdaptiveMapRouter:
         return base
 
     def _adjust_act_2_plus_priority(self, symbol: str, base: int, hp_pct: float) -> int:
-        """Act 2+ priorities - more conservative."""
+        """Act 2+ priorities - favor elites and events, avoid normal monsters."""
         if symbol == 'E':  # Elite
-            # Much more cautious in Act 2+
-            if hp_pct < 0.6:
-                return base - 200  # Avoid elites
-            elif hp_pct < 0.75:
-                return base - 50   # Cautious
+            # Aggressive elite routing in Act 2
+            if hp_pct < 0.4:
+                return base - 100  # Avoid elites when very low HP
+            elif hp_pct < 0.65:
+                return base + 50   # Cautious but willing
             else:
-                return base + 50   # Can take risk if very healthy
+                return base + 200  # Strongly prefer elites when healthy
+
+        elif symbol == 'M':  # Monster
+            # Avoid normal monsters in Act 2
+            if hp_pct > 0.7:
+                return base - 100  # Skip when healthy (prefer elites/events)
+            elif hp_pct > 0.5:
+                return base - 50   # Still avoid
+            else:
+                return base  # Accept when low HP for safer fights
 
         elif symbol == 'R':  # Rest
             if hp_pct < 0.5:
@@ -146,10 +155,11 @@ class AdaptiveMapRouter:
                 return base - 50   # Can skip
 
         elif symbol == '?':  # Unknown
-            if hp_pct < 0.4:
+            # Favor events in Act 2
+            if hp_pct < 0.2:
                 return base - 50   # Risky events when low HP
             else:
-                return base + 20   # Generally good
+                return base + 100  # Strongly prefer events
 
         return base
 
