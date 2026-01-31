@@ -9,14 +9,25 @@ Usage:
 """
 
 import argparse
+import base64
+import hashlib
+import hmac
 import json
 import os
+import time
+import urllib.parse
 from datetime import datetime
 from pathlib import Path
+
+import requests
 
 
 DEFAULT_RUNS_DIR_WSL = "/mnt/d/SteamLibrary/steamapps/common/SlayTheSpire/runs"
 DEFAULT_RUNS_DIR_WIN = r"D:\SteamLibrary\steamapps\common\SlayTheSpire\runs"
+
+# 飞书机器人配置
+FEISHU_WEBHOOK = "https://open.feishu.cn/open-apis/bot/v2/hook/9bca16ff-61ee-4d4e-8454-67bc4b3b86d9"
+FEISHU_SIGN_KEY = "cQXnaP1F4TPKV9HLk0VgLe"
 
 
 def load_run(filepath):
@@ -206,6 +217,98 @@ def rolling_average(values, window):
     return averages
 
 
+def generate_sign(timestamp, key):
+    """生成飞书签名"""
+    string_to_sign = f"{timestamp}\n{key}"
+    hmac_code = hmac.new(
+        string_to_sign.encode("utf-8"),
+        digestmod=hashlib.sha256
+    ).digest()
+    sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
+    return sign
+
+
+def send_feishu_message(summary_text):
+    """发送飞书群消息（带签名验证）"""
+    timestamp = int(time.time())
+    sign = generate_sign(timestamp, FEISHU_SIGN_KEY)
+
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "msg_type": "text",
+        "content": {"text": summary_text},
+        "timestamp": str(timestamp),
+        "sign": sign
+    }
+
+    try:
+        response = requests.post(FEISHU_WEBHOOK, headers=headers, json=data, timeout=10)
+        result = response.json()
+        if result.get("StatusCode") == 0 or result.get("code") == 0:
+            print("\n[OK] Feishu notification sent successfully")
+        else:
+            print(f"\n[ERROR] Feishu notification failed: {result}")
+    except Exception as e:
+        print(f"\n[ERROR] Feishu notification exception: {e}")
+
+
+def generate_summary(buckets, character, total_runs):
+    """生成分析结论摘要"""
+    if not buckets:
+        return "无数据可分析"
+
+    summaries = [summarize_bucket(bucket, 1) for bucket in buckets]
+    latest = summaries[-1]
+    prev = summaries[-2] if len(summaries) >= 2 else None
+
+    # 计算趋势
+    if prev:
+        delta_floor = latest["avg_floor"] - prev["avg_floor"]
+        delta_win = latest["win_rate"] - prev["win_rate"]
+        trend = "📈 上升" if delta_floor >= 1.0 or delta_win >= 2.0 else \
+                "📉 下降" if delta_floor <= -1.0 or delta_win <= -2.0 else "➡️ 平稳"
+    else:
+        delta_floor = 0
+        delta_win = 0
+        trend = "➡️ 平稳"
+
+    # 构建消息
+    msg = f"""🎮 AI游戏训练进度报告 ({character})
+━━━━━━━━━━━━━━━━━━━━━━
+📊 分析范围: 最近 {total_runs} 场游戏 ({len(buckets)} 个区间)
+
+🏆 最新表现:
+  • 胜率: {latest['win_rate']:.1f}%
+  • 平均层数: {latest['avg_floor']:.2f}
+  • 最高层数: {latest['max_floor']}
+  • 平均得分: {latest['avg_score']:.1f}
+  • 平均受伤: {latest['avg_damage']:.1f}
+
+📈 趋势分析:
+  • {trend} (层数 {delta_floor:+.2f}, 胜率 {delta_win:+.1f}%)
+  • 最近区间: {format_time(latest['time_start'])} ~ {format_time(latest['time_end'])}
+
+💡 建议: {get_suggestion(latest, prev)}
+
+⏰ 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"""
+
+    return msg
+
+
+def get_suggestion(latest, prev):
+    """根据数据生成建议"""
+    if latest["win_rate"] >= 60:
+        return "表现优秀！继续当前策略"
+    elif latest["win_rate"] >= 40:
+        return "表现良好，可尝试优化关键节点决策"
+    elif latest["avg_floor"] < 10:
+        return "前期失败较多，建议检查战斗决策"
+    elif prev and latest["avg_floor"] > prev["avg_floor"] + 2:
+        return "层数提升明显，稳定性需加强"
+    else:
+        return "持续观察数据变化"
+
+
 def main():
     parser = argparse.ArgumentParser(description="Training progress dashboard.")
     parser.add_argument("--count", type=int, default=300, help="Runs to include.")
@@ -215,6 +318,11 @@ def main():
         type=str,
         default="IRONCLAD",
         help="Character folder to analyze.",
+    )
+    parser.add_argument(
+        "--notify",
+        action="store_true",
+        help="发送飞书通知",
     )
     args = parser.parse_args()
 
@@ -231,6 +339,11 @@ def main():
 
     buckets = bucket_runs(runs, args.bucket)
     print_progress(buckets)
+
+    # 发送飞书通知
+    if args.notify:
+        summary = generate_summary(buckets, args.character, len(runs))
+        send_feishu_message(summary)
 
 
 if __name__ == "__main__":
