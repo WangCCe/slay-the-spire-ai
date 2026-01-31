@@ -149,6 +149,7 @@ def print_trend(summaries):
         print("Not enough buckets to assess trend.")
         return
 
+    floors = [s["avg_floor"] for s in summaries]
     last = summaries[-1]
     prev = summaries[-2]
     delta_floor = last["avg_floor"] - prev["avg_floor"]
@@ -165,12 +166,44 @@ def print_trend(summaries):
         f"(avg_floor {delta_floor:+.2f}, win_rate {delta_win:+.1f}%)"
     )
 
+    slope = compute_slope(floors)
+    slope_per_100 = slope / summaries[0]["total"] * 100
+    rolling = rolling_average(floors, window=5)
+    rolling_tail = ", ".join(f"{v:.2f}" for v in rolling[-10:])
+    print(
+        f"Slope(avg_floor per bucket): {slope:+.4f} "
+        f"(per 100 runs: {slope_per_100:+.4f})"
+    )
+    print(f"RollingAvg(5 buckets) last 10: {rolling_tail}")
+
     if len(summaries) >= 3:
         last_three = summaries[-3:]
-        floors = [s["avg_floor"] for s in last_three]
-        span = max(floors) - min(floors)
+        span = max(floors[-3:]) - min(floors[-3:])
         if span <= 0.5:
             print("Plateau hint: last 3 buckets show <= 0.5 avg_floor variance.")
+
+
+def compute_slope(values):
+    n = len(values)
+    if n < 2:
+        return 0.0
+    xs = list(range(1, n + 1))
+    mean_x = sum(xs) / n
+    mean_y = sum(values) / n
+    num = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, values))
+    den = sum((x - mean_x) ** 2 for x in xs)
+    return num / den if den else 0.0
+
+
+def rolling_average(values, window):
+    if window <= 1:
+        return values[:]
+    averages = []
+    for i in range(len(values)):
+        start = max(0, i - window + 1)
+        chunk = values[start : i + 1]
+        averages.append(sum(chunk) / len(chunk))
+    return averages
 
 
 def main():
