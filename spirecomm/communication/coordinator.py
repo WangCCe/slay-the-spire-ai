@@ -112,6 +112,11 @@ class Coordinator:
         self._stability_wait_done = False
         self._stability_wait_screens = {ScreenType.COMBAT_REWARD, ScreenType.MAP}
         self._stability_wait_timeout = 5
+        self._last_logged_in_game = None
+        self._last_logged_screen = None
+        self._last_logged_seed = object()
+        self._last_logged_seed_played = object()
+        self._last_logged_chose_seed = object()
 
     def _maybe_queue_stability_wait(self):
         screen_type = getattr(self.last_game_state, "screen_type", None)
@@ -299,6 +304,37 @@ class Coordinator:
                 self.in_game = communication_state.get("in_game")
                 # Get game_state (may be empty dict when not in game, e.g., Neow screen)
                 game_state = communication_state.get("game_state", {})
+                raw_seed = None
+                raw_seed_played = None
+                raw_chose_seed = None
+                raw_screen_type = None
+                if isinstance(game_state, dict):
+                    raw_seed = game_state.get("seed")
+                    raw_seed_played = game_state.get("seed_played")
+                    raw_chose_seed = game_state.get("chose_seed")
+                    raw_screen_type = game_state.get("screen_type")
+
+                if (
+                    self._last_logged_in_game != self.in_game
+                    or raw_screen_type != self._last_logged_screen
+                    or raw_seed != self._last_logged_seed
+                    or raw_seed_played != self._last_logged_seed_played
+                    or raw_chose_seed != self._last_logged_chose_seed
+                ):
+                    logging.info(
+                        "[STATE_SEED] in_game=%s screen=%s seed=%s seed_played=%s chose_seed=%s",
+                        self.in_game,
+                        raw_screen_type,
+                        raw_seed,
+                        raw_seed_played,
+                        raw_chose_seed,
+                    )
+                    self._last_logged_in_game = self.in_game
+                    self._last_logged_screen = raw_screen_type
+                    self._last_logged_seed = raw_seed
+                    self._last_logged_seed_played = raw_seed_played
+                    self._last_logged_chose_seed = raw_chose_seed
+
                 if self.in_game:
                     # Handle GRID screen logging when in game
                     if game_state.get("screen_type") == "GRID":
@@ -459,6 +495,12 @@ class Coordinator:
         import logging
         logging.info(f"[PLAY_ONE_GAME] Before start check, in_game={self.in_game}, screen={getattr(self.last_game_state, 'screen_type', 'None') if self.last_game_state else 'None'}")
         if not self.in_game:
+            logging.info(
+                "[PLAY_ONE_GAME] Starting new game with seed=%s ascension=%s class=%s",
+                seed,
+                ascension_level,
+                getattr(player_class, "name", player_class),
+            )
             StartGameAction(player_class, ascension_level, seed).execute(self)
             # Wait for game to actually start
             timeout_counter = 0
@@ -490,6 +532,10 @@ class Coordinator:
         else:
             import logging
             logging.info(f"[PLAY_ONE_GAME] Skipping start because already in_game, screen={getattr(self.last_game_state, 'screen_type', 'None') if self.last_game_state else 'None'}")
+            logging.info(
+                "[PLAY_ONE_GAME] Seed ignored because already in_game: seed=%s",
+                seed,
+            )
 
             # Force callback to handle the current screen (EVENT/NEOW/etc.)
             # This fixes deadlock when Communication Mod won't send updates

@@ -505,6 +505,16 @@ class StartGameAction(Action):
         self.seed = seed
 
     def execute(self, coordinator):
+        import logging
+
+        class_name = getattr(self.player_class, "name", self.player_class)
+        seed_value = self.seed if self.seed is not None else "None"
+        logging.info(
+            "[START_GAME] class=%s ascension=%s seed=%s",
+            class_name,
+            self.ascension_level,
+            seed_value,
+        )
         arguments = [self.command, self.player_class.name, str(self.ascension_level)]
         if self.seed is not None:
             arguments.append(str(self.seed))
