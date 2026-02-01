@@ -11,6 +11,13 @@ from typing import Optional, Iterable, Dict, Tuple
 from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
 from spirecomm.spire.card import CardRarity
+from spirecomm.spire.character import PlayerClass
+from spirecomm.ai.priorities import (
+    Priority,
+    IroncladPriority,
+    SilentPriority,
+    DefectPowerPriority,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,15 +51,8 @@ class RewardCalculator:
 
     # Acquisition reward weights
     CARD_REWARD_BASE = 2.0  # Still used - base reward for getting any card
-    # REMOVED: Heuristic card scoring constants (now using pure RL)
-    # CARD_SIMPLE_SCORE_NORMALIZER = 2.5
-    # CARD_SCORE_MAX_MULT = 2.0
-    # REMOVED: Heuristic card reward constants (now using pure RL)
-    # CARD_CHOICE_RELATIVE_SCALE = 0.2
-    # CARD_SKIP_REWARD = 0.02
-    # CARD_SKIP_PENALTY = 0.02
-    # CARD_DECK_SIZE_THRESHOLD = 20
-    # CARD_DECK_SIZE_PENALTY = 0.01
+    # Heuristic card scoring constants based on CARD_PRIORITY_LIST ordering.
+    CARD_CHOICE_RELATIVE_SCALE = 0.2
     RELIC_REWARD = 10.0
     GOLD_REWARD_SCALE = 0.005
 
@@ -63,6 +63,11 @@ class RewardCalculator:
     def __init__(self):
         """Initialize reward calculator with tracking."""
         self._card_reward_debug = self._is_truthy(os.getenv("RL_CARD_REWARD_DEBUG", "1"))
+        self._priority_by_class = {
+            PlayerClass.IRONCLAD: IroncladPriority(),
+            PlayerClass.THE_SILENT: SilentPriority(),
+            PlayerClass.DEFECT: DefectPowerPriority(),
+        }
         self.reset()
 
     @staticmethod
@@ -531,7 +536,7 @@ class RewardCalculator:
 
     def _calculate_card_reward(self, current_game: Game, last_game: Game) -> float:
         """
-        Calculate reward for card acquisition using PURE RL (no heuristic scoring).
+        Calculate reward for card acquisition using CARD_PRIORITY_LIST order.
 
         Called whenever a card is added to the deck (from any source).
         """
@@ -542,16 +547,15 @@ class RewardCalculator:
         if not new_cards:
             return 0.0
 
-        # Fixed reward for card acquisition (network learns value from outcomes)
         reward = 0.0
         for card in new_cards:
-            # Small constant reward for obtaining any card
-            # The network will learn which cards are actually valuable through gameplay
+            card_score = self._priority_score(card, current_game)
+            # Scale base reward by heuristic score (-1..1); good cards > 0, bad cards < 0.
             card_reward = self.calculate_acquisition_reward(
                 current_game,
                 card_obtained=True,
-                card_power_score=1.0,  # Constant - no heuristic adjustment
-                relic_obtained=False
+                card_power_score=card_score,
+                relic_obtained=False,
             )
             reward += card_reward
 
@@ -560,23 +564,17 @@ class RewardCalculator:
                 rarity = getattr(card, 'rarity', None)
                 rarity_name = getattr(rarity, 'name', str(rarity)) if rarity else "UNKNOWN"
                 logger.info(
-                    "[CARD_REWARD_PURE_RL] card=%s rarity=%s reward=%.3f [no heuristic score - network learns from gameplay]",
+                    "[CARD_REWARD_HEUR] card=%s rarity=%s score=%.3f reward=%.3f",
                     card_name,
                     rarity_name,
+                    card_score,
                     card_reward,
                 )
         return reward
 
     def _calculate_card_choice_reward(self, current_game: Game, last_game: Game) -> float:
         """
-        Calculate reward for card choice using PURE RL (no heuristic scoring).
-
-        The neural network will learn card value through:
-        1. Game outcomes (win/loss, damage dealt, floors cleared)
-        2. Future rewards (acquiring more relics/gold/cards)
-        3. Deck building efficiency (deck size, synergy)
-
-        NO heuristic card scoring - let the network learn from experience!
+        Calculate reward for card choice using CARD_PRIORITY_LIST order.
         """
         screen = getattr(last_game, 'screen', None)
         candidates = getattr(screen, 'cards', None) if screen else None
@@ -588,9 +586,13 @@ class RewardCalculator:
         new_cards = [card for card in current_game.deck if card.uuid not in last_uuids] if current_game.deck else []
         chosen_card = new_cards[0] if new_cards else None
 
-        # MINIMAL reward shaping - just acknowledge the choice
-        # The network will learn true value from game outcomes
-        reward = 0.0
+        candidate_scores = [self._priority_score(card, last_game) for card in candidates]
+        if chosen_card is not None:
+            chosen_score = self._priority_score(chosen_card, last_game)
+        else:
+            chosen_score = self._skip_score(last_game)
+        relative_score = self._relative_rank_score(chosen_score, candidate_scores)
+        reward = self.CARD_CHOICE_RELATIVE_SCALE * relative_score
 
         if self._card_reward_debug:
             chosen_name = "SKIP" if chosen_card is None else (
@@ -603,12 +605,53 @@ class RewardCalculator:
                 rarity_name = rarity.name if rarity else "UNKNOWN"
                 candidate_entries.append(f"{card_name}({rarity_name})")
             logger.info(
-                "[CARD_CHOICE_PURE_RL] chosen=%s candidates=%s [no heuristic reward - network learns from gameplay]",
+                "[CARD_CHOICE_HEUR] chosen=%s rel_score=%.3f candidates=%s",
                 chosen_name,
+                relative_score,
                 ", ".join(candidate_entries),
             )
 
         return reward
+
+    def _get_priority(self, game: Game) -> Optional[Priority]:
+        player_class = getattr(game, "character", None)
+        return self._priority_by_class.get(player_class)
+
+    def _priority_score(self, card, game: Game) -> float:
+        """
+        Score a card by its position in CARD_PRIORITY_LIST.
+
+        Returns a score in [-1, 1], where 1 is best, 0 is "Skip" (if present),
+        and negative values are below Skip.
+        """
+        priority = self._get_priority(game)
+        if priority is None or not priority.CARD_PRIORITY_LIST:
+            return 0.0
+
+        priorities = priority.CARD_PRIORITIES
+        total = max(len(priority.CARD_PRIORITY_LIST) - 1, 1)
+        idx = priorities.get(getattr(card, "card_id", None), len(priority.CARD_PRIORITY_LIST))
+        skip_idx = priorities.get("Skip", None)
+
+        if skip_idx is None:
+            return max(-1.0, min(1.0, 1.0 - (idx / total)))
+
+        if idx <= skip_idx:
+            denom = max(skip_idx, 1)
+            return max(-1.0, min(1.0, 1.0 - (idx / denom)))
+
+        denom = max(total - skip_idx, 1)
+        return max(-1.0, min(1.0, -((idx - skip_idx) / denom)))
+
+    def _skip_score(self, game: Game) -> float:
+        priority = self._get_priority(game)
+        if priority is None or "Skip" not in priority.CARD_PRIORITIES:
+            return 0.0
+        skip_idx = priority.CARD_PRIORITIES["Skip"]
+        total = max(len(priority.CARD_PRIORITY_LIST) - 1, 1)
+        if skip_idx <= 0:
+            return 0.0
+        return max(-1.0, min(1.0, 1.0 - (skip_idx / total)))
 
     @staticmethod
     def _get_power_amount(entity, power_id: str) -> int:
