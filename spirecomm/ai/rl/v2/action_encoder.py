@@ -133,6 +133,10 @@ class ActionEncoderV2:
             return mask
 
         if screen_type in (ScreenType.HAND_SELECT, ScreenType.GRID):
+            grid_confirm_up = False
+            if screen_type == ScreenType.GRID:
+                screen = getattr(game, "screen", None)
+                grid_confirm_up = bool(getattr(screen, "confirm_up", False))
             if "choose" in available or getattr(game, "choice_available", False):
                 self._mask_choice_group(
                     mask,
@@ -142,7 +146,9 @@ class ActionEncoderV2:
                 )
             if "confirm" in available:
                 mask[space.SYSTEM_ACTIONS.confirm] = True
-            if "cancel" in available or "skip" in available or "return" in available:
+            if not grid_confirm_up and (
+                "cancel" in available or "skip" in available or "return" in available
+            ):
                 mask[space.SYSTEM_ACTIONS.cancel] = True
             return mask
 
