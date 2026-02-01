@@ -54,6 +54,25 @@ except Exception as e:
     traceback.print_exc()
     sys.exit(1)
 
+# Test 3b: Create RL v2 agent (inference mode)
+print("\nTest 3b: Creating RL v2 agent (inference mode)...")
+try:
+    if getattr(main, "RL_V2_AVAILABLE", False):
+        agent_v2 = main.create_agent(
+            agent_type="rl",
+            player_class=main.PlayerClass.IRONCLAD,
+            training=False,
+            rl_version="v2",
+        )
+        print(f"  ? RL v2 Agent created: {type(agent_v2).__name__}")
+    else:
+        print("  ? RL v2 components not available (skipped)")
+except Exception as e:
+    print(f"  ? Failed to create RL v2 agent: {e}")
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
+
 # Test 4: Create SimpleAgent
 print("\nTest 4: Creating SimpleAgent...")
 try:
@@ -102,6 +121,7 @@ except Exception as e:
 # Test 7: RL availability check
 print("\nTest 7: Checking RL availability...")
 print(f"  RL_AVAILABLE: {main.RL_AVAILABLE}")
+print(f"  RL_V2_AVAILABLE: {getattr(main, 'RL_V2_AVAILABLE', False)}")
 if main.RL_AVAILABLE:
     print(f"  RLAgent class: {main.RLAgent}")
     print(f"  create_rl_agent function: {main.create_rl_agent}")

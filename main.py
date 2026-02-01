@@ -14,10 +14,19 @@ from spirecomm.spire.character import PlayerClass
 
 # Import RL agent (optional)
 try:
-    from spirecomm.ai.rl import RLAgent, create_agent as create_rl_agent, CombatRLAgent, RL_AVAILABLE
+    from spirecomm.ai.rl import (
+        RLAgent,
+        RLAgentV2,
+        create_agent as create_rl_agent,
+        CombatRLAgent,
+        RL_AVAILABLE,
+        RL_V2_AVAILABLE,
+    )
 except ImportError:
     RL_AVAILABLE = False
+    RL_V2_AVAILABLE = False
     RLAgent = None
+    RLAgentV2 = None
     create_rl_agent = None
     CombatRLAgent = None
 
@@ -219,7 +228,15 @@ def load_seed_pool(seed_pool_path):
     return seeds
 
 
-def create_agent(agent_type="auto", use_optimized=None, player_class=None, training=False, model_path=None, elite_mode=None):
+def create_agent(
+    agent_type="auto",
+    use_optimized=None,
+    player_class=None,
+    training=False,
+    model_path=None,
+    elite_mode=None,
+    rl_version=None,
+):
     """
     Create an agent instance.
 
@@ -230,6 +247,7 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
         training: Whether RL agent should be in training mode
         model_path: Path to pre-trained RL model checkpoint
         elite_mode: Elite routing mode ("conservative" or "aggressive", default: "aggressive")
+        rl_version: RL space version ("v1" or "v2"), defaults to STS_RL_VERSION or "v1"
 
     Returns:
         Agent instance (SimpleAgent, OptimizedAgent, RLAgent, or CombatRLAgent)
@@ -246,9 +264,17 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
         else:
             agent_type = "simple"
 
+    if rl_version is None:
+        rl_version = os.environ.get("STS_RL_VERSION", "v1")
+
     # Create combat RL agent (RL for combat, OptimizedAgent for everything else)
     if agent_type == "combat_rl":
-        if not RL_AVAILABLE:
+        if str(rl_version).lower() == "v2":
+            rl_ready = RL_V2_AVAILABLE
+        else:
+            rl_ready = RL_AVAILABLE
+
+        if not rl_ready:
             logging.error("Combat RL agent requested but PyTorch/RL components not available")
             logging.error("Please install: pip install torch numpy")
             logging.error("Falling back to OptimizedAgent")
@@ -279,7 +305,8 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
                 player_class=player_class,
                 training=training,
                 model_path=model_path,
-                elite_mode=elite_mode
+                elite_mode=elite_mode,
+                rl_version=rl_version,
             )
             logging.info(f"Combat RL Agent created successfully")
             logging.info(f"  State dim: {agent.rl_agent.state_encoder.feature_dim}, Action dim: {agent.rl_agent.action_encoder.MAX_ACTIONS}")
@@ -296,7 +323,12 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
 
     # Create RL agent
     if agent_type == "rl":
-        if not RL_AVAILABLE:
+        if str(rl_version).lower() == "v2":
+            rl_ready = RL_V2_AVAILABLE
+        else:
+            rl_ready = RL_AVAILABLE
+
+        if not rl_ready:
             logging.error("RL agent requested but PyTorch/RL components not available")
             logging.error("Please install: pip install torch numpy")
             logging.error("Falling back to SimpleAgent")
@@ -323,7 +355,9 @@ def create_agent(agent_type="auto", use_optimized=None, player_class=None, train
                 else:
                     logging.info("No existing checkpoints found, starting fresh training")
 
-            agent = create_rl_agent(training=training, model_path=model_path)
+            agent = create_rl_agent(
+                training=training, model_path=model_path, rl_version=rl_version
+            )
             logging.info(f"RL Agent created successfully")
             logging.info(f"  State dim: {agent.state_encoder.feature_dim}, Action dim: {agent.action_encoder.MAX_ACTIONS}")
             logging.info(f"  Training mode: {training}")
@@ -365,6 +399,7 @@ if __name__ == "__main__":
     max_games = None
     training = False
     model_path = None
+    rl_version = None
 
     parser = argparse.ArgumentParser(
         prog="python main.py",
@@ -379,6 +414,7 @@ if __name__ == "__main__":
             "  python main.py --agent combat_rl                # Combat-only RL with OptimizedAgent fallback\n"
             "  python main.py --agent combat_rl --train        # Train combat-only RL\n"
             "  python main.py --agent rl --model checkpoints/model.pth  # Load trained model\n"
+            "  python main.py --agent rl --rl-version v2       # Use RL v2 action/observation space\n"
             "  python main.py -a 10                            # Ascension level 10\n"
             "  python main.py -a 20                            # Ascension level 20\n"
             "  python main.py --agent optimized -a 20          # Optimized AI A20\n"
@@ -415,6 +451,12 @@ if __name__ == "__main__":
         "--model",
         metavar="PATH",
         help="Path to pre-trained RL model checkpoint (requires --agent rl)",
+    )
+    parser.add_argument(
+        "--rl-version",
+        choices=["v1", "v2"],
+        default=None,
+        help="RL space version for RL agents (default: STS_RL_VERSION or v1)",
     )
     parser.add_argument(
         "--ascension",
@@ -480,6 +522,9 @@ if __name__ == "__main__":
         model_path = None
     else:
         model_path = args.model
+
+    if args.rl_version is not None:
+        rl_version = args.rl_version
 
     if training:
         logging.info("RL Agent training mode enabled")
@@ -562,7 +607,8 @@ if __name__ == "__main__":
         player_class=chosen_class,
         training=training,
         model_path=model_path,
-        elite_mode=elite_route_mode
+        elite_mode=elite_route_mode,
+        rl_version=rl_version,
     )
 
     # Register callbacks after agent is created
@@ -580,7 +626,10 @@ if __name__ == "__main__":
 
     while True:  # Infinite loop for Ironclad only
         game_count += 1
-        is_rl_agent = RLAgent is not None and isinstance(agent, RLAgent)
+        is_rl_agent = (
+            (RLAgent is not None and isinstance(agent, RLAgent))
+            or (RLAgentV2 is not None and isinstance(agent, RLAgentV2))
+        )
         is_combat_rl_agent = CombatRLAgent is not None and isinstance(agent, CombatRLAgent)
         active_seed = run_seed
         seed_pool_index = None
@@ -599,7 +648,9 @@ if __name__ == "__main__":
             )
         logging.info(f"Coordinator state: in_game={coordinator.in_game}, ready={coordinator.game_is_ready}")
         if is_rl_agent:
-            logging.info(f"RL Agent: training={training}")
+            logging.info(
+                f"RL Agent: training={training}, rl_version={rl_version or os.environ.get('STS_RL_VERSION', 'v1')}"
+            )
         if is_combat_rl_agent:
             logging.info(f"Combat RL Agent: training={training}")
         logging.info(f"{'='*60}\n")

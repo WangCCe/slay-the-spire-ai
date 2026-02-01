@@ -27,4 +27,4 @@ The current RL action space allocates 10 targets per slot, which causes index co
 4. Keep v1 path available for rollback during transition.
 
 ## Open Questions
-- Confirm whether any additional keywords from `export/items.json` must be added beyond the current fixed list.
+- Resolved: keyword list is fixed from `export/items.json`, including PlatedArmor and Metallicize.

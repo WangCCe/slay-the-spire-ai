@@ -25,6 +25,14 @@ except ImportError as e:
     CombatRLAgent = None
     MapRLAgent = None
 
+try:
+    from .v2.agent import RLAgentV2, create_agent_v2
+    RL_V2_AVAILABLE = True
+except ImportError:
+    RL_V2_AVAILABLE = False
+    RLAgentV2 = None
+    create_agent_v2 = None
+
 __all__ = [
     'StateEncoder',
     'ActionEncoder',
@@ -35,4 +43,7 @@ __all__ = [
     'CombatRLAgent',
     'MapRLAgent',
     'RL_AVAILABLE',
+    'RLAgentV2',
+    'create_agent_v2',
+    'RL_V2_AVAILABLE',
 ]

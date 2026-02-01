@@ -813,7 +813,8 @@ class MapRLAgent:
 def create_agent(
     model_path: Optional[str] = None,
     training: bool = False,
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    device: str = "cuda" if torch.cuda.is_available() else "cpu",
+    rl_version: Optional[str] = None,
 ) -> RLAgent:
     """
     Create RL agent with specified configuration.
@@ -822,14 +823,29 @@ def create_agent(
         model_path: Path to saved model
         training: Whether in training mode
         device: Device for neural network
+        rl_version: RL space version ("v1" or "v2"); defaults to STS_RL_VERSION or "v1"
 
     Returns:
-        Initialized RLAgent
+        Initialized RL agent
     """
+    if rl_version is None:
+        import os
+
+        rl_version = os.environ.get("STS_RL_VERSION", "v1")
+
+    if str(rl_version).lower() == "v2":
+        from .v2.agent import RLAgentV2
+
+        return RLAgentV2(
+            model_path=model_path,
+            training=training,
+            device=device,
+        )
+
     return RLAgent(
         model_path=model_path,
         training=training,
-        device=device
+        device=device,
     )
 
 
@@ -856,6 +872,7 @@ class CombatRLAgent:
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
         epsilon: float = 0.0,
         elite_mode: Optional[str] = None,
+        rl_version: Optional[str] = None,
     ):
         """
         Initialize CombatRLAgent with RL and OptimizedAgent instances.
@@ -867,6 +884,7 @@ class CombatRLAgent:
             device: Torch device
             epsilon: Exploration rate (0.0 = greedy, 1.0 = full random)
             elite_mode: Elite routing mode ("conservative" or "aggressive")
+            rl_version: RL space version ("v1" or "v2")
         """
         self.player_class = player_class
         self.use_rl_for_combat = True
@@ -890,13 +908,28 @@ class CombatRLAgent:
             from spirecomm.ai.agent import SimpleAgent
             self.fallback_agent = SimpleAgent(chosen_class=player_class, elite_mode=elite_mode)
 
+        if rl_version is None:
+            import os
+
+            rl_version = os.environ.get("STS_RL_VERSION", "v1")
+
         # Initialize RL agent
-        self.rl_agent = RLAgent(
-            model_path=model_path,
-            training=training,
-            device=device,
-            epsilon=epsilon
-        )
+        if str(rl_version).lower() == "v2":
+            from .v2.agent import RLAgentV2
+
+            self.rl_agent = RLAgentV2(
+                model_path=model_path,
+                training=training,
+                device=device,
+                epsilon=epsilon,
+            )
+        else:
+            self.rl_agent = RLAgent(
+                model_path=model_path,
+                training=training,
+                device=device,
+                epsilon=epsilon,
+            )
 
         # MAP routing currently handled by fallback agent
         self.map_rl_agent = None
