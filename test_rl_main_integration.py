@@ -4,6 +4,13 @@ Test RL agent integration with main.py
 """
 import sys
 import logging
+import os
+
+# Set UTF-8 encoding for Windows console
+if os.name == 'nt':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # Suppress logging for this test
 logging.basicConfig(level=logging.ERROR)
