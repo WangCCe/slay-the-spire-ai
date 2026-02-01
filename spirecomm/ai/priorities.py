@@ -640,8 +640,8 @@ class IroncladPriority(Priority):
         "Clash",
 
         # === 0-1 分 (垃圾) ===
-        "Strike_R",
         "Defend_R",
+        "Strike_R",
         "Bash",
         "Intimidate",
         "Iron Wave",
