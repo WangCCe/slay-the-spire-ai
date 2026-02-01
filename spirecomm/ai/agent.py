@@ -10,6 +10,10 @@ import spirecomm.spire.card
 from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
 from spirecomm.ai.priorities import *
+from spirecomm.ai.heuristics.simulation import (
+    DAMAGE_UPGRADE_BONUS,
+    BLOCK_UPGRADE_BONUS,
+)
 
 # Note: Logging is configured in main.py to write to ai_debug.log
 # No need to configure here
@@ -76,6 +80,67 @@ class SimpleAgent:
         logging.error(f"Game error: {error}")
         # Return StateAction to get current state instead of raising
         return StateAction()
+
+    def _normalize_card_name(self, card):
+        name = getattr(card, "name", None) or getattr(card, "card_id", "")
+        name = name.replace("+", "")
+        for suffix in ("_R", "_G", "_B"):
+            if name.endswith(suffix):
+                name = name[:-2]
+        if name.startswith("Strike"):
+            return "Strike"
+        if name.startswith("Defend"):
+            return "Defend"
+        return name
+
+    def _get_upgrade_bonus(self, card):
+        if getattr(card, "upgrades", 0) > 0:
+            return 0
+        base_name = self._normalize_card_name(card)
+        bonus = 0
+        if base_name in DAMAGE_UPGRADE_BONUS:
+            bonus += DAMAGE_UPGRADE_BONUS[base_name]
+        if base_name in BLOCK_UPGRADE_BONUS:
+            bonus += BLOCK_UPGRADE_BONUS[base_name]
+        if bonus == 0:
+            card_type = getattr(card, "type", None)
+            if card_type == spirecomm.spire.card.CardType.ATTACK:
+                bonus = 2
+            elif card_type == spirecomm.spire.card.CardType.SKILL:
+                bonus = 2
+            elif card_type == spirecomm.spire.card.CardType.POWER:
+                bonus = 1
+            else:
+                bonus = 1
+        return bonus
+
+    def _score_upgrade_candidate(self, card, context=None):
+        if getattr(card, "upgrades", 0) > 0:
+            return -999.0
+        bonus = self._get_upgrade_bonus(card)
+        priority_rank = self.priorities.CARD_PRIORITIES.get(card.card_id)
+        priority_boost = 0.0
+        if priority_rank is not None:
+            list_len = max(len(self.priorities.CARD_PRIORITY_LIST), 1)
+            priority_boost = (list_len - priority_rank) * 0.5
+        synergy_boost = 0.0
+        if context is not None and hasattr(self, "card_evaluator") and self.card_evaluator:
+            try:
+                eval_score = self.card_evaluator.evaluate_card(card, context)
+                synergy_boost = eval_score / 20.0
+            except Exception:
+                pass
+        return priority_boost * 2.0 + bonus * 1.5 + synergy_boost
+
+    def _best_upgrade_score(self, context=None):
+        if not hasattr(self.game, "deck") or not self.game.deck:
+            return 0.0
+        best_score = 0.0
+        for card in self.game.deck:
+            score = self._score_upgrade_candidate(card, context)
+            if score > best_score:
+                best_score = score
+        return best_score
 
     # === Shop Helper Methods ===
 
@@ -590,10 +655,20 @@ class SimpleAgent:
                 logging.debug(
                     f"[GRID_SCREEN] Calling get_sorted_cards for {len(self.game.screen.cards)} cards"
                 )
-                available_cards = self.priorities.get_sorted_cards(
-                    self.game.screen.cards
+                context = None
+                if DecisionContext is not None:
+                    try:
+                        context = DecisionContext(self.game)
+                    except Exception:
+                        context = None
+                available_cards = sorted(
+                    self.game.screen.cards,
+                    key=lambda c: self._score_upgrade_candidate(c, context),
+                    reverse=True,
                 )
-                logging.debug(f"[GRID_SCREEN] Got {len(available_cards)} sorted cards: {[c.card_id for c in available_cards]}")
+                logging.debug(
+                    f"[GRID_SCREEN] Got {len(available_cards)} sorted cards: {[c.card_id for c in available_cards]}"
+                )
             else:
                 # For purge/remove: prioritize Strike_R, then Defend_R, then others by reverse priority
                 strikes = [c for c in self.game.screen.cards if c.card_id == "Strike_R"]
@@ -639,6 +714,42 @@ class SimpleAgent:
     def choose_rest_option(self):
         rest_options = self.game.screen.rest_options
         if len(rest_options) > 0 and not self.game.screen.has_rested:
+            if self.map_router is not None and DecisionContext is not None:
+                try:
+                    context = DecisionContext(self.game)
+                    scores = {}
+                    if RestOption.REST in rest_options:
+                        if hasattr(self.map_router, "_score_rest_option"):
+                            scores[RestOption.REST] = self.map_router._score_rest_option(
+                                context
+                            )
+                    if RestOption.SMITH in rest_options:
+                        if hasattr(self.map_router, "_score_smith_option"):
+                            smith_score = self.map_router._score_smith_option(context)
+                        else:
+                            smith_score = 0
+                        smith_score += self._best_upgrade_score(context)
+                        scores[RestOption.SMITH] = smith_score
+                    if RestOption.LIFT in rest_options:
+                        if hasattr(self.map_router, "_score_lift_option"):
+                            scores[RestOption.LIFT] = self.map_router._score_lift_option(
+                                context
+                            )
+                    if RestOption.DIG in rest_options:
+                        if hasattr(self.map_router, "_score_dig_option"):
+                            scores[RestOption.DIG] = self.map_router._score_dig_option(
+                                context
+                            )
+                    if scores:
+                        best_option = max(scores.keys(), key=lambda k: scores[k])
+                        logging.info(
+                            "[REST] option_scores=%s best=%s",
+                            {str(k): scores[k] for k in scores},
+                            best_option,
+                        )
+                        return RestAction(best_option)
+                except Exception:
+                    pass
             if (
                 RestOption.REST in rest_options
                 and self.game.current_hp < self.game.max_hp / 2
