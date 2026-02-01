@@ -32,6 +32,14 @@ class ActionEncoderV2:
     def encode_use_potion(self, potion_slot: int, target_index: int) -> int:
         return space.encode_use_potion(potion_slot, target_index)
 
+    @staticmethod
+    def _has_potion_space(game: Game) -> bool:
+        if hasattr(game, "has_potion_space"):
+            return game.has_potion_space()
+        if hasattr(game, "are_potions_full"):
+            return not game.are_potions_full()
+        return False
+
     def decode_action(self, action_index: int, game: Game):
         if action_index == space.END_TURN_ACTION:
             return EndTurnAction()
@@ -122,8 +130,7 @@ class ActionEncoderV2:
             return mask
 
         if screen_type in (ScreenType.SHOP_SCREEN, ScreenType.SHOP_ROOM):
-            shop_count = self._get_shop_choice_count(game)
-            self._mask_choice_group(mask, space.SHOP_OFFSET, space.SHOP_COUNT, shop_count)
+            self._mask_shop_actions(mask, game)
             self._mask_system_actions(mask, available)
             return mask
 
@@ -193,6 +200,48 @@ class ActionEncoderV2:
         enabled = min(capacity, max(count, 0))
         for idx in range(enabled):
             mask[offset + idx] = True
+    def _mask_shop_actions(self, mask: List[bool], game: Game) -> None:
+        import logging
+
+        screen = getattr(game, "screen", None)
+        if screen is None:
+            shop_count = self._get_shop_choice_count(game)
+            self._mask_choice_group(mask, space.SHOP_OFFSET, space.SHOP_COUNT, shop_count)
+            return
+
+        cards = getattr(screen, "cards", []) or []
+        relics = getattr(screen, "relics", []) or []
+        potions = getattr(screen, "potions", []) or []
+        purge_available = getattr(screen, "purge_available", False)
+
+        index = 0
+        for _ in cards:
+            if index < space.SHOP_COUNT:
+                mask[space.SHOP_OFFSET + index] = True
+            index += 1
+        for _ in relics:
+            if index < space.SHOP_COUNT:
+                mask[space.SHOP_OFFSET + index] = True
+            index += 1
+        has_potion_space = self._has_potion_space(game)
+        if has_potion_space:
+            for _ in potions:
+                if index < space.SHOP_COUNT:
+                    mask[space.SHOP_OFFSET + index] = True
+                index += 1
+        else:
+            index += len(potions)
+        if purge_available and index < space.SHOP_COUNT:
+            mask[space.SHOP_OFFSET + index] = True
+
+        logging.getLogger(__name__).debug(
+            "SHOP mask: cards=%s relics=%s potions=%s potion_space=%s purge=%s",
+            len(cards),
+            len(relics),
+            len(potions),
+            has_potion_space,
+            purge_available,
+        )
 
     def _mask_rest_actions(self, mask: List[bool], game: Game) -> None:
         screen = getattr(game, "screen", None)
@@ -250,6 +299,16 @@ class ActionEncoderV2:
 
     def _decode_shop_action(self, choice_index: int, game: Game):
         if getattr(game, "choice_available", False) and game.choice_list is not None:
+            if not self._has_potion_space(game):
+                screen = getattr(game, "screen", None)
+                if screen is not None:
+                    cards = getattr(screen, "cards", []) or []
+                    relics = getattr(screen, "relics", []) or []
+                    potions = getattr(screen, "potions", []) or []
+                    potion_start = len(cards) + len(relics)
+                    potion_end = potion_start + len(potions)
+                    if potion_start <= choice_index < potion_end:
+                        return LeaveAction()
             return ChooseAction(choice_index)
 
         screen = getattr(game, "screen", None)
@@ -276,6 +335,8 @@ class ActionEncoderV2:
         if choice_index < len(potions):
             from spirecomm.communication.action import BuyPotionAction
 
+            if not self._has_potion_space(game):
+                return LeaveAction()
             return BuyPotionAction(potions[choice_index])
 
         choice_index -= len(potions)
