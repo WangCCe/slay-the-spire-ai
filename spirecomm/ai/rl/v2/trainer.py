@@ -3,6 +3,7 @@ DQN trainer for RL v2 with embedding inputs.
 """
 
 from typing import Optional
+from collections import deque
 import logging
 
 import numpy as np
@@ -103,6 +104,8 @@ class DQNTrainerV2:
         self.epsilon_decay = epsilon_decay
         self.total_steps = 0
         self.episode_count = 0
+        self.loss_history = deque(maxlen=100)
+        self.last_loss = None
 
     def select_action(
         self,
@@ -235,6 +238,9 @@ class DQNTrainerV2:
             target_q = rewards + (1 - dones) * self.gamma * next_q
 
         loss = F.smooth_l1_loss(current_q, target_q)
+        loss_value = float(loss.item())
+        self.loss_history.append(loss_value)
+        self.last_loss = loss_value
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -250,7 +256,15 @@ class DQNTrainerV2:
             - (self.epsilon_start - self.epsilon_end) * min(self.total_steps / self.epsilon_decay, 1.0),
         )
 
-        return float(loss.item())
+        return loss_value
 
     def update_episode_count(self) -> None:
         self.episode_count += 1
+
+    def get_avg_loss(self) -> float:
+        if not self.loss_history:
+            return 0.0
+        return float(sum(self.loss_history) / len(self.loss_history))
+
+    def get_epsilon(self) -> float:
+        return float(self.epsilon)
