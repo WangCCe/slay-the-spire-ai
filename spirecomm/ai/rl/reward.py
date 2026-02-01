@@ -34,14 +34,13 @@ class RewardCalculator:
     """
 
     # Combat reward weights
-    DAMAGE_REWARD_SCALE = 0.07
-    DAMAGE_REWARD_CAP = 5.0
-    KILL_REWARD = 5.0
-    ALL_LETHAL_BONUS = 15.0
-    HP_LOSS_PENALTY = 35.0  # Applied to HP loss ratio (lost / max)
+    DAMAGE_REWARD_SCALE = 0.05
+    VULNERABLE_DAMAGE_BONUS = 0.03
+    KILL_REWARD_BASE = 10.0
+    ALL_LETHAL_BONUS = 20.0
+    HP_LOSS_PENALTY = 50.0  # Applied to HP loss ratio (lost / max)
     TURN_END_PENALTY = -0.05
-    ENEMY_STRENGTH_GAIN_PENALTY = 0.5
-    ENEMY_STRENGTH_GAIN_CAP = 3.0
+    ENEMY_STRENGTH_GAIN_PENALTY = 1.0
 
     # Progression reward weights
     FLOOR_REWARD_SCALE = 3.0
@@ -57,8 +56,8 @@ class RewardCalculator:
     GOLD_REWARD_SCALE = 0.005
 
     # Terminal rewards
-    VICTORY_REWARD = 300.0
-    DEFEAT_PENALTY = -250.0
+    VICTORY_REWARD = 500.0
+    DEFEAT_PENALTY = -200.0
 
     def __init__(self):
         """Initialize reward calculator with tracking."""
@@ -92,6 +91,7 @@ class RewardCalculator:
         self.total_damage_dealt = 0
         self.total_damage_taken = 0
         self.monsters_killed = 0
+        self.combat_kill_index = 0
         self.last_floor = 0
         self.cards_obtained = 0
         self.relics_obtained = 0
@@ -104,16 +104,19 @@ class RewardCalculator:
         self.last_monsters_hp = {}  # monster_index -> current_hp
 
     def calculate_combat_reward(self, game: Game, damage_dealt: int = 0,
-                                monster_killed: bool = False,
+                                vulnerable_damage: int = 0,
+                                kills_count: int = 0,
                                 all_monsters_killed: bool = False,
                                 hp_lost: int = 0, turn_ended: bool = False) -> float:
         """Calculate reward for combat actions."""
         reward = 0.0
-        reward += min(damage_dealt * self.DAMAGE_REWARD_SCALE, self.DAMAGE_REWARD_CAP)
+        reward += damage_dealt * self.DAMAGE_REWARD_SCALE
+        if vulnerable_damage > 0:
+            reward += vulnerable_damage * self.VULNERABLE_DAMAGE_BONUS
         self.total_damage_dealt += damage_dealt
-        if monster_killed:
-            reward += self.KILL_REWARD
-            self.monsters_killed += 1
+        if kills_count > 0:
+            reward += self._calculate_kill_reward(kills_count)
+            self.monsters_killed += kills_count
         if all_monsters_killed:
             reward += self.ALL_LETHAL_BONUS
         if hp_lost > 0:
@@ -242,10 +245,14 @@ class RewardCalculator:
             return reward  # Terminal reward is final, no other rewards
 
         # === COMBAT REWARDS (dense) ===
+        if current_game.in_combat and not last_game.in_combat:
+            self.combat_kill_index = 0
+
         if current_game.in_combat and last_game.in_combat:
             # Track damage dealt to monsters
             damage_dealt = 0
-            monster_killed = False
+            vulnerable_damage = 0
+            kills_count = 0
             all_monsters_killed = False
 
             # Get current monsters
@@ -264,33 +271,45 @@ class RewardCalculator:
 
             # Build mapping of monster_index -> HP for comparison
             current_monster_hp = {}
-            for monster in current_monsters:
-                if hasattr(monster, 'monster_index') and hasattr(monster, 'current_hp'):
-                    current_monster_hp[monster.monster_index] = monster.current_hp
+            for idx, monster in enumerate(current_monsters):
+                if hasattr(monster, 'monster_index'):
+                    key = monster.monster_index
+                else:
+                    key = idx
+                if hasattr(monster, 'current_hp'):
+                    current_monster_hp[key] = monster.current_hp
 
             # Compare with last state to detect damage and kills
-            for last_monster in last_monsters:
-                if not hasattr(last_monster, 'monster_index'):
-                    continue
+            for idx, last_monster in enumerate(last_monsters):
+                if hasattr(last_monster, 'monster_index'):
+                    key = last_monster.monster_index
+                else:
+                    key = idx
 
-                idx = last_monster.monster_index
                 last_hp = last_monster.current_hp if hasattr(last_monster, 'current_hp') else 0
+                was_vulnerable = self._get_power_amount(last_monster, "Vulnerable") > 0
 
                 # Check if monster still exists
-                if idx in current_monster_hp:
-                    current_hp = current_monster_hp[idx]
+                if key in current_monster_hp:
+                    current_hp = current_monster_hp[key]
 
                     # Monster took damage
                     if current_hp < last_hp:
-                        damage_dealt += (last_hp - current_hp)
+                        dmg = (last_hp - current_hp)
+                        damage_dealt += dmg
+                        if was_vulnerable:
+                            vulnerable_damage += dmg
 
                     # Monster died
                     if current_hp <= 0 and last_hp > 0:
-                        monster_killed = True
+                        kills_count += 1
                 else:
                     # Monster disappeared (died or removed)
                     if last_hp > 0:
-                        monster_killed = True
+                        damage_dealt += last_hp
+                        if was_vulnerable:
+                            vulnerable_damage += last_hp
+                        kills_count += 1
 
             # Check if all monsters are now dead
             if len(current_monsters) > 0:
@@ -325,32 +344,46 @@ class RewardCalculator:
             combat_reward = self.calculate_combat_reward(
                 current_game,
                 damage_dealt=damage_dealt,
-                monster_killed=monster_killed,
+                vulnerable_damage=vulnerable_damage,
+                kills_count=kills_count,
                 all_monsters_killed=all_monsters_killed,
                 hp_lost=hp_lost,
                 turn_ended=turn_ended
             )
+            strength_gained = self._calculate_enemy_strength_gain(last_game, current_game)
+            if strength_gained > 0:
+                enemy_strength_gain_penalty = -strength_gained * self.ENEMY_STRENGTH_GAIN_PENALTY
+                combat_reward += enemy_strength_gain_penalty
+                if info is not None:
+                    info["enemy_strength_gained"] += strength_gained
+                    info["enemy_strength_gain_penalty"] += enemy_strength_gain_penalty
             reward += combat_reward
             if info is not None:
                 info["combat_reward"] += combat_reward
                 info["damage_dealt"] += damage_dealt
                 info["hp_lost"] += hp_lost
                 info["turn_ended"] = turn_ended
-                info["monster_killed"] = info["monster_killed"] or monster_killed
+                info["monster_killed"] = info["monster_killed"] or (kills_count > 0)
                 info["all_monsters_killed"] = info["all_monsters_killed"] or all_monsters_killed
         elif last_game.in_combat and not current_game.in_combat:
             combat_won = self._is_combat_victory(current_game)
             last_monsters = last_game.monsters if last_game.monsters else []
             had_alive_monsters = self._had_alive_monsters(last_monsters)
             finishing_damage = 0
+            finishing_vulnerable_damage = 0
+            finishing_kills = 0
             if had_alive_monsters:
                 for monster in last_monsters:
                     if hasattr(monster, "current_hp") and monster.current_hp > 0:
                         finishing_damage += monster.current_hp
+                        finishing_kills += 1
+                        if self._get_power_amount(monster, "Vulnerable") > 0:
+                            finishing_vulnerable_damage += monster.current_hp
             combat_reward = self.calculate_combat_reward(
                 last_game,
                 damage_dealt=finishing_damage,
-                monster_killed=combat_won and had_alive_monsters,
+                vulnerable_damage=finishing_vulnerable_damage,
+                kills_count=finishing_kills if combat_won and had_alive_monsters else 0,
                 all_monsters_killed=combat_won,
                 hp_lost=0,
                 turn_ended=False
@@ -440,48 +473,16 @@ class RewardCalculator:
                     info["gold_reward"] += gold_reward
                     info["acquisition_reward"] += gold_reward
 
-        # === ACTION-LEVEL SHAPING ===
-        if action_context and current_game.in_combat and last_game.in_combat:
-            action_name = action_context.get("action_name")
-            had_play_options = bool(action_context.get("had_play_options", False))
-            played_card_type = action_context.get("played_card_type")
-
-            action_bonus = 0.0
-            end_turn_penalty = 0.0
-            enemy_strength_gain_penalty = 0.0
-
-            if action_name == "PlayCardAction":
-                # Small positive feedback for taking an action.
-                action_bonus += 0.03
-                if info is not None:
-                    action_bonus += 0.02 * info.get("energy_spent", 0)
-            elif action_name == "PotionAction":
-                action_bonus += 0.02
-
-            if action_name == "EndTurnAction" and had_play_options:
-                end_turn_penalty = -0.2
-
-            if action_name == "PlayCardAction" and played_card_type == "SKILL":
-                strength_gained = self._calculate_enemy_strength_gain(last_game, current_game)
-                if strength_gained > 0:
-                    enemy_strength_gain_penalty = -min(
-                        strength_gained * self.ENEMY_STRENGTH_GAIN_PENALTY,
-                        self.ENEMY_STRENGTH_GAIN_CAP,
-                    )
-                    reward += enemy_strength_gain_penalty
-                    if info is not None:
-                        info["enemy_strength_gained"] += strength_gained
-                        info["enemy_strength_gain_penalty"] += enemy_strength_gain_penalty
-
-            if action_bonus or end_turn_penalty:
-                reward += action_bonus + end_turn_penalty
-                if info is not None:
-                    info["action_bonus"] += action_bonus
-                    info["end_turn_penalty"] += end_turn_penalty
-
         if info is not None:
             info["reward_total"] = reward
 
+        return reward
+
+    def _calculate_kill_reward(self, kills_count: int) -> float:
+        reward = 0.0
+        for _ in range(kills_count):
+            reward += self.KILL_REWARD_BASE / (1 + self.combat_kill_index)
+            self.combat_kill_index += 1
         return reward
 
     def _is_victory(self, game: Game) -> bool:
