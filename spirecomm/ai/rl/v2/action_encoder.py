@@ -107,17 +107,17 @@ class ActionEncoderV2:
             return mask
 
         if screen_type in (ScreenType.CARD_REWARD, ScreenType.COMBAT_REWARD, ScreenType.CHEST, ScreenType.BOSS_REWARD):
-            self._mask_choice_group(mask, space.REWARD_OFFSET, space.REWARD_COUNT, self._get_choice_count(game))
+            self._mask_choice_group(mask, space.REWARD_OFFSET, space.REWARD_COUNT, self._get_choice_count(game, screen_type))
             self._mask_system_actions(mask, available)
             return mask
 
         if screen_type == ScreenType.MAP:
-            self._mask_choice_group(mask, space.MAP_OFFSET, space.MAP_COUNT, self._get_choice_count(game))
+            self._mask_choice_group(mask, space.MAP_OFFSET, space.MAP_COUNT, self._get_choice_count(game, screen_type))
             self._mask_system_actions(mask, available)
             return mask
 
         if screen_type == ScreenType.EVENT:
-            self._mask_choice_group(mask, space.EVENT_OFFSET, space.EVENT_COUNT, self._get_choice_count(game))
+            self._mask_choice_group(mask, space.EVENT_OFFSET, space.EVENT_COUNT, self._get_choice_count(game, screen_type))
             self._mask_system_actions(mask, available)
             return mask
 
@@ -133,7 +133,13 @@ class ActionEncoderV2:
             return mask
 
         if screen_type in (ScreenType.HAND_SELECT, ScreenType.GRID):
-            self._mask_choice_group(mask, space.REWARD_OFFSET, space.REWARD_COUNT, self._get_choice_count(game))
+            if "choose" in available or getattr(game, "choice_available", False):
+                self._mask_choice_group(
+                    mask,
+                    space.REWARD_OFFSET,
+                    space.REWARD_COUNT,
+                    self._get_choice_count(game, screen_type),
+                )
             if "confirm" in available:
                 mask[space.SYSTEM_ACTIONS.confirm] = True
             if "cancel" in available or "skip" in available or "return" in available:
@@ -208,9 +214,11 @@ class ActionEncoderV2:
         if "proceed" in available:
             mask[space.SYSTEM_ACTIONS.proceed] = True
 
-    def _get_choice_count(self, game: Game) -> int:
+    def _get_choice_count(self, game: Game, screen_type: Optional[ScreenType] = None) -> int:
         if getattr(game, "choice_available", False) and game.choice_list is not None:
             return len(game.choice_list)
+        if screen_type in (ScreenType.HAND_SELECT, ScreenType.GRID):
+            return 0
         screen = getattr(game, "screen", None)
         if screen is None:
             return 0
