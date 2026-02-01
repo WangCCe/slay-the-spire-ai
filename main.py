@@ -26,8 +26,8 @@ except ImportError:
 # Log rotation: 10MB per file, keep 5 backup files (60MB total)
 # Python 3.7 compatibility: force parameter not available, check if already configured
 LOG_PATH = os.environ.get("STS_AI_LOG_FILE", "ai_debug.log")
-LOG_LEVEL_NAME = os.environ.get("STS_AI_LOG_LEVEL", "INFO").upper()
-LOG_LEVEL = getattr(logging, LOG_LEVEL_NAME, logging.INFO)
+LOG_LEVEL_NAME = os.environ.get("STS_AI_LOG_LEVEL", "DEBUG").upper()
+LOG_LEVEL = getattr(logging, LOG_LEVEL_NAME, logging.DEBUG)
 LOG_MAX_BYTES = int(os.environ.get("STS_AI_LOG_MAX_BYTES", str(10 * 1024 * 1024)))
 LOG_BACKUP_COUNT = int(os.environ.get("STS_AI_LOG_BACKUP_COUNT", "5"))
 LOG_FILTER_NOISE = os.environ.get("STS_AI_LOG_FILTER_NOISE", "1") != "0"
