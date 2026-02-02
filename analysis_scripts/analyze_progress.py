@@ -24,7 +24,7 @@ from pathlib import Path
 import requests
 
 # Setup logging
-LOG_FILE = "/home/wangce/.openclaw/workspace/rl_train/ai_cron.log"
+LOG_FILE = "./ai_cron.log"
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
