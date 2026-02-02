@@ -708,8 +708,10 @@ if __name__ == "__main__":
             import time
             time.sleep(10)
 
-            # Try to continue (will likely fail if game isn't restarted)
-            continue
+            # Exit the program because communication threads are dead and cannot be easily restarted
+            # User will need to restart the game and then the AI
+            logging.critical("Exiting... Please restart Slay the Spire and then run the AI again.")
+            sys.exit(1)
         except Exception as e:
             # Handle communication errors or game crashes
             import traceback

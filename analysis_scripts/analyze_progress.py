@@ -13,13 +13,27 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
+import sys
 import time
 import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
 import requests
+
+# Setup logging
+LOG_FILE = "/home/wangce/.openclaw/workspace/rl_train/ai_cron.log"
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_FILE),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_RUNS_DIR_WSL = "/mnt/d/SteamLibrary/steamapps/common/SlayTheSpire/runs"
@@ -228,6 +242,28 @@ def generate_sign(timestamp, key):
     return sign
 
 
+def send_meow_message(summary_text, title="AI训练进度"):
+    """发送 MeoW Push 通知
+
+    Args:
+        summary_text: 消息文本
+        title: 通知标题
+    """
+    url = f"https://api.chuckfang.com/2f9a8d51/{urllib.parse.quote(title)}/{urllib.parse.quote(summary_text)}"
+    logger.info(f"Sending MeoW notification, URL length: {len(url)}")
+    try:
+        response = requests.get(url, timeout=10)
+        logger.info(f"MeoW response status: {response.status_code}, body: {response.text[:200]}")
+        if response.status_code == 200:
+            print("\n[OK] MeoW notification sent successfully")
+        else:
+            print(f"\n[ERROR] MeoW notification failed: {response.status_code}")
+            logger.error(f"MeoW failed: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"\n[ERROR] MeoW notification exception: {e}")
+        logger.error(f"MeoW exception: {e}")
+
+
 def send_feishu_message(summary_text, at_all=False, at_mobiles=None):
     """发送飞书群消息（带签名验证）
 
@@ -332,6 +368,12 @@ def get_suggestion(latest, prev):
 
 
 def main():
+    logger.info("=" * 60)
+    logger.info("Script started")
+    logger.info(f"Working directory: {os.getcwd()}")
+    logger.info(f"Python version: {sys.version}")
+    logger.info(f"Args: {' '.join(sys.argv)}")
+
     parser = argparse.ArgumentParser(description="Training progress dashboard.")
     parser.add_argument("--count", type=int, default=300, help="Runs to include.")
     parser.add_argument("--bucket", type=int, default=50, help="Bucket size.")
@@ -345,6 +387,11 @@ def main():
         "--notify",
         action="store_true",
         help="发送飞书通知",
+    )
+    parser.add_argument(
+        "--meow",
+        action="store_true",
+        help="发送 MeoW Push 通知",
     )
     parser.add_argument(
         "--at-all",
@@ -373,11 +420,25 @@ def main():
     buckets = bucket_runs(runs, args.bucket)
     print_progress(buckets)
 
-    # 发送飞书通知
-    if args.notify:
-        summary = generate_summary(buckets, args.character, len(runs))
-        send_feishu_message(summary, at_all=args.at_all, at_mobiles=args.at)
+    # 发送通知
+    summary = generate_summary(buckets, args.character, len(runs))
+
+    # MeoW 发送已禁用，由 OpenClaw agent 处理
+    # if args.meow:
+    #     # 发送 MeoW Push
+    #     meow_msg = f"{summary[:500]}"  # 限制长度
+    #     send_meow_message(meow_msg, "AI训练进度")
+    # elif args.notify:
+    #     # 发送飞书通知
+    #     send_feishu_message(summary, at_all=args.at_all, at_mobiles=args.at)
+
+    logger.info("Script completed successfully")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        logger.exception(f"Script failed with exception: {e}")
+        print(f"[ERROR] Script failed: {e}")
+        sys.exit(1)
