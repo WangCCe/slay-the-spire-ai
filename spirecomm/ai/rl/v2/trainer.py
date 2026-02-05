@@ -34,7 +34,7 @@ class DQNTrainerV2:
         target_update_freq: int = 2000,
         train_freq: int = 4,
         epsilon_start: float = 1.0,
-        epsilon_end: float = 0.05,
+        epsilon_end: float = 0.2,
         epsilon_decay: int = 25000,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
         network_type: str = "dueling",
