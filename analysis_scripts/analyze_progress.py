@@ -423,14 +423,22 @@ def main():
     # 发送通知
     summary = generate_summary(buckets, args.character, len(runs))
 
-    # MeoW 发送已禁用，由 OpenClaw agent 处理
-    # if args.meow:
-    #     # 发送 MeoW Push
-    #     meow_msg = f"{summary[:500]}"  # 限制长度
-    #     send_meow_message(meow_msg, "AI训练进度")
-    # elif args.notify:
-    #     # 发送飞书通知
-    #     send_feishu_message(summary, at_all=args.at_all, at_mobiles=args.at)
+    # 检查是否突破16层
+    latest_summary = summarize_bucket(buckets[-1], len(runs) - len(buckets[-1]) + 1)
+    max_floor = latest_summary["max_floor"]
+    broke_16 = max_floor > 16
+
+    # 飞书通知（始终发送）
+    if args.notify or args.meow:
+        send_feishu_message(summary, at_all=args.at_all, at_mobiles=args.at)
+
+    # MeoW Push（只在突破16层时发送）
+    if args.meow and broke_16:
+        meow_msg = f"🎯 突破16层！\n\n最高层数: {max_floor}\n\n{summary[:300]}"
+        send_meow_message(meow_msg, "训练突破")
+        logger.info(f"MeoW notification sent for breaking floor 16 (max: {max_floor})")
+    elif args.meow:
+        logger.info(f"No MeoW notification - max floor {max_floor} <= 16")
 
     logger.info("Script completed successfully")
 
