@@ -592,6 +592,13 @@ class ActionEncoderV2:
         return cards + relics + potions + purge
 
     def _decode_shop_action(self, choice_index: int, game: Game):
+        if getattr(game, "screen_type", None) == ScreenType.SHOP_SCREEN:
+            if getattr(game, "choice_available", False) and game.choice_list is not None:
+                if 0 <= choice_index < len(game.choice_list):
+                    return ChooseAction(choice_index)
+                return LeaveAction()
+            return ChooseAction(choice_index)
+
         screen = getattr(game, "screen", None)
         if screen is not None:
             cards = getattr(screen, "cards", []) or []
