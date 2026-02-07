@@ -337,6 +337,8 @@ class RLAgentV2:
                 type(expert_action).__name__ if expert_action is not None else "None",
             )
             return None
+
+        logger.info("Expert action selected: index=%s action=%s", expert_index, type(expert_action).__name__ if expert_action is not None else "None")
         return expert_index
 
     def _build_action_context(self, pending: PendingTransition) -> dict:
