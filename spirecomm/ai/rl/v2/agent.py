@@ -98,6 +98,12 @@ class RLAgentV2:
 
         self.trainer = None
         self.network = None
+        logger.info(
+            "RLAgentV2 init: file=%s training=%s device=%s",
+            __file__,
+            training,
+            device,
+        )
 
         if training:
             self.trainer = DQNTrainerV2(
@@ -145,6 +151,12 @@ class RLAgentV2:
         self.expert_mix_prob = float(expert_mix_prob)
         self.expert_warmup_steps = int(expert_warmup_steps)
         self.expert_agent = None
+        logger.info(
+            "RLAgentV2 expert mix config: enabled=%s prob=%.2f warmup_steps=%s",
+            self.expert_mix_enabled,
+            self.expert_mix_prob,
+            self.expert_warmup_steps,
+        )
         if self.training_mode and self.expert_mix_enabled:
             try:
                 from spirecomm.ai.agent import OptimizedAgent, SimpleAgent, OPTIMIZED_AI_AVAILABLE
