@@ -815,6 +815,9 @@ def create_agent(
     training: bool = False,
     device: str = "cuda" if torch.cuda.is_available() else "cpu",
     rl_version: Optional[str] = None,
+    expert_mix_enabled: Optional[bool] = None,
+    expert_mix_prob: Optional[float] = None,
+    expert_warmup_steps: Optional[int] = None,
 ) -> RLAgent:
     """
     Create RL agent with specified configuration.
@@ -840,6 +843,9 @@ def create_agent(
             model_path=model_path,
             training=training,
             device=device,
+            expert_mix_enabled=expert_mix_enabled,
+            expert_mix_prob=expert_mix_prob,
+            expert_warmup_steps=expert_warmup_steps,
         )
 
     return RLAgent(
@@ -873,6 +879,9 @@ class CombatRLAgent:
         epsilon: float = 0.0,
         elite_mode: Optional[str] = None,
         rl_version: Optional[str] = None,
+        expert_mix_enabled: Optional[bool] = None,
+        expert_mix_prob: Optional[float] = None,
+        expert_warmup_steps: Optional[int] = None,
     ):
         """
         Initialize CombatRLAgent with RL and OptimizedAgent instances.
@@ -922,6 +931,9 @@ class CombatRLAgent:
                 training=training,
                 device=device,
                 epsilon=epsilon,
+                expert_mix_enabled=expert_mix_enabled,
+                expert_mix_prob=expert_mix_prob,
+                expert_warmup_steps=expert_warmup_steps,
             )
         else:
             self.rl_agent = RLAgent(

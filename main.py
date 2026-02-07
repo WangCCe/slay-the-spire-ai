@@ -236,6 +236,9 @@ def create_agent(
     model_path=None,
     elite_mode=None,
     rl_version=None,
+    expert_mix_enabled=None,
+    expert_mix_prob=None,
+    expert_warmup_steps=None,
 ):
     """
     Create an agent instance.
@@ -307,6 +310,9 @@ def create_agent(
                 model_path=model_path,
                 elite_mode=elite_mode,
                 rl_version=rl_version,
+                expert_mix_enabled=expert_mix_enabled,
+                expert_mix_prob=expert_mix_prob,
+                expert_warmup_steps=expert_warmup_steps,
             )
             logging.info(f"Combat RL Agent created successfully")
             logging.info(f"  State dim: {agent.rl_agent.state_encoder.feature_dim}, Action dim: {agent.rl_agent.action_encoder.MAX_ACTIONS}")
@@ -356,7 +362,12 @@ def create_agent(
                     logging.info("No existing checkpoints found, starting fresh training")
 
             agent = create_rl_agent(
-                training=training, model_path=model_path, rl_version=rl_version
+                training=training,
+                model_path=model_path,
+                rl_version=rl_version,
+                expert_mix_enabled=expert_mix_enabled,
+                expert_mix_prob=expert_mix_prob,
+                expert_warmup_steps=expert_warmup_steps,
             )
             logging.info(f"RL Agent created successfully")
             logging.info(f"  State dim: {agent.state_encoder.feature_dim}, Action dim: {agent.action_encoder.MAX_ACTIONS}")
@@ -400,6 +411,9 @@ if __name__ == "__main__":
     training = False
     model_path = None
     rl_version = None
+    expert_mix_enabled = None
+    expert_mix_prob = None
+    expert_warmup_steps = None
 
     parser = argparse.ArgumentParser(
         prog="python main.py",
@@ -415,6 +429,7 @@ if __name__ == "__main__":
             "  python main.py --agent combat_rl --train        # Train combat-only RL\n"
             "  python main.py --agent rl --model checkpoints/model.pth  # Load trained model\n"
             "  python main.py --agent rl --rl-version v2       # Use RL v2 action/observation space\n"
+            "  python main.py --agent rl --rl-version v2 --train --expert-mix --expert-mix-prob 0.3 --expert-mix-warmup 5000\n"
             "  python main.py -a 10                            # Ascension level 10\n"
             "  python main.py -a 20                            # Ascension level 20\n"
             "  python main.py --agent optimized -a 20          # Optimized AI A20\n"
@@ -457,6 +472,25 @@ if __name__ == "__main__":
         choices=["v1", "v2"],
         default=None,
         help="RL space version for RL agents (default: STS_RL_VERSION or v1)",
+    )
+    parser.add_argument(
+        "--expert-mix",
+        action="store_true",
+        help="Enable expert (OptimizedAgent) mixed exploration for RL v2 training",
+    )
+    parser.add_argument(
+        "--expert-mix-prob",
+        type=float,
+        default=None,
+        metavar="P",
+        help="Expert action probability after warmup (0-1, default: env STS_RL_EXPERT_MIX_PROB or 0.3)",
+    )
+    parser.add_argument(
+        "--expert-mix-warmup",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Expert-only warmup steps before mixing (default: env STS_RL_EXPERT_WARMUP_STEPS or 5000)",
     )
     parser.add_argument(
         "--ascension",
@@ -609,6 +643,9 @@ if __name__ == "__main__":
         model_path=model_path,
         elite_mode=elite_route_mode,
         rl_version=rl_version,
+        expert_mix_enabled=expert_mix_enabled,
+        expert_mix_prob=expert_mix_prob,
+        expert_warmup_steps=expert_warmup_steps,
     )
 
     # Register callbacks after agent is created
@@ -861,3 +898,29 @@ if __name__ == "__main__":
         if max_games is not None and game_count >= max_games:
             logging.info(f"Max games reached ({max_games}); exiting.")
             break
+    if args.expert_mix:
+        expert_mix_enabled = True
+    if args.expert_mix_prob is not None:
+        expert_mix_prob = args.expert_mix_prob
+        if expert_mix_enabled is None:
+            expert_mix_enabled = True
+    if args.expert_mix_warmup is not None:
+        expert_warmup_steps = args.expert_mix_warmup
+        if expert_mix_enabled is None:
+            expert_mix_enabled = True
+
+    if expert_mix_prob is not None and not (0.0 <= expert_mix_prob <= 1.0):
+        logging.error(f"--expert-mix-prob must be between 0 and 1, got {expert_mix_prob}")
+        sys.exit(1)
+    if expert_warmup_steps is not None and expert_warmup_steps < 0:
+        logging.error(f"--expert-mix-warmup must be >= 0, got {expert_warmup_steps}")
+        sys.exit(1)
+
+    if expert_mix_enabled and not training:
+        logging.warning("Expert mix enabled but training is off; expert mix will be ignored.")
+
+    if expert_mix_enabled and str(rl_version or os.environ.get("STS_RL_VERSION", "v1")).lower() != "v2":
+        logging.warning("Expert mix only supported for RL v2; ignoring expert mix settings.")
+        expert_mix_enabled = None
+        expert_mix_prob = None
+        expert_warmup_steps = None

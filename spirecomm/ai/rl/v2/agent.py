@@ -80,6 +80,9 @@ class RLAgentV2:
         epsilon: float = 0.0,
         id_mapper: Optional[IdMapper] = None,
         network_type: str = "dueling",
+        expert_mix_enabled: Optional[bool] = None,
+        expert_mix_prob: Optional[float] = None,
+        expert_warmup_steps: Optional[int] = None,
     ):
         self.device = device
         self.training_mode = training
@@ -132,9 +135,15 @@ class RLAgentV2:
         self.episode_reward = 0.0
         self.episode_steps = 0
 
-        self.expert_mix_enabled = os.environ.get("STS_RL_EXPERT_MIX", "0") != "0"
-        self.expert_mix_prob = float(os.environ.get("STS_RL_EXPERT_MIX_PROB", "0.3"))
-        self.expert_warmup_steps = int(os.environ.get("STS_RL_EXPERT_WARMUP_STEPS", "5000"))
+        if expert_mix_enabled is None:
+            expert_mix_enabled = os.environ.get("STS_RL_EXPERT_MIX", "0") != "0"
+        if expert_mix_prob is None:
+            expert_mix_prob = float(os.environ.get("STS_RL_EXPERT_MIX_PROB", "0.3"))
+        if expert_warmup_steps is None:
+            expert_warmup_steps = int(os.environ.get("STS_RL_EXPERT_WARMUP_STEPS", "5000"))
+        self.expert_mix_enabled = bool(expert_mix_enabled)
+        self.expert_mix_prob = float(expert_mix_prob)
+        self.expert_warmup_steps = int(expert_warmup_steps)
         self.expert_agent = None
         if self.training_mode and self.expert_mix_enabled:
             try:
@@ -506,6 +515,9 @@ def create_agent_v2(
     device: str = "cuda" if torch.cuda.is_available() else "cpu",
     epsilon: float = 0.0,
     id_mapper: Optional[IdMapper] = None,
+    expert_mix_enabled: Optional[bool] = None,
+    expert_mix_prob: Optional[float] = None,
+    expert_warmup_steps: Optional[int] = None,
 ) -> RLAgentV2:
     return RLAgentV2(
         model_path=model_path,
@@ -513,4 +525,7 @@ def create_agent_v2(
         device=device,
         epsilon=epsilon,
         id_mapper=id_mapper,
+        expert_mix_enabled=expert_mix_enabled,
+        expert_mix_prob=expert_mix_prob,
+        expert_warmup_steps=expert_warmup_steps,
     )
