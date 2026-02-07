@@ -490,6 +490,13 @@ class ActionEncoderV2:
     def _mask_shop_actions(self, mask: List[bool], game: Game) -> None:
         import logging
 
+        screen_type = getattr(game, "screen_type", None)
+        if screen_type == ScreenType.SHOP_ROOM:
+            choice_list = getattr(game, "choice_list", None) or []
+            if choice_list:
+                self._mask_choice_group(mask, space.SHOP_OFFSET, space.SHOP_COUNT, len(choice_list))
+                return
+
         screen = getattr(game, "screen", None)
         if screen is None:
             shop_count = self._get_shop_choice_count(game)
