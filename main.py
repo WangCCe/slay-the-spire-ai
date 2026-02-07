@@ -528,6 +528,14 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    logging.info(
+        "Startup: main=%s python=%s cwd=%s pid=%s",
+        os.path.abspath(__file__),
+        sys.executable,
+        os.getcwd(),
+        os.getpid(),
+    )
+
     # Handle deprecated arguments
     if args.optimized and args.simple:
         logging.error("Cannot specify both --optimized and --simple")
