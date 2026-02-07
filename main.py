@@ -568,6 +568,33 @@ if __name__ == "__main__":
     if args.rl_version is not None:
         rl_version = args.rl_version
 
+    if args.expert_mix:
+        expert_mix_enabled = True
+    if args.expert_mix_prob is not None:
+        expert_mix_prob = args.expert_mix_prob
+        if expert_mix_enabled is None:
+            expert_mix_enabled = True
+    if args.expert_mix_warmup is not None:
+        expert_warmup_steps = args.expert_mix_warmup
+        if expert_mix_enabled is None:
+            expert_mix_enabled = True
+
+    if expert_mix_prob is not None and not (0.0 <= expert_mix_prob <= 1.0):
+        logging.error(f"--expert-mix-prob must be between 0 and 1, got {expert_mix_prob}")
+        sys.exit(1)
+    if expert_warmup_steps is not None and expert_warmup_steps < 0:
+        logging.error(f"--expert-mix-warmup must be >= 0, got {expert_warmup_steps}")
+        sys.exit(1)
+
+    if expert_mix_enabled and not training:
+        logging.warning("Expert mix enabled but training is off; expert mix will be ignored.")
+
+    if expert_mix_enabled and str(rl_version or os.environ.get("STS_RL_VERSION", "v1")).lower() != "v2":
+        logging.warning("Expert mix only supported for RL v2; ignoring expert mix settings.")
+        expert_mix_enabled = None
+        expert_mix_prob = None
+        expert_warmup_steps = None
+
     if training:
         logging.info("RL Agent training mode enabled")
         logging.info("  Models will be saved to: checkpoints/")
@@ -906,29 +933,3 @@ if __name__ == "__main__":
         if max_games is not None and game_count >= max_games:
             logging.info(f"Max games reached ({max_games}); exiting.")
             break
-    if args.expert_mix:
-        expert_mix_enabled = True
-    if args.expert_mix_prob is not None:
-        expert_mix_prob = args.expert_mix_prob
-        if expert_mix_enabled is None:
-            expert_mix_enabled = True
-    if args.expert_mix_warmup is not None:
-        expert_warmup_steps = args.expert_mix_warmup
-        if expert_mix_enabled is None:
-            expert_mix_enabled = True
-
-    if expert_mix_prob is not None and not (0.0 <= expert_mix_prob <= 1.0):
-        logging.error(f"--expert-mix-prob must be between 0 and 1, got {expert_mix_prob}")
-        sys.exit(1)
-    if expert_warmup_steps is not None and expert_warmup_steps < 0:
-        logging.error(f"--expert-mix-warmup must be >= 0, got {expert_warmup_steps}")
-        sys.exit(1)
-
-    if expert_mix_enabled and not training:
-        logging.warning("Expert mix enabled but training is off; expert mix will be ignored.")
-
-    if expert_mix_enabled and str(rl_version or os.environ.get("STS_RL_VERSION", "v1")).lower() != "v2":
-        logging.warning("Expert mix only supported for RL v2; ignoring expert mix settings.")
-        expert_mix_enabled = None
-        expert_mix_prob = None
-        expert_warmup_steps = None
