@@ -592,54 +592,52 @@ class ActionEncoderV2:
         return cards + relics + potions + purge
 
     def _decode_shop_action(self, choice_index: int, game: Game):
-        if getattr(game, "choice_available", False) and game.choice_list is not None:
-            if not self._has_potion_space(game):
-                screen = getattr(game, "screen", None)
-                if screen is not None:
-                    cards = getattr(screen, "cards", []) or []
-                    relics = getattr(screen, "relics", []) or []
-                    potions = getattr(screen, "potions", []) or []
-                    potion_start = len(cards) + len(relics)
-                    potion_end = potion_start + len(potions)
-                    if potion_start <= choice_index < potion_end:
-                        return LeaveAction()
-            return ChooseAction(choice_index)
-
         screen = getattr(game, "screen", None)
-        if screen is None:
-            return ChooseAction(choice_index)
+        if screen is not None:
+            cards = getattr(screen, "cards", []) or []
+            relics = getattr(screen, "relics", []) or []
+            potions = getattr(screen, "potions", []) or []
+            purge_available = getattr(screen, "purge_available", False)
+        else:
+            cards = []
+            relics = []
+            potions = []
+            purge_available = False
 
-        cards = getattr(screen, "cards", []) or []
-        relics = getattr(screen, "relics", []) or []
-        potions = getattr(screen, "potions", []) or []
-        purge_available = getattr(screen, "purge_available", False)
+        if cards or relics or potions or purge_available:
+            if choice_index < len(cards):
+                from spirecomm.communication.action import BuyCardAction
 
-        if choice_index < len(cards):
-            from spirecomm.communication.action import BuyCardAction
+                return BuyCardAction(cards[choice_index])
 
-            return BuyCardAction(cards[choice_index])
+            choice_index -= len(cards)
+            if choice_index < len(relics):
+                from spirecomm.communication.action import BuyRelicAction
 
-        choice_index -= len(cards)
-        if choice_index < len(relics):
-            from spirecomm.communication.action import BuyRelicAction
+                return BuyRelicAction(relics[choice_index])
 
-            return BuyRelicAction(relics[choice_index])
+            choice_index -= len(relics)
+            if choice_index < len(potions):
+                from spirecomm.communication.action import BuyPotionAction
 
-        choice_index -= len(relics)
-        if choice_index < len(potions):
-            from spirecomm.communication.action import BuyPotionAction
+                if not self._has_potion_space(game):
+                    return LeaveAction()
+                return BuyPotionAction(potions[choice_index])
 
-            if not self._has_potion_space(game):
-                return LeaveAction()
-            return BuyPotionAction(potions[choice_index])
+            choice_index -= len(potions)
+            if purge_available and choice_index == 0:
+                from spirecomm.communication.action import BuyPurgeAction
 
-        choice_index -= len(potions)
-        if purge_available and choice_index == 0:
-            from spirecomm.communication.action import BuyPurgeAction
+                return BuyPurgeAction()
 
-            return BuyPurgeAction()
+            return LeaveAction()
 
-        return LeaveAction()
+        if getattr(game, "choice_available", False) and game.choice_list is not None:
+            if 0 <= choice_index < len(game.choice_list):
+                return ChooseAction(choice_index)
+            return LeaveAction()
+
+        return ChooseAction(choice_index)
 
     def _decode_rest_action(self, choice_index: int, game: Game) -> Optional[RestAction]:
         screen = getattr(game, "screen", None)
