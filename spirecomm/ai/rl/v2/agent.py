@@ -4,6 +4,7 @@ RL v2 agent implementation with embedding-based observations.
 
 from dataclasses import dataclass
 import logging
+import os
 from typing import Optional
 
 import numpy as np
@@ -131,6 +132,27 @@ class RLAgentV2:
         self.episode_reward = 0.0
         self.episode_steps = 0
 
+        self.expert_mix_enabled = os.environ.get("STS_RL_EXPERT_MIX", "0") != "0"
+        self.expert_mix_prob = float(os.environ.get("STS_RL_EXPERT_MIX_PROB", "0.3"))
+        self.expert_warmup_steps = int(os.environ.get("STS_RL_EXPERT_WARMUP_STEPS", "5000"))
+        self.expert_agent = None
+        if self.training_mode and self.expert_mix_enabled:
+            try:
+                from spirecomm.ai.agent import OptimizedAgent, SimpleAgent, OPTIMIZED_AI_AVAILABLE
+
+                if OPTIMIZED_AI_AVAILABLE:
+                    self.expert_agent = OptimizedAgent(chosen_class=self.chosen_class)
+                else:
+                    self.expert_agent = SimpleAgent(chosen_class=self.chosen_class)
+                logger.info(
+                    "Expert mix enabled (warmup_steps=%s, prob=%.2f, expert=%s)",
+                    self.expert_warmup_steps,
+                    self.expert_mix_prob,
+                    type(self.expert_agent).__name__,
+                )
+            except Exception as exc:
+                logger.warning("Expert mix init failed: %s", exc)
+
         if model_path:
             self.load_model(model_path)
 
@@ -145,7 +167,10 @@ class RLAgentV2:
                 logger.warning("No valid actions in mask; returning StateAction.")
                 return StateAction()
 
-            if self.training_mode and self.trainer is not None:
+            expert_index = self._maybe_get_expert_action_index(game, action_mask)
+            if expert_index is not None:
+                action_index = expert_index
+            elif self.training_mode and self.trainer is not None:
                 action_index = self.trainer.select_action(
                     continuous=encoded.continuous,
                     card_ids=encoded.card_ids,
@@ -271,6 +296,40 @@ class RLAgentV2:
             game=game,
         )
 
+    def _maybe_get_expert_action_index(self, game: Game, action_mask: np.ndarray) -> Optional[int]:
+        if not self.training_mode or self.expert_agent is None or self.trainer is None:
+            return None
+
+        total_steps = self.trainer.total_steps
+        if total_steps < self.expert_warmup_steps:
+            use_expert = True
+        else:
+            use_expert = np.random.random() < self.expert_mix_prob
+        if not use_expert:
+            return None
+
+        try:
+            expert_action = self.expert_agent.get_next_action_in_game(game)
+        except Exception as exc:
+            logger.debug("Expert action failed: %s", exc)
+            return None
+
+        expert_index = self.action_encoder.encode_action(expert_action, game)
+        if expert_index is None:
+            logger.debug(
+                "Expert action not encodable: %s",
+                type(expert_action).__name__ if expert_action is not None else "None",
+            )
+            return None
+        if expert_index >= len(action_mask) or not action_mask[expert_index]:
+            logger.debug(
+                "Expert action masked out: index=%s action=%s",
+                expert_index,
+                type(expert_action).__name__ if expert_action is not None else "None",
+            )
+            return None
+        return expert_index
+
     def _build_action_context(self, pending: PendingTransition) -> dict:
         action_context = {"action_name": "Unknown", "had_play_options": False, "played_card_type": None}
         try:
@@ -330,6 +389,13 @@ class RLAgentV2:
         self.reward_calculator.reset()
         if self.trainer is not None:
             self.trainer.update_episode_count()
+        if self.expert_agent is not None and hasattr(self.expert_agent, "game_tracker"):
+            try:
+                from spirecomm.ai.tracker import GameTracker
+
+                self.expert_agent.game_tracker = GameTracker()
+            except Exception:
+                pass
 
     def get_next_action_out_of_game(self):
         return StartGameAction(self.chosen_class)
