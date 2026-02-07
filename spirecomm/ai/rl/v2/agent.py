@@ -315,23 +315,29 @@ class RLAgentV2:
         else:
             use_expert = np.random.random() < self.expert_mix_prob
         if not use_expert:
+            logger.info(
+                "Expert mix skipped: total_steps=%s warmup_steps=%s prob=%.2f",
+                total_steps,
+                self.expert_warmup_steps,
+                self.expert_mix_prob,
+            )
             return None
 
         try:
             expert_action = self.expert_agent.get_next_action_in_game(game)
         except Exception as exc:
-            logger.debug("Expert action failed: %s", exc)
+            logger.info("Expert action failed: %s", exc)
             return None
 
         expert_index = self.action_encoder.encode_action(expert_action, game)
         if expert_index is None:
-            logger.debug(
+            logger.info(
                 "Expert action not encodable: %s",
                 type(expert_action).__name__ if expert_action is not None else "None",
             )
             return None
         if expert_index >= len(action_mask) or not action_mask[expert_index]:
-            logger.debug(
+            logger.info(
                 "Expert action masked out: index=%s action=%s",
                 expert_index,
                 type(expert_action).__name__ if expert_action is not None else "None",
