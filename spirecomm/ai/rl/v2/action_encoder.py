@@ -407,6 +407,8 @@ class ActionEncoderV2:
                     return space.SHOP_OFFSET + len(cards) + idx
             return None
         if isinstance(action, BuyPotionAction):
+            if not self._has_potion_space(game):
+                return None
             for idx, potion in enumerate(potions):
                 if getattr(potion, "name", None) == getattr(action, "name", None):
                     return space.SHOP_OFFSET + len(cards) + len(relics) + idx
