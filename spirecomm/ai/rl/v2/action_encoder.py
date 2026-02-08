@@ -125,15 +125,15 @@ class ActionEncoderV2:
                 cards = game.screen.cards or []
                 if choice_index < len(cards):
                     return CardRewardAction(cards[choice_index])
-            return ChooseAction(choice_index)
+            return self._choose_or_fallback(choice_index, game, screen_type)
 
         if space.MAP_OFFSET <= action_index < space.EVENT_OFFSET:
             choice_index = action_index - space.MAP_OFFSET
-            return ChooseAction(choice_index)
+            return self._choose_or_fallback(choice_index, game, ScreenType.MAP)
 
         if space.EVENT_OFFSET <= action_index < space.SHOP_OFFSET:
             choice_index = action_index - space.EVENT_OFFSET
-            return ChooseAction(choice_index)
+            return self._choose_or_fallback(choice_index, game, ScreenType.EVENT)
 
         if space.SHOP_OFFSET <= action_index < space.REST_OFFSET:
             choice_index = action_index - space.SHOP_OFFSET
@@ -596,7 +596,7 @@ class ActionEncoderV2:
             if getattr(game, "choice_available", False) and game.choice_list is not None:
                 if 0 <= choice_index < len(game.choice_list):
                     return ChooseAction(choice_index)
-                return LeaveAction()
+                return self._fallback_system_action(game)
             return ChooseAction(choice_index)
 
         screen = getattr(game, "screen", None)
@@ -642,9 +642,32 @@ class ActionEncoderV2:
         if getattr(game, "choice_available", False) and game.choice_list is not None:
             if 0 <= choice_index < len(game.choice_list):
                 return ChooseAction(choice_index)
-            return LeaveAction()
+            return self._fallback_system_action(game)
 
         return ChooseAction(choice_index)
+
+    def _choose_or_fallback(
+        self,
+        choice_index: int,
+        game: Game,
+        screen_type: Optional[ScreenType],
+    ):
+        count = self._get_choice_count(game, screen_type)
+        if count <= 0:
+            return self._fallback_system_action(game)
+        if choice_index >= count:
+            choice_index = count - 1
+        return ChooseAction(choice_index)
+
+    def _fallback_system_action(self, game: Game):
+        available = set(getattr(game, "available_commands", []) or [])
+        if "proceed" in available:
+            return ProceedAction()
+        if "cancel" in available or "skip" in available or "return" in available:
+            return CancelAction()
+        if "leave" in available:
+            return LeaveAction()
+        return ChooseAction(0)
 
     def _decode_rest_action(self, choice_index: int, game: Game) -> Optional[RestAction]:
         screen = getattr(game, "screen", None)
