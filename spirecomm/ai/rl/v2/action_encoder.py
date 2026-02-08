@@ -569,6 +569,9 @@ class ActionEncoderV2:
         if getattr(game, "choice_available", False) and game.choice_list is not None:
             return len(game.choice_list)
         if screen_type in (ScreenType.HAND_SELECT, ScreenType.GRID):
+            screen = getattr(game, "screen", None)
+            if screen is not None and hasattr(screen, "cards"):
+                return len(screen.cards or [])
             return 0
         screen = getattr(game, "screen", None)
         if screen is None:
@@ -654,12 +657,21 @@ class ActionEncoderV2:
         game: Game,
         screen_type: Optional[ScreenType],
     ):
+        if not self._can_choose(game):
+            return self._fallback_system_action(game)
         count = self._get_choice_count(game, screen_type)
         if count <= 0:
             return self._fallback_system_action(game)
         if choice_index >= count:
             choice_index = count - 1
         return ChooseAction(choice_index)
+
+    @staticmethod
+    def _can_choose(game: Game) -> bool:
+        if getattr(game, "choice_available", False):
+            return True
+        available = set(getattr(game, "available_commands", []) or [])
+        return "choose" in available
 
     def _fallback_system_action(self, game: Game):
         available = set(getattr(game, "available_commands", []) or [])
