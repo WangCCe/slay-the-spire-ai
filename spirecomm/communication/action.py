@@ -407,6 +407,22 @@ class OptionalCardSelectConfirmAction(Action):
     def __init__(self):
         super().__init__("confirm", requires_game_ready=False)
 
+    def execute(self, coordinator):
+        import logging
+
+        game_state = getattr(coordinator, "last_game_state", None)
+        available = getattr(game_state, "available_commands", []) or []
+        screen = getattr(game_state, "screen", None)
+        confirm_up = bool(getattr(screen, "confirm_up", False)) if screen else False
+        if "confirm" in available and confirm_up:
+            coordinator.send_message(self.command, wait_for_response=False)
+            return
+        logging.debug(
+            "Skipping optional card-select confirm: confirm_up=%s available=%s",
+            confirm_up,
+            available,
+        )
+
 
 
 class CardSelectAction(Action):
