@@ -1,0 +1,512 @@
+run_file,run_mtime,floor,enemies,damage,turns,lethal,victory,killed_by,run_floor
+1779632241.run,1779632241.926772,1,2 Louse,0,1,False,False,3 Sentries,8
+1779632241.run,1779632241.926772,3,Small Slimes,3,3,False,False,3 Sentries,8
+1779632241.run,1779632241.926772,7,Cultist,0,1,False,False,3 Sentries,8
+1779632241.run,1779632241.926772,8,3 Sentries,84,8,True,False,3 Sentries,8
+1779632271.run,1779632271.8153386,1,2 Louse,7,3,False,False,Lots of Slimes,10
+1779632271.run,1779632271.8153386,4,Jaw Worm,11,2,False,False,Lots of Slimes,10
+1779632271.run,1779632271.8153386,5,Cultist,54,7,False,False,Lots of Slimes,10
+1779632271.run,1779632271.8153386,10,Lots of Slimes,31,2,True,False,Lots of Slimes,10
+1779632849.run,1779632849.9768481,1,Jaw Worm,0,1,False,False,Exordium Wildlife,8
+1779632849.run,1779632849.9768481,3,Small Slimes,8,4,False,False,Exordium Wildlife,8
+1779632849.run,1779632849.9768481,7,2 Louse,0,1,False,False,Exordium Wildlife,8
+1779632849.run,1779632849.9768481,8,Exordium Wildlife,63,7,True,False,Exordium Wildlife,8
+1779632890.run,1779632890.5134404,1,Small Slimes,0,2,False,False,Exordium Thugs,10
+1779632890.run,1779632890.5134404,3,Cultist,0,1,False,False,Exordium Thugs,10
+1779632890.run,1779632890.5134404,5,Jaw Worm,0,1,False,False,Exordium Thugs,10
+1779632890.run,1779632890.5134404,6,Blue Slaver,16,5,False,False,Exordium Thugs,10
+1779632890.run,1779632890.5134404,8,Looter,27,5,False,False,Exordium Thugs,10
+1779632890.run,1779632890.5134404,10,Exordium Thugs,49,4,True,False,Exordium Thugs,10
+1779632921.run,1779632921.829951,1,Cultist,0,2,False,False,Large Slime,8
+1779632921.run,1779632921.829951,2,2 Louse,0,1,False,False,Large Slime,8
+1779632921.run,1779632921.829951,4,Jaw Worm,0,1,False,False,Large Slime,8
+1779632921.run,1779632921.829951,7,Gremlin Gang,60,8,False,False,Large Slime,8
+1779632921.run,1779632921.829951,8,Large Slime,11,1,True,False,Large Slime,8
+1779632997.run,1779632997.8299944,1,Cultist,0,1,False,False,Lagavulin Event,13
+1779632997.run,1779632997.8299944,3,Jaw Worm,11,2,False,False,Lagavulin Event,13
+1779632997.run,1779632997.8299944,4,2 Louse,5,4,False,False,Lagavulin Event,13
+1779632997.run,1779632997.8299944,5,Red Slaver,63,10,False,False,Lagavulin Event,13
+1779632997.run,1779632997.8299944,11,2 Fungi Beasts,16,9,False,False,Lagavulin Event,13
+1779632997.run,1779632997.8299944,12,Large Slime,62,15,False,False,Lagavulin Event,13
+1779632997.run,1779632997.8299944,13,Lagavulin Event,18,3,True,False,Lagavulin Event,13
+1779633041.run,1779633041.0886793,1,Small Slimes,11,3,False,False,Blue Slaver,10
+1779633041.run,1779633041.0886793,2,2 Louse,0,2,False,False,Blue Slaver,10
+1779633041.run,1779633041.0886793,7,Gremlin Nob,0,2,False,False,Blue Slaver,10
+1779633041.run,1779633041.0886793,8,Jaw Worm,50,10,False,False,Blue Slaver,10
+1779633041.run,1779633041.0886793,10,Blue Slaver,35,5,True,False,Blue Slaver,10
+1779633067.run,1779633067.8710384,1,Cultist,0,1,False,False,Exordium Thugs,8
+1779633067.run,1779633067.8710384,2,2 Louse,0,2,False,False,Exordium Thugs,8
+1779633067.run,1779633067.8710384,4,Jaw Worm,0,1,False,False,Exordium Thugs,8
+1779633067.run,1779633067.8710384,8,Exordium Thugs,82,7,True,False,Exordium Thugs,8
+1779633106.run,1779633106.4338048,1,Small Slimes,8,4,False,False,Large Slime,8
+1779633106.run,1779633106.4338048,6,Jaw Worm,0,1,False,False,Large Slime,8
+1779633106.run,1779633106.4338048,7,Cultist,0,1,False,False,Large Slime,8
+1779633106.run,1779633106.4338048,8,Large Slime,82,14,True,False,Large Slime,8
+1779633147.run,1779633147.6054604,1,2 Louse,7,3,False,False,The Mushroom Lair,10
+1779633147.run,1779633147.6054604,4,Cultist,0,1,False,False,The Mushroom Lair,10
+1779633147.run,1779633147.6054604,5,Small Slimes,0,1,False,False,The Mushroom Lair,10
+1779633147.run,1779633147.6054604,7,3 Louse,6,5,False,False,The Mushroom Lair,10
+1779633147.run,1779633147.6054604,10,The Mushroom Lair,83,10,True,False,The Mushroom Lair,10
+1779633187.run,1779633187.201572,1,Jaw Worm,0,1,False,False,Large Slime,8
+1779633187.run,1779633187.201572,3,Cultist,0,1,False,False,Large Slime,8
+1779633187.run,1779633187.201572,4,Small Slimes,0,2,False,False,Large Slime,8
+1779633187.run,1779633187.201572,7,Red Slaver,40,7,False,False,Large Slime,8
+1779633187.run,1779633187.201572,8,Large Slime,53,9,True,False,Large Slime,8
+1779633216.run,1779633216.005876,1,Jaw Worm,0,1,False,False,Exordium Thugs,10
+1779633216.run,1779633216.005876,3,2 Louse,0,1,False,False,Exordium Thugs,10
+1779633216.run,1779633216.005876,6,Small Slimes,0,2,False,False,Exordium Thugs,10
+1779633216.run,1779633216.005876,10,Exordium Thugs,71,7,True,False,Exordium Thugs,10
+1779633255.run,1779633255.2717724,1,Small Slimes,0,2,False,False,The Mushroom Lair,13
+1779633255.run,1779633255.2717724,3,2 Louse,0,1,False,False,The Mushroom Lair,13
+1779633255.run,1779633255.2717724,7,Jaw Worm,0,1,False,False,The Mushroom Lair,13
+1779633255.run,1779633255.2717724,10,Exordium Wildlife,25,9,False,False,The Mushroom Lair,13
+1779633255.run,1779633255.2717724,13,The Mushroom Lair,58,4,True,False,The Mushroom Lair,13
+1779633302.run,1779633302.9141262,1,Cultist,0,1,False,False,Large Slime,10
+1779633302.run,1779633302.9141262,2,Small Slimes,0,1,False,False,Large Slime,10
+1779633302.run,1779633302.9141262,4,2 Louse,0,1,False,False,Large Slime,10
+1779633302.run,1779633302.9141262,8,Exordium Thugs,17,4,False,False,Large Slime,10
+1779633302.run,1779633302.9141262,10,Large Slime,75,15,True,False,Large Slime,10
+1779633371.run,1779633371.2002983,1,2 Louse,0,1,False,False,Hexaghost,16
+1779633371.run,1779633371.2002983,2,Small Slimes,7,2,False,False,Hexaghost,16
+1779633371.run,1779633371.2002983,5,Jaw Worm,0,1,False,False,Hexaghost,16
+1779633371.run,1779633371.2002983,7,2 Fungi Beasts,3,5,False,False,Hexaghost,16
+1779633371.run,1779633371.2002983,11,Blue Slaver,38,8,False,False,Hexaghost,16
+1779633371.run,1779633371.2002983,13,Red Slaver,34,5,False,False,Hexaghost,16
+1779633371.run,1779633371.2002983,14,3 Louse,17,6,False,False,Hexaghost,16
+1779633371.run,1779633371.2002983,16,Hexaghost,40,8,True,False,Hexaghost,16
+1779633436.run,1779633436.9586675,1,Small Slimes,27,4,False,False,2 Fungi Beasts,14
+1779633436.run,1779633436.9586675,2,Cultist,15,6,False,False,2 Fungi Beasts,14
+1779633436.run,1779633436.9586675,5,2 Louse,6,4,False,False,2 Fungi Beasts,14
+1779633436.run,1779633436.9586675,6,Exordium Wildlife,44,9,False,False,2 Fungi Beasts,14
+1779633436.run,1779633436.9586675,11,Lots of Slimes,16,7,False,False,2 Fungi Beasts,14
+1779633436.run,1779633436.9586675,14,2 Fungi Beasts,56,7,True,False,2 Fungi Beasts,14
+1779633477.run,1779633477.3647697,1,Small Slimes,0,2,False,False,Gremlin Gang,10
+1779633477.run,1779633477.3647697,2,Cultist,0,1,False,False,Gremlin Gang,10
+1779633477.run,1779633477.3647697,5,2 Louse,2,3,False,False,Gremlin Gang,10
+1779633477.run,1779633477.3647697,7,Exordium Wildlife,64,9,False,False,Gremlin Gang,10
+1779633477.run,1779633477.3647697,8,Blue Slaver,24,4,False,False,Gremlin Gang,10
+1779633477.run,1779633477.3647697,10,Gremlin Gang,7,1,True,False,Gremlin Gang,10
+1779633535.run,1779633535.3759973,1,2 Louse,0,2,False,False,Slime Boss,16
+1779633535.run,1779633535.3759973,7,Small Slimes,3,3,False,False,Slime Boss,16
+1779633535.run,1779633535.3759973,8,Jaw Worm,6,2,False,False,Slime Boss,16
+1779633535.run,1779633535.3759973,11,3 Louse,12,4,False,False,Slime Boss,16
+1779633535.run,1779633535.3759973,12,Exordium Thugs,32,6,False,False,Slime Boss,16
+1779633535.run,1779633535.3759973,14,Blue Slaver,33,6,False,False,Slime Boss,16
+1779633535.run,1779633535.3759973,16,Slime Boss,70,6,True,False,Slime Boss,16
+1779633574.run,1779633574.0380495,1,2 Louse,5,8,False,False,Jaw Worm,11
+1779633574.run,1779633574.0380495,8,Small Slimes,47,8,False,False,Jaw Worm,11
+1779633574.run,1779633574.0380495,11,Jaw Worm,32,5,True,False,Jaw Worm,11
+1779633615.run,1779633615.4283693,1,Cultist,0,1,False,False,Gremlin Nob,8
+1779633615.run,1779633615.4283693,3,Jaw Worm,0,1,False,False,Gremlin Nob,8
+1779633615.run,1779633615.4283693,4,2 Louse,0,1,False,False,Gremlin Nob,8
+1779633615.run,1779633615.4283693,5,Lots of Slimes,23,6,False,False,Gremlin Nob,8
+1779633615.run,1779633615.4283693,7,2 Fungi Beasts,15,6,False,False,Gremlin Nob,8
+1779633615.run,1779633615.4283693,8,Gremlin Nob,58,6,True,False,Gremlin Nob,8
+1779633672.run,1779633672.9807577,1,Jaw Worm,0,2,False,False,Blue Slaver,12
+1779633672.run,1779633672.9807577,7,Cultist,0,2,False,False,Blue Slaver,12
+1779633672.run,1779633672.9807577,8,2 Louse,0,1,False,False,Blue Slaver,12
+1779633672.run,1779633672.9807577,10,Exordium Thugs,26,6,False,False,Blue Slaver,12
+1779633672.run,1779633672.9807577,11,Looter,10,5,False,False,Blue Slaver,12
+1779633672.run,1779633672.9807577,12,Blue Slaver,67,13,True,False,Blue Slaver,12
+1779633697.run,1779633697.6492374,1,2 Louse,0,1,False,False,Exordium Thugs,7
+1779633697.run,1779633697.6492374,2,Cultist,0,2,False,False,Exordium Thugs,7
+1779633697.run,1779633697.6492374,4,Small Slimes,0,2,False,False,Exordium Thugs,7
+1779633697.run,1779633697.6492374,7,Exordium Thugs,86,6,True,False,Exordium Thugs,7
+1779633724.run,1779633724.4417706,1,Small Slimes,5,2,False,False,Gremlin Gang,5
+1779633724.run,1779633724.4417706,2,2 Louse,0,2,False,False,Gremlin Gang,5
+1779633724.run,1779633724.4417706,3,Jaw Worm,0,1,False,False,Gremlin Gang,5
+1779633724.run,1779633724.4417706,5,Gremlin Gang,82,7,True,False,Gremlin Gang,5
+1779633774.run,1779633774.858714,1,Cultist,0,1,False,False,Gremlin Gang,11
+1779633774.run,1779633774.858714,2,2 Louse,7,2,False,False,Gremlin Gang,11
+1779633774.run,1779633774.858714,4,Jaw Worm,0,1,False,False,Gremlin Gang,11
+1779633774.run,1779633774.858714,7,Blue Slaver,14,4,False,False,Gremlin Gang,11
+1779633774.run,1779633774.858714,8,2 Fungi Beasts,8,5,False,False,Gremlin Gang,11
+1779633774.run,1779633774.858714,10,Looter,10,4,False,False,Gremlin Gang,11
+1779633774.run,1779633774.858714,11,Gremlin Gang,67,7,True,False,Gremlin Gang,11
+1779633824.run,1779633824.278381,1,Jaw Worm,0,1,False,False,Large Slime,11
+1779633824.run,1779633824.278381,4,2 Louse,6,2,False,False,Large Slime,11
+1779633824.run,1779633824.278381,5,Cultist,0,1,False,False,Large Slime,11
+1779633824.run,1779633824.278381,8,2 Fungi Beasts,4,4,False,False,Large Slime,11
+1779633824.run,1779633824.278381,10,3 Louse,23,5,False,False,Large Slime,11
+1779633824.run,1779633824.278381,11,Large Slime,63,12,True,False,Large Slime,11
+1779633865.run,1779633865.6319525,1,Small Slimes,0,2,False,False,Slime Boss,16
+1779633865.run,1779633865.6319525,11,Jaw Worm,0,1,False,False,Slime Boss,16
+1779633865.run,1779633865.6319525,12,Gremlin Nob,0,2,False,False,Slime Boss,16
+1779633865.run,1779633865.6319525,14,2 Louse,25,6,False,False,Slime Boss,16
+1779633865.run,1779633865.6319525,16,Slime Boss,75,9,True,False,Slime Boss,16
+1779633926.run,1779633926.314247,1,Jaw Worm,40,7,False,False,The Guardian,16
+1779633926.run,1779633926.314247,5,2 Louse,11,4,False,False,The Guardian,16
+1779633926.run,1779633926.314247,11,Small Slimes,14,6,False,False,The Guardian,16
+1779633926.run,1779633926.314247,12,Exordium Thugs,27,6,False,False,The Guardian,16
+1779633926.run,1779633926.314247,14,Blue Slaver,30,7,False,False,The Guardian,16
+1779633926.run,1779633926.314247,16,The Guardian,46,4,True,False,The Guardian,16
+1779633964.run,1779633964.2727802,1,Jaw Worm,32,6,False,False,Red Slaver,7
+1779633964.run,1779633964.2727802,3,Cultist,31,6,False,False,Red Slaver,7
+1779633964.run,1779633964.2727802,4,2 Louse,19,5,False,False,Red Slaver,7
+1779633964.run,1779633964.2727802,7,Red Slaver,52,5,True,False,Red Slaver,7
+1779634008.run,1779634008.8262658,1,Cultist,0,2,False,False,Gremlin Nob,12
+1779634008.run,1779634008.8262658,2,Small Slimes,0,2,False,False,Gremlin Nob,12
+1779634008.run,1779634008.8262658,8,2 Louse,0,1,False,False,Gremlin Nob,12
+1779634008.run,1779634008.8262658,10,Exordium Wildlife,37,6,False,False,Gremlin Nob,12
+1779634008.run,1779634008.8262658,11,Looter,17,5,False,False,Gremlin Nob,12
+1779634008.run,1779634008.8262658,12,Gremlin Nob,57,5,True,False,Gremlin Nob,12
+1779634070.run,1779634070.1843648,1,Jaw Worm,0,1,False,False,Gremlin Gang,13
+1779634070.run,1779634070.1843648,4,Cultist,0,2,False,False,Gremlin Gang,13
+1779634070.run,1779634070.1843648,5,2 Louse,0,1,False,False,Gremlin Gang,13
+1779634070.run,1779634070.1843648,6,Exordium Thugs,43,6,False,False,Gremlin Gang,13
+1779634070.run,1779634070.1843648,7,Looter,20,3,False,False,Gremlin Gang,13
+1779634070.run,1779634070.1843648,13,Gremlin Gang,55,3,True,False,Gremlin Gang,13
+1779634123.run,1779634123.2553105,1,Small Slimes,0,1,False,False,Hexaghost,16
+1779634123.run,1779634123.2553105,3,Cultist,0,1,False,False,Hexaghost,16
+1779634123.run,1779634123.2553105,4,2 Louse,0,1,False,False,Hexaghost,16
+1779634123.run,1779634123.2553105,7,Exordium Thugs,46,6,False,False,Hexaghost,16
+1779634123.run,1779634123.2553105,11,2 Fungi Beasts,14,3,False,False,Hexaghost,16
+1779634123.run,1779634123.2553105,14,Red Slaver,17,3,False,False,Hexaghost,16
+1779634123.run,1779634123.2553105,16,Hexaghost,81,8,True,False,Hexaghost,16
+1779634143.run,1779634143.7164834,1,Jaw Worm,11,4,False,False,Gremlin Nob,6
+1779634143.run,1779634143.7164834,6,Gremlin Nob,96,6,True,False,Gremlin Nob,6
+1779634202.run,1779634202.3931496,1,Jaw Worm,0,1,False,False,Lots of Slimes,12
+1779634202.run,1779634202.3931496,3,Small Slimes,0,1,False,False,Lots of Slimes,12
+1779634202.run,1779634202.3931496,5,2 Louse,0,1,False,False,Lots of Slimes,12
+1779634202.run,1779634202.3931496,6,Looter,16,5,False,False,Lots of Slimes,12
+1779634202.run,1779634202.3931496,8,Large Slime,53,12,False,False,Lots of Slimes,12
+1779634202.run,1779634202.3931496,11,3 Louse,30,6,False,False,Lots of Slimes,12
+1779634202.run,1779634202.3931496,12,Lots of Slimes,36,2,True,False,Lots of Slimes,12
+1779634242.run,1779634242.347455,1,Cultist,0,1,False,False,Exordium Wildlife,7
+1779634242.run,1779634242.347455,2,Small Slimes,0,2,False,False,Exordium Wildlife,7
+1779634242.run,1779634242.347455,3,2 Louse,0,1,False,False,Exordium Wildlife,7
+1779634242.run,1779634242.347455,5,Blue Slaver,20,6,False,False,Exordium Wildlife,7
+1779634242.run,1779634242.347455,6,2 Fungi Beasts,26,5,False,False,Exordium Wildlife,7
+1779634242.run,1779634242.347455,7,Exordium Wildlife,54,7,True,False,Exordium Wildlife,7
+1779634274.run,1779634274.4960232,1,Jaw Worm,0,1,False,False,Lagavulin,7
+1779634274.run,1779634274.4960232,4,Cultist,0,1,False,False,Lagavulin,7
+1779634274.run,1779634274.4960232,5,2 Louse,2,2,False,False,Lagavulin,7
+1779634274.run,1779634274.4960232,6,2 Fungi Beasts,31,7,False,False,Lagavulin,7
+1779634274.run,1779634274.4960232,7,Lagavulin,67,6,True,False,Lagavulin,7
+1779634306.run,1779634306.5462403,1,2 Louse,11,3,False,False,3 Sentries,6
+1779634306.run,1779634306.5462403,3,Cultist,0,1,False,False,3 Sentries,6
+1779634306.run,1779634306.5462403,4,Jaw Worm,35,5,False,False,3 Sentries,6
+1779634306.run,1779634306.5462403,6,3 Sentries,57,6,True,False,3 Sentries,6
+1779634355.run,1779634355.70024,1,2 Louse,0,1,False,False,Exordium Thugs,12
+1779634355.run,1779634355.70024,3,Cultist,0,1,False,False,Exordium Thugs,12
+1779634355.run,1779634355.70024,4,Small Slimes,0,2,False,False,Exordium Thugs,12
+1779634355.run,1779634355.70024,5,Blue Slaver,12,2,False,False,Exordium Thugs,12
+1779634355.run,1779634355.70024,7,Looter,5,4,False,False,Exordium Thugs,12
+1779634355.run,1779634355.70024,8,Large Slime,34,9,False,False,Exordium Thugs,12
+1779634355.run,1779634355.70024,12,Exordium Thugs,53,6,True,False,Exordium Thugs,12
+1779634394.run,1779634394.525569,1,2 Louse,0,2,False,False,Lagavulin,10
+1779634394.run,1779634394.525569,3,Small Slimes,0,2,False,False,Lagavulin,10
+1779634394.run,1779634394.525569,5,Cultist,0,1,False,False,Lagavulin,10
+1779634394.run,1779634394.525569,7,Looter,27,5,False,False,Lagavulin,10
+1779634394.run,1779634394.525569,10,Lagavulin,67,8,True,False,Lagavulin,10
+1779634441.run,1779634441.7431672,1,Cultist,0,1,False,False,The Guardian,16
+1779634441.run,1779634441.7431672,3,Small Slimes,0,1,False,False,The Guardian,16
+1779634441.run,1779634441.7431672,4,Jaw Worm,0,1,False,False,The Guardian,16
+1779634441.run,1779634441.7431672,5,Exordium Wildlife,67,8,False,False,The Guardian,16
+1779634441.run,1779634441.7431672,10,3 Louse,17,4,False,False,The Guardian,16
+1779634441.run,1779634441.7431672,16,The Guardian,57,6,True,False,The Guardian,16
+1779634482.run,1779634482.3497033,1,Jaw Worm,26,6,False,False,Exordium Thugs,5
+1779634482.run,1779634482.3497033,3,Cultist,38,7,False,False,Exordium Thugs,5
+1779634482.run,1779634482.3497033,4,Small Slimes,12,5,False,False,Exordium Thugs,5
+1779634482.run,1779634482.3497033,5,Exordium Thugs,27,6,True,False,Exordium Thugs,5
+1779634529.run,1779634529.7104797,1,Small Slimes,15,3,False,False,Slime Boss,16
+1779634529.run,1779634529.7104797,8,Jaw Worm,0,1,False,False,Slime Boss,16
+1779634529.run,1779634529.7104797,10,2 Louse,0,1,False,False,Slime Boss,16
+1779634529.run,1779634529.7104797,11,Looter,12,4,False,False,Slime Boss,16
+1779634529.run,1779634529.7104797,12,3 Louse,24,5,False,False,Slime Boss,16
+1779634529.run,1779634529.7104797,16,Slime Boss,56,9,True,False,Slime Boss,16
+1779634592.run,1779634592.4136734,1,2 Louse,0,2,False,False,Hexaghost,16
+1779634592.run,1779634592.4136734,2,Jaw Worm,20,4,False,False,Hexaghost,16
+1779634592.run,1779634592.4136734,3,Cultist,5,4,False,False,Hexaghost,16
+1779634592.run,1779634592.4136734,5,Looter,15,3,False,False,Hexaghost,16
+1779634592.run,1779634592.4136734,10,Large Slime,18,7,False,False,Hexaghost,16
+1779634592.run,1779634592.4136734,12,Gremlin Gang,3,3,False,False,Hexaghost,16
+1779634592.run,1779634592.4136734,14,3 Louse,10,1,False,False,Hexaghost,16
+1779634592.run,1779634592.4136734,16,Hexaghost,77,7,True,False,Hexaghost,16
+1779634622.run,1779634622.37453,1,2 Louse,9,3,False,False,Cultist,5
+1779634622.run,1779634622.37453,4,Small Slimes,8,6,False,False,Cultist,5
+1779634622.run,1779634622.37453,5,Cultist,77,9,True,False,Cultist,5
+1779634668.run,1779634668.6529772,1,Small Slimes,0,1,False,False,Exordium Thugs,10
+1779634668.run,1779634668.6529772,3,2 Louse,0,1,False,False,Exordium Thugs,10
+1779634668.run,1779634668.6529772,4,Cultist,0,1,False,False,Exordium Thugs,10
+1779634668.run,1779634668.6529772,7,Lots of Slimes,71,10,False,False,Exordium Thugs,10
+1779634668.run,1779634668.6529772,8,Looter,10,4,False,False,Exordium Thugs,10
+1779634668.run,1779634668.6529772,10,Exordium Thugs,14,2,True,False,Exordium Thugs,10
+1779634720.run,1779634720.179181,1,Small Slimes,0,1,False,False,Gremlin Gang,14
+1779634720.run,1779634720.179181,4,Cultist,6,3,False,False,Gremlin Gang,14
+1779634720.run,1779634720.179181,5,Jaw Worm,0,1,False,False,Gremlin Gang,14
+1779634720.run,1779634720.179181,8,3 Sentries,69,12,False,False,Gremlin Gang,14
+1779634720.run,1779634720.179181,13,Exordium Wildlife,6,3,False,False,Gremlin Gang,14
+1779634720.run,1779634720.179181,14,Gremlin Gang,41,3,True,False,Gremlin Gang,14
+1779634747.run,1779634747.506391,1,Cultist,10,4,False,False,Lagavulin,6
+1779634747.run,1779634747.506391,3,Jaw Worm,0,1,False,False,Lagavulin,6
+1779634747.run,1779634747.506391,4,Small Slimes,0,1,False,False,Lagavulin,6
+1779634747.run,1779634747.506391,6,Lagavulin,96,9,True,False,Lagavulin,6
+1779634775.run,1779634775.0875075,1,2 Louse,10,2,False,False,Exordium Wildlife,8
+1779634775.run,1779634775.0875075,2,Cultist,0,1,False,False,Exordium Wildlife,8
+1779634775.run,1779634775.0875075,4,Small Slimes,0,1,False,False,Exordium Wildlife,8
+1779634775.run,1779634775.0875075,8,Exordium Wildlife,81,9,True,False,Exordium Wildlife,8
+1779634804.run,1779634804.0096672,1,2 Louse,0,1,False,False,Exordium Thugs,11
+1779634804.run,1779634804.0096672,3,Cultist,0,1,False,False,Exordium Thugs,11
+1779634804.run,1779634804.0096672,7,Jaw Worm,1,2,False,False,Exordium Thugs,11
+1779634804.run,1779634804.0096672,11,Exordium Thugs,83,8,True,False,Exordium Thugs,11
+1779634844.run,1779634844.1938915,1,Jaw Worm,0,1,False,False,Lagavulin,11
+1779634844.run,1779634844.1938915,3,2 Louse,0,2,False,False,Lagavulin,11
+1779634844.run,1779634844.1938915,7,Cultist,0,1,False,False,Lagavulin,11
+1779634844.run,1779634844.1938915,8,Looter,10,4,False,False,Lagavulin,11
+1779634844.run,1779634844.1938915,11,Lagavulin,98,11,True,False,Lagavulin,11
+1779634891.run,1779634891.387879,1,Cultist,0,1,False,False,Lagavulin,11
+1779634891.run,1779634891.387879,4,2 Louse,0,2,False,False,Lagavulin,11
+1779634891.run,1779634891.387879,7,Jaw Worm,0,1,False,False,Lagavulin,11
+1779634891.run,1779634891.387879,8,Looter,17,5,False,False,Lagavulin,11
+1779634891.run,1779634891.387879,10,Gremlin Gang,41,6,False,False,Lagavulin,11
+1779634891.run,1779634891.387879,11,Lagavulin,49,6,True,False,Lagavulin,11
+1779634930.run,1779634930.3141575,1,2 Louse,0,1,False,False,2 Fungi Beasts,14
+1779634930.run,1779634930.3141575,3,Small Slimes,0,2,False,False,2 Fungi Beasts,14
+1779634930.run,1779634930.3141575,11,Cultist,0,2,False,False,2 Fungi Beasts,14
+1779634930.run,1779634930.3141575,13,Exordium Wildlife,18,5,False,False,2 Fungi Beasts,14
+1779634930.run,1779634930.3141575,14,2 Fungi Beasts,70,8,True,False,2 Fungi Beasts,14
+1779634983.run,1779634983.7063613,1,Small Slimes,0,4,False,False,Slime Boss,16
+1779634983.run,1779634983.7063613,2,2 Louse,7,3,False,False,Slime Boss,16
+1779634983.run,1779634983.7063613,4,Jaw Worm,11,2,False,False,Slime Boss,16
+1779634983.run,1779634983.7063613,8,Exordium Wildlife,20,4,False,False,Slime Boss,16
+1779634983.run,1779634983.7063613,13,Looter,0,1,False,False,Slime Boss,16
+1779634983.run,1779634983.7063613,14,2 Fungi Beasts,22,4,False,False,Slime Boss,16
+1779634983.run,1779634983.7063613,16,Slime Boss,86,10,True,False,Slime Boss,16
+1779634999.run,1779634999.8668065,1,Jaw Worm,80,10,True,False,Jaw Worm,1
+1779635030.run,1779635030.8505738,1,Small Slimes,0,2,False,False,Lagavulin,12
+1779635030.run,1779635030.8505738,5,Jaw Worm,0,1,False,False,Lagavulin,12
+1779635030.run,1779635030.8505738,7,2 Louse,0,1,False,False,Lagavulin,12
+1779635030.run,1779635030.8505738,12,Lagavulin,86,10,True,False,Lagavulin,12
+1779635056.run,1779635056.572559,1,Small Slimes,0,1,False,False,Exordium Wildlife,8
+1779635056.run,1779635056.572559,2,Cultist,0,1,False,False,Exordium Wildlife,8
+1779635056.run,1779635056.572559,5,2 Louse,14,2,False,False,Exordium Wildlife,8
+1779635056.run,1779635056.572559,7,Blue Slaver,0,1,False,False,Exordium Wildlife,8
+1779635056.run,1779635056.572559,8,Exordium Wildlife,61,7,True,False,Exordium Wildlife,8
+1779635101.run,1779635101.5152266,1,2 Louse,0,2,False,False,Blue Slaver,12
+1779635101.run,1779635101.5152266,4,Small Slimes,0,1,False,False,Blue Slaver,12
+1779635101.run,1779635101.5152266,8,Jaw Worm,0,1,False,False,Blue Slaver,12
+1779635101.run,1779635101.5152266,10,3 Louse,32,5,False,False,Blue Slaver,12
+1779635101.run,1779635101.5152266,11,Looter,20,5,False,False,Blue Slaver,12
+1779635101.run,1779635101.5152266,12,Blue Slaver,49,8,True,False,Blue Slaver,12
+1779635129.run,1779635129.0911882,1,Jaw Worm,0,1,False,False,The Mushroom Lair,14
+1779635129.run,1779635129.0911882,2,2 Louse,0,1,False,False,The Mushroom Lair,14
+1779635129.run,1779635129.0911882,7,Small Slimes,0,2,False,False,The Mushroom Lair,14
+1779635129.run,1779635129.0911882,14,The Mushroom Lair,60,5,True,False,The Mushroom Lair,14
+1779635176.run,1779635176.8497696,1,Small Slimes,5,3,False,False,Gremlin Gang,12
+1779635176.run,1779635176.8497696,5,Jaw Worm,0,1,False,False,Gremlin Gang,12
+1779635176.run,1779635176.8497696,7,Cultist,0,2,False,False,Gremlin Gang,12
+1779635176.run,1779635176.8497696,8,Lots of Slimes,36,6,False,False,Gremlin Gang,12
+1779635176.run,1779635176.8497696,10,Exordium Thugs,48,4,False,False,Gremlin Gang,12
+1779635176.run,1779635176.8497696,11,Blue Slaver,30,6,False,False,Gremlin Gang,12
+1779635176.run,1779635176.8497696,12,Gremlin Gang,13,1,True,False,Gremlin Gang,12
+1779635219.run,1779635219.143307,1,2 Louse,0,1,False,False,Slime Boss,16
+1779635219.run,1779635219.143307,3,Cultist,0,2,False,False,Slime Boss,16
+1779635219.run,1779635219.143307,4,Small Slimes,5,2,False,False,Slime Boss,16
+1779635219.run,1779635219.143307,13,2 Fungi Beasts,9,3,False,False,Slime Boss,16
+1779635219.run,1779635219.143307,14,Exordium Wildlife,0,3,False,False,Slime Boss,16
+1779635219.run,1779635219.143307,16,Slime Boss,59,7,True,False,Slime Boss,16
+1779635277.run,1779635277.4457176,1,2 Louse,14,3,False,False,Gremlin Nob,11
+1779635277.run,1779635277.4457176,2,Small Slimes,9,4,False,False,Gremlin Nob,11
+1779635277.run,1779635277.4457176,4,Jaw Worm,29,10,False,False,Gremlin Nob,11
+1779635277.run,1779635277.4457176,5,Looter,10,4,False,False,Gremlin Nob,11
+1779635277.run,1779635277.4457176,7,Blue Slaver,19,3,False,False,Gremlin Nob,11
+1779635277.run,1779635277.4457176,8,3 Louse,15,4,False,False,Gremlin Nob,11
+1779635277.run,1779635277.4457176,11,Gremlin Nob,25,3,True,False,Gremlin Nob,11
+1779635313.run,1779635313.4374824,1,Cultist,0,2,False,False,Large Slime,8
+1779635313.run,1779635313.4374824,3,Jaw Worm,11,2,False,False,Large Slime,8
+1779635313.run,1779635313.4374824,7,2 Louse,5,3,False,False,Large Slime,8
+1779635313.run,1779635313.4374824,8,Large Slime,63,11,True,False,Large Slime,8
+1779635347.run,1779635347.3364065,1,Jaw Worm,0,1,False,False,The Mushroom Lair,7
+1779635347.run,1779635347.3364065,3,2 Louse,0,1,False,False,The Mushroom Lair,7
+1779635347.run,1779635347.3364065,4,Small Slimes,0,1,False,False,The Mushroom Lair,7
+1779635347.run,1779635347.3364065,6,Blue Slaver,45,8,False,False,The Mushroom Lair,7
+1779635347.run,1779635347.3364065,7,The Mushroom Lair,55,6,True,False,The Mushroom Lair,7
+1779635377.run,1779635377.2557652,1,Cultist,17,5,False,False,3 Sentries,6
+1779635377.run,1779635377.2557652,2,2 Louse,0,1,False,False,3 Sentries,6
+1779635377.run,1779635377.2557652,4,Small Slimes,0,1,False,False,3 Sentries,6
+1779635377.run,1779635377.2557652,6,3 Sentries,70,7,True,False,3 Sentries,6
+1779635423.run,1779635423.0714936,1,Cultist,6,3,False,False,Gremlin Nob,13
+1779635423.run,1779635423.0714936,5,Jaw Worm,0,1,False,False,Gremlin Nob,13
+1779635423.run,1779635423.0714936,7,2 Louse,1,1,False,False,Gremlin Nob,13
+1779635423.run,1779635423.0714936,10,2 Fungi Beasts,14,4,False,False,Gremlin Nob,13
+1779635423.run,1779635423.0714936,11,3 Louse,25,6,False,False,Gremlin Nob,13
+1779635423.run,1779635423.0714936,13,Gremlin Nob,68,5,True,False,Gremlin Nob,13
+1779635452.run,1779635452.2855484,1,Small Slimes,0,1,False,False,Large Slime,7
+1779635452.run,1779635452.2855484,2,Cultist,0,2,False,False,Large Slime,7
+1779635452.run,1779635452.2855484,4,2 Louse,0,1,False,False,Large Slime,7
+1779635452.run,1779635452.2855484,5,Blue Slaver,31,4,False,False,Large Slime,7
+1779635452.run,1779635452.2855484,7,Large Slime,56,6,True,False,Large Slime,7
+1779635482.run,1779635482.6822553,1,Small Slimes,0,2,False,False,Gremlin Gang,11
+1779635482.run,1779635482.6822553,2,Jaw Worm,0,1,False,False,Gremlin Gang,11
+1779635482.run,1779635482.6822553,7,2 Louse,0,1,False,False,Gremlin Gang,11
+1779635482.run,1779635482.6822553,10,2 Fungi Beasts,41,6,False,False,Gremlin Gang,11
+1779635482.run,1779635482.6822553,11,Gremlin Gang,27,2,True,False,Gremlin Gang,11
+1779635532.run,1779635532.313241,1,2 Louse,6,2,False,False,Blue Slaver,12
+1779635532.run,1779635532.313241,4,Cultist,0,1,False,False,Blue Slaver,12
+1779635532.run,1779635532.313241,5,Jaw Worm,0,1,False,False,Blue Slaver,12
+1779635532.run,1779635532.313241,10,Exordium Wildlife,59,7,False,False,Blue Slaver,12
+1779635532.run,1779635532.313241,11,Large Slime,39,13,False,False,Blue Slaver,12
+1779635532.run,1779635532.313241,12,Blue Slaver,9,2,True,False,Blue Slaver,12
+1779635575.run,1779635575.248649,1,Cultist,0,1,False,False,Gremlin Gang,10
+1779635575.run,1779635575.248649,3,2 Louse,0,3,False,False,Gremlin Gang,10
+1779635575.run,1779635575.248649,4,Jaw Worm,0,1,False,False,Gremlin Gang,10
+1779635575.run,1779635575.248649,5,3 Louse,33,5,False,False,Gremlin Gang,10
+1779635575.run,1779635575.248649,7,Blue Slaver,33,7,False,False,Gremlin Gang,10
+1779635575.run,1779635575.248649,10,Gremlin Gang,48,3,True,False,Gremlin Gang,10
+1779635597.run,1779635597.769688,1,Cultist,0,2,False,False,Gremlin Gang,4
+1779635597.run,1779635597.769688,2,Jaw Worm,0,1,False,False,Gremlin Gang,4
+1779635597.run,1779635597.769688,3,2 Louse,0,1,False,False,Gremlin Gang,4
+1779635597.run,1779635597.769688,4,Gremlin Gang,85,5,True,False,Gremlin Gang,4
+1779635645.run,1779635645.6305287,1,Cultist,0,1,False,False,Exordium Thugs,10
+1779635645.run,1779635645.6305287,2,Small Slimes,0,2,False,False,Exordium Thugs,10
+1779635645.run,1779635645.6305287,5,2 Louse,16,3,False,False,Exordium Thugs,10
+1779635645.run,1779635645.6305287,7,Looter,5,4,False,False,Exordium Thugs,10
+1779635645.run,1779635645.6305287,8,Blue Slaver,30,8,False,False,Exordium Thugs,10
+1779635645.run,1779635645.6305287,10,Exordium Thugs,65,6,True,False,Exordium Thugs,10
+1779635671.run,1779635671.2505355,1,Small Slimes,0,1,False,False,Lagavulin,6
+1779635671.run,1779635671.2505355,2,2 Louse,5,2,False,False,Lagavulin,6
+1779635671.run,1779635671.2505355,4,Cultist,0,1,False,False,Lagavulin,6
+1779635671.run,1779635671.2505355,6,Lagavulin,87,9,True,False,Lagavulin,6
+1779635723.run,1779635723.7509186,1,Small Slimes,0,1,False,False,UNKNOWN,14
+1779635723.run,1779635723.7509186,3,Cultist,0,1,False,False,UNKNOWN,14
+1779635723.run,1779635723.7509186,4,Jaw Worm,0,1,False,False,UNKNOWN,14
+1779635723.run,1779635723.7509186,7,3 Louse,15,6,False,False,UNKNOWN,14
+1779635723.run,1779635723.7509186,10,Looter,17,4,False,False,UNKNOWN,14
+1779635723.run,1779635723.7509186,11,Blue Slaver,35,6,False,False,UNKNOWN,14
+1779635723.run,1779635723.7509186,12,Exordium Thugs,24,5,True,False,UNKNOWN,14
+1779635773.run,1779635773.4939775,1,2 Louse,14,3,False,False,Slime Boss,16
+1779635773.run,1779635773.4939775,2,Jaw Worm,0,1,False,False,Slime Boss,16
+1779635773.run,1779635773.4939775,4,Small Slimes,0,2,False,False,Slime Boss,16
+1779635773.run,1779635773.4939775,11,Looter,7,5,False,False,Slime Boss,16
+1779635773.run,1779635773.4939775,14,3 Louse,21,4,False,False,Slime Boss,16
+1779635773.run,1779635773.4939775,16,Slime Boss,87,9,True,False,Slime Boss,16
+1779635805.run,1779635805.905414,1,Jaw Worm,22,4,False,False,Large Slime,4
+1779635805.run,1779635805.905414,2,Small Slimes,37,5,False,False,Large Slime,4
+1779635805.run,1779635805.905414,3,2 Louse,23,7,False,False,Large Slime,4
+1779635805.run,1779635805.905414,4,Large Slime,21,3,True,False,Large Slime,4
+1779635851.run,1779635851.0433903,1,Small Slimes,0,2,False,False,Exordium Wildlife,8
+1779635851.run,1779635851.0433903,2,Cultist,0,1,False,False,Exordium Wildlife,8
+1779635851.run,1779635851.0433903,4,2 Louse,12,2,False,False,Exordium Wildlife,8
+1779635851.run,1779635851.0433903,5,Red Slaver,0,1,False,False,Exordium Wildlife,8
+1779635851.run,1779635851.0433903,6,Looter,15,4,False,False,Exordium Wildlife,8
+1779635851.run,1779635851.0433903,7,Blue Slaver,18,6,False,False,Exordium Wildlife,8
+1779635851.run,1779635851.0433903,8,Exordium Wildlife,70,7,True,False,Exordium Wildlife,8
+1779635898.run,1779635898.5509841,1,2 Louse,1,2,False,False,Slime Boss,16
+1779635898.run,1779635898.5509841,2,Jaw Worm,0,1,False,False,Slime Boss,16
+1779635898.run,1779635898.5509841,7,Small Slimes,0,2,False,False,Slime Boss,16
+1779635898.run,1779635898.5509841,10,3 Louse,21,3,False,False,Slime Boss,16
+1779635898.run,1779635898.5509841,14,Exordium Wildlife,25,7,False,False,Slime Boss,16
+1779635898.run,1779635898.5509841,16,Slime Boss,70,6,True,False,Slime Boss,16
+1779635946.run,1779635946.1305356,1,Cultist,12,5,False,False,Blue Slaver,7
+1779635946.run,1779635946.1305356,2,Jaw Worm,36,7,False,False,Blue Slaver,7
+1779635946.run,1779635946.1305356,4,2 Louse,15,4,False,False,Blue Slaver,7
+1779635946.run,1779635946.1305356,5,Large Slime,30,10,False,False,Blue Slaver,7
+1779635946.run,1779635946.1305356,7,Blue Slaver,14,2,True,False,Blue Slaver,7
+1779636003.run,1779636003.4628272,1,2 Louse,0,1,False,False,Hexaghost,16
+1779636003.run,1779636003.4628272,3,Small Slimes,12,3,False,False,Hexaghost,16
+1779636003.run,1779636003.4628272,5,Cultist,0,1,False,False,Hexaghost,16
+1779636003.run,1779636003.4628272,7,Red Slaver,21,3,False,False,Hexaghost,16
+1779636003.run,1779636003.4628272,10,Exordium Wildlife,6,3,False,False,Hexaghost,16
+1779636003.run,1779636003.4628272,11,Large Slime,37,6,False,False,Hexaghost,16
+1779636003.run,1779636003.4628272,12,Red Slaver,23,5,False,False,Hexaghost,16
+1779636003.run,1779636003.4628272,16,Hexaghost,45,7,True,False,Hexaghost,16
+1779636033.run,1779636033.290437,1,Small Slimes,27,6,False,False,Cultist,4
+1779636033.run,1779636033.290437,3,2 Louse,34,6,False,False,Cultist,4
+1779636033.run,1779636033.290437,4,Cultist,28,5,True,False,Cultist,4
+1779636061.run,1779636061.2815192,1,Cultist,0,1,False,False,Exordium Wildlife,7
+1779636061.run,1779636061.2815192,2,2 Louse,0,1,False,False,Exordium Wildlife,7
+1779636061.run,1779636061.2815192,5,Jaw Worm,0,1,False,False,Exordium Wildlife,7
+1779636061.run,1779636061.2815192,7,Exordium Wildlife,89,11,True,False,Exordium Wildlife,7
+1779636082.run,1779636082.3129292,1,Jaw Worm,0,1,False,False,Gremlin Gang,5
+1779636082.run,1779636082.3129292,2,2 Louse,0,1,False,False,Gremlin Gang,5
+1779636082.run,1779636082.3129292,4,Small Slimes,3,2,False,False,Gremlin Gang,5
+1779636082.run,1779636082.3129292,5,Gremlin Gang,70,4,True,False,Gremlin Gang,5
+1779636128.run,1779636128.8310747,1,2 Louse,7,3,False,False,Blue Slaver,10
+1779636128.run,1779636128.8310747,3,Cultist,0,2,False,False,Blue Slaver,10
+1779636128.run,1779636128.8310747,4,Small Slimes,0,1,False,False,Blue Slaver,10
+1779636128.run,1779636128.8310747,7,Exordium Thugs,65,12,False,False,Blue Slaver,10
+1779636128.run,1779636128.8310747,8,3 Louse,14,4,False,False,Blue Slaver,10
+1779636128.run,1779636128.8310747,10,Blue Slaver,16,3,True,False,Blue Slaver,10
+1779636155.run,1779636155.5577679,1,Small Slimes,0,1,False,False,Gremlin Nob,11
+1779636155.run,1779636155.5577679,8,2 Louse,0,1,False,False,Gremlin Nob,11
+1779636155.run,1779636155.5577679,10,Jaw Worm,6,2,False,False,Gremlin Nob,11
+1779636155.run,1779636155.5577679,11,Gremlin Nob,101,7,True,False,Gremlin Nob,11
+1779636185.run,1779636185.0538678,1,Cultist,0,2,False,False,Exordium Thugs,8
+1779636185.run,1779636185.0538678,3,2 Louse,0,2,False,False,Exordium Thugs,8
+1779636185.run,1779636185.0538678,5,Small Slimes,0,2,False,False,Exordium Thugs,8
+1779636185.run,1779636185.0538678,8,Exordium Thugs,75,8,True,False,Exordium Thugs,8
+1779636239.run,1779636239.1192915,1,Cultist,0,1,False,False,Exordium Thugs,12
+1779636239.run,1779636239.1192915,4,Small Slimes,0,1,False,False,Exordium Thugs,12
+1779636239.run,1779636239.1192915,5,Jaw Worm,0,1,False,False,Exordium Thugs,12
+1779636239.run,1779636239.1192915,7,Lots of Slimes,49,6,False,False,Exordium Thugs,12
+1779636239.run,1779636239.1192915,12,Exordium Thugs,41,4,True,False,Exordium Thugs,12
+1779636267.run,1779636267.5059457,1,2 Louse,0,1,False,False,Lagavulin,8
+1779636267.run,1779636267.5059457,2,Cultist,0,1,False,False,Lagavulin,8
+1779636267.run,1779636267.5059457,3,Jaw Worm,3,1,False,False,Lagavulin,8
+1779636267.run,1779636267.5059457,8,Lagavulin,83,11,True,False,Lagavulin,8
+1779636320.run,1779636320.7679882,1,Jaw Worm,0,1,False,False,Slime Boss,16
+1779636320.run,1779636320.7679882,2,2 Louse,0,1,False,False,Slime Boss,16
+1779636320.run,1779636320.7679882,6,Lagavulin,0,2,False,False,Slime Boss,16
+1779636320.run,1779636320.7679882,10,Small Slimes,22,5,False,False,Slime Boss,16
+1779636320.run,1779636320.7679882,11,3 Louse,41,6,False,False,Slime Boss,16
+1779636320.run,1779636320.7679882,16,Slime Boss,91,11,True,False,Slime Boss,16
+1779636359.run,1779636359.0908442,1,Small Slimes,22,6,False,False,Blue Slaver,5
+1779636359.run,1779636359.0908442,2,2 Louse,16,5,False,False,Blue Slaver,5
+1779636359.run,1779636359.0908442,4,Jaw Worm,41,7,False,False,Blue Slaver,5
+1779636359.run,1779636359.0908442,5,Blue Slaver,25,5,True,False,Blue Slaver,5
+1779636398.run,1779636398.1574535,1,2 Louse,0,1,False,False,3 Sentries,13
+1779636398.run,1779636398.1574535,2,Jaw Worm,0,1,False,False,3 Sentries,13
+1779636398.run,1779636398.1574535,3,Small Slimes,0,1,False,False,3 Sentries,13
+1779636398.run,1779636398.1574535,8,Looter,10,4,False,False,3 Sentries,13
+1779636398.run,1779636398.1574535,13,3 Sentries,70,8,True,False,3 Sentries,13
+1779636429.run,1779636429.4350917,1,Cultist,0,1,False,False,Large Slime,6
+1779636429.run,1779636429.4350917,3,2 Louse,0,1,False,False,Large Slime,6
+1779636429.run,1779636429.4350917,5,Jaw Worm,0,1,False,False,Large Slime,6
+1779636429.run,1779636429.4350917,6,Large Slime,86,13,True,False,Large Slime,6
+1779636461.run,1779636461.3992808,1,Small Slimes,0,1,False,False,2 Fungi Beasts,10
+1779636461.run,1779636461.3992808,5,2 Louse,1,2,False,False,2 Fungi Beasts,10
+1779636461.run,1779636461.3992808,8,Jaw Worm,0,1,False,False,2 Fungi Beasts,10
+1779636461.run,1779636461.3992808,10,2 Fungi Beasts,95,11,True,False,2 Fungi Beasts,10
+1779636489.run,1779636489.0018232,1,2 Louse,0,1,False,False,Exordium Thugs,7
+1779636489.run,1779636489.0018232,4,Cultist,0,1,False,False,Exordium Thugs,7
+1779636489.run,1779636489.0018232,5,Small Slimes,0,1,False,False,Exordium Thugs,7
+1779636489.run,1779636489.0018232,7,Exordium Thugs,82,7,True,False,Exordium Thugs,7
+1779636521.run,1779636521.5891917,1,2 Louse,9,3,False,False,Gremlin Gang,7
+1779636521.run,1779636521.5891917,2,Cultist,0,1,False,False,Gremlin Gang,7
+1779636521.run,1779636521.5891917,4,Small Slimes,0,1,False,False,Gremlin Gang,7
+1779636521.run,1779636521.5891917,7,Gremlin Gang,88,11,True,False,Gremlin Gang,7
+1779636550.run,1779636550.5405962,1,Cultist,0,1,False,False,Exordium Wildlife,4
+1779636550.run,1779636550.5405962,2,2 Louse,0,2,False,False,Exordium Wildlife,4
+1779636550.run,1779636550.5405962,3,Small Slimes,0,2,False,False,Exordium Wildlife,4
+1779636550.run,1779636550.5405962,4,Exordium Wildlife,82,10,True,False,Exordium Wildlife,4
+1779636610.run,1779636610.6276186,1,Cultist,0,1,False,False,Lots of Slimes,13
+1779636610.run,1779636610.6276186,3,2 Louse,0,2,False,False,Lots of Slimes,13
+1779636610.run,1779636610.6276186,4,Jaw Worm,0,1,False,False,Lots of Slimes,13
+1779636610.run,1779636610.6276186,6,Gremlin Gang,28,13,False,False,Lots of Slimes,13
+1779636610.run,1779636610.6276186,11,3 Louse,24,10,False,False,Lots of Slimes,13
+1779636610.run,1779636610.6276186,13,Lots of Slimes,40,4,True,False,Lots of Slimes,13
+1779636652.run,1779636652.1392279,1,2 Louse,1,2,False,False,Slime Boss,16
+1779636652.run,1779636652.1392279,7,Jaw Worm,0,1,False,False,Slime Boss,16
+1779636652.run,1779636652.1392279,10,Cultist,0,1,False,False,Slime Boss,16
+1779636652.run,1779636652.1392279,12,Gremlin Gang,47,6,False,False,Slime Boss,16
+1779636652.run,1779636652.1392279,14,Red Slaver,0,1,False,False,Slime Boss,16
+1779636652.run,1779636652.1392279,16,Slime Boss,56,6,True,False,Slime Boss,16
+1779636682.run,1779636682.3652258,1,Cultist,17,5,False,False,Jaw Worm,4
+1779636682.run,1779636682.3652258,3,Small Slimes,51,7,False,False,Jaw Worm,4
+1779636682.run,1779636682.3652258,4,Jaw Worm,38,5,True,False,Jaw Worm,4
+1779636742.run,1779636742.6260166,1,2 Louse,0,1,False,False,The Guardian,16
+1779636742.run,1779636742.6260166,2,Cultist,0,2,False,False,The Guardian,16
+1779636742.run,1779636742.6260166,4,Jaw Worm,0,1,False,False,The Guardian,16
+1779636742.run,1779636742.6260166,7,3 Louse,20,5,False,False,The Guardian,16
+1779636742.run,1779636742.6260166,10,Looter,15,4,False,False,The Guardian,16
+1779636742.run,1779636742.6260166,11,Lots of Slimes,30,4,False,False,The Guardian,16
+1779636742.run,1779636742.6260166,14,Exordium Wildlife,27,5,False,False,The Guardian,16
+1779636742.run,1779636742.6260166,16,The Guardian,50,6,True,False,The Guardian,16
+1779636763.run,1779636763.0204556,1,2 Louse,18,4,False,False,Cultist,5
+1779636763.run,1779636763.0204556,5,Cultist,65,7,True,False,Cultist,5
+1779636798.run,1779636798.8164399,1,Jaw Worm,0,1,False,False,Lots of Slimes,7
+1779636798.run,1779636798.8164399,3,2 Louse,0,1,False,False,Lots of Slimes,7
+1779636798.run,1779636798.8164399,4,Cultist,0,1,False,False,Lots of Slimes,7
+1779636798.run,1779636798.8164399,5,Gremlin Gang,90,9,False,False,Lots of Slimes,7
+1779636798.run,1779636798.8164399,7,Lots of Slimes,47,5,True,False,Lots of Slimes,7

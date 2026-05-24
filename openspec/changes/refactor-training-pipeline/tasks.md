@@ -11,10 +11,10 @@
 - [x] 2.5 Add optional long-session restart guidance or automation guarded by explicit configuration.
 
 ## 3. Offline Data Pipeline
-- [ ] 3.1 Add an extractor that converts `.run` records into JSONL/CSV episode summaries.
+- [x] 3.1 Add an extractor that converts `.run` records into JSONL/CSV episode summaries.
 - [ ] 3.2 Add an extractor that parses `ai_debug.log` into decision/action/reward traces when available.
 - [ ] 3.3 Add dataset validation checks for missing fields, duplicate runs, malformed actions, and train/eval splits.
-- [ ] 3.4 Add documentation for using extracted data for imitation learning or replay analysis.
+- [x] 3.4 Add documentation for using extracted data for imitation learning or replay analysis.
 
 ## 4. Checkpoint Evaluation
 - [ ] 4.1 Add a checkpoint evaluation script that runs a fixed seed pool with bounded games.

@@ -224,6 +224,20 @@ def get_training_checkpoint_suffix(agent, fallback_episode):
     return f"ep{fallback_episode}"
 
 
+def log_decision_summary(summary, title="Game Summary"):
+    """Log a decision summary without assuming every agent tracks every field."""
+    total_decisions = summary.get("total_decisions", 0)
+    combat_decisions = summary.get("combat_decisions", 0)
+    card_rewards = summary.get("card_rewards", 0)
+    avg_confidence = summary.get("avg_confidence", 0.0)
+
+    logging.info(f"\n{title}:\n")
+    logging.info(f"  Total Decisions: {total_decisions}\n")
+    logging.info(f"  Combat Decisions: {combat_decisions}\n")
+    logging.info(f"  Card Rewards: {card_rewards}\n")
+    logging.info(f"  Avg Confidence: {avg_confidence:.2f}\n")
+
+
 def load_seed_pool(seed_pool_path):
     """Load a seed pool file (one seed per line, # for comments)."""
     path = Path(seed_pool_path)
@@ -911,11 +925,7 @@ if __name__ == "__main__":
         if isinstance(agent, OptimizedAgent):
             try:
                 summary = agent.get_decision_summary()
-                logging.info(f"\nGame Summary:\n")
-                logging.info(f"  Total Decisions: {summary['total_decisions']}\n")
-                logging.info(f"  Combat Decisions: {summary['combat_decisions']}\n")
-                logging.info(f"  Card Rewards: {summary['card_rewards']}\n")
-                logging.info(f"  Avg Confidence: {summary['avg_confidence']:.2f}\n")
+                log_decision_summary(summary)
 
                 # Print deck stats if available
                 deck_stats = agent.get_deck_stats()
@@ -930,11 +940,7 @@ if __name__ == "__main__":
         elif is_combat_rl_agent and hasattr(agent, 'fallback_agent') and isinstance(agent.fallback_agent, OptimizedAgent):
             try:
                 summary = agent.fallback_agent.get_decision_summary()
-                logging.info(f"\nGame Summary (OptimizedAgent fallback):\n")
-                logging.info(f"  Total Decisions: {summary['total_decisions']}\n")
-                logging.info(f"  Combat Decisions: {summary['combat_decisions']}\n")
-                logging.info(f"  Card Rewards: {summary['card_rewards']}\n")
-                logging.info(f"  Avg Confidence: {summary['avg_confidence']:.2f}\n")
+                log_decision_summary(summary, "Game Summary (OptimizedAgent fallback)")
 
                 # Print deck stats if available
                 deck_stats = agent.fallback_agent.get_deck_stats()
