@@ -26,6 +26,7 @@ def _make_game(**kwargs):
         choice_list=[],
         available_commands=[],
         screen=None,
+        potion_available=True,
     )
     defaults.update(kwargs)
     return SimpleNamespace(**defaults)
@@ -66,6 +67,23 @@ def test_combat_mask_nontarget_card():
     mask = encoder.get_action_mask(game)
     assert mask[space.encode_play_card(0, 0)]
     assert not mask[space.encode_play_card(0, 1)]
+
+
+def test_combat_mask_requires_potion_available():
+    encoder = ActionEncoderV2()
+    potion = SimpleNamespace(potion_id="Fire Potion", can_use=True, requires_target=True)
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[],
+        monsters=[_make_monster()],
+        potions=[potion],
+        potion_available=False,
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert not mask[space.encode_use_potion(0, 1)]
 
 
 def test_map_choice_truncation():

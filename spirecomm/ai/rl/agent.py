@@ -980,6 +980,10 @@ class CombatRLAgent:
         logger.info(f"[CombatRLAgent] screen={current_screen}, use_rl_for_combat={self.use_rl_for_combat}, rl_failure_count={self.rl_failure_count}")
 
         if self.use_rl_for_combat and self._is_rl_context(game):
+            potion_action = self._maybe_use_potion_guard(game)
+            if potion_action is not None:
+                return potion_action
+
             logger.info(f"[CombatRLAgent] Calling RL agent for decision")
             try:
                 action = self.rl_agent.get_next_action_in_game(game)
@@ -990,6 +994,16 @@ class CombatRLAgent:
                 if action is None:
                     logger.warning("RL agent returned None, falling back to OptimizedAgent")
                     self.rl_failure_count += 1
+                elif self._should_override_wasteful_end_turn(action, game):
+                    replacement = self._get_non_end_turn_fallback(game)
+                    if replacement is not None:
+                        logger.info(
+                            "[ENERGY_GUARD] Replacing EndTurnAction with %s",
+                            type(replacement).__name__,
+                        )
+                        return replacement
+                    logger.info("[ENERGY_GUARD] No safe replacement found; allowing EndTurnAction")
+                    return action
                 elif self._is_valid_combat_action(action, game):
                     logger.info(f"[CombatRLAgent] RL action validated, returning it")
                     # Valid action for current combat context
@@ -1021,6 +1035,232 @@ class CombatRLAgent:
 
         # Fallback to OptimizedAgent
         return self.fallback_agent.get_next_action_in_game(game)
+
+    def _maybe_use_potion_guard(self, game: Game) -> Optional[Action]:
+        """Use a potion in dangerous combat states before high-exploration RL acts."""
+        from spirecomm.communication.action import PotionAction
+        from spirecomm.spire.screen import ScreenType
+
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        if not getattr(game, "in_combat", False) or not getattr(game, "potion_available", False):
+            return None
+
+        potions = [
+            potion
+            for potion in (getattr(game, "potions", []) or [])
+            if getattr(potion, "potion_id", None) != "Potion Slot"
+            and getattr(potion, "can_use", False)
+        ]
+        if not potions:
+            return None
+
+        alive_monsters = self._alive_monsters(game)
+        if not alive_monsters:
+            return None
+
+        incoming = self._incoming_damage(game)
+        current_hp = max(int(getattr(game, "current_hp", 0) or 0), 1)
+        max_hp = max(int(getattr(game, "max_hp", current_hp) or current_hp), 1)
+        hp_pct = current_hp / max_hp
+        room_type = str(getattr(game, "room_type", "") or "")
+        is_elite = "Elite" in room_type
+        is_boss = "Boss" in room_type
+        high_danger = (
+            incoming >= current_hp
+            or incoming >= max(18, current_hp * 0.45)
+            or (hp_pct <= 0.45 and incoming > 0)
+            or is_elite
+            or is_boss
+            or (len(alive_monsters) >= 2 and incoming >= 10)
+        )
+        if not high_danger:
+            return None
+
+        scored = []
+        for index, potion in enumerate(potions):
+            score = self._score_potion_for_guard(potion, incoming, hp_pct, is_elite, is_boss, len(alive_monsters))
+            if score > 0:
+                scored.append((score, index, potion))
+
+        if not scored:
+            return None
+
+        _, _, potion = max(scored, key=lambda item: item[0])
+        target_index = self._potion_target_index(potion, alive_monsters)
+        logger.info(
+            "[POTION_GUARD] Using %s: incoming=%s hp=%s/%s room=%s monsters=%s target=%s",
+            getattr(potion, "name", "UNKNOWN"),
+            incoming,
+            current_hp,
+            max_hp,
+            room_type,
+            len(alive_monsters),
+            target_index,
+        )
+        if getattr(potion, "requires_target", False):
+            return PotionAction(True, potion=potion, target_index=target_index)
+        return PotionAction(True, potion=potion)
+
+    @staticmethod
+    def _score_potion_for_guard(potion, incoming, hp_pct, is_elite, is_boss, monster_count) -> int:
+        effect_type = str(getattr(potion, "effect_type", "") or "")
+        name = str(getattr(potion, "name", "") or "").lower()
+        score = 0
+        if effect_type in ("heal",) or "heal" in name or "regen" in name or "fairy" in name:
+            if hp_pct <= 0.5 or incoming >= 12:
+                score = 80
+        elif effect_type in ("block", "buff_dexterity") or "block" in name:
+            if incoming >= 12:
+                score = 70
+        elif effect_type.startswith("buff") or effect_type.startswith("debuff"):
+            if is_elite or is_boss or incoming >= 16:
+                score = 60
+        elif effect_type == "damage" or "fire" in name or "explosive" in name:
+            if is_elite or is_boss or monster_count >= 2 or incoming >= 12:
+                score = 65
+        elif effect_type in ("energy", "draw") or "energy" in name or "speed" in name:
+            if incoming >= 12 or is_elite or is_boss:
+                score = 45
+        else:
+            if incoming >= 18 or is_elite or is_boss:
+                score = 35
+        return score
+
+    def _should_override_wasteful_end_turn(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import EndTurnAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, EndTurnAction):
+            return False
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return False
+        if not getattr(game, "play_available", False):
+            return False
+        energy = self._player_energy(game)
+        if energy <= 0:
+            return False
+        playable = self._playable_cards(game, energy)
+        if not playable:
+            return False
+        incoming = self._incoming_damage(game)
+        logger.info(
+            "[ENERGY_GUARD] RL ended turn with energy=%s playable=%s incoming=%s floor=%s turn=%s",
+            energy,
+            len(playable),
+            incoming,
+            getattr(game, "floor", None),
+            getattr(game, "turn", None),
+        )
+        return True
+
+    def _get_non_end_turn_fallback(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import EndTurnAction
+
+        try:
+            fallback_action = self.fallback_agent.get_next_action_in_game(game)
+            if fallback_action is not None and not isinstance(fallback_action, EndTurnAction):
+                return fallback_action
+        except Exception as exc:
+            logger.debug("[ENERGY_GUARD] Fallback action failed: %s", exc)
+
+        return self._first_playable_card_action(game)
+
+    def _first_playable_card_action(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+
+        energy = self._player_energy(game)
+        playable = self._playable_cards(game, energy)
+        if not playable:
+            return None
+
+        target_index = self._best_monster_index(game)
+        for card_index, card in playable:
+            if getattr(card, "has_target", False):
+                if target_index is None:
+                    continue
+                return PlayCardAction(card_index=card_index, target_index=target_index)
+            return PlayCardAction(card_index=card_index)
+        return None
+
+    @staticmethod
+    def _alive_monsters(game: Game):
+        return [
+            monster
+            for monster in (getattr(game, "monsters", []) or [])
+            if getattr(monster, "current_hp", 0) > 0
+            and not getattr(monster, "is_gone", False)
+            and not getattr(monster, "half_dead", False)
+        ]
+
+    @staticmethod
+    def _incoming_damage(game: Game) -> int:
+        total = 0
+        for monster in CombatRLAgent._alive_monsters(game):
+            damage = getattr(monster, "move_adjusted_damage", None)
+            if damage is None:
+                damage = getattr(monster, "move_base_damage", 0) or 0
+            hits = getattr(monster, "move_hits", 1) or 1
+            try:
+                total += int(damage) * int(hits)
+            except Exception:
+                pass
+        return total
+
+    @staticmethod
+    def _player_energy(game: Game) -> int:
+        player = getattr(game, "player", None)
+        energy = getattr(player, "energy", None)
+        if energy is None:
+            energy = getattr(game, "energy", 0)
+        try:
+            return int(energy or 0)
+        except Exception:
+            return 0
+
+    @staticmethod
+    def _playable_cards(game: Game, energy: int):
+        playable = []
+        for index, card in enumerate(getattr(game, "hand", []) or []):
+            if hasattr(card, "is_playable") and not getattr(card, "is_playable", False):
+                continue
+            cost = getattr(card, "cost", None)
+            cost_for_turn = getattr(card, "cost_for_turn", None)
+            effective_cost = cost_for_turn if cost_for_turn is not None else cost
+            if effective_cost is not None and effective_cost >= 0 and effective_cost > energy:
+                continue
+            playable.append((index, card))
+        return playable
+
+    @staticmethod
+    def _best_monster_index(game: Game) -> Optional[int]:
+        monsters = getattr(game, "monsters", []) or []
+        candidates = [
+            (index, monster)
+            for index, monster in enumerate(monsters)
+            if getattr(monster, "current_hp", 0) > 0
+            and not getattr(monster, "is_gone", False)
+            and not getattr(monster, "half_dead", False)
+        ]
+        if not candidates:
+            return None
+        return max(candidates, key=lambda item: getattr(item[1], "current_hp", 0))[0]
+
+    @staticmethod
+    def _potion_target_index(potion, alive_monsters) -> Optional[int]:
+        if not alive_monsters:
+            return None
+        if str(getattr(potion, "effect_type", "") or "") in ("damage", "debuff_weak", "debuff_vulnerable"):
+            target = max(alive_monsters, key=lambda monster: getattr(monster, "current_hp", 0))
+        else:
+            target = min(alive_monsters, key=lambda monster: getattr(monster, "current_hp", 0))
+        target_index = getattr(target, "monster_index", None)
+        if target_index is not None:
+            return target_index
+        try:
+            return alive_monsters.index(target)
+        except ValueError:
+            return None
 
     def _maybe_debounce_reward_screen(self, game: Game) -> Optional[Action]:
         from spirecomm.spire.screen import ScreenType

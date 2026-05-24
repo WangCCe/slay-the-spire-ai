@@ -470,17 +470,18 @@ class ActionEncoderV2:
                 else:
                     mask[self.encode_play_card(card_idx, 0)] = True
 
-        for potion_idx, potion in enumerate((game.potions or [])[:space.MAX_POTION_SLOTS]):
-            if getattr(potion, "potion_id", None) == "Potion Slot":
-                continue
-            if hasattr(potion, "can_use") and not potion.can_use:
-                continue
-            requires_target = getattr(potion, "requires_target", False)
-            if requires_target:
-                for target_index in alive_targets:
-                    mask[self.encode_use_potion(potion_idx, target_index)] = True
-            else:
-                mask[self.encode_use_potion(potion_idx, 0)] = True
+        if getattr(game, "potion_available", True):
+            for potion_idx, potion in enumerate((game.potions or [])[:space.MAX_POTION_SLOTS]):
+                if getattr(potion, "potion_id", None) == "Potion Slot":
+                    continue
+                if hasattr(potion, "can_use") and not potion.can_use:
+                    continue
+                requires_target = getattr(potion, "requires_target", False)
+                if requires_target:
+                    for target_index in alive_targets:
+                        mask[self.encode_use_potion(potion_idx, target_index)] = True
+                else:
+                    mask[self.encode_use_potion(potion_idx, 0)] = True
 
         if getattr(game, "end_available", False):
             mask[space.END_TURN_ACTION] = True
