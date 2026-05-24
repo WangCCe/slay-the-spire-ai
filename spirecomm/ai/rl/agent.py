@@ -814,6 +814,7 @@ def create_agent(
     model_path: Optional[str] = None,
     training: bool = False,
     device: str = "cuda" if torch.cuda.is_available() else "cpu",
+    epsilon: float = 0.0,
     rl_version: Optional[str] = None,
     expert_mix_enabled: Optional[bool] = None,
     expert_mix_prob: Optional[float] = None,
@@ -826,6 +827,7 @@ def create_agent(
         model_path: Path to saved model
         training: Whether in training mode
         device: Device for neural network
+        epsilon: Exploration rate for inference mode
         rl_version: RL space version ("v1" or "v2"); defaults to STS_RL_VERSION or "v1"
 
     Returns:
@@ -843,6 +845,7 @@ def create_agent(
             model_path=model_path,
             training=training,
             device=device,
+            epsilon=epsilon,
             expert_mix_enabled=expert_mix_enabled,
             expert_mix_prob=expert_mix_prob,
             expert_warmup_steps=expert_warmup_steps,
@@ -852,6 +855,7 @@ def create_agent(
         model_path=model_path,
         training=training,
         device=device,
+        epsilon=epsilon,
     )
 
 

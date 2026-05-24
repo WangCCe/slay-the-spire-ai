@@ -28,11 +28,14 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
     - Keep deck small (<20 cards)
     """
 
-    # Expert-based card priority adjustments
+    # Expert-based card priority adjustments.
+    #
+    # These are baseline values. Act 1 applies an additional layer below that
+    # favors immediate damage and penalizes cards that need an engine first.
     PROMOTED_CARDS = {
         'Reaper': 95,        # From tier 4 → tier 1 (critical sustain)
         'Shrug It Off': 98,  # From tier 2 → tier 0 (best block card)
-        'Feel No Pain': 90,  # Core exhaust synergy
+        'Feel No Pain': 72,  # Strong with exhaust support, speculative early
         'Spot Weakness': 85, # Consistent strength gain
         'Disarm': 82,        # Powerful single-target defense
         'Headbutt': 88,      # Retrieval + damage + synergy
@@ -40,8 +43,8 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         'Iron Wave': 75,     # From default → tier 2 (excellent block+damage hybrid)
         'Flame Barrier': 70, # Good block+damage hybrid, synergizes with Body Slam
         'Impervious': 72,    # High block + draw, excellent for block decks
-        'Barricade': 80,     # Core for Body Slam decks, enables infinite block
-        'Entrench': 70,      # Synergizes with Barricade, excellent for Body Slam decks
+        'Barricade': 62,     # Strong payoff, bad before block density exists
+        'Entrench': 45,      # Requires block engine; dangerous speculative Act 1 pick
         'Rage': 75,          # Excellent damage boost, especially with Strength
         'Whirlwind': 78,     # AOE damage, synergizes with Strength
         'Battle Trance': 80,  # Key card draw, essential for consistency
@@ -51,13 +54,24 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         'Feed': 72,          # Damage + max HP gain, excellent sustain
         'Heavy Blade': 75,   # Scales well with Strength, efficient damage
         'Fiend Fire': 70,     # Powerful AOE damage, synergizes with exhaust
+        'Hemokinesis': 84,   # Act 1 premium frontloaded damage
+        'Carnage': 83,       # Act 1 premium frontloaded damage
+        'Pommel Strike': 84,
+        'Anger': 82,
+        'Clothesline': 82,
+        'Uppercut': 84,
+        'Cleave': 80,
     }
 
     DEMOTED_CARDS = {
         'Searing Blow': 20,  # Requires heavy upgrade investment
         'Wild Strike': 25,   # Adds random card, bloats deck
-        'Flex': 65,          # Improved priority - good for strength decks and immediate use
-        'Clash': 40,         # Still worse than other attacks
+        'Flex': 45,          # Needs payoff; weak standalone reward
+        'Clash': 28,         # Unreliable once skills/statuses enter the deck
+        'Body Slam': 38,     # Great only after block density exists
+        'Limit Break': 35,   # Great only after strength support exists
+        'Warcry': 30,        # Low-impact Act 1 filler
+        'Rupture': 25,       # Needs self-damage engine
     }
 
     # Archetype-specific bonuses
@@ -89,12 +103,32 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         },
     }
 
-    # Act 1 damage priorities (early game aggression)
+    # Act 1 damage priorities (early game survival through frontloaded damage)
     ACT_1_DAMAGE_PRIORITY = {
         'Whirlwind', 'Pommel Strike', 'Cleave', 'Fiend Fire',
-        'Inflame', 'Body Slam', 'Rampage', 'Heavy Blade', 'Headbutt',
+        'Inflame', 'Rampage', 'Heavy Blade', 'Headbutt',
         'Uppercut', 'Spot Weakness', 'Twin Strike', 'Reaper',
+        'Hemokinesis', 'Carnage', 'Anger', 'Clothesline',
     }
+
+    ACT_1_PREMIUM_FRONTLOAD = {
+        'Pommel Strike', 'Anger', 'Clothesline', 'Uppercut',
+        'Hemokinesis', 'Carnage', 'Cleave', 'Headbutt',
+        'Twin Strike', 'Iron Wave', 'Whirlwind',
+    }
+
+    SPECULATIVE_ENGINE_CARDS = {
+        'Body Slam', 'Limit Break', 'Entrench', 'Barricade',
+        'Feel No Pain', 'Dark Embrace', 'Rupture', 'Warcry',
+    }
+
+    STRENGTH_SUPPORT = {'Demon Form', 'Inflame', 'Spot Weakness', 'Flex'}
+    BLOCK_SUPPORT = {
+        'Shrug It Off', 'Flame Barrier', 'Impervious', 'Power Through',
+        'Ghostly Armor', 'Metallicize', 'Iron Wave', 'True Grit',
+    }
+    EXHAUST_SUPPORT = {'Corruption', 'True Grit', 'Second Wind', 'Fiend Fire', 'Sever Soul'}
+    SELF_DAMAGE_SUPPORT = {'Offering', 'Bloodletting', 'Hemokinesis', 'Combust', 'Brutality'}
 
     # HP-cost cards (spend HP to play)
     HP_COST_CARDS = {
@@ -140,11 +174,12 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         # 4. Energy curve consideration
         energy_modifier = self._evaluate_energy_curve(card, context)
 
-        # 5. Act 1 aggression bonus
+        # 5. Act 1 frontload/support-aware adjustment
         act_bonus = self._calculate_act_1_bonus(card, context)
+        support_adjustment = self._calculate_support_adjustment(card, context)
 
         # Final score
-        final_score = (baseline * hp_modifier) + archetype_bonus + act_bonus
+        final_score = (baseline * hp_modifier) + archetype_bonus + act_bonus + support_adjustment
 
         # Apply energy curve modifier as multiplier
         final_score *= energy_modifier
@@ -274,15 +309,58 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         if context.act != 1:
             return 0.0
 
-        # Act 1 damage priority
-        if card.card_id in self.ACT_1_DAMAGE_PRIORITY:
-            deck_size = len(context.game.deck) if hasattr(context.game, 'deck') else 10
-            if deck_size <= 12:
-                return 15  # Early Act 1, prioritize damage
+        deck_size = len(context.game.deck) if hasattr(context.game, 'deck') else 10
+        floor = getattr(context, 'floor', 0) or 0
+        bonus = 0.0
 
-        # Win condition cards always good in Act 1
-        if card.card_id in ['Demon Form', 'Limit Break', 'Corruption', 'Barricade']:
-            return 20
+        if card.card_id in self.ACT_1_PREMIUM_FRONTLOAD:
+            if deck_size <= 13 or floor <= 8:
+                bonus += 22
+            else:
+                bonus += 10
+        elif card.card_id in self.ACT_1_DAMAGE_PRIORITY:
+            if deck_size <= 13:
+                bonus += 14
+
+        # True solo win conditions remain attractive, but slower engines should
+        # not beat first-cycle damage before the deck can survive Act 1 elites.
+        if card.card_id in ['Demon Form', 'Corruption']:
+            bonus += 14
+        elif card.card_id in ['Limit Break', 'Barricade']:
+            bonus -= 20
+
+        if card.card_id in self.SPECULATIVE_ENGINE_CARDS and deck_size <= 14:
+            bonus -= 18
+
+        return bonus
+
+    def _calculate_support_adjustment(self, card: Card, context: DecisionContext) -> float:
+        """Reward payoff cards only when the current deck can actually support them."""
+        deck = list(getattr(context.game, 'deck', []) or [])
+        card_ids = [getattr(c, 'card_id', '') for c in deck]
+
+        def count(names):
+            return sum(1 for card_id in card_ids if card_id in names)
+
+        strength_support = count(self.STRENGTH_SUPPORT)
+        block_support = count(self.BLOCK_SUPPORT)
+        exhaust_support = count(self.EXHAUST_SUPPORT)
+        self_damage_support = count(self.SELF_DAMAGE_SUPPORT)
+
+        card_id = card.card_id
+        if card_id == 'Limit Break':
+            return 28 if strength_support >= 2 else -35
+        if card_id == 'Body Slam':
+            return 30 if block_support >= 3 else -30
+        if card_id in {'Entrench', 'Barricade'}:
+            return 24 if block_support >= 3 else -32
+        if card_id in {'Feel No Pain', 'Dark Embrace'}:
+            return 24 if exhaust_support >= 2 else -22
+        if card_id == 'Rupture':
+            return 26 if self_damage_support >= 2 else -34
+        if card_id == 'Flex':
+            has_payoff = any(card_id in card_ids for card_id in ('Heavy Blade', 'Limit Break', 'Reaper'))
+            return 12 if has_payoff else -18
 
         return 0.0
 

@@ -1839,6 +1839,45 @@ class OptimizedAgent(SimpleAgent):
                         )
                     return CancelAction()
 
+            if self.deck_strategy is not None:
+                strategy_filtered = []
+                for card in pickable_cards:
+                    try:
+                        should_pick, reason = self.deck_strategy.should_pick_card(
+                            card, context
+                        )
+                    except Exception as exc:
+                        logging.info(
+                            "[REWARD] Deck strategy check failed for %s: %s",
+                            getattr(card, "card_id", card),
+                            exc,
+                        )
+                        should_pick = True
+                        reason = "strategy unavailable"
+                    logging.info(
+                        "[REWARD] Deck strategy: %s -> %s (%s)",
+                        getattr(card, "card_id", card),
+                        "take" if should_pick else "skip",
+                        reason,
+                    )
+                    if should_pick:
+                        strategy_filtered.append(card)
+
+                if strategy_filtered:
+                    pickable_cards = strategy_filtered
+                elif self.game.screen.can_skip:
+                    logging.info(
+                        "[REWARD] Deck strategy rejected all cards - skipping reward"
+                    )
+                    self.skipped_cards = True
+                    if self.game_tracker:
+                        self.game_tracker.record_card_choice(
+                            chosen=None,
+                            skipped=len(reward_cards),
+                            available=[c.card_id for c in reward_cards],
+                        )
+                    return CancelAction()
+
             # Limit Break conditional check (A20 expert strategy)
             # Only pick Limit Break when we have Strength support
             limit_break_card = next(

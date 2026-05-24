@@ -31,22 +31,24 @@ class IroncladDeckStrategy:
     - Act-based strategy (Act 1 aggressive, Act 2+ conservative)
     """
 
-    # Tier 0/1 cards (always acceptable)
+    # Tier 0/1 cards (usually acceptable; Act 1 support checks still apply)
     TIER_0_1_CARDS = {
         # Tier 0 (Game-winning)
-        'Limit Break', 'Demon Form', 'Corruption', 'Barricade',
+        'Demon Form', 'Corruption',
 
         # Tier 1 (Excellent)
         'Reaper', 'Shrug It Off', 'Feel No Pain', 'Spot Weakness',
         'Disarm', 'Headbutt', 'Uppercut', 'Pommel Strike',
-        'Whirlwind', 'True Grit', 'Body Slam', 'Inflame',
+        'Whirlwind', 'True Grit', 'Inflame',
+        'Hemokinesis', 'Carnage', 'Anger', 'Clothesline', 'Cleave',
     }
 
     # Act 1 damage priorities
     ACT_1_DAMAGE_PRIORITY = {
         'Whirlwind', 'Pommel Strike', 'Cleave', 'Fiend Fire',
-        'Inflame', 'Body Slam', 'Rampage', 'Heavy Blade', 'Headbutt',
+        'Inflame', 'Rampage', 'Heavy Blade', 'Headbutt',
         'Uppercut', 'Spot Weakness', 'Twin Strike', 'Reaper',
+        'Hemokinesis', 'Carnage', 'Anger', 'Clothesline',
     }
 
     # HP-cost cards (spend HP to play, avoid at low HP)
@@ -58,7 +60,22 @@ class IroncladDeckStrategy:
     AVOID_CARDS = {
         'Searing Blow',  # Needs too many upgrades
         'Wild Strike',   # Adds random cards
+        'Clash',         # Too unreliable once the deck has skills/statuses
+        'Warcry',        # Low-impact Act 1 filler
     }
+
+    SPECULATIVE_ENGINE_CARDS = {
+        'Body Slam', 'Limit Break', 'Entrench', 'Barricade',
+        'Feel No Pain', 'Dark Embrace', 'Rupture',
+    }
+
+    STRENGTH_SUPPORT = {'Demon Form', 'Inflame', 'Spot Weakness', 'Flex'}
+    BLOCK_SUPPORT = {
+        'Shrug It Off', 'Flame Barrier', 'Impervious', 'Power Through',
+        'Ghostly Armor', 'Metallicize', 'Iron Wave', 'True Grit',
+    }
+    EXHAUST_SUPPORT = {'Corruption', 'True Grit', 'Second Wind', 'Fiend Fire', 'Sever Soul'}
+    SELF_DAMAGE_SUPPORT = {'Offering', 'Bloodletting', 'Hemokinesis', 'Combust', 'Brutality'}
 
     # Upgrade priorities based on expert input
     UPGRADE_PRIORITIES = {
@@ -130,19 +147,22 @@ class IroncladDeckStrategy:
             if not archetype_ok:
                 return (False, reason)
 
-        # Rule 5: Act 1 aggression
-        if context.act == 1 and deck_size <= 12:
+        # Rule 5: Act 1 frontload first, engines only with support
+        if context.act == 1:
+            supported, reason = self._act_1_card_supported(card, context)
+            if not supported:
+                return (False, reason)
+
+        if context.act == 1 and deck_size <= 13:
             # Prioritize damage in Act 1
             if card.card_id in self.ACT_1_DAMAGE_PRIORITY:
                 return (True, f"Act 1 damage priority (deck size: {deck_size})")
 
         # Rule 6: Win condition cards always good
-        if card.card_id in ['Demon Form', 'Limit Break', 'Corruption', 'Barricade']:
+        if card.card_id in ['Demon Form', 'Corruption']:
             # But limit to 1 copy except特殊情况
             if deck_size > 0:
                 current_count = sum(1 for c in context.game.deck if c.card_id == card.card_id)
-                if card.card_id == 'Limit Break' and current_count >= 1:
-                    return (False, "Already have Limit Break (doesn't exhaust when upgraded)")
                 if card.card_id == 'Demon Form' and current_count >= 1:
                     # Second Demon Form is okay but low priority
                     return (True, "Second Demon Form (low priority)")
@@ -162,6 +182,39 @@ class IroncladDeckStrategy:
             return (True, f"Acceptable card (score: {baseline_score})")
         else:
             return (False, f"Weak card (score: {baseline_score})")
+
+    def _act_1_card_supported(self, card: Card, context: DecisionContext) -> Tuple[bool, str]:
+        """Avoid speculative Act 1 rewards before their support package exists."""
+        if card.card_id not in self.SPECULATIVE_ENGINE_CARDS:
+            return (True, "Not a speculative Act 1 engine card")
+
+        deck = list(getattr(context.game, 'deck', []) or [])
+        deck_ids = [getattr(c, 'card_id', '') for c in deck]
+
+        def count(names):
+            return sum(1 for card_id in deck_ids if card_id in names)
+
+        if card.card_id == 'Limit Break':
+            if count(self.STRENGTH_SUPPORT) >= 2:
+                return (True, "Limit Break has strength support")
+            return (False, "Skipping Limit Break without strength support")
+
+        if card.card_id in {'Body Slam', 'Entrench', 'Barricade'}:
+            if count(self.BLOCK_SUPPORT) >= 3:
+                return (True, f"{card.card_id} has block support")
+            return (False, f"Skipping {card.card_id} without block support")
+
+        if card.card_id in {'Feel No Pain', 'Dark Embrace'}:
+            if count(self.EXHAUST_SUPPORT) >= 2:
+                return (True, f"{card.card_id} has exhaust support")
+            return (False, f"Skipping {card.card_id} without exhaust support")
+
+        if card.card_id == 'Rupture':
+            if count(self.SELF_DAMAGE_SUPPORT) >= 2:
+                return (True, "Rupture has self-damage support")
+            return (False, "Skipping Rupture without self-damage support")
+
+        return (True, "Supported")
 
     def get_upgrade_priority(self, card: Card, context: DecisionContext) -> int:
         """

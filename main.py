@@ -263,6 +263,7 @@ def create_agent(
     player_class=None,
     training=False,
     model_path=None,
+    epsilon=0.0,
     elite_mode=None,
     rl_version=None,
     expert_mix_enabled=None,
@@ -278,6 +279,7 @@ def create_agent(
         player_class: Player class (required for RL agent, optional for others)
         training: Whether RL agent should be in training mode
         model_path: Path to pre-trained RL model checkpoint
+        epsilon: Exploration rate for non-training RL inference
         elite_mode: Elite routing mode ("conservative" or "aggressive", default: "aggressive")
         rl_version: RL space version ("v1" or "v2"), defaults to STS_RL_VERSION or "v1"
 
@@ -337,6 +339,7 @@ def create_agent(
                 player_class=player_class,
                 training=training,
                 model_path=model_path,
+                epsilon=epsilon,
                 elite_mode=elite_mode,
                 rl_version=rl_version,
                 expert_mix_enabled=expert_mix_enabled,
@@ -393,6 +396,7 @@ def create_agent(
             agent = create_rl_agent(
                 training=training,
                 model_path=model_path,
+                epsilon=epsilon,
                 rl_version=rl_version,
                 expert_mix_enabled=expert_mix_enabled,
                 expert_mix_prob=expert_mix_prob,
@@ -439,6 +443,7 @@ if __name__ == "__main__":
     max_games = None
     training = False
     model_path = None
+    epsilon = 0.0
     rl_version = None
     expert_mix_enabled = None
     expert_mix_prob = None
@@ -457,6 +462,7 @@ if __name__ == "__main__":
             "  python main.py --agent combat_rl                # Combat-only RL with OptimizedAgent fallback\n"
             "  python main.py --agent combat_rl --train        # Train combat-only RL\n"
             "  python main.py --agent rl --model checkpoints/model.pth  # Load trained model\n"
+            "  python main.py --agent combat_rl --rl-version v2 --eval --max-games 20\n"
             "  python main.py --agent rl --rl-version v2       # Use RL v2 action/observation space\n"
             "  python main.py --agent rl --rl-version v2 --train --expert-mix --expert-mix-prob 0.3 --expert-mix-warmup 5000\n"
             "  python main.py -a 10                            # Ascension level 10\n"
@@ -492,9 +498,21 @@ if __name__ == "__main__":
         help="Enable RL agent training mode (requires --agent rl)",
     )
     parser.add_argument(
+        "--eval",
+        action="store_true",
+        help="Run RL agent in low-exploration evaluation mode; auto-loads latest checkpoint if --model is omitted",
+    )
+    parser.add_argument(
         "--model",
         metavar="PATH",
         help="Path to pre-trained RL model checkpoint (requires --agent rl)",
+    )
+    parser.add_argument(
+        "--epsilon",
+        type=float,
+        default=None,
+        metavar="P",
+        help="RL inference exploration probability (0-1). Defaults to 0, or 0.05 with --eval.",
     )
     parser.add_argument(
         "--rl-version",
@@ -582,6 +600,16 @@ if __name__ == "__main__":
         logging.info(f"Agent type set to: {agent_type}")
 
     # RL-specific options
+    if args.eval and args.train:
+        logging.error("--eval and --train cannot be used together")
+        sys.exit(1)
+
+    if args.eval and agent_type not in ["rl", "combat_rl"]:
+        logging.warning("--eval requires --agent rl or --agent combat_rl, ignoring")
+        eval_mode = False
+    else:
+        eval_mode = args.eval
+
     if args.train and agent_type not in ["rl", "combat_rl"]:
         logging.warning("--train flag requires --agent rl or --agent combat_rl, ignoring")
         training = False
@@ -593,6 +621,22 @@ if __name__ == "__main__":
         model_path = None
     else:
         model_path = args.model
+
+    if args.epsilon is not None:
+        if not (0.0 <= args.epsilon <= 1.0):
+            logging.error(f"--epsilon must be between 0 and 1, got {args.epsilon}")
+            sys.exit(1)
+        epsilon = args.epsilon
+    elif eval_mode:
+        epsilon = 0.05
+
+    if eval_mode and model_path is None:
+        auto_model_path = find_latest_checkpoint()
+        if auto_model_path:
+            model_path = auto_model_path
+            logging.info("Evaluation mode auto-loading latest checkpoint: %s", model_path)
+        else:
+            logging.warning("Evaluation mode requested but no checkpoint was found")
 
     if args.rl_version is not None:
         rl_version = args.rl_version
@@ -635,6 +679,9 @@ if __name__ == "__main__":
             os.path.join("checkpoints_archive", "rl"),
             os.path.join("checkpoints", "rl_model_ep*.pth"),
         )
+    elif eval_mode:
+        logging.info("RL Agent evaluation mode enabled")
+        logging.info("  Epsilon: %.3f", epsilon)
 
     if model_path:
         logging.info(f"Loading RL model from: {model_path}")
@@ -705,6 +752,7 @@ if __name__ == "__main__":
         player_class=chosen_class,
         training=training,
         model_path=model_path,
+        epsilon=epsilon,
         elite_mode=elite_route_mode,
         rl_version=rl_version,
         expert_mix_enabled=expert_mix_enabled,

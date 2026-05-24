@@ -69,7 +69,7 @@ class AdaptiveMapRouter:
 
         # Act 1: Character-specific strategies
         if act == 1:
-            base_priority = self._adjust_act_1_priority(symbol, base_priority, hp_pct, floor)
+            base_priority = self._adjust_act_1_priority(symbol, base_priority, hp_pct, floor, context)
 
         # Act 2+: More conservative
         elif act >= 2:
@@ -80,15 +80,25 @@ class AdaptiveMapRouter:
 
         return base_priority
 
-    def _adjust_act_1_priority(self, symbol: str, base: int, hp_pct: float, floor: int) -> int:
-        """Act 1 priorities - Ironclad prioritizes upgrades and avoids elites by default."""
+    def _adjust_act_1_priority(self, symbol: str, base: int, hp_pct: float, floor: int, context: DecisionContext) -> int:
+        """Act 1 priorities - Ironclad takes elites only after readiness checks."""
         # Ironclad prioritizes rest sites for card upgrades, avoids elites consistently
         if self.player_class == 'IRONCLAD':
             if symbol == 'E':  # Elite
                 # Optional elite routing mode for experimentation.
                 if self.elite_mode == "aggressive":
-                    # Strongly prefer elites regardless of HP in Act 1.
-                    return base + 1000
+                    readiness = self._act_1_elite_readiness_score(context)
+                    if readiness >= 5:
+                        return base + 450 + readiness * 30
+                    if readiness >= 3 and floor >= 8 and hp_pct >= 0.7:
+                        return base + 80
+                    logging.getLogger(__name__).info(
+                        "[MAP_ROUTING] Act1 elite gated: floor=%s hp=%.1f%% readiness=%s",
+                        floor,
+                        hp_pct * 100,
+                        readiness,
+                    )
+                    return base - 260
                 # Consistently avoid elites regardless of floor or HP
                 # Prioritize building deck strength through upgrades first
                 if floor <= 7:
@@ -125,6 +135,64 @@ class AdaptiveMapRouter:
                 return base - 100  # More cautious for Defect in A20
 
         return base
+
+    def _act_1_elite_readiness_score(self, context: DecisionContext) -> int:
+        """Estimate if the deck is ready for Nob/Lagavulin/Sentries."""
+        game = getattr(context, "game", None)
+        deck = list(getattr(game, "deck", []) or [])
+        potions = list(getattr(game, "potions", []) or [])
+        relics = list(getattr(game, "relics", []) or [])
+
+        card_ids = [getattr(card, "card_id", "") for card in deck]
+        upgraded_ids = {
+            getattr(card, "card_id", "")
+            for card in deck
+            if int(getattr(card, "upgrades", 0) or 0) > 0
+        }
+
+        premium_attacks = {
+            "Pommel Strike", "Anger", "Clothesline", "Uppercut",
+            "Hemokinesis", "Carnage", "Cleave", "Headbutt",
+            "Twin Strike", "Whirlwind", "Iron Wave", "Perfected Strike",
+        }
+        strong_blocks = {
+            "Shrug It Off", "Flame Barrier", "Power Through",
+            "Ghostly Armor", "Metallicize", "Impervious", "Disarm",
+        }
+        fight_potions = {
+            "Fire Potion", "Attack Potion", "Strength Potion", "Flex Potion",
+            "Dexterity Potion", "Skill Potion", "Power Potion", "Fear Potion",
+            "Duplication Potion", "Distilled Chaos", "Explosive Potion",
+            "Swift Potion", "Energy Potion", "Entropic Brew",
+        }
+
+        score = 0
+        score += min(4, sum(1 for card_id in card_ids if card_id in premium_attacks))
+        score += min(2, sum(1 for card_id in card_ids if card_id in strong_blocks))
+        if "Bash" in upgraded_ids:
+            score += 1
+        score += min(
+            2,
+            sum(
+                1
+                for potion in potions
+                if getattr(potion, "potion_id", "") in fight_potions
+                and getattr(potion, "can_use", True)
+            ),
+        )
+        score += min(2, max(0, len(relics) - 1))
+        if context.player_hp_pct >= 0.85:
+            score += 1
+        elif context.player_hp_pct < 0.65:
+            score -= 2
+
+        floor = getattr(context, "floor", 0) or 0
+        if floor <= 6:
+            score -= 2
+        elif floor >= 10:
+            score += 1
+
+        return score
 
     def _adjust_act_2_plus_priority(self, symbol: str, base: int, hp_pct: float) -> int:
         """Act 2+ priorities - favor elites and events, avoid normal monsters."""
