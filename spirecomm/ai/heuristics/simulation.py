@@ -652,6 +652,8 @@ class FastCombatSimulator:
                      target: Optional[Monster], target_index: int, context: DecisionContext = None):
         """Apply attack card effects with proper damage calculation."""
         base_damage = getattr(card, 'damage', 0)
+        if base_damage is None:
+            base_damage = 0
         if base_damage == 0 or not hasattr(card, 'damage'):
             # Use game data for more accurate damage estimation
             card_name = card.card_id.replace('+', '').replace('+', '')  # Remove upgrade suffix

@@ -289,6 +289,10 @@ class BuyCardAction(ChooseAction):
             raise ValueError(f"Card object missing 'name' attribute: {card}")
         super().__init__(name=card.name)
 
+    def execute(self, coordinator):
+        super().execute(coordinator)
+        coordinator.add_action_to_queue(WaitAction(timeout=1))
+
 
 class BuyPotionAction(ChooseAction):
     """An action to buy a potion in a shop. Currently, buys the first available potion of the same name."""
@@ -304,6 +308,7 @@ class BuyPotionAction(ChooseAction):
         if not has_space:
             raise Exception("Cannot buy potion because potion slots are full.")
         super().execute(coordinator)
+        coordinator.add_action_to_queue(WaitAction(timeout=1))
 
 
 class BuyRelicAction(ChooseAction):
@@ -311,6 +316,10 @@ class BuyRelicAction(ChooseAction):
 
     def __init__(self, relic):
         super().__init__(name=relic.name)
+
+    def execute(self, coordinator):
+        super().execute(coordinator)
+        coordinator.add_action_to_queue(WaitAction(timeout=1))
 
 
 class BuyPurgeAction(Action):

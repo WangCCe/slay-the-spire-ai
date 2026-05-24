@@ -209,6 +209,21 @@ def backup_latest_checkpoint(backup_dir, pattern):
         return None
 
 
+def get_training_checkpoint_suffix(agent, fallback_episode):
+    """Build a checkpoint suffix that remains unique across bounded batches."""
+    trainer = None
+    if hasattr(agent, "trainer") and agent.trainer is not None:
+        trainer = agent.trainer
+    elif hasattr(agent, "rl_agent") and hasattr(agent.rl_agent, "trainer"):
+        trainer = agent.rl_agent.trainer
+
+    if trainer is not None:
+        episode = getattr(trainer, "episode_count", fallback_episode)
+        steps = getattr(trainer, "total_steps", 0)
+        return f"ep{episode}_steps{steps}"
+    return f"ep{fallback_episode}"
+
+
 def load_seed_pool(seed_pool_path):
     """Load a seed pool file (one seed per line, # for comments)."""
     path = Path(seed_pool_path)
@@ -804,7 +819,8 @@ if __name__ == "__main__":
                 os.makedirs("checkpoints", exist_ok=True)
 
                 # Save checkpoint
-                checkpoint_path = f"checkpoints/rl_model_ep{game_count}.pth"
+                suffix = get_training_checkpoint_suffix(agent, game_count)
+                checkpoint_path = f"checkpoints/rl_model_{suffix}.pth"
                 agent.save_model(checkpoint_path, episode=game_count)
 
                 logging.info(f"RL Training checkpoint saved: {checkpoint_path}")
@@ -833,7 +849,8 @@ if __name__ == "__main__":
                 os.makedirs("checkpoints", exist_ok=True)
 
                 # Save checkpoint with combat_rl naming
-                checkpoint_path = f"checkpoints/rl_combat_model_ep{game_count}.pth"
+                suffix = get_training_checkpoint_suffix(agent, game_count)
+                checkpoint_path = f"checkpoints/rl_combat_model_{suffix}.pth"
                 agent.save_model(checkpoint_path, episode=game_count)
 
                 logging.info(f"Combat RL Training checkpoint saved: {checkpoint_path}")

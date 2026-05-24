@@ -49,6 +49,7 @@ class SimpleAgent:
         self.choose_good_card = False
         self.skipped_cards = False
         self.visited_shop = False
+        self.shop_purchase_made = False
         self.map_route = []
         self._last_route_hp_pct = None
         self._last_route_floor = None
@@ -468,9 +469,11 @@ class SimpleAgent:
         elif self.game.screen_type == ScreenType.SHOP_ROOM:
             if not self.visited_shop:
                 self.visited_shop = True
+                self.shop_purchase_made = False
                 return ChooseShopkeeperAction()
             else:
                 self.visited_shop = False
+                self.shop_purchase_made = False
                 return ProceedAction()
         elif self.game.screen_type == ScreenType.REST:
             return self.choose_rest_option()
@@ -539,6 +542,10 @@ class SimpleAgent:
                     proceed_available,
                 )
 
+                if self.shop_purchase_made:
+                    logging.info("[SHOP_SCREEN] Purchase already made in this shop, exiting")
+                    return self._exit_shop()
+
                 # Validate screen.cards exists
                 valid_cards = self._validate_shop_cards(screen)
                 if not valid_cards:
@@ -552,6 +559,7 @@ class SimpleAgent:
                     strikes = [c for c in self.game.deck if c.card_id == "Strike_R"]
                     defends = [c for c in self.game.deck if c.card_id == "Defend_R"]
                     if len(strikes) >= 1 or len(defends) >= 1:
+                        self.shop_purchase_made = True
                         return ChooseAction(name="purge")
 
                 # Priority 2: Buy cards that are good for the deck
@@ -559,16 +567,19 @@ class SimpleAgent:
                     sorted_cards = self.priorities.get_sorted_cards(valid_cards)
                     for card in sorted_cards:
                         if self._should_buy_card(card, gold, purge_cost, screen):
+                            self.shop_purchase_made = True
                             return BuyCardAction(card)
                 else:
                     for card in valid_cards:
                         if gold >= card.price and not self.priorities.should_skip(card):
+                            self.shop_purchase_made = True
                             return BuyCardAction(card)
 
                 # Priority 3: Buy useful relics (consider price and value)
                 if hasattr(screen, "relics") and screen.relics:
                     for relic in screen.relics:
                         if self._should_buy_relic(relic, gold):
+                            self.shop_purchase_made = True
                             return BuyRelicAction(relic)
 
                 # Priority 4: Buy potions if needed and affordable
@@ -589,6 +600,7 @@ class SimpleAgent:
                                     "Strawberry",
                                 ]
                                 if potion.name in useful_potions:
+                                    self.shop_purchase_made = True
                                     return BuyPotionAction(potion)
                         except Exception as e:
                             potion_name = getattr(potion, "name", "UNKNOWN")
@@ -603,6 +615,7 @@ class SimpleAgent:
 
                 # Priority 5: Purge as last resort if we have extra gold
                 if screen.purge_available and gold >= purge_cost:
+                    self.shop_purchase_made = True
                     return ChooseAction(name="purge")
 
                 # No good purchases available
@@ -1280,9 +1293,6 @@ class OptimizedAgent(SimpleAgent):
                 combat_mode = select_combat_mode_with_monster_data(context)
             except Exception as e:
                 # Fallback to original method if enhanced version fails
-                import logging
-
-                logger = logging.getLogger(__name__)
                 logger.warning(
                     f"Enhanced combat mode selection failed: {e}, falling back to basic mode"
                 )
