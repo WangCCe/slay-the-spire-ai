@@ -3,9 +3,13 @@ param(
     [string]$GameDir = "D:\SteamLibrary\steamapps\common\SlayTheSpire",
     [string]$ProjectRoot = "D:\PycharmProjects\slay-the-spire-ai",
     [string]$ModTheSpireJar = "D:\SteamLibrary\steamapps\workshop\content\646570\1605060445\ModTheSpire.jar",
+    [string]$ModIds = "basemod,CommunicationMod,superfastmode,StSExporter",
+    [ValidateSet("IRONCLAD", "THE_SILENT", "DEFECT", "WATCHER")]
+    [string]$Character = "IRONCLAD",
     [int]$ShutdownWaitSeconds = 4,
     [switch]$DryRun,
     [switch]$SkipLaunch,
+    [switch]$FreshRun,
     [switch]$UseLauncher
 )
 
@@ -162,10 +166,50 @@ function Find-JavaLauncher {
     throw "Could not find javaw.exe or java.exe. Expected bundled Java at $bundledJava."
 }
 
+function Move-AutosavesForFreshRun {
+    param(
+        [string]$GameDir,
+        [string]$Character,
+        [switch]$DryRun
+    )
+
+    $saveDir = Join-Path $GameDir "saves"
+    $backupRoot = Join-Path $saveDir "fresh_run_backups"
+    $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+    $backupDir = Join-Path $backupRoot $timestamp
+    $saveNames = @("$Character.autosave", "$Character.autosave.backUp")
+    $foundAny = $false
+
+    Write-Host "[restart-sts] fresh run requested for $Character."
+
+    foreach ($saveName in $saveNames) {
+        $source = Join-Path $saveDir $saveName
+        if (-not (Test-Path -LiteralPath $source)) {
+            continue
+        }
+
+        $foundAny = $true
+        $destination = Join-Path $backupDir $saveName
+        if ($DryRun) {
+            Write-Host "[restart-sts] DRY RUN would move `"$source`" -> `"$destination`""
+            continue
+        }
+
+        New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
+        Move-Item -LiteralPath $source -Destination $destination -Force
+        Write-Host "[restart-sts] moved `"$source`" -> `"$destination`""
+    }
+
+    if (-not $foundAny) {
+        Write-Host "[restart-sts] no $Character autosave files found under $saveDir."
+    }
+}
+
 function Start-ModTheSpire {
     param(
         [string]$GameDir,
         [string]$ModTheSpireJar,
+        [string]$ModIds,
         [switch]$UseLauncher,
         [switch]$DryRun
     )
@@ -192,11 +236,11 @@ function Start-ModTheSpire {
     }
 
     if ($DryRun) {
-        Write-Host "[restart-sts] DRY RUN would start direct ModTheSpire: `"$java`" -jar `"$ModTheSpireJar`" --skip-launcher"
+        Write-Host "[restart-sts] DRY RUN would start direct ModTheSpire: `"$java`" -jar `"$ModTheSpireJar`" --skip-launcher --skip-intro --mods $ModIds"
         return
     }
 
-    Start-Process -FilePath $java -ArgumentList @("-jar", "`"$ModTheSpireJar`"", "--skip-launcher") -WorkingDirectory $GameDir
+    Start-Process -FilePath $java -ArgumentList @("-jar", "`"$ModTheSpireJar`"", "--skip-launcher", "--skip-intro", "--mods", $ModIds) -WorkingDirectory $GameDir
     Write-Host "[restart-sts] started ModTheSpire directly from $ModTheSpireJar"
 }
 
@@ -232,9 +276,13 @@ if (-not $DryRun -and $targets.Count -gt 0 -and $ShutdownWaitSeconds -gt 0) {
     Start-Sleep -Seconds $ShutdownWaitSeconds
 }
 
+if ($FreshRun) {
+    Move-AutosavesForFreshRun $GameDir $Character -DryRun:$DryRun
+}
+
 if ($SkipLaunch) {
     Write-Host "[restart-sts] launch skipped."
     exit 0
 }
 
-Start-ModTheSpire $GameDir $ModTheSpireJar -UseLauncher:$UseLauncher -DryRun:$DryRun
+Start-ModTheSpire $GameDir $ModTheSpireJar $ModIds -UseLauncher:$UseLauncher -DryRun:$DryRun

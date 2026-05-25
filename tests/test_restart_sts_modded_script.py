@@ -78,4 +78,47 @@ def test_restart_script_direct_launches_modthespire_without_launcher_by_default(
     assert result.returncode == 0, output
     assert "ModTheSpire.jar" in output
     assert "--skip-launcher" in output
+    assert "--skip-intro" in output
+    assert "--mods" in output
+    assert "basemod,CommunicationMod,superfastmode,StSExporter" in output
     assert "mts-launcher.jar" not in output
+
+
+def test_restart_script_fresh_run_dry_run_reports_autosave_backup(tmp_path):
+    shell = shutil.which("pwsh") or shutil.which("powershell")
+    assert shell is not None
+
+    saves = tmp_path / "saves"
+    saves.mkdir()
+    autosave = saves / "IRONCLAD.autosave"
+    backup = saves / "IRONCLAD.autosave.backUp"
+    autosave.write_text("active save", encoding="utf-8")
+    backup.write_text("backup save", encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            shell,
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(SCRIPT),
+            "-GameDir",
+            str(tmp_path),
+            "-FreshRun",
+            "-DryRun",
+            "-SkipLaunch",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, output
+    assert "[restart-sts] fresh run requested for IRONCLAD." in output
+    assert "DRY RUN would move" in output
+    assert "IRONCLAD.autosave" in output
+    assert "fresh_run_backups" in output
+    assert autosave.read_text(encoding="utf-8") == "active save"
+    assert backup.read_text(encoding="utf-8") == "backup save"

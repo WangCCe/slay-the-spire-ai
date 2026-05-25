@@ -83,6 +83,11 @@ def write_stdout(output_queue):
 class Coordinator:
     """An object to coordinate communication with Slay the Spire"""
 
+    STATE_WAIT_SECONDS = 2.0
+    STARTUP_MAX_WAIT_ATTEMPTS = 60
+    STARTUP_CONSECUTIVE_TIMEOUT_LIMIT = 45
+    IN_GAME_CONSECUTIVE_TIMEOUT_LIMIT = 10
+
     def __init__(self):
         self.input_queue = queue.Queue()
         self.output_queue = queue.Queue()
@@ -259,7 +264,7 @@ class Coordinator:
         if block:
             # Blocking call with timeout
             try:
-                return self.input_queue.get(timeout=2.0)  # Reduced from 10 to 2 seconds for faster response
+                return self.input_queue.get(timeout=self.STATE_WAIT_SECONDS)
             except queue.Empty:
                 return None
         elif not self.input_queue.empty():
@@ -442,8 +447,8 @@ class Coordinator:
         # Wait for ready state (with timeout to prevent hanging)
         timeout_counter = 0
         consecutive_timeouts = 0
-        max_wait = 50  # Increased from 20 to allow more attempts
-        max_consecutive_timeouts = 10  # Increased from 3 to 10
+        max_wait = self.STARTUP_MAX_WAIT_ATTEMPTS
+        max_consecutive_timeouts = self.STARTUP_CONSECUTIVE_TIMEOUT_LIMIT
 
         while not self.game_is_ready and timeout_counter < max_wait:
             received = self.receive_game_state_update(
@@ -512,7 +517,7 @@ class Coordinator:
         # Play until game ends
         last_update_time = time.time()
         consecutive_timeouts = 0
-        max_consecutive_timeouts = 10  # 10 * 2 seconds = 20 seconds total
+        max_consecutive_timeouts = self.IN_GAME_CONSECUTIVE_TIMEOUT_LIMIT
 
         import logging
         logging.info(f"[PLAY_ONE_GAME] Entering main game loop, in_game={self.in_game}, screen={getattr(self.last_game_state, 'screen_type', 'None') if self.last_game_state else 'None'}")
