@@ -870,12 +870,15 @@ class IroncladCombatPlanner(CombatPlanner):
         if is_attack:
             # Estimate damage for attack cards
             base_damage = getattr(card, 'damage', 0)
+            if base_damage is None:
+                base_damage = 0
             if base_damage == 0 or not hasattr(card, 'damage'):
                 try:
                     card_name = card.card_id.replace('+', '')
                     card_data = game_data_loader.get_card_data(card_name)
                     if card_data:
-                        base_damage = game_data_loader._parse_card_damage(card_data)
+                        parsed_damage = game_data_loader._parse_card_damage(card_data)
+                        base_damage = parsed_damage if parsed_damage is not None else 0
                 except:
                     pass
 

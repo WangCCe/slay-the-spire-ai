@@ -44,13 +44,13 @@ def build_main_command(args):
     repo_root = Path(__file__).resolve().parents[1]
     main_path = repo_root / "main.py"
     phase = PHASES[args.phase]
+    eval_mode = bool(getattr(args, "eval", False))
 
     cmd = [
         args.python,
         str(main_path),
         "--agent",
         args.agent,
-        "--train",
         "--rl-version",
         args.rl_version,
         "--elite-route",
@@ -61,17 +61,25 @@ def build_main_command(args):
         str(args.ascension),
     ]
 
+    if eval_mode:
+        cmd.append("--eval")
+    else:
+        cmd.append("--train")
+
+    epsilon = getattr(args, "epsilon", None)
+    if epsilon is not None:
+        cmd.extend(["--epsilon", str(epsilon)])
     if args.model:
         cmd.extend(["--model", args.model])
     if args.seed:
         cmd.extend(["--seed", args.seed])
     if args.seed_pool:
         cmd.extend(["--seed-pool", args.seed_pool])
-    if args.expert_mix:
+    if args.expert_mix and not eval_mode:
         cmd.append("--expert-mix")
-    if args.expert_mix_prob is not None:
+    if args.expert_mix_prob is not None and not eval_mode:
         cmd.extend(["--expert-mix-prob", str(args.expert_mix_prob)])
-    if args.expert_mix_warmup is not None:
+    if args.expert_mix_warmup is not None and not eval_mode:
         cmd.extend(["--expert-mix-warmup", str(args.expert_mix_warmup)])
 
     return cmd
@@ -217,6 +225,17 @@ def parse_args():
         help="RL action/observation space version.",
     )
     parser.add_argument("--ascension", "-a", type=int, default=0)
+    parser.add_argument(
+        "--eval",
+        action="store_true",
+        help="Run a bounded low-exploration validation batch instead of training.",
+    )
+    parser.add_argument(
+        "--epsilon",
+        type=float,
+        default=None,
+        help="Forwarded RL inference exploration probability for --eval.",
+    )
     parser.add_argument("--model", help="Optional checkpoint path.")
     parser.add_argument("--seed", help="Optional fixed seed.")
     parser.add_argument("--seed-pool", help="Optional seed pool path.")

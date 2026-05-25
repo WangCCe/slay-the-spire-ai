@@ -8,6 +8,8 @@ class Args:
     agent = "combat_rl"
     rl_version = "v2"
     ascension = 0
+    eval = False
+    epsilon = None
     model = None
     seed = None
     seed_pool = None
@@ -28,6 +30,8 @@ def test_conservative_batch_command_defaults_to_safe_route():
     assert cmd[cmd.index("--elite-route") + 1] == "conservative"
     assert "--max-games" in cmd
     assert cmd[cmd.index("--max-games") + 1] == "25"
+    assert "--train" in cmd
+    assert "--eval" not in cmd
 
 
 def test_aggressive_phase_maps_to_aggressive_route():
@@ -38,3 +42,16 @@ def test_aggressive_phase_maps_to_aggressive_route():
 
     assert PHASES["aggressive"]["elite_route"] == "aggressive"
     assert cmd[cmd.index("--elite-route") + 1] == "aggressive"
+
+
+def test_eval_batch_command_forwards_eval_without_train():
+    args = Args()
+    args.eval = True
+    args.epsilon = 0.05
+
+    cmd = build_main_command(args)
+
+    assert "--eval" in cmd
+    assert "--train" not in cmd
+    assert "--epsilon" in cmd
+    assert cmd[cmd.index("--epsilon") + 1] == "0.05"

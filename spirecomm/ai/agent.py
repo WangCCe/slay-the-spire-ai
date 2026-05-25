@@ -251,6 +251,59 @@ class SimpleAgent:
         print(f"[SHOP_SCREEN ERROR] Cards: {card_list}", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
 
+    def _available_event_choice_count(self):
+        choices = getattr(self.game, "choice_list", None)
+        if choices is not None:
+            return len(choices)
+
+        screen = getattr(self.game, "screen", None)
+        options = getattr(screen, "options", None) or []
+        enabled_options = [
+            option for option in options if not getattr(option, "disabled", False)
+        ]
+        return len(enabled_options) if enabled_options else len(options)
+
+    def _choose_event_option(self):
+        screen = getattr(self.game, "screen", None)
+        event_id = getattr(screen, "event_id", None)
+        option_count = self._available_event_choice_count()
+        avoid_first_option_events = {
+            "Vampires",
+            "Masked Bandits",
+            "Knowing Skull",
+            "Ghosts",
+            "Liars Game",
+            "Golden Idol",
+            "Drug Dealer",
+            "The Library",
+        }
+
+        if option_count <= 0:
+            logger.warning(
+                "[EVENT_GUARD] No available choices for event=%s; defaulting to choose 0",
+                event_id,
+            )
+            return ChooseAction(0)
+
+        if event_id in avoid_first_option_events:
+            choice_index = option_count - 1
+        else:
+            choice_index = 0
+
+        labels = [
+            getattr(option, "label", None) or getattr(option, "text", "")
+            for option in (getattr(screen, "options", None) or [])
+        ]
+        logger.info(
+            "[EVENT_GUARD] event=%s choices=%s screen_options=%s selected=%s labels=%s",
+            event_id,
+            len(getattr(self.game, "choice_list", []) or []),
+            len(getattr(screen, "options", []) or []),
+            choice_index,
+            labels,
+        )
+        return ChooseAction(choice_index)
+
     def get_next_action_in_game(self, game_state):
         self.game = game_state
         # time.sleep(0.07)
@@ -451,19 +504,7 @@ class SimpleAgent:
 
     def handle_screen(self):
         if self.game.screen_type == ScreenType.EVENT:
-            if self.game.screen.event_id in [
-                "Vampires",
-                "Masked Bandits",
-                "Knowing Skull",
-                "Ghosts",
-                "Liars Game",
-                "Golden Idol",
-                "Drug Dealer",
-                "The Library",
-            ]:
-                return ChooseAction(len(self.game.screen.options) - 1)
-            else:
-                return ChooseAction(0)
+            return self._choose_event_option()
         elif self.game.screen_type == ScreenType.CHEST:
             return OpenChestAction()
         elif self.game.screen_type == ScreenType.SHOP_ROOM:

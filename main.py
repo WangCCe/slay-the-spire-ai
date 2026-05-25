@@ -119,6 +119,20 @@ else:
         logger.addHandler(rotating_handler)
 
 
+UNRECOVERABLE_RUN_ERROR_MARKERS = (
+    "Game appears stuck",
+    "Communication Mod not responding",
+    "Communication Mod not ready",
+    "Communication Mod connection lost",
+    "Failed to start new game",
+)
+
+
+def is_unrecoverable_run_error(error):
+    message = str(error)
+    return any(marker in message for marker in UNRECOVERABLE_RUN_ERROR_MARKERS)
+
+
 def find_latest_checkpoint():
     """
     Find the latest RL checkpoint file in the checkpoints directory.
@@ -865,6 +879,13 @@ if __name__ == "__main__":
             # Handle communication errors or game crashes
             import traceback
             logging.error(f"Game #{game_count} failed: {e}\n" + "".join(traceback.format_exc()))
+
+            if is_unrecoverable_run_error(e):
+                logging.critical(
+                    "Stopping batch after unrecoverable Communication Mod/game-state error. "
+                    "Restart Slay the Spire before launching another run."
+                )
+                break
 
             # Try to restart Communication Mod connection by waiting a bit
             import time
