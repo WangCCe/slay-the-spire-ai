@@ -117,6 +117,9 @@ class Coordinator:
         self._stability_wait_done = False
         self._stability_wait_screens = {ScreenType.COMBAT_REWARD, ScreenType.MAP}
         self._stability_wait_timeout = 5
+        self._deferred_state_callback_pending = False
+        self._deferred_state_callback_message_count = 0
+        self._sent_message_count = 0
         self.pending_seed = None
 
     def _maybe_queue_stability_wait(self):
@@ -178,6 +181,7 @@ class Coordinator:
         logging.info(
             f"[SEND_MESSAGE] {message}, game_is_ready was={self.game_is_ready}, wait_for_response={wait_for_response}"
         )
+        self._sent_message_count = getattr(self, "_sent_message_count", 0) + 1
         self.output_queue.put(message)
         if wait_for_response:
             self.game_is_ready = False
@@ -197,6 +201,43 @@ class Coordinator:
         :return: None
         """
         self.action_queue.clear()
+
+    def _queue_state_change_callback_action(self, deferred=False):
+        import logging
+
+        logging.info(
+            "[CALLBACK] in_game=True, queue empty, calling state_change_callback%s. Screen: %s",
+            " (deferred)" if deferred else "",
+            getattr(self.last_game_state, "screen_type", "Unknown")
+            if self.last_game_state
+            else "None",
+        )
+        new_action = self.state_change_callback(self.last_game_state)
+        if new_action is not None:
+            if not self._maybe_queue_stability_wait():
+                self.add_action_to_queue(new_action)
+                logging.info("[CALLBACK] Got action: %s", type(new_action).__name__)
+        else:
+            logging.warning("state_change_callback returned None - ignoring")
+
+    def _run_deferred_state_callback_if_idle(self):
+        if not getattr(self, "_deferred_state_callback_pending", False):
+            return False
+        if (
+            self.last_error is not None
+            or not self.in_game
+            or len(self.action_queue) > 0
+        ):
+            return False
+        if getattr(self, "_sent_message_count", 0) != getattr(
+            self, "_deferred_state_callback_message_count", 0
+        ):
+            self._deferred_state_callback_pending = False
+            return False
+
+        self._deferred_state_callback_pending = False
+        self._queue_state_change_callback_action(deferred=True)
+        return True
 
     def execute_next_action(self):
         """Immediately execute the next action in the action queue
@@ -370,6 +411,7 @@ class Coordinator:
             )
             if perform_callbacks:
                 if self.last_error is not None:
+                    self._deferred_state_callback_pending = False
                     self.action_queue.clear()
                     new_action = self.error_callback(self.last_error)
                     if new_action is not None:
@@ -381,25 +423,28 @@ class Coordinator:
                 elif self.in_game:
                     if len(self.action_queue) == 0:
                         import logging
-                        logging.info(
-                            f"[CALLBACK] in_game=True, queue empty, calling state_change_callback. "
-                            f"Screen: {getattr(self.last_game_state, 'screen_type', 'Unknown') if self.last_game_state else 'None'}"
-                        )
-                        new_action = self.state_change_callback(self.last_game_state)
-                        if new_action is not None:
-                            if not self._maybe_queue_stability_wait():
-                                self.add_action_to_queue(new_action)
-                                import logging
-                                logging.info(f"[CALLBACK] Got action: {type(new_action).__name__}")
-                        else:
-                            import logging
+                        self._deferred_state_callback_pending = False
+                        self._queue_state_change_callback_action()
+                    else:
+                        import logging
 
-                            logging.warning(
-                                "state_change_callback returned None - ignoring"
-                            )
+                        self._deferred_state_callback_pending = True
+                        self._deferred_state_callback_message_count = getattr(
+                            self, "_sent_message_count", 0
+                        )
+                        logging.info(
+                            "[CALLBACK] Deferring state callback until queue drains. "
+                            "queue_size=%s screen=%s",
+                            len(self.action_queue),
+                            getattr(self.last_game_state, "screen_type", "Unknown")
+                            if self.last_game_state
+                            else "None",
+                        )
                 elif self.stop_after_run:
+                    self._deferred_state_callback_pending = False
                     self.clear_actions()
                 else:
+                    self._deferred_state_callback_pending = False
                     new_action = self.out_of_game_callback()
                     if new_action is not None:
                         if (
@@ -560,6 +605,8 @@ class Coordinator:
                     f"[MAIN_LOOP] Executing queued action without waiting, queue_size={len(self.action_queue)}"
                 )
                 self.execute_next_action()
+
+            self._run_deferred_state_callback_if_idle()
 
             # Track last successful update
             if state_update:

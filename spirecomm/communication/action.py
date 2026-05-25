@@ -404,8 +404,9 @@ class BossRewardAction(ChooseAction):
 class OptionalCardSelectConfirmAction(Action):
     """An action to click confirm on a hand or grid select screen, only if available"""
 
-    def __init__(self):
+    def __init__(self, allow_stale_selection=False):
         super().__init__("confirm", requires_game_ready=False)
+        self.allow_stale_selection = allow_stale_selection
 
     def execute(self, coordinator):
         import logging
@@ -413,12 +414,27 @@ class OptionalCardSelectConfirmAction(Action):
         game_state = getattr(coordinator, "last_game_state", None)
         available = getattr(game_state, "available_commands", []) or []
         screen = getattr(game_state, "screen", None)
+        screen_type = getattr(game_state, "screen_type", None)
         confirm_up = bool(getattr(screen, "confirm_up", False)) if screen else False
-        if "confirm" in available and confirm_up:
+        stale_selection_screen = (
+            self.allow_stale_selection
+            and screen_type in [ScreenType.HAND_SELECT, ScreenType.GRID]
+            and any(command in available for command in ["choose", "key", "click"])
+        )
+        if ("confirm" in available and confirm_up) or stale_selection_screen:
+            if stale_selection_screen and not ("confirm" in available and confirm_up):
+                logging.warning(
+                    "Sending card-select confirm with stale selection state: "
+                    "screen=%s confirm_up=%s available=%s",
+                    screen_type,
+                    confirm_up,
+                    available,
+                )
             coordinator.send_message(self.command, wait_for_response=False)
             return
         logging.debug(
-            "Skipping optional card-select confirm: confirm_up=%s available=%s",
+            "Skipping optional card-select confirm: screen=%s confirm_up=%s available=%s",
+            screen_type,
             confirm_up,
             available,
         )
@@ -485,7 +501,9 @@ class CardSelectAction(Action):
                     coordinator.add_action_to_queue(KeyAction(f"CARD_{index + 1}"))
             else:
                 coordinator.add_action_to_queue(KeyAction(f"CARD_{index + 1}"))
-        coordinator.add_action_to_queue(OptionalCardSelectConfirmAction())
+        coordinator.add_action_to_queue(
+            OptionalCardSelectConfirmAction(allow_stale_selection=True)
+        )
 
 
 class ChooseMapNodeAction(ChooseAction):
