@@ -127,6 +127,7 @@ dmypy.json
 /ai_game_stats.csv
 /nul
 /debug_screenshots/
+/data/public_sts/
 
 # Claude Code settings
 .claude/settings.local.json
