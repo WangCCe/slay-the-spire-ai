@@ -18,6 +18,7 @@ import time
 from typing import List, Tuple, Optional, Dict
 from enum import Enum
 from .simulation import CombatPlanner, SimulationState, FastCombatSimulator, W_DEATHRISK
+from .card_costs import effective_card_cost
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
@@ -214,11 +215,9 @@ class IroncladCombatPlanner(CombatPlanner):
         beam = [([], initial_state, 0, float('-inf'))]  # (actions, state, energy_spent, score)
 
         best_sequence = []
-        # Only allow empty sequence when there are no playable cards.
-        if playable_cards:
-            best_score = float('-inf')
-        else:
-            best_score = self._score_sequence([], initial_state, initial_state, context)
+        # Treat ending the turn as the baseline so fallback does not force
+        # negative-value nonlethal plays just because energy remains.
+        best_score = self._score_sequence([], initial_state, initial_state, context)
 
         for depth in range(max_depth):
             new_candidates = []
@@ -236,7 +235,7 @@ class IroncladCombatPlanner(CombatPlanner):
                         continue
 
                     # Check energy
-                    cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
+                    cost = effective_card_cost(card, state.player_energy)
                     if energy_spent + cost > context.energy_available:
                         continue
 

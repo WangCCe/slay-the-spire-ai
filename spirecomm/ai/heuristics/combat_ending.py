@@ -12,6 +12,7 @@ from spirecomm.spire.character import Monster
 from spirecomm.communication.action import PlayCardAction
 from spirecomm.data.loader import game_data_loader
 from ..decision.base import DecisionContext
+from .card_costs import effective_card_cost, whirlwind_damage
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +159,7 @@ class CombatEndingDetector:
                 if card_uuid in played_cards:
                     continue
 
-                cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
+                cost = effective_card_cost(card, context.energy_available)
                 if cost > context.energy_available:
                     continue
 
@@ -224,7 +225,7 @@ class CombatEndingDetector:
         for card in context.playable_cards:
             # FIX: Compare CardType enum directly, not string
             if hasattr(card, 'type') and card.type == CardType.ATTACK:
-                cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
+                cost = effective_card_cost(card, context.energy_available)
                 damage = self._get_card_damage(card, context)
                 logger.info(f"[LETHAL_CALC] {card.name}: cost={cost}, damage={damage}, eff={damage/cost if cost > 0 else 'inf'}")
                 if cost > 0:
@@ -341,6 +342,13 @@ class CombatEndingDetector:
             if card_data:
                 # Use _parse_card_damage which handles metadata and regex parsing
                 base_damage = game_data_loader._parse_card_damage(card_data) or 0
+
+        card_name = (
+            getattr(card, 'name', None) or getattr(card, 'card_id', '')
+        ).replace('+', '')
+        if card_name == 'Whirlwind':
+            energy = effective_card_cost(card, context.energy_available)
+            return whirlwind_damage(card, energy, getattr(context, 'strength', 0))
 
         # Add strength (for attacks)
         # FIX: Compare CardType enum directly, not string

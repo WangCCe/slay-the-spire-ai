@@ -277,8 +277,8 @@ class TurnTimingClassifier:
 
                         # Check if attack
                         if 'ATTACK' in intent:
-                            damage = move.get('damage', 0)
-                            hits = move.get('hits', 1)
+                            damage = self._resolve_move_damage(monster.name, move, context)
+                            hits = self._coerce_int(move.get('hits', 1), default=1)
                             total_damage += damage * hits
                         else:
                             # Non-attack move = safe
@@ -350,13 +350,8 @@ class TurnTimingClassifier:
                         intent = move.get('intent', '').upper()
 
                         if 'ATTACK' in intent:
-                            # Get base damage
-                            damage = move.get('damage', 0)
-                            hits = move.get('hits', 1)
-
-                            # Handle damage range (e.g., {"min": 5, "max": 7})
-                            if isinstance(damage, dict):
-                                damage = damage.get('max', damage.get('min', 0))
+                            damage = self._resolve_move_damage(monster.name, move, context)
+                            hits = self._coerce_int(move.get('hits', 1), default=1)
 
                             # Apply ascension modifiers to damage
                             damage = self._apply_ascension_damage_modifiers(
@@ -385,6 +380,58 @@ class TurnTimingClassifier:
         except Exception as e:
             logger.warning(f"[DAMAGE_CURVE] Calculation failed: {e}")
             return [0] * look_ahead
+
+    def _resolve_move_damage(self, monster_name: str, move: Dict[str, Any], context) -> int:
+        """Return a numeric damage estimate for wiki moves with ranges or formulas."""
+        damage = self._coerce_damage_value(move.get('damage'))
+        if damage is not None:
+            return damage
+
+        move_name = str(move.get('name', '')).lower()
+        effect = str(move.get('effect', '')).lower()
+        if monster_name.lower() == 'hexaghost' and move_name == 'divider':
+            player_hp = 0
+            if hasattr(context, 'game') and hasattr(context.game, 'current_hp'):
+                player_hp = context.game.current_hp or 0
+            elif hasattr(context, 'player_hp'):
+                player_hp = context.player_hp or 0
+            return ((int(player_hp) // 12) + 1) * 6
+
+        if 'current player hp divided by 12' in effect:
+            player_hp = getattr(context, 'player_hp', 0) or 0
+            if hasattr(context, 'game') and hasattr(context.game, 'current_hp'):
+                player_hp = context.game.current_hp or player_hp
+            return ((int(player_hp) // 12) + 1) * 6
+
+        return 0
+
+    def _coerce_damage_value(self, value) -> Optional[int]:
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, (int, float)):
+            return int(value)
+        if isinstance(value, dict):
+            for key in ('max', 'damage', 'normal', 'base', 'min'):
+                if key in value:
+                    damage = self._coerce_damage_value(value[key])
+                    if damage is not None:
+                        return damage
+            numeric_values = [
+                damage
+                for damage in (self._coerce_damage_value(v) for v in value.values())
+                if damage is not None
+            ]
+            return max(numeric_values) if numeric_values else None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _coerce_int(self, value, default: int = 0) -> int:
+        coerced = self._coerce_damage_value(value)
+        return default if coerced is None else coerced
 
     def _apply_ascension_damage_modifiers(
         self,

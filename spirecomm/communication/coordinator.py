@@ -202,6 +202,28 @@ class Coordinator:
         """
         self.action_queue.clear()
 
+    def _request_state_during_startup_wait(self, consecutive_timeouts, phase):
+        if consecutive_timeouts == 1 or consecutive_timeouts % 5 == 0:
+            import logging
+
+            logging.info(
+                "[STARTUP_STATE_POLL] phase=%s consecutive_timeouts=%s; requesting state",
+                phase,
+                consecutive_timeouts,
+            )
+            self.send_message("state", wait_for_response=False)
+
+    def _request_state_during_idle_wait(self, consecutive_timeouts):
+        if consecutive_timeouts == 1 or consecutive_timeouts % 3 == 0:
+            import logging
+
+            logging.info(
+                "[IDLE_STATE_POLL] screen=%s consecutive_timeouts=%s; requesting state",
+                getattr(self.last_game_state, "screen_type", None),
+                consecutive_timeouts,
+            )
+            self.send_message("state", wait_for_response=False)
+
     def _queue_state_change_callback_action(self, deferred=False):
         import logging
 
@@ -503,6 +525,10 @@ class Coordinator:
                 consecutive_timeouts = 0  # Reset timeout counter on successful receive
             else:
                 consecutive_timeouts += 1
+                self._request_state_during_startup_wait(
+                    consecutive_timeouts,
+                    "initial_ready",
+                )
                 if consecutive_timeouts >= max_consecutive_timeouts:
                     # Only fail if we get MANY consecutive timeouts
                     raise Exception(
@@ -536,6 +562,10 @@ class Coordinator:
                     )
                 else:
                     consecutive_timeouts += 1
+                    self._request_state_during_startup_wait(
+                        consecutive_timeouts,
+                        "start_game",
+                    )
                     if consecutive_timeouts >= max_consecutive_timeouts:
                         # Only fail if we get MANY consecutive timeouts
                         raise Exception(
@@ -614,6 +644,8 @@ class Coordinator:
                 consecutive_timeouts = 0
             else:
                 consecutive_timeouts += 1
+                if len(self.action_queue) == 0:
+                    self._request_state_during_idle_wait(consecutive_timeouts)
 
                 # Special handling for screens that may not send state updates after selections
                 # COMBAT_REWARD: especially in chest rooms with mutually exclusive rewards

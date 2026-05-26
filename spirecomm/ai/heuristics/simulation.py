@@ -15,6 +15,11 @@ from spirecomm.spire.character import Monster, Intent
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
+from spirecomm.ai.heuristics.card_costs import (
+    effective_card_cost,
+    is_x_cost_card,
+    raw_card_cost,
+)
 from spirecomm.data.loader import game_data_loader
 
 # Configure logging for combat decisions
@@ -611,9 +616,12 @@ class FastCombatSimulator:
         """
         new_state = state.clone()
 
-        # Use actual cost (for Snecko Eye and other cost modifiers)
-        cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
-        base_cost = card.cost if hasattr(card, 'cost') else cost
+        # Use actual cost (for Snecko Eye and other cost modifiers). X-cost
+        # cards arrive as -1, but planning should spend all current energy.
+        raw_cost = raw_card_cost(card)
+        cost = effective_card_cost(card, new_state.player_energy)
+        base_cost = raw_cost if raw_cost >= 0 else cost
+        x_energy_spent = cost if is_x_cost_card(card) else None
 
         # Track energy saved (for Corruption, etc.)
         energy_saved = base_cost - cost
@@ -636,7 +644,14 @@ class FastCombatSimulator:
 
         if card_type == CardType.ATTACK:
             new_state.attacks_played += 1
-            self._apply_attack(new_state, card, target, target_index if target_index is not None else -1, context)
+            self._apply_attack(
+                new_state,
+                card,
+                target,
+                target_index if target_index is not None else -1,
+                context,
+                x_energy_spent=x_energy_spent,
+            )
             self._apply_rage_block(new_state)
         elif card_type == CardType.SKILL:
             new_state.skills_played += 1
@@ -648,8 +663,15 @@ class FastCombatSimulator:
 
         return new_state
 
-    def _apply_attack(self, state: SimulationState, card: Card,
-                     target: Optional[Monster], target_index: int, context: DecisionContext = None):
+    def _apply_attack(
+        self,
+        state: SimulationState,
+        card: Card,
+        target: Optional[Monster],
+        target_index: int,
+        context: DecisionContext = None,
+        x_energy_spent: Optional[int] = None,
+    ):
         """Apply attack card effects with proper damage calculation."""
         base_damage = getattr(card, 'damage', 0)
         if base_damage is None:
@@ -678,7 +700,15 @@ class FastCombatSimulator:
 
             # Check for X-damage cards and calculate dynamically
             if base_damage == 0 and context is not None:
-                base_damage = self._calculate_x_damage(card, state, context)
+                if x_energy_spent is not None:
+                    setattr(state, '_current_x_energy_spent', x_energy_spent)
+                try:
+                    base_damage = self._calculate_x_damage(card, state, context)
+                finally:
+                    if x_energy_spent is not None and hasattr(state, '_current_x_energy_spent'):
+                        delattr(state, '_current_x_energy_spent')
+                if base_damage is None:
+                    base_damage = 0
 
             if base_damage == 0:
                 base_damage = 6  # Fallback estimate for truly unknown cards
@@ -800,7 +830,13 @@ class FastCombatSimulator:
             'vulnerable': _get_stack('vulnerable') or _get_stack('vulnerable_applied') or _get_stack('vulnerable_amount'),
         }
 
-    def _calculate_x_damage(self, card: Card, state: SimulationState, context: DecisionContext) -> int:
+    def _calculate_x_damage(
+        self,
+        card: Card,
+        state: SimulationState,
+        context: DecisionContext,
+        x_energy_spent: Optional[int] = None,
+    ) -> int:
         """
         Calculate dynamic damage for X-damage cards.
 
@@ -839,9 +875,19 @@ class FastCombatSimulator:
             return min(30, 12 + state.player_block // 10)
 
         elif card_name == 'Whirlwind':
-            # Whirlwind: X damage where X = energy (AOE applies to each monster)
-            # Uses current available energy (before playing the card)
-            return context.energy_available if context else max(state.player_energy, 1)
+            # Whirlwind: 5/8 damage to all enemies X times, where X is
+            # current energy. _apply_attack adds Strength once after this
+            # helper, so include the remaining Strength hits here.
+            energy = x_energy_spent
+            if energy is None:
+                energy = getattr(state, '_current_x_energy_spent', None)
+            if energy is None:
+                fallback_energy = getattr(state, 'player_energy', 0)
+                energy = effective_card_cost(card, fallback_energy)
+            energy = max(0, energy)
+            per_hit = 8 if getattr(card, 'upgrades', 0) > 0 else 5
+            strength = getattr(state, 'player_strength', 0)
+            return per_hit * energy + max(0, energy - 1) * strength
 
         # Fallback: not an X-damage card
         return 0
@@ -1917,7 +1963,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                 for card in context.playable_cards:
                     card_idx = id(card)
                     if card_idx not in state.played_card_uuids:
-                        cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
+                        cost = effective_card_cost(card, state.player_energy)
                         if energy_spent + cost <= context.energy_available:
                             playable_actions.append((card, card_idx, cost))
 
@@ -2590,7 +2636,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             logger.debug(f"Rage score bonus: {potential_block} potential block from {len(attack_cards)} attacks")
 
         # Zero-cost bonus (Apex, Clothesline after Corruption, etc.)
-        cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
+        cost = effective_card_cost(card, state.player_energy)
         if cost == 0:
             score += FASTSCORE_ZERO_COST_BONUS
 

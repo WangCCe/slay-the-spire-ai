@@ -99,18 +99,9 @@ class AdaptiveMapRouter:
                         readiness,
                     )
                     return base - 260
-                # Consistently avoid elites regardless of floor or HP
-                # Prioritize building deck strength through upgrades first
-                if floor <= 7:
-                    return base - 300  # Too risky early game
-                elif floor <= 10:
-                    return base - 200  # Still very cautious mid Act 1
-                else:
-                    # Even late Act 1, only slight consideration when very healthy
-                    if hp_pct > 0.85:
-                        return base - 20  # Slightly less penalty when very healthy
-                    else:
-                        return base - 100  # Avoid by default
+                # Conservative mode is for first-win validation: make elites a
+                # route-blocking penalty unless every reachable path is forced.
+                return base - 5000
 
             elif symbol == 'R':  # Rest
                 # Prioritize rest sites for card upgrades even when healthy
@@ -195,8 +186,11 @@ class AdaptiveMapRouter:
         return score
 
     def _adjust_act_2_plus_priority(self, symbol: str, base: int, hp_pct: float) -> int:
-        """Act 2+ priorities - favor elites and events, avoid normal monsters."""
+        """Act 2+ priorities - first-win conservative mode avoids optional elites."""
         if symbol == 'E':  # Elite
+            if self.elite_mode == "conservative":
+                return base - 5000
+
             # Aggressive elite routing in Act 2
             if hp_pct < 0.2:
                 return base - 100  # Avoid elites when very low HP
@@ -259,6 +253,17 @@ class AdaptiveMapRouter:
         if not options:
             return RestOption.REST
 
+        if RestOption.REST in options:
+            force_rest, reason = self._should_force_rest(context)
+            if force_rest:
+                logging.getLogger(__name__).info(
+                    "[REST_GUARD] Map router forcing REST reason=%s hp_pct=%.1f%% floor=%s",
+                    reason,
+                    context.player_hp_pct * 100,
+                    getattr(context, "floor", 0),
+                )
+                return RestOption.REST
+
         scores = {}
 
         # Calculate scores for each available option
@@ -298,6 +303,17 @@ class AdaptiveMapRouter:
             score += 100  # Rest before boss
 
         return score
+
+    def _should_force_rest(self, context: DecisionContext) -> tuple[bool, str]:
+        hp_pct = context.player_hp_pct
+        floor = getattr(context, 'floor', 0) or 0
+        is_pre_boss = (floor % 17) in (15, 16)
+
+        if hp_pct < 0.5:
+            return True, "low_hp"
+        if is_pre_boss and hp_pct < 0.95:
+            return True, "pre_boss"
+        return False, ""
 
     def _score_smith_option(self, context: DecisionContext) -> int:
         """Score SMITH option."""

@@ -11,6 +11,7 @@ from typing import List, Optional
 from .models import TimingContext, TurnTiming, BalanceWeights
 from .turn_classifier import TurnTimingClassifier
 from .balance_strategy import CombatBalanceStrategy
+from spirecomm.ai.heuristics.card_costs import effective_card_cost
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +156,7 @@ class TimingAwareCombatPlanner:
                         total_damage += card_damage
 
                         # Check energy cost
-                        cost = getattr(card, 'cost_for_turn', getattr(card, 'cost', 1))
+                        cost = effective_card_cost(card, energy)
                         energy -= cost
 
                         if energy < 0:
@@ -222,7 +223,7 @@ class TimingAwareCombatPlanner:
             target = monsters[0]  # Default target
 
             for card, damage in attack_cards:
-                cost = getattr(card, 'cost_for_turn', getattr(card, 'cost', 1))
+                cost = effective_card_cost(card, energy)
 
                 if energy >= cost:
                     actions.append(PlayCardAction(card=card, target_monster=target))

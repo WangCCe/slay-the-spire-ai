@@ -51,3 +51,68 @@ def test_event_choice_can_still_take_last_available_safe_option():
 
     assert isinstance(action, ChooseAction)
     assert action.choice_index == 1
+
+
+def test_golden_shrine_avoids_result_page_that_stops_callbacks():
+    agent = _agent_for_event(
+        "Golden Shrine",
+        [
+            EventOption("Pray", "Pray"),
+            EventOption("Desecrate", "Desecrate"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Pray", "Desecrate", "Leave"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 2
+
+
+def test_dead_adventurer_leaves_instead_of_searching_for_elite_fight():
+    agent = _agent_for_event(
+        "Dead Adventurer",
+        [
+            EventOption("Search", "Search"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Search", "Leave"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_mushrooms_event_leaves_instead_of_fighting_before_boss():
+    agent = _agent_for_event(
+        "Mushrooms",
+        [
+            EventOption("Fight", "Fight"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Fight", "Leave"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_masked_bandits_pays_instead_of_taking_fight():
+    agent = _agent_for_event(
+        "Masked Bandits",
+        [
+            EventOption("Pay", "Pay"),
+            EventOption("Fight", "Fight"),
+        ],
+        ["Pay", "Fight"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0

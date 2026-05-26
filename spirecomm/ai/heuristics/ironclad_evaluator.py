@@ -61,6 +61,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         'Clothesline': 82,
         'Uppercut': 84,
         'Cleave': 80,
+        'Thunderclap': 83,
     }
 
     DEMOTED_CARDS = {
@@ -109,12 +110,22 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         'Inflame', 'Rampage', 'Heavy Blade', 'Headbutt',
         'Uppercut', 'Spot Weakness', 'Twin Strike', 'Reaper',
         'Hemokinesis', 'Carnage', 'Anger', 'Clothesline',
+        'Thunderclap',
     }
 
     ACT_1_PREMIUM_FRONTLOAD = {
         'Pommel Strike', 'Anger', 'Clothesline', 'Uppercut',
         'Hemokinesis', 'Carnage', 'Cleave', 'Headbutt',
-        'Twin Strike', 'Iron Wave', 'Whirlwind',
+        'Twin Strike', 'Iron Wave', 'Whirlwind', 'Thunderclap',
+    }
+
+    ACT_1_SURVIVAL_BLOCK = {
+        'Shrug It Off', 'Flame Barrier', 'Power Through',
+        'Ghostly Armor', 'True Grit', 'Impervious',
+    }
+
+    ACT_1_FRONTLOAD_COVERAGE = ACT_1_PREMIUM_FRONTLOAD | {
+        'Immolate', 'Bludgeon', 'Heavy Blade', 'Perfected Strike',
     }
 
     SPECULATIVE_ENGINE_CARDS = {
@@ -290,13 +301,22 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
 
         # Adjust modifier
         if current_pct > ideal_pct * 1.8:
-            return 0.6  # Too many of this cost
+            modifier = 0.6  # Too many of this cost
         elif current_pct > ideal_pct * 1.4:
-            return 0.8  # Slightly too many
+            modifier = 0.8  # Slightly too many
         elif current_pct < ideal_pct * 0.4:
-            return 1.3  # Need more of this cost
+            modifier = 1.3  # Need more of this cost
         else:
-            return 1.0  # Good balance
+            modifier = 1.0  # Good balance
+
+        if (
+            context.act == 1
+            and card.card_id in self.ACT_1_SURVIVAL_BLOCK
+            and self._act_1_survival_gap(context)[0]
+        ):
+            return max(modifier, 1.0)
+
+        return modifier
 
     def _calculate_act_1_bonus(self, card: Card, context: DecisionContext) -> float:
         """
@@ -332,7 +352,35 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         if card.card_id in self.SPECULATIVE_ENGINE_CARDS and deck_size <= 14:
             bonus -= 18
 
+        needs_survival, block_support, frontload = self._act_1_survival_gap(context)
+        if needs_survival:
+            if card.card_id in self.ACT_1_SURVIVAL_BLOCK:
+                bonus += 42 if block_support == 0 else 30
+            elif card.card_id in self.ACT_1_DAMAGE_PRIORITY and frontload >= 1:
+                bonus -= 18
+
         return bonus
+
+    def _act_1_survival_gap(self, context: DecisionContext) -> tuple:
+        """Return whether Act 1 needs non-basic block before adding more attacks."""
+        if context.act != 1:
+            return (False, 0, 0)
+
+        deck = list(getattr(context.game, 'deck', []) or [])
+        deck_ids = [getattr(c, 'card_id', '') for c in deck]
+        floor = getattr(context, 'floor', 0) or 0
+
+        block_support = sum(1 for card_id in deck_ids if card_id in self.BLOCK_SUPPORT)
+        frontload = sum(1 for card_id in deck_ids if card_id in self.ACT_1_FRONTLOAD_COVERAGE)
+
+        if block_support == 0 and (frontload >= 1 or floor >= 4):
+            return (True, block_support, frontload)
+        if block_support == 1 and (frontload >= 2 or floor >= 8):
+            return (True, block_support, frontload)
+        if floor >= 12 and block_support < 3:
+            return (True, block_support, frontload)
+
+        return (False, block_support, frontload)
 
     def _calculate_support_adjustment(self, card: Card, context: DecisionContext) -> float:
         """Reward payoff cards only when the current deck can actually support them."""

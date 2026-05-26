@@ -41,6 +41,7 @@ class IroncladDeckStrategy:
         'Disarm', 'Headbutt', 'Uppercut', 'Pommel Strike',
         'Whirlwind', 'True Grit', 'Inflame',
         'Hemokinesis', 'Carnage', 'Anger', 'Clothesline', 'Cleave',
+        'Thunderclap',
     }
 
     # Act 1 damage priorities
@@ -49,6 +50,7 @@ class IroncladDeckStrategy:
         'Inflame', 'Rampage', 'Heavy Blade', 'Headbutt',
         'Uppercut', 'Spot Weakness', 'Twin Strike', 'Reaper',
         'Hemokinesis', 'Carnage', 'Anger', 'Clothesline',
+        'Thunderclap',
     }
 
     # HP-cost cards (spend HP to play, avoid at low HP)
@@ -66,7 +68,7 @@ class IroncladDeckStrategy:
 
     SPECULATIVE_ENGINE_CARDS = {
         'Body Slam', 'Limit Break', 'Entrench', 'Barricade',
-        'Feel No Pain', 'Dark Embrace', 'Rupture',
+        'Feel No Pain', 'Dark Embrace', 'Rupture', 'Fire Breathing',
     }
 
     STRENGTH_SUPPORT = {'Demon Form', 'Inflame', 'Spot Weakness', 'Flex'}
@@ -76,6 +78,7 @@ class IroncladDeckStrategy:
     }
     EXHAUST_SUPPORT = {'Corruption', 'True Grit', 'Second Wind', 'Fiend Fire', 'Sever Soul'}
     SELF_DAMAGE_SUPPORT = {'Offering', 'Bloodletting', 'Hemokinesis', 'Combust', 'Brutality'}
+    STATUS_SUPPORT = {'Power Through', 'Wild Strike', 'Reckless Charge', 'Immolate'}
 
     # Upgrade priorities based on expert input
     UPGRADE_PRIORITIES = {
@@ -140,6 +143,13 @@ class IroncladDeckStrategy:
         if context.player_hp_pct < 0.4:
             if card.card_id in self.HP_COST_CARDS:
                 return (False, f"Too risky at {context.player_hp_pct*100:.0f}% HP")
+
+        if context.act == 1 and card.card_id in {'Brutality', 'Combust'}:
+            current_count = sum(
+                1 for c in context.game.deck if getattr(c, 'card_id', '') == card.card_id
+            )
+            if current_count >= 1:
+                return (False, f"Skipping duplicate Act 1 self-damage power: {card.card_id}")
 
         # Rule 4: Archetype consistency
         if archetype not in ['unknown', 'flexible']:
@@ -208,6 +218,11 @@ class IroncladDeckStrategy:
             if count(self.EXHAUST_SUPPORT) >= 2:
                 return (True, f"{card.card_id} has exhaust support")
             return (False, f"Skipping {card.card_id} without exhaust support")
+
+        if card.card_id == 'Fire Breathing':
+            if count(self.STATUS_SUPPORT) >= 2:
+                return (True, "Fire Breathing has status support")
+            return (False, "Skipping Fire Breathing without status support")
 
         if card.card_id == 'Rupture':
             if count(self.SELF_DAMAGE_SUPPORT) >= 2:

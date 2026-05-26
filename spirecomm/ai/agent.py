@@ -50,6 +50,7 @@ class SimpleAgent:
         self.skipped_cards = False
         self.visited_shop = False
         self.shop_purchase_made = False
+        self._leaving_shop_room = False
         self.map_route = []
         self._last_route_hp_pct = None
         self._last_route_floor = None
@@ -147,11 +148,17 @@ class SimpleAgent:
 
     def _exit_shop(self):
         """Return appropriate action to exit shop."""
-        if getattr(self.game, "cancel_available", False):
-            return CancelAction()
-        if getattr(self.game, "proceed_available", False):
+        self._leaving_shop_room = True
+        available = set(getattr(self.game, "available_commands", []) or [])
+        if "leave" in available:
+            return LeaveAction()
+        if "proceed" in available or getattr(self.game, "proceed_available", False):
             return ProceedAction()
-        return CancelAction()
+        if "cancel" in available:
+            return CancelAction()
+        if getattr(self.game, "screen_type", None) == ScreenType.SHOP_SCREEN:
+            return LeaveAction()
+        return ProceedAction()
 
     def _validate_shop_cards(self, screen):
         """Validate that shop cards have required attributes."""
@@ -267,16 +274,23 @@ class SimpleAgent:
         screen = getattr(self.game, "screen", None)
         event_id = getattr(screen, "event_id", None)
         option_count = self._available_event_choice_count()
-        avoid_first_option_events = {
+        risky_event_ids = {
             "Vampires",
             "Masked Bandits",
             "Knowing Skull",
             "Ghosts",
             "Liars Game",
             "Golden Idol",
+            "Golden Shrine",
+            "GoldenShrine",
             "Drug Dealer",
             "The Library",
+            "Dead Adventurer",
+            "DeadAdventurer",
+            "Mushrooms",
+            "The Mushroom Lair",
         }
+        legacy_last_safe_events = risky_event_ids - {"Masked Bandits"}
 
         if option_count <= 0:
             logger.warning(
@@ -285,22 +299,40 @@ class SimpleAgent:
             )
             return ChooseAction(0)
 
-        if event_id in avoid_first_option_events:
-            choice_index = option_count - 1
-        else:
-            choice_index = 0
+        def _choice_label(option):
+            return str(
+                getattr(option, "label", None)
+                or getattr(option, "text", None)
+                or option
+                or ""
+            )
 
-        labels = [
-            getattr(option, "label", None) or getattr(option, "text", "")
-            for option in (getattr(screen, "options", None) or [])
-        ]
+        choice_labels = [_choice_label(option) for option in (getattr(self.game, "choice_list", None) or [])]
+        screen_labels = [_choice_label(option) for option in (getattr(screen, "options", None) or [])]
+        labels_for_selection = choice_labels[:option_count] or screen_labels[:option_count]
+
+        choice_index = 0
+        if event_id in risky_event_ids:
+            safe_keywords = ("leave", "ignore", "refuse", "decline", "move on")
+            if event_id == "Masked Bandits":
+                safe_keywords = ("pay", "give gold", "leave")
+
+            for idx, label in enumerate(labels_for_selection):
+                normalized_label = label.lower()
+                if any(keyword in normalized_label for keyword in safe_keywords):
+                    choice_index = idx
+                    break
+            else:
+                choice_index = option_count - 1 if event_id in legacy_last_safe_events else 0
+
         logger.info(
-            "[EVENT_GUARD] event=%s choices=%s screen_options=%s selected=%s labels=%s",
+            "[EVENT_GUARD] event=%s choices=%s screen_options=%s selected=%s choice_labels=%s screen_labels=%s",
             event_id,
             len(getattr(self.game, "choice_list", []) or []),
             len(getattr(screen, "options", []) or []),
             choice_index,
-            labels,
+            choice_labels,
+            screen_labels,
         )
         return ChooseAction(choice_index)
 
@@ -508,6 +540,10 @@ class SimpleAgent:
         elif self.game.screen_type == ScreenType.CHEST:
             return OpenChestAction()
         elif self.game.screen_type == ScreenType.SHOP_ROOM:
+            if getattr(self, "_leaving_shop_room", False):
+                self.visited_shop = False
+                self.shop_purchase_made = False
+                return ProceedAction()
             if not self.visited_shop:
                 self.visited_shop = True
                 self.shop_purchase_made = False
@@ -515,6 +551,7 @@ class SimpleAgent:
             else:
                 self.visited_shop = False
                 self.shop_purchase_made = False
+                self._leaving_shop_room = True
                 return ProceedAction()
         elif self.game.screen_type == ScreenType.REST:
             return self.choose_rest_option()
@@ -560,6 +597,7 @@ class SimpleAgent:
         elif self.game.screen_type == ScreenType.MAP:
             # Reset skipped_cards flag when we reach the map (combat rewards fully processed)
             self.skipped_cards = False
+            self._leaving_shop_room = False
             return self.make_map_choice()
         elif self.game.screen_type == ScreenType.BOSS_REWARD:
             relics = self.game.screen.relics
@@ -768,6 +806,20 @@ class SimpleAgent:
     def choose_rest_option(self):
         rest_options = self.game.screen.rest_options
         if len(rest_options) > 0 and not self.game.screen.has_rested:
+            hp_pct = self.game.current_hp / max(self.game.max_hp, 1)
+            is_pre_boss = self.game.floor % 17 in (15, 16)
+            if RestOption.REST in rest_options and (
+                hp_pct < 0.5 or (is_pre_boss and hp_pct < 0.95)
+            ):
+                logging.info(
+                    "[REST_GUARD] Forcing REST hp=%s/%s hp_pct=%.1f%% floor=%s pre_boss=%s",
+                    self.game.current_hp,
+                    self.game.max_hp,
+                    hp_pct * 100,
+                    self.game.floor,
+                    is_pre_boss,
+                )
+                return RestAction(RestOption.REST)
             if self.map_router is not None and DecisionContext is not None:
                 try:
                     context = DecisionContext(self.game)
@@ -1847,8 +1899,13 @@ class OptimizedAgent(SimpleAgent):
                 print(f"Error creating DecisionContext: {e}", file=sys.stderr)
                 return super().choose_card_reward()
 
-            # Filter cards we would actually take
-            if self.game.screen.can_skip and not self.game.in_combat:
+            # Ironclad's deck strategy/evaluator supersedes the legacy copy caps;
+            # some old zero-copy caps are intentional skips for SimpleAgent only.
+            if (
+                self.game.screen.can_skip
+                and not self.game.in_combat
+                and self.deck_strategy is None
+            ):
                 pickable_cards = [
                     card
                     for card in reward_cards
@@ -1880,6 +1937,7 @@ class OptimizedAgent(SimpleAgent):
                         )
                     return CancelAction()
 
+            strategy_scores = {}
             if self.deck_strategy is not None:
                 strategy_filtered = []
                 for card in pickable_cards:
@@ -1902,6 +1960,15 @@ class OptimizedAgent(SimpleAgent):
                         reason,
                     )
                     if should_pick:
+                        if hasattr(self.deck_strategy, "_get_card_baseline_score"):
+                            try:
+                                strategy_scores[id(card)] = float(
+                                    self.deck_strategy._get_card_baseline_score(
+                                        card.card_id
+                                    )
+                                )
+                            except Exception:
+                                strategy_scores[id(card)] = None
                         strategy_filtered.append(card)
 
                 if strategy_filtered:
@@ -1959,6 +2026,100 @@ class OptimizedAgent(SimpleAgent):
                         else:
                             return CancelAction()
 
+            def _normalize_boss_name(value):
+                return "".join(
+                    ch for ch in str(value or "").lower() if ch.isalnum()
+                )
+
+            act_1_frontload_cards = set(
+                getattr(self.card_evaluator, "ACT_1_FRONTLOAD_COVERAGE", set())
+                or set()
+            )
+            act_1_frontload_cards.update(
+                getattr(self.card_evaluator, "ACT_1_PREMIUM_FRONTLOAD", set())
+                or set()
+            )
+            act_1_frontload_cards.update(
+                {
+                    "Bludgeon",
+                    "Feed",
+                    "Fiend Fire",
+                    "Heavy Blade",
+                    "Immolate",
+                    "Perfected Strike",
+                    "Reaper",
+                    "Sever Soul",
+                }
+            )
+            act_1_block_cards = set(
+                getattr(self.card_evaluator, "ACT_1_SURVIVAL_BLOCK", set())
+                or set()
+            )
+            act_1_block_cards.update(
+                getattr(self.card_evaluator, "BLOCK_SUPPORT", set()) or set()
+            )
+            act_1_block_cards.update({"Metallicize"})
+
+            deck_ids = [
+                getattr(deck_card, "card_id", "")
+                for deck_card in (getattr(self.game, "deck", None) or [])
+            ]
+            frontload_count = sum(
+                1 for card_id in deck_ids if card_id in act_1_frontload_cards
+            )
+            act_boss = _normalize_boss_name(getattr(self.game, "act_boss", None))
+            slime_boss_frontload_gap = (
+                getattr(context, "act", 0) == 1
+                and "slimeboss" in act_boss
+                and frontload_count < 4
+                and (getattr(context, "floor", 0) or 0) <= 15
+            )
+            if slime_boss_frontload_gap:
+                logging.info(
+                    "[REWARD] Slime Boss frontload gap: frontload=%s deck_size=%s",
+                    frontload_count,
+                    len(deck_ids),
+                )
+
+            def reward_selection_score(card):
+                strategy_score = strategy_scores.get(id(card))
+                evaluator_score = None
+                if self.card_evaluator:
+                    try:
+                        evaluator_score = self.card_evaluator.evaluate_card(card, context)
+                    except Exception:
+                        evaluator_score = None
+
+                if strategy_score is not None:
+                    if strategy_score >= 65 and evaluator_score is not None:
+                        score = max(strategy_score, evaluator_score)
+                    elif evaluator_score is not None:
+                        if getattr(context, "act", 0) == 1 and evaluator_score >= 75:
+                            score = max(strategy_score, evaluator_score)
+                        else:
+                            score = min(strategy_score, evaluator_score)
+                    else:
+                        score = strategy_score
+                elif evaluator_score is not None:
+                    score = evaluator_score
+                else:
+                    score = 50
+
+                if slime_boss_frontload_gap:
+                    if card.card_id in act_1_frontload_cards:
+                        return max(score, 94)
+                    if card.card_id in act_1_block_cards:
+                        return min(score, 68)
+                return score
+
+            def reward_tiebreaker_score(card):
+                if self.card_evaluator:
+                    try:
+                        return self.card_evaluator.evaluate_card(card, context)
+                    except Exception:
+                        pass
+                return reward_selection_score(card)
+
             # Deck size limit check (keep deck lean)
             deck_size = (
                 len(self.game.deck)
@@ -1972,19 +2133,7 @@ class OptimizedAgent(SimpleAgent):
                 # Get scores for all pickable cards
                 scored_cards = []
                 for card in pickable_cards:
-                    try:
-                        if self.card_evaluator:
-                            card_score = self.card_evaluator.evaluate_card(
-                                card, context
-                            )
-                            scored_cards.append((card, card_score))
-                        else:
-                            # Use simple fallback: only take if score looks good
-                            # Default mid-tier score
-                            card_score = 50
-                            scored_cards.append((card, card_score))
-                    except:
-                        scored_cards.append((card, 50))  # Default score
+                    scored_cards.append((card, reward_selection_score(card)))
 
                 # Filter for high priority cards (score >= 65, reduced from 75 to reduce skipping)
                 high_priority_cards = [
@@ -2018,7 +2167,16 @@ class OptimizedAgent(SimpleAgent):
 
             # Use synergy evaluator to rank cards
             try:
-                best_card = self.card_evaluator.get_best_card(pickable_cards, context)
+                if strategy_scores:
+                    best_card = max(
+                        pickable_cards,
+                        key=lambda card: (
+                            reward_selection_score(card),
+                            reward_tiebreaker_score(card),
+                        ),
+                    )
+                else:
+                    best_card = self.card_evaluator.get_best_card(pickable_cards, context)
             except Exception as e:
                 import sys
 

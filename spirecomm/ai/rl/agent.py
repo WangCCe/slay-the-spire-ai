@@ -906,6 +906,7 @@ class CombatRLAgent:
         self.reward_screen_wait = 0.2
         self._reward_screen_key = None
         self._reward_screen_waited = False
+        self._fallback_turn_key = None
 
         # Import OptimizedAgent
         try:
@@ -983,6 +984,14 @@ class CombatRLAgent:
         current_screen = getattr(game, 'screen_type', None)
         logger.info(f"[CombatRLAgent] screen={current_screen}, use_rl_for_combat={self.use_rl_for_combat}, rl_failure_count={self.rl_failure_count}")
 
+        if self._should_use_fallback_turn_takeover(game):
+            logger.info(
+                "[ENERGY_GUARD] Continuing fallback turn takeover floor=%s turn=%s",
+                getattr(game, "floor", None),
+                getattr(game, "turn", None),
+            )
+            return self.fallback_agent.get_next_action_in_game(game)
+
         if self.use_rl_for_combat and self._is_rl_context(game):
             potion_action = self._maybe_use_potion_guard(game)
             if potion_action is not None:
@@ -1001,8 +1010,9 @@ class CombatRLAgent:
                 elif self._should_override_wasteful_end_turn(action, game):
                     replacement = self._get_non_end_turn_fallback(game)
                     if replacement is not None:
+                        self._fallback_turn_key = self._combat_turn_key(game)
                         logger.info(
-                            "[ENERGY_GUARD] Replacing EndTurnAction with %s",
+                            "[ENERGY_GUARD] Replacing EndTurnAction with %s and handing off rest of turn",
                             type(replacement).__name__,
                         )
                         return replacement
@@ -1158,6 +1168,27 @@ class CombatRLAgent:
         )
         return True
 
+    def _combat_turn_key(self, game: Game):
+        from spirecomm.spire.screen import ScreenType
+
+        if not getattr(game, "in_combat", False):
+            return None
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        return (getattr(game, "floor", None), getattr(game, "turn", None))
+
+    def _should_use_fallback_turn_takeover(self, game: Game) -> bool:
+        active_key = getattr(self, "_fallback_turn_key", None)
+        if active_key is None:
+            return False
+
+        current_key = self._combat_turn_key(game)
+        if current_key != active_key:
+            self._fallback_turn_key = None
+            return False
+
+        return True
+
     def _get_non_end_turn_fallback(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction
 
@@ -1302,17 +1333,26 @@ class CombatRLAgent:
         """
         Detect if we're in combat (main loop or combat popups).
 
-        Uses game.in_combat to gate combat-only RL usage. This allows the RL
-        agent to handle in-combat popup screens like HAND_SELECT/GRID.
-        """
-        return hasattr(game, 'in_combat') and game.in_combat
-
-    def _is_rl_context(self, game: Game) -> bool:
-        """
-        Extend RL usage beyond combat to include card rewards.
+        Uses game.in_combat together with the screen type to gate combat-only
+        RL usage. Some post-combat screens can retain a stale in_combat flag.
         """
         from spirecomm.spire.screen import ScreenType
 
+        if not getattr(game, "in_combat", False):
+            return False
+
+        screen_type = getattr(game, "screen_type", None)
+        return screen_type in (
+            None,
+            ScreenType.NONE,
+            ScreenType.HAND_SELECT,
+            ScreenType.GRID,
+        )
+
+    def _is_rl_context(self, game: Game) -> bool:
+        """
+        Use RL only for live combat decisions and combat-only selection popups.
+        """
         in_combat = self._is_in_combat_context(game)
         screen_type = getattr(game, 'screen_type', None)
 
@@ -1322,9 +1362,8 @@ class CombatRLAgent:
             logger.info(f"[RL_CONTEXT] Returning True (in combat)")
             return True
 
-        result = screen_type == ScreenType.CARD_REWARD
-        logger.info(f"[RL_CONTEXT] CARD_REWARD check: {result} (expected True for card rewards)")
-        return result
+        logger.info("[RL_CONTEXT] Returning False (non-combat screen)")
+        return False
 
     def _is_valid_combat_action(self, action: Action, game: Game) -> bool:
         """
@@ -1398,6 +1437,7 @@ class CombatRLAgent:
         # Reset RL failure tracking for new game
         self.use_rl_for_combat = True
         self.rl_failure_count = 0
+        self._fallback_turn_key = None
         self._reward_screen_key = None
         self._reward_screen_waited = False
 

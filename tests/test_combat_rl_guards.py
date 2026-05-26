@@ -1,7 +1,14 @@
 from types import SimpleNamespace
 
 from spirecomm.ai.rl.agent import CombatRLAgent
-from spirecomm.communication.action import EndTurnAction, PlayCardAction, PotionAction
+from spirecomm.communication.action import (
+    CancelAction,
+    CardRewardAction,
+    EndTurnAction,
+    PlayCardAction,
+    PotionAction,
+)
+from spirecomm.spire.screen import ScreenType
 
 
 def _agent():
@@ -83,3 +90,67 @@ def test_energy_guard_replaces_wasteful_end_turn_with_play_card():
     assert isinstance(replacement, PlayCardAction)
     assert replacement.card_index == 0
     assert replacement.target_index == 0
+
+
+def test_wasteful_end_turn_hands_rest_of_turn_to_fallback():
+    card = SimpleNamespace(is_playable=True, cost=1, has_target=True)
+    game = _game(hand=[card], monsters=[_monster(hp=30, damage=8, index=0)])
+    calls = {"rl": 0, "fallback": 0}
+
+    def rl_decide(_game):
+        calls["rl"] += 1
+        return EndTurnAction()
+
+    def fallback_decide(_game):
+        calls["fallback"] += 1
+        return PlayCardAction(card_index=0, target_index=0)
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=rl_decide)
+    agent.fallback_agent = SimpleNamespace(get_next_action_in_game=fallback_decide)
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    first = agent.get_next_action_in_game(game)
+    second = agent.get_next_action_in_game(game)
+
+    assert isinstance(first, PlayCardAction)
+    assert isinstance(second, PlayCardAction)
+    assert calls == {"rl": 1, "fallback": 2}
+
+
+def test_card_reward_uses_fallback_even_when_in_combat_flag_is_stale():
+    card = SimpleNamespace(name="Pommel Strike")
+    fallback_action = CardRewardAction(card)
+    agent = _agent()
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda game: fallback_action
+    )
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda game: CancelAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._reward_screen_key = (1, str(ScreenType.CARD_REWARD), 1)
+    agent._reward_screen_waited = True
+    agent.reward_screen_wait = 0
+    game = _game(
+        screen_type=ScreenType.CARD_REWARD,
+        in_combat=True,
+        choice_available=True,
+        choice_list=["Pommel Strike", "skip"],
+        screen=SimpleNamespace(cards=[card], can_skip=True),
+    )
+
+    assert agent.get_next_action_in_game(game) is fallback_action
+
+
+def test_main_combat_still_uses_rl_context():
+    game = _game(screen_type=None, in_combat=True)
+
+    assert _agent()._is_rl_context(game)

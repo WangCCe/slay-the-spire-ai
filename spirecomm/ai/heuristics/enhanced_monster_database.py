@@ -314,11 +314,23 @@ class EnhancedMonsterDatabase:
 
         # Check for probabilities (less certain prediction)
         elif "probabilities" in pattern:
-            probs = pattern["probabilities"]
+            probs = self._select_probability_table(
+                pattern["probabilities"],
+                current_turn,
+                monster_hp_percent,
+            )
             # Predict most likely moves
             if isinstance(probs, dict):
                 # Get top 2 most likely moves
-                sorted_probs = sorted(probs.items(), key=lambda x: x[1], reverse=True)[:2]
+                sorted_probs = sorted(
+                    (
+                        (move_name, prob)
+                        for move_name, prob in probs.items()
+                        if isinstance(prob, (int, float))
+                    ),
+                    key=lambda x: x[1],
+                    reverse=True
+                )[:2]
                 for move_name, prob in sorted_probs:
                     for move in moves:
                         if move["name"].lower().replace(" ", "_") == move_name.lower():
@@ -379,6 +391,31 @@ class EnhancedMonsterDatabase:
                     break
 
         return predictions[:3]  # Return at most 3 predictions
+
+    def _select_probability_table(
+        self,
+        probabilities: Dict[str, Any],
+        current_turn: int,
+        monster_hp_percent: float,
+    ) -> Dict[str, Any]:
+        if not isinstance(probabilities, dict):
+            return {}
+        if all(isinstance(prob, (int, float)) for prob in probabilities.values()):
+            return probabilities
+
+        if monster_hp_percent < 0.5 and current_turn == 1:
+            low_hp_table = probabilities.get("below_50_percent_hp_first_turn")
+            if isinstance(low_hp_table, dict):
+                return low_hp_table
+
+        normal_table = probabilities.get("normal")
+        if isinstance(normal_table, dict):
+            return normal_table
+
+        for table in probabilities.values():
+            if isinstance(table, dict) and all(isinstance(prob, (int, float)) for prob in table.values()):
+                return table
+        return {}
 
     def calculate_future_threat(self, monster_name: str, current_turn: int,
                                monster_hp_percent: float, current_strength: int = 0) -> int:
