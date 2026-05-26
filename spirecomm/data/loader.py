@@ -63,11 +63,6 @@ CARD_METADATA = {
         'is_x_damage': True,
         'reason': 'X-damage = player_block'
     },
-    'bludgeon': {
-        'damage': 0,
-        'is_x_damage': True,
-        'reason': 'X-damage = min(30, 12 + player_block // 10)'
-    },
     'whirlwind': {
         'damage': 0,
         'is_x_damage': True,

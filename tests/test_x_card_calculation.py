@@ -2,7 +2,7 @@
 """
 Test script to verify X-card calculation logic.
 
-Tests Body Slam, Rage, Whirlwind, and Bludgeon calculations
+Tests Body Slam, Whirlwind, Rage trigger behavior, and static non-X-card boundaries.
 in various scenarios.
 """
 
@@ -94,46 +94,34 @@ def test_body_slam_damage():
 
     print("\n✓ All Body Slam tests passed!")
 
-def test_bludgeon_scaling():
-    """Test Bludgeon damage scaling with block."""
+def test_bludgeon_is_not_x_damage():
+    """Bludgeon is static 32/42 damage, not block-scaling X damage."""
     print("\n" + "=" * 80)
-    print("TEST: Bludgeon Damage Scaling")
+    print("TEST: Bludgeon Is Not X-Damage")
     print("=" * 80)
 
     evaluator = SynergyCardEvaluator()
     planner = FastCombatSimulator(evaluator)
     card = MockCard('Bludgeon')
 
-    # Test 1: 0 block = 12 damage
+    # Direct X-damage helper should not handle Bludgeon at all.
     print("\n[Test 1] Bludgeon with 0 block")
     context = create_test_context(player_block=0)
     state = create_test_state(context, player_block=0)
     damage = planner._calculate_x_damage(card, state, context)
     print(f"  Player Block: {state.player_block}")
-    print(f"  Calculated Damage: {damage}")
-    assert damage == 12, f"Expected 12 damage, got {damage}"
+    print(f"  X-Damage Helper Result: {damage}")
+    assert damage == 0, f"Expected Bludgeon to bypass X-damage helper, got {damage}"
     print("  ✓ PASS")
 
-    # Test 2: 50 block = 17 damage (12 + 50//10)
+    # Test 2: high block still does not make it an X-damage card.
     print("\n[Test 2] Bludgeon with 50 block")
     state = create_test_state(context, player_block=50)
     damage = planner._calculate_x_damage(card, state, context)
     print(f"  Player Block: {state.player_block}")
-    print(f"  Calculated Damage: {damage}")
-    expected = 12 + 50 // 10
-    assert damage == expected, f"Expected {expected} damage, got {damage}"
+    print(f"  X-Damage Helper Result: {damage}")
+    assert damage == 0, f"Expected Bludgeon to bypass X-damage helper, got {damage}"
     print("  ✓ PASS")
-
-    # Test 3: 200 block = 30 damage (capped)
-    print("\n[Test 3] Bludgeon with 200 block (capped at 30)")
-    state = create_test_state(context, player_block=200)
-    damage = planner._calculate_x_damage(card, state, context)
-    print(f"  Player Block: {state.player_block}")
-    print(f"  Calculated Damage: {damage}")
-    assert damage == 30, f"Expected 30 damage (capped), got {damage}"
-    print("  ✓ PASS")
-
-    print("\n✓ All Bludgeon tests passed!")
 
 def test_whirlwind_aoe():
     """Test Whirlwind AOE calculation."""
@@ -143,7 +131,7 @@ def test_whirlwind_aoe():
 
     evaluator = SynergyCardEvaluator()
     planner = FastCombatSimulator(evaluator)
-    card = MockCard('Whirlwind')
+    card = MockCard('Whirlwind', cost=-1)
 
     # Test 1: 3 energy
     print("\n[Test 1] Whirlwind with 3 energy")
@@ -153,13 +141,13 @@ def test_whirlwind_aoe():
     damage = planner._calculate_x_damage(card, state, context)
     print(f"  Player Energy: {state.player_energy}")
     print(f"  Calculated Damage (per target): {damage}")
-    assert damage == 3, f"Expected 3 damage, got {damage}"
+    assert damage == 15, f"Expected 15 damage, got {damage}"
     print("  ✓ PASS")
 
     print("\n✓ Whirlwind test passed!")
 
 def test_rage_block():
-    """Test Rage block calculation."""
+    """Test Rage sets a per-attack block trigger instead of immediate block."""
     print("\n" + "=" * 80)
     print("TEST: Rage Block Calculation")
     print("=" * 80)
@@ -168,26 +156,27 @@ def test_rage_block():
     planner = FastCombatSimulator(evaluator)
     card = MockCard('Rage')
 
-    # Test 1: 2 max energy
-    print("\n[Test 1] Rage with 2 max energy")
+    # Test 1: base Rage
+    print("\n[Test 1] Rage trigger")
     context = create_test_context(energy=2)
     state = create_test_state(context, player_block=0)
-    state.player_energy = 2
-    block = planner._calculate_x_block(card, state, context)
-    print(f"  Max Energy (approx): {state.player_energy + card.cost}")
-    print(f"  Calculated Block: {block}")
-    assert block == 2, f"Expected 2 block, got {block}"
+    planner._apply_skill(state, card, context)
+    print(f"  Immediate Block: {state.player_block}")
+    print(f"  Rage Block Trigger: {state.rage_block_per_attack}")
+    assert state.player_block == 0
+    assert state.rage_block_per_attack == 3
     print("  ✓ PASS")
 
-    # Test 2: 3 max energy
-    print("\n[Test 2] Rage with 3 max energy")
+    # Test 2: upgraded Rage
+    print("\n[Test 2] Rage+ trigger")
     context = create_test_context(energy=3)
     state = create_test_state(context, player_block=0)
-    state.player_energy = 3
-    block = planner._calculate_x_block(card, state, context)
-    print(f"  Max Energy (approx): {state.player_energy + card.cost}")
-    print(f"  Calculated Block: {block}")
-    assert block == 3, f"Expected 3 block, got {block}"
+    card = MockCard('Rage', upgrades=1)
+    planner._apply_skill(state, card, context)
+    print(f"  Immediate Block: {state.player_block}")
+    print(f"  Rage Block Trigger: {state.rage_block_per_attack}")
+    assert state.player_block == 0
+    assert state.rage_block_per_attack == 5
     print("  ✓ PASS")
 
     print("\n✓ All Rage tests passed!")
@@ -215,19 +204,19 @@ def test_upgraded_cards():
     assert damage == 25, f"Expected 25 damage, got {damage}"
     print("  ✓ PASS")
 
-    # Test 2: Rage+
-    print("\n[Test 2] Rage+ with 3 max energy")
+    # Test 2: Whirlwind+
+    print("\n[Test 2] Whirlwind+ with 3 energy")
     context = create_test_context(energy=3)
     state = create_test_state(context, player_block=0)
     state.player_energy = 3
-    card = MockCard('Rage+')
-    card.card_id = 'Rage+'
+    card = MockCard('Whirlwind', cost=-1)
+    card.card_id = 'Whirlwind'
     card.upgrades = 1
-    block = planner._calculate_x_block(card, state, context)
+    damage = planner._calculate_x_damage(card, state, context)
     print(f"  Card: {card.card_id}")
-    print(f"  Max Energy (approx): {state.player_energy + card.cost}")
-    print(f"  Calculated Block: {block}")
-    assert block == 3, f"Expected 3 block, got {block}"
+    print(f"  Player Energy: {state.player_energy}")
+    print(f"  Calculated Damage: {damage}")
+    assert damage == 24, f"Expected 24 damage, got {damage}"
     print("  ✓ PASS")
 
     print("\n✓ All upgraded card tests passed!")
@@ -303,7 +292,7 @@ def main():
 
     try:
         test_body_slam_damage()
-        test_bludgeon_scaling()
+        test_bludgeon_is_not_x_damage()
         test_whirlwind_aoe()
         test_rage_block()
         test_upgraded_cards()

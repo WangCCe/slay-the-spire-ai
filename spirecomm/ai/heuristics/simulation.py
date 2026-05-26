@@ -842,7 +842,6 @@ class FastCombatSimulator:
 
         X-damage cards have variable damage based on game state:
         - Body Slam: damage = player_block
-        - Bludgeon: damage = min(30, 12 + player_block // 10)
         - Whirlwind: damage = max_energy (applies AOE multiplier automatically)
 
         Args:
@@ -857,9 +856,6 @@ class FastCombatSimulator:
             >>> # Body Slam with 20 block
             >>> _calculate_x_damage(Card('Body Slam'), state, context)
             20
-            >>> # Bludgeon with 50 block
-            >>> _calculate_x_damage(Card('Bludgeon'), state, context)
-            17  # 12 + 50//10 = 17
         """
         # Normalize card name by removing '+' suffix (handles upgraded cards)
         card_name = card.card_id.replace('+', '')
@@ -867,12 +863,6 @@ class FastCombatSimulator:
         if card_name == 'Body Slam':
             # Body Slam deals damage equal to your current block
             return state.player_block
-
-        elif card_name == 'Bludgeon':
-            # Bludgeon: X damage where X = 12-30 based on current block
-            # Formula: Each 10 block adds 1 damage, starting from 12, capped at 30
-            # 0 block = 12 damage, 10 block = 13 damage, 180+ block = 30 damage
-            return min(30, 12 + state.player_block // 10)
 
         elif card_name == 'Whirlwind':
             # Whirlwind: 5/8 damage to all enemies X times, where X is
