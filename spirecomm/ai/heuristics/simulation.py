@@ -117,12 +117,12 @@ DAMAGE_UPGRADE_BONUS = {
     'Dropkick': 1,
     'Fiend Fire': 1,
     'Reckless Charge': 1,
+    'Reaper': 1,
 
     # +2 damage
     'Bash': 2,
     'Iron Wave': 2,
     'Clothesline': 2,
-    'Reaper': 2,
 
     # +3 damage
     'Strike': 3,

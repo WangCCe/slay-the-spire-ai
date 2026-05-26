@@ -273,6 +273,66 @@ def test_upgraded_bludgeon_damage_is_42(monkeypatch):
     assert result.total_damage_dealt == 42
 
 
+def test_reaper_damage_is_static_aoe_not_unknown_fallback(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "reaper": {
+            "name": "Reaper",
+            "description": "Deal 4 damage to ALL enemies. Heal HP equal to unblocked damage. Exhaust.",
+        }
+    }
+    loader._wiki_data = {
+        "reaper": {
+            "name": "Reaper",
+            "text": "Deal [4|5] damage to ALL enemies. Heal HP equal to unblocked damage.\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    context = _combat_context([], energy=2, monsters=[_louse(current_hp=20), _louse(current_hp=20)])
+    reaper = _card("Reaper", "Reaper", cost=2, has_target=False)
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        reaper,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 8
+    assert result.damage_instances == 2
+
+
+def test_upgraded_reaper_damage_is_5_per_enemy(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "reaper": {
+            "name": "Reaper",
+            "description": "Deal 4 damage to ALL enemies. Heal HP equal to unblocked damage. Exhaust.",
+        }
+    }
+    loader._wiki_data = {
+        "reaper": {
+            "name": "Reaper",
+            "text": "Deal [4|5] damage to ALL enemies. Heal HP equal to unblocked damage.\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    context = _combat_context([], energy=2, monsters=[_louse(current_hp=20), _louse(current_hp=20)])
+    reaper_plus = _card("Reaper", "Reaper+", cost=2, has_target=False, upgrades=1)
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        reaper_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 10
+    assert result.damage_instances == 2
+
+
 def test_beam_search_does_not_play_more_cards_after_x_cost_whirlwind_spends_all_energy():
     whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
     strike = _card("Strike_R", "Strike", cost=1, cost_for_turn=1)

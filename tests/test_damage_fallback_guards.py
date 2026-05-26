@@ -139,6 +139,19 @@ def test_block_parser_reads_upgrade_pairs_from_block_sentence():
     assert loader._parse_card_block({"name": "Power Through+"}) == 20
 
 
+def test_damage_parser_reads_reaper_static_damage_despite_healing_text():
+    loader = data_loader.GameDataLoader(auto_load=False)
+    loader._wiki_data = {
+        "reaper": {
+            "name": "Reaper",
+            "text": "Deal [4|5] damage to ALL enemies. Heal HP equal to unblocked damage.\n#Exhaust.",
+        }
+    }
+
+    assert loader._parse_card_damage({"name": "Reaper"}) == 4
+    assert loader._parse_card_damage({"name": "Reaper+"}) == 5
+
+
 def test_ironclad_prune_targets_falls_back_when_damage_parse_returns_none(monkeypatch):
     monkeypatch.setattr(
         ironclad_combat.game_data_loader,

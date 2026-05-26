@@ -74,11 +74,6 @@ CARD_METADATA = {
         'is_x_damage': True,
         'reason': 'X-damage = self-damage over time'
     },
-    'reaper': {
-        'damage': 0,
-        'is_x_damage': True,
-        'reason': 'X-damage based on unblocked damage dealt (healing)'
-    },
 
     # X-Block Cards (variable block based on game state)
     'rage': {
