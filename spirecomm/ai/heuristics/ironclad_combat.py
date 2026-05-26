@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 POWER_BONUS_EARLY = 18
 POWER_BONUS_MID = 12
 POWER_BONUS_LATE = 6
+AWAKENED_ONE_POWER_PENALTY = 90
 
 
 def _format_card_for_log(card: Card) -> str:
@@ -1000,6 +1001,7 @@ class IroncladCombatPlanner(CombatPlanner):
         cultist_ritual = self._is_cultist_ritual_turn(context)
         has_cultist = self._has_cultist(context)
         has_gremlin_nob = self._has_gremlin_nob(context)
+        has_awakened_one = self._has_awakened_one(context)
         lagavulin_hibernating = self._is_lagavulin_hibernating(context)
         has_lagavulin = self._has_lagavulin(context)
         
@@ -1136,6 +1138,14 @@ class IroncladCombatPlanner(CombatPlanner):
                         power_bonus = POWER_BONUS_LATE
                     score += power_bonus
                     logger.debug(f"[POWER_BONUS] +{power_bonus} for {card_id} on turn {context.turn}")
+
+                    if has_awakened_one and not all_killed:
+                        score -= AWAKENED_ONE_POWER_PENALTY
+                        logger.info(
+                            "[AWAKENED_POWER_PENALTY] -%s for %s against Awakened One",
+                            AWAKENED_ONE_POWER_PENALTY,
+                            card_id,
+                        )
 
                 # HP-cost cards: strong penalty at low HP unless the sequence kills everything
                 hp_costs = {
@@ -1370,6 +1380,8 @@ class IroncladCombatPlanner(CombatPlanner):
 
         # Powers first
         if card_type == CardType.POWER:
+            if self._has_awakened_one(context):
+                return -200
             if card_id == 'Demon Form' and context.turn <= 3:
                 return 1000
             return 600 if context.turn <= 3 else 400
@@ -1504,6 +1516,21 @@ class IroncladCombatPlanner(CombatPlanner):
             True if any Gremlin Nob is alive
         """
         return any(monster.monster_id == "Gremlin Nob" for monster in context.monsters_alive)
+
+    def _has_awakened_one(self, context: DecisionContext) -> bool:
+        """Return True if Awakened One is alive in the current combat."""
+        for monster in getattr(context, "monsters_alive", []) or []:
+            identifiers = [
+                getattr(monster, "monster_id", ""),
+                getattr(monster, "name", ""),
+            ]
+            for identifier in identifiers:
+                normalized = "".join(
+                    ch for ch in str(identifier).lower() if ch.isalnum()
+                )
+                if "awakenedone" in normalized:
+                    return True
+        return False
 
     def _is_lagavulin_hibernating(self, context: DecisionContext) -> bool:
         """

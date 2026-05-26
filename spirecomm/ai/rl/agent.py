@@ -1018,6 +1018,24 @@ class CombatRLAgent:
                         return replacement
                     logger.info("[ENERGY_GUARD] No safe replacement found; allowing EndTurnAction")
                     return action
+                elif self._should_override_awakened_one_power(action, game):
+                    replacement = self._get_awakened_one_safe_replacement(game)
+                    if replacement is not None:
+                        from spirecomm.communication.action import EndTurnAction
+
+                        if not isinstance(replacement, EndTurnAction):
+                            self._fallback_turn_key = self._combat_turn_key(game)
+                        logger.info(
+                            "[AWAKENED_POWER_GUARD] Replacing RL power with %s on floor=%s turn=%s",
+                            type(replacement).__name__,
+                            getattr(game, "floor", None),
+                            getattr(game, "turn", None),
+                        )
+                        return replacement
+                    logger.info("[AWAKENED_POWER_GUARD] No replacement found; ending turn")
+                    from spirecomm.communication.action import EndTurnAction
+
+                    return EndTurnAction()
                 elif self._is_valid_combat_action(action, game):
                     logger.info(f"[CombatRLAgent] RL action validated, returning it")
                     # Valid action for current combat context
@@ -1201,7 +1219,7 @@ class CombatRLAgent:
 
         return self._first_playable_card_action(game)
 
-    def _first_playable_card_action(self, game: Game) -> Optional[Action]:
+    def _first_playable_card_action(self, game: Game, allow_power: bool = True) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
 
         energy = self._player_energy(game)
@@ -1211,12 +1229,65 @@ class CombatRLAgent:
 
         target_index = self._best_monster_index(game)
         for card_index, card in playable:
+            if not allow_power and self._is_power_card(card):
+                continue
             if getattr(card, "has_target", False):
                 if target_index is None:
                     continue
                 return PlayCardAction(card_index=card_index, target_index=target_index)
             return PlayCardAction(card_index=card_index)
         return None
+
+    def _get_awakened_one_safe_replacement(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import EndTurnAction
+
+        replacement = self._first_playable_card_action(game, allow_power=False)
+        if replacement is not None:
+            return replacement
+        return EndTurnAction()
+
+    def _should_override_awakened_one_power(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return False
+        if not self._has_awakened_one(game):
+            return False
+
+        card = self._card_for_action(action, game)
+        return self._is_power_card(card)
+
+    @staticmethod
+    def _card_for_action(action: Action, game: Game):
+        card = getattr(action, "card", None)
+        if card is not None:
+            return card
+
+        try:
+            card_index = int(getattr(action, "card_index", -1))
+        except Exception:
+            return None
+        hand = getattr(game, "hand", []) or []
+        if 0 <= card_index < len(hand):
+            return hand[card_index]
+        return None
+
+    @staticmethod
+    def _is_power_card(card) -> bool:
+        if card is None:
+            return False
+
+        card_type = getattr(card, "type", None)
+        if card_type is None:
+            card_type = getattr(card, "card_type", None)
+        if getattr(card_type, "name", "").upper() == "POWER":
+            return True
+        if str(getattr(card_type, "value", "")).upper() == "POWER":
+            return True
+        return str(card_type).upper().endswith("POWER")
 
     @staticmethod
     def _alive_monsters(game: Game):
@@ -1241,6 +1312,21 @@ class CombatRLAgent:
             except Exception:
                 pass
         return total
+
+    @classmethod
+    def _has_awakened_one(cls, game: Game) -> bool:
+        for monster in cls._alive_monsters(game):
+            identifiers = [
+                getattr(monster, "monster_id", ""),
+                getattr(monster, "name", ""),
+            ]
+            for identifier in identifiers:
+                normalized = "".join(
+                    ch for ch in str(identifier).lower() if ch.isalnum()
+                )
+                if "awakenedone" in normalized:
+                    return True
+        return False
 
     @staticmethod
     def _player_energy(game: Game) -> int:

@@ -4,6 +4,7 @@ from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.combat_ending import CombatEndingDetector
 from spirecomm.ai.heuristics.simulation import FastCombatSimulator, SimulationState
+from spirecomm.communication.action import PlayCardAction
 from spirecomm.spire.card import Card, CardRarity, CardType
 from spirecomm.spire.character import Intent, Monster
 
@@ -88,6 +89,22 @@ def _louse(current_hp=50):
     )
 
 
+def _awakened_one(current_hp=300):
+    return Monster(
+        name="Awakened One",
+        monster_id="AwakenedOne",
+        max_hp=current_hp,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=18,
+        move_hits=1,
+    )
+
+
 def _combat_context(cards, energy=3, monsters=None):
     monsters = monsters or [_louse(), _louse()]
     game = SimpleNamespace(
@@ -168,3 +185,35 @@ def test_lethal_detector_counts_whirlwind_damage_without_negative_energy():
     context = _combat_context([whirlwind], energy=3, monsters=[_louse(current_hp=50)])
 
     assert CombatEndingDetector()._calculate_affordable_damage(context) == 15
+
+
+def test_awakened_one_penalizes_slow_power_setup_in_beam_score():
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    context = _combat_context([demon_form], energy=3, monsters=[_awakened_one()])
+    context.game_id = "test-awakened-one-power"
+    context.incoming_damage = 18
+    context.turn = 3
+    context.floor = 50
+    context.act = 3
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+    initial_state = SimulationState(context)
+    power_state = initial_state.clone()
+    power_state.energy_spent = 3
+
+    empty_score = planner._score_sequence([], initial_state, initial_state, context)
+    power_score = planner._score_sequence(
+        [PlayCardAction(card=demon_form)],
+        initial_state,
+        power_state,
+        context,
+    )
+
+    assert power_score < empty_score
