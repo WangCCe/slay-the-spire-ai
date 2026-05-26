@@ -364,6 +364,94 @@ def test_carnage_is_single_target_not_aoe(monkeypatch):
     assert result.damage_instances == 1
 
 
+def test_twin_strike_hits_twice_with_upgrade_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "description": "Deal 5 damage twice.",
+        }
+    }
+    loader._wiki_data = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "text": "Deal [5|7] damage twice.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    twin_strike = _card("Twin Strike", "Twin Strike", cost=1)
+    context = _combat_context([twin_strike], energy=1, monsters=[_louse(current_hp=100)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        twin_strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 10
+    assert result.damage_instances == 2
+
+    twin_strike_plus = _card("Twin Strike", "Twin Strike+", cost=1, upgrades=1)
+    context = _combat_context([twin_strike_plus], energy=1, monsters=[_louse(current_hp=100)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        twin_strike_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 14
+    assert result.damage_instances == 2
+
+
+def test_pummel_uses_hit_count_upgrade_not_hit_count_as_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "pummel": {
+            "name": "Pummel",
+            "description": "Deal 2 damage 4 times. Exhaust.",
+        }
+    }
+    loader._wiki_data = {
+        "pummel": {
+            "name": "Pummel",
+            "text": "Deal 2 damage [4|5] times.\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    pummel = _card("Pummel", "Pummel", cost=1)
+    context = _combat_context([pummel], energy=1, monsters=[_louse(current_hp=100)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        pummel,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 8
+    assert result.damage_instances == 4
+
+    pummel_plus = _card("Pummel", "Pummel+", cost=1, upgrades=1)
+    context = _combat_context([pummel_plus], energy=1, monsters=[_louse(current_hp=100)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        pummel_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 10
+    assert result.damage_instances == 5
+
+
 def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

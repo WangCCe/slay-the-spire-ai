@@ -127,7 +127,7 @@ DAMAGE_UPGRADE_BONUS = {
     # +3 damage
     'Strike': 3,
     'Thunderclap': 3,
-    'Twin Strike': 3,
+    'Twin Strike': 2,
     'Headbutt': 3,
     'Cleave': 3,
 
@@ -722,27 +722,34 @@ class FastCombatSimulator:
         # Also check known AOE cards by name
         if card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']:
             is_aoe = True
+        hit_count = self._get_attack_hit_count(card)
 
         if is_aoe:
             # AOE - apply to all monsters
             for monster in state.monsters:
                 if monster['is_gone']:
                     continue
-                damage = base_damage + state.player_strength
-                damage = self._apply_vulnerable_damage(damage, monster)
-                damage = self._apply_weak_damage(damage, monster.get('weak', 0))
-                self._deal_damage_to_monster(state, monster, damage)
-                state.damage_instances += 1  # Track each damage instance
+                for _ in range(hit_count):
+                    if monster['is_gone']:
+                        break
+                    damage = base_damage + state.player_strength
+                    damage = self._apply_vulnerable_damage(damage, monster)
+                    damage = self._apply_weak_damage(damage, monster.get('weak', 0))
+                    self._deal_damage_to_monster(state, monster, damage)
+                    state.damage_instances += 1  # Track each damage instance
         else:
             # Single-target attack
             if target_index is not None and target_index < len(state.monsters):
                 monster = state.monsters[target_index]
                 if not monster['is_gone']:
-                    damage = base_damage + state.player_strength
-                    damage = self._apply_vulnerable_damage(damage, monster)
-                    damage = self._apply_weak_damage(damage, monster.get('weak', 0))
-                    self._deal_damage_to_monster(state, monster, damage)
-                    state.damage_instances += 1  # Track damage instance
+                    for _ in range(hit_count):
+                        if monster['is_gone']:
+                            break
+                        damage = base_damage + state.player_strength
+                        damage = self._apply_vulnerable_damage(damage, monster)
+                        damage = self._apply_weak_damage(damage, monster.get('weak', 0))
+                        self._deal_damage_to_monster(state, monster, damage)
+                        state.damage_instances += 1  # Track damage instance
 
                     # Check for card effects using game data
                     if card_data:
@@ -761,6 +768,18 @@ class FastCombatSimulator:
                                 monster['weak'] += int(weak_stacks.group(1))
                             else:
                                 monster['weak'] += 1
+
+    def _get_attack_hit_count(self, card: Card) -> int:
+        """Return known static hit counts for repeated-hit Ironclad attacks."""
+        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        upgrades = getattr(card, 'upgrades', 0)
+
+        if card_name == 'Twin Strike':
+            return 2
+        if card_name == 'Pummel':
+            return 5 if upgrades > 0 else 4
+
+        return 1
 
     def _apply_vulnerable_damage(self, damage: int, monster: dict) -> int:
         """Apply vulnerable multiplier (1.5x). Binary: any vulnerable stacks = 1.5x damage."""
