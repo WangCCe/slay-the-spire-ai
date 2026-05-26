@@ -1,10 +1,12 @@
 from types import SimpleNamespace
 
+import spirecomm.ai.heuristics.simulation as simulation
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.combat_ending import CombatEndingDetector
 from spirecomm.ai.heuristics.simulation import FastCombatSimulator, SimulationState
 from spirecomm.communication.action import PlayCardAction
+from spirecomm.data.loader import GameDataLoader
 from spirecomm.spire.card import Card, CardRarity, CardType
 from spirecomm.spire.character import Intent, Monster
 
@@ -132,12 +134,21 @@ def _combat_context(cards, energy=3, monsters=None):
     )
 
 
-def _card(card_id, name, card_type=CardType.ATTACK, cost=1, cost_for_turn=None, has_target=True):
+def _card(
+    card_id,
+    name,
+    card_type=CardType.ATTACK,
+    cost=1,
+    cost_for_turn=None,
+    has_target=True,
+    upgrades=0,
+):
     return Card(
         card_id=card_id,
         name=name,
         card_type=card_type,
         rarity=CardRarity.UNCOMMON,
+        upgrades=upgrades,
         cost=cost,
         cost_for_turn=cost_for_turn,
         has_target=has_target,
@@ -161,6 +172,42 @@ def test_x_cost_whirlwind_spends_current_energy_without_negative_simulation_stat
     assert result.player_energy == 0
     assert result.energy_spent == 3
     assert result.total_damage_dealt == 30
+
+
+def test_simulator_does_not_treat_upgraded_non_block_skills_as_block(monkeypatch):
+    burning_pact = _card(
+        "Burning Pact",
+        "Burning Pact+",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([burning_pact], energy=3)
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "burning pact": {
+            "name": "Burning Pact",
+            "description": "Exhaust 1 card. Draw 2 cards.",
+        }
+    }
+    loader._wiki_data = {
+        "burning pact": {
+            "name": "Burning Pact",
+            "text": "#Exhaust 1 card.\nDraw [2|3] cards.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        burning_pact,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 0
 
 
 def test_beam_search_does_not_play_more_cards_after_x_cost_whirlwind_spends_all_energy():

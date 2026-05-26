@@ -103,6 +103,42 @@ def test_fast_simulator_falls_back_when_x_damage_calculation_returns_none(monkey
     assert state.total_damage_dealt == 6
 
 
+def test_block_parser_ignores_upgrade_pairs_unrelated_to_block():
+    loader = data_loader.GameDataLoader(auto_load=False)
+    loader._wiki_data = {
+        "burning pact": {
+            "name": "Burning Pact",
+            "text": "#Exhaust 1 card.\nDraw [2|3] cards.",
+        }
+    }
+
+    block = loader._parse_card_block(
+        {
+            "name": "Burning Pact",
+            "description": "Exhaust 1 card. Draw 2 cards.",
+        }
+    )
+
+    assert block is None
+
+
+def test_block_parser_reads_upgrade_pairs_from_block_sentence():
+    loader = data_loader.GameDataLoader(auto_load=False)
+    loader._wiki_data = {
+        "shrug it off": {
+            "name": "Shrug It Off",
+            "text": "Gain [8|11] #Block.\nDraw 1 card.",
+        },
+        "power through": {
+            "name": "Power Through",
+            "text": "Add 2 *Wounds into your hand.\nGain [15|20] #Block.",
+        },
+    }
+
+    assert loader._parse_card_block({"name": "Shrug It Off"}) == 8
+    assert loader._parse_card_block({"name": "Power Through+"}) == 20
+
+
 def test_ironclad_prune_targets_falls_back_when_damage_parse_returns_none(monkeypatch):
     monkeypatch.setattr(
         ironclad_combat.game_data_loader,
