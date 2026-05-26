@@ -152,6 +152,45 @@ def test_damage_parser_reads_reaper_static_damage_despite_healing_text():
     assert loader._parse_card_damage({"name": "Reaper+"}) == 5
 
 
+def test_damage_parser_ignores_upgrade_pairs_for_debuff_stacks():
+    loader = data_loader.GameDataLoader(auto_load=False)
+    loader._wiki_data = {
+        "uppercut": {
+            "name": "Uppercut",
+            "text": "Deal 13 damage.\nApply [1|2] #Weak.\nApply [1|2] #Vulnerable.",
+        }
+    }
+
+    assert loader._parse_card_damage({"name": "Uppercut", "description": "Deal 13 damage."}) == 13
+    assert loader._parse_card_damage({"name": "Uppercut+", "description": "Deal 13 damage."}) == 13
+
+
+def test_damage_parser_ignores_upgrade_pairs_for_hit_counts():
+    loader = data_loader.GameDataLoader(auto_load=False)
+    loader._wiki_data = {
+        "pummel": {
+            "name": "Pummel",
+            "text": "Deal 2 damage [4|5] times.\n#Exhaust.",
+        }
+    }
+
+    assert loader._parse_card_damage({"name": "Pummel", "description": "Deal 2 damage 4 times."}) == 2
+    assert loader._parse_card_damage({"name": "Pummel+", "description": "Deal 2 damage 5 times."}) == 2
+
+
+def test_damage_parser_ignores_additional_damage_scaling_pairs():
+    loader = data_loader.GameDataLoader(auto_load=False)
+    loader._wiki_data = {
+        "perfected strike": {
+            "name": "Perfected Strike",
+            "text": "Deal 6 damage.\nDeals [2|3] additional damage for ALL your cards containing \"Strike\".",
+        }
+    }
+
+    assert loader._parse_card_damage({"name": "Perfected Strike", "description": "Deal 6 damage."}) == 6
+    assert loader._parse_card_damage({"name": "Perfected Strike+", "description": "Deal 6 damage."}) == 6
+
+
 def test_ironclad_prune_targets_falls_back_when_damage_parse_returns_none(monkeypatch):
     monkeypatch.setattr(
         ironclad_combat.game_data_loader,

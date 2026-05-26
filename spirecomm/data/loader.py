@@ -373,6 +373,41 @@ class GameDataLoader:
         base_value, upgraded_value = matches[0]
         return int(base_value), int(upgraded_value)
 
+    def _parse_text_field_for_damage_upgrade_values(self, text: str) -> Tuple[Optional[int], Optional[int]]:
+        """
+        Extract base and upgraded damage values from a wiki Text field.
+
+        Wiki text can include upgrade pairs for debuff stacks, hit counts, or
+        scaling amounts. Only pairs that directly replace the damage number in
+        a damage clause should be treated as card damage.
+        """
+        upgrade_pattern = r'\[(\d+)\|(\d+)\]'
+        for match in re.finditer(upgrade_pattern, text):
+            clause_start = max(
+                text.rfind('.', 0, match.start()),
+                text.rfind('\n', 0, match.start()),
+                text.rfind('\\n', 0, match.start()),
+            )
+            clause_start = 0 if clause_start < 0 else clause_start + 1
+
+            clause_end_candidates = [
+                index for index in (
+                    text.find('.', match.end()),
+                    text.find('\n', match.end()),
+                    text.find('\\n', match.end()),
+                ) if index != -1
+            ]
+            clause_end = min(clause_end_candidates) if clause_end_candidates else len(text)
+            clause = text[clause_start:clause_end].lower()
+            after_pair = clause[match.end() - clause_start:]
+
+            if 'additional damage' in clause:
+                continue
+            if ('deal' in clause or 'deals' in clause) and re.match(r'\s*damage\b', after_pair):
+                return int(match.group(1)), int(match.group(2))
+
+        return None, None
+
     def _parse_text_field_for_block_upgrade_values(self, text: str) -> Tuple[Optional[int], Optional[int]]:
         """
         Extract base and upgraded block values from a wiki Text field.
@@ -654,7 +689,7 @@ class GameDataLoader:
         if self._wiki_data and base_card_name in self._wiki_data:
             wiki_entry = self._wiki_data[base_card_name]
             text = wiki_entry.get('text', '')
-            base_damage, upgraded_damage = self._parse_text_field_for_upgrade_values(text)
+            base_damage, upgraded_damage = self._parse_text_field_for_damage_upgrade_values(text)
             if base_damage is not None:
                 # Return appropriate value based on upgrade status
                 return upgraded_damage if is_upgraded else base_damage
