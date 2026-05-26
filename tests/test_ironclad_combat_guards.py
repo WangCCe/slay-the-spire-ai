@@ -4,7 +4,7 @@ import spirecomm.ai.heuristics.simulation as simulation
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.combat_ending import CombatEndingDetector
-from spirecomm.ai.heuristics.simulation import FastCombatSimulator, SimulationState
+from spirecomm.ai.heuristics.simulation import FastCombatSimulator, HeuristicCombatPlanner, SimulationState
 from spirecomm.communication.action import PlayCardAction
 from spirecomm.data.loader import GameDataLoader
 from spirecomm.spire.card import Card, CardRarity, CardType
@@ -331,6 +331,72 @@ def test_upgraded_reaper_damage_is_5_per_enemy(monkeypatch):
 
     assert result.total_damage_dealt == 10
     assert result.damage_instances == 2
+
+
+def test_carnage_is_single_target_not_aoe(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "carnage": {
+            "name": "Carnage",
+            "description": "Ethereal. Deal 20 damage.",
+        }
+    }
+    loader._wiki_data = {
+        "carnage": {
+            "name": "Carnage",
+            "text": "#Ethereal.\nDeal [20|28] damage.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    monsters = [_louse(current_hp=30), _louse(current_hp=30)]
+    context = _combat_context([], energy=2, monsters=monsters)
+    carnage = _card("Carnage", "Carnage", cost=2)
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        carnage,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 20
+    assert result.damage_instances == 1
+
+
+def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "carnage": {
+            "name": "Carnage",
+            "description": "Ethereal. Deal 20 damage.",
+        }
+    }
+    loader._wiki_data = {
+        "carnage": {
+            "name": "Carnage",
+            "text": "#Ethereal.\nDeal [20|28] damage.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    monkeypatch.setattr(HeuristicCombatPlanner, "_calculate_x_block", lambda *_args, **_kwargs: 0, raising=False)
+    carnage = _card("Carnage", "Carnage", cost=2)
+    context = _combat_context([carnage], energy=2, monsters=[_louse(current_hp=30), _louse(current_hp=30)])
+
+    score = HeuristicCombatPlanner().fast_score_action(
+        carnage,
+        SimulationState(context),
+        context,
+    )
+
+    assert score == simulation.FASTSCORE_ATTACK_BONUS + 20 * simulation.FASTSCORE_DAMAGE_MULTIPLIER
+
+
+def test_lethal_targeting_treats_carnage_as_single_target():
+    carnage = _card("Carnage", "Carnage", cost=2)
+    context = _combat_context([carnage], energy=2, monsters=[_louse(current_hp=20), _louse(current_hp=20)])
+
+    assert CombatEndingDetector()._can_target_all_monsters(context, affordable_damage=40) is False
 
 
 def test_beam_search_does_not_play_more_cards_after_x_cost_whirlwind_spends_all_energy():

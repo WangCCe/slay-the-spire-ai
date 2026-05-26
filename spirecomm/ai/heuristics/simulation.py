@@ -720,7 +720,7 @@ class FastCombatSimulator:
         if card_data:
             is_aoe = game_data_loader._is_card_aoe(card_data)
         # Also check known AOE cards by name
-        if card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper', 'Carnage']:
+        if card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']:
             is_aoe = True
 
         if is_aoe:
@@ -2687,7 +2687,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                 player_class = 'IRONCLAD'
 
             if player_class == 'IRONCLAD':
-                is_aoe = card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper', 'Carnage']
+                is_aoe = card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
 
         # Base damage estimate with AOE multiplier
         base_damage = 0

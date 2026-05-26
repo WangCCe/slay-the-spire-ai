@@ -276,7 +276,7 @@ class CombatEndingDetector:
             if hasattr(card, 'type') and card.type == CardType.ATTACK:
                 # Check if this is an AOE attack
                 card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ""
-                is_aoe = card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper', 'Carnage']
+                is_aoe = card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
 
                 if is_aoe:
                     aoe_count += 1
