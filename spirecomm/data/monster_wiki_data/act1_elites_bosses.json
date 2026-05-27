@@ -452,88 +452,116 @@
     }
   },
   "Guardian": {
-    "monster_id": "Guardian",
-    "name": "Guardian",
+    "monster_id": "TheGuardian",
+    "name": "The Guardian",
+    "aliases": ["Guardian", "TheGuardian"],
     "monster_type": "boss",
     "hp_ranges": {
-      "normal": {"min": 230, "max": 250},
-      "ascension_9+": {"min": 240, "max": 260}
+      "normal": {"min": 240, "max": 240},
+      "ascension_9+": {"min": 250, "max": 250}
     },
     "moves": [
       {
         "move_id": 0,
-        "name": "Charged",
+        "name": "Charging Up",
         "intent": "DEFEND",
         "damage": null,
-        "effect": "Gains 10 Block. When you attack Guardian, you take 5 damage for each hit.",
-        "block_gain": 10,
-        "retaliatory_damage": 5,
-        "ascension_modifiers": {
-          "18+": {"block_gain": 12}
-        }
+        "effect": "Gains 9 Block.",
+        "block_gain": 9
       },
       {
         "move_id": 1,
-        "name": "Twin Slam",
+        "name": "Fierce Bash",
         "intent": "ATTACK",
-        "damage": 10,
-        "effect": "Deals 10 damage twice.",
-        "hits": 2,
+        "damage": 32,
+        "effect": "Deals 32 damage.",
+        "hits": 1,
         "ascension_modifiers": {
-          "18+": {"damage": 12}
+          "4+": {"damage": 36}
         }
       },
       {
         "move_id": 2,
-        "name": "Sharp Within",
-        "intent": "ATTACK_DEBUFF",
-        "damage": 6,
-        "effect": "Deals 6 damage and applies 2 Vulnerable.",
-        "vulnerable_applied": 2,
-        "ascension_modifiers": {
-          "3+": {"damage": 8}
-        }
+        "name": "Vent Steam",
+        "intent": "DEBUFF",
+        "damage": null,
+        "effect": "Applies 2 Weak and 2 Vulnerable.",
+        "weak_applied": 2,
+        "vulnerable_applied": 2
       },
       {
         "move_id": 3,
-        "name": "Wrist Drill",
-        "intent": "ATTACK_DEBUFF",
+        "name": "Whirlwind",
+        "intent": "ATTACK",
         "damage": 5,
-        "effect": "Deals 5 damage 3 times and applies 2 Weak.",
-        "hits": 3,
-        "weak_applied": 2,
+        "effect": "Deals 5 damage 4 times.",
+        "hits": 4
+      },
+      {
+        "move_id": 4,
+        "name": "Defensive Mode",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Gains 3 Sharp Hide.",
+        "sharp_hide_gain": 3,
         "ascension_modifiers": {
-          "18+": {"hits": 4}
+          "19+": {"sharp_hide_gain": 4}
         }
+      },
+      {
+        "move_id": 5,
+        "name": "Roll Attack",
+        "intent": "ATTACK",
+        "damage": 9,
+        "effect": "Deals 9 damage.",
+        "hits": 1,
+        "ascension_modifiers": {
+          "4+": {"damage": 10}
+        }
+      },
+      {
+        "move_id": 6,
+        "name": "Twin Slam",
+        "intent": "ATTACK_BUFF",
+        "damage": 8,
+        "effect": "Deals 8 damage twice, removes Sharp Hide, and shifts back to Offensive Mode.",
+        "hits": 2,
+        "removes_sharp_hide": true,
+        "shifts_to_offensive": true
       }
     ],
     "pattern": {
-      "description": "Starts in defending mode. Uses Charged to gain Block that damages you when attacking. Alternates between defensive and offensive moves based on HP percentage.",
+      "description": "Offensive pattern is Charging Up, Fierce Bash, Vent Steam, Whirlwind. Mode Shift can interrupt into Defensive Mode; defensive pattern is Defensive Mode, Roll Attack, Twin Slam.",
       "hp_threshold_modes": {
-        "high_hp": ["Charged", "Twin Slam", "Charged", "Sharp Within"],
-        "low_hp": ["Wrist Drill", "Charged", "Twin Slam"]
+        "high_hp": ["Charging Up", "Fierce Bash", "Vent Steam", "Whirlwind"],
+        "low_hp": ["Defensive Mode", "Roll Attack", "Twin Slam"]
       },
       "defensive_trigger": {
         "hp_below": 0.5,
-        "mode": "frequent_blocking"
+        "mode": "defensive_mode_proxy"
       }
     },
     "special_mechanics": {
-      "type": "retaliatory_block",
-      "retaliatory_damage": 5,
-      "retaliation_trigger": "when_attacked",
-      "block_mechanic": "Charged move grants Block that damages attacker",
+      "type": "mode_shift",
+      "mode_shift": {
+        "base": 30,
+        "ascension_9+": 35,
+        "ascension_19+": 40,
+        "block_on_shift": 20,
+        "sharp_hide": 3,
+        "sharp_hide_ascension_19+": 4
+      },
       "recommended_strategy": {
-        "primary": "burst_when_block_low",
-        "secondary": "use_weak_to_mitigate_retaliation",
-        "note": "Avoid attacking heavily when Guardian has Block from Charged"
+        "primary": "time_mode_shift_before_big_attack_turns",
+        "secondary": "block_roll_attack_and_twin_slam",
+        "note": "Trigger Mode Shift before Fierce Bash or Whirlwind when possible, then respect Sharp Hide in Defensive Mode."
       }
     },
     "threat_profile": {
       "base_threat": 22,
-      "retaliatory_threat": 8,
-      "defensive_threat": 15,
-      "offensive_threat": 24,
+      "retaliatory_threat": 3,
+      "defensive_threat": 16,
+      "offensive_threat": 32,
       "scaling_threat": 2.5
     }
   }

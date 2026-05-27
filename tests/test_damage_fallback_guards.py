@@ -476,15 +476,27 @@ def test_hp_threshold_modes_predict_guardian_sequence():
     low_hp = database.predict_next_moves("The Guardian", current_turn=1, monster_hp_percent=0.4)
 
     assert [prediction["move"]["name"] for prediction in high_hp] == [
-        "Charged",
-        "Twin Slam",
-        "Charged",
+        "Charging Up",
+        "Fierce Bash",
+        "Vent Steam",
     ]
     assert [prediction["move"]["name"] for prediction in low_hp] == [
-        "Wrist Drill",
-        "Charged",
+        "Defensive Mode",
+        "Roll Attack",
         "Twin Slam",
     ]
+
+    moves = {move["name"]: move for move in database.get_moves("The Guardian")}
+    assert moves["Charging Up"]["block_gain"] == 9
+    assert moves["Fierce Bash"]["damage"] == 32
+    assert moves["Vent Steam"]["weak_applied"] == 2
+    assert moves["Vent Steam"]["vulnerable_applied"] == 2
+    assert moves["Whirlwind"]["damage"] == 5
+    assert moves["Whirlwind"]["hits"] == 4
+    assert moves["Defensive Mode"]["sharp_hide_gain"] == 3
+    assert moves["Roll Attack"]["damage"] == 9
+    assert moves["Twin Slam"]["damage"] == 8
+    assert moves["Twin Slam"]["hits"] == 2
 
 
 def test_enhanced_monster_database_covers_common_act2_threats():
