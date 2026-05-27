@@ -11,6 +11,7 @@ Key improvements over generic SynergyCardEvaluator:
 """
 
 from .card import SynergyCardEvaluator
+from .card_names import canonical_card_name
 from ..decision.base import DecisionContext
 from spirecomm.spire.card import Card
 
@@ -162,6 +163,10 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         for card_id, score in self.DEMOTED_CARDS.items():
             self.baseline_scores[card_id] = score
 
+    @staticmethod
+    def _card_name(card: Card) -> str:
+        return canonical_card_name(card)
+
     def evaluate_card(self, card: Card, context: DecisionContext) -> float:
         """
         Evaluate card for Ironclad with expert strategy integration.
@@ -174,7 +179,8 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         5. Act 1 special handling (aggressive damage)
         """
         # 1. Baseline from expert priorities
-        baseline = self.baseline_scores.get(card.card_id, 50)
+        card_id = self._card_name(card)
+        baseline = self.baseline_scores.get(card_id, 50)
 
         # 2. HP-aware modifier
         hp_modifier = self._calculate_hp_aware_modifier(card, context)
@@ -209,12 +215,13 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         """
         modifier = 1.0
         hp_pct = context.player_hp_pct
+        card_id = self._card_name(card)
 
         if hp_pct < 0.3:
             # Critical HP - avoid all HP costs
-            if card.card_id in self.HP_COST_CARDS:
+            if card_id in self.HP_COST_CARDS:
                 return 0.1  # Almost never pick
-            if card.card_id in self.SELF_DAMAGE_CARDS:
+            if card_id in self.SELF_DAMAGE_CARDS:
                 modifier *= 0.3
             # Prioritize defense heavily
             if self._is_defensive_card(card):
@@ -222,16 +229,16 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
 
         elif hp_pct < 0.5:
             # Low HP - moderate caution
-            if card.card_id in self.HP_COST_CARDS:
+            if card_id in self.HP_COST_CARDS:
                 modifier *= 0.4
-            if card.card_id in self.SELF_DAMAGE_CARDS:
+            if card_id in self.SELF_DAMAGE_CARDS:
                 modifier *= 0.7
             if self._is_defensive_card(card):
                 modifier *= 1.5
 
         elif hp_pct > 0.8:
             # High HP - can take risks
-            if card.card_id in ['Offering', 'Bloodletting', 'Hemokinesis']:
+            if card_id in ['Offering', 'Bloodletting', 'Hemokinesis']:
                 modifier *= 1.3  # These are powerful when safe
 
         return modifier
@@ -251,10 +258,11 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
 
         # Get archetype-specific bonuses
         archetype_cards = self.ARCHETYPE_BONUS_CARDS.get(archetype, {})
+        card_id = self._card_name(card)
 
         # Check if card fits archetype
-        if card.card_id in archetype_cards:
-            return archetype_cards[card.card_id]
+        if card_id in archetype_cards:
+            return archetype_cards[card_id]
 
         # Small penalty for cards that don't fit archetype
         # (only if archetype is well-established)
@@ -311,7 +319,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
 
         if (
             context.act == 1
-            and card.card_id in self.ACT_1_SURVIVAL_BLOCK
+            and self._card_name(card) in self.ACT_1_SURVIVAL_BLOCK
             and self._act_1_survival_gap(context)[0]
         ):
             return max(modifier, 1.0)
@@ -332,31 +340,32 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         deck_size = len(context.game.deck) if hasattr(context.game, 'deck') else 10
         floor = getattr(context, 'floor', 0) or 0
         bonus = 0.0
+        card_id = self._card_name(card)
 
-        if card.card_id in self.ACT_1_PREMIUM_FRONTLOAD:
+        if card_id in self.ACT_1_PREMIUM_FRONTLOAD:
             if deck_size <= 13 or floor <= 8:
                 bonus += 22
             else:
                 bonus += 10
-        elif card.card_id in self.ACT_1_DAMAGE_PRIORITY:
+        elif card_id in self.ACT_1_DAMAGE_PRIORITY:
             if deck_size <= 13:
                 bonus += 14
 
         # True solo win conditions remain attractive, but slower engines should
         # not beat first-cycle damage before the deck can survive Act 1 elites.
-        if card.card_id in ['Demon Form', 'Corruption']:
+        if card_id in ['Demon Form', 'Corruption']:
             bonus += 14
-        elif card.card_id in ['Limit Break', 'Barricade']:
+        elif card_id in ['Limit Break', 'Barricade']:
             bonus -= 20
 
-        if card.card_id in self.SPECULATIVE_ENGINE_CARDS and deck_size <= 14:
+        if card_id in self.SPECULATIVE_ENGINE_CARDS and deck_size <= 14:
             bonus -= 18
 
         needs_survival, block_support, frontload = self._act_1_survival_gap(context)
         if needs_survival:
-            if card.card_id in self.ACT_1_SURVIVAL_BLOCK:
+            if card_id in self.ACT_1_SURVIVAL_BLOCK:
                 bonus += 42 if block_support == 0 else 30
-            elif card.card_id in self.ACT_1_DAMAGE_PRIORITY and frontload >= 1:
+            elif card_id in self.ACT_1_DAMAGE_PRIORITY and frontload >= 1:
                 bonus -= 18
 
         return bonus
@@ -367,7 +376,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
             return (False, 0, 0)
 
         deck = list(getattr(context.game, 'deck', []) or [])
-        deck_ids = [getattr(c, 'card_id', '') for c in deck]
+        deck_ids = [self._card_name(c) for c in deck]
         floor = getattr(context, 'floor', 0) or 0
 
         block_support = sum(1 for card_id in deck_ids if card_id in self.BLOCK_SUPPORT)
@@ -385,7 +394,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
     def _calculate_support_adjustment(self, card: Card, context: DecisionContext) -> float:
         """Reward payoff cards only when the current deck can actually support them."""
         deck = list(getattr(context.game, 'deck', []) or [])
-        card_ids = [getattr(c, 'card_id', '') for c in deck]
+        card_ids = [self._card_name(c) for c in deck]
 
         def count(names):
             return sum(1 for card_id in card_ids if card_id in names)
@@ -395,7 +404,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         exhaust_support = count(self.EXHAUST_SUPPORT)
         self_damage_support = count(self.SELF_DAMAGE_SUPPORT)
 
-        card_id = card.card_id
+        card_id = self._card_name(card)
         if card_id == 'Limit Break':
             return 28 if strength_support >= 2 else -35
         if card_id == 'Body Slam':
@@ -419,7 +428,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
             'entrench', 'shrug it off', 'sentinel', 'ghostly armor',
         ]
 
-        card_id_lower = card.card_id.lower()
+        card_id_lower = self._card_name(card).lower()
 
         for keyword in defensive_keywords:
             if keyword in card_id_lower:

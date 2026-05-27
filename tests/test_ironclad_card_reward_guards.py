@@ -539,6 +539,24 @@ def test_ironclad_strategy_prefers_immolate_over_armaments_before_act1_boss():
     assert action.name == "Immolate"
 
 
+def test_ironclad_evaluator_treats_counted_upgraded_immolate_as_immolate():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+    ]
+    agent = _agent_for_reward([], deck, floor=5)
+    context = DecisionContext(agent.game)
+    evaluator = IroncladCardEvaluator()
+
+    immolate_score = evaluator.evaluate_card(_card("Immolate", cost=2), context)
+    counted_score = evaluator.evaluate_card(_card("Immolate+1", cost=2, upgrades=1), context)
+
+    assert counted_score == immolate_score
+
+
 def test_large_deck_reward_keeps_strategy_good_card_despite_energy_curve_penalty():
     deck = [
         _card("Strike_R"),
