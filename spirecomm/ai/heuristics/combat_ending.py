@@ -166,6 +166,12 @@ class CombatEndingDetector:
                 # Check vulnerable status
                 vulnerable = context.vulnerable_stacks.get(monster_idx, 0)
                 damage = self._get_card_damage(card, context)
+                damage = self._apply_player_weak_to_card_damage(
+                    card,
+                    context,
+                    damage,
+                    remaining_energy,
+                )
                 if vulnerable > 0:
                     damage = self._apply_vulnerable_to_card_damage(
                         card,
@@ -240,6 +246,12 @@ class CombatEndingDetector:
             if hasattr(card, 'type') and card.type == CardType.ATTACK:
                 cost = effective_card_cost(card, context.energy_available)
                 damage = self._get_card_damage(card, context)
+                damage = self._apply_player_weak_to_card_damage(
+                    card,
+                    context,
+                    damage,
+                    context.energy_available,
+                )
                 if len(context.monsters_alive) == 1 and context.vulnerable_stacks.get(0, 0) > 0:
                     damage = self._apply_vulnerable_to_card_damage(
                         card,
@@ -384,6 +396,31 @@ class CombatEndingDetector:
 
         return max(0, base_damage)
 
+    def _apply_player_weak_to_card_damage(
+        self,
+        card: Card,
+        context: DecisionContext,
+        total_damage: int,
+        available_energy: int,
+    ) -> int:
+        """Apply player Weak using the game's per-hit rounding."""
+        if self._get_player_debuff_stacks(context, 'Weak') <= 0:
+            return total_damage
+
+        hit_count = self._get_vulnerable_damage_instance_count(
+            card,
+            context,
+            available_energy,
+        )
+        if hit_count <= 1:
+            return int(total_damage * 0.75)
+
+        per_hit_damage, remainder = divmod(total_damage, hit_count)
+        if remainder != 0:
+            return int(total_damage * 0.75)
+
+        return int(per_hit_damage * 0.75) * hit_count
+
     def _apply_vulnerable_to_card_damage(
         self,
         card: Card,
@@ -420,6 +457,20 @@ class CombatEndingDetector:
             return max(1, effective_card_cost(card, available_energy))
 
         return self._get_attack_hit_count(card, context)
+
+    def _get_player_debuff_stacks(self, context: DecisionContext, power_name: str) -> int:
+        player = getattr(getattr(context, 'game', None), 'player', None)
+        powers = getattr(player, 'powers', []) if player is not None else []
+        for power in powers:
+            current_name = (
+                getattr(power, 'name', None)
+                or getattr(power, 'power_name', None)
+                or getattr(power, 'power_id', None)
+            )
+            if current_name == power_name:
+                amount = getattr(power, 'amount', None)
+                return amount if amount is not None else 1
+        return 0
 
     def _get_attack_hit_count(self, card: Card, context: DecisionContext) -> int:
         """Return known hit counts for repeated-hit attacks."""

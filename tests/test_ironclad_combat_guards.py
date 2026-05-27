@@ -2581,6 +2581,18 @@ def test_lethal_detector_applies_vulnerable_rounding_per_whirlwind_hit():
     assert CombatEndingDetector()._calculate_affordable_damage(context) == 21
 
 
+def test_lethal_detector_applies_player_weak_before_target_vulnerable(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"dropkick": {"name": "Dropkick", "description": "Deal 5 damage."}}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    dropkick = _card("Dropkick", "Dropkick", cost=1)
+    context = _combat_context([dropkick], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Weak", amount=1)]
+    context.vulnerable_stacks[0] = 1
+
+    assert CombatEndingDetector()._calculate_affordable_damage(context) == 4
+
+
 def test_lethal_detector_counts_perfected_strike_deck_scaling(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
