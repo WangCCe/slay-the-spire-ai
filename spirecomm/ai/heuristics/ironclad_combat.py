@@ -37,6 +37,7 @@ POWER_BONUS_EARLY = 18
 POWER_BONUS_MID = 12
 POWER_BONUS_LATE = 6
 AWAKENED_ONE_POWER_PENALTY = 90
+AOE_ATTACK_CARDS = {'Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper'}
 
 
 def _format_card_for_log(card: Card) -> str:
@@ -88,6 +89,16 @@ class IroncladCombatPlanner(CombatPlanner):
         self.timing_classifier = TurnTimingClassifier()
         self.balance_strategy = CombatBalanceStrategy()
         logger.info("[TIMING_INIT] IroncladCombatPlanner initialized with timing awareness")
+
+    @staticmethod
+    def _is_aoe_attack(card: Card) -> bool:
+        return canonical_card_name(card) in AOE_ATTACK_CARDS
+
+    def _is_single_target_attack(self, card: Card, target_idx: Optional[int]) -> bool:
+        if target_idx is None:
+            return False
+        is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
+        return is_attack and not self._is_aoe_attack(card)
 
     def plan_turn(self, context: DecisionContext) -> List[Action]:
         """
@@ -269,9 +280,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
                                 # Set primary target on first attack
                                 if state.primary_target is None and target_idx is not None:
-                                    is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
-                                    is_single_target = target_idx is not None and card.card_id not in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
-                                    if is_attack and is_single_target:
+                                    if self._is_single_target_attack(card, target_idx):
                                         new_state_copy.primary_target = target_idx
 
                                 # Create action
@@ -301,9 +310,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
                             # Set primary target on first attack
                             if state.primary_target is None and target_idx is not None:
-                                is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
-                                is_single_target = target_idx is not None and card.card_id not in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
-                                if is_attack and is_single_target:
+                                if self._is_single_target_attack(card, target_idx):
                                     new_state.primary_target = target_idx
 
                             # Create action
@@ -336,9 +343,7 @@ class IroncladCombatPlanner(CombatPlanner):
                         # If this is the first attack (no primary target yet), set it
                         if state.primary_target is None and target_idx is not None:
                             # Check if this is an attack card (not AOE)
-                            is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
-                            is_single_target = target_idx is not None and card.card_id not in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
-                            if is_attack and is_single_target:
+                            if self._is_single_target_attack(card, target_idx):
                                 new_state.primary_target = target_idx
 
                         # Create action
@@ -1004,7 +1009,7 @@ class IroncladCombatPlanner(CombatPlanner):
         # Condition 3: Check for single-target cards
         has_single_target = False
         for card in context.playable_cards:
-            if card.has_target:
+            if card.has_target and not self._is_aoe_attack(card):
                 has_single_target = True
                 break
 

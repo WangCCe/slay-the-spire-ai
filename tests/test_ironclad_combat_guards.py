@@ -4482,6 +4482,49 @@ def test_ironclad_sequence_bash_followup_bonus_ignores_upgraded_bash_as_big_atta
     assert extra_bash_score == solo_score
 
 
+def test_target_exploration_ignores_counted_upgraded_aoe_target_flag():
+    counted_cleave = _card("Cleave+1", "Cleave+1", cost=1, has_target=True, upgrades=1)
+    context = _combat_context(
+        [counted_cleave],
+        energy=1,
+        monsters=[_louse(current_hp=30), _louse(current_hp=30)],
+    )
+
+    should_explore = IroncladCombatPlanner()._should_explore_targets(context, elapsed_time=0)
+
+    assert should_explore is False
+
+
+def test_beam_search_does_not_set_primary_target_for_counted_upgraded_aoe():
+    counted_cleave = _card("Cleave+1", "Cleave+1", cost=1, has_target=True, upgrades=1)
+    strike = _card("Strike_R", "Strike", cost=1, has_target=True)
+    monsters = [_louse(current_hp=30), _louse(current_hp=30)]
+    context = _combat_context([counted_cleave, strike], energy=2, monsters=monsters)
+    planner = IroncladCombatPlanner()
+    cleave_primary_targets = []
+
+    def rank_targets(_card, _context, _state):
+        return [(monsters[0], 0, 10), (monsters[1], 1, 9)]
+
+    def simulate(state, _card, _target, _target_idx, context=None):
+        return state.clone()
+
+    def score(sequence, _initial_state, final_state, _context):
+        if len(sequence) == 1 and sequence[0].card is counted_cleave:
+            cleave_primary_targets.append(final_state.primary_target)
+        return len(sequence)
+
+    planner._rank_targets = rank_targets
+    planner._prune_targets = lambda _card, ranked_targets, _context, _state: ranked_targets
+    planner.simulator.simulate_card_play = simulate
+    planner._score_sequence = score
+
+    planner._beam_search_turn(context, [counted_cleave, strike], beam_width=10, max_depth=1)
+
+    assert cleave_primary_targets
+    assert all(primary_target is None for primary_target in cleave_primary_targets)
+
+
 def test_ironclad_fallback_priority_treats_counted_upgraded_demon_form_as_demon_form():
     demon_form = _card(
         "Demon Form",
