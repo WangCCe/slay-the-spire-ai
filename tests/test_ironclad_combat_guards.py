@@ -210,6 +210,37 @@ def test_simulator_does_not_treat_upgraded_non_block_skills_as_block(monkeypatch
     assert result.player_block == 0
 
 
+def test_simulator_resolves_target_object_when_target_index_is_omitted(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike_r": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        }
+    }
+    loader._wiki_data = {
+        "strike": {
+            "name": "Strike",
+            "text": "Deal [6|9] damage.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    first = _louse(current_hp=40)
+    second = _louse(current_hp=40)
+    context = _combat_context([strike], energy=1, monsters=[first, second])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=first,
+        context=context,
+    )
+
+    assert result.monsters[0]["hp"] == 34
+    assert result.monsters[1]["hp"] == 40
+
+
 def test_bludgeon_damage_is_static_not_scaled_by_block(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

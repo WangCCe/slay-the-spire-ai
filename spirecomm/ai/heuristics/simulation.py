@@ -641,6 +641,7 @@ class FastCombatSimulator:
 
         # Apply card effects based on type
         card_type = card.type if hasattr(card, 'type') else None
+        resolved_target_index = self._resolve_target_index(target, target_index, context)
 
         if card_type == CardType.ATTACK:
             new_state.attacks_played += 1
@@ -648,14 +649,14 @@ class FastCombatSimulator:
                 new_state,
                 card,
                 target,
-                target_index if target_index is not None else -1,
+                resolved_target_index,
                 context,
                 x_energy_spent=x_energy_spent,
             )
             self._apply_rage_block(new_state)
         elif card_type == CardType.SKILL:
             new_state.skills_played += 1
-            self._apply_skill(new_state, card, context, target_index)
+            self._apply_skill(new_state, card, context, resolved_target_index)
         elif card_type == CardType.POWER:
             self._apply_power(new_state, card)
 
@@ -663,12 +664,42 @@ class FastCombatSimulator:
 
         return new_state
 
+    def _resolve_target_index(
+        self,
+        target: Optional[Monster],
+        target_index: Optional[int],
+        context: Optional[DecisionContext],
+    ) -> Optional[int]:
+        """Resolve a target object back to its live-monster index."""
+        if target_index is not None:
+            return target_index
+        if target is None or context is None:
+            return None
+
+        monsters = getattr(context, 'monsters_alive', []) or []
+        for idx, monster in enumerate(monsters):
+            if monster is target:
+                return idx
+
+        target_id = getattr(target, 'monster_id', None)
+        target_name = getattr(target, 'name', None)
+        target_hp = getattr(target, 'current_hp', None)
+        for idx, monster in enumerate(monsters):
+            if (
+                getattr(monster, 'monster_id', None) == target_id
+                and getattr(monster, 'name', None) == target_name
+                and getattr(monster, 'current_hp', None) == target_hp
+            ):
+                return idx
+
+        return None
+
     def _apply_attack(
         self,
         state: SimulationState,
         card: Card,
         target: Optional[Monster],
-        target_index: int,
+        target_index: Optional[int],
         context: DecisionContext = None,
         x_energy_spent: Optional[int] = None,
     ):
@@ -739,7 +770,7 @@ class FastCombatSimulator:
                     state.damage_instances += 1  # Track each damage instance
         else:
             # Single-target attack
-            if target_index is not None and target_index < len(state.monsters):
+            if target_index is not None and 0 <= target_index < len(state.monsters):
                 monster = state.monsters[target_index]
                 if not monster['is_gone']:
                     for _ in range(hit_count):
