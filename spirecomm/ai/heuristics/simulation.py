@@ -1422,21 +1422,28 @@ class FastCombatSimulator:
                     card_name = (getattr(card, 'name', None) or card.card_id).replace('+', '')
                     card_data = game_data_loader.get_card_data(card_name)
                     if card_data:
-                        base_block = game_data_loader._parse_card_block(card_data)
+                        block_data = dict(card_data)
+                        display_name = getattr(card, 'name', None) or card.card_id
+                        block_data['name'] = display_name
+                        base_block = game_data_loader._parse_card_block(block_data)
                         if base_block and base_block > 0:
                             # Apply upgrade bonus if card is upgraded
                             upgrades = getattr(card, 'upgrades', 0)
                             if upgrades > 0:
-                                # Check if we have a known upgrade bonus for this card
-                                upgrade_bonus = BLOCK_UPGRADE_BONUS.get(card_name)
-                                if upgrade_bonus is not None:
-                                    # Use known bonus
-                                    base_block += upgrade_bonus
-                                    logger.debug(f"[BLOCK_UPGRADE] {card.card_id} (upgrades={upgrades}): {base_block} block (+{upgrade_bonus})")
+                                base_data = dict(card_data)
+                                base_data['name'] = card_name
+                                unupgraded_block = game_data_loader._parse_card_block(base_data)
+                                if unupgraded_block is not None and base_block != unupgraded_block:
+                                    logger.debug(f"[BLOCK_UPGRADE_PARSED] {card.card_id} (upgrades={upgrades}): {base_block} block")
                                 else:
-                                    # Unknown card - apply generic +3 bonus
-                                    base_block += 3
-                                    logger.debug(f"[BLOCK_UPGRADE_GENERIC] {card.card_id} (upgrades={upgrades}): {base_block} block (+3 generic)")
+                                    # Some upgrades (for example Armaments+) improve the non-block effect.
+                                    # Only apply a manual bonus when the card is explicitly mapped.
+                                    upgrade_bonus = BLOCK_UPGRADE_BONUS.get(card_name)
+                                    if upgrade_bonus is not None:
+                                        base_block += upgrade_bonus
+                                        logger.debug(f"[BLOCK_UPGRADE] {card.card_id} (upgrades={upgrades}): {base_block} block (+{upgrade_bonus})")
+                                    else:
+                                        logger.debug(f"[BLOCK_UPGRADE_NO_BLOCK_CHANGE] {card.card_id} (upgrades={upgrades}): {base_block} block")
                             else:
                                 logger.debug(f"[BLOCK_BASE] {card.card_id} (upgrades={upgrades}): {base_block} block")
 

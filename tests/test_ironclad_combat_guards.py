@@ -559,6 +559,42 @@ def test_simulator_does_not_treat_upgraded_non_block_skills_as_block(monkeypatch
     assert result.player_block == 0
 
 
+def test_armaments_upgrade_keeps_same_block_amount(monkeypatch):
+    armaments = _card(
+        "Armaments",
+        "Armaments+",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([armaments], energy=3)
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "armaments": {
+            "name": "Armaments",
+            "description": "Gain 5 Block. Upgrade a card in your hand for the rest of combat.",
+        }
+    }
+    loader._wiki_data = {
+        "armaments": {
+            "name": "Armaments",
+            "text": "Gain 5 #Block.\nUpgrade [1|ALL] cards in your hand for the rest of combat.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        armaments,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 5
+
+
 def test_simulator_resolves_target_object_when_target_index_is_omitted(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
