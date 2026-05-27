@@ -48,6 +48,20 @@ def test_card_select_confirms_grid_selection_even_without_confirm_state_update()
     assert coordinator.sent_messages == ["choose 0", "confirm"]
 
 
+def test_stale_card_select_confirm_does_not_fire_for_hand_select_without_confirm():
+    coordinator = FakeCoordinator(
+        SimpleNamespace(
+            screen_type=ScreenType.HAND_SELECT,
+            available_commands=["play", "end", "key", "click", "wait", "state"],
+            screen=SimpleNamespace(confirm_up=False),
+        )
+    )
+
+    OptionalCardSelectConfirmAction(allow_stale_selection=True).execute(coordinator)
+
+    assert coordinator.sent_messages == []
+
+
 def test_stale_card_select_confirm_skips_after_screen_changes():
     coordinator = FakeCoordinator(
         SimpleNamespace(
