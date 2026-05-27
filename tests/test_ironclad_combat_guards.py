@@ -1577,6 +1577,38 @@ def test_battle_trance_blocks_later_card_draw_this_turn(monkeypatch):
     assert state.cards_drawn == 3
     assert result.cards_drawn == 3
 
+    battle_trance_plus = _card(
+        "Battle Trance+1",
+        "Battle Trance+1",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context(
+        [battle_trance_plus, pommel],
+        energy=1,
+        monsters=[_louse(current_hp=30)],
+    )
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        battle_trance_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        pommel,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert state.cards_drawn == 4
+    assert result.cards_drawn == 4
+
 
 def test_entrench_doubles_current_block():
     entrench = _card(

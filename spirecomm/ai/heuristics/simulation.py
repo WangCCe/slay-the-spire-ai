@@ -1833,7 +1833,7 @@ class FastCombatSimulator:
         except:
             pass
 
-        if card.card_id.replace('+', '') == 'Battle Trance':
+        if _canonical_card_name(card) == 'Battle Trance':
             state.draw_blocked = True
 
     def _apply_power(self, state: SimulationState, card: Card):
