@@ -388,6 +388,60 @@ def test_fast_simulator_reaper_healing_uses_counted_upgrade_suffix(monkeypatch):
     assert state.player_hp == 50
 
 
+def test_fast_simulator_dropkick_resource_effect_uses_counted_upgrade_suffix(monkeypatch):
+    card = Card(
+        card_id="Dropkick+1",
+        name="Dropkick+1",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.UNCOMMON,
+        has_target=True,
+        cost=1,
+        upgrades=1,
+    )
+    card_data = {
+        "name": "Dropkick",
+        "description": "Deal 5 damage. If the enemy has Vulnerable, gain 1 energy and draw 1 card.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Dropkick" else None,
+    )
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 40,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 1,
+                "weak": 0,
+                "thorns": 0,
+            }
+        ],
+        player_strength=0,
+        player_hp=80,
+        total_damage_dealt=0,
+        monsters_killed=0,
+        damage_instances=0,
+        player_energy=1,
+        energy_gained=0,
+        cards_drawn=0,
+        draw_blocked=False,
+    )
+
+    FastCombatSimulator(None)._apply_attack(
+        state,
+        card,
+        target=None,
+        target_index=0,
+        context=None,
+    )
+
+    assert state.energy_gained == 1
+    assert state.player_energy == 2
+    assert state.cards_drawn == 1
+
+
 def test_game_data_parser_applies_counted_searing_blow_upgrade_suffix():
     loader = data_loader.GameDataLoader(auto_load=False)
     loader._wiki_data = {}

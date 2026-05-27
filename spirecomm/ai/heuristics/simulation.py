@@ -1081,7 +1081,7 @@ class FastCombatSimulator:
         card: Card,
         target_index: Optional[int],
     ):
-        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_name = _canonical_card_name(card)
         if card_name != 'Dropkick':
             return
         if target_index is None or not (0 <= target_index < len(state.monsters)):
@@ -1102,7 +1102,7 @@ class FastCombatSimulator:
         if not card_data:
             return
 
-        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_name = _canonical_card_name(card)
         if card_name == 'Dropkick':
             return
         description = self._get_card_effect_text(card_name, card_data)
