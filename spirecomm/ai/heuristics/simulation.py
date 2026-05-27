@@ -425,6 +425,9 @@ class SimulationState:
         self.corruption_active = self._has_player_power(context, 'Corruption')
         self.feel_no_pain_block_per_exhaust = self._get_player_power_amount(context, 'Feel No Pain')
         self.dark_embrace_draw_per_exhaust = self._get_player_power_amount(context, 'Dark Embrace')
+        self.rupture_strength_per_hp_loss = self._get_player_power_amount(context, 'Rupture')
+        if self.rupture_strength_per_hp_loss <= 0 and self._has_player_power(context, 'Rupture'):
+            self.rupture_strength_per_hp_loss = 1
 
         # Monster state (each monster tracked independently)
         self.monsters = []
@@ -518,6 +521,7 @@ class SimulationState:
         new_state.corruption_active = self.corruption_active
         new_state.feel_no_pain_block_per_exhaust = self.feel_no_pain_block_per_exhaust
         new_state.dark_embrace_draw_per_exhaust = self.dark_embrace_draw_per_exhaust
+        new_state.rupture_strength_per_hp_loss = self.rupture_strength_per_hp_loss
         new_state.monsters = [m.copy() for m in self.monsters]
         new_state.played_card_uuids = self.played_card_uuids.copy()
         new_state.energy_spent = self.energy_spent
@@ -561,6 +565,7 @@ class SimulationState:
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
             self.dark_embrace_draw_per_exhaust,
+            self.rupture_strength_per_hp_loss,
         )
 
         # Monster states (sorted for consistent hashing)
@@ -1349,6 +1354,10 @@ class FastCombatSimulator:
         elif card_id == 'Metallicize':
             state.end_turn_block += 4 if card.upgrades > 0 else 3
 
+        # Rupture - card HP loss grants Strength once per HP-loss event.
+        elif card_id == 'Rupture':
+            state.rupture_strength_per_hp_loss += 2 if card.upgrades > 0 else 1
+
         # Draw power
         elif card_id == 'Draw':
             state.cards_drawn += 1 if card.upgrades == 0 else 2
@@ -1532,6 +1541,8 @@ class FastCombatSimulator:
                 return
 
             state.player_hp = max(0, state.player_hp - hp_loss)
+            if state.rupture_strength_per_hp_loss > 0:
+                state.player_strength += state.rupture_strength_per_hp_loss
         except Exception:
             pass
 

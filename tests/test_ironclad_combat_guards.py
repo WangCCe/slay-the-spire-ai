@@ -323,6 +323,39 @@ def test_metallicize_tracks_end_turn_block_without_body_slam_block(monkeypatch):
     assert result.total_damage_dealt == 0
 
 
+def test_rupture_gains_strength_once_when_card_loses_hp(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bloodletting": {
+            "name": "Bloodletting",
+            "description": "Lose 3 HP.\nGain 2 Energy.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    bloodletting = _card(
+        "Bloodletting",
+        "Bloodletting",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    context = _combat_context([bloodletting], energy=0, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Rupture", amount=1)]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        bloodletting,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_hp == context.game.current_hp - 3
+    assert result.player_strength == 1
+
+
 def test_slime_boss_split_materializes_large_slimes_with_inherited_hp():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_slime_boss(current_hp=56)])
