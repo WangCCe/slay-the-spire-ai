@@ -338,6 +338,19 @@ def test_enhanced_monster_database_loads_act2_normal_monsters():
     }
 
 
+def test_enhanced_monster_database_loads_jaw_worm_opening_and_moves():
+    database = EnhancedMonsterDatabase()
+
+    jaw_worm = database.get_monster_data("Jaw Worm")
+    opening = database.predict_next_moves("Jaw Worm", current_turn=1, monster_hp_percent=1.0)
+    later = database.predict_next_moves("Jaw Worm", current_turn=2, monster_hp_percent=1.0)
+
+    assert jaw_worm is not None
+    assert [move["name"] for move in jaw_worm["moves"]] == ["Chomp", "Thrash", "Bellow"]
+    assert opening[0]["move"]["name"] == "Chomp"
+    assert {prediction["move"]["name"] for prediction in later[:2]} == {"Bellow", "Thrash"}
+
+
 def test_chosen_opening_and_phase_probabilities_predict_moves():
     database = EnhancedMonsterDatabase()
 

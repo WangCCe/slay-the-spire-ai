@@ -207,6 +207,101 @@
     }
   },
   {
+    "monster_id": "Jaw_Worm",
+    "name": "Jaw Worm",
+    "aliases": ["JawWorm"],
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 40,
+        "max": 44
+      },
+      "ascension_7+": {
+        "min": 42,
+        "max": 46
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Chomp",
+        "intent": "ATTACK",
+        "damage": 11,
+        "effect": "Deals 11 damage (12 on A2+).",
+        "ascension_modifiers": {
+          "2+": {
+            "damage": 12
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Thrash",
+        "intent": "ATTACK_DEFEND",
+        "damage": 7,
+        "block_gain": 5,
+        "effect": "Deals 7 damage, gains 5 Block."
+      },
+      {
+        "move_id": 2,
+        "name": "Bellow",
+        "intent": "DEFEND_BUFF",
+        "damage": null,
+        "strength_gain": 3,
+        "block_gain": 6,
+        "effect": "Gains 3 Strength and 6 Block (4 Strength on A2+, 5 Strength and 9 Block on A17+).",
+        "ascension_modifiers": {
+          "2+": {
+            "strength_gain": 4
+          },
+          "17+": {
+            "strength_gain": 5,
+            "block_gain": 9
+          }
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Always starts with Chomp. Afterwards, 45% Bellow, 30% Thrash, 25% Chomp. Cannot use Bellow twice in a row, Chomp twice in a row, or Thrash three times in a row.",
+      "initial_move": "Chomp",
+      "move_probabilities": {
+        "Bellow": 0.45,
+        "Thrash": 0.3,
+        "Chomp": 0.25
+      },
+      "constraints": [
+        "max_consecutive_bellow: 1",
+        "max_consecutive_chomp: 1",
+        "max_consecutive_thrash: 2"
+      ]
+    },
+    "special_mechanics": {
+      "type": "strength_scaling",
+      "description": "Bellow grants Strength and Block, making future Chomp and Thrash turns more dangerous.",
+      "scaling_move": "Bellow"
+    },
+    "threat_profile": {
+      "base_threat": 14,
+      "scaling_threat": 3.0,
+      "notes": "High early Act 1 threat. Chomp starts the fight, Thrash blocks while attacking, and Bellow scales Strength."
+    },
+    "timing_strategy": {
+      "description": "Starts with Chomp, then mixes scaling, block, and attacks. Prioritize damage before repeated Bellow scaling.",
+      "safe_turn_indicators": [
+        "DEFEND_BUFF"
+      ],
+      "spike_turn_indicators": [
+        "ATTACK",
+        "ATTACK_DEFEND"
+      ],
+      "preferred_response": {
+        "SAFE": "aggressive_damage",
+        "THREAT_SPIKE": "block_and_attack",
+        "BALANCED": "prioritize_damage"
+      }
+    }
+  },
+  {
     "monster_id": "Fungi_Beast",
     "name": "Fungi Beast",
     "monster_type": "normal",
