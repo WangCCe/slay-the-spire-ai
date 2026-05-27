@@ -6,9 +6,14 @@ from dataclasses import dataclass
 import json
 import logging
 import os
+import re
 from typing import Dict, Iterable, List, Optional
 
+from spirecomm.ai.heuristics.card_names import canonical_card_name
+
 logger = logging.getLogger(__name__)
+
+_UPGRADE_SUFFIX_RE = re.compile(r"\+\d*$")
 
 
 def _sorted_unique(values: Iterable[str]) -> List[str]:
@@ -26,6 +31,20 @@ def _extract_ids(items: List[dict], keys: List[str]) -> List[str]:
     return ids
 
 
+def _card_key_candidates(raw_id: Optional[str]) -> List[str]:
+    if not raw_id:
+        return []
+    raw_key = str(raw_id)
+    candidates = [raw_key]
+    stripped_key = _UPGRADE_SUFFIX_RE.sub("", raw_key)
+    if stripped_key not in candidates:
+        candidates.append(stripped_key)
+    canonical_key = canonical_card_name(raw_key)
+    if canonical_key not in candidates:
+        candidates.append(canonical_key)
+    return candidates
+
+
 @dataclass(frozen=True)
 class IdMapper:
     card_ids: Dict[str, int]
@@ -34,13 +53,22 @@ class IdMapper:
     card_tags: Dict[str, List[str]]
 
     def card_id(self, raw_id: Optional[str]) -> int:
-        return self.card_ids.get(str(raw_id), 0) if raw_id else 0
+        for candidate in _card_key_candidates(raw_id):
+            if candidate in self.card_ids:
+                return self.card_ids[candidate]
+        return 0
 
     def potion_id(self, raw_id: Optional[str]) -> int:
         return self.potion_ids.get(str(raw_id), 0) if raw_id else 0
 
     def relic_id(self, raw_id: Optional[str]) -> int:
         return self.relic_ids.get(str(raw_id), 0) if raw_id else 0
+
+    def card_tag_list(self, raw_id: Optional[str]) -> List[str]:
+        for candidate in _card_key_candidates(raw_id):
+            if candidate in self.card_tags:
+                return self.card_tags[candidate]
+        return []
 
     @property
     def card_vocab_size(self) -> int:

@@ -266,7 +266,7 @@ class StateEncoderV2:
 
     def _encode_card_tags(self, card: Card) -> List[float]:
         card_id = getattr(card, "card_id", None) or getattr(card, "name", None)
-        tags = self.id_mapper.card_tags.get(str(card_id), []) if card_id else []
+        tags = self.id_mapper.card_tag_list(card_id)
         return [1.0 if tag in tags else 0.0 for tag in self.TAGS]
 
     def _encode_card_type(self, card_type) -> List[float]:
