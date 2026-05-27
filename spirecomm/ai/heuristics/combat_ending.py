@@ -341,28 +341,62 @@ class CombatEndingDetector:
         Returns:
             Damage value
         """
-        base_damage = 0
-
-        # Get base damage from game data loader (Card objects don't have damage attribute)
-        # Use card.name instead of card_id because:
-        #   - card_id: "Strike_R" (Communication Mod internal ID)
-        #   - card.name: "Strike+" (matches items.json)
-        if hasattr(card, 'name'):
-            card_data = game_data_loader.get_card_data(card.name)
-            if card_data:
-                # Use _parse_card_damage which handles metadata and regex parsing
-                base_damage = game_data_loader._parse_card_damage(card_data) or 0
-
         card_name = (
             getattr(card, 'name', None) or getattr(card, 'card_id', '')
         ).replace('+', '')
+        base_damage = 0
+
+        card_data = game_data_loader.get_card_data(card_name)
+        if card_data:
+            base_damage = game_data_loader._parse_card_damage(card_data) or 0
+
         if card_name == 'Whirlwind':
             energy = effective_card_cost(card, context.energy_available)
             return whirlwind_damage(card, energy, getattr(context, 'strength', 0))
 
-        # Add strength (for attacks)
-        # FIX: Compare CardType enum directly, not string
         if hasattr(card, 'type') and card.type == CardType.ATTACK:
-            base_damage += context.strength
+            strength = getattr(context, 'strength', 0)
+            upgrades = getattr(card, 'upgrades', 0)
+
+            if card_name == 'Heavy Blade':
+                multiplier = 5 if upgrades > 0 else 3
+                base_damage += strength * multiplier
+            elif card_name == 'Perfected Strike':
+                per_strike_bonus = 3 if upgrades > 0 else 2
+                base_damage += self._count_strike_cards(context) * per_strike_bonus + strength
+            else:
+                base_damage += strength
+
+            base_damage *= self._get_attack_hit_count(card, context)
 
         return max(0, base_damage)
+
+    def _get_attack_hit_count(self, card: Card, context: DecisionContext) -> int:
+        """Return known hit counts for repeated-hit attacks."""
+        card_name = (
+            getattr(card, 'name', None) or getattr(card, 'card_id', '')
+        ).replace('+', '')
+        upgrades = getattr(card, 'upgrades', 0)
+
+        if card_name == 'Twin Strike':
+            return 2
+        if card_name == 'Sword Boomerang':
+            return 4 if upgrades > 0 else 3
+        if card_name == 'Pummel':
+            return 5 if upgrades > 0 else 4
+
+        return 1
+
+    def _count_strike_cards(self, context: DecisionContext) -> int:
+        """Count deck cards whose displayed name or id contains Strike."""
+        deck = getattr(getattr(context, 'game', None), 'deck', None)
+        if not deck:
+            return 0
+
+        count = 0
+        for deck_card in deck:
+            card_name = getattr(deck_card, 'name', '') or ''
+            card_id = getattr(deck_card, 'card_id', '') or ''
+            if 'strike' in card_name.lower() or 'strike' in card_id.lower():
+                count += 1
+        return count

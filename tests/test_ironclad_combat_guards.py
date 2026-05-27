@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import spirecomm.ai.heuristics.simulation as simulation
+import spirecomm.ai.heuristics.combat_ending as combat_ending
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.combat_ending import CombatEndingDetector
@@ -2423,6 +2424,105 @@ def test_lethal_detector_counts_vulnerable_damage_on_single_target():
 
     assert detector.can_kill_all(context) is True
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["strike-vulnerable"]
+
+
+def test_lethal_detector_counts_perfected_strike_deck_scaling(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "perfected strike": {
+            "name": "Perfected Strike",
+            "description": "Deal 6 damage. Deals 2 additional damage for ALL your cards containing \"Strike\".",
+        }
+    }
+    loader._wiki_data = {
+        "perfected strike": {
+            "name": "Perfected Strike",
+            "text": "Deal 6 damage.\nDeals [2|3] additional damage for ALL your cards containing \"Strike\".",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    perfected_strike = _card("Perfected Strike", "Perfected Strike+", cost=2, upgrades=1)
+    perfected_strike.uuid = "perfected-strike"
+    context = _combat_context(
+        [perfected_strike],
+        energy=2,
+        monsters=[_louse(current_hp=16)],
+    )
+    context.game.deck = [
+        _card("Strike_R", "Strike"),
+        _card("Strike_R", "Strike"),
+        _card("Twin Strike", "Twin Strike"),
+        _card("Perfected Strike", "Perfected Strike"),
+    ]
+
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 18
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["perfected-strike"]
+
+
+def test_lethal_detector_counts_multi_hit_attack_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "description": "Deal 5 damage twice.",
+        },
+        "sword boomerang": {
+            "name": "Sword Boomerang",
+            "description": "Deal 3 damage to a random enemy 3 times.",
+        },
+    }
+    loader._wiki_data = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "text": "Deal [5|7] damage twice.",
+        },
+        "sword boomerang": {
+            "name": "Sword Boomerang",
+            "text": "Deal 3 damage to a random enemy [3|4] times.",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    twin_strike = _card("Twin Strike", "Twin Strike", cost=1)
+    sword_boomerang = _card("Sword Boomerang", "Sword Boomerang", cost=1)
+    context = _combat_context(
+        [twin_strike, sword_boomerang],
+        energy=2,
+        monsters=[_louse(current_hp=17)],
+    )
+
+    assert CombatEndingDetector()._calculate_affordable_damage(context) == 19
+
+
+def test_lethal_detector_counts_heavy_blade_strength_multiplier(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "heavy blade": {
+            "name": "Heavy Blade",
+            "description": "Deal 14 damage. Strength affects Heavy Blade 3 times.",
+        }
+    }
+    loader._wiki_data = {
+        "heavy blade": {
+            "name": "Heavy Blade",
+            "text": "Deal 14 damage.\nStrength affects Heavy Blade [3|5] times.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    heavy_blade = _card("Heavy Blade", "Heavy Blade+", cost=2, upgrades=1)
+    context = _combat_context(
+        [heavy_blade],
+        energy=2,
+        monsters=[_louse(current_hp=26)],
+    )
+    context.strength = 3
+
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 29
+    assert detector.can_kill_all(context) is True
 
 
 def test_thorns_deals_full_stack_damage_per_attack_hit():
