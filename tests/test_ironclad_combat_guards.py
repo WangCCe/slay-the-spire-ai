@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import spirecomm.ai.heuristics.simulation as simulation
 import spirecomm.ai.heuristics.combat_ending as combat_ending
+import spirecomm.ai.heuristics.ironclad_combat as ironclad_combat
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.combat_ending import CombatEndingDetector
@@ -1687,6 +1688,72 @@ def test_player_weak_reduces_player_attack_damage(monkeypatch):
     )
 
     assert result.total_damage_dealt == 4
+
+
+def test_ironclad_target_pruning_counts_upgraded_attack_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bash": {
+            "name": "Bash",
+            "description": "Deal 8 damage. Apply 2 Vulnerable.",
+        }
+    }
+    loader._wiki_data = {
+        "bash": {
+            "name": "Bash",
+            "text": "Deal [8|10] damage.\nApply [2|3] Vulnerable.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+    bash_plus = _card("Bash", "Bash+", cost=2, upgrades=1)
+    high_threat = _louse(current_hp=40)
+    killable = _louse(current_hp=10)
+    context = _combat_context([bash_plus], energy=2, monsters=[high_threat, killable])
+    state = SimulationState(context)
+    ranked_targets = [(high_threat, 0, 100.0), (killable, 1, 1.0)]
+
+    pruned = IroncladCombatPlanner()._prune_targets(
+        bash_plus,
+        ranked_targets,
+        context,
+        state,
+    )
+
+    assert [idx for _, idx, _ in pruned] == [1]
+
+
+def test_ironclad_target_pruning_counts_multi_hit_attack_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "description": "Deal 5 damage twice.",
+        }
+    }
+    loader._wiki_data = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "text": "Deal [5|7] damage twice.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+    twin_strike = _card("Twin Strike", "Twin Strike", cost=1)
+    high_threat = _louse(current_hp=40)
+    killable = _louse(current_hp=10)
+    context = _combat_context([twin_strike], energy=1, monsters=[high_threat, killable])
+    state = SimulationState(context)
+    ranked_targets = [(high_threat, 0, 100.0), (killable, 1, 1.0)]
+
+    pruned = IroncladCombatPlanner()._prune_targets(
+        twin_strike,
+        ranked_targets,
+        context,
+        state,
+    )
+
+    assert [idx for _, idx, _ in pruned] == [1]
 
 
 def test_shockwave_plus_uses_upgraded_stacks_for_all_debuffs(monkeypatch):

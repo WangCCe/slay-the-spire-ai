@@ -878,33 +878,19 @@ class IroncladCombatPlanner(CombatPlanner):
         is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
 
         if is_attack:
-            # Estimate damage for attack cards
-            base_damage = getattr(card, 'damage', 0)
-            if base_damage is None:
-                base_damage = 0
-            if base_damage == 0 or not hasattr(card, 'damage'):
-                try:
-                    card_name = card.card_id.replace('+', '')
-                    card_data = game_data_loader.get_card_data(card_name)
-                    if card_data:
-                        parsed_damage = game_data_loader._parse_card_damage(card_data)
-                        base_damage = parsed_damage if parsed_damage is not None else 0
-                except:
-                    pass
-
-            if base_damage == 0:
-                base_damage = 6  # Fallback
-
-            # Add player strength
-            total_damage = base_damage + context.strength if hasattr(context, 'strength') else base_damage
-
             # Separate killable and non-killable targets
             killable = []
             non_killable = []
             for monster, idx, threat in ranked_targets:
                 if idx < len(state.monsters):
                     effective_hp = state.monsters[idx]['hp'] + state.monsters[idx]['block']
-                    if total_damage >= effective_hp:
+                    estimated_damage = self._estimate_attack_damage_to_target(
+                        card,
+                        context,
+                        state,
+                        idx,
+                    )
+                    if estimated_damage >= effective_hp:
                         killable.append((monster, idx, threat))
                     else:
                         non_killable.append((monster, idx, threat))
@@ -924,6 +910,39 @@ class IroncladCombatPlanner(CombatPlanner):
             result = ranked_targets[:2]
             logger.info(f"[TARGET_PRUNING] Debuff: {len(result)} targets (top threat)")
             return result
+
+    def _estimate_attack_damage_to_target(
+        self,
+        card: Card,
+        context: DecisionContext,
+        state: SimulationState,
+        target_idx: int,
+    ) -> int:
+        """Estimate target-specific attack damage using the real simulator rules."""
+        if target_idx < 0 or target_idx >= len(state.monsters):
+            return 0
+
+        before = state.monsters[target_idx]['hp'] + state.monsters[target_idx]['block']
+        if before <= 0:
+            return 0
+
+        target = (
+            context.monsters_alive[target_idx]
+            if target_idx < len(context.monsters_alive)
+            else None
+        )
+        result = self.simulator.simulate_card_play(
+            state.clone(),
+            card,
+            target=target,
+            target_index=target_idx,
+            context=context,
+        )
+        if target_idx >= len(result.monsters):
+            return 0
+
+        after = result.monsters[target_idx]['hp'] + result.monsters[target_idx]['block']
+        return max(0, before - after)
 
     def _should_explore_targets(self, context: DecisionContext, elapsed_time: float) -> bool:
         """
