@@ -79,7 +79,6 @@ class IroncladDeckStrategy:
     EXHAUST_SUPPORT = {'Corruption', 'True Grit', 'Second Wind', 'Fiend Fire', 'Sever Soul'}
     SELF_DAMAGE_SUPPORT = {'Offering', 'Bloodletting', 'Hemokinesis', 'Combust', 'Brutality'}
     STATUS_SUPPORT = {'Power Through', 'Wild Strike', 'Reckless Charge', 'Immolate'}
-    MIN_PERFECTED_STRIKE_SOURCES = 4
 
     # Upgrade priorities based on expert input
     UPGRADE_PRIORITIES = {
@@ -153,9 +152,10 @@ class IroncladDeckStrategy:
                 return (False, f"Skipping duplicate Act 1 self-damage power: {card.card_id}")
 
         if card.card_id == 'Perfected Strike':
-            supported, reason = self._perfected_strike_supported(context)
-            if not supported:
-                return (False, reason)
+            return (
+                False,
+                "Skipping Perfected Strike because this AI removes Strike-name sources",
+            )
 
         # Rule 4: Archetype consistency
         if archetype not in ['unknown', 'flexible']:
@@ -236,30 +236,6 @@ class IroncladDeckStrategy:
             return (False, "Skipping Rupture without self-damage support")
 
         return (True, "Supported")
-
-    def _perfected_strike_supported(self, context: DecisionContext) -> Tuple[bool, str]:
-        """Only take Perfected Strike when the current deck can keep it efficient."""
-        deck = list(getattr(context.game, 'deck', []) or [])
-        perfected_count = sum(
-            1 for c in deck if getattr(c, 'card_id', '') == 'Perfected Strike'
-        )
-        if perfected_count >= 1:
-            return (False, "Skipping duplicate Perfected Strike")
-
-        strike_sources = sum(1 for c in deck if self._is_strike_named_card(c))
-        if strike_sources < self.MIN_PERFECTED_STRIKE_SOURCES:
-            return (
-                False,
-                f"Perfected Strike needs more Strike-name sources ({strike_sources} current)",
-            )
-
-        return (True, f"Perfected Strike has {strike_sources} Strike-name sources")
-
-    @staticmethod
-    def _is_strike_named_card(card: Card) -> bool:
-        card_id = str(getattr(card, 'card_id', '') or '').lower()
-        name = str(getattr(card, 'name', '') or '').lower()
-        return 'strike' in card_id or 'strike' in name
 
     def get_upgrade_priority(self, card: Card, context: DecisionContext) -> int:
         """
