@@ -521,6 +521,34 @@ def test_hex_status_pollution_is_scored_as_a_cost(monkeypatch):
     assert hex_score < no_hex_score
 
 
+def test_outcome_aoe_bonus_treats_counted_upgraded_cleave_as_cleave():
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    counted_cleave = _card("Cleave+1", "Cleave+1", cost=1, has_target=False, upgrades=1)
+    context = _combat_context(
+        [cleave, counted_cleave],
+        energy=1,
+        monsters=[_louse(current_hp=50), _louse(current_hp=50)],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    initial_state = SimulationState(context)
+    final_state = initial_state.clone()
+
+    canonical_score = simulator.calculate_outcome_score(
+        initial_state,
+        final_state,
+        context=context,
+        sequence=[PlayCardAction(card=cleave)],
+    )
+    counted_score = simulator.calculate_outcome_score(
+        initial_state,
+        final_state,
+        context=context,
+        sequence=[PlayCardAction(card=counted_cleave)],
+    )
+
+    assert counted_score == canonical_score
+
+
 def test_fungi_beast_death_applies_vulnerable_to_player():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context(

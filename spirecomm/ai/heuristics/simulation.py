@@ -3169,7 +3169,7 @@ class FastCombatSimulator:
 
             for action in sequence:
                 if hasattr(action, 'card') and hasattr(action.card, 'card_id'):
-                    card_id = action.card.card_id.replace('+', '')  # Handle upgraded cards
+                    card_id = _canonical_card_name(action.card)
 
                     if card_id in aoe_cards:
                         aoe_bonus = 40 if num_monsters >= 3 else 20
