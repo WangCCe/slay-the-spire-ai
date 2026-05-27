@@ -487,6 +487,50 @@ def test_upgraded_single_hit_attacks_use_exported_damage_bonus(monkeypatch):
         assert result.damage_instances == 1
 
 
+def test_heavy_blade_uses_strength_multiplier_and_static_base_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "heavy blade": {
+            "name": "Heavy Blade",
+            "description": "Deal 14 damage. Strength affects Heavy Blade 3 times.",
+        }
+    }
+    loader._wiki_data = {
+        "heavy blade": {
+            "name": "Heavy Blade",
+            "text": "Deal 14 damage.\nStrength affects Heavy Blade [3|5] times.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    heavy_blade = _card("Heavy Blade", "Heavy Blade", cost=2)
+    context = _combat_context([heavy_blade], energy=2, monsters=[_louse(current_hp=100)])
+    context.strength = 3
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        heavy_blade,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 23
+
+    heavy_blade_plus = _card("Heavy Blade", "Heavy Blade+", cost=2, upgrades=1)
+    context = _combat_context([heavy_blade_plus], energy=2, monsters=[_louse(current_hp=100)])
+    context.strength = 3
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        heavy_blade_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 29
+
+
 def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

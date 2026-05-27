@@ -191,6 +191,13 @@ def test_damage_parser_ignores_additional_damage_scaling_pairs():
     assert loader._parse_card_damage({"name": "Perfected Strike+", "description": "Deal 6 damage."}) == 6
 
 
+def test_damage_parser_keeps_heavy_blade_base_damage_static():
+    loader = data_loader.GameDataLoader(auto_load=False)
+
+    assert loader._parse_card_damage({"name": "Heavy Blade", "description": "Deal 14 damage."}) == 14
+    assert loader._parse_card_damage({"name": "Heavy Blade+", "description": "Deal 14 damage."}) == 14
+
+
 def test_ironclad_prune_targets_falls_back_when_damage_parse_returns_none(monkeypatch):
     monkeypatch.setattr(
         ironclad_combat.game_data_loader,

@@ -732,7 +732,7 @@ class FastCombatSimulator:
                 for _ in range(hit_count):
                     if monster['is_gone']:
                         break
-                    damage = base_damage + state.player_strength
+                    damage = self._calculate_attack_damage(card, base_damage, state)
                     damage = self._apply_vulnerable_damage(damage, monster)
                     damage = self._apply_weak_damage(damage, monster.get('weak', 0))
                     self._deal_damage_to_monster(state, monster, damage)
@@ -745,7 +745,7 @@ class FastCombatSimulator:
                     for _ in range(hit_count):
                         if monster['is_gone']:
                             break
-                        damage = base_damage + state.player_strength
+                        damage = self._calculate_attack_damage(card, base_damage, state)
                         damage = self._apply_vulnerable_damage(damage, monster)
                         damage = self._apply_weak_damage(damage, monster.get('weak', 0))
                         self._deal_damage_to_monster(state, monster, damage)
@@ -780,6 +780,16 @@ class FastCombatSimulator:
             return 5 if upgrades > 0 else 4
 
         return 1
+
+    def _calculate_attack_damage(self, card: Card, base_damage: int, state: SimulationState) -> int:
+        """Apply Strength, including cards with non-standard Strength scaling."""
+        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+
+        if card_name == 'Heavy Blade':
+            multiplier = 5 if getattr(card, 'upgrades', 0) > 0 else 3
+            return base_damage + state.player_strength * multiplier
+
+        return base_damage + state.player_strength
 
     def _apply_vulnerable_damage(self, damage: int, monster: dict) -> int:
         """Apply vulnerable multiplier (1.5x). Binary: any vulnerable stacks = 1.5x damage."""

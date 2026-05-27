@@ -85,9 +85,9 @@ CARD_METADATA = {
     # Complex Formula Cards (damage scales with stats)
     'heavy blade': {
         'damage': 14,
-        'upgraded_damage': 22,
+        'upgraded_damage': 14,
         'is_x_damage': False,
-        'reason': 'Base damage, scales with Strength: !D! = 5 + Strength*times_str'
+        'reason': 'Base damage, scales with Strength multiplier in combat simulation'
     },
 
     # Power Cards (no direct damage/block, stat manipulation)
