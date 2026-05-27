@@ -1586,6 +1586,48 @@ def test_uppercut_applies_weak_and_vulnerable_with_upgrade_stacks(monkeypatch):
     assert result.monsters[0]["vulnerable"] == 2
 
 
+def test_shockwave_plus_uses_upgraded_stacks_for_all_debuffs(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "shockwave": {
+            "name": "Shockwave",
+            "description": "Apply 3 Weak and Vulnerable to ALL enemies. Exhaust.",
+        }
+    }
+    loader._wiki_data = {
+        "shockwave": {
+            "name": "Shockwave",
+            "text": "Apply [3|5] #Weak and #Vulnerable to ALL enemies.\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    shockwave_plus = _card(
+        "Shockwave",
+        "Shockwave+",
+        card_type=CardType.SKILL,
+        cost=2,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context(
+        [shockwave_plus],
+        energy=2,
+        monsters=[_louse(current_hp=100), _louse(current_hp=100)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        shockwave_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert [monster["weak"] for monster in result.monsters] == [5, 5]
+    assert [monster["vulnerable"] for monster in result.monsters] == [5, 5]
+
+
 def test_artifact_blocks_attack_debuff_and_is_consumed(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

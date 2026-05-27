@@ -1457,7 +1457,7 @@ class FastCombatSimulator:
             card_name = (getattr(card, 'name', None) or card.card_id).replace('+', '')
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
-                description = card_data.get('description', '').lower()
+                description = self._get_card_effect_text(card_name, card_data)
                 has_debuff = 'vulnerable' in description or 'weak' in description
                 if has_debuff:
                     upgrades = getattr(card, 'upgrades', 0) > 0
@@ -1477,7 +1477,7 @@ class FastCombatSimulator:
             card_name = (getattr(card, 'name', None) or card.card_id).replace('+', '')
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
-                description = card_data.get('description', '').lower()
+                description = self._get_card_effect_text(card_name, card_data)
                 state.exhaust_events += self._skill_exhaust_events_from_description(description)
                 # Track draw events
                 if 'draw' in description:
