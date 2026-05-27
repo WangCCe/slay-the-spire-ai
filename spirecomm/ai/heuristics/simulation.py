@@ -420,6 +420,7 @@ class SimulationState:
         self.player_frail = self._get_player_debuff_stacks(context, 'Frail')
         # Rage power: block gained per attack played.
         self.rage_block_per_attack = self._get_player_power_amount(context, 'Rage')
+        self.double_tap_charges = 0
 
         # Monster state (each monster tracked independently)
         self.monsters = []
@@ -494,6 +495,7 @@ class SimulationState:
         new_state.player_weak = self.player_weak
         new_state.player_frail = self.player_frail
         new_state.rage_block_per_attack = self.rage_block_per_attack
+        new_state.double_tap_charges = self.double_tap_charges
         new_state.monsters = [m.copy() for m in self.monsters]
         new_state.played_card_uuids = self.played_card_uuids.copy()
         new_state.energy_spent = self.energy_spent
@@ -531,7 +533,8 @@ class SimulationState:
             self.player_vulnerable,
             self.player_weak,
             self.player_frail,
-            self.rage_block_per_attack
+            self.rage_block_per_attack,
+            self.double_tap_charges
         )
 
         # Monster states (sorted for consistent hashing)
@@ -645,23 +648,30 @@ class FastCombatSimulator:
         resolved_target_index = self._resolve_target_index(target, target_index, context)
 
         if card_type == CardType.ATTACK:
-            new_state.attacks_played += 1
-            self._apply_attack(
-                new_state,
-                card,
-                target,
-                resolved_target_index,
-                context,
-                x_energy_spent=x_energy_spent,
-            )
-            self._apply_rage_block(new_state)
+            attack_repeats = 1
+            if new_state.double_tap_charges > 0:
+                attack_repeats = 2
+                new_state.double_tap_charges -= 1
+            for _ in range(attack_repeats):
+                new_state.attacks_played += 1
+                self._apply_attack(
+                    new_state,
+                    card,
+                    target,
+                    resolved_target_index,
+                    context,
+                    x_energy_spent=x_energy_spent,
+                )
+                self._apply_rage_block(new_state)
+                self._apply_self_damage(new_state, card)
         elif card_type == CardType.SKILL:
             new_state.skills_played += 1
             self._apply_skill(new_state, card, context, resolved_target_index)
         elif card_type == CardType.POWER:
             self._apply_power(new_state, card)
 
-        self._apply_self_damage(new_state, card)
+        if card_type != CardType.ATTACK:
+            self._apply_self_damage(new_state, card)
 
         return new_state
 
@@ -1119,6 +1129,8 @@ class FastCombatSimulator:
             return
         if self._apply_second_wind(state, card, context):
             return
+        if self._apply_double_tap(state, card):
+            return
 
         # Block skills - apply frail multiplier if player has frail
         if hasattr(card, 'block') and card.block is not None:
@@ -1347,6 +1359,14 @@ class FastCombatSimulator:
         block_gain = self._apply_frail_block(block_per_card * exhausted_count, state.player_frail)
         state.player_block += block_gain
         state.exhaust_events += exhausted_count
+        return True
+
+    def _apply_double_tap(self, state: SimulationState, card: Card) -> bool:
+        card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        if card_id != 'Double Tap':
+            return False
+
+        state.double_tap_charges += 2 if getattr(card, 'upgrades', 0) > 0 else 1
         return True
 
     def _apply_block_multiplier_skill(self, state: SimulationState, card: Card) -> bool:

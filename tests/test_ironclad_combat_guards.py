@@ -1228,6 +1228,75 @@ def test_disarm_reduces_enemy_strength_and_current_attack_damage():
     assert result.monsters[0]["move_adjusted_damage"] == 9
 
 
+def test_double_tap_repeats_next_attack_once_or_twice():
+    double_tap = _card(
+        "Double Tap",
+        "Double Tap",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([double_tap, strike], energy=2, monsters=[_louse(current_hp=100)])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        double_tap,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 12
+    assert result.attacks_played == 2
+
+    double_tap_plus = _card(
+        "Double Tap",
+        "Double Tap+",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context(
+        [double_tap_plus, strike, strike],
+        energy=3,
+        monsters=[_louse(current_hp=100)],
+    )
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        double_tap_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    state = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 24
+    assert result.attacks_played == 4
+
+
 def test_demon_form_does_not_add_strength_on_the_turn_it_is_played():
     demon_form = _card(
         "Demon Form",
