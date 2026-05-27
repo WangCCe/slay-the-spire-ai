@@ -987,6 +987,111 @@ def test_fiend_fire_hits_once_per_other_unplayed_card_with_upgrade_damage(monkey
     assert result.damage_instances == 2
 
 
+def test_exhausting_attack_cards_trigger_feel_no_pain(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "reaper": {
+            "name": "Reaper",
+            "description": "Deal 4 damage to ALL enemies. Heal HP equal to unblocked damage.\nExhaust.",
+        },
+    }
+    loader._wiki_data = {
+        "reaper": {
+            "name": "Reaper",
+            "text": "Deal [4|5] damage to ALL enemies. Heal HP equal to unblocked damage.\n#Exhaust.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    reaper = _card("Reaper", "Reaper", cost=2, has_target=False)
+    context = _combat_context([reaper], energy=2, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        reaper,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.exhaust_events == 1
+    assert result.player_block == 3
+
+
+def test_fiend_fire_exhausts_hand_and_self_for_feel_no_pain(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "description": "Exhaust your hand. Deal 7 damage for each card Exhausted. Exhaust.",
+        },
+    }
+    loader._wiki_data = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "text": "#Exhaust your hand.\nDeal [7|10] damage for each card #Exhausted.\n#Exhaust.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    fiend_fire = _card("Fiend Fire", "Fiend Fire", cost=2)
+    strike = _card("Strike_R", "Strike", cost=1)
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([fiend_fire, strike, defend], energy=2, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        fiend_fire,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.exhaust_events == 3
+    assert result.player_block == 9
+
+
+def test_sever_soul_exhausts_non_attacks_for_feel_no_pain(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "sever soul": {
+            "name": "Sever Soul",
+            "description": "Exhaust all non-Attack cards in your hand.\nDeal 16 damage.",
+        },
+    }
+    loader._wiki_data = {
+        "sever soul": {
+            "name": "Sever Soul",
+            "text": "#Exhaust all non-Attack cards in your hand.\nDeal [16|22] damage.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    sever_soul = _card("Sever Soul", "Sever Soul", cost=2)
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    flex = _card("Flex", "Flex", card_type=CardType.SKILL, cost=0, has_target=False)
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [sever_soul, defend, flex, strike],
+        energy=2,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        sever_soul,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.exhaust_events == 2
+    assert result.player_block == 6
+
+
 def test_uppercut_applies_weak_and_vulnerable_with_upgrade_stacks(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

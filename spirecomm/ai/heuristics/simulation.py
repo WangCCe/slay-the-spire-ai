@@ -846,6 +846,7 @@ class FastCombatSimulator:
         self._apply_attack_healing(state, card, starting_total_damage)
         self._apply_attack_resource_effects(state, card, target_index)
         self._apply_attack_block_effects(state, card, card_data)
+        self._apply_attack_exhaust_effects(state, card, context, card_data)
 
     def _get_attack_hit_count(
         self,
@@ -928,6 +929,52 @@ class FastCombatSimulator:
             block_gain += BLOCK_UPGRADE_BONUS.get(card_name, 2)
 
         state.player_block += self._apply_frail_block(block_gain, state.player_frail)
+
+    def _apply_attack_exhaust_effects(
+        self,
+        state: SimulationState,
+        card: Card,
+        context: Optional[DecisionContext],
+        card_data: Optional[Dict[str, Any]],
+    ):
+        """Track attack-card exhaust events so exhaust synergies can score correctly."""
+        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+
+        if card_name == 'Fiend Fire' and context is not None:
+            state.exhaust_events += len(self._unplayed_hand_cards(state, context, exclude_card=card))
+        elif card_name == 'Sever Soul' and context is not None:
+            state.exhaust_events += sum(
+                1
+                for hand_card in self._unplayed_hand_cards(state, context, exclude_card=card)
+                if getattr(hand_card, 'type', None) != CardType.ATTACK
+            )
+
+        if card_data:
+            description = self._get_card_effect_text(card_name, card_data)
+            if self._card_exhausts_itself(description):
+                state.exhaust_events += 1
+
+    def _unplayed_hand_cards(
+        self,
+        state: SimulationState,
+        context: DecisionContext,
+        exclude_card: Optional[Card] = None,
+    ) -> List[Card]:
+        cards = []
+        for hand_card in getattr(context, 'playable_cards', []):
+            if hand_card is exclude_card:
+                continue
+            card_key = getattr(hand_card, 'uuid', id(hand_card))
+            if card_key in state.played_card_uuids or id(hand_card) in state.played_card_uuids:
+                continue
+            cards.append(hand_card)
+        return cards
+
+    def _card_exhausts_itself(self, description: str) -> bool:
+        description = (description or '').lower().replace('#', '')
+        if any(line.strip() in {'exhaust', 'exhaust.'} for line in description.splitlines()):
+            return True
+        return bool(re.search(r'\bexhaust\.\s*$', description))
 
     def _calculate_attack_damage(
         self,
