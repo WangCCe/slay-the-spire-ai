@@ -2,11 +2,16 @@
 State encoder - FIXED VERSION (781 dims)
 """
 import hashlib
+import re
 import numpy as np
 from typing import List, Tuple
+from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.spire.game import Game
 from spirecomm.spire.card import Card, CardType, CardRarity
 from spirecomm.spire.character import Monster, PlayerClass, Intent
+
+_UPGRADE_SUFFIX_RE = re.compile(r'\+\d*$')
+
 
 class StateEncoder:
     CARD_REWARD_MAX_OPTIONS = 3
@@ -81,15 +86,12 @@ class StateEncoder:
             except (TypeError, ValueError, AttributeError):
                 card_type_val = 0
 
-        # Get card ID safely - handle various types
         card_id_hash = 0.0
-        card_id = getattr(card, 'card_id', None)
-        if card_id is None:
-            card_id = getattr(card, 'id', None)
-        if card_id is not None:
-            card_id_hash = self._stable_hash(card_id, 100) / 100.0
+        card_key = self._card_hash_key(card)
+        if card_key is not None:
+            card_id_hash = self._stable_hash(card_key, 100) / 100.0
 
-        card_name = getattr(card, 'name', '') or ''
+        card_name = canonical_card_name(card)
         weak_cards = {"Clothesline", "Uppercut", "Shockwave"}
         vulnerable_cards = {"Bash", "Uppercut", "Shockwave", "Thunderclap"}
 
@@ -123,12 +125,10 @@ class StateEncoder:
             if game.hand:
                 cards.extend(game.hand)
         for card in cards:
-            card_id = getattr(card, 'card_id', None)
-            if card_id is None:
-                card_id = getattr(card, 'id', None)
-            if card_id is None:
+            card_key = self._card_hash_key(card)
+            if card_key is None:
                 continue
-            idx = self._stable_hash(card_id, 120)
+            idx = self._stable_hash(card_key, 120)
             counts[idx] = min(counts[idx] + 1.0, 5.0)
         return [count / 5.0 for count in counts]
 
@@ -474,10 +474,10 @@ class StateEncoder:
         exhausts_flag = 1.0 if getattr(card, 'exhausts', False) else 0.0
 
         # NEW: Add card ID hash to let network learn card-specific patterns
-        card_id = getattr(card, 'card_id', None)
         card_id_hash = 0.0
-        if card_id:
-            card_id_hash = self._stable_hash(card_id, 500) / 500.0
+        card_key = self._card_hash_key(card)
+        if card_key:
+            card_id_hash = self._stable_hash(card_key, 500) / 500.0
 
         # NEW: Extract magic number (skill values) from properties
         magic_number = 0.0
@@ -533,6 +533,15 @@ class StateEncoder:
                 pass
 
         return damage, block
+
+    @staticmethod
+    def _card_hash_key(card: Card):
+        card_id = getattr(card, 'card_id', None)
+        if card_id is None:
+            card_id = getattr(card, 'id', None)
+        if card_id is None:
+            return None
+        return _UPGRADE_SUFFIX_RE.sub('', str(card_id))
 
     @staticmethod
     def _stable_hash(value, modulo):
