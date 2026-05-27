@@ -12,6 +12,7 @@ import sys
 import logging
 from typing import List, Dict
 from ..decision.base import DecisionContext
+from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.spire.map import Node
 from spirecomm.spire.screen import RestOption
 
@@ -51,6 +52,10 @@ class AdaptiveMapRouter:
             self.elite_mode,
             self.player_class,
         )
+
+    @staticmethod
+    def _card_name(card) -> str:
+        return canonical_card_name(card)
 
     def calculate_node_priority(self, node: Node, context: DecisionContext) -> int:
         """
@@ -134,9 +139,9 @@ class AdaptiveMapRouter:
         potions = list(getattr(game, "potions", []) or [])
         relics = list(getattr(game, "relics", []) or [])
 
-        card_ids = [getattr(card, "card_id", "") for card in deck]
+        card_names = [self._card_name(card) for card in deck]
         upgraded_ids = {
-            getattr(card, "card_id", "")
+            self._card_name(card)
             for card in deck
             if int(getattr(card, "upgrades", 0) or 0) > 0
         }
@@ -158,8 +163,8 @@ class AdaptiveMapRouter:
         }
 
         score = 0
-        score += min(4, sum(1 for card_id in card_ids if card_id in premium_attacks))
-        score += min(2, sum(1 for card_id in card_ids if card_id in strong_blocks))
+        score += min(4, sum(1 for card_name in card_names if card_name in premium_attacks))
+        score += min(2, sum(1 for card_name in card_names if card_name in strong_blocks))
         if "Bash" in upgraded_ids:
             score += 1
         score += min(
@@ -356,7 +361,7 @@ class AdaptiveMapRouter:
             score -= 20
 
         # Check for card removal needs
-        strike_count = sum(1 for c in context.game.deck if c.card_id == 'Strike_R')
+        strike_count = sum(1 for c in context.game.deck if self._card_name(c) == 'Strike')
         if strike_count >= 3:
             score += 30  # Need to remove cards
 
@@ -398,7 +403,7 @@ class AdaptiveMapRouter:
             # Unupgraded cards
             if hasattr(card, 'upgrades') and card.upgrades == 0:
                 # Skip strikes/defends (low priority)
-                if card.card_id not in ['Strike_R', 'Defend_R']:
+                if self._card_name(card) not in ['Strike', 'Defend']:
                     count += 1
 
         return count

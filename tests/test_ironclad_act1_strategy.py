@@ -76,3 +76,22 @@ def test_aggressive_elite_route_is_gated_until_deck_is_ready():
 
     assert router.calculate_node_priority(elite_node, weak_context) < 0
     assert router.calculate_node_priority(elite_node, ready_context) > 0
+
+
+def test_act1_elite_readiness_counts_upgraded_card_names():
+    router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="aggressive")
+    context = _context(
+        deck=[
+            _card("Bash+1", upgrades=1),
+            _card("Pommel Strike+1", upgrades=1),
+            _card("Anger+1", upgrades=1),
+            _card("Cleave+1", upgrades=1),
+            _card("Shrug It Off+1", upgrades=1),
+        ],
+        floor=9,
+        hp_pct=0.9,
+    )
+    context.game.potions = [SimpleNamespace(potion_id="Fire Potion", can_use=True)]
+    context.game.relics = ["Burning Blood", "Akabeko"]
+
+    assert router._act_1_elite_readiness_score(context) >= 5
