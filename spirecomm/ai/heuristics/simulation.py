@@ -1318,11 +1318,6 @@ class FastCombatSimulator:
                     draw_match = re.search(r'draw (\d+)', description)
                     if draw_match:
                         state.cards_drawn += int(draw_match.group(1))
-                # Track energy gain on skills (Offering, Bloodletting, etc.)
-                if 'gain' in description and 'energy' in description:
-                    energy_match = re.search(r'gain (\d+) energy', description)
-                    if energy_match:
-                        state.energy_gained += int(energy_match.group(1))
         except:
             pass
 

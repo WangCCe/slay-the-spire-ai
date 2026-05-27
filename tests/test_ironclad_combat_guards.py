@@ -1539,6 +1539,30 @@ def test_energy_gain_skills_add_usable_energy(monkeypatch):
     assert result.energy_gained == 2
 
 
+def test_energy_gain_plain_text_is_not_double_counted(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bloodletting": {
+            "name": "Bloodletting",
+            "description": "Lose 3 HP.\nGain 2 Energy.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    bloodletting = _card("Bloodletting", "Bloodletting", card_type=CardType.SKILL, cost=0, has_target=False)
+    context = _combat_context([bloodletting], energy=0, monsters=[_louse(current_hp=100)])
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        bloodletting,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 2
+    assert result.energy_gained == 2
+
+
 def test_disarm_reduces_enemy_strength_and_current_attack_damage():
     disarm = _card(
         "Disarm",
