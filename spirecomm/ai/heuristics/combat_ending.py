@@ -167,7 +167,12 @@ class CombatEndingDetector:
                 vulnerable = context.vulnerable_stacks.get(monster_idx, 0)
                 damage = self._get_card_damage(card, context)
                 if vulnerable > 0:
-                    damage = int(damage * 1.5)
+                    damage = self._apply_vulnerable_to_card_damage(
+                        card,
+                        context,
+                        damage,
+                        remaining_energy,
+                    )
 
                 sequence.append(PlayCardAction(card=card, target_monster=monster))
                 played_cards.add(card_uuid)
@@ -236,7 +241,12 @@ class CombatEndingDetector:
                 cost = effective_card_cost(card, context.energy_available)
                 damage = self._get_card_damage(card, context)
                 if len(context.monsters_alive) == 1 and context.vulnerable_stacks.get(0, 0) > 0:
-                    damage = int(damage * 1.5)
+                    damage = self._apply_vulnerable_to_card_damage(
+                        card,
+                        context,
+                        damage,
+                        context.energy_available,
+                    )
                 logger.info(f"[LETHAL_CALC] {card.name}: cost={cost}, damage={damage}, eff={damage/cost if cost > 0 else 'inf'}")
                 if cost > 0:
                     efficiency = damage / cost
@@ -373,6 +383,43 @@ class CombatEndingDetector:
             base_damage *= self._get_attack_hit_count(card, context)
 
         return max(0, base_damage)
+
+    def _apply_vulnerable_to_card_damage(
+        self,
+        card: Card,
+        context: DecisionContext,
+        total_damage: int,
+        available_energy: int,
+    ) -> int:
+        """Apply Vulnerable using the game's per-hit rounding."""
+        hit_count = self._get_vulnerable_damage_instance_count(
+            card,
+            context,
+            available_energy,
+        )
+        if hit_count <= 1:
+            return int(total_damage * 1.5)
+
+        per_hit_damage, remainder = divmod(total_damage, hit_count)
+        if remainder != 0:
+            return int(total_damage * 1.5)
+
+        return int(per_hit_damage * 1.5) * hit_count
+
+    def _get_vulnerable_damage_instance_count(
+        self,
+        card: Card,
+        context: DecisionContext,
+        available_energy: int,
+    ) -> int:
+        card_name = (
+            getattr(card, 'name', None) or getattr(card, 'card_id', '')
+        ).replace('+', '')
+
+        if card_name == 'Whirlwind':
+            return max(1, effective_card_cost(card, available_energy))
+
+        return self._get_attack_hit_count(card, context)
 
     def _get_attack_hit_count(self, card: Card, context: DecisionContext) -> int:
         """Return known hit counts for repeated-hit attacks."""

@@ -2426,6 +2426,36 @@ def test_lethal_detector_counts_vulnerable_damage_on_single_target():
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["strike-vulnerable"]
 
 
+def test_lethal_detector_applies_vulnerable_rounding_per_attack_hit(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "sword boomerang": {
+            "name": "Sword Boomerang",
+            "description": "Deal 3 damage to a random enemy 3 times.",
+        }
+    }
+    loader._wiki_data = {
+        "sword boomerang": {
+            "name": "Sword Boomerang",
+            "text": "Deal 3 damage to a random enemy [3|4] times.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    sword_boomerang = _card("Sword Boomerang", "Sword Boomerang", cost=1)
+    context = _combat_context([sword_boomerang], energy=1, monsters=[_louse(current_hp=100)])
+    context.vulnerable_stacks[0] = 1
+
+    assert CombatEndingDetector()._calculate_affordable_damage(context) == 12
+
+
+def test_lethal_detector_applies_vulnerable_rounding_per_whirlwind_hit():
+    whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
+    context = _combat_context([whirlwind], energy=3, monsters=[_louse(current_hp=100)])
+    context.vulnerable_stacks[0] = 1
+
+    assert CombatEndingDetector()._calculate_affordable_damage(context) == 21
+
+
 def test_lethal_detector_counts_perfected_strike_deck_scaling(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
