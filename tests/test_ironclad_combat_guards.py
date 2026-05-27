@@ -579,6 +579,50 @@ def test_fiend_fire_hits_once_per_other_unplayed_card_with_upgrade_damage(monkey
     assert result.damage_instances == 2
 
 
+def test_uppercut_applies_weak_and_vulnerable_with_upgrade_stacks(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "uppercut": {
+            "name": "Uppercut",
+            "description": "Deal 13 damage.\nApply 1 Weak.\nApply 1 Vulnerable.",
+        }
+    }
+    loader._wiki_data = {
+        "uppercut": {
+            "name": "Uppercut",
+            "text": "Deal 13 damage.\nApply [1|2] #Weak.\nApply [1|2] #Vulnerable.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    uppercut = _card("Uppercut", "Uppercut", cost=2)
+    context = _combat_context([uppercut], energy=2, monsters=[_louse(current_hp=100)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        uppercut,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["weak"] == 1
+    assert result.monsters[0]["vulnerable"] == 1
+
+    uppercut_plus = _card("Uppercut", "Uppercut+", cost=2, upgrades=1)
+    context = _combat_context([uppercut_plus], energy=2, monsters=[_louse(current_hp=100)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        uppercut_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["weak"] == 2
+    assert result.monsters[0]["vulnerable"] == 2
+
+
 def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

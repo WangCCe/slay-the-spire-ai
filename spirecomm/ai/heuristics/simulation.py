@@ -753,21 +753,16 @@ class FastCombatSimulator:
 
                     # Check for card effects using game data
                     if card_data:
-                        description = card_data.get('description', '').lower()
-                        # Bash applies vulnerable
+                        description = self._get_card_effect_text(card_name, card_data)
+                        upgraded = getattr(card, 'upgrades', 0) > 0
                         if 'vulnerable' in description:
-                            vulnerable_stacks = re.search(r'vulnerable (\d+)', description)
+                            vulnerable_stacks = self._extract_debuff_stacks(description, 'vulnerable', upgraded)
                             if vulnerable_stacks:
-                                monster['vulnerable'] += int(vulnerable_stacks.group(1))
-                            else:
-                                monster['vulnerable'] += 2 if card.upgrades > 0 else 1
-                        # Other effects could be added here based on game data
-                        elif 'weak' in description:
-                            weak_stacks = re.search(r'weak (\d+)', description)
+                                monster['vulnerable'] += vulnerable_stacks
+                        if 'weak' in description:
+                            weak_stacks = self._extract_debuff_stacks(description, 'weak', upgraded)
                             if weak_stacks:
-                                monster['weak'] += int(weak_stacks.group(1))
-                            else:
-                                monster['weak'] += 1
+                                monster['weak'] += weak_stacks
 
     def _get_attack_hit_count(
         self,
@@ -823,17 +818,31 @@ class FastCombatSimulator:
             return int(damage * 0.75)
         return damage
 
+    def _get_card_effect_text(self, card_name: str, card_data: Dict[str, Any]) -> str:
+        """Prefer wiki text for effect values because items.json stores base text only."""
+        base_card_name = card_name.lower().rstrip('+')
+        try:
+            if getattr(game_data_loader, '_wiki_data', None) is None:
+                game_data_loader._load_wiki_data()
+            wiki_entry = getattr(game_data_loader, '_wiki_data', {}).get(base_card_name)
+            if wiki_entry and wiki_entry.get('text'):
+                return wiki_entry['text'].lower()
+        except Exception:
+            pass
+
+        return card_data.get('description', '').lower()
+
     def _extract_debuff_stacks(self, description: str, keyword: str, upgraded: bool) -> Optional[int]:
         """Extract debuff stacks from card description for a keyword."""
         # Prefer [base|upgraded] notation when available.
-        bracket_match = re.search(rf'\[(\d+)\|(\d+)\]\s*{keyword}', description)
+        bracket_match = re.search(rf'\[(\d+)\|(\d+)\]\s*#?{keyword}', description)
         if bracket_match:
             return int(bracket_match.group(2 if upgraded else 1))
 
         patterns = [
             rf'{keyword}\s*(\d+)',
-            rf'(\d+)\s*{keyword}',
-            rf'apply\s*(\d+)\s*{keyword}',
+            rf'(\d+)\s*#?{keyword}',
+            rf'apply\s*(\d+)\s*#?{keyword}',
         ]
         for pattern in patterns:
             match = re.search(pattern, description)
