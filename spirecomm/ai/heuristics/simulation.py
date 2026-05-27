@@ -428,6 +428,10 @@ class SimulationState:
         self.rupture_strength_per_hp_loss = self._get_player_power_amount(context, 'Rupture')
         if self.rupture_strength_per_hp_loss <= 0 and self._has_player_power(context, 'Rupture'):
             self.rupture_strength_per_hp_loss = 1
+        self.end_turn_aoe_damage = self._get_player_power_amount(context, 'Combust')
+        if self.end_turn_aoe_damage <= 0 and self._has_player_power(context, 'Combust'):
+            self.end_turn_aoe_damage = 5
+        self.end_turn_hp_loss = 1 if self.end_turn_aoe_damage > 0 else 0
 
         # Monster state (each monster tracked independently)
         self.monsters = []
@@ -522,6 +526,8 @@ class SimulationState:
         new_state.feel_no_pain_block_per_exhaust = self.feel_no_pain_block_per_exhaust
         new_state.dark_embrace_draw_per_exhaust = self.dark_embrace_draw_per_exhaust
         new_state.rupture_strength_per_hp_loss = self.rupture_strength_per_hp_loss
+        new_state.end_turn_aoe_damage = self.end_turn_aoe_damage
+        new_state.end_turn_hp_loss = self.end_turn_hp_loss
         new_state.monsters = [m.copy() for m in self.monsters]
         new_state.played_card_uuids = self.played_card_uuids.copy()
         new_state.energy_spent = self.energy_spent
@@ -566,6 +572,8 @@ class SimulationState:
             self.feel_no_pain_block_per_exhaust,
             self.dark_embrace_draw_per_exhaust,
             self.rupture_strength_per_hp_loss,
+            self.end_turn_aoe_damage,
+            self.end_turn_hp_loss,
         )
 
         # Monster states (sorted for consistent hashing)
@@ -1180,7 +1188,13 @@ class FastCombatSimulator:
         # Fallback: not an X-block card
         return 0
 
-    def _deal_damage_to_monster(self, state: SimulationState, monster: dict, damage: int):
+    def _deal_damage_to_monster(
+        self,
+        state: SimulationState,
+        monster: dict,
+        damage: int,
+        trigger_thorns: bool = True,
+    ):
         """Deal damage to monster, accounting for block and thorns."""
         # Damage block first
         block_damage = min(damage, monster['block'])
@@ -1195,7 +1209,7 @@ class FastCombatSimulator:
         if monster['hp'] <= 0:
             monster['is_gone'] = True
             state.monsters_killed += 1
-        else:
+        elif trigger_thorns:
             # Apply thorns/反伤: take damage when attacking enemies with thorns
             thorns = monster.get('thorns', 0)
             if thorns > 0:
@@ -1206,6 +1220,30 @@ class FastCombatSimulator:
                 if thorns_damage > 0:
                     state.player_hp -= thorns_damage
                     state.player_hp = max(0, state.player_hp)  # Ensure HP doesn't go negative
+
+    def project_end_turn_effects(self, state: SimulationState) -> SimulationState:
+        """Project deterministic end-of-turn effects before enemy attacks."""
+        projected = state.clone()
+
+        hp_loss = max(0, getattr(projected, 'end_turn_hp_loss', 0))
+        if hp_loss > 0:
+            projected.player_hp = max(0, projected.player_hp - hp_loss)
+
+        aoe_damage = max(0, getattr(projected, 'end_turn_aoe_damage', 0))
+        if aoe_damage > 0:
+            for monster in projected.monsters:
+                if monster['is_gone']:
+                    continue
+                self._deal_damage_to_monster(
+                    projected,
+                    monster,
+                    aoe_damage,
+                    trigger_thorns=False,
+                )
+
+        projected.end_turn_aoe_damage = 0
+        projected.end_turn_hp_loss = 0
+        return projected
 
     def _apply_skill(
         self,
@@ -1352,6 +1390,11 @@ class FastCombatSimulator:
         # Rupture - card HP loss grants Strength once per HP-loss event.
         elif card_id == 'Rupture':
             state.rupture_strength_per_hp_loss += 2 if card.upgrades > 0 else 1
+
+        # Combust - end-turn HP loss and AOE damage happen before enemies attack.
+        elif card_id == 'Combust':
+            state.end_turn_hp_loss += 1
+            state.end_turn_aoe_damage += 7 if card.upgrades > 0 else 5
 
         # Draw power
         elif card_id == 'Draw':
@@ -1527,7 +1570,13 @@ class FastCombatSimulator:
                 return
 
             description = card_data.get('description', '') or ''
-            match = re.search(r'lose (\d+) hp', description.lower())
+            normalized_description = description.lower()
+            if (
+                'at the end of your turn' in normalized_description
+                or 'at the start of your turn' in normalized_description
+            ):
+                return
+            match = re.search(r'lose (\d+) hp', normalized_description)
             if not match:
                 return
 
@@ -2183,6 +2232,7 @@ class FastCombatSimulator:
                     'W_DEATHRISK': W_DEATHRISK,
                 }
 
+        final_state = self.project_end_turn_effects(final_state)
         score = 0.0
 
         # 1. Monsters killed (high priority)

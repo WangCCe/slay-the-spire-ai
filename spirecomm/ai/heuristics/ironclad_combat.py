@@ -989,6 +989,7 @@ class IroncladCombatPlanner(CombatPlanner):
         6. Elite-specific tactics (applied via unified framework)
         """
         score = 0.0
+        final_state = self.simulator.project_end_turn_effects(final_state)
 
         # DEBUG: Log when _score_sequence is called
         if len(sequence) <= 1:

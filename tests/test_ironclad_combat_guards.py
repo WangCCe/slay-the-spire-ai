@@ -356,6 +356,74 @@ def test_rupture_gains_strength_once_when_card_loses_hp(monkeypatch):
     assert result.player_strength == 1
 
 
+def test_combust_projects_end_turn_damage_without_immediate_attack_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "combust": {
+            "name": "Combust",
+            "description": "At the end of your turn, lose 1 HP and deal 5 damage to ALL enemies.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    combust = _card("Combust", "Combust", card_type=CardType.POWER, cost=1, has_target=False)
+    context = _combat_context(
+        [combust],
+        energy=1,
+        monsters=[_louse(current_hp=5), _louse(current_hp=5)],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        combust,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert state.total_damage_dealt == 0
+    assert state.monsters_killed == 0
+
+    projected = simulator.project_end_turn_effects(state)
+
+    assert projected.player_hp == context.game.current_hp - 1
+    assert projected.total_damage_dealt == 10
+    assert projected.monsters_killed == 2
+
+
+def test_outcome_score_counts_combust_end_turn_lethal(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "combust": {
+            "name": "Combust",
+            "description": "At the end of your turn, lose 1 HP and deal 5 damage to ALL enemies.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    combust = _card("Combust", "Combust", card_type=CardType.POWER, cost=1, has_target=False)
+    context = _combat_context([combust], energy=1, monsters=[_louse(current_hp=5)])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    initial_state = SimulationState(context)
+    final_state = simulator.simulate_card_play(
+        initial_state,
+        combust,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    score = simulator.calculate_outcome_score(
+        initial_state,
+        final_state,
+        context=context,
+        sequence=[PlayCardAction(card=combust)],
+    )
+
+    assert score >= simulation.KILL_BONUS
+
+
 def test_slime_boss_split_materializes_large_slimes_with_inherited_hp():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_slime_boss(current_hp=56)])
