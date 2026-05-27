@@ -113,7 +113,6 @@ DAMAGE_UPGRADE_BONUS = {
 
     # +1 damage
     'Pommel Strike': 1,
-    'Fiend Fire': 1,
     'Reaper': 1,
 
     # +2 damage
@@ -125,6 +124,7 @@ DAMAGE_UPGRADE_BONUS = {
 
     # +3 damage
     'Dropkick': 3,
+    'Fiend Fire': 3,
     'Reckless Charge': 3,
     'Strike': 3,
     'Thunderclap': 3,
@@ -722,7 +722,7 @@ class FastCombatSimulator:
         # Also check known AOE cards by name
         if card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']:
             is_aoe = True
-        hit_count = self._get_attack_hit_count(card)
+        hit_count = self._get_attack_hit_count(card, state, context)
 
         if is_aoe:
             # AOE - apply to all monsters
@@ -769,7 +769,12 @@ class FastCombatSimulator:
                             else:
                                 monster['weak'] += 1
 
-    def _get_attack_hit_count(self, card: Card) -> int:
+    def _get_attack_hit_count(
+        self,
+        card: Card,
+        state: SimulationState,
+        context: Optional[DecisionContext] = None,
+    ) -> int:
         """Return known static hit counts for repeated-hit Ironclad attacks."""
         card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
         upgrades = getattr(card, 'upgrades', 0)
@@ -778,6 +783,15 @@ class FastCombatSimulator:
             return 2
         if card_name == 'Pummel':
             return 5 if upgrades > 0 else 4
+        if card_name == 'Fiend Fire' and context is not None:
+            return max(
+                0,
+                sum(
+                    1
+                    for hand_card in getattr(context, 'playable_cards', [])
+                    if hand_card is not card and id(hand_card) not in state.played_card_uuids
+                ),
+            )
 
         return 1
 

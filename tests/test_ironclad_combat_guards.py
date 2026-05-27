@@ -531,6 +531,54 @@ def test_heavy_blade_uses_strength_multiplier_and_static_base_damage(monkeypatch
     assert result.total_damage_dealt == 29
 
 
+def test_fiend_fire_hits_once_per_other_unplayed_card_with_upgrade_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "description": "Exhaust your hand. Deal 7 damage for each card Exhausted. Exhaust.",
+        }
+    }
+    loader._wiki_data = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "text": "#Exhaust your hand.\nDeal [7|10] damage for each card #Exhausted.\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    strike = _card("Strike_R", "Strike", cost=1)
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    fiend_fire = _card("Fiend Fire", "Fiend Fire", cost=2)
+    context = _combat_context([fiend_fire, strike, defend], energy=2, monsters=[_louse(current_hp=100)])
+    context.strength = 2
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        fiend_fire,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 18
+    assert result.damage_instances == 2
+
+    fiend_fire_plus = _card("Fiend Fire", "Fiend Fire+", cost=2, upgrades=1)
+    context = _combat_context([fiend_fire_plus, strike, defend], energy=2, monsters=[_louse(current_hp=100)])
+    context.strength = 2
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        fiend_fire_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 24
+    assert result.damage_instances == 2
+
+
 def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
