@@ -1167,11 +1167,8 @@ class FastCombatSimulator:
     def _apply_sentinel_exhaust_energy(self, state: SimulationState, exhausted_cards: List[Card]):
         energy_gain = 0
         for exhausted_card in exhausted_cards:
-            card_name = (
-                getattr(exhausted_card, 'card_id', '')
-                or getattr(exhausted_card, 'name', '')
-            )
-            if card_name.replace('+', '') != 'Sentinel':
+            card_name = _canonical_card_name(exhausted_card)
+            if card_name != 'Sentinel':
                 continue
 
             energy_gain += 3 if getattr(exhausted_card, 'upgrades', 0) > 0 else 2

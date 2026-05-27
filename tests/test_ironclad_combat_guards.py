@@ -1750,6 +1750,38 @@ def test_second_wind_exhausting_sentinel_grants_energy():
     assert result.energy_gained == 2
 
 
+def test_second_wind_exhausting_counted_upgraded_sentinel_grants_energy():
+    second_wind = _card(
+        "Second Wind",
+        "Second Wind",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    sentinel = _card(
+        "Sentinel+1",
+        "Sentinel+1",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([second_wind, sentinel, defend], energy=1, monsters=[_louse(current_hp=100)])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        second_wind,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.exhaust_events == 2
+    assert result.player_energy == 3
+    assert result.energy_gained == 3
+
+
 def test_playing_sentinel_does_not_trigger_exhaust_synergy(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
