@@ -754,6 +754,7 @@ class FastCombatSimulator:
         if card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']:
             is_aoe = True
         hit_count = self._get_attack_hit_count(card, state, context)
+        starting_total_damage = state.total_damage_dealt
 
         if is_aoe:
             # AOE - apply to all monsters
@@ -806,6 +807,8 @@ class FastCombatSimulator:
                             if weak_stacks:
                                 monster['weak'] += weak_stacks
 
+        self._apply_attack_healing(state, card, starting_total_damage)
+
     def _get_attack_hit_count(
         self,
         card: Card,
@@ -837,6 +840,16 @@ class FastCombatSimulator:
     def _is_random_target_attack(self, card: Card) -> bool:
         card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
         return card_name in {'Sword Boomerang'}
+
+    def _apply_attack_healing(self, state: SimulationState, card: Card, starting_total_damage: int):
+        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        if card_name != 'Reaper':
+            return
+
+        unblocked_damage = max(0, state.total_damage_dealt - starting_total_damage)
+        if unblocked_damage <= 0:
+            return
+        state.player_hp = min(state.player_max_hp, state.player_hp + unblocked_damage)
 
     def _calculate_attack_damage(
         self,
