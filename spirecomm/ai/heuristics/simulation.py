@@ -1165,7 +1165,7 @@ class FastCombatSimulator:
 
         if card_data:
             description = self._get_card_effect_text(card_name, card_data)
-            if self._card_exhausts_itself(description):
+            if self._card_exhausts_itself(description, getattr(card, 'upgrades', 0) > 0):
                 state.exhaust_events += 1
 
     def _apply_sentinel_exhaust_energy(self, state: SimulationState, exhausted_cards: List[Card]):
@@ -1220,13 +1220,29 @@ class FastCombatSimulator:
                 state.played_card_uuids.add(card_key)
             state.played_card_uuids.add(id(card))
 
-    def _card_exhausts_itself(self, description: str) -> bool:
+    def _effect_text_for_upgrade(self, description: str, upgraded: bool) -> str:
+        text = (description or '').replace('\\n', '\n')
+
+        def select_upgrade_value(match):
+            return match.group(2 if upgraded else 1)
+
+        text = re.sub(r'\[([^\[\]|]*)\|([^\[\]]*)\]', select_upgrade_value, text)
+        text = re.sub(
+            r'\[([^\[\]|]*)\|',
+            lambda match: '' if upgraded else match.group(1),
+            text,
+        )
+        return text
+
+    def _card_exhausts_itself(self, description: str, upgraded: bool = False) -> bool:
+        description = self._effect_text_for_upgrade(description, upgraded)
         description = (description or '').lower().replace('#', '')
         if any(line.strip() in {'exhaust', 'exhaust.'} for line in description.splitlines()):
             return True
         return bool(re.search(r'\bexhaust\.\s*$', description))
 
-    def _skill_exhaust_events_from_description(self, description: str) -> int:
+    def _skill_exhaust_events_from_description(self, description: str, upgraded: bool = False) -> int:
+        description = self._effect_text_for_upgrade(description, upgraded)
         description = (description or '').lower().replace('#', '')
         if not description:
             return 0
@@ -1237,11 +1253,14 @@ class FastCombatSimulator:
         return 0
 
     def _skill_exhausts_itself(self, card: Card) -> bool:
-        card_name = (getattr(card, 'name', None) or getattr(card, 'card_id', '')).replace('+', '')
+        card_name = _canonical_card_name(card)
         card_data = game_data_loader.get_card_data(card_name)
         if not card_data:
             return False
-        return self._card_exhausts_itself(self._get_card_effect_text(card_name, card_data))
+        return self._card_exhausts_itself(
+            self._get_card_effect_text(card_name, card_data),
+            getattr(card, 'upgrades', 0) > 0,
+        )
 
     def _calculate_attack_damage(
         self,
@@ -1807,19 +1826,20 @@ class FastCombatSimulator:
 
         # Track exhaust events (for Feel No Pain, etc.)
         try:
-            card_name = (getattr(card, 'name', None) or card.card_id).replace('+', '')
+            card_name = _canonical_card_name(card)
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
                 description = self._get_card_effect_text(card_name, card_data)
-                state.exhaust_events += self._skill_exhaust_events_from_description(description)
+                upgraded = getattr(card, 'upgrades', 0) > 0
+                state.exhaust_events += self._skill_exhaust_events_from_description(
+                    description,
+                    upgraded,
+                )
                 # Track draw events
                 if 'draw' in description:
                     self._add_card_draw(
                         state,
-                        self._extract_draw_count(
-                            description,
-                            getattr(card, 'upgrades', 0) > 0,
-                        ),
+                        self._extract_draw_count(description, upgraded),
                     )
         except:
             pass

@@ -3000,6 +3000,98 @@ def test_energy_gain_skills_add_usable_energy(monkeypatch):
     assert result.energy_gained == 2
 
 
+def test_wiki_escaped_newline_exhaust_triggers_feel_no_pain(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "seeing red": {
+            "name": "Seeing Red",
+            "description": "Gain [R] [R].\nExhaust.",
+        }
+    }
+    loader._wiki_data = {
+        "seeing red": {
+            "name": "Seeing Red",
+            "text": "Gain <R> <R>.\\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    seeing_red = _card("Seeing Red", "Seeing Red", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([seeing_red], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        seeing_red,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.exhaust_events == 1
+    assert result.player_block == 3
+
+
+def test_limit_break_upgrade_removes_self_exhaust_for_synergies(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "limit break": {
+            "name": "Limit Break",
+            "description": "Double your Strength.\nExhaust.",
+        }
+    }
+    loader._wiki_data = {
+        "limit break": {
+            "name": "Limit Break",
+            "text": "Double your #Strength. [\\n#Exhaust.|",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    base_limit_break = _card(
+        "Limit Break",
+        "Limit Break",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    context = _combat_context([base_limit_break], energy=1, monsters=[_louse(current_hp=100)])
+    context.strength = 2
+    context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        base_limit_break,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.exhaust_events == 1
+    assert result.player_block == 3
+
+    upgraded_limit_break = _card(
+        "Limit Break",
+        "Limit Break+",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([upgraded_limit_break], energy=1, monsters=[_louse(current_hp=100)])
+    context.strength = 2
+    context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        upgraded_limit_break,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.exhaust_events == 0
+    assert result.player_block == 0
+
+
 def test_energy_gain_plain_text_is_not_double_counted(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
