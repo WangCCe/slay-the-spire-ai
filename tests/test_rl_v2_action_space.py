@@ -8,7 +8,10 @@ from spirecomm.communication.action import (
     BuyPotionAction,
     BuyPurgeAction,
     CombatRewardAction,
+    EndTurnAction,
     LeaveAction,
+    PlayCardAction,
+    PotionAction,
     ProceedAction,
 )
 from spirecomm.spire.screen import RewardType, ScreenType
@@ -93,6 +96,82 @@ def test_combat_mask_requires_potion_available():
     mask = encoder.get_action_mask(game)
 
     assert not mask[space.encode_use_potion(0, 1)]
+
+
+def test_combat_decoder_falls_back_for_unplayable_card_slot():
+    encoder = ActionEncoderV2()
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[_make_card(has_target=True, is_playable=False)],
+        monsters=[_make_monster()],
+        end_available=True,
+    )
+
+    action = encoder.decode_action(space.encode_play_card(0, 1), game)
+
+    assert isinstance(action, EndTurnAction)
+
+
+def test_combat_decoder_falls_back_for_target_on_nontarget_card():
+    encoder = ActionEncoderV2()
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[_make_card(has_target=False, is_playable=True)],
+        monsters=[_make_monster()],
+        end_available=True,
+    )
+
+    action = encoder.decode_action(space.encode_play_card(0, 1), game)
+
+    assert isinstance(action, EndTurnAction)
+
+
+def test_combat_decoder_keeps_valid_card_and_potion_actions():
+    encoder = ActionEncoderV2()
+    potion = SimpleNamespace(
+        potion_id="Fire Potion",
+        can_use=True,
+        requires_target=True,
+    )
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[_make_card(has_target=True, is_playable=True)],
+        monsters=[_make_monster()],
+        potions=[potion],
+    )
+
+    card_action = encoder.decode_action(space.encode_play_card(0, 1), game)
+    potion_action = encoder.decode_action(space.encode_use_potion(0, 1), game)
+
+    assert isinstance(card_action, PlayCardAction)
+    assert card_action.card_index == 0
+    assert card_action.target_index == 0
+    assert isinstance(potion_action, PotionAction)
+    assert potion_action.potion_index == 0
+    assert potion_action.target_index == 0
+
+
+def test_combat_decoder_falls_back_for_unavailable_potion_slot():
+    encoder = ActionEncoderV2()
+    potion = SimpleNamespace(
+        potion_id="Potion Slot",
+        can_use=False,
+        requires_target=True,
+    )
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        potions=[potion],
+        monsters=[_make_monster()],
+        end_available=True,
+    )
+
+    action = encoder.decode_action(space.encode_use_potion(0, 1), game)
+
+    assert isinstance(action, EndTurnAction)
 
 
 def test_map_choice_truncation():

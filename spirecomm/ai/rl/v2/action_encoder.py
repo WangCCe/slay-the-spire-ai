@@ -144,17 +144,13 @@ class ActionEncoderV2:
             offset = action_index - space.PLAY_CARD_OFFSET
             card_slot = offset // space.TARGET_SLOTS
             target_index = offset % space.TARGET_SLOTS
-            return PlayCardAction(card_index=card_slot, target_index=self._map_target(game, target_index))
+            return self._decode_play_card_action(card_slot, target_index, game)
 
         if space.USE_POTION_OFFSET <= action_index < space.END_TURN_ACTION:
             offset = action_index - space.USE_POTION_OFFSET
             potion_slot = offset // space.TARGET_SLOTS
             target_index = offset % space.TARGET_SLOTS
-            return PotionAction(
-                use=True,
-                potion_index=potion_slot,
-                target_index=self._map_target(game, target_index),
-            )
+            return self._decode_potion_action(potion_slot, target_index, game)
 
         if space.REWARD_OFFSET <= action_index < space.MAP_OFFSET:
             choice_index = action_index - space.REWARD_OFFSET
@@ -301,6 +297,59 @@ class ActionEncoderV2:
             return potions.index(potion)
         except Exception:
             return None
+
+    def _decode_play_card_action(self, card_slot: int, target_slot: int, game: Game):
+        hand = getattr(game, "hand", []) or []
+        if not getattr(game, "play_available", True):
+            return self._fallback_combat_action(game)
+        if card_slot < 0 or card_slot >= min(len(hand), space.MAX_CARD_SLOTS):
+            return self._fallback_combat_action(game)
+
+        card = hand[card_slot]
+        if hasattr(card, "is_playable") and not card.is_playable:
+            return self._fallback_combat_action(game)
+
+        if getattr(card, "has_target", False):
+            target_index = self._map_alive_target(game, target_slot)
+            if target_index is None:
+                return self._fallback_combat_action(game)
+            return PlayCardAction(card_index=card_slot, target_index=target_index)
+
+        if target_slot != 0:
+            return self._fallback_combat_action(game)
+        return PlayCardAction(card_index=card_slot, target_index=None)
+
+    def _decode_potion_action(self, potion_slot: int, target_slot: int, game: Game):
+        potions = getattr(game, "potions", []) or []
+        if not getattr(game, "potion_available", True):
+            return self._fallback_combat_action(game)
+        if potion_slot < 0 or potion_slot >= min(len(potions), space.MAX_POTION_SLOTS):
+            return self._fallback_combat_action(game)
+
+        potion = potions[potion_slot]
+        if getattr(potion, "potion_id", None) == "Potion Slot":
+            return self._fallback_combat_action(game)
+        if hasattr(potion, "can_use") and not potion.can_use:
+            return self._fallback_combat_action(game)
+
+        if getattr(potion, "requires_target", False):
+            target_index = self._map_alive_target(game, target_slot)
+            if target_index is None:
+                return self._fallback_combat_action(game)
+            return PotionAction(
+                use=True,
+                potion_index=potion_slot,
+                target_index=target_index,
+            )
+
+        if target_slot != 0:
+            return self._fallback_combat_action(game)
+        return PotionAction(use=True, potion_index=potion_slot, target_index=None)
+
+    def _fallback_combat_action(self, game: Game):
+        if getattr(game, "end_available", False):
+            return EndTurnAction()
+        return self._fallback_system_action(game)
 
     @staticmethod
     def _resolve_target_slot(action) -> int:
@@ -805,10 +854,16 @@ class ActionEncoderV2:
         return RestAction(option)
 
     @staticmethod
-    def _map_target(game: Game, target_index: int) -> int:
+    def _map_alive_target(game: Game, target_index: int) -> Optional[int]:
         if target_index <= 0:
             return None
         monsters = game.monsters or []
-        if target_index - 1 < len(monsters):
-            return target_index - 1
+        monster_index = target_index - 1
+        if monster_index < len(monsters):
+            monster = monsters[monster_index]
+            if (
+                getattr(monster, "current_hp", 0) > 0
+                and not getattr(monster, "is_gone", False)
+            ):
+                return monster_index
         return None
