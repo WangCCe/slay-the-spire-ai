@@ -321,6 +321,27 @@ def test_ironclad_strategy_rejects_counted_upgraded_perfected_strike():
     assert "Perfected Strike" in reason
 
 
+def test_ironclad_strategy_still_removes_starter_strikes_after_name_normalization():
+    deck = [_card("Strike_R"), _card("Strike_R"), _card("Defend_R"), _card("Bash", cost=2)]
+    agent = _agent_for_reward([], deck, floor=8)
+    context = DecisionContext(agent.game)
+
+    should_remove, reason = IroncladDeckStrategy().should_remove_card(_card("Strike_R"), context)
+
+    assert should_remove
+    assert "Strike" in reason
+
+
+def test_ironclad_strategy_uses_basic_card_upgrade_priorities_after_name_normalization():
+    deck = [_card("Strike_R"), _card("Defend_R"), _card("Bash", cost=2)]
+    agent = _agent_for_reward([], deck, floor=8)
+    context = DecisionContext(agent.game)
+    strategy = IroncladDeckStrategy()
+
+    assert strategy.get_upgrade_priority(_card("Strike_R"), context) == 3
+    assert strategy.get_upgrade_priority(_card("Defend_R"), context) == 2
+
+
 def test_ironclad_strategy_rejects_perfected_strike_even_with_starter_strikes():
     deck = [
         _card("Strike_R"),

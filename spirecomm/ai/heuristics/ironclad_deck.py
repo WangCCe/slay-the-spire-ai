@@ -110,8 +110,8 @@ class IroncladDeckStrategy:
 
         # Tier 3: Low priority
         'Bash': 5,
-        'Strike_R': 3,
-        'Defend_R': 2,
+        'Strike': 3,
+        'Defend': 2,
         'Clash': 2,
     }
 
@@ -193,7 +193,7 @@ class IroncladDeckStrategy:
         # Rule 7: Defend/Strike removal consideration
         if deck_size >= 15:
             # In late Act 1/Act 2, be very selective
-            if card_id in ['Strike_R', 'Defend_R']:
+            if card_id in ['Strike', 'Defend']:
                 return (False, "Need card removal, not basics")
 
         # Default: accept good cards
@@ -293,13 +293,13 @@ class IroncladDeckStrategy:
         card_id = self._card_name(card)
 
         # Priority 1: Strikes (always remove first)
-        if card_id == 'Strike_R':
+        if card_id == 'Strike':
             return (True, "Strike removal is highest priority")
 
         # Priority 2: Basic defends (after strikes)
-        if card_id == 'Defend_R':
+        if card_id == 'Defend':
             # Check if we have enough strike removals
-            strike_count = sum(1 for c in context.game.deck if self._card_name(c) == 'Strike_R')
+            strike_count = sum(1 for c in context.game.deck if self._card_name(c) == 'Strike')
             if strike_count <= 2:
                 return (False, "Remove Strikes first")
             return (True, "Defend removal (after Strikes)")
@@ -356,8 +356,8 @@ class IroncladDeckStrategy:
             score -= 0.15
 
         # 2. Strike/Defend count (fewer is better)
-        strike_count = sum(1 for c in deck if c.card_id == 'Strike_R')
-        defend_count = sum(1 for c in deck if c.card_id == 'Defend_R')
+        strike_count = sum(1 for c in deck if self._card_name(c) == 'Strike')
+        defend_count = sum(1 for c in deck if self._card_name(c) == 'Defend')
         basic_count = strike_count + defend_count
 
         if basic_count <= 2:
