@@ -299,6 +299,28 @@ def test_ironclad_strategy_rejects_perfected_strike_when_strike_density_is_low()
     assert "Strike" in reason
 
 
+def test_ironclad_strategy_rejects_counted_upgraded_perfected_strike():
+    deck = [
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Reaper", cost=2, upgrades=1),
+        _card("Whirlwind", cost=-1),
+    ]
+    agent = _agent_for_reward([_card("Perfected Strike+1", cost=2, upgrades=1)], deck, floor=11)
+    context = DecisionContext(agent.game)
+
+    should_pick, reason = IroncladDeckStrategy().should_pick_card(
+        _card("Perfected Strike+1", cost=2, upgrades=1),
+        context,
+    )
+
+    assert not should_pick
+    assert "Perfected Strike" in reason
+
+
 def test_ironclad_strategy_rejects_perfected_strike_even_with_starter_strikes():
     deck = [
         _card("Strike_R"),

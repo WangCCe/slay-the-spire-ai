@@ -12,6 +12,7 @@ Key principles:
 
 from typing import List, Tuple
 from ..decision.base import DecisionContext
+from .card_names import canonical_card_name
 from .ironclad_archetype import IroncladArchetypeManager
 from spirecomm.spire.card import Card
 
@@ -118,6 +119,10 @@ class IroncladDeckStrategy:
         """Initialize deck strategy manager."""
         self.archetype_manager = IroncladArchetypeManager()
 
+    @staticmethod
+    def _card_name(card: Card) -> str:
+        return canonical_card_name(card)
+
     def should_pick_card(self, card: Card, context: DecisionContext) -> Tuple[bool, str]:
         """
         Decide if we should pick a card.
@@ -128,30 +133,31 @@ class IroncladDeckStrategy:
         # Get deck info
         deck_size = len(context.game.deck) if hasattr(context.game, 'deck') else 10
         archetype = self.archetype_manager.detect_archetype(context)
+        card_id = self._card_name(card)
 
         # Rule 1: Deck size limit
         if deck_size >= 20:
             # Only accept tier 0/1 cards
-            if card.card_id not in self.TIER_0_1_CARDS:
+            if card_id not in self.TIER_0_1_CARDS:
                 return (False, f"Deck too large ({deck_size} cards), only taking top-tier cards")
 
         # Rule 2: Avoid clearly bad cards
-        if card.card_id in self.AVOID_CARDS:
-            return (False, f"Card '{card.card_id}' is suboptimal")
+        if card_id in self.AVOID_CARDS:
+            return (False, f"Card '{card_id}' is suboptimal")
 
         # Rule 3: HP risk assessment
         if context.player_hp_pct < 0.4:
-            if card.card_id in self.HP_COST_CARDS:
+            if card_id in self.HP_COST_CARDS:
                 return (False, f"Too risky at {context.player_hp_pct*100:.0f}% HP")
 
-        if context.act == 1 and card.card_id in {'Brutality', 'Combust'}:
+        if context.act == 1 and card_id in {'Brutality', 'Combust'}:
             current_count = sum(
-                1 for c in context.game.deck if getattr(c, 'card_id', '') == card.card_id
+                1 for c in context.game.deck if self._card_name(c) == card_id
             )
             if current_count >= 1:
-                return (False, f"Skipping duplicate Act 1 self-damage power: {card.card_id}")
+                return (False, f"Skipping duplicate Act 1 self-damage power: {card_id}")
 
-        if card.card_id == 'Perfected Strike':
+        if card_id == 'Perfected Strike':
             return (
                 False,
                 "Skipping Perfected Strike because this AI removes Strike-name sources",
@@ -171,27 +177,27 @@ class IroncladDeckStrategy:
 
         if context.act == 1 and deck_size <= 13:
             # Prioritize damage in Act 1
-            if card.card_id in self.ACT_1_DAMAGE_PRIORITY:
+            if card_id in self.ACT_1_DAMAGE_PRIORITY:
                 return (True, f"Act 1 damage priority (deck size: {deck_size})")
 
         # Rule 6: Win condition cards always good
-        if card.card_id in ['Demon Form', 'Corruption']:
+        if card_id in ['Demon Form', 'Corruption']:
             # But limit to 1 copy except特殊情况
             if deck_size > 0:
-                current_count = sum(1 for c in context.game.deck if c.card_id == card.card_id)
-                if card.card_id == 'Demon Form' and current_count >= 1:
+                current_count = sum(1 for c in context.game.deck if self._card_name(c) == card_id)
+                if card_id == 'Demon Form' and current_count >= 1:
                     # Second Demon Form is okay but low priority
                     return (True, "Second Demon Form (low priority)")
-            return (True, f"Win condition card: {card.card_id}")
+            return (True, f"Win condition card: {card_id}")
 
         # Rule 7: Defend/Strike removal consideration
         if deck_size >= 15:
             # In late Act 1/Act 2, be very selective
-            if card.card_id in ['Strike_R', 'Defend_R']:
+            if card_id in ['Strike_R', 'Defend_R']:
                 return (False, "Need card removal, not basics")
 
         # Default: accept good cards
-        baseline_score = self._get_card_baseline_score(card.card_id)
+        baseline_score = self._get_card_baseline_score(card_id)
         if baseline_score >= 60:
             return (True, f"Good card (score: {baseline_score})")
         elif baseline_score >= 40:
@@ -201,36 +207,37 @@ class IroncladDeckStrategy:
 
     def _act_1_card_supported(self, card: Card, context: DecisionContext) -> Tuple[bool, str]:
         """Avoid speculative Act 1 rewards before their support package exists."""
-        if card.card_id not in self.SPECULATIVE_ENGINE_CARDS:
+        card_id = self._card_name(card)
+        if card_id not in self.SPECULATIVE_ENGINE_CARDS:
             return (True, "Not a speculative Act 1 engine card")
 
         deck = list(getattr(context.game, 'deck', []) or [])
-        deck_ids = [getattr(c, 'card_id', '') for c in deck]
+        deck_ids = [self._card_name(c) for c in deck]
 
         def count(names):
             return sum(1 for card_id in deck_ids if card_id in names)
 
-        if card.card_id == 'Limit Break':
+        if card_id == 'Limit Break':
             if count(self.STRENGTH_SUPPORT) >= 2:
                 return (True, "Limit Break has strength support")
             return (False, "Skipping Limit Break without strength support")
 
-        if card.card_id in {'Body Slam', 'Entrench', 'Barricade'}:
+        if card_id in {'Body Slam', 'Entrench', 'Barricade'}:
             if count(self.BLOCK_SUPPORT) >= 3:
-                return (True, f"{card.card_id} has block support")
-            return (False, f"Skipping {card.card_id} without block support")
+                return (True, f"{card_id} has block support")
+            return (False, f"Skipping {card_id} without block support")
 
-        if card.card_id in {'Feel No Pain', 'Dark Embrace'}:
+        if card_id in {'Feel No Pain', 'Dark Embrace'}:
             if count(self.EXHAUST_SUPPORT) >= 2:
-                return (True, f"{card.card_id} has exhaust support")
-            return (False, f"Skipping {card.card_id} without exhaust support")
+                return (True, f"{card_id} has exhaust support")
+            return (False, f"Skipping {card_id} without exhaust support")
 
-        if card.card_id == 'Fire Breathing':
+        if card_id == 'Fire Breathing':
             if count(self.STATUS_SUPPORT) >= 2:
                 return (True, "Fire Breathing has status support")
             return (False, "Skipping Fire Breathing without status support")
 
-        if card.card_id == 'Rupture':
+        if card_id == 'Rupture':
             if count(self.SELF_DAMAGE_SUPPORT) >= 2:
                 return (True, "Rupture has self-damage support")
             return (False, "Skipping Rupture without self-damage support")
@@ -243,34 +250,35 @@ class IroncladDeckStrategy:
 
         Higher is more important to upgrade.
         """
-        base_priority = self.UPGRADE_PRIORITIES.get(card.card_id, 5)
+        card_id = self._card_name(card)
+        base_priority = self.UPGRADE_PRIORITIES.get(card_id, 5)
 
         # Adjust based on archetype
         archetype = self.archetype_manager.detect_archetype(context)
 
         if archetype == 'strength':
             # Prioritize strength cards
-            if card.card_id in ['Demon Form', 'Limit Break', 'Spot Weakness', 'Inflame']:
+            if card_id in ['Demon Form', 'Limit Break', 'Spot Weakness', 'Inflame']:
                 base_priority = min(10, base_priority + 2)
-            elif card.card_id in ['Reaper', 'Disarm']:
+            elif card_id in ['Reaper', 'Disarm']:
                 base_priority = min(10, base_priority + 1)
 
         elif archetype == 'exhaust':
             # Prioritize exhaust cards
-            if card.card_id in ['Corruption', 'Feel No Pain', 'Dark Embrace']:
+            if card_id in ['Corruption', 'Feel No Pain', 'Dark Embrace']:
                 base_priority = min(10, base_priority + 2)
 
         elif archetype == 'body_slam':
             # Prioritize block/body slam cards
-            if card.card_id in ['Barricade', 'Body Slam', 'Entrench']:
+            if card_id in ['Barricade', 'Body Slam', 'Entrench']:
                 base_priority = min(10, base_priority + 2)
-            elif card.card_id in ['Iron Wave', 'Impervious', 'Flame Barrier']:
+            elif card_id in ['Iron Wave', 'Impervious', 'Flame Barrier']:
                 base_priority = min(10, base_priority + 1)
 
         # Adjust based on game act
         if context.act == 1:
             # Prioritize consistency in Act 1
-            if card.card_id in ['Bash', 'Iron Wave', 'Pommel Strike']:
+            if card_id in ['Bash', 'Iron Wave', 'Pommel Strike']:
                 base_priority = min(10, base_priority + 1)
 
         return base_priority
@@ -282,7 +290,7 @@ class IroncladDeckStrategy:
         Returns:
             (should_remove, reason)
         """
-        card_id = card.card_id
+        card_id = self._card_name(card)
 
         # Priority 1: Strikes (always remove first)
         if card_id == 'Strike_R':
@@ -291,7 +299,7 @@ class IroncladDeckStrategy:
         # Priority 2: Basic defends (after strikes)
         if card_id == 'Defend_R':
             # Check if we have enough strike removals
-            strike_count = sum(1 for c in context.game.deck if c.card_id == 'Strike_R')
+            strike_count = sum(1 for c in context.game.deck if self._card_name(c) == 'Strike_R')
             if strike_count <= 2:
                 return (False, "Remove Strikes first")
             return (True, "Defend removal (after Strikes)")
@@ -309,7 +317,7 @@ class IroncladDeckStrategy:
 
         # Priority 5: Duplicate core cards (case by case)
         if card_id in ['Demon Form', 'Barricade', 'Corruption']:
-            count = sum(1 for c in context.game.deck if c.card_id == card_id)
+            count = sum(1 for c in context.game.deck if self._card_name(c) == card_id)
             if count >= 2:
                 return (True, f"Duplicate power card: {card_id}")
 
