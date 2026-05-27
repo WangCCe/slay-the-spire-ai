@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from spirecomm.ai.agent import OptimizedAgent
+from spirecomm.ai.decision.base import DecisionContext
 from spirecomm.ai.heuristics.ironclad_deck import IroncladDeckStrategy
 from spirecomm.ai.heuristics.ironclad_evaluator import IroncladCardEvaluator
 from spirecomm.ai.priorities import IroncladPriority
@@ -258,6 +259,63 @@ def test_ironclad_strategy_prefers_power_through_for_guardian_survival_gap():
 
     assert isinstance(action, CardRewardAction)
     assert action.name == "Power Through"
+
+
+def test_ironclad_strategy_rejects_perfected_strike_when_strike_density_is_low():
+    deck = [
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Reaper", cost=2, upgrades=1),
+        _card("Havoc", upgrades=1),
+        _card("Whirlwind", cost=-1),
+        _card("Cleave"),
+        _card("Shrug It Off"),
+    ]
+    agent = _agent_for_reward([_card("Perfected Strike", cost=2)], deck, floor=11)
+    context = DecisionContext(agent.game)
+
+    should_pick, reason = IroncladDeckStrategy().should_pick_card(
+        _card("Perfected Strike", cost=2),
+        context,
+    )
+
+    assert not should_pick
+    assert "Strike" in reason
+
+
+def test_ironclad_strategy_skips_duplicate_perfected_strike_when_alternatives_are_bad():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Headbutt"),
+        _card("Perfected Strike", cost=2),
+    ]
+    reward_cards = [
+        _card("Perfected Strike", cost=2),
+        _card("Wild Strike"),
+        _card("Clash", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=8,
+        hp=64,
+        max_hp=80,
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CancelAction)
 
 
 def test_ironclad_strategy_skips_fire_breathing_without_status_support():
