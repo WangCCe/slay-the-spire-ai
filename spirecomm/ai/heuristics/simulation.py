@@ -1411,6 +1411,21 @@ class FastCombatSimulator:
             'vulnerable': _get_stack('vulnerable') or _get_stack('vulnerable_applied') or _get_stack('vulnerable_amount'),
         }
 
+    def _extract_move_strength_gain(self, move: Dict[str, Any]) -> int:
+        """Extract monster Strength gained by a predicted move."""
+        value = move.get('strength_gain', 0)
+        if isinstance(value, bool):
+            return 0
+        if isinstance(value, (int, float)):
+            return max(0, int(value))
+        if isinstance(value, dict):
+            numeric_values = [
+                int(v) for v in value.values()
+                if isinstance(v, (int, float)) and not isinstance(v, bool)
+            ]
+            return max(numeric_values, default=0)
+        return 0
+
     def _extract_move_status_cards(self, move: Dict[str, Any]) -> Dict[str, int]:
         """Extract status cards added by a monster move from wiki data fields."""
         def _get_count(*keys: str) -> int:
@@ -2190,6 +2205,9 @@ class FastCombatSimulator:
                         pending_debuffs['weak'] += move_debuffs['weak']
                         pending_debuffs['frail'] += move_debuffs['frail']
                         pending_debuffs['vulnerable'] += move_debuffs['vulnerable']
+                        strength_gain = self._extract_move_strength_gain(move)
+                        if strength_gain > 0:
+                            monster['strength'] = monster.get('strength', 0) + strength_gain
                     else:
                         fallback_damage = monster.get('move_adjusted_damage', 0) or monster.get('move_base_damage', 0)
                         fallback_damage = self._numeric_damage_value(fallback_damage)

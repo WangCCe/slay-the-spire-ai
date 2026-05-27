@@ -572,6 +572,33 @@ def test_state_key_distinguishes_monster_strength_changes():
     )
 
 
+def test_enemy_lookahead_applies_strength_gain_to_future_attacks(monkeypatch):
+    class FakeLoader:
+        def get_enhanced_monster_data(self, _monster_name):
+            return None
+
+        def predict_monster_moves(self, _monster_name, turn, _hp_percent):
+            move = (
+                {"move": {"intent": "BUFF", "strength_gain": 3}}
+                if turn == 1
+                else {"move": {"intent": "ATTACK", "damage": 6, "hits": 1}}
+            )
+            return [move]
+
+    monkeypatch.setattr(simulation, "game_data_loader", FakeLoader())
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=50)])
+    context.turn = 1
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=2,
+    )
+
+    assert future_damage == int(9 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
+
+
 def test_feel_no_pain_grants_block_for_exhaust_events(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
