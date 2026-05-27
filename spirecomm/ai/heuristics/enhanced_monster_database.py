@@ -46,8 +46,8 @@ class EnhancedMonsterDatabase:
             "act2_elites_bosses.json",
             "act3_elites_bosses.json",
             "act1_normal_monsters.json",  # Added: Act 1 normal monsters (Cultist, Jaw Worm, etc.)
-            # "act2_normal_monsters.json",  # Future: add Act 2 normal monsters
-            # "act3_normal_monsters.json",  # Future: add Act 3 normal monsters
+            "act2_normal_monsters.json",
+            "act3_normal_monsters.json",
         ]
 
         for filename in data_files:
@@ -378,6 +378,33 @@ class EnhancedMonsterDatabase:
                             "confidence": 1.0
                         })
 
+        # Check for opening + alternating phase probabilities format (e.g., normal Chosen)
+        elif "opening" in pattern:
+            opening_moves = pattern["opening"]
+            opening_length = len(opening_moves) if isinstance(opening_moves, list) else 0
+
+            for i in range(3):
+                target_turn = current_turn + i
+
+                if 1 <= target_turn <= opening_length:
+                    move = self.get_move_by_name(monster_name, opening_moves[target_turn - 1])
+                    if move:
+                        predictions.append({
+                            "turn": target_turn,
+                            "move": move,
+                            "confidence": 1.0
+                        })
+                    continue
+
+                phase_key = self._phase_probability_key(pattern, target_turn, opening_length)
+                if phase_key:
+                    self._append_probability_predictions(
+                        predictions,
+                        moves,
+                        pattern.get(phase_key, {}),
+                        target_turn,
+                    )
+
         # Special handling for initial moves
         if "initial_move" in pattern and current_turn == 1:
             initial_move_name = pattern["initial_move"]
@@ -391,6 +418,47 @@ class EnhancedMonsterDatabase:
                     break
 
         return predictions[:3]  # Return at most 3 predictions
+
+    def _phase_probability_key(self, pattern: Dict[str, Any], target_turn: int, opening_length: int) -> Optional[str]:
+        phase_keys = sorted(
+            key for key in pattern
+            if key.startswith("phase_") and key.endswith("_probabilities")
+        )
+        if not phase_keys or target_turn <= opening_length:
+            return None
+
+        phase_index = (target_turn - opening_length - 1) % len(phase_keys)
+        return phase_keys[phase_index]
+
+    def _append_probability_predictions(
+        self,
+        predictions: List[Dict[str, Any]],
+        moves: List[Dict[str, Any]],
+        probabilities: Dict[str, Any],
+        target_turn: int,
+        limit: int = 2,
+    ) -> None:
+        if not isinstance(probabilities, dict):
+            return
+
+        sorted_probs = sorted(
+            (
+                (move_name, prob)
+                for move_name, prob in probabilities.items()
+                if isinstance(prob, (int, float))
+            ),
+            key=lambda x: x[1],
+            reverse=True
+        )[:limit]
+        for move_name, prob in sorted_probs:
+            for move in moves:
+                if self._normalize_move_name(move["name"]) == self._normalize_move_name(move_name):
+                    predictions.append({
+                        "turn": target_turn,
+                        "move": move,
+                        "confidence": prob
+                    })
+                    break
 
     def _normalize_move_name(self, move_name: str) -> str:
         return move_name.lower().replace(" ", "_")

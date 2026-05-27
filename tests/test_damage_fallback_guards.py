@@ -245,10 +245,10 @@ def test_damage_curve_handles_hexaghost_divider_formula_without_warning(caplog):
 def test_nested_monster_probability_tables_predict_moves_without_dict_sort_error():
     database = EnhancedMonsterDatabase()
 
-    predictions = database.predict_next_moves("Chosen", current_turn=1, monster_hp_percent=1.0)
+    predictions = database.predict_next_moves("Reptomancer", current_turn=1, monster_hp_percent=1.0)
 
     assert predictions
-    assert {prediction["move"]["name"] for prediction in predictions} <= {"Slash", "Hex", "Protect"}
+    assert {prediction["move"]["name"] for prediction in predictions} <= {"Summon", "Snake Strike", "Big Bite"}
     assert all(isinstance(prediction["confidence"], (int, float)) for prediction in predictions)
 
 
@@ -293,3 +293,26 @@ def test_spike_imminent_handles_monster_damage_ranges_without_warning(monkeypatc
 
     assert classifier._spike_imminent(context) is True
     assert "[SPIKE_IMMINENT] Check failed" not in caplog.text
+
+
+def test_enhanced_monster_database_loads_act2_normal_monsters():
+    database = EnhancedMonsterDatabase()
+
+    snake_plant = database.get_monster_data("Snake Plant")
+    predictions = database.predict_next_moves("Snake Plant", current_turn=1, monster_hp_percent=1.0)
+
+    assert snake_plant is not None
+    assert {prediction["move"]["name"] for prediction in predictions} == {
+        "Chomp",
+        "Enfeebling Spores",
+    }
+
+
+def test_chosen_opening_and_phase_probabilities_predict_moves():
+    database = EnhancedMonsterDatabase()
+
+    opening = database.predict_next_moves("Chosen", current_turn=1, monster_hp_percent=1.0)
+    phase = database.predict_next_moves("Chosen", current_turn=3, monster_hp_percent=1.0)
+
+    assert [prediction["move"]["name"] for prediction in opening[:2]] == ["Poke", "Hex"]
+    assert {prediction["move"]["name"] for prediction in phase[:2]} == {"Debilitate", "Drain"}
