@@ -2997,6 +2997,32 @@ def test_inflame_uses_real_strength_amount_before_attacks():
 
     assert result.total_damage_dealt == 9
 
+    counted_inflame_plus = _card(
+        "Inflame+1",
+        "Inflame+1",
+        card_type=CardType.POWER,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([counted_inflame_plus, strike], energy=2, monsters=[_louse(current_hp=100)])
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        counted_inflame_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 9
+
 
 def test_strength_skill_cards_affect_followup_attacks():
     strike = _card("Strike_R", "Strike", cost=1)

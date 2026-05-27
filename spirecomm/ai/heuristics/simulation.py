@@ -1838,7 +1838,7 @@ class FastCombatSimulator:
 
     def _apply_power(self, state: SimulationState, card: Card):
         """Apply power card effects."""
-        card_id = card.card_id.replace('+', '')
+        card_id = _canonical_card_name(card)
 
         # Demon Form starts gaining Strength on future turns, not immediately.
         if card_id == 'Demon Form':
