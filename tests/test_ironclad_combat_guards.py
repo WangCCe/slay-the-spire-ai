@@ -2531,6 +2531,35 @@ def test_lethal_detector_counts_fiend_fire_exhausted_hand_damage(monkeypatch):
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["fiend-fire"]
 
 
+def test_lethal_detector_counts_upgraded_static_attack_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bash": {
+            "name": "Bash",
+            "description": "Deal 8 damage. Apply 2 Vulnerable.",
+        },
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    loader._wiki_data = {
+        "bash": {
+            "name": "Bash",
+            "text": "Deal [8|10] damage.\nApply [2|3] Vulnerable.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    bash = _card("Bash", "Bash+", cost=2, upgrades=1)
+    bash.uuid = "bash-plus"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = _combat_context([bash, strike], energy=3, monsters=[_louse(current_hp=14)])
+
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 16
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["bash-plus", "strike"]
+
+
 def test_lethal_detector_counts_heavy_blade_strength_multiplier(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

@@ -341,14 +341,17 @@ class CombatEndingDetector:
         Returns:
             Damage value
         """
-        card_name = (
-            getattr(card, 'name', None) or getattr(card, 'card_id', '')
-        ).replace('+', '')
+        display_name = getattr(card, 'name', None) or getattr(card, 'card_id', '')
+        if getattr(card, 'upgrades', 0) > 0 and not display_name.endswith('+'):
+            display_name = f"{display_name}+"
+        card_name = display_name.replace('+', '')
         base_damage = 0
 
         card_data = game_data_loader.get_card_data(card_name)
         if card_data:
-            base_damage = game_data_loader._parse_card_damage(card_data) or 0
+            damage_data = dict(card_data)
+            damage_data['name'] = display_name
+            base_damage = game_data_loader._parse_card_damage(damage_data) or 0
 
         if card_name == 'Whirlwind':
             energy = effective_card_cost(card, context.energy_available)
