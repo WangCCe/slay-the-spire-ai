@@ -2077,6 +2077,13 @@ class FastCombatSimulator:
         except Exception:
             pass
 
+    @staticmethod
+    def _positive_monster_hits(monster: dict) -> int:
+        try:
+            return max(1, int(monster.get('move_hits', 1) or 1))
+        except (TypeError, ValueError):
+            return 1
+
     def _estimate_incoming_damage(
         self,
         monsters_state: list,
@@ -2099,10 +2106,12 @@ class FastCombatSimulator:
         attack_intent_present = False
 
         for monster in monsters_state:
-            if monster['is_gone']:
+            monster_hp = monster.get('hp', monster.get('current_hp', 1))
+            if monster.get('is_gone', False) or monster_hp <= 0:
+                skip_reason = "gone" if monster.get('is_gone', False) else "dead"
                 debug_entries.append(
                     f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"
-                    "skip=gone"
+                    f"skip={skip_reason}"
                 )
                 continue
 
@@ -2130,19 +2139,21 @@ class FastCombatSimulator:
             if 'ATTACK' in intent_str.upper() or 'ATTACK_BUFF' in intent_str.upper() or 'ATTACK_DEBUFF' in intent_str.upper() or 'ATTACK_DEFEND' in intent_str.upper():
                 attack_intent_present = True
                 # Use actual monster damage data from game state
-                damage = monster.get('move_adjusted_damage', 0)
-                hits = monster.get('move_hits', 1) or 1
+                raw_damage = monster.get('move_adjusted_damage', 0)
+                damage = max(0, raw_damage) if isinstance(raw_damage, (int, float)) else 0
+                hits = self._positive_monster_hits(monster)
                 damage_source = "adjusted"
+                should_use_damage_fallback = raw_damage is None or raw_damage == 0
 
                 # Fallback to base_damage if adjusted_damage not available
-                if damage == 0:
+                if should_use_damage_fallback:
                     damage = monster.get('move_base_damage', 0)
                     if damage > 0:
                         damage_source = "base"
                         logger.debug(f"[DAMAGE_FALLBACK] Monster '{monster.get('name', 'Unknown')}' using base_damage={damage}")
 
                 # If still no damage data, use conservative estimate based on monster
-                if damage == 0:
+                if should_use_damage_fallback and damage == 0:
                     # Conservative estimate by monster name/type (can be improved)
                     monster_name = monster.get('name', '')
                     if 'elite' in monster_name.lower() or 'boss' in monster_name.lower():

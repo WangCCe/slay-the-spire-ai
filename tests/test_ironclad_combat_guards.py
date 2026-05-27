@@ -1386,6 +1386,48 @@ def test_incoming_damage_estimate_multiplies_monster_hits():
     assert incoming == 18
 
 
+def test_incoming_damage_estimate_ignores_zero_hp_stale_monsters():
+    incoming = FastCombatSimulator(SynergyCardEvaluator())._estimate_incoming_damage(
+        [
+            {
+                "name": "Cultist",
+                "monster_id": "Cultist",
+                "move_id": 1,
+                "hp": 0,
+                "is_gone": False,
+                "intent": "Intent.ATTACK",
+                "move_adjusted_damage": 12,
+                "move_hits": 1,
+                "strength": 0,
+                "weak": 0,
+            }
+        ]
+    )
+
+    assert incoming == 0
+
+
+def test_incoming_damage_estimate_clamps_negative_live_move_damage_to_zero():
+    incoming = FastCombatSimulator(SynergyCardEvaluator())._estimate_incoming_damage(
+        [
+            {
+                "name": "Spike Slime (M)",
+                "monster_id": "SpikeSlime_M",
+                "move_id": 2,
+                "current_hp": 25,
+                "is_gone": False,
+                "intent": "Intent.ATTACK",
+                "move_adjusted_damage": -3,
+                "move_hits": 2,
+                "strength": 0,
+                "weak": 0,
+            }
+        ]
+    )
+
+    assert incoming == 0
+
+
 def test_bludgeon_damage_is_static_not_scaled_by_block(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
