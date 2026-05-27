@@ -1481,7 +1481,7 @@ class CombatRLAgent:
                 damage = getattr(monster, "move_base_damage", 0) or 0
             hits = getattr(monster, "move_hits", 1) or 1
             try:
-                total += int(damage) * int(hits)
+                total += max(0, int(damage)) * int(hits)
             except Exception:
                 pass
         return total

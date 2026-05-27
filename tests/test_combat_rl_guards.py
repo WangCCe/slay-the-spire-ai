@@ -83,6 +83,14 @@ def test_potion_guard_skips_safe_combat():
     assert _agent()._maybe_use_potion_guard(game) is None
 
 
+def test_rl_incoming_damage_clamps_negative_live_move_damage_to_zero():
+    monster = _monster(hp=25, damage=-1)
+    monster.move_hits = 3
+    game = _game(monsters=[monster])
+
+    assert CombatRLAgent._incoming_damage(game) == 0
+
+
 def test_energy_guard_replaces_wasteful_end_turn_with_play_card():
     card = SimpleNamespace(is_playable=True, cost=1, has_target=True)
     game = _game(hand=[card], monsters=[_monster(hp=30, damage=8, index=0)])
