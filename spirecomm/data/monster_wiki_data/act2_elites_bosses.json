@@ -143,73 +143,126 @@
     "name": "The Collector",
     "monster_type": "boss",
     "hp_ranges": {
-      "normal": {"min": 240, "max": 260},
-      "ascension_9+": {"min": 250, "max": 270}
+      "normal": {"min": 282, "max": 282},
+      "ascension_9+": {"min": 300, "max": 300}
     },
     "moves": [
       {
         "move_id": 0,
-        "name": "Collect",
+        "name": "Spawn",
         "intent": "UNKNOWN",
         "damage": null,
-        "effect": "Spawns 3 Acquired Puppets. Can only be used if no Puppets are alive."
+        "effect": "Spawns up to 2 Torch Heads.",
+        "summons": ["Torch Head", "Torch Head"],
+        "summon_count": {"min": 1, "max": 2}
       },
       {
         "move_id": 1,
-        "name": "Light Beam",
-        "intent": "ATTACK_DEBUFF",
-        "damage": 6,
-        "effect": "Deals 6 damage and applies 1 Weak.",
-        "weak_applied": 1
+        "name": "Fireball",
+        "intent": "ATTACK",
+        "damage": 18,
+        "effect": "Deals 18 damage.",
+        "ascension_modifiers": {
+          "4+": {"damage": 21}
+        }
       },
       {
         "move_id": 2,
-        "name": "Dark Beam",
-        "intent": "ATTACK",
-        "damage": 18,
-        "effect": "Deals 18 damage."
+        "name": "Buff",
+        "intent": "DEFEND_BUFF",
+        "damage": null,
+        "effect": "All enemies gain 3 Strength. The Collector gains 15 Block.",
+        "strength_gain": 3,
+        "all_enemies_strength_gain": 3,
+        "block_gain": 15,
+        "ascension_modifiers": {
+          "4+": {"strength_gain": 4, "all_enemies_strength_gain": 4, "block_gain": 18},
+          "19+": {"strength_gain": 5, "all_enemies_strength_gain": 5, "block_gain": 23}
+        }
       },
       {
         "move_id": 3,
-        "name": "Mega Beam",
-        "intent": "ATTACK",
-        "damage": 25,
-        "effect": "Deals 25 damage. Can only use if 2 or more Puppets are alive."
+        "name": "Mega Debuff",
+        "intent": "DEBUFF",
+        "damage": null,
+        "effect": "Applies 3 Weak, 3 Vulnerable, and 3 Frail.",
+        "weak_applied": 3,
+        "vulnerable_applied": 3,
+        "frail_applied": 3,
+        "ascension_modifiers": {
+          "19+": {"weak_applied": 5, "vulnerable_applied": 5, "frail_applied": 5}
+        }
       }
     ],
     "pattern": {
-      "description": "Starts combat by using Collect to spawn 3 Puppets. Only uses Light Beam and Dark Beam while Puppets are alive. If all Puppets die, may use Collect again on next turn.",
-      "initial_move": "Collect",
-      "probabilities_with_puppets": {
-        "light_beam": 0.4,
-        "dark_beam": 0.6
+      "description": "Always starts with Spawn and always uses Mega Debuff on turn 4. With both Torch Heads alive, alternates probabilistically between Fireball and Buff; if one or more are dead, Spawn can be used again.",
+      "initial_move": "Spawn",
+      "opening": ["Spawn"],
+      "then": ["Fireball", "Buff", "Mega Debuff"],
+      "alternating": ["Fireball", "Buff"],
+      "probabilities_with_torch_heads": {
+        "Fireball": 0.7,
+        "Buff": 0.3
       },
-      "spawn_condition": "no_puppets_alive",
-      "mega_beam_condition": "2+_puppets_alive"
+      "probabilities_with_dead_torch_head": {
+        "Spawn": 0.25,
+        "Fireball": 0.45,
+        "Buff": 0.3
+      },
+      "constraints": [
+        "cannot_use_buff_twice_in_a_row",
+        "cannot_use_fireball_three_times_in_a_row"
+      ]
     },
     "special_mechanics": {
       "type": "summoner",
-      "summons": ["Acquired Puppet", "Acquired Puppet", "Acquired Puppet"],
-      "summon_count": 3,
-      "puppet_hp": 14,
-      "minion_death_trigger": "buff_collector",
-      "minion_buff": {
-        "type": "strength_gain",
-        "amount": 1,
-        "trigger": "when_puppet_dies"
-      },
+      "summons": ["Torch Head", "Torch Head"],
+      "summon_count": 2,
+      "max_minions": 2,
+      "torch_head_hp": {"normal": {"min": 38, "max": 40}, "ascension_9+": {"min": 40, "max": 45}},
       "recommended_strategy": {
-        "primary": "kill_puppets_first",
-        "secondary": "prevent_puppet_respawn",
-        "note": "Each Puppet death gives Collector +1 Strength. Kill all Puppets quickly, then burst Collector before he can respawn them."
+        "primary": "clear_torch_heads_before_buffed_attacks",
+        "secondary": "prepare_for_turn_4_mega_debuff",
+        "note": "Torch Heads attack every turn. Mega Debuff makes subsequent Fireballs and minion attacks much more dangerous."
       }
     },
     "threat_profile": {
       "base_threat": 26,
       "summoning_threat": 20,
-      "minion_threat": 8,
+      "minion_threat": 14,
       "scaling_threat": 3.0,
       "party_threat_multiplier": 2.5
+    }
+  },
+  "Torch Head": {
+    "monster_id": "Torch_Head",
+    "name": "Torch Head",
+    "aliases": ["TorchHead"],
+    "monster_type": "minion",
+    "hp_ranges": {
+      "normal": {"min": 38, "max": 40},
+      "ascension_9+": {"min": 40, "max": 45}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Tackle",
+        "intent": "ATTACK",
+        "damage": 7,
+        "effect": "Deals 7 damage."
+      }
+    ],
+    "pattern": {
+      "description": "Always uses Tackle.",
+      "only_move": "Tackle"
+    },
+    "special_mechanics": {
+      "type": "minion"
+    },
+    "threat_profile": {
+      "base_threat": 12,
+      "scaling_threat": 1.0,
+      "notes": "Collector minion that attacks every turn and benefits from Collector Buff."
     }
   },
   "Centurion & Mystic": {

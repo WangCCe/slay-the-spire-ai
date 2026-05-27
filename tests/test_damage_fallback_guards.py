@@ -568,3 +568,29 @@ def test_enhanced_monster_database_covers_common_act2_threats():
 
         assert monster_data is not None, monster_name
         assert {prediction["move"]["name"] for prediction in predictions} & moves, monster_name
+
+
+def test_collector_data_uses_torch_heads_and_mega_debuff():
+    database = EnhancedMonsterDatabase()
+
+    collector = database.get_monster_data("The Collector")
+    moves = {move["name"]: move for move in database.get_moves("The Collector")}
+    turn_one = database.predict_next_moves("The Collector", current_turn=1, monster_hp_percent=1.0)
+    turn_four = database.predict_next_moves("The Collector", current_turn=4, monster_hp_percent=1.0)
+    torch_head = database.get_monster_data("Torch Head")
+    torch_predictions = database.predict_next_moves("Torch Head", current_turn=2, monster_hp_percent=1.0)
+
+    assert collector["hp_ranges"]["normal"] == {"min": 282, "max": 282}
+    assert set(moves) == {"Spawn", "Fireball", "Buff", "Mega Debuff"}
+    assert moves["Spawn"]["summons"] == ["Torch Head", "Torch Head"]
+    assert moves["Fireball"]["damage"] == 18
+    assert moves["Buff"]["strength_gain"] == 3
+    assert moves["Buff"]["block_gain"] == 15
+    assert moves["Mega Debuff"]["weak_applied"] == 3
+    assert moves["Mega Debuff"]["vulnerable_applied"] == 3
+    assert moves["Mega Debuff"]["frail_applied"] == 3
+    assert turn_one[0]["move"]["name"] == "Spawn"
+    assert turn_four[0]["move"]["name"] == "Mega Debuff"
+    assert torch_head is not None
+    assert torch_predictions[0]["move"]["name"] == "Tackle"
+    assert torch_predictions[0]["move"]["damage"] == 7
