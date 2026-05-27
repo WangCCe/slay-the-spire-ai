@@ -172,6 +172,35 @@ def test_legacy_nontarget_potion_decoder_omits_target():
     assert action.target_index is None
 
 
+def test_legacy_combat_mask_skips_card_without_cost():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        hand=[_card(has_target=True)],
+        player=SimpleNamespace(energy=3),
+        end_available=True,
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert mask[encoder.END_TURN_ACTION]
+    assert not any(mask[: encoder.USE_POTION_OFFSET])
+
+
+def test_legacy_combat_mask_skips_cards_without_player_energy():
+    encoder = ActionEncoder()
+    card = _card(has_target=True)
+    card.cost_for_turn = 1
+    game = _combat_game(
+        hand=[card],
+        end_available=True,
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert mask[encoder.END_TURN_ACTION]
+    assert not any(mask[: encoder.USE_POTION_OFFSET])
+
+
 def test_legacy_potion_decoder_falls_back_for_unusable_potion():
     encoder = ActionEncoder()
     potion = _potion("Fire Potion")

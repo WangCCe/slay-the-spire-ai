@@ -742,8 +742,14 @@ class ActionEncoder:
                     # Check if card is playable (skip curses like Dazed)
                     if hasattr(card, "is_playable") and not card.is_playable:
                         continue
-                    cost = card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost
-                    if not (game.player and game.player.energy >= cost):
+                    cost = (
+                        card.cost_for_turn
+                        if hasattr(card, "cost_for_turn")
+                        else getattr(card, "cost", None)
+                    )
+                    player = getattr(game, "player", None)
+                    energy = getattr(player, "energy", None)
+                    if cost is None or energy is None or energy < cost:
                         continue
                     if hasattr(card, "has_target") and not card.has_target:
                         action_idx = self.encode_play_card(card_idx, 0)
