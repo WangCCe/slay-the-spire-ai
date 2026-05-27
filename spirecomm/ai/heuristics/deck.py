@@ -41,7 +41,7 @@ class DeckAnalyzer:
 
     STORM_CARDS = {'Storm', 'Tempest', 'Blizzard', 'Cyclone', 'Thunder Strike', 'Lightning Strike'}
 
-    HEAL_CARDS = {'Bandage Up', 'Second Wind', 'Rupture', 'Regeneration', 'Reaper', 'Bloodletting'}
+    HEAL_CARDS = {'Bandage Up', 'Regeneration', 'Reaper'}
 
     MALICE_CARDS = {'Cleave', 'Anger', 'Berserk', 'Whirlwind', 'Rampage', 'Frenzy'}
 

@@ -241,6 +241,34 @@ def test_effect_pattern_lookup_uses_base_name_for_upgraded_cards(monkeypatch):
     assert scores["combo"] > 0
 
 
+def test_non_healing_hp_and_exhaust_cards_do_not_create_heal_archetype(monkeypatch):
+    analyzer = DeckAnalyzer()
+    context = MockDecisionContext([
+        Card("Bloodletting", "Bloodletting", CardType.SKILL, CardRarity.UNCOMMON),
+        Card("Rupture", "Rupture", CardType.POWER, CardRarity.UNCOMMON),
+        Card("Second Wind", "Second Wind", CardType.SKILL, CardRarity.UNCOMMON),
+    ])
+    monkeypatch.setattr(
+        deck_module,
+        "game_data_loader",
+        MockCardDataLoader({
+            "bloodletting": {
+                "description": "Lose 3 HP. Gain 2 Energy.",
+            },
+            "rupture": {
+                "description": "Whenever you lose HP from a card, gain 1 Strength.",
+            },
+            "second wind": {
+                "description": "Exhaust all non-Attack cards in your hand. Gain 5 Block for each card Exhausted.",
+            },
+        }),
+    )
+
+    scores = analyzer.get_archetype_score(context)
+
+    assert scores["heal"] == 0
+
+
 def test_balanced_deck():
     """Test deck analyzer with balanced deck."""
     print("\nTesting balanced deck...")
