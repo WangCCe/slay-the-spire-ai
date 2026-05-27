@@ -1497,7 +1497,8 @@ class IroncladCombatPlanner(CombatPlanner):
         # Bash is good if we have big attacks to follow up
         big_attacks = [
             c for c in context.playable_cards
-            if c.card_id != 'Bash' and hasattr(c, 'type') and str(c.type) == 'ATTACK'
+            if canonical_card_name(c) != 'Bash'
+            and getattr(c, 'type', None) == CardType.ATTACK
             and hasattr(c, 'damage') and c.damage > 10
         ]
         return len(big_attacks) > 0

@@ -4450,6 +4450,19 @@ def test_ironclad_fallback_priority_treats_counted_upgraded_demon_form_as_demon_
     assert counted_priority == canonical_priority
 
 
+def test_ironclad_fallback_priority_values_bash_before_big_attacks():
+    bash = _card("Bash+1", "Bash+1", cost=2, upgrades=1)
+    carnage = _card("Carnage", "Carnage", cost=2)
+    carnage.damage = 20
+    context = _combat_context(
+        [bash, carnage],
+        energy=3,
+        monsters=[_louse(current_hp=100)],
+    )
+
+    assert IroncladCombatPlanner()._get_card_priority(bash, context) == 850
+
+
 def test_awakened_one_penalizes_slow_power_setup_in_beam_score():
     demon_form = _card(
         "Demon Form",
