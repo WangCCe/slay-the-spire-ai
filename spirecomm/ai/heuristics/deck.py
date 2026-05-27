@@ -175,7 +175,7 @@ class DeckAnalyzer:
             card_data = game_data_loader.get_card_data(card.name.lower())
             if card_data:
                 description = card_data.get('description', '').lower()
-                if any(keyword in description for keyword in ['exhaust.*draw', 'gain.*when.*exhaust', 'exhaust']):
+                if any(re.search(pattern, description) for pattern in ['exhaust.*draw', 'gain.*when.*exhaust', 'exhaust']):
                     exhaust_count += 0.5
         
         scores['exhaust'] = min(1.0, exhaust_count / max(deck_size * 0.25, 3))
@@ -189,7 +189,7 @@ class DeckAnalyzer:
             card_data = game_data_loader.get_card_data(card.name.lower())
             if card_data:
                 description = card_data.get('description', '').lower()
-                if any(keyword in description for keyword in ['cost.*0', 'retain', 'draw.*1', 'exhaust.*draw', 'gain.*energy']):
+                if any(re.search(pattern, description) for pattern in ['cost.*0', 'retain', 'draw.*1', 'exhaust.*draw', 'gain.*energy']):
                     combo_count += 0.5
         
         scores['combo'] = min(1.0, combo_count / max(deck_size * 0.25, 3))

@@ -13,6 +13,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from spirecomm.spire import Game, Card, CardType, CardRarity
 from spirecomm.ai.decision.base import DecisionContext
+import spirecomm.ai.heuristics.deck as deck_module
 from spirecomm.ai.heuristics.deck import DeckAnalyzer
 
 # Mock DecisionContext for testing
@@ -43,6 +44,15 @@ class MockDecisionContext(DecisionContext):
 class MockGame:
     def __init__(self, deck=None):
         self.deck = deck or []
+
+
+class MockCardDataLoader:
+    def __init__(self, cards):
+        self.cards = cards
+
+    def get_card_data(self, card_name):
+        return self.cards.get(card_name)
+
 
 # Test cases
 def test_deck_analyzer_import():
@@ -189,6 +199,27 @@ def test_combo_deck():
     except Exception as e:
         print(f"  [ERROR] Failed to analyze combo deck: {e}")
         raise AssertionError(f"Failed to analyze combo deck: {e}") from e
+
+
+def test_combo_effect_patterns_use_regex_for_energy_cards(monkeypatch):
+    analyzer = DeckAnalyzer()
+    context = MockDecisionContext([
+        Card("Seeing Red", "Seeing Red", CardType.SKILL, CardRarity.UNCOMMON),
+    ])
+    monkeypatch.setattr(
+        deck_module,
+        "game_data_loader",
+        MockCardDataLoader({
+            "seeing red": {
+                "description": "Gain 2 Energy. Exhaust.",
+            },
+        }),
+    )
+
+    scores = analyzer.get_archetype_score(context)
+
+    assert scores["combo"] > 0
+
 
 def test_balanced_deck():
     """Test deck analyzer with balanced deck."""
