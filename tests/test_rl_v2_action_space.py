@@ -6,6 +6,7 @@ from spirecomm.communication.action import (
     BossRewardAction,
     BuyCardAction,
     BuyPotionAction,
+    BuyPurgeAction,
     CombatRewardAction,
     LeaveAction,
     ProceedAction,
@@ -178,6 +179,29 @@ def test_shop_decoder_falls_back_for_unaffordable_purchase_slots():
     assert isinstance(encoder.decode_action(space.SHOP_OFFSET, game), LeaveAction)
     assert isinstance(encoder.decode_action(space.SHOP_OFFSET + 1, game), BuyPotionAction)
     assert isinstance(encoder.decode_action(space.SHOP_OFFSET + 2, game), LeaveAction)
+
+
+def test_shop_screen_decoder_uses_purchase_actions_for_item_slots():
+    encoder = ActionEncoderV2()
+    cheap_card = SimpleNamespace(name="Pommel Strike", price=30)
+    cheap_potion = SimpleNamespace(name="Fire Potion", price=20)
+    screen = SimpleNamespace(
+        cards=[cheap_card],
+        relics=[],
+        potions=[cheap_potion],
+        purge_available=True,
+        purge_cost=40,
+    )
+    game = _make_game(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=screen,
+        gold=40,
+        has_potion_space=lambda: True,
+    )
+
+    assert isinstance(encoder.decode_action(space.SHOP_OFFSET, game), BuyCardAction)
+    assert isinstance(encoder.decode_action(space.SHOP_OFFSET + 1, game), BuyPotionAction)
+    assert isinstance(encoder.decode_action(space.SHOP_OFFSET + 2, game), BuyPurgeAction)
 
 
 def test_combat_reward_mask_hides_potion_reward_when_potion_slots_are_full():
