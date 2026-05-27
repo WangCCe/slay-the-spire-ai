@@ -14,6 +14,7 @@ from spirecomm.data.loader import game_data_loader
 from spirecomm.ai.decision.base import DecisionContext, CardEvaluator
 from spirecomm.ai.priorities import Priority, SilentPriority, IroncladPriority, DefectPowerPriority
 from spirecomm.ai.heuristics.deck import DeckAnalyzer
+from spirecomm.ai.heuristics.card_names import card_data_key
 
 
 class SynergyCardEvaluator(CardEvaluator):
@@ -84,8 +85,7 @@ class SynergyCardEvaluator(CardEvaluator):
 
     @staticmethod
     def _card_data_key(card: Card) -> str:
-        raw_name = getattr(card, 'name', None) or getattr(card, 'card_id', '')
-        return re.sub(r'\+\d*$', '', str(raw_name)).lower()
+        return card_data_key(card)
 
     def evaluate_card(self, card: Card, context: DecisionContext) -> float:
         """

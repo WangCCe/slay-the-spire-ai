@@ -6,13 +6,13 @@ combat could be ended this turn.
 """
 
 import logging
-import re
 from typing import List, Tuple, Optional
 from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster
 from spirecomm.communication.action import PlayCardAction
 from spirecomm.data.loader import game_data_loader
 from ..decision.base import DecisionContext
+from .card_names import canonical_card_name
 from .card_costs import effective_card_cost, whirlwind_damage
 
 logger = logging.getLogger(__name__)
@@ -35,8 +35,7 @@ class CombatEndingDetector:
 
     @staticmethod
     def _base_card_name(card: Card) -> str:
-        raw_name = getattr(card, 'name', None) or getattr(card, 'card_id', '')
-        return re.sub(r'\+\d*$', '', str(raw_name))
+        return canonical_card_name(card)
 
     @staticmethod
     def _searing_blow_upgrade_damage(upgrades: int) -> int:

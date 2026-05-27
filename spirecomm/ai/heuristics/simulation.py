@@ -20,6 +20,7 @@ from spirecomm.ai.heuristics.card_costs import (
     is_x_cost_card,
     raw_card_cost,
 )
+from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.data.loader import game_data_loader
 
 # Configure logging for combat decisions
@@ -131,12 +132,7 @@ def _canonical_live_monster_name(monster: Any) -> str:
 
 
 def _canonical_card_name(card: Any) -> str:
-    raw_name = getattr(card, 'name', None) or getattr(card, 'card_id', '')
-    card_name = re.sub(r'\+\d*$', '', str(raw_name))
-    for suffix in ('_R', '_G', '_B', '_P'):
-        if card_name.endswith(suffix):
-            return card_name[:-2]
-    return card_name
+    return canonical_card_name(card)
 
 # =============================================================================
 # CARD UPGRADE MAPPINGS

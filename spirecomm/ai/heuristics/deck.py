@@ -8,6 +8,7 @@ the strategic archetype (poison, strength, block, etc.) of a deck.
 from typing import Dict, List, Tuple, Optional, TYPE_CHECKING
 from spirecomm.spire.card import Card
 from spirecomm.data.loader import game_data_loader
+from spirecomm.ai.heuristics.card_names import card_data_key
 import re
 
 # Avoid circular imports using TYPE_CHECKING
@@ -64,8 +65,7 @@ class DeckAnalyzer:
 
     @staticmethod
     def _card_data_key(card: Card) -> str:
-        raw_name = getattr(card, 'name', None) or getattr(card, 'card_id', '')
-        return re.sub(r'\+\d*$', '', str(raw_name)).lower()
+        return card_data_key(card)
 
     def get_archetype(self, context: 'DecisionContext') -> str:
         """
