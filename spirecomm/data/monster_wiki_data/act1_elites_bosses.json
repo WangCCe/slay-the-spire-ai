@@ -121,16 +121,17 @@
           "19+": {"burn_count": 2}
         }
       },
-      {
-        "move_id": 3,
-        "name": "Tackle",
-        "intent": "ATTACK",
-        "damage": 10,
-        "effect": "Deals 5 x 2 damage.",
-        "ascension_modifiers": {
-          "4+": {"damage": 12}
-        }
-      },
+        {
+          "move_id": 3,
+          "name": "Tackle",
+          "intent": "ATTACK",
+          "damage": 5,
+          "hits": 2,
+          "effect": "Deals 5 x 2 damage.",
+          "ascension_modifiers": {
+            "4+": {"damage": 6, "hits": 2}
+          }
+        },
       {
         "move_id": 4,
         "name": "Inflame",
@@ -143,17 +144,18 @@
           "19+": {"strength_gain": 3}
         }
       },
-      {
-        "move_id": 5,
-        "name": "Inferno",
-        "intent": "ATTACK",
-        "damage": 12,
-        "effect": "Deals 2 x 6 damage, shuffles 3 Burn into the discard pile. Upgrades all Burn.",
-        "burn_count": 3,
-        "ascension_modifiers": {
-          "4+": {"damage": 18}
+        {
+          "move_id": 5,
+          "name": "Inferno",
+          "intent": "ATTACK",
+          "damage": 2,
+          "hits": 6,
+          "effect": "Deals 2 x 6 damage, shuffles 3 Burn into the discard pile. Upgrades all Burn.",
+          "burn_count": 3,
+          "ascension_modifiers": {
+            "4+": {"damage": 3, "hits": 6}
+          }
         }
-      }
     ],
     "pattern": {
       "description": "Starts with Activate, followed by Divider. Each attack lights one green flame. At 6 flames, uses Inferno and resets flames.",

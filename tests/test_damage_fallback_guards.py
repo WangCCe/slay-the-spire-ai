@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 import json
 from pathlib import Path
+import re
 
 import spirecomm.ai.heuristics.ironclad_combat as ironclad_combat
 import spirecomm.ai.heuristics.simulation as simulation
@@ -364,6 +365,43 @@ def test_monster_multi_hit_damage_fields_are_per_hit():
     assert spheric_slam["hits"] == 2
     assert chosen_poke["damage"] == 5
     assert chosen_poke["hits"] == 2
+
+
+def test_monster_multi_hit_effects_match_damage_and_hits_fields():
+    root = Path("spirecomm/data/monster_wiki_data")
+    patterns = [
+        re.compile(r"Deals? (\d+)\s*x\s*(\d+) damage", re.IGNORECASE),
+        re.compile(r"Deals? (\d+) damage (\d+) times", re.IGNORECASE),
+    ]
+    mismatches = []
+
+    for data_file in root.glob("*.json"):
+        with data_file.open(encoding="utf-8") as f:
+            data = json.load(f)
+        monsters = data.values() if isinstance(data, dict) else data
+
+        for monster in monsters:
+            for move in monster.get("moves", []):
+                effect = move.get("effect", "") or ""
+                expected = None
+                for pattern in patterns:
+                    match = pattern.search(effect)
+                    if match:
+                        expected = (int(match.group(1)), int(match.group(2)))
+                        break
+                if expected and (move.get("damage"), move.get("hits")) != expected:
+                    mismatches.append(
+                        (
+                            data_file.name,
+                            monster.get("name"),
+                            move.get("name"),
+                            move.get("damage"),
+                            move.get("hits"),
+                            expected,
+                        )
+                    )
+
+    assert mismatches == []
 
 
 def test_damage_curve_uses_first_prediction_for_each_target_turn(monkeypatch):
