@@ -504,6 +504,67 @@ def test_enemy_lookahead_handles_monster_damage_ranges():
     assert future_damage == 7
 
 
+def test_enemy_lookahead_applies_negative_monster_strength():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])
+    context.turn = 1
+    state = SimulationState(context)
+    state.monsters[0]["strength"] = -2
+
+    future_damage = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_lookahead(
+        state,
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 5
+
+
+def test_enemy_weak_reduces_current_incoming_damage_per_hit():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])
+    state = SimulationState(context)
+    state.monsters[0]["weak"] = 1
+
+    incoming_damage = FastCombatSimulator(SynergyCardEvaluator())._estimate_incoming_damage(
+        state.monsters
+    )
+
+    assert incoming_damage == 5
+
+
+def test_enemy_lookahead_applies_monster_weak_per_hit():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])
+    context.turn = 1
+    state = SimulationState(context)
+    state.monsters[0]["weak"] = 1
+
+    future_damage = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_lookahead(
+        state,
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 5
+
+
+def test_enemy_lookahead_decrements_monster_weak_between_turns():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])
+    context.turn = 1
+    state = SimulationState(context)
+    state.monsters[0]["weak"] = 1
+
+    future_damage = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_lookahead(
+        state,
+        context,
+        look_ahead=2,
+    )
+
+    assert future_damage == 10
+
+
 def test_hexaghost_divider_uses_player_hp_formula_in_lookahead():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_hexaghost()])
@@ -519,6 +580,25 @@ def test_hexaghost_divider_uses_player_hp_formula_in_lookahead():
     )
 
     assert future_damage == 30
+
+
+def test_enemy_lookahead_applies_player_vulnerable_per_hit():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_hexaghost()])
+    context.turn = 2
+    context.game.current_hp = 53
+    context.player_hp = 53
+    context.player_hp_pct = 53 / 80
+    state = SimulationState(context)
+    state.player_vulnerable = 1
+
+    future_damage = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_lookahead(
+        state,
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 42
 
 
 def test_big_attack_pattern_handles_monster_damage_ranges():
@@ -927,6 +1007,64 @@ def test_second_wind_gains_block_for_each_non_attack_card_exhausted():
 
     assert result.player_block == 14
     assert result.exhaust_events == 2
+
+
+def test_second_wind_marks_exhausted_cards_unavailable_for_later_search():
+    second_wind = _card(
+        "Second Wind",
+        "Second Wind",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    battle_trance = _card(
+        "Battle Trance",
+        "Battle Trance",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    iron_wave = _card("Iron Wave", "Iron Wave", cost=1)
+    second_wind.uuid = "second-wind"
+    defend.uuid = "defend"
+    battle_trance.uuid = "battle-trance"
+    iron_wave.uuid = "iron-wave"
+    context = _combat_context(
+        [second_wind, defend, battle_trance, iron_wave],
+        energy=3,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.game.hand = [second_wind, defend, battle_trance, iron_wave]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        second_wind,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    remaining_cards = simulator._unplayed_hand_cards(result, context, exclude_card=second_wind)
+    assert [card.uuid for card in remaining_cards] == ["iron-wave"]
+    assert {"defend", "battle-trance"}.issubset(result.played_card_uuids)
+
+
+def test_state_key_treats_uuid_marked_cards_as_unavailable():
+    strike = _card("Strike_R", "Strike", cost=1)
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    strike.uuid = "strike-uuid"
+    defend.uuid = "defend-uuid"
+    context = _combat_context([strike, defend], energy=2, monsters=[_louse(current_hp=100)])
+    state = SimulationState(context)
+    baseline_key = state.state_key(context.playable_cards)
+
+    state.played_card_uuids.add("strike-uuid")
+
+    played_key = state.state_key(context.playable_cards)
+    assert played_key != baseline_key
+    assert played_key[2] == ("Defend_R",)
 
 
 def test_second_wind_exhausting_sentinel_grants_energy():
@@ -1550,6 +1688,45 @@ def test_fiend_fire_exhausts_hand_and_self_for_feel_no_pain(monkeypatch):
     assert result.player_block == 9
 
 
+def test_fiend_fire_marks_exhausted_hand_cards_unavailable_for_later_search(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "description": "Exhaust your hand. Deal 7 damage for each card Exhausted. Exhaust.",
+        },
+    }
+    loader._wiki_data = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "text": "#Exhaust your hand.\nDeal [7|10] damage for each card #Exhausted.\n#Exhaust.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    fiend_fire = _card("Fiend Fire", "Fiend Fire", cost=2)
+    strike = _card("Strike_R", "Strike", cost=1)
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    fiend_fire.uuid = "fiend-fire"
+    strike.uuid = "strike"
+    defend.uuid = "defend"
+    context = _combat_context([fiend_fire, strike, defend], energy=3, monsters=[_louse(current_hp=100)])
+    context.game.hand = [fiend_fire, strike, defend]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        fiend_fire,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    remaining_cards = simulator._unplayed_hand_cards(result, context, exclude_card=fiend_fire)
+    assert remaining_cards == []
+    assert {"strike", "defend"}.issubset(result.played_card_uuids)
+
+
 def test_sever_soul_exhausts_non_attacks_for_feel_no_pain(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -1587,6 +1764,51 @@ def test_sever_soul_exhausts_non_attacks_for_feel_no_pain(monkeypatch):
 
     assert result.exhaust_events == 2
     assert result.player_block == 6
+
+
+def test_sever_soul_marks_exhausted_non_attacks_unavailable_for_later_search(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "sever soul": {
+            "name": "Sever Soul",
+            "description": "Exhaust all non-Attack cards in your hand.\nDeal 16 damage.",
+        },
+    }
+    loader._wiki_data = {
+        "sever soul": {
+            "name": "Sever Soul",
+            "text": "#Exhaust all non-Attack cards in your hand.\nDeal [16|22] damage.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    sever_soul = _card("Sever Soul", "Sever Soul", cost=2)
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    flex = _card("Flex", "Flex", card_type=CardType.SKILL, cost=0, has_target=False)
+    strike = _card("Strike_R", "Strike", cost=1)
+    sever_soul.uuid = "sever-soul"
+    defend.uuid = "defend"
+    flex.uuid = "flex"
+    strike.uuid = "strike"
+    context = _combat_context(
+        [sever_soul, defend, flex, strike],
+        energy=3,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.game.hand = [sever_soul, defend, flex, strike]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        sever_soul,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    remaining_cards = simulator._unplayed_hand_cards(result, context, exclude_card=sever_soul)
+    assert [card.uuid for card in remaining_cards] == ["strike"]
+    assert {"defend", "flex"}.issubset(result.played_card_uuids)
 
 
 def test_second_wind_counts_unplayable_non_attack_cards():
@@ -1781,13 +2003,13 @@ def test_shockwave_plus_uses_upgraded_stacks_for_all_debuffs(monkeypatch):
     loader._cards = {
         "shockwave": {
             "name": "Shockwave",
-            "description": "Apply 3 Weak and Vulnerable to ALL enemies. Exhaust.",
+            "description": "Apply 3 Weak, Vulnerable, and Strength Down to ALL enemies. Exhaust.",
         }
     }
     loader._wiki_data = {
         "shockwave": {
             "name": "Shockwave",
-            "text": "Apply [3|5] #Weak and #Vulnerable to ALL enemies.\n#Exhaust.",
+            "text": "Apply [3|5] #Weak, #Vulnerable, and #Strength Down to ALL enemies.\n#Exhaust.",
         }
     }
     monkeypatch.setattr(simulation, "game_data_loader", loader)
@@ -1816,6 +2038,8 @@ def test_shockwave_plus_uses_upgraded_stacks_for_all_debuffs(monkeypatch):
 
     assert [monster["weak"] for monster in result.monsters] == [5, 5]
     assert [monster["vulnerable"] for monster in result.monsters] == [5, 5]
+    assert [monster["strength"] for monster in result.monsters] == [-5, -5]
+    assert [monster["move_adjusted_damage"] for monster in result.monsters] == [2, 2]
 
 
 def test_artifact_blocks_attack_debuff_and_is_consumed(monkeypatch):

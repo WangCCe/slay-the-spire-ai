@@ -615,7 +615,8 @@ class SimulationState:
         # This represents what cards are available to play
         hand_key = tuple(sorted(
             c.card_id for c in playable_cards
-            if id(c) not in self.played_card_uuids  # Only cards not yet played
+            if id(c) not in self.played_card_uuids
+            and (not getattr(c, 'uuid', None) or c.uuid not in self.played_card_uuids)
         ))
 
         return (player_key, monster_key, hand_key)
@@ -1008,6 +1009,7 @@ class FastCombatSimulator:
         if card_name == 'Fiend Fire' and context is not None:
             exhausted_cards = self._unplayed_hand_cards(state, context, exclude_card=card)
             state.exhaust_events += len(exhausted_cards)
+            self._mark_cards_unavailable(state, exhausted_cards)
             self._apply_sentinel_exhaust_energy(state, exhausted_cards)
         elif card_name == 'Sever Soul' and context is not None:
             exhausted_cards = [
@@ -1016,6 +1018,7 @@ class FastCombatSimulator:
                 if getattr(hand_card, 'type', None) != CardType.ATTACK
             ]
             state.exhaust_events += len(exhausted_cards)
+            self._mark_cards_unavailable(state, exhausted_cards)
             self._apply_sentinel_exhaust_energy(state, exhausted_cards)
 
         if card_data:
@@ -1067,6 +1070,13 @@ class FastCombatSimulator:
         if card is None:
             return None
         return getattr(card, 'uuid', None) or id(card)
+
+    def _mark_cards_unavailable(self, state: SimulationState, cards: List[Card]):
+        for card in cards:
+            card_key = self._card_identity(card)
+            if card_key is not None:
+                state.played_card_uuids.add(card_key)
+            state.played_card_uuids.add(id(card))
 
     def _card_exhausts_itself(self, description: str) -> bool:
         description = (description or '').lower().replace('#', '')
@@ -1131,9 +1141,18 @@ class FastCombatSimulator:
             return int(damage * 1.5)
         return damage
 
-    def _apply_player_vulnerable_damage(self, damage: int, player_vulnerable: int) -> int:
-        """Apply vulnerable multiplier (1.5x) to damage taken by the player."""
+    def _apply_player_vulnerable_damage(
+        self,
+        damage: int,
+        player_vulnerable: int,
+        hit_count: int = 1,
+    ) -> int:
+        """Apply player Vulnerable using the game's per-hit rounding."""
         if player_vulnerable > 0:
+            if hit_count > 1:
+                per_hit_damage, remainder = divmod(damage, hit_count)
+                if remainder == 0:
+                    return int(per_hit_damage * 1.5) * hit_count
             return int(damage * 1.5)
         return damage
 
@@ -1174,12 +1193,35 @@ class FastCombatSimulator:
                 continue
             position = description.find(debuff)
             effects.append((position if position >= 0 else 9999, debuff, stacks))
+        if 'strength down' in description:
+            stacks = self._extract_debuff_stacks(description, 'strength down', upgraded)
+            if stacks is None and card_name == 'Shockwave':
+                stacks = 5 if upgraded else 3
+            if stacks:
+                position = description.find('strength down')
+                effects.append((position if position >= 0 else 9999, 'strength_down', stacks))
         effects.sort(key=lambda effect: effect[0])
         return effects
 
+    def _apply_monster_strength_down(self, monster: dict, stacks: int):
+        if stacks <= 0:
+            return
+        if self._consume_monster_artifact(monster):
+            return
+
+        monster['strength'] = monster.get('strength', 0) - stacks
+        if self._monster_intends_attack(monster):
+            monster['move_adjusted_damage'] = max(
+                0,
+                monster.get('move_adjusted_damage', 0) - stacks,
+            )
+
     def _apply_monster_debuffs(self, monster: dict, effects: List[Tuple[int, str, int]]):
         for _, debuff, stacks in effects:
-            self._apply_monster_debuff(monster, debuff, stacks)
+            if debuff == 'strength_down':
+                self._apply_monster_strength_down(monster, stacks)
+            else:
+                self._apply_monster_debuff(monster, debuff, stacks)
 
     def _get_card_effect_text(self, card_name: str, card_data: Dict[str, Any]) -> str:
         """Prefer wiki text for effect values because items.json stores base text only."""
@@ -1245,6 +1287,26 @@ class FastCombatSimulator:
         if player_frail > 0:
             risk_multiplier += min(LOOKAHEAD_FRAIL_RISK_PER_STACK * player_frail, LOOKAHEAD_DEBUFF_RISK_CAP)
         return int(damage * risk_multiplier)
+
+    def _apply_monster_strength_to_per_hit_damage(self, damage: int, strength: int) -> int:
+        """Apply monster Strength or Strength Down to one hit of enemy damage."""
+        if strength == 0:
+            return damage
+        return max(0, damage + strength)
+
+    def _apply_monster_weak_to_per_hit_damage(self, damage: int, monster_weak: int) -> int:
+        """Apply monster Weak to one hit of enemy damage."""
+        if monster_weak <= 0:
+            return damage
+        return int(damage * 0.75)
+
+    def _decrement_monster_turn_debuffs(self, state: SimulationState):
+        for monster in state.monsters:
+            if monster.get('is_gone'):
+                continue
+            for debuff in ('weak', 'vulnerable', 'frail'):
+                if monster.get(debuff, 0) > 0:
+                    monster[debuff] = max(0, monster[debuff] - 1)
 
     def _extract_move_debuffs(self, move: Dict[str, Any]) -> Dict[str, int]:
         """Extract debuff stacks applied to the player from a monster move."""
@@ -1655,6 +1717,7 @@ class FastCombatSimulator:
         block_gain = self._apply_frail_block(block_per_card * exhausted_count, state.player_frail)
         state.player_block += block_gain
         state.exhaust_events += exhausted_count
+        self._mark_cards_unavailable(state, exhausted_cards)
         self._apply_sentinel_exhaust_energy(state, exhausted_cards)
         return True
 
@@ -1808,11 +1871,19 @@ class FastCombatSimulator:
                         damage_source = "fallback_normal"
                         logger.warning(f"[DAMAGE_FALLBACK] Monster '{monster_name}' using NORMAL fallback damage={damage} (no damage data available)")
 
-                # Adjust for monster strength
+                # Adjust per-hit damage for monster Strength, including Strength Down.
                 strength = monster.get('strength', 0)
-                if strength > 0:
-                    logger.debug(f"[DAMAGE_FALLBACK] Monster '{monster.get('name', 'Unknown')}' has Strength {strength}, damage: {damage} → {damage + strength}")
-                    damage += strength
+                adjusted_damage = self._apply_monster_strength_to_per_hit_damage(damage, strength)
+                if adjusted_damage != damage:
+                    logger.debug(
+                        f"[DAMAGE_FALLBACK] Monster '{monster.get('name', 'Unknown')}' has Strength {strength}, "
+                        f"damage: {damage} -> {adjusted_damage}"
+                    )
+                    damage = adjusted_damage
+                damage = self._apply_monster_weak_to_per_hit_damage(
+                    damage,
+                    monster.get('weak', 0),
+                )
 
                 debug_entries.append(
                     f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"
@@ -1908,14 +1979,24 @@ class FastCombatSimulator:
                     if move:
                         move_intent = move.get('intent', '').upper()
                         move_damage = self._move_damage_value(move, lookahead_state)
-                        move_hits = move.get('hits', move.get('move_hits', 1)) or 1
+                        move_hits = self._move_hit_count(move)
 
                         if 'ATTACK' in move_intent and move_damage > 0:
-                            damage = move_damage * move_hits
                             current_strength = monster.get('strength', 0)
-                            if current_strength > 0:
-                                damage += current_strength * move_hits
-                            damage = self._apply_player_vulnerable_damage(damage, player_vulnerable)
+                            per_hit_damage = self._apply_monster_strength_to_per_hit_damage(
+                                move_damage,
+                                current_strength,
+                            )
+                            per_hit_damage = self._apply_monster_weak_to_per_hit_damage(
+                                per_hit_damage,
+                                monster.get('weak', 0),
+                            )
+                            damage = per_hit_damage * move_hits
+                            damage = self._apply_player_vulnerable_damage(
+                                damage,
+                                player_vulnerable,
+                                move_hits,
+                            )
                             damage = self._apply_debuff_risk_multiplier(damage, player_weak, player_frail)
                             discount = LOOKAHEAD_DAMAGE_DISCOUNT ** step
                             turn_damage += int(damage * discount)
@@ -1929,11 +2010,21 @@ class FastCombatSimulator:
                         fallback_damage = self._numeric_damage_value(fallback_damage)
                         if fallback_damage > 0:
                             move_hits = monster.get('move_hits', 1)
-                            damage = fallback_damage * move_hits
                             current_strength = monster.get('strength', 0)
-                            if current_strength > 0:
-                                damage += current_strength * move_hits
-                            damage = self._apply_player_vulnerable_damage(damage, player_vulnerable)
+                            per_hit_damage = self._apply_monster_strength_to_per_hit_damage(
+                                fallback_damage,
+                                current_strength,
+                            )
+                            per_hit_damage = self._apply_monster_weak_to_per_hit_damage(
+                                per_hit_damage,
+                                monster.get('weak', 0),
+                            )
+                            damage = per_hit_damage * move_hits
+                            damage = self._apply_player_vulnerable_damage(
+                                damage,
+                                player_vulnerable,
+                                move_hits,
+                            )
                             damage = self._apply_debuff_risk_multiplier(damage, player_weak, player_frail)
                             discount = LOOKAHEAD_DAMAGE_DISCOUNT ** step
                             turn_damage += int(damage * discount)
@@ -1943,6 +2034,7 @@ class FastCombatSimulator:
                 player_vulnerable = max(0, player_vulnerable + pending_debuffs['vulnerable'] - 1)
                 player_weak = max(0, player_weak + pending_debuffs['weak'] - 1)
                 player_frail = max(0, player_frail + pending_debuffs['frail'] - 1)
+                self._decrement_monster_turn_debuffs(lookahead_state)
 
                 logger.debug(
                     f"[LOOKAHEAD_TURN] step={step + 1} damage={turn_damage} "
@@ -1971,8 +2063,14 @@ class FastCombatSimulator:
         """Return a numeric damage estimate for predicted monster moves."""
         move_name = str(move.get('name', ''))
         if move_name == 'Divider':
-            return self._hexaghost_divider_damage(state.player_hp)
+            return (max(0, state.player_hp) // 12) + 1
         return self._numeric_damage_value(move.get('damage', 0))
+
+    def _move_hit_count(self, move: Dict[str, Any]) -> int:
+        move_name = str(move.get('name', ''))
+        if move_name == 'Divider':
+            return 6
+        return move.get('hits', move.get('move_hits', 1)) or 1
 
     def _numeric_damage_value(self, damage: Any) -> int:
         if isinstance(damage, (int, float)):
