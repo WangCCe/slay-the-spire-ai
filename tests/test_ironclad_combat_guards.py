@@ -125,6 +125,24 @@ def _sentry(current_hp=39, move_id=1, intent=Intent.DEBUFF):
     )
 
 
+def _gremlin_nob(current_hp=82, move_adjusted_damage=14):
+    monster = Monster(
+        name="Gremlin Nob",
+        monster_id="GremlinNob",
+        max_hp=82,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=move_adjusted_damage,
+        move_hits=1,
+    )
+    monster.powers = [SimpleNamespace(name="Anger", amount=2)]
+    return monster
+
+
 def _awakened_one(current_hp=300):
     return Monster(
         name="Awakened One",
@@ -528,6 +546,30 @@ def test_enemy_status_pollution_penalizes_outcome_score():
     )
 
     assert polluted_score < clean_score
+
+
+def test_gremlin_nob_gains_strength_when_skill_is_simulated():
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([defend], energy=1, monsters=[_gremlin_nob()])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    initial_state = SimulationState(context)
+
+    result = simulator.simulate_card_play(initial_state, defend, context=context)
+
+    assert result.monsters[0]["strength"] == 2
+    assert simulator._estimate_incoming_damage(result.monsters) == 16
+
+
+def test_state_key_distinguishes_monster_strength_changes():
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([defend], energy=1, monsters=[_gremlin_nob()])
+    initial_state = SimulationState(context)
+    stronger_state = initial_state.clone()
+    stronger_state.monsters[0]["strength"] = 2
+
+    assert initial_state.state_key(context.playable_cards) != stronger_state.state_key(
+        context.playable_cards
+    )
 
 
 def test_feel_no_pain_grants_block_for_exhaust_events(monkeypatch):

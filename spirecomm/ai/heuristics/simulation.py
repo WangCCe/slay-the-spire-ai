@@ -470,6 +470,7 @@ class SimulationState:
                 'move_adjusted_damage': monster.move_adjusted_damage if hasattr(monster, 'move_adjusted_damage') else 0,
                 'move_hits': monster.move_hits if hasattr(monster, 'move_hits') else 1,
                 'strength': monster.strength if hasattr(monster, 'strength') else 0,
+                'skill_strength_gain': self._get_monster_skill_strength_gain(monster),
                 'mode_shift': mode_shift,
             }
             self.monsters.append(monster_state)
@@ -538,6 +539,20 @@ class SimulationState:
             if self._power_name(power) == power_name:
                 amount = getattr(power, 'amount', None)
                 return amount if amount is not None else 1
+        return 0
+
+    def _get_monster_skill_strength_gain(self, monster: Any) -> int:
+        """Return Strength a monster gains whenever the player plays a Skill."""
+        for power in getattr(monster, 'powers', []) or []:
+            power_name = str(self._power_name(power) or '').lower()
+            if power_name in {'anger', 'angry', 'enrage'}:
+                amount = getattr(power, 'amount', None)
+                return max(0, int(amount)) if amount is not None else 2
+
+        monster_id = str(getattr(monster, 'monster_id', ''))
+        monster_name = str(getattr(monster, 'name', ''))
+        if monster_id in {'GremlinNob', 'Gremlin Nob'} or monster_name == 'Gremlin Nob':
+            return 2
         return 0
 
     def _power_name(self, power: Any) -> Optional[str]:
@@ -639,6 +654,8 @@ class SimulationState:
                 m.get('thorns', 0),
                 m.get('mode_shift', 0),
                 m.get('artifact', 0),
+                m.get('strength', 0),
+                m.get('skill_strength_gain', 0),
                 str(m['intent']) if m['intent'] else None,  # Convert intent to string
                 m.get('move_id', None),
                 m['is_gone'],
@@ -771,6 +788,7 @@ class FastCombatSimulator:
             new_state.skills_played += 1
             corruption_exhausts_skill = new_state.corruption_active
             self._apply_skill(new_state, card, context, resolved_target_index)
+            self._apply_skill_reactive_monster_powers(new_state)
             if corruption_exhausts_skill and not self._skill_exhausts_itself(card):
                 new_state.exhaust_events += 1
         elif card_type == CardType.POWER:
@@ -785,6 +803,23 @@ class FastCombatSimulator:
         self._apply_dark_embrace_draw(new_state, starting_exhaust_events)
 
         return new_state
+
+    def _apply_skill_reactive_monster_powers(self, state: SimulationState):
+        """Apply monster reactions such as Gremlin Nob's Anger after Skill cards."""
+        for monster in state.monsters:
+            if monster.get('is_gone'):
+                continue
+
+            strength_gain = int(monster.get('skill_strength_gain', 0) or 0)
+            if strength_gain <= 0:
+                continue
+
+            monster['strength'] = monster.get('strength', 0) + strength_gain
+            logger.debug(
+                "[SKILL_REACTION] %s gained %s Strength from Skill",
+                monster.get('name', 'Unknown'),
+                strength_gain,
+            )
 
     def _apply_hex_card_pollution(self, state: SimulationState, card_type: Optional[CardType]):
         """Chosen's Hex adds Dazed to the draw pile whenever a non-Attack is played."""
