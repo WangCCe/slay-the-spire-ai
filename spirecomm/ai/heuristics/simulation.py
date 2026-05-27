@@ -1118,7 +1118,7 @@ class FastCombatSimulator:
         card: Card,
         card_data: Optional[Dict[str, Any]],
     ):
-        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_name = _canonical_card_name(card)
         if card_name != 'Iron Wave':
             return
 
