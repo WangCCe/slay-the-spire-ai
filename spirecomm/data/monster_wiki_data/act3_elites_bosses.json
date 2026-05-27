@@ -1,4 +1,141 @@
 {
+  "Awakened One": {
+    "monster_id": "AwakenedOne",
+    "name": "Awakened One",
+    "aliases": ["AwakenedOne", "The Awakened One"],
+    "monster_type": "boss",
+    "hp_ranges": {
+      "normal": {"min": 300, "max": 300},
+      "ascension_9+": {"min": 320, "max": 320}
+    },
+    "in_party_with": ["Cultist", "Cultist"],
+    "moves": [
+      {
+        "move_id": 1,
+        "name": "Slash",
+        "intent": "ATTACK",
+        "damage": 20,
+        "effect": "Deals 20 damage. Always used as the opening move in phase 1."
+      },
+      {
+        "move_id": 2,
+        "name": "Soul Strike",
+        "intent": "ATTACK",
+        "damage": 6,
+        "hits": 4,
+        "effect": "Deals 6 damage 4 times. Strength applies to each hit."
+      },
+      {
+        "move_id": 3,
+        "name": "Rebirth",
+        "intent": "UNKNOWN",
+        "damage": null,
+        "effect": "At 0 HP in phase 1, loses Curiosity, clears debuffs, becomes invulnerable for the transition, then revives into phase 2 at full HP.",
+        "removes_debuffs": true,
+        "revive_hp": 300
+      },
+      {
+        "move_id": 4,
+        "name": "Dark Echo",
+        "intent": "ATTACK",
+        "damage": 40,
+        "effect": "Deals 40 damage. Always used as the first move in phase 2."
+      },
+      {
+        "move_id": 5,
+        "name": "Sludge",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 18,
+        "void_cards_added": 1,
+        "effect": "Deals 18 damage and shuffles 1 Void into the draw pile."
+      },
+      {
+        "move_id": 6,
+        "name": "Tackle",
+        "intent": "ATTACK",
+        "damage": 10,
+        "hits": 3,
+        "effect": "Deals 10 damage 3 times."
+      }
+    ],
+    "pattern": {
+      "description": "Phase 1 opens with Slash, then has a 75% chance to use Slash and 25% chance to use Soul Strike. Slash cannot be used three times in a row and Soul Strike cannot be used twice in a row. At 0 HP it uses Rebirth and enters phase 2. Phase 2 opens with Dark Echo, then alternates probabilistically between Sludge and Tackle.",
+      "initial_move": "Slash",
+      "probabilities": {
+        "normal": {"Slash": 0.75, "Soul Strike": 0.25}
+      },
+      "phase_2_opening": "Dark Echo",
+      "phase_2_probabilities": {"Tackle": 0.5, "Sludge": 0.5},
+      "constraints": [
+        "slash_cannot_be_used_three_times_in_a_row",
+        "soul_strike_cannot_be_used_twice_in_a_row",
+        "tackle_cannot_be_used_three_times_in_a_row",
+        "sludge_cannot_be_used_three_times_in_a_row"
+      ]
+    },
+    "special_mechanics": {
+      "type": "phase_change",
+      "description": "Two 300 HP phases at A0, with Curiosity in phase 1 and a full-health revive into phase 2.",
+      "curiosity_strength_gain": {
+        "normal": 1,
+        "ascension_19+": 2
+      },
+      "regen": {
+        "normal": 10,
+        "ascension_19+": 15
+      },
+      "revive_hp": 300,
+      "ascension_9_revive_hp": 320,
+      "carries_curiosity_strength_to_phase_2": true,
+      "phase_1_power": "Curiosity gains Strength whenever the player plays a Power.",
+      "phase_2_removes_curiosity": true,
+      "summons": ["Cultist", "Cultist"],
+      "phases": [
+        {
+          "name": "Unawakened",
+          "hp": 300,
+          "opening_move": "Slash",
+          "moves": ["Slash", "Soul Strike", "Rebirth"]
+        },
+        {
+          "name": "Awakened",
+          "hp": 300,
+          "opening_move": "Dark Echo",
+          "moves": ["Dark Echo", "Sludge", "Tackle"]
+        }
+      ],
+      "recommended_strategy": {
+        "primary": "kill_cultists_early",
+        "secondary": "avoid unnecessary powers in phase_1",
+        "note": "Cultists scale quickly while Awakened One punishes Powers. Save powers for the rebirth transition or phase 2 when possible."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 34,
+      "awakened_threat": 44,
+      "scaling_threat": 5.0,
+      "phase_change_threat": 30,
+      "summoning_threat": 20,
+      "party_threat_multiplier": 1.8,
+      "notes": "Act 3 boss with two full health bars, two Cultists, Power-punishing Curiosity, and a guaranteed 40 damage phase-2 opener."
+    },
+    "timing_strategy": {
+      "description": "Treat phase 1 as a race to remove Cultists and preserve enough HP/block for phase 2 Dark Echo.",
+      "safe_turn_indicators": ["UNKNOWN"],
+      "spike_turn_indicators": ["ATTACK", "ATTACK_DEBUFF"],
+      "burst_opportunities": [
+        {
+          "trigger": "rebirth_transition",
+          "reason": "Curiosity is gone and the next phase opens with Dark Echo."
+        }
+      ],
+      "preferred_response": {
+        "THREAT_SPIKE": "block_then_attack",
+        "PREPARATION": "prepare_for_dark_echo",
+        "BURST_WINDOW": "kill_cultists_then_boss"
+      }
+    }
+  },
   "Reptomancer": {
     "monster_id": "Reptomancer",
     "name": "Reptomancer",

@@ -594,3 +594,39 @@ def test_collector_data_uses_torch_heads_and_mega_debuff():
     assert torch_head is not None
     assert torch_predictions[0]["move"]["name"] == "Tackle"
     assert torch_predictions[0]["move"]["damage"] == 7
+
+
+def test_awakened_one_data_models_opening_phase_two_and_live_move():
+    database = EnhancedMonsterDatabase()
+
+    awakened = database.get_monster_data("AwakenedOne")
+    moves = {move["name"]: move for move in database.get_moves("Awakened One")}
+    opening = database.predict_next_moves("Awakened One", current_turn=1, monster_hp_percent=1.0)
+    phase_one = database.predict_next_moves("Awakened One", current_turn=3, monster_hp_percent=0.8)
+    live_move = FastCombatSimulator(None)._current_monster_move(
+        {
+            "monster_id": "AwakenedOne",
+            "name": "Awakened One",
+            "move_id": 1,
+            "intent": "Intent.ATTACK",
+            "move_adjusted_damage": 20,
+            "move_base_damage": 20,
+            "move_hits": 1,
+        }
+    )
+
+    assert awakened is not None
+    assert awakened["hp_ranges"]["normal"] == {"min": 300, "max": 300}
+    assert set(moves) == {"Slash", "Soul Strike", "Rebirth", "Dark Echo", "Sludge", "Tackle"}
+    assert opening[0]["move"]["name"] == "Slash"
+    assert {prediction["move"]["name"] for prediction in phase_one[:2]} == {"Slash", "Soul Strike"}
+    assert moves["Soul Strike"]["damage"] == 6
+    assert moves["Soul Strike"]["hits"] == 4
+    assert moves["Dark Echo"]["damage"] == 40
+    assert moves["Tackle"]["damage"] == 10
+    assert moves["Tackle"]["hits"] == 3
+    assert moves["Sludge"]["void_cards_added"] == 1
+    assert awakened["special_mechanics"]["type"] == "phase_change"
+    assert awakened["special_mechanics"]["revive_hp"] == 300
+    assert awakened["special_mechanics"]["curiosity_strength_gain"]["normal"] == 1
+    assert live_move["name"] == "Slash"
