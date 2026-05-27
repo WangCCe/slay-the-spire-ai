@@ -498,6 +498,24 @@ def test_small_slime_patterns_predict_future_damage_for_timing_classifier():
     assert classifier._calculate_damage_curve(context, monsters, current_turn=1, look_ahead=2) == [18, 15]
 
 
+def test_timing_analysis_clamps_negative_live_move_damage_to_zero():
+    classifier = TurnTimingClassifier()
+    monster = SimpleNamespace(
+        name="Spike Slime (M)",
+        current_hp=25,
+        max_hp=25,
+        strength=0,
+        intent="Intent.DEBUFF",
+        move_adjusted_damage=-1,
+        move_hits=3,
+    )
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0))
+
+    analysis = classifier._analyze_monster_timing(context, [monster], current_turn=7)
+
+    assert analysis["current_damage"] == 0
+
+
 def test_hp_threshold_modes_predict_guardian_sequence():
     database = EnhancedMonsterDatabase()
 

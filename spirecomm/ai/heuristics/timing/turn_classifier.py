@@ -137,8 +137,9 @@ class TurnTimingClassifier:
                     hp_percent = 1.0
 
                 # Get current damage
-                current_damage = getattr(monster, 'move_adjusted_damage', 0)
-                hits = getattr(monster, 'move_hits', 1)
+                current_damage = self._coerce_damage_value(getattr(monster, 'move_adjusted_damage', 0))
+                current_damage = max(0, current_damage or 0)
+                hits = max(1, self._coerce_int(getattr(monster, 'move_hits', 1), default=1))
                 total_current_damage += current_damage * hits
 
                 # Get Wiki timing hints
