@@ -677,6 +677,167 @@ def test_perfected_strike_counts_strike_cards_in_deck(monkeypatch):
     assert result.total_damage_dealt == 18
 
 
+def test_inflame_uses_real_strength_amount_before_attacks():
+    inflame = _card(
+        "Inflame",
+        "Inflame",
+        card_type=CardType.POWER,
+        cost=1,
+        has_target=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([inflame, strike], energy=2, monsters=[_louse(current_hp=100)])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        inflame,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 8
+
+    inflame_plus = _card(
+        "Inflame",
+        "Inflame+",
+        card_type=CardType.POWER,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([inflame_plus, strike], energy=2, monsters=[_louse(current_hp=100)])
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        inflame_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 9
+
+
+def test_strength_skill_cards_affect_followup_attacks():
+    strike = _card("Strike_R", "Strike", cost=1)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    flex = _card("Flex", "Flex", card_type=CardType.SKILL, cost=0, has_target=False)
+    context = _combat_context([flex, strike], energy=1, monsters=[_louse(current_hp=100)])
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        flex,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 8
+
+    spot_weakness = _card(
+        "Spot Weakness",
+        "Spot Weakness",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=True,
+    )
+    context = _combat_context([spot_weakness, strike], energy=2, monsters=[_louse(current_hp=100)])
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        spot_weakness,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 9
+
+    limit_break = _card(
+        "Limit Break",
+        "Limit Break",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    context = _combat_context([limit_break, strike], energy=2, monsters=[_louse(current_hp=100)])
+    context.strength = 3
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        limit_break,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 12
+
+
+def test_demon_form_does_not_add_strength_on_the_turn_it_is_played():
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([demon_form, strike], energy=4, monsters=[_louse(current_hp=100)])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        demon_form,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 6
+
+
 def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

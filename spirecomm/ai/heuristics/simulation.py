@@ -655,7 +655,7 @@ class FastCombatSimulator:
             self._apply_rage_block(new_state)
         elif card_type == CardType.SKILL:
             new_state.skills_played += 1
-            self._apply_skill(new_state, card, context)
+            self._apply_skill(new_state, card, context, target_index)
         elif card_type == CardType.POWER:
             self._apply_power(new_state, card)
 
@@ -1003,7 +1003,13 @@ class FastCombatSimulator:
                     state.player_hp -= thorns_damage
                     state.player_hp = max(0, state.player_hp)  # Ensure HP doesn't go negative
 
-    def _apply_skill(self, state: SimulationState, card: Card, context: Optional[DecisionContext] = None):
+    def _apply_skill(
+        self,
+        state: SimulationState,
+        card: Card,
+        context: Optional[DecisionContext] = None,
+        target_index: Optional[int] = None,
+    ):
         """Apply skill card effects."""
         # Block skills - apply frail multiplier if player has frail
         if hasattr(card, 'block') and card.block is not None:
@@ -1053,6 +1059,8 @@ class FastCombatSimulator:
         if card.card_id == 'Rage':
             rage_gain = 5 if getattr(card, 'upgrades', 0) > 0 else 3
             state.rage_block_per_attack += rage_gain
+
+        self._apply_strength_skill(state, card, target_index)
 
         # Apply enemy debuffs from skill cards (e.g., Shockwave).
         try:
@@ -1107,15 +1115,15 @@ class FastCombatSimulator:
 
     def _apply_power(self, state: SimulationState, card: Card):
         """Apply power card effects."""
-        card_id = card.card_id
+        card_id = card.card_id.replace('+', '')
 
-        # Demon Form - adds strength
+        # Demon Form starts gaining Strength on future turns, not immediately.
         if card_id == 'Demon Form':
-            state.player_strength += 2 if card.upgrades > 0 else 1
+            pass
 
         # Inflame - adds strength
         elif card_id == 'Inflame':
-            state.player_strength += 2 if card.upgrades > 0 else 1
+            state.player_strength += 3 if card.upgrades > 0 else 2
 
         # Corruption - skills cost 0 (track for synergy evaluation)
         elif card_id == 'Corruption':
@@ -1146,6 +1154,45 @@ class FastCombatSimulator:
                 pass
 
         # Other powers can be added as needed
+
+    def _apply_strength_skill(
+        self,
+        state: SimulationState,
+        card: Card,
+        target_index: Optional[int] = None,
+    ):
+        """Apply immediate Strength-changing Ironclad skills."""
+        card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        upgrades = getattr(card, 'upgrades', 0)
+
+        if card_id == 'Flex':
+            state.player_strength += 4 if upgrades > 0 else 2
+        elif card_id == 'Limit Break':
+            state.player_strength *= 2
+        elif card_id == 'Spot Weakness' and self._spot_weakness_condition_met(state, target_index):
+            state.player_strength += 4 if upgrades > 0 else 3
+
+    def _spot_weakness_condition_met(
+        self,
+        state: SimulationState,
+        target_index: Optional[int],
+    ) -> bool:
+        """Return whether Spot Weakness has a valid attacking target."""
+        if target_index is not None and 0 <= target_index < len(state.monsters):
+            monster = state.monsters[target_index]
+            return not monster['is_gone'] and self._monster_intends_attack(monster)
+
+        return any(
+            not monster['is_gone'] and self._monster_intends_attack(monster)
+            for monster in state.monsters
+        )
+
+    def _monster_intends_attack(self, monster: dict) -> bool:
+        intent = monster.get('intent')
+        if intent is None:
+            return False
+        intent_name = getattr(intent, 'name', str(intent))
+        return 'ATTACK' in intent_name.upper()
 
     def _apply_rage_block(self, state: SimulationState):
         """Apply Rage block trigger after playing an attack."""
