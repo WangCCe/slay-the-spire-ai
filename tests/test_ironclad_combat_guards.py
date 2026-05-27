@@ -926,6 +926,88 @@ def test_strength_skill_cards_affect_followup_attacks():
     assert result.total_damage_dealt == 12
 
 
+def test_energy_gain_skills_add_usable_energy(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bloodletting": {
+            "name": "Bloodletting",
+            "description": "Lose 3 HP.\nGain [R] [R].",
+        },
+        "offering": {
+            "name": "Offering",
+            "description": "Lose 6 HP.\nGain [R] [R].\nDraw 3 cards.\nExhaust.",
+        },
+        "seeing red": {
+            "name": "Seeing Red",
+            "description": "Gain [R] [R].\nExhaust.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    bloodletting = _card("Bloodletting", "Bloodletting", card_type=CardType.SKILL, cost=0, has_target=False)
+    context = _combat_context([bloodletting], energy=1, monsters=[_louse(current_hp=100)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        bloodletting,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 3
+    assert result.energy_gained == 2
+    assert result.player_hp == 77
+
+    bloodletting_plus = _card(
+        "Bloodletting",
+        "Bloodletting+",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([bloodletting_plus], energy=1, monsters=[_louse(current_hp=100)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        bloodletting_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 4
+    assert result.energy_gained == 3
+
+    offering = _card("Offering", "Offering", card_type=CardType.SKILL, cost=0, has_target=False)
+    context = _combat_context([offering], energy=1, monsters=[_louse(current_hp=100)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        offering,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 3
+    assert result.energy_gained == 2
+    assert result.cards_drawn == 3
+    assert result.player_hp == 74
+
+    seeing_red = _card("Seeing Red", "Seeing Red", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([seeing_red], energy=1, monsters=[_louse(current_hp=100)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        seeing_red,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 2
+    assert result.energy_gained == 2
+
+
 def test_demon_form_does_not_add_strength_on_the_turn_it_is_played():
     demon_form = _card(
         "Demon Form",
