@@ -1674,7 +1674,9 @@ class IroncladCombatPlanner(CombatPlanner):
         # Slime Boss: Single monster with "Slime" in name
         if len(context.monsters_alive) == 1:
             monster = context.monsters_alive[0]
-            if "Slime" in monster.monster_id and hasattr(monster, 'elite'):
+            monster_id = getattr(monster, 'monster_id', '')
+            monster_name = getattr(monster, 'name', '')
+            if monster_id == "Slime_Boss" or monster_name == "Slime Boss":
                 logger.info("[ELITE_DETECTION] Slime Boss detected - AOE priority active")
                 return EliteType.SLIME_BOSS
 
@@ -1934,7 +1936,7 @@ class IroncladCombatPlanner(CombatPlanner):
         for action in sequence:
             if isinstance(action, PlayCardAction):
                 card = action.card
-                card_id = card.card_id
+                card_id = canonical_card_name(card)
 
                 # AOE damage multiplier (×1.5)
                 if card_id in aoe_cards:

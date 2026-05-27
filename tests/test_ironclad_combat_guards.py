@@ -1049,6 +1049,38 @@ def test_slime_boss_split_materializes_large_slimes_with_inherited_hp():
     assert [monster["max_hp"] for monster in alive] == [56, 56]
 
 
+def test_ironclad_detects_slime_boss_without_elite_marker():
+    context = _combat_context([], energy=0, monsters=[_slime_boss(current_hp=80)])
+
+    assert IroncladCombatPlanner()._detect_elite_type(context) == ironclad_combat.EliteType.SLIME_BOSS
+
+
+def test_slime_boss_strategy_treats_counted_upgraded_cleave_as_aoe():
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    cleave.damage = 8
+    counted_cleave = _card("Cleave+1", "Cleave+1", cost=1, has_target=False, upgrades=1)
+    counted_cleave.damage = 8
+    context = _combat_context(
+        [cleave, counted_cleave],
+        energy=1,
+        monsters=[_slime_boss(current_hp=80)],
+    )
+    planner = IroncladCombatPlanner()
+
+    canonical_score = planner._apply_slime_boss_strategy(
+        [PlayCardAction(card=cleave)],
+        context,
+        0.0,
+    )
+    counted_score = planner._apply_slime_boss_strategy(
+        [PlayCardAction(card=counted_cleave)],
+        context,
+        0.0,
+    )
+
+    assert counted_score == canonical_score
+
+
 def test_end_turn_projection_materializes_due_slime_boss_split():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_slime_boss(current_hp=56)])
