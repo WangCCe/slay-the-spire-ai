@@ -392,6 +392,34 @@ def test_combust_projects_end_turn_damage_without_immediate_attack_damage(monkey
     assert projected.monsters_killed == 2
 
 
+def test_combust_end_turn_hp_loss_triggers_rupture(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "combust": {
+            "name": "Combust",
+            "description": "At the end of your turn, lose 1 HP and deal 5 damage to ALL enemies.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    combust = _card("Combust", "Combust", card_type=CardType.POWER, cost=1, has_target=False)
+    context = _combat_context([combust], energy=1, monsters=[_louse(current_hp=20)])
+    context.game.player.powers = [SimpleNamespace(power_name="Rupture", amount=1)]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        combust,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    projected = simulator.project_end_turn_effects(state)
+
+    assert projected.player_hp == context.game.current_hp - 1
+    assert projected.player_strength == 1
+
+
 def test_outcome_score_counts_combust_end_turn_lethal(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

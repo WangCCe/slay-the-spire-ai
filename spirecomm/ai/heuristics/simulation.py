@@ -1367,6 +1367,8 @@ class FastCombatSimulator:
         hp_loss = max(0, getattr(projected, 'end_turn_hp_loss', 0))
         if hp_loss > 0:
             projected.player_hp = max(0, projected.player_hp - hp_loss)
+            if projected.rupture_strength_per_hp_loss > 0:
+                projected.player_strength += projected.rupture_strength_per_hp_loss
 
         aoe_damage = max(0, getattr(projected, 'end_turn_aoe_damage', 0))
         if aoe_damage > 0:
