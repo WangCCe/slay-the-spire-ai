@@ -1690,6 +1690,26 @@ def test_player_weak_reduces_player_attack_damage(monkeypatch):
     assert result.total_damage_dealt == 4
 
 
+def test_player_weak_applies_before_target_vulnerable(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"dropkick": {"name": "Dropkick", "description": "Deal 5 damage."}}
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    dropkick = _card("Dropkick", "Dropkick", cost=1)
+    context = _combat_context([dropkick], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Weak", amount=1)]
+    context.vulnerable_stacks[0] = 1
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        dropkick,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 4
+
+
 def test_ironclad_target_pruning_counts_upgraded_attack_damage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
