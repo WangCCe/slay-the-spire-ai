@@ -3436,6 +3436,29 @@ def test_disarm_reduces_enemy_strength_and_current_attack_damage():
     assert result.monsters[0]["strength"] == -3
     assert result.monsters[0]["move_adjusted_damage"] == 9
 
+    counted_disarm = _card(
+        "Disarm+1",
+        "Disarm+1",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=True,
+        upgrades=1,
+    )
+    monster = _louse(current_hp=100)
+    monster.move_adjusted_damage = 12
+    context = _combat_context([counted_disarm], energy=1, monsters=[monster])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        counted_disarm,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["strength"] == -3
+    assert result.monsters[0]["move_adjusted_damage"] == 9
+
 
 def test_double_tap_repeats_next_attack_once_or_twice():
     double_tap = _card(
