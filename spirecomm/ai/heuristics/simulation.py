@@ -67,6 +67,7 @@ DANGER_PENALTY = 50.0  # Extra penalty when below danger threshold
 EXHAULT_SYNERGY_VALUE = 3.0  # Points per exhaust event (Feel No Pain)
 DRAW_SYNERGY_VALUE = 3.0  # Points per card drawn
 ENERGY_SYNERGY_VALUE = 4.0  # Points per energy gained/saved (Corruption, Bloodletting)
+STATUS_CARD_PENALTY = 12.0  # Cost of adding Dazed/Burn/Wound-style deck pollution
 
 # Debuff application bonuses
 VULNERABLE_APPLY_BONUS = 6.0
@@ -422,6 +423,7 @@ class SimulationState:
         self.player_vulnerable = self._get_player_debuff_stacks(context, 'Vulnerable')
         self.player_weak = self._get_player_debuff_stacks(context, 'Weak')
         self.player_frail = self._get_player_debuff_stacks(context, 'Frail')
+        self.player_hex = self._get_player_hex_stacks(context)
         # Rage power: block gained per attack played.
         self.rage_block_per_attack = self._get_player_power_amount(context, 'Rage')
         self.draw_blocked = (
@@ -487,6 +489,9 @@ class SimulationState:
         self.damage_instances = 0  # Individual damage instances
         self.energy_gained = 0  # Energy gained (e.g., Bloodletting)
         self.energy_saved = 0  # Energy saved (e.g., Corruption free skills)
+        self.status_cards_added = 0  # Future draw-pile/discard pollution
+        self.dazed_cards_added = 0  # Chosen Hex / Sentries / Reckless Charge-style pollution
+        self.hex_non_attack_triggers = 0
 
     def _get_player_debuff_stacks(self, context: DecisionContext, power_name: str) -> int:
         """Get debuff stacks on the player from powers."""
@@ -514,6 +519,13 @@ class SimulationState:
         if not hasattr(context.game, 'player') or not hasattr(context.game.player, 'powers'):
             return False
         return any(self._power_name(power) == power_name for power in context.game.player.powers)
+
+    def _get_player_hex_stacks(self, context: DecisionContext) -> int:
+        """Hex is a persistent Chosen debuff; amount may be -1 in game state."""
+        hex_stacks = self._get_player_debuff_stacks(context, 'Hex')
+        if self._has_player_power(context, 'Hex') and hex_stacks <= 0:
+            return 1
+        return max(0, hex_stacks)
 
     def _get_monster_power_amount(self, monster: Any, power_name: str) -> int:
         if not hasattr(monster, 'powers'):
@@ -544,6 +556,7 @@ class SimulationState:
         new_state.player_vulnerable = self.player_vulnerable
         new_state.player_weak = self.player_weak
         new_state.player_frail = self.player_frail
+        new_state.player_hex = self.player_hex
         new_state.rage_block_per_attack = self.rage_block_per_attack
         new_state.draw_blocked = self.draw_blocked
         new_state.double_tap_charges = self.double_tap_charges
@@ -566,6 +579,9 @@ class SimulationState:
         new_state.damage_instances = self.damage_instances
         new_state.energy_gained = self.energy_gained
         new_state.energy_saved = self.energy_saved
+        new_state.status_cards_added = self.status_cards_added
+        new_state.dazed_cards_added = self.dazed_cards_added
+        new_state.hex_non_attack_triggers = self.hex_non_attack_triggers
         return new_state
 
     def state_key(self, playable_cards):
@@ -591,6 +607,7 @@ class SimulationState:
             self.player_vulnerable,
             self.player_weak,
             self.player_frail,
+            self.player_hex,
             self.rage_block_per_attack,
             self.draw_blocked,
             self.double_tap_charges,
@@ -600,6 +617,9 @@ class SimulationState:
             self.rupture_strength_per_hp_loss,
             self.end_turn_aoe_damage,
             self.end_turn_hp_loss,
+            self.status_cards_added,
+            self.dazed_cards_added,
+            self.hex_non_attack_triggers,
         )
 
         # Monster states (sorted for consistent hashing)
@@ -750,6 +770,8 @@ class FastCombatSimulator:
         elif card_type == CardType.POWER:
             self._apply_power(new_state, card)
 
+        self._apply_hex_card_pollution(new_state, card_type)
+
         if card_type != CardType.ATTACK:
             self._apply_self_damage(new_state, card)
 
@@ -757,6 +779,18 @@ class FastCombatSimulator:
         self._apply_dark_embrace_draw(new_state, starting_exhaust_events)
 
         return new_state
+
+    def _apply_hex_card_pollution(self, state: SimulationState, card_type: Optional[CardType]):
+        """Chosen's Hex adds Dazed to the draw pile whenever a non-Attack is played."""
+        if getattr(state, 'player_hex', 0) <= 0:
+            return
+        if card_type is None or card_type == CardType.ATTACK:
+            return
+
+        dazed_added = max(1, int(state.player_hex))
+        state.dazed_cards_added += dazed_added
+        state.status_cards_added += dazed_added
+        state.hex_non_attack_triggers += 1
 
     def _resolve_target_index(
         self,
@@ -2694,6 +2728,17 @@ class FastCombatSimulator:
         # Energy value: gained/saved energy is valuable
         score += final_state.energy_gained * ENERGY_SYNERGY_VALUE
         score += final_state.energy_saved * ENERGY_SYNERGY_VALUE
+
+        # Status pollution value: Dazed/Burn/Wound cards reduce future hand quality.
+        status_penalty = final_state.status_cards_added * STATUS_CARD_PENALTY
+        if status_penalty > 0:
+            score -= status_penalty
+            logger.info(
+                "[STATUS_POLLUTION] -%.1f for %s added status cards (%s Dazed)",
+                status_penalty,
+                final_state.status_cards_added,
+                final_state.dazed_cards_added,
+            )
 
         # === TIMING-AWARE SCORING BONUS ===
         # Add timing-specific bonuses based on turn classification

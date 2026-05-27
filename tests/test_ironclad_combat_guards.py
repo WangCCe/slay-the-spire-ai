@@ -263,6 +263,107 @@ def test_simulation_reads_power_name_field_from_player_powers():
     assert result.player_block == 3
 
 
+def test_simulation_tracks_chosen_hex_power_from_player_powers():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Hex", amount=-1)]
+
+    state = SimulationState(context)
+
+    assert state.player_hex == 1
+
+
+def test_hex_adds_dazed_pollution_for_non_attack_cards(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "defend": {"name": "Defend", "description": "Gain 5 Block."},
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    defend = _card(
+        "Defend",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    strike = _card("Strike", "Strike", cost=1)
+    context = _combat_context([defend, strike], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Hex", amount=1)]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    skill_result = simulator.simulate_card_play(
+        SimulationState(context),
+        defend,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    attack_result = simulator.simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert skill_result.dazed_cards_added == 1
+    assert skill_result.status_cards_added == 1
+    assert attack_result.dazed_cards_added == 0
+    assert attack_result.status_cards_added == 0
+
+
+def test_hex_status_pollution_is_scored_as_a_cost(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "defend": {"name": "Defend", "description": "Gain 5 Block."},
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    defend = _card(
+        "Defend",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    no_hex_context = _combat_context([defend], energy=1, monsters=[_louse(current_hp=100)])
+    no_hex_initial = SimulationState(no_hex_context)
+    no_hex_result = simulator.simulate_card_play(
+        no_hex_initial,
+        defend,
+        target=None,
+        target_index=None,
+        context=no_hex_context,
+    )
+    no_hex_score = simulator.calculate_outcome_score(
+        no_hex_initial,
+        no_hex_result,
+        context=no_hex_context,
+    )
+
+    hex_context = _combat_context([defend], energy=1, monsters=[_louse(current_hp=100)])
+    hex_context.game.player.powers = [SimpleNamespace(power_name="Hex", amount=1)]
+    hex_initial = SimulationState(hex_context)
+    hex_result = simulator.simulate_card_play(
+        hex_initial,
+        defend,
+        target=None,
+        target_index=None,
+        context=hex_context,
+    )
+    hex_score = simulator.calculate_outcome_score(
+        hex_initial,
+        hex_result,
+        context=hex_context,
+    )
+
+    assert hex_score < no_hex_score
+
+
 def test_feel_no_pain_grants_block_for_exhaust_events(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
