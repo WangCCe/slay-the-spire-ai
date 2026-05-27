@@ -136,6 +136,157 @@
       }
     }
   },
+  "Giant Head": {
+    "monster_id": "Giant_Head",
+    "name": "Giant Head",
+    "aliases": ["GiantHead"],
+    "monster_type": "elite",
+    "hp_ranges": {
+      "normal": {"min": 500, "max": 500},
+      "ascension_8+": {"min": 520, "max": 520}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Count",
+        "intent": "ATTACK",
+        "damage": 13,
+        "effect": "Deals 13 damage."
+      },
+      {
+        "move_id": 1,
+        "name": "Glare",
+        "intent": "DEBUFF",
+        "damage": null,
+        "weak_applied": 1,
+        "effect": "Applies 1 Weak."
+      },
+      {
+        "move_id": 2,
+        "name": "It Is Time",
+        "intent": "ATTACK",
+        "damage": null,
+        "damage_formula": {
+          "type": "linear_after_turn",
+          "base": 30,
+          "first_turn": 5,
+          "increment": 5,
+          "max_bonus": 30
+        },
+        "effect": "Deals 30 + T damage. T starts at 0 and increases by 5 every time this attack is used, up to 30 additional damage.",
+        "ascension_modifiers": {
+          "3+": {"damage_bonus": 10}
+        }
+      }
+    ],
+    "pattern": {
+      "description": "For the first 4 turns, 50% Count and 50% Glare; neither can be used three times in a row. From turn 5 onward, always uses It Is Time. Ascension 18+ starts It Is Time from turn 4.",
+      "turn_thresholds": [
+        {
+          "from_turn": 1,
+          "probabilities": {"Count": 0.5, "Glare": 0.5},
+          "prediction_limit": 2
+        },
+        {
+          "from_turn": 5,
+          "move": "It Is Time",
+          "confidence": 1.0
+        }
+      ],
+      "constraints": [
+        "count_cannot_be_used_three_times_in_a_row",
+        "glare_cannot_be_used_three_times_in_a_row"
+      ]
+    },
+    "special_mechanics": {
+      "type": "slow_countdown",
+      "description": "Starts with Slow. Each player card played increases damage Giant Head takes by 10% for the rest of the turn. Count/Glare countdown gives way to repeated It Is Time attacks.",
+      "slow_damage_bonus_per_card": 0.10,
+      "it_is_time_first_turn": 5,
+      "ascension_18_first_turn": 4,
+      "recommended_strategy": {
+        "primary": "frontload_scaling_then_burst",
+        "secondary": "play_non_attacks_before_attacks_to_use_slow",
+        "note": "The early countdown is setup time; after It Is Time begins, damage ramps every turn."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 28,
+      "scaling_threat": 5.0,
+      "late_attack_threat": 45,
+      "notes": "Very high HP elite with a safe setup window followed by repeated ramping attacks."
+    }
+  },
+  "Nemesis": {
+    "monster_id": "Nemesis",
+    "name": "Nemesis",
+    "monster_type": "elite",
+    "hp_ranges": {
+      "normal": {"min": 185, "max": 185},
+      "ascension_8+": {"min": 200, "max": 200}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Debuff",
+        "intent": "DEBUFF",
+        "damage": null,
+        "burn_cards_added": 3,
+        "effect": "Shuffles 3 Burns into the discard pile.",
+        "ascension_modifiers": {
+          "18+": {"burn_cards_added": 5}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Attack",
+        "intent": "ATTACK",
+        "damage": 6,
+        "hits": 3,
+        "effect": "Deals 6 damage 3 times.",
+        "ascension_modifiers": {
+          "3+": {"damage_bonus": 1}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Scythe",
+        "intent": "ATTACK",
+        "damage": 45,
+        "effect": "Deals 45 damage."
+      }
+    ],
+    "pattern": {
+      "description": "First turn is 50% Debuff or 50% Attack. Later turns are approximately 35% Debuff, 35% Attack, and 30% Scythe. Debuff and Scythe cannot repeat; Attack cannot be used three times in a row.",
+      "turn_1_probabilities": {"Debuff": 0.5, "Attack": 0.5},
+      "subsequent_probabilities": {"Debuff": 0.35, "Attack": 0.35, "Scythe": 0.30},
+      "prediction_limit": 3,
+      "constraints": [
+        "debuff_cannot_be_used_twice_in_a_row",
+        "scythe_cannot_be_used_twice_in_a_row",
+        "attack_cannot_be_used_three_times_in_a_row"
+      ]
+    },
+    "special_mechanics": {
+      "type": "alternating_intangible_status_pollution",
+      "description": "Gains Intangible every other turn starting from turn 2, reducing incoming damage to 1 during intangible turns. Debuff adds Burns.",
+      "intangible_every_other_turn": true,
+      "first_intangible_turn": 2,
+      "status_cards": {"burn": 3},
+      "recommended_strategy": {
+        "primary": "attack_on_non_intangible_turns",
+        "secondary": "use_intangible_turns_for_block_draw_or_setup",
+        "note": "Avoid wasting large attacks into Intangible and end the fight before Burns dominate draws."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 30,
+      "status_threat": 16,
+      "burst_threat": 45,
+      "scaling_threat": 3.5,
+      "notes": "Alternating Intangible makes burst timing important while Burns punish long fights."
+    }
+  },
   "Reptomancer": {
     "monster_id": "Reptomancer",
     "name": "Reptomancer",

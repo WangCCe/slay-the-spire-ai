@@ -2236,8 +2236,9 @@ class FastCombatSimulator:
 
                     if move:
                         move_intent = move.get('intent', '').upper()
-                        move_damage = self._move_damage_value(move, lookahead_state)
-                        move_hits = self._move_hit_count(move)
+                        target_turn = current_turn + step
+                        move_damage = self._move_damage_value(move, lookahead_state, target_turn=target_turn)
+                        move_hits = self._move_hit_count(move, target_turn=target_turn)
 
                         if 'ATTACK' in move_intent and move_damage > 0:
                             current_strength = monster.get('strength', 0)
@@ -2443,18 +2444,71 @@ class FastCombatSimulator:
         """Compatibility wrapper for future damage prediction."""
         return self.simulate_enemy_lookahead(state, context, look_ahead)
 
-    def _move_damage_value(self, move: Dict[str, Any], state: SimulationState) -> int:
+    def _move_damage_value(
+        self,
+        move: Dict[str, Any],
+        state: SimulationState,
+        target_turn: Optional[int] = None,
+    ) -> int:
         """Return a numeric damage estimate for predicted monster moves."""
         move_name = str(move.get('name', ''))
         if move_name == 'Divider':
             return (max(0, state.player_hp) // 12) + 1
+        formula_damage = self._formula_damage_value(move.get('damage_formula'), target_turn)
+        if formula_damage is not None:
+            return formula_damage
         return self._numeric_damage_value(move.get('damage', 0))
 
-    def _move_hit_count(self, move: Dict[str, Any]) -> int:
+    def _move_hit_count(self, move: Dict[str, Any], target_turn: Optional[int] = None) -> int:
         move_name = str(move.get('name', ''))
         if move_name == 'Divider':
             return 6
+        formula_hits = self._formula_hit_count(move.get('hits_formula'), target_turn)
+        if formula_hits is not None:
+            return formula_hits
         return move.get('hits', move.get('move_hits', 1)) or 1
+
+    def _formula_damage_value(self, formula: Any, target_turn: Optional[int]) -> Optional[int]:
+        if not isinstance(formula, dict):
+            return None
+
+        formula_type = formula.get('type')
+        turn = int(target_turn or 1)
+
+        if formula_type == 'linear_by_turn':
+            base = int(formula.get('base', 0) or 0)
+            per_turn = int(formula.get('per_turn', 0) or 0)
+            turn_offset = int(formula.get('turn_offset', 0) or 0)
+            return base + per_turn * max(0, turn + turn_offset)
+
+        if formula_type == 'linear_after_turn':
+            base = int(formula.get('base', 0) or 0)
+            increment = int(formula.get('increment', 0) or 0)
+            first_turn = int(formula.get('first_turn', 1) or 1)
+            bonus = increment * max(0, turn - first_turn)
+            max_bonus = formula.get('max_bonus')
+            if isinstance(max_bonus, (int, float)):
+                bonus = min(bonus, int(max_bonus))
+            return base + bonus
+
+        return None
+
+    def _formula_hit_count(self, formula: Any, target_turn: Optional[int]) -> Optional[int]:
+        if not isinstance(formula, dict):
+            return None
+        if formula.get('type') != 'ceil_turn_divisor':
+            return None
+
+        divisor = max(1, int(formula.get('divisor', 1) or 1))
+        turn = max(1, int(target_turn or 1))
+        hits = (turn + divisor - 1) // divisor
+        min_hits = formula.get('min_hits')
+        max_hits = formula.get('max_hits')
+        if isinstance(min_hits, (int, float)):
+            hits = max(hits, int(min_hits))
+        if isinstance(max_hits, (int, float)):
+            hits = min(hits, int(max_hits))
+        return hits
 
     def _numeric_damage_value(self, damage: Any) -> int:
         if isinstance(damage, (int, float)):

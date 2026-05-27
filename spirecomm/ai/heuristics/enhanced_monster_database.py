@@ -312,6 +312,34 @@ class EnhancedMonsterDatabase:
             sequence = modes.get(mode_key) or modes.get("normal") or []
             self._append_sequence_predictions(predictions, monster_name, sequence, current_turn)
 
+        # Check for turn-threshold patterns (e.g., Giant Head countdown into It Is Time)
+        elif "turn_thresholds" in pattern:
+            thresholds = pattern.get("turn_thresholds", [])
+            for i in range(3):
+                target_turn = current_turn + i
+                threshold = self._select_turn_threshold(thresholds, target_turn)
+                if not threshold:
+                    continue
+
+                move_name = threshold.get("move")
+                if move_name:
+                    move = self.get_move_by_name(monster_name, move_name)
+                    if move:
+                        predictions.append({
+                            "turn": target_turn,
+                            "move": move,
+                            "confidence": threshold.get("confidence", 1.0),
+                        })
+                    continue
+
+                self._append_probability_predictions(
+                    predictions,
+                    moves,
+                    threshold.get("probabilities", {}),
+                    target_turn,
+                    limit=threshold.get("prediction_limit", pattern.get("prediction_limit", 2)),
+                )
+
         # Check for phase-based patterns
         elif "phases" in pattern:
             # Determine current phase
@@ -351,6 +379,7 @@ class EnhancedMonsterDatabase:
                         moves,
                         pattern.get("turn_1_probabilities", {}),
                         target_turn,
+                        limit=pattern.get("prediction_limit", 2),
                     )
                     continue
 
@@ -361,6 +390,7 @@ class EnhancedMonsterDatabase:
                         moves,
                         subsequent_probs,
                         target_turn,
+                        limit=pattern.get("prediction_limit", 2),
                     )
                     continue
 
@@ -528,6 +558,19 @@ class EnhancedMonsterDatabase:
                 "move": move,
                 "confidence": 1.0,
             })
+
+    def _select_turn_threshold(self, thresholds: List[Dict[str, Any]], target_turn: int) -> Optional[Dict[str, Any]]:
+        if not isinstance(thresholds, list):
+            return None
+
+        selected = None
+        for threshold in thresholds:
+            if not isinstance(threshold, dict):
+                continue
+            from_turn = threshold.get("from_turn", 1)
+            if target_turn >= from_turn and (selected is None or from_turn >= selected.get("from_turn", 1)):
+                selected = threshold
+        return selected
 
     def _phase_probability_key(self, pattern: Dict[str, Any], target_turn: int, opening_length: int) -> Optional[str]:
         phase_keys = sorted(

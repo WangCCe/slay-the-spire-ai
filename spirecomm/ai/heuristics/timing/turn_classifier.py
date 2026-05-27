@@ -351,8 +351,9 @@ class TurnTimingClassifier:
                         intent = move.get('intent', '').upper()
 
                         if 'ATTACK' in intent:
-                            damage = self._resolve_move_damage(monster.name, move, context)
-                            hits = self._coerce_int(move.get('hits', 1), default=1)
+                            damage = self._resolve_move_damage(
+                                monster.name, move, context, target_turn=target_turn)
+                            hits = self._resolve_move_hits(move, context, target_turn=target_turn)
 
                             # Apply ascension modifiers to damage
                             damage = self._apply_ascension_damage_modifiers(
@@ -382,11 +383,21 @@ class TurnTimingClassifier:
             logger.warning(f"[DAMAGE_CURVE] Calculation failed: {e}")
             return [0] * look_ahead
 
-    def _resolve_move_damage(self, monster_name: str, move: Dict[str, Any], context) -> int:
+    def _resolve_move_damage(
+        self,
+        monster_name: str,
+        move: Dict[str, Any],
+        context,
+        target_turn: Optional[int] = None,
+    ) -> int:
         """Return a numeric damage estimate for wiki moves with ranges or formulas."""
         damage = self._coerce_damage_value(move.get('damage'))
         if damage is not None:
             return damage
+
+        formula_damage = self._resolve_damage_formula(move.get('damage_formula'), target_turn)
+        if formula_damage is not None:
+            return formula_damage
 
         move_name = str(move.get('name', '')).lower()
         effect = str(move.get('effect', '')).lower()
@@ -405,6 +416,60 @@ class TurnTimingClassifier:
             return ((int(player_hp) // 12) + 1) * 6
 
         return 0
+
+    def _resolve_move_hits(
+        self,
+        move: Dict[str, Any],
+        context,
+        target_turn: Optional[int] = None,
+    ) -> int:
+        formula_hits = self._resolve_hits_formula(move.get('hits_formula'), target_turn)
+        if formula_hits is not None:
+            return formula_hits
+        return self._coerce_int(move.get('hits', 1), default=1)
+
+    def _resolve_damage_formula(self, formula: Any, target_turn: Optional[int]) -> Optional[int]:
+        if not isinstance(formula, dict):
+            return None
+
+        formula_type = formula.get('type')
+        turn = int(target_turn or 1)
+
+        if formula_type == 'linear_by_turn':
+            base = self._coerce_int(formula.get('base'), default=0)
+            per_turn = self._coerce_int(formula.get('per_turn'), default=0)
+            turn_offset = self._coerce_int(formula.get('turn_offset'), default=0)
+            return base + per_turn * max(0, turn + turn_offset)
+
+        if formula_type == 'linear_after_turn':
+            base = self._coerce_int(formula.get('base'), default=0)
+            increment = self._coerce_int(formula.get('increment'), default=0)
+            first_turn = self._coerce_int(formula.get('first_turn'), default=1)
+            bonus = increment * max(0, turn - first_turn)
+            max_bonus = self._coerce_damage_value(formula.get('max_bonus'))
+            if max_bonus is not None:
+                bonus = min(bonus, max_bonus)
+            return base + bonus
+
+        return None
+
+    def _resolve_hits_formula(self, formula: Any, target_turn: Optional[int]) -> Optional[int]:
+        if not isinstance(formula, dict):
+            return None
+
+        if formula.get('type') != 'ceil_turn_divisor':
+            return None
+
+        divisor = max(1, self._coerce_int(formula.get('divisor'), default=1))
+        turn = max(1, int(target_turn or 1))
+        hits = (turn + divisor - 1) // divisor
+        min_hits = self._coerce_damage_value(formula.get('min_hits'))
+        max_hits = self._coerce_damage_value(formula.get('max_hits'))
+        if min_hits is not None:
+            hits = max(hits, min_hits)
+        if max_hits is not None:
+            hits = min(hits, max_hits)
+        return hits
 
     def _coerce_damage_value(self, value) -> Optional[int]:
         if value is None:
@@ -716,8 +781,9 @@ class TurnTimingClassifier:
 
                     if predicted_moves:
                         move = predicted_moves[0].get('move', {})
-                        damage = self._resolve_move_damage(monster.name, move, context)
-                        hits = self._coerce_int(move.get('hits', 1), default=1)
+                        damage = self._resolve_move_damage(
+                            monster.name, move, context, target_turn=target_turn)
+                        hits = self._resolve_move_hits(move, context, target_turn=target_turn)
 
                         if damage * hits >= 20:
                             # Big attack imminent

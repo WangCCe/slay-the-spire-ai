@@ -630,3 +630,58 @@ def test_awakened_one_data_models_opening_phase_two_and_live_move():
     assert awakened["special_mechanics"]["revive_hp"] == 300
     assert awakened["special_mechanics"]["curiosity_strength_gain"]["normal"] == 1
     assert live_move["name"] == "Slash"
+
+
+def test_enhanced_monster_database_covers_remaining_act3_threats():
+    database = EnhancedMonsterDatabase()
+
+    expected_moves = {
+        "Giant Head": {"Count", "Glare", "It Is Time"},
+        "Nemesis": {"Debuff", "Attack", "Scythe"},
+        "Darkling": {"Nip", "Chomp", "Harden", "Reincarnate", "Regrow"},
+        "The Maw": {"Roar", "Drool", "Slam", "Nom"},
+    }
+
+    for monster_name, moves in expected_moves.items():
+        monster_data = database.get_monster_data(monster_name)
+        assert monster_data is not None, monster_name
+        assert {move["name"] for move in database.get_moves(monster_name)} == moves
+
+    giant_head_time = database.predict_next_moves("Giant Head", current_turn=5, monster_hp_percent=1.0)
+    nemesis_later = database.predict_next_moves("Nemesis", current_turn=2, monster_hp_percent=1.0)
+    darkling_opening = database.predict_next_moves("Darkling", current_turn=1, monster_hp_percent=1.0)
+    maw_opening = database.predict_next_moves("The Maw", current_turn=1, monster_hp_percent=1.0)
+    maw_later = database.predict_next_moves("The Maw", current_turn=2, monster_hp_percent=1.0)
+
+    assert giant_head_time[0]["move"]["name"] == "It Is Time"
+    assert giant_head_time[0]["move"]["damage_formula"]["base"] == 30
+    assert {prediction["move"]["name"] for prediction in nemesis_later[:3]} == {"Debuff", "Attack", "Scythe"}
+    assert {prediction["move"]["name"] for prediction in darkling_opening[:2]} == {"Nip", "Harden"}
+    assert maw_opening[0]["move"]["name"] == "Roar"
+    assert {prediction["move"]["name"] for prediction in maw_later[:2]} == {"Nom", "Slam"}
+    assert database.get_special_mechanics("Darkling")["type"] == "life_link"
+
+
+def test_formula_monster_damage_and_hits_use_target_turn():
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0), ascension_level=0)
+    transient = SimpleNamespace(name="Transient", current_hp=999, max_hp=999, strength=0)
+    transient_move = EnhancedMonsterDatabase().get_moves("Transient")[0]
+    maw_nom = {
+        "name": "Nom",
+        "intent": "ATTACK",
+        "damage": 5,
+        "hits_formula": {"type": "ceil_turn_divisor", "divisor": 2},
+    }
+
+    damage_curve = classifier._calculate_damage_curve(
+        context,
+        [transient],
+        current_turn=1,
+        look_ahead=2,
+    )
+
+    assert damage_curve == [40, 50]
+    assert classifier._resolve_move_hits(maw_nom, context, target_turn=5) == 3
+    assert FastCombatSimulator(None)._move_damage_value(transient_move, SimpleNamespace(player_hp=80), target_turn=3) == 50
+    assert FastCombatSimulator(None)._move_hit_count(maw_nom, target_turn=5) == 3

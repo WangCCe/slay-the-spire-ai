@@ -1,5 +1,213 @@
 [
   {
+    "monster_id": "Darkling",
+    "name": "Darkling",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 48,
+        "max": 56
+      },
+      "ascension_7+": {
+        "min": 50,
+        "max": 59
+      }
+    },
+    "in_party_with": ["Darkling", "Darkling"],
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Nip",
+        "intent": "ATTACK",
+        "damage": {
+          "min": 7,
+          "max": 11
+        },
+        "effect": "Deals N damage, where N is chosen between 7 and 11 at the start of combat.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage_bonus": 2
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Chomp",
+        "intent": "ATTACK",
+        "damage": 8,
+        "hits": 2,
+        "effect": "Deals 8 damage 2 times.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage_bonus": 1
+          }
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Harden",
+        "intent": "DEFEND",
+        "damage": null,
+        "block_gain": 12,
+        "effect": "Gains 12 Block.",
+        "ascension_modifiers": {
+          "17+": {
+            "strength_gain": 2
+          }
+        }
+      },
+      {
+        "move_id": 3,
+        "name": "Reincarnate",
+        "intent": "BUFF",
+        "damage": null,
+        "revive_hp_percent": 50,
+        "effect": "Revives with 50% HP if another Darkling is alive."
+      },
+      {
+        "move_id": 4,
+        "name": "Regrow",
+        "intent": "UNKNOWN",
+        "damage": null,
+        "effect": "Does nothing while untargetable before Reincarnate."
+      }
+    ],
+    "pattern": {
+      "description": "Turn 1: 50% Nip and 50% Harden. The middle Darkling keeps that pattern and cannot use Chomp. Outer Darklings later use 30% Nip, 40% Chomp, and 30% Harden.",
+      "turn_1_probabilities": {
+        "Nip": 0.5,
+        "Harden": 0.5
+      },
+      "subsequent_probabilities": {
+        "Chomp": 0.4,
+        "Nip": 0.3,
+        "Harden": 0.3
+      },
+      "constraints": [
+        "harden_cannot_be_used_twice_in_a_row",
+        "chomp_cannot_be_used_twice_in_a_row",
+        "nip_cannot_be_used_three_times_in_a_row",
+        "middle_darkling_cannot_use_chomp"
+      ]
+    },
+    "special_mechanics": {
+      "type": "life_link",
+      "description": "When a Darkling reaches 0 HP, it becomes untargetable and revives after 2 turns with half HP if any other Darkling remains alive.",
+      "revive_delay_turns": 2,
+      "revive_hp_percent": 50,
+      "recommended_strategy": {
+        "primary": "line_up_kills",
+        "secondary": "avoid_leaving_one_darkling_cycle_to_revive_others",
+        "note": "Treat them as a group kill problem rather than ordinary minions."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 24,
+      "party_threat_multiplier": 2.0,
+      "scaling_threat": 3.0,
+      "notes": "Three-enemy Life Link encounter. Chomp and Nip combine for heavy group damage if kills are mistimed."
+    }
+  },
+  {
+    "monster_id": "The_Maw",
+    "name": "The Maw",
+    "aliases": ["Maw"],
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {
+        "min": 300,
+        "max": 300
+      }
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Roar",
+        "intent": "DEBUFF",
+        "damage": null,
+        "weak_applied": 3,
+        "frail_applied": 3,
+        "effect": "Applies 3 Weak and 3 Frail.",
+        "ascension_modifiers": {
+          "17+": {
+            "weak_applied": 5,
+            "frail_applied": 5
+          }
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Drool",
+        "intent": "BUFF",
+        "damage": null,
+        "strength_gain": 3,
+        "effect": "Gains 3 Strength.",
+        "ascension_modifiers": {
+          "17+": {
+            "strength_gain": 5
+          }
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Slam",
+        "intent": "ATTACK",
+        "damage": 25,
+        "effect": "Deals 25 damage.",
+        "ascension_modifiers": {
+          "2+": {
+            "damage_bonus": 5
+          }
+        }
+      },
+      {
+        "move_id": 3,
+        "name": "Nom",
+        "intent": "ATTACK",
+        "damage": 5,
+        "hits_formula": {
+          "type": "ceil_turn_divisor",
+          "divisor": 2
+        },
+        "effect": "Deals 5 damage T times. T is the total number of turns the combat has lasted, divided by 2 and rounded up."
+      }
+    ],
+    "pattern": {
+      "description": "Always opens with Roar. After Roar or Drool, uses Slam or Nom 50/50. After Slam, uses Drool or Nom 50/50. After Nom, always uses Drool.",
+      "opening": ["Roar"],
+      "phase_1_probabilities": {
+        "Nom": 0.5,
+        "Slam": 0.5
+      },
+      "phase_2_probabilities": {
+        "Drool": 0.5,
+        "Nom": 0.5
+      },
+      "constraints": [
+        "after_nom_always_drool",
+        "after_slam_drool_or_nom",
+        "after_roar_or_drool_slam_or_nom"
+      ]
+    },
+    "special_mechanics": {
+      "type": "strength_scaler",
+      "description": "Large HP enemy that opens with Weak/Frail and alternates between attacks and Drool Strength gain. Nom scales its number of hits by combat turn.",
+      "strength_gain_move": "Drool",
+      "nom_hit_formula": "ceil(turn / 2)",
+      "recommended_strategy": {
+        "primary": "kill_before_nom_and_drool_scale",
+        "secondary": "respect_weak_frail_opening",
+        "note": "Long fights become dangerous as Nom gains hits and Drool raises per-hit damage."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 28,
+      "scaling_threat": 5.0,
+      "debuff_threat": 12,
+      "notes": "The opening debuffs reduce defenses, then Strength and Nom hit count ramp over a long fight."
+    }
+  },
+  {
     "monster_id": "Transient",
     "name": "Transient",
     "monster_type": "normal",
@@ -15,16 +223,23 @@
         "name": "Attack",
         "intent": "ATTACK",
         "damage": "30 + X*10",
+        "damage_formula": {
+          "type": "linear_by_turn",
+          "base": 30,
+          "per_turn": 10,
+          "turn_offset": -1
+        },
         "effect": "Deals 30 + X*10 damage, where X = turn number - 1.",
         "ascension_modifiers": {
           "2+": {
-            "damage": "40 + X*10"
+            "damage_bonus": 10
           }
         }
       }
     ],
     "pattern": {
-      "description": "Uses Attack every turn. Damage scales with turn number (30 + X*10, where X = turn number - 1). Ascension 2+: 40 + X*10 damage."
+      "description": "Uses Attack every turn. Damage scales with turn number (30 + X*10, where X = turn number - 1). Ascension 2+: 40 + X*10 damage.",
+      "only_move": "Attack"
     },
     "special_mechanics": {
       "type": "fading_shifting",
