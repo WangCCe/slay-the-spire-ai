@@ -809,7 +809,7 @@ class SimpleAgent:
             hp_pct = self.game.current_hp / max(self.game.max_hp, 1)
             is_pre_boss = self.game.floor % 17 in (15, 16)
             if RestOption.REST in rest_options and (
-                hp_pct < 0.5 or (is_pre_boss and hp_pct < 0.95)
+                hp_pct < 0.5 or (is_pre_boss and hp_pct < 0.8)
             ):
                 logging.info(
                     "[REST_GUARD] Forcing REST hp=%s/%s hp_pct=%.1f%% floor=%s pre_boss=%s",

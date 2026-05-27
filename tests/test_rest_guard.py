@@ -80,7 +80,7 @@ def test_pre_boss_rest_overrides_high_value_smith(monkeypatch):
     assert action.name == RestOption.REST.name
 
 
-def test_pre_boss_rest_overrides_smith_when_only_slightly_damaged(monkeypatch):
+def test_pre_boss_high_hp_uses_scored_smith_when_only_slightly_damaged(monkeypatch):
     agent = _agent_for_rest_choice(
         monkeypatch,
         hp=72,
@@ -94,4 +94,4 @@ def test_pre_boss_rest_overrides_smith_when_only_slightly_damaged(monkeypatch):
     action = agent.choose_rest_option()
 
     assert isinstance(action, RestAction)
-    assert action.name == RestOption.REST.name
+    assert action.name == RestOption.SMITH.name

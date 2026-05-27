@@ -311,7 +311,7 @@ class AdaptiveMapRouter:
 
         if hp_pct < 0.5:
             return True, "low_hp"
-        if is_pre_boss and hp_pct < 0.95:
+        if is_pre_boss and hp_pct < 0.8:
             return True, "pre_boss"
         return False, ""
 

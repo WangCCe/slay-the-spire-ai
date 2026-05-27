@@ -47,11 +47,36 @@ def test_conservative_act2_elite_penalty_blocks_future_reward_bait():
     assert elite_priority <= -1000
 
 
-def test_map_router_pre_boss_rest_overrides_high_value_smith():
+def test_map_router_pre_boss_high_hp_allows_high_value_smith():
     router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
     context = _context(
         floor=15,
         hp_pct=0.9,
+        deck=[
+            _card("Bash"),
+            _card("Shockwave"),
+            _card("Pommel Strike"),
+            _card("Shrug It Off"),
+            _card("Battle Trance"),
+            _card("Headbutt"),
+            _card("Inflame"),
+            _card("Anger"),
+        ],
+    )
+
+    option = router.choose_campfire_option(
+        [RestOption.REST, RestOption.SMITH],
+        context,
+    )
+
+    assert option == RestOption.SMITH
+
+
+def test_map_router_pre_boss_moderate_hp_still_forces_rest():
+    router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
+    context = _context(
+        floor=15,
+        hp_pct=0.74,
         deck=[
             _card("Bash"),
             _card("Shockwave"),
