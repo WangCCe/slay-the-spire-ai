@@ -2377,9 +2377,12 @@ class FastCombatSimulator:
             return None
 
         if move_id is not None:
+            live_intent = self._intent_name(monster.get('intent', '')).upper()
             for move in moves:
                 if move.get('move_id') == move_id:
-                    return move
+                    if not live_intent or self._move_intent_matches_live(move, live_intent):
+                        return move
+                    break
 
         return self._find_current_move_by_live_state(monster, moves)
 
@@ -2428,10 +2431,19 @@ class FastCombatSimulator:
             return False
         if move_intent == live_intent:
             return True
-        if live_intent in move_intent or move_intent in live_intent:
+
+        live_has_attack = 'ATTACK' in live_intent
+        move_has_attack = 'ATTACK' in move_intent
+        if live_has_attack:
+            if not move_has_attack:
+                return False
+            for required_tag in ('DEFEND', 'DEBUFF', 'BUFF'):
+                if required_tag in live_intent and required_tag not in move_intent:
+                    return False
             return True
-        if live_intent == 'ATTACK' and 'ATTACK' in move_intent:
-            return True
+
+        if move_has_attack:
+            return False
         if live_intent == 'DEBUFF' and 'DEBUFF' in move_intent:
             return True
         if live_intent == 'BUFF' and 'BUFF' in move_intent:

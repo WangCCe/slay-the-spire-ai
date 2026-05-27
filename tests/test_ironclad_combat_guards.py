@@ -3671,3 +3671,28 @@ def test_live_green_louse_id_resolves_spit_web_despite_live_move_id():
 
     assert move["name"] == "Spit Web"
     assert debuffs["weak"] == 2
+
+
+def test_live_spheric_guardian_defend_intent_overrides_mismatched_move_id():
+    spheric_guardian = Monster(
+        name="Spheric Guardian",
+        monster_id="SphericGuardian",
+        max_hp=20,
+        current_hp=20,
+        block=40,
+        intent=Intent.DEFEND,
+        half_dead=False,
+        is_gone=False,
+        move_id=2,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+    context = _combat_context([], monsters=[spheric_guardian])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    state = SimulationState(context)
+
+    move = simulator._current_monster_move(state.monsters[0])
+    damage = simulator.simulate_enemy_lookahead(state, context, look_ahead=1)
+
+    assert move["name"] == "Activate"
+    assert damage == 0
