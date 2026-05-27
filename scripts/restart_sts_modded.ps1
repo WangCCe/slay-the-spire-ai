@@ -7,6 +7,8 @@ param(
     [ValidateSet("IRONCLAD", "THE_SILENT", "DEFECT", "WATCHER")]
     [string]$Character = "IRONCLAD",
     [int]$ShutdownWaitSeconds = 4,
+    [switch]$NoSuperFastMode,
+    [switch]$DiagnosticSpeed,
     [switch]$DryRun,
     [switch]$SkipLaunch,
     [switch]$FreshRun,
@@ -205,6 +207,28 @@ function Move-AutosavesForFreshRun {
     }
 }
 
+function Resolve-ModIdsForLaunch {
+    param(
+        [string]$ModIds,
+        [switch]$DisableSuperFastMode
+    )
+
+    $mods = @(
+        $ModIds -split "," |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_ -ne "" }
+    )
+
+    if ($DisableSuperFastMode) {
+        $mods = @(
+            $mods |
+                Where-Object { $_.ToLowerInvariant() -ne "superfastmode" }
+        )
+    }
+
+    return ($mods -join ",")
+}
+
 function Start-ModTheSpire {
     param(
         [string]$GameDir,
@@ -251,6 +275,11 @@ if ($DryRun) {
     Write-Host "[restart-sts] dry run: no processes will be stopped and no launcher will be started."
 }
 
+$effectiveModIds = Resolve-ModIdsForLaunch $ModIds -DisableSuperFastMode:($NoSuperFastMode -or $DiagnosticSpeed)
+if ($DiagnosticSpeed) {
+    Write-Host "[restart-sts] diagnostic speed: superfastmode disabled for launch."
+}
+
 $targets = @()
 try {
     $targets = @(Get-RestartTargetProcesses $normalizedProjectRoot $normalizedGameDir)
@@ -285,4 +314,4 @@ if ($SkipLaunch) {
     exit 0
 }
 
-Start-ModTheSpire $GameDir $ModTheSpireJar $ModIds -UseLauncher:$UseLauncher -DryRun:$DryRun
+Start-ModTheSpire $GameDir $ModTheSpireJar $effectiveModIds -UseLauncher:$UseLauncher -DryRun:$DryRun

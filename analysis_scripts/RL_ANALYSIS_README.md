@@ -16,12 +16,14 @@
 ```bash
 python analysis_scripts/diagnose_live_batch.py --game-dir D:\SteamLibrary\steamapps\common\SlayTheSpire --since 1779896308 --tail-lines 120
 python analysis_scripts/diagnose_run.py 1779896509 --game-dir D:\SteamLibrary\steamapps\common\SlayTheSpire --before-seconds 90 --after-seconds 10
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\restart_sts_modded.ps1 -FreshRun -DiagnosticSpeed
 ```
 
 **何时使用：**
 - 每次验证批次结束后，先用 `diagnose_live_batch.py` 找最佳楼层和重复死因
 - 选中具体失败局后，用 `diagnose_run.py` 快速拿到这一局的可读证据包
 - 机制修复前，用这两个脚本把 `.run` 证据和日志证据对齐
+- 需要更完整取证时，用 `-DiagnosticSpeed` 重启；它会临时不加载 `superfastmode`
 
 ---
 

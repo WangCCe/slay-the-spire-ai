@@ -84,6 +84,59 @@ def test_restart_script_direct_launches_modthespire_without_launcher_by_default(
     assert "mts-launcher.jar" not in output
 
 
+def test_restart_script_can_disable_superfastmode_for_diagnostics():
+    shell = shutil.which("pwsh") or shutil.which("powershell")
+    assert shell is not None
+
+    result = subprocess.run(
+        [
+            shell,
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(SCRIPT),
+            "-DryRun",
+            "-NoSuperFastMode",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, output
+    assert "--mods basemod,CommunicationMod,StSExporter" in output
+    assert "superfastmode" not in output
+
+
+def test_restart_script_diagnostic_speed_alias_disables_superfastmode():
+    shell = shutil.which("pwsh") or shutil.which("powershell")
+    assert shell is not None
+
+    result = subprocess.run(
+        [
+            shell,
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(SCRIPT),
+            "-DryRun",
+            "-DiagnosticSpeed",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, output
+    assert "[restart-sts] diagnostic speed: superfastmode disabled for launch." in output
+    assert "--mods basemod,CommunicationMod,StSExporter" in output
+    assert "superfastmode" not in output.replace("superfastmode disabled", "")
+
+
 def test_restart_script_fresh_run_dry_run_reports_autosave_backup(tmp_path):
     shell = shutil.which("pwsh") or shutil.which("powershell")
     assert shell is not None
