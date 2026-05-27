@@ -1437,10 +1437,11 @@ class CombatRLAgent:
 
     def _is_in_combat_context(self, game: Game) -> bool:
         """
-        Detect if we're in combat (main loop or combat popups).
+        Detect if we're in the main combat action loop.
 
-        Uses game.in_combat together with the screen type to gate combat-only
-        RL usage. Some post-combat screens can retain a stale in_combat flag.
+        Uses game.in_combat together with the screen type to gate combat RL.
+        Selection popups such as GRID and HAND_SELECT need deterministic
+        screen handlers even when they appear during combat.
         """
         from spirecomm.spire.screen import ScreenType
 
@@ -1451,13 +1452,11 @@ class CombatRLAgent:
         return screen_type in (
             None,
             ScreenType.NONE,
-            ScreenType.HAND_SELECT,
-            ScreenType.GRID,
         )
 
     def _is_rl_context(self, game: Game) -> bool:
         """
-        Use RL only for live combat decisions and combat-only selection popups.
+        Use RL only for live main-combat decisions.
         """
         in_combat = self._is_in_combat_context(game)
         screen_type = getattr(game, 'screen_type', None)

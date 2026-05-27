@@ -203,6 +203,42 @@ def test_card_reward_uses_fallback_even_when_in_combat_flag_is_stale():
     assert agent.get_next_action_in_game(game) is fallback_action
 
 
+def test_in_combat_grid_screen_uses_fallback_not_rl():
+    fallback_action = PlayCardAction(card_index=0)
+    calls = {"rl": 0, "fallback": 0}
+
+    def rl_decide(_game):
+        calls["rl"] += 1
+        return CancelAction()
+
+    def fallback_decide(_game):
+        calls["fallback"] += 1
+        return fallback_action
+
+    agent = _agent()
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=fallback_decide,
+        _track_game_state=lambda game: None,
+    )
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=rl_decide)
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+    game = _game(
+        screen_type=ScreenType.GRID,
+        in_combat=True,
+        choice_available=True,
+        choice_list=["card 1", "card 2", "card 3"],
+        screen=SimpleNamespace(cards=[], confirm_up=False),
+    )
+
+    assert agent.get_next_action_in_game(game) is fallback_action
+    assert calls == {"rl": 0, "fallback": 1}
+
+
 def test_main_combat_still_uses_rl_context():
     game = _game(screen_type=None, in_combat=True)
 
