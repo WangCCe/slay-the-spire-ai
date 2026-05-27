@@ -1139,19 +1139,39 @@ class CombatRLAgent:
         effect_type = str(getattr(potion, "effect_type", "") or "")
         name = str(getattr(potion, "name", "") or "").lower()
         score = 0
-        if effect_type in ("heal",) or "heal" in name or "regen" in name or "fairy" in name:
+        if (
+            effect_type in ("heal", "heal_percent", "regen", "fairy", "max_hp")
+            or "heal" in name
+            or "regen" in name
+            or "fairy" in name
+        ):
             if hp_pct <= 0.5 or incoming >= 12:
                 score = 80
-        elif effect_type in ("block", "buff_dexterity") or "block" in name:
+        elif effect_type in (
+            "block",
+            "plated_armor",
+            "metallicize",
+            "buff_dexterity",
+            "temp_dexterity",
+            "intangible",
+        ) or "block" in name:
             if incoming >= 12:
                 score = 70
-        elif effect_type.startswith("buff") or effect_type.startswith("debuff"):
+        elif (
+            effect_type.startswith("buff")
+            or effect_type.startswith("debuff")
+            or effect_type in ("temp_strength", "thorns", "ritual", "artifact")
+        ):
             if is_elite or is_boss or incoming >= 16:
                 score = 60
-        elif effect_type == "damage" or "fire" in name or "explosive" in name:
+        elif effect_type in ("damage", "poison") or "fire" in name or "explosive" in name:
             if is_elite or is_boss or monster_count >= 2 or incoming >= 12:
                 score = 65
-        elif effect_type in ("energy", "draw") or "energy" in name or "speed" in name:
+        elif (
+            effect_type in ("energy", "draw", "draw_randomize_cost")
+            or "energy" in name
+            or "swift" in name
+        ):
             if incoming >= 12 or is_elite or is_boss:
                 score = 45
         else:

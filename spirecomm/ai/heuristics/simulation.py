@@ -2497,7 +2497,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                         # Simulate potion use (simplified simulation for now)
                         new_state = copy.deepcopy(state)
                         # Apply potion effect to state
-                        if potion.effect_type == 'damage':
+                        if potion.effect_type in ['damage', 'poison']:
                             # Reduce target HP (handle single target or AOE)
                             if potion.target_type == 'all_monsters':
                                 for i, m in enumerate(new_state.monsters):
@@ -2524,12 +2524,23 @@ class HeuristicCombatPlanner(CombatPlanner):
                                 if target_index is not None:
                                     m = new_state.monsters[target_index]
                                     m['hp'] = max(0, m['hp'] - potion.effect_value)
-                        elif potion.effect_type == 'block':
-                            new_state = new_state._replace(player_block=new_state.player_block + potion.effect_value)
+                        elif potion.effect_type in ['block', 'plated_armor', 'metallicize']:
+                            new_state.player_block += potion.effect_value
                         elif potion.effect_type in ['heal', 'regen']:
-                            new_state = new_state._replace(player_hp=min(new_state.player_max_hp, new_state.player_hp + potion.effect_value))
-                        elif potion.effect_type == 'buff_strength':
-                            new_state = new_state._replace(player_strength=new_state.player_strength + potion.effect_value)
+                            new_state.player_hp = min(new_state.player_max_hp, new_state.player_hp + potion.effect_value)
+                        elif potion.effect_type == 'heal_percent':
+                            heal_amount = int(new_state.player_max_hp * potion.effect_value)
+                            new_state.player_hp = min(new_state.player_max_hp, new_state.player_hp + heal_amount)
+                        elif potion.effect_type == 'max_hp':
+                            new_state.player_max_hp += potion.effect_value
+                            new_state.player_hp += potion.effect_value
+                        elif potion.effect_type in ['buff_strength', 'temp_strength']:
+                            new_state.player_strength += potion.effect_value
+                        elif potion.effect_type == 'energy':
+                            new_state.player_energy += potion.effect_value
+                            new_state.energy_gained += potion.effect_value
+                        elif potion.effect_type in ['draw', 'draw_randomize_cost']:
+                            new_state.cards_drawn += potion.effect_value
 
                         # Create potion action
                         if target:
@@ -2682,15 +2693,15 @@ class HeuristicCombatPlanner(CombatPlanner):
 
     def _is_healing_potion(self, potion) -> bool:
         """Check if potion is a healing potion."""
-        return potion.effect_type in ['heal', 'regen']
+        return potion.effect_type in ['heal', 'heal_percent', 'regen', 'fairy', 'max_hp']
 
     def _is_damage_potion(self, potion) -> bool:
         """Check if potion is a damage potion."""
-        return potion.effect_type == 'damage'
+        return potion.effect_type in ['damage', 'poison']
 
     def _is_block_potion(self, potion) -> bool:
         """Check if potion is a block potion."""
-        return potion.effect_type == 'block'
+        return potion.effect_type in ['block', 'plated_armor', 'metallicize']
 
     def _get_incoming_damage(self, context: DecisionContext) -> int:
         """Calculate total incoming damage from all monsters."""
