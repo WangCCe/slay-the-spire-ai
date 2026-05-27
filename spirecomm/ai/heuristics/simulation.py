@@ -2045,7 +2045,7 @@ class FastCombatSimulator:
     def _apply_self_damage(self, state: SimulationState, card: Card):
         """Apply HP costs for cards that damage the player to fuel effects."""
         try:
-            card_name = card.card_id.replace('+', '')
+            card_name = _canonical_card_name(card)
             card_data = game_data_loader.get_card_data(card_name)
             if not card_data:
                 return

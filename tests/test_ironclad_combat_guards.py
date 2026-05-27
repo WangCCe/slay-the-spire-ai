@@ -3225,6 +3225,27 @@ def test_energy_gain_skills_add_usable_energy(monkeypatch):
     assert result.player_energy == 4
     assert result.energy_gained == 3
 
+    counted_bloodletting = _card(
+        "Bloodletting+1",
+        "Bloodletting+1",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([counted_bloodletting], energy=1, monsters=[_louse(current_hp=100)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        counted_bloodletting,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 4
+    assert result.energy_gained == 3
+    assert result.player_hp == 77
+
     offering = _card("Offering", "Offering", card_type=CardType.SKILL, cost=0, has_target=False)
     context = _combat_context([offering], energy=1, monsters=[_louse(current_hp=100)])
     result = simulator.simulate_card_play(
