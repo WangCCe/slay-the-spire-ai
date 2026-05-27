@@ -163,7 +163,11 @@ class DecisionContext:
 
         total = 0
         for monster in self.game.monsters:
-            if not monster.is_gone and not monster.half_dead:
+            if (
+                not getattr(monster, 'is_gone', False)
+                and not getattr(monster, 'half_dead', False)
+                and getattr(monster, 'current_hp', 1) > 0
+            ):
                 # Check if monster is attacking this turn
                 is_attacking = False
                 if hasattr(monster, 'intent') and monster.intent is not None:

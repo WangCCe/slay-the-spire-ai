@@ -69,3 +69,19 @@ def test_legacy_synergies_use_display_name_for_basic_attack_ids(monkeypatch):
 
     assert synergies["vulnerable"] > 0
     assert synergies["weak"] > 0
+
+
+def test_incoming_damage_ignores_zero_hp_stale_monsters():
+    monster = SimpleNamespace(
+        is_gone=False,
+        half_dead=False,
+        current_hp=0,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=12,
+        move_hits=1,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.game = SimpleNamespace(monsters=[monster])
+    context.act = 1
+
+    assert context._calculate_incoming_damage() == 0
