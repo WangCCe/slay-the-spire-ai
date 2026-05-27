@@ -224,6 +224,26 @@ class Coordinator:
             )
             self.send_message("state", wait_for_response=False)
 
+    def _request_state_during_action_wait(self, consecutive_timeouts):
+        if len(self.action_queue) == 0:
+            self._request_state_during_idle_wait(consecutive_timeouts)
+            return
+
+        next_action = self.action_queue[0]
+        if (
+            getattr(next_action, "requires_game_ready", False)
+            and not self.game_is_ready
+        ):
+            import logging
+
+            logging.info(
+                "[READY_WAIT_STATE_POLL] action=%s screen=%s consecutive_timeouts=%s; requesting state",
+                type(next_action).__name__,
+                getattr(self.last_game_state, "screen_type", None),
+                consecutive_timeouts,
+            )
+            self._request_state_during_idle_wait(consecutive_timeouts)
+
     def _queue_state_change_callback_action(self, deferred=False):
         import logging
 
@@ -644,8 +664,7 @@ class Coordinator:
                 consecutive_timeouts = 0
             else:
                 consecutive_timeouts += 1
-                if len(self.action_queue) == 0:
-                    self._request_state_during_idle_wait(consecutive_timeouts)
+                self._request_state_during_action_wait(consecutive_timeouts)
 
                 # Special handling for screens that may not send state updates after selections
                 # COMBAT_REWARD: especially in chest rooms with mutually exclusive rewards

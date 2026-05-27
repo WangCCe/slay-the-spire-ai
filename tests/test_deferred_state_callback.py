@@ -103,3 +103,14 @@ def test_deferred_callback_waits_when_optional_confirm_sent_command():
     assert not coordinator._run_deferred_state_callback_if_idle()
     assert calls == []
     assert len(coordinator.action_queue) == 0
+
+
+def test_waiting_ready_required_action_polls_state():
+    coordinator = _coordinator_without_threads()
+    coordinator.game_is_ready = False
+    coordinator.last_game_state = SimpleNamespace(screen_type=ScreenType.EVENT)
+    coordinator.action_queue.append(ChooseAction(0))
+
+    coordinator._request_state_during_action_wait(1)
+
+    assert coordinator.output_queue.get_nowait() == "state"
