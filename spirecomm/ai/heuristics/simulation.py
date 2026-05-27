@@ -1581,7 +1581,7 @@ class FastCombatSimulator:
             Total predicted damage over next N turns (discounted for uncertainty)
         """
         try:
-            lookahead_state = self._materialize_pending_death_splits(state.clone())
+            lookahead_state = state.clone()
             logger.info(
                 "[LOOKAHEAD_ENTRY] turns=%s monsters=%s hp=%s/%s",
                 look_ahead,
@@ -1592,30 +1592,6 @@ class FastCombatSimulator:
             total_future_damage = 0
             current_turn = getattr(context, 'turn', 1)
 
-            predicted_by_monster: Dict[int, List[Dict[str, Any]]] = {}
-            any_predictions = False
-
-            for idx, monster in enumerate(lookahead_state.monsters):
-                if monster['is_gone']:
-                    continue
-
-                monster_name = monster.get('name', '')
-                if not monster_name:
-                    continue
-
-                max_hp = monster.get('max_hp', monster['hp'])
-                hp_percent = monster['hp'] / max_hp if max_hp > 0 else 1.0
-
-                predicted_moves = game_data_loader.predict_monster_moves(
-                    monster_name, current_turn, hp_percent
-                )
-                predicted_by_monster[idx] = predicted_moves
-                if predicted_moves:
-                    any_predictions = True
-
-            if not any_predictions:
-                look_ahead = 1
-
             player_vulnerable = lookahead_state.player_vulnerable
             player_weak = lookahead_state.player_weak
             player_frail = lookahead_state.player_frail
@@ -1623,20 +1599,39 @@ class FastCombatSimulator:
             for step in range(look_ahead):
                 turn_damage = 0
                 pending_debuffs = {'weak': 0, 'frail': 0, 'vulnerable': 0}
+                any_predictions = False
+                split_due_this_turn = False
 
                 for idx, monster in enumerate(lookahead_state.monsters):
                     if monster['is_gone']:
                         continue
 
-                    predicted_moves = predicted_by_monster.get(idx, [])
+                    split_info = self._get_death_split_info(monster)
+                    if split_info and self._is_death_split_due(monster, split_info):
+                        monster['split_pending'] = True
+                        split_due_this_turn = True
+                        continue
+
+                    monster_name = monster.get('name', '')
+                    if not monster_name:
+                        continue
+
+                    max_hp = monster.get('max_hp', monster['hp'])
+                    hp_percent = monster['hp'] / max_hp if max_hp > 0 else 1.0
+                    predicted_moves = game_data_loader.predict_monster_moves(
+                        monster_name,
+                        current_turn + step,
+                        hp_percent,
+                    )
                     move = None
-                    if predicted_moves and step < len(predicted_moves):
-                        move = predicted_moves[step].get('move', None)
+                    if predicted_moves:
+                        move = predicted_moves[0].get('move', None)
+                        any_predictions = True
 
                     if move:
                         move_intent = move.get('intent', '').upper()
                         move_damage = self._move_damage_value(move, lookahead_state)
-                        move_hits = move.get('hits', 1)
+                        move_hits = move.get('hits', move.get('move_hits', 1)) or 1
 
                         if 'ATTACK' in move_intent and move_damage > 0:
                             damage = move_damage * move_hits
@@ -1676,6 +1671,11 @@ class FastCombatSimulator:
                     f"[LOOKAHEAD_TURN] step={step + 1} damage={turn_damage} "
                     f"debuffs=V{player_vulnerable}/W{player_weak}/F{player_frail}"
                 )
+
+                if split_due_this_turn:
+                    lookahead_state = self._materialize_pending_death_splits(lookahead_state)
+                elif not any_predictions:
+                    break
 
             if total_future_damage > 0:
                 logger.info(f"[LOOKAHEAD] Predicted damage over next {look_ahead} turns: {total_future_damage}")

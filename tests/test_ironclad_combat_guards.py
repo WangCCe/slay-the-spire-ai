@@ -266,18 +266,27 @@ def test_slime_boss_split_materializes_large_slimes_with_inherited_hp():
     assert [monster["max_hp"] for monster in alive] == [56, 56]
 
 
-def test_enemy_lookahead_counts_slime_boss_split_child_threat_immediately():
+def test_enemy_lookahead_delays_slime_boss_split_child_threat_until_after_split_turn():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_slime_boss(current_hp=56)])
     context.turn = 4
 
-    future_damage = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_lookahead(
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    immediate_damage = simulator.simulate_enemy_lookahead(
         SimulationState(context),
         context,
         look_ahead=1,
     )
 
-    assert future_damage >= 15
+    delayed_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=2,
+    )
+
+    assert immediate_damage == 0
+    assert delayed_damage > 0
 
 
 def test_enemy_lookahead_handles_monster_damage_ranges():
