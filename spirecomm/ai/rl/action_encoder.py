@@ -156,13 +156,19 @@ class ActionEncoder:
             offset = action_index - self.USE_POTION_OFFSET
             potion_index = offset // 10
             monster_index = offset % 10
+            potion = None
+            if 0 <= potion_index < len(getattr(game, "potions", []) or []):
+                potion = game.potions[potion_index]
+            target_index = None
+            if getattr(potion, "requires_target", True):
+                target_index = (
+                    monster_index if monster_index < len(game.monsters) else -1
+                )
             # Use named parameters to avoid confusion: use=True, potion_index=X, target_index=Y
             return PotionAction(
                 use=True,
                 potion_index=potion_index,
-                target_index=monster_index
-                if monster_index < len(game.monsters)
-                else -1,
+                target_index=target_index,
             )
 
         # Card reward selection
@@ -713,18 +719,24 @@ class ActionEncoder:
                     if hasattr(potion, "can_use") and not potion.can_use:
                         continue
 
-                    # Enable potion action for each valid target
-                    for monster_idx, monster in enumerate(
-                        monsters[: self.MAX_MONSTERS]
-                    ):
-                        if (
-                            monster.current_hp <= 0
-                            or monster.is_gone
-                            or monster.half_dead
+                    if not getattr(potion, "requires_target", False):
+                        mask[self.encode_use_potion(potion_idx, 0)] = True
+                    else:
+                        # Enable potion action for each valid target
+                        for monster_idx, monster in enumerate(
+                            monsters[: self.MAX_MONSTERS]
                         ):
-                            continue
-                        action_idx = self.encode_use_potion(potion_idx, monster_idx)
-                        mask[action_idx] = True
+                            if (
+                                monster.current_hp <= 0
+                                or monster.is_gone
+                                or monster.half_dead
+                            ):
+                                continue
+                            action_idx = self.encode_use_potion(
+                                potion_idx,
+                                monster_idx,
+                            )
+                            mask[action_idx] = True
 
             logger.debug(f"Combat (ScreenType.NONE): {sum(mask)} valid actions")
 

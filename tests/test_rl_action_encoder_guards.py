@@ -6,6 +6,7 @@ from spirecomm.communication.action import (
     BuyPotionAction,
     BuyPurgeAction,
     BuyRelicAction,
+    PotionAction,
 )
 from spirecomm.spire.screen import ScreenType
 
@@ -46,8 +47,12 @@ def _combat_game(**kwargs):
     return SimpleNamespace(**defaults)
 
 
-def _potion(name):
-    return SimpleNamespace(potion_id=name, can_use=True, requires_target=True)
+def _potion(name, requires_target=True):
+    return SimpleNamespace(
+        potion_id=name,
+        can_use=True,
+        requires_target=requires_target,
+    )
 
 
 def test_legacy_shop_decoder_uses_item_offsets_for_purchases():
@@ -129,3 +134,33 @@ def test_legacy_potion_mask_does_not_collide_with_end_turn_action():
     mask = encoder.get_action_mask(game)
 
     assert not mask[encoder.END_TURN_ACTION]
+
+
+def test_legacy_nontarget_potion_mask_uses_self_slot_only():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        potions=[_potion("Strength Potion", requires_target=False)],
+        monsters=[
+            SimpleNamespace(current_hp=10, is_gone=False, half_dead=False),
+            SimpleNamespace(current_hp=10, is_gone=False, half_dead=False),
+        ],
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert mask[encoder.encode_use_potion(0, 0)]
+    assert not mask[encoder.encode_use_potion(0, 1)]
+
+
+def test_legacy_nontarget_potion_decoder_omits_target():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        potions=[_potion("Strength Potion", requires_target=False)],
+        monsters=[SimpleNamespace(current_hp=10, is_gone=False, half_dead=False)],
+    )
+
+    action = encoder.decode_action(encoder.encode_use_potion(0, 0), game)
+
+    assert isinstance(action, PotionAction)
+    assert action.potion_index == 0
+    assert action.target_index is None
