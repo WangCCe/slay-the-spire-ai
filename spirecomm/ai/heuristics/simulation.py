@@ -810,6 +810,7 @@ class FastCombatSimulator:
 
         self._apply_attack_healing(state, card, starting_total_damage)
         self._apply_attack_resource_effects(state, card, target_index)
+        self._apply_attack_block_effects(state, card, card_data)
 
     def _get_attack_hit_count(
         self,
@@ -870,6 +871,28 @@ class FastCombatSimulator:
         state.player_energy += 1
         state.energy_gained += 1
         state.cards_drawn += 1
+
+    def _apply_attack_block_effects(
+        self,
+        state: SimulationState,
+        card: Card,
+        card_data: Optional[Dict[str, Any]],
+    ):
+        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        if card_name != 'Iron Wave':
+            return
+
+        block_gain = None
+        if card_data:
+            block_gain = game_data_loader._parse_card_block(card_data)
+        if block_gain is None:
+            block_gain = 5
+
+        upgrades = getattr(card, 'upgrades', 0)
+        if upgrades > 0:
+            block_gain += BLOCK_UPGRADE_BONUS.get(card_name, 2)
+
+        state.player_block += self._apply_frail_block(block_gain, state.player_frail)
 
     def _calculate_attack_damage(
         self,
@@ -1092,6 +1115,9 @@ class FastCombatSimulator:
         target_index: Optional[int] = None,
     ):
         """Apply skill card effects."""
+        if self._apply_block_multiplier_skill(state, card):
+            return
+
         # Block skills - apply frail multiplier if player has frail
         if hasattr(card, 'block') and card.block is not None:
             block_gain = card.block
@@ -1292,6 +1318,14 @@ class FastCombatSimulator:
 
         state.player_energy += energy_gain
         state.energy_gained += energy_gain
+
+    def _apply_block_multiplier_skill(self, state: SimulationState, card: Card) -> bool:
+        card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        if card_id != 'Entrench':
+            return False
+
+        state.player_block *= 2
+        return True
 
     def _apply_enemy_strength_skill(
         self,

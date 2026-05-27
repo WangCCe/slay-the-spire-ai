@@ -287,6 +287,74 @@ def test_bludgeon_damage_is_static_not_scaled_by_block(monkeypatch):
         assert result.total_damage_dealt == 32
 
 
+def test_iron_wave_deals_damage_and_gains_block(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "iron wave": {
+            "name": "Iron Wave",
+            "description": "Gain 5 Block.\nDeal 5 damage.",
+        }
+    }
+    loader._wiki_data = {
+        "iron wave": {
+            "name": "Iron Wave",
+            "text": "Gain [5|7] #Block.\nDeal [5|7] damage.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    iron_wave = _card("Iron Wave", "Iron Wave", cost=1)
+    context = _combat_context([iron_wave], energy=1, monsters=[_louse(current_hp=100)])
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        iron_wave,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 5
+    assert result.player_block == 5
+
+    iron_wave_plus = _card("Iron Wave", "Iron Wave+", cost=1, upgrades=1)
+    context = _combat_context([iron_wave_plus], energy=1, monsters=[_louse(current_hp=100)])
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        iron_wave_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 7
+    assert result.player_block == 7
+
+
+def test_entrench_doubles_current_block():
+    entrench = _card(
+        "Entrench",
+        "Entrench",
+        card_type=CardType.SKILL,
+        cost=2,
+        has_target=False,
+    )
+    context = _combat_context([entrench], energy=2, monsters=[_louse(current_hp=100)])
+    initial_state = SimulationState(context)
+    initial_state.player_block = 12
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        initial_state,
+        entrench,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 24
+
+
 def test_upgraded_bludgeon_damage_is_42(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
