@@ -863,6 +863,37 @@ def test_second_wind_gains_block_for_each_non_attack_card_exhausted():
     assert result.exhaust_events == 2
 
 
+def test_second_wind_exhausting_sentinel_grants_energy():
+    second_wind = _card(
+        "Second Wind",
+        "Second Wind",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    sentinel = _card(
+        "Sentinel",
+        "Sentinel",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([second_wind, sentinel, defend], energy=1, monsters=[_louse(current_hp=100)])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        second_wind,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.exhaust_events == 2
+    assert result.player_energy == 2
+    assert result.energy_gained == 2
+
+
 def test_upgraded_bludgeon_damage_is_42(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

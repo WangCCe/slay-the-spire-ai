@@ -1010,18 +1010,40 @@ class FastCombatSimulator:
         card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
 
         if card_name == 'Fiend Fire' and context is not None:
-            state.exhaust_events += len(self._unplayed_hand_cards(state, context, exclude_card=card))
+            exhausted_cards = self._unplayed_hand_cards(state, context, exclude_card=card)
+            state.exhaust_events += len(exhausted_cards)
+            self._apply_sentinel_exhaust_energy(state, exhausted_cards)
         elif card_name == 'Sever Soul' and context is not None:
-            state.exhaust_events += sum(
-                1
+            exhausted_cards = [
+                hand_card
                 for hand_card in self._unplayed_hand_cards(state, context, exclude_card=card)
                 if getattr(hand_card, 'type', None) != CardType.ATTACK
-            )
+            ]
+            state.exhaust_events += len(exhausted_cards)
+            self._apply_sentinel_exhaust_energy(state, exhausted_cards)
 
         if card_data:
             description = self._get_card_effect_text(card_name, card_data)
             if self._card_exhausts_itself(description):
                 state.exhaust_events += 1
+
+    def _apply_sentinel_exhaust_energy(self, state: SimulationState, exhausted_cards: List[Card]):
+        energy_gain = 0
+        for exhausted_card in exhausted_cards:
+            card_name = (
+                getattr(exhausted_card, 'card_id', '')
+                or getattr(exhausted_card, 'name', '')
+            )
+            if card_name.replace('+', '') != 'Sentinel':
+                continue
+
+            energy_gain += 3 if getattr(exhausted_card, 'upgrades', 0) > 0 else 2
+
+        if energy_gain <= 0:
+            return
+
+        state.player_energy += energy_gain
+        state.energy_gained += energy_gain
 
     def _unplayed_hand_cards(
         self,
@@ -1565,13 +1587,14 @@ class FastCombatSimulator:
         if context is None:
             return False
 
-        exhausted_count = sum(
-            1
+        exhausted_cards = [
+            hand_card
             for hand_card in getattr(context, 'playable_cards', [])
             if hand_card is not card
             and id(hand_card) not in state.played_card_uuids
             and getattr(hand_card, 'type', None) != CardType.ATTACK
-        )
+        ]
+        exhausted_count = len(exhausted_cards)
         if exhausted_count <= 0:
             return True
 
@@ -1579,6 +1602,7 @@ class FastCombatSimulator:
         block_gain = self._apply_frail_block(block_per_card * exhausted_count, state.player_frail)
         state.player_block += block_gain
         state.exhaust_events += exhausted_count
+        self._apply_sentinel_exhaust_energy(state, exhausted_cards)
         return True
 
     def _apply_double_tap(self, state: SimulationState, card: Card) -> bool:
