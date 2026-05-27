@@ -284,6 +284,45 @@ def test_dark_embrace_draws_for_exhaust_events(monkeypatch):
     assert result.cards_drawn == 1
 
 
+def test_metallicize_tracks_end_turn_block_without_body_slam_block(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "metallicize": {
+            "name": "Metallicize",
+            "description": "At the end of your turn, gain 3 Block.",
+        },
+        "body slam": {
+            "name": "Body Slam",
+            "description": "Deal damage equal to your current Block.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    metallicize = _card("Metallicize", "Metallicize", card_type=CardType.POWER, cost=1, has_target=False)
+    body_slam = _card("Body Slam", "Body Slam", cost=1)
+    context = _combat_context([metallicize, body_slam], energy=2, monsters=[_louse(current_hp=100)])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        metallicize,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        body_slam,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert state.player_block == 0
+    assert state.end_turn_block == 3
+    assert result.total_damage_dealt == 0
+
+
 def test_slime_boss_split_materializes_large_slimes_with_inherited_hp():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_slime_boss(current_hp=56)])

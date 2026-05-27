@@ -368,7 +368,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 for action in seq:
                     if hasattr(action, 'card') and action.card:
                         seq_card_ids.append(_format_card_for_log(action.card))
-                block_gained = state.player_block - initial_state.player_block
+                block_gained = state.turn_block() - initial_state.turn_block()
                 logger.info(
                     "[COMBAT_CANDIDATE] game_id=%s rank=%s score=%.1f damage=%s kills=%s block=%s energy=%s cards=%s",
                     context.game_id,
@@ -1082,14 +1082,16 @@ class IroncladCombatPlanner(CombatPlanner):
 
         # 3. Block (only valuable when taking damage, but less valuable than attacking)
         # Defense is temporary (blocks 1 turn), while killing monsters is permanent
-        block_gained = final_state.player_block - initial_state.player_block
+        initial_turn_block = initial_state.turn_block()
+        final_turn_block = final_state.turn_block()
+        block_gained = final_turn_block - initial_turn_block
         incoming_damage = context.incoming_damage
 
         if block_penalty and block_gained > 0:
             # Heavily penalize block against monsters with scaling/dangerous mechanics
             # This prevents the AI from prolonging the battle
             score -= block_gained * 10
-        elif incoming_damage > initial_state.player_block:
+        elif incoming_damage > initial_turn_block:
             # Need block - value it, but less than damage
             # Defense is temporary (blocks 1 turn), attack is permanent (kills monsters)
             block_value = 3 if self._is_low_scaling_encounter(context) else 2

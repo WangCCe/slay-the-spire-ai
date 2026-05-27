@@ -411,6 +411,7 @@ class SimulationState:
         self.player_hp = context.game.current_hp
         self.player_max_hp = context.game.max_hp
         self.player_block = context.game.player.block if hasattr(context.game.player, 'block') else 0
+        self.end_turn_block = self._get_player_power_amount(context, 'Metallicize')
         self.player_energy = context.energy_available
         self.player_strength = context.strength
 
@@ -506,6 +507,7 @@ class SimulationState:
         new_state.player_hp = self.player_hp
         new_state.player_max_hp = self.player_max_hp
         new_state.player_block = self.player_block
+        new_state.end_turn_block = self.end_turn_block
         new_state.player_energy = self.player_energy
         new_state.player_strength = self.player_strength
         new_state.player_vulnerable = self.player_vulnerable
@@ -548,6 +550,7 @@ class SimulationState:
         player_key = (
             self.player_hp,
             self.player_block,
+            self.end_turn_block,
             self.player_energy,
             self.player_strength,
             self.player_vulnerable,
@@ -585,6 +588,10 @@ class SimulationState:
         ))
 
         return (player_key, monster_key, hand_key)
+
+    def turn_block(self) -> int:
+        """Block available by the time enemies attack this turn."""
+        return self.player_block + self.end_turn_block
 
 
 class FastCombatSimulator:
@@ -744,14 +751,17 @@ class FastCombatSimulator:
         x_energy_spent: Optional[int] = None,
     ):
         """Apply attack card effects with proper damage calculation."""
+        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        dynamic_damage_card = card_name in {'Body Slam', 'Whirlwind'}
         base_damage = getattr(card, 'damage', 0)
         if base_damage is None:
             base_damage = 0
+        if dynamic_damage_card:
+            base_damage = 0
         if base_damage == 0 or not hasattr(card, 'damage'):
             # Use game data for more accurate damage estimation
-            card_name = card.card_id.replace('+', '').replace('+', '')  # Remove upgrade suffix
             card_data = game_data_loader.get_card_data(card_name)
-            if card_data:
+            if card_data and not dynamic_damage_card:
                 parsed_damage = game_data_loader._parse_card_damage(card_data)
                 base_damage = parsed_damage if parsed_damage is not None else 0
 
@@ -781,11 +791,10 @@ class FastCombatSimulator:
                 if base_damage is None:
                     base_damage = 0
 
-            if base_damage == 0:
+            if base_damage == 0 and not dynamic_damage_card:
                 base_damage = 6  # Fallback estimate for truly unknown cards
 
         # Handle AOE attacks
-        card_name = card.card_id.replace('+', '')
         card_data = game_data_loader.get_card_data(card_name)
         is_aoe = False
         if card_data:
@@ -1335,6 +1344,10 @@ class FastCombatSimulator:
         # Dark Embrace - draw when cards exhaust
         elif card_id == 'Dark Embrace':
             state.dark_embrace_draw_per_exhaust = 1
+
+        # Metallicize - end-turn block applies before enemies attack, but not immediately.
+        elif card_id == 'Metallicize':
+            state.end_turn_block += 4 if card.upgrades > 0 else 3
 
         # Draw power
         elif card_id == 'Draw':
@@ -2086,20 +2099,21 @@ class FastCombatSimulator:
         # Threat spike bonus: reward proper blocking
         elif timing.value == "THREAT_SPIKE":
             expected_damage = self.timing_context.current_damage
-            if final_state.player_block >= expected_damage * 0.8:
+            turn_block = final_state.turn_block()
+            if turn_block >= expected_damage * 0.8:
                 # Good blocking - sufficient block for incoming damage
                 bonus += 50.0
                 logger.debug(f"[TIMING_BONUS] Threat spike: +50.0 for proper blocking")
             else:
                 # Under-blocking - penalty
                 bonus -= 30.0
-                logger.debug(f"[TIMING_BONUS] Threat spike: -30.0 for under-blocking (block={final_state.player_block}, damage={expected_damage})")
+                logger.debug(f"[TIMING_BONUS] Threat spike: -30.0 for under-blocking (block={turn_block}, damage={expected_damage})")
 
         # Preparation bonus: reward building block for future spike
         elif timing.value == "PREPARATION":
             if self.timing_context.future_damage_curve:
                 future_damage = self.timing_context.future_damage_curve[0]
-                if final_state.player_block >= future_damage * 0.6:
+                if final_state.turn_block() >= future_damage * 0.6:
                     bonus += 30.0
                     logger.debug(f"[TIMING_BONUS] Preparation: +30.0 for building block (future_damage={future_damage})")
 
@@ -2230,7 +2244,9 @@ class FastCombatSimulator:
                         logger.info(f"[OUTCOME_AOE] +{aoe_bonus} for {card_id} in {num_monsters}-monster fight")
 
         # 3. Block gained (defensive value)
-        block_gained = final_state.player_block - initial_state.player_block
+        initial_turn_block = initial_state.turn_block()
+        final_turn_block = final_state.turn_block()
+        block_gained = final_turn_block - initial_turn_block
 
         # Log block cards used in this sequence for debugging
         if block_gained > 0 and sequence:
@@ -2269,20 +2285,20 @@ class FastCombatSimulator:
 
         # 6. Survival-first scoring (estimate next turn incoming damage)
         expected_incoming = self._estimate_incoming_damage(final_state.monsters)
-        hp_loss_next_turn = max(0, expected_incoming - final_state.player_block)
+        hp_loss_next_turn = max(0, expected_incoming - final_turn_block)
 
         # Log defensive analysis for debugging
-        if block_gained > 0 or final_state.player_block > 0:
-            logger.debug(f"[DEFENSE_ANALYSIS] block_gained={block_gained}, final_block={final_state.player_block}, "
+        if block_gained > 0 or final_turn_block > 0:
+            logger.debug(f"[DEFENSE_ANALYSIS] block_gained={block_gained}, final_block={final_turn_block}, "
                         f"expected_incoming={expected_incoming}, hp_loss_next_turn={hp_loss_next_turn}, "
                         f"player_hp={final_state.player_hp}")
 
         # Detect over-defense (block significantly exceeds incoming damage)
-        if final_state.player_block > expected_incoming * 1.5 and expected_incoming > 0:
-            logger.warning(f"[OVER_DEFENSE] Block ({final_state.player_block}) is {final_state.player_block / max(expected_incoming, 1):.1f}x incoming damage ({expected_incoming}) - wasting resources!")
+        if final_turn_block > expected_incoming * 1.5 and expected_incoming > 0:
+            logger.warning(f"[OVER_DEFENSE] Block ({final_turn_block}) is {final_turn_block / max(expected_incoming, 1):.1f}x incoming damage ({expected_incoming}) - wasting resources!")
 
         # Detect useless defense (block when no incoming damage)
-        if expected_incoming == 0 and final_state.player_block > 0:
+        if expected_incoming == 0 and final_turn_block > 0:
             logger.warning(f"[USELESS_DEFENSE] Gained {block_gained} block when no incoming damage expected - completely wasted!")
 
         # Penalty for useless defense (block when monsters aren't attacking)
