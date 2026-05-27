@@ -1041,6 +1041,53 @@ def test_energy_gain_skills_add_usable_energy(monkeypatch):
     assert result.energy_gained == 2
 
 
+def test_disarm_reduces_enemy_strength_and_current_attack_damage():
+    disarm = _card(
+        "Disarm",
+        "Disarm",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=True,
+    )
+    monster = _louse(current_hp=100)
+    monster.move_adjusted_damage = 12
+    context = _combat_context([disarm], energy=1, monsters=[monster])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        disarm,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["strength"] == -2
+    assert result.monsters[0]["move_adjusted_damage"] == 10
+
+    disarm_plus = _card(
+        "Disarm",
+        "Disarm+",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=True,
+        upgrades=1,
+    )
+    monster = _louse(current_hp=100)
+    monster.move_adjusted_damage = 12
+    context = _combat_context([disarm_plus], energy=1, monsters=[monster])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        disarm_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["strength"] == -3
+    assert result.monsters[0]["move_adjusted_damage"] == 9
+
+
 def test_demon_form_does_not_add_strength_on_the_turn_it_is_played():
     demon_form = _card(
         "Demon Form",

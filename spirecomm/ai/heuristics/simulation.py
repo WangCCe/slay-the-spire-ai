@@ -1142,6 +1142,7 @@ class FastCombatSimulator:
 
         self._apply_strength_skill(state, card, target_index)
         self._apply_energy_gain_skill(state, card)
+        self._apply_enemy_strength_skill(state, card, target_index)
 
         # Apply enemy debuffs from skill cards (e.g., Shockwave).
         try:
@@ -1290,6 +1291,30 @@ class FastCombatSimulator:
 
         state.player_energy += energy_gain
         state.energy_gained += energy_gain
+
+    def _apply_enemy_strength_skill(
+        self,
+        state: SimulationState,
+        card: Card,
+        target_index: Optional[int],
+    ):
+        card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        if card_id != 'Disarm':
+            return
+        if target_index is None or not (0 <= target_index < len(state.monsters)):
+            return
+
+        monster = state.monsters[target_index]
+        if monster['is_gone']:
+            return
+
+        strength_loss = 3 if getattr(card, 'upgrades', 0) > 0 else 2
+        monster['strength'] = monster.get('strength', 0) - strength_loss
+        if self._monster_intends_attack(monster):
+            monster['move_adjusted_damage'] = max(
+                0,
+                monster.get('move_adjusted_damage', 0) - strength_loss,
+            )
 
     def _apply_rage_block(self, state: SimulationState):
         """Apply Rage block trigger after playing an attack."""
