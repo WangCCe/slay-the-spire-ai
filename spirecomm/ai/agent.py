@@ -665,8 +665,14 @@ class SimpleAgent:
                     screen.purge_cost if screen.purge_available else float("inf")
                 )
                 if screen.purge_available and gold >= purge_cost:
-                    strikes = [c for c in self.game.deck if c.card_id == "Strike_R"]
-                    defends = [c for c in self.game.deck if c.card_id == "Defend_R"]
+                    strikes = [
+                        c for c in self.game.deck
+                        if self._normalize_card_name(c) == "Strike"
+                    ]
+                    defends = [
+                        c for c in self.game.deck
+                        if self._normalize_card_name(c) == "Defend"
+                    ]
                     if len(strikes) >= 1 or len(defends) >= 1:
                         self.shop_purchase_made = True
                         return ChooseAction(name="purge")
@@ -793,12 +799,18 @@ class SimpleAgent:
                 )
             else:
                 # For purge/remove: prioritize Strike_R, then Defend_R, then others by reverse priority
-                strikes = [c for c in self.game.screen.cards if c.card_id == "Strike_R"]
-                defends = [c for c in self.game.screen.cards if c.card_id == "Defend_R"]
+                strikes = [
+                    c for c in self.game.screen.cards
+                    if self._normalize_card_name(c) == "Strike"
+                ]
+                defends = [
+                    c for c in self.game.screen.cards
+                    if self._normalize_card_name(c) == "Defend"
+                ]
                 others = [
                     c
                     for c in self.game.screen.cards
-                    if c.card_id not in ["Strike_R", "Defend_R"]
+                    if self._normalize_card_name(c) not in ["Strike", "Defend"]
                 ]
 
                 # Sort others by reverse priority (worst first)
