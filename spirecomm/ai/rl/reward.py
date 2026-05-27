@@ -629,9 +629,10 @@ class RewardCalculator:
         if priority is None or not priority.CARD_PRIORITY_LIST:
             return 0.0
 
-        priorities = priority.CARD_PRIORITIES
+        priorities = getattr(priority, "CARD_PRIORITIES_BY_NAME", priority.CARD_PRIORITIES)
+        card_name = priority._card_name(card) if hasattr(priority, "_card_name") else getattr(card, "card_id", None)
         total = max(len(priority.CARD_PRIORITY_LIST) - 1, 1)
-        idx = priorities.get(getattr(card, "card_id", None), len(priority.CARD_PRIORITY_LIST))
+        idx = priorities.get(card_name, len(priority.CARD_PRIORITY_LIST))
         skip_idx = priorities.get("Skip", None)
 
         if skip_idx is None:
