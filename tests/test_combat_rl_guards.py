@@ -70,6 +70,26 @@ def test_potion_guard_uses_damage_potion_in_danger():
     assert action.target_index == 0
 
 
+def test_potion_guard_preserves_target_index_when_dead_monster_precedes_target():
+    potion = SimpleNamespace(
+        potion_id="Fire Potion",
+        name="Fire Potion",
+        can_use=True,
+        requires_target=True,
+        effect_type="damage",
+    )
+    dead = _monster(hp=0, damage=0, index=0)
+    live = _monster(hp=50, damage=20, index=1)
+    del dead.monster_index
+    del live.monster_index
+    game = _game(potions=[potion], monsters=[dead, live])
+
+    action = _agent()._maybe_use_potion_guard(game)
+
+    assert isinstance(action, PotionAction)
+    assert action.target_index == 1
+
+
 def test_potion_guard_skips_safe_combat():
     potion = SimpleNamespace(
         potion_id="Fire Potion",

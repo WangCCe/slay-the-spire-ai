@@ -1146,7 +1146,7 @@ class CombatRLAgent:
             return None
 
         _, _, potion = max(scored, key=lambda item: item[0])
-        target_index = self._potion_target_index(potion, alive_monsters)
+        target_index = self._potion_target_index(potion, alive_monsters, game)
         logger.info(
             "[POTION_GUARD] Using %s: incoming=%s hp=%s/%s room=%s monsters=%s target=%s",
             getattr(potion, "name", "UNKNOWN"),
@@ -1541,7 +1541,11 @@ class CombatRLAgent:
         return max(candidates, key=lambda item: getattr(item[1], "current_hp", 0))[0]
 
     @staticmethod
-    def _potion_target_index(potion, alive_monsters) -> Optional[int]:
+    def _potion_target_index(
+        potion,
+        alive_monsters,
+        game: Optional[Game] = None,
+    ) -> Optional[int]:
         if not alive_monsters:
             return None
         if str(getattr(potion, "effect_type", "") or "") in ("damage", "debuff_weak", "debuff_vulnerable"):
@@ -1551,6 +1555,10 @@ class CombatRLAgent:
         target_index = getattr(target, "monster_index", None)
         if target_index is not None:
             return target_index
+        if game is not None:
+            for index, monster in enumerate(getattr(game, "monsters", []) or []):
+                if monster is target:
+                    return index
         try:
             return alive_monsters.index(target)
         except ValueError:
