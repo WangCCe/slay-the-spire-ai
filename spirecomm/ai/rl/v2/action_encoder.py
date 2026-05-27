@@ -103,6 +103,15 @@ class ActionEncoderV2:
         except Exception:
             return False
 
+    @staticmethod
+    def _can_afford_purge(game: Game, screen) -> bool:
+        try:
+            gold = int(getattr(game, "gold", 0) or 0)
+            purge_cost = int(getattr(screen, "purge_cost", 0) or 0)
+        except Exception:
+            return False
+        return gold >= purge_cost
+
     def decode_action(self, action_index: int, game: Game):
         if action_index == space.END_TURN_ACTION:
             return EndTurnAction()
@@ -435,7 +444,7 @@ class ActionEncoderV2:
         if (
             isinstance(action, BuyPurgeAction)
             and purge_available
-            and int(getattr(game, "gold", 0) or 0) >= int(getattr(screen, "purge_cost", 0) or 0)
+            and self._can_afford_purge(game, screen)
         ):
             return space.SHOP_OFFSET + len(cards) + len(relics) + len(potions)
 
@@ -551,8 +560,7 @@ class ActionEncoderV2:
                 index += 1
         else:
             index += len(potions)
-        purge_cost = getattr(screen, "purge_cost", 0) or 0
-        can_purge = int(getattr(game, "gold", 0) or 0) >= int(purge_cost)
+        can_purge = self._can_afford_purge(game, screen)
         if purge_available and can_purge and index < space.SHOP_COUNT:
             mask[space.SHOP_OFFSET + index] = True
 
@@ -646,19 +654,23 @@ class ActionEncoderV2:
             if choice_index < len(cards):
                 from spirecomm.communication.action import BuyCardAction
 
+                if not self._can_afford(game, cards[choice_index]):
+                    return LeaveAction()
                 return BuyCardAction(cards[choice_index])
 
             choice_index -= len(cards)
             if choice_index < len(relics):
                 from spirecomm.communication.action import BuyRelicAction
 
+                if not self._can_afford(game, relics[choice_index]):
+                    return LeaveAction()
                 return BuyRelicAction(relics[choice_index])
 
             choice_index -= len(relics)
             if choice_index < len(potions):
                 from spirecomm.communication.action import BuyPotionAction
 
-                if not self._has_potion_space(game):
+                if not self._has_potion_space(game) or not self._can_afford(game, potions[choice_index]):
                     return LeaveAction()
                 return BuyPotionAction(potions[choice_index])
 
@@ -666,6 +678,8 @@ class ActionEncoderV2:
             if purge_available and choice_index == 0:
                 from spirecomm.communication.action import BuyPurgeAction
 
+                if not self._can_afford_purge(game, screen):
+                    return LeaveAction()
                 return BuyPurgeAction()
 
             return LeaveAction()

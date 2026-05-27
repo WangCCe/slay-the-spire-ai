@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from spirecomm.ai.rl.v2.action_encoder import ActionEncoderV2
 from spirecomm.ai.rl.v2 import action_space as space
-from spirecomm.communication.action import BuyCardAction
+from spirecomm.communication.action import BuyCardAction, BuyPotionAction, LeaveAction
 from spirecomm.spire.screen import ScreenType
 
 
@@ -148,3 +148,26 @@ def test_shop_encoder_rejects_unaffordable_buy_card_action():
     )
 
     assert encoder.encode_action(BuyCardAction(expensive_card), game) is None
+
+
+def test_shop_decoder_falls_back_for_unaffordable_purchase_slots():
+    encoder = ActionEncoderV2()
+    expensive_card = SimpleNamespace(name="Inflame", price=75)
+    cheap_potion = SimpleNamespace(name="Fire Potion", price=20)
+    screen = SimpleNamespace(
+        cards=[expensive_card],
+        relics=[],
+        potions=[cheap_potion],
+        purge_available=True,
+        purge_cost=100,
+    )
+    game = _make_game(
+        screen_type=ScreenType.SHOP_ROOM,
+        screen=screen,
+        gold=40,
+        has_potion_space=lambda: True,
+    )
+
+    assert isinstance(encoder.decode_action(space.SHOP_OFFSET, game), LeaveAction)
+    assert isinstance(encoder.decode_action(space.SHOP_OFFSET + 1, game), BuyPotionAction)
+    assert isinstance(encoder.decode_action(space.SHOP_OFFSET + 2, game), LeaveAction)
