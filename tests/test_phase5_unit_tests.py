@@ -5,7 +5,29 @@ These tests verify the core logic without loading game data.
 Run with: python test_phase5_unit_tests.py
 """
 
+import ast
 import sys
+
+
+SIMULATION_PATH = "spirecomm/ai/heuristics/simulation.py"
+
+
+def _simulation_constants(*names):
+    with open(SIMULATION_PATH, "r", encoding="utf-8") as f:
+        tree = ast.parse(f.read(), filename=SIMULATION_PATH)
+
+    constants = {}
+    wanted = set(names)
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id in wanted:
+                constants[target.id] = ast.literal_eval(node.value)
+
+    missing = wanted - constants.keys()
+    assert not missing, f"Missing simulation constants: {sorted(missing)}"
+    return constants
 
 
 def test_debuff_multipliers():
@@ -67,89 +89,73 @@ def test_survival_scoring_weights():
     """Test Phase 1.2: Survival scoring weights"""
     print("\n=== Testing Phase 1.2: Survival Scoring Weights ===")
 
-    # Import constants from simulation module
-    try:
-        # Try importing without triggering game data load
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("simulation", "spirecomm/ai/heuristics/simulation.py")
-        simulation = importlib.util.module_from_spec(spec)
+    constants = _simulation_constants(
+        "W_DEATHRISK",
+        "KILL_BONUS",
+        "DAMAGE_WEIGHT",
+        "BLOCK_WEIGHT",
+        "HP_LOSS_PENALTY",
+        "DANGER_PENALTY",
+        "EXHAULT_SYNERGY_VALUE",
+        "DRAW_SYNERGY_VALUE",
+        "ENERGY_SYNERGY_VALUE",
+    )
 
-        # Read the file and extract constants
-        with open("spirecomm/ai/heuristics/simulation.py", "r") as f:
-            content = f.read()
+    assert constants["W_DEATHRISK"] == 8.0
+    assert constants["KILL_BONUS"] == 100
+    assert constants["DAMAGE_WEIGHT"] == 2.0
+    assert constants["BLOCK_WEIGHT"] == 1.5
+    assert constants["DANGER_PENALTY"] == 50.0
 
-        # Extract constants
-        constants = {}
-        for line in content.split('\n'):
-            if '=' in line and not line.strip().startswith('#') and not line.strip().startswith('def'):
-                for const in ['W_DEATHRISK', 'KILL_BONUS', 'DAMAGE_WEIGHT', 'BLOCK_WEIGHT',
-                              'HP_LOSS_PENALTY', 'DANGER_PENALTY', 'EXHAULT_SYNERGY_VALUE',
-                              'DRAW_SYNERGY_VALUE', 'ENERGY_SYNERGY_VALUE']:
-                    if const in line and '=' in line:
-                        try:
-                            value = float(line.split('=')[1].split('#')[0].strip())
-                            constants[const] = value
-                        except:
-                            pass
-
-        # Verify key constants exist
-        assert 'W_DEATHRISK' in constants, "W_DEATHRISK constant should exist"
-        assert 'KILL_BONUS' in constants, "KILL_BONUS constant should exist"
-        assert 'DAMAGE_WEIGHT' in constants, "DAMAGE_WEIGHT constant should exist"
-        assert 'DANGER_PENALTY' in constants, "DANGER_PENALTY constant should exist"
-
-        print(f"✓ W_DEATHRISK = {constants['W_DEATHRISK']}")
-        print(f"✓ KILL_BONUS = {constants['KILL_BONUS']}")
-        print(f"✓ DANGER_PENALTY = {constants['DANGER_PENALTY']}")
-        print("✓ Phase 1.2: All survival scoring weights verified!")
-
-    except Exception as e:
-        # Fallback: Just verify the file contains these constants
-        with open("spirecomm/ai/heuristics/simulation.py", "r") as f:
-            content = f.read()
-
-        assert 'W_DEATHRISK = 8.0' in content or 'W_DEATHRISK=8.0' in content, "W_DEATHRISK should be 8.0"
-        assert 'KILL_BONUS = 100' in content or 'KILL_BONUS=100' in content, "KILL_BONUS should be 100"
-        assert 'DANGER_PENALTY = 50.0' in content or 'DANGER_PENALTY=50.0' in content, "DANGER_PENALTY should be 50.0"
-
-        print("✓ W_DEATHRISK = 8.0 (verified in file)")
-        print("✓ KILL_BONUS = 100 (verified in file)")
-        print("✓ DANGER_PENALTY = 50.0 (verified in file)")
-        print("✓ Phase 1.2: All survival scoring weights verified!")
+    print(f"✓ W_DEATHRISK = {constants['W_DEATHRISK']}")
+    print(f"✓ KILL_BONUS = {constants['KILL_BONUS']}")
+    print(f"✓ DANGER_PENALTY = {constants['DANGER_PENALTY']}")
+    print("✓ Phase 1.2: All survival scoring weights verified!")
 
 
 def test_configuration_constants():
     """Test Phase 4: Configuration constants"""
     print("\n=== Testing Phase 4: Configuration Constants ===")
 
-    with open("spirecomm/ai/heuristics/simulation.py", "r") as f:
-        content = f.read()
+    constants = _simulation_constants(
+        "BEAM_WIDTH_ACT1",
+        "BEAM_WIDTH_ACT2",
+        "BEAM_WIDTH_ACT3",
+        "MAX_DEPTH_CAP",
+        "M_VALUES",
+        "TIMEOUT_BUDGET",
+        "DAMAGE_WEIGHT",
+        "BLOCK_WEIGHT",
+        "EXHAULT_SYNERGY_VALUE",
+        "FASTSCORE_ZERO_COST_BONUS",
+        "FASTSCORE_ATTACK_BONUS",
+    )
 
     # Test beam width constants
-    assert 'BEAM_WIDTH_ACT1 = 12' in content, "BEAM_WIDTH_ACT1 should be 12"
-    assert 'BEAM_WIDTH_ACT2 = 18' in content, "BEAM_WIDTH_ACT2 should be 18"
-    assert 'BEAM_WIDTH_ACT3 = 25' in content, "BEAM_WIDTH_ACT3 should be 25"
-    print("✓ Beam width constants: Act1=12, Act2=18, Act3=25")
+    assert constants["BEAM_WIDTH_ACT1"] == 20
+    assert constants["BEAM_WIDTH_ACT2"] == 30
+    assert constants["BEAM_WIDTH_ACT3"] == 40
+    print("✓ Beam width constants: Act1=20, Act2=30, Act3=40")
 
     # Test adaptive parameters
-    assert 'MAX_DEPTH_CAP = 5' in content, "MAX_DEPTH_CAP should be 5"
-    assert 'M_VALUES = [12, 10, 7, 5, 4]' in content, "M_VALUES should be [12, 10, 7, 5, 4]"
-    assert 'TIMEOUT_BUDGET = 0.08' in content, "TIMEOUT_BUDGET should be 0.08"
+    assert constants["MAX_DEPTH_CAP"] == 5
+    assert constants["M_VALUES"] == [20, 18, 15, 12, 10]
+    assert constants["TIMEOUT_BUDGET"] == 0.15
     print("✓ MAX_DEPTH_CAP = 5")
-    print("✓ M_VALUES = [12, 10, 7, 5, 4]")
-    print("✓ TIMEOUT_BUDGET = 0.08")
+    print("✓ M_VALUES = [20, 18, 15, 12, 10]")
+    print("✓ TIMEOUT_BUDGET = 0.15")
 
     # Test scoring weights
-    assert 'DAMAGE_WEIGHT = 2.0' in content, "DAMAGE_WEIGHT should be 2.0"
-    assert 'BLOCK_WEIGHT = 1.5' in content, "BLOCK_WEIGHT should be 1.5"
-    assert 'EXHAULT_SYNERGY_VALUE = 3.0' in content, "EXHAULT_SYNERGY_VALUE should be 3.0"
+    assert constants["DAMAGE_WEIGHT"] == 2.0
+    assert constants["BLOCK_WEIGHT"] == 1.5
+    assert constants["EXHAULT_SYNERGY_VALUE"] == 3.0
     print("✓ DAMAGE_WEIGHT = 2.0")
     print("✓ BLOCK_WEIGHT = 1.5")
     print("✓ EXHAULT_SYNERGY_VALUE = 3.0")
 
     # Test FastScore weights
-    assert 'FASTSCORE_ZERO_COST_BONUS = 20' in content, "FASTSCORE_ZERO_COST_BONUS should be 20"
-    assert 'FASTSCORE_ATTACK_BONUS = 10' in content, "FASTSCORE_ATTACK_BONUS should be 10"
+    assert constants["FASTSCORE_ZERO_COST_BONUS"] == 20
+    assert constants["FASTSCORE_ATTACK_BONUS"] == 10
     print("✓ FASTSCORE_ZERO_COST_BONUS = 20")
     print("✓ FASTSCORE_ATTACK_BONUS = 10")
 
@@ -280,23 +286,21 @@ def test_timeout_protection_logic():
 
     # Test normal case (no timeout)
     start = 0.0
-    current = 0.05  # 50ms
-    budget = 0.08  # 80ms
+    budget = _simulation_constants("TIMEOUT_BUDGET")["TIMEOUT_BUDGET"]
+    current = budget * 0.5
     timeout = should_timeout(start, current, budget)
-    assert not timeout, "Should not timeout at 50ms with 80ms budget"
-    print("✓ No timeout at 50ms (budget: 80ms)")
+    assert not timeout, f"Should not timeout at {current:.3f}s with {budget:.3f}s budget"
+    print(f"✓ No timeout at {current:.3f}s (budget: {budget:.3f}s)")
 
     # Test timeout case
-    current = 0.10  # 100ms
+    current = budget + 0.02
     timeout = should_timeout(start, current, budget)
-    assert timeout, "Should timeout at 100ms with 80ms budget"
-    print("✓ Timeout at 100ms (budget: 80ms)")
+    assert timeout, f"Should timeout at {current:.3f}s with {budget:.3f}s budget"
+    print(f"✓ Timeout at {current:.3f}s (budget: {budget:.3f}s)")
 
     # Verify TIMEOUT_BUDGET constant exists
-    with open("spirecomm/ai/heuristics/simulation.py", "r") as f:
-        content = f.read()
-    assert 'TIMEOUT_BUDGET = 0.08' in content, "TIMEOUT_BUDGET should be 0.08"
-    print("✓ TIMEOUT_BUDGET = 0.08 (80ms)")
+    assert budget == 0.15
+    print("✓ TIMEOUT_BUDGET = 0.15 (150ms)")
 
     print("✓ Phase 2.2: All timeout protection logic tests passed!")
 
