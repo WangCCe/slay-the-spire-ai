@@ -190,33 +190,12 @@ class ActionEncoder:
             # Special handling for SHOP_SCREEN
             # Must use BuyCardAction/BuyPotionAction, not ChooseAction
             if self._is_screen_type(game, "SHOP_SCREEN"):
-                from spirecomm.communication.action import (
-                    BuyCardAction,
-                    BuyPotionAction,
-                    BuyRelicAction,
-                    BuyPurgeAction,
-                )
-                from spirecomm.spire.screen import RewardType
-
                 available = getattr(game, "available_commands", []) or []
                 if "choose" not in available:
                     return LeaveAction()
 
-                screen = game.screen
-                if hasattr(screen, "cards") and choice_index < len(screen.cards):
-                    # Buying a card
-                    return BuyCardAction(screen.cards[choice_index])
-                elif hasattr(screen, "potions") and choice_index < len(screen.potions):
-                    # Buying a potion
-                    if not self._has_potion_space(game):
-                        return LeaveAction()
-                    return BuyPotionAction(screen.potions[choice_index])
-                elif hasattr(screen, "relics") and choice_index < len(screen.relics):
-                    # Buying a relic
-                    return BuyRelicAction(screen.relics[choice_index])
-                else:
-                    # Invalid choice, proceed
-                    return ProceedAction()
+                action = self._decode_shop_purchase_action(choice_index, game)
+                return action if action is not None else ProceedAction()
 
             # Special handling for GRID/HAND_SELECT (choose not supported)
             if self._is_screen_type(game, "GRID"):
@@ -266,37 +245,12 @@ class ActionEncoder:
             # Special handling for SHOP_SCREEN
             # Must use BuyCardAction/BuyPotionAction/BuyRelicAction, not ChooseAction
             if self._is_screen_type(game, "SHOP_SCREEN"):
-                from spirecomm.communication.action import (
-                    BuyCardAction,
-                    BuyPotionAction,
-                    BuyRelicAction,
-                    BuyPurgeAction,
-                )
-
                 available = getattr(game, "available_commands", []) or []
                 if "choose" not in available:
                     return LeaveAction()
 
-                screen = game.screen
-                if hasattr(screen, "cards") and shop_action < len(screen.cards):
-                    # Buying a card
-                    return BuyCardAction(screen.cards[shop_action])
-                elif hasattr(screen, "potions") and shop_action < len(screen.potions):
-                    # Buying a potion (check if potions exist before cards in shop_action)
-                    if not self._has_potion_space(game):
-                        return LeaveAction()
-                    return BuyPotionAction(
-                        screen.potions[shop_action - len(getattr(screen, "cards", []))]
-                    )
-                elif hasattr(screen, "relics") and shop_action < len(screen.relics):
-                    # Buying a relic
-                    return BuyRelicAction(screen.relics[shop_action])
-                elif hasattr(screen, "purge_available") and screen.purge_available:
-                    # Buy purge (card removal)
-                    return BuyPurgeAction()
-                else:
-                    # Invalid choice, leave shop
-                    return LeaveAction()
+                action = self._decode_shop_purchase_action(shop_action, game)
+                return action if action is not None else LeaveAction()
 
             # Default: use ChooseAction for other screens that use SHOP_ACTION_OFFSET
             return ChooseAction(shop_action)
@@ -350,6 +304,41 @@ class ActionEncoder:
 
         else:
             raise ValueError(f"Invalid action index: {action_index}")
+
+    def _decode_shop_purchase_action(self, shop_action: int, game: Game):
+        from spirecomm.communication.action import (
+            BuyCardAction,
+            BuyPotionAction,
+            BuyRelicAction,
+            BuyPurgeAction,
+        )
+
+        screen = getattr(game, "screen", None)
+        if screen is None:
+            return None
+
+        cards = getattr(screen, "cards", []) or []
+        relics = getattr(screen, "relics", []) or []
+        potions = getattr(screen, "potions", []) or []
+
+        if shop_action < len(cards):
+            return BuyCardAction(cards[shop_action])
+
+        shop_action -= len(cards)
+        if shop_action < len(relics):
+            return BuyRelicAction(relics[shop_action])
+
+        shop_action -= len(relics)
+        if shop_action < len(potions):
+            if not self._has_potion_space(game):
+                return LeaveAction()
+            return BuyPotionAction(potions[shop_action])
+
+        shop_action -= len(potions)
+        if shop_action == 0 and getattr(screen, "purge_available", False):
+            return BuyPurgeAction()
+
+        return None
 
     def get_action_mask(self, game: Game) -> List[bool]:
         """
