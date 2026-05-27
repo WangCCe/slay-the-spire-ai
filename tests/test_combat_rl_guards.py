@@ -7,6 +7,7 @@ from spirecomm.communication.action import (
     EndTurnAction,
     PlayCardAction,
     PotionAction,
+    WaitAction,
 )
 from spirecomm.spire.card import CardType
 from spirecomm.spire.screen import ScreenType
@@ -243,3 +244,49 @@ def test_main_combat_still_uses_rl_context():
     game = _game(screen_type=None, in_combat=True)
 
     assert _agent()._is_rl_context(game)
+
+
+def test_finished_combat_stale_state_waits_instead_of_playing_card():
+    card = SimpleNamespace(is_playable=True, cost=1, has_target=True)
+    dead_monsters = [
+        _monster(hp=0, index=0, name="Fungi Beast", monster_id="FungiBeast"),
+        _monster(hp=0, index=1, name="Fungi Beast", monster_id="FungiBeast"),
+    ]
+    calls = {"rl": 0, "fallback": 0}
+
+    def rl_decide(_game):
+        calls["rl"] += 1
+        return PlayCardAction(card_index=0, target_index=0)
+
+    def fallback_decide(_game):
+        calls["fallback"] += 1
+        return PlayCardAction(card_index=0, target_index=0)
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=rl_decide)
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=fallback_decide,
+        _track_game_state=lambda game: None,
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = (5, 1)
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+    game = _game(
+        screen_type=None,
+        in_combat=True,
+        play_available=True,
+        hand=[card],
+        monsters=dead_monsters,
+        floor=5,
+        turn=1,
+    )
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, WaitAction)
+    assert agent._fallback_turn_key is None
+    assert calls == {"rl": 0, "fallback": 0}

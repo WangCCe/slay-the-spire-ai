@@ -984,6 +984,15 @@ class CombatRLAgent:
         current_screen = getattr(game, 'screen_type', None)
         logger.info(f"[CombatRLAgent] screen={current_screen}, use_rl_for_combat={self.use_rl_for_combat}, rl_failure_count={self.rl_failure_count}")
 
+        if self._is_finished_combat_transition(game):
+            from spirecomm.communication.action import WaitAction
+
+            self._fallback_turn_key = None
+            logger.info(
+                "[POST_COMBAT_GUARD] in_combat still true but no monsters alive; waiting for reward transition"
+            )
+            return WaitAction(timeout=1)
+
         if self._should_use_fallback_turn_takeover(game):
             logger.info(
                 "[ENERGY_GUARD] Continuing fallback turn takeover floor=%s turn=%s",
@@ -1318,6 +1327,16 @@ class CombatRLAgent:
             and not getattr(monster, "is_gone", False)
             and not getattr(monster, "half_dead", False)
         ]
+
+    @classmethod
+    def _is_finished_combat_transition(cls, game: Game) -> bool:
+        from spirecomm.spire.screen import ScreenType
+
+        if not getattr(game, "in_combat", False):
+            return False
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return False
+        return not cls._alive_monsters(game)
 
     @staticmethod
     def _incoming_damage(game: Game) -> int:
