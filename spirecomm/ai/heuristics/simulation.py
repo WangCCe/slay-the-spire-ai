@@ -932,9 +932,11 @@ class FastCombatSimulator:
                         base_damage += upgrade_bonus
                         logger.debug(f"[DAMAGE_UPGRADE] {card.card_id} (upgrades={upgrades}): {base_damage} damage (+{upgrade_bonus})")
                     else:
-                        # Unknown card - apply generic +3 bonus (most common pattern)
-                        base_damage += 3
-                        logger.debug(f"[DAMAGE_UPGRADE_GENERIC] {card.card_id} (upgrades={upgrades}): {base_damage} damage (+3 generic)")
+                        logger.debug(
+                            f"[DAMAGE_UPGRADE_UNKNOWN] {card.card_id} "
+                            f"(upgrades={upgrades}): {base_damage} damage "
+                            "(no generic upgrade bonus)"
+                        )
 
             # Check for X-damage cards and calculate dynamically
             if base_damage == 0 and context is not None:
