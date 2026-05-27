@@ -1283,7 +1283,7 @@ class FastCombatSimulator:
         monster['block'] -= block_damage
 
         # Remaining damage to HP
-        hp_damage = damage - block_damage
+        hp_damage = min(max(0, damage - block_damage), max(0, monster['hp']))
         monster['hp'] -= hp_damage
         state.total_damage_dealt += hp_damage
 
