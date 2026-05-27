@@ -399,6 +399,13 @@ class IroncladCombatPlanner(CombatPlanner):
             and getattr(card, "type", None) == CardType.ATTACK
         )
 
+    @staticmethod
+    def _is_live_monster_state(monster_state: dict) -> bool:
+        return (
+            not monster_state.get('is_gone', False)
+            and monster_state.get('hp', monster_state.get('current_hp', 1)) > 0
+        )
+
     def _choose_target_for_card(self, card: Card, context: DecisionContext,
                                 state: SimulationState) -> Tuple[Optional[Monster], Optional[int]]:
         """
@@ -411,7 +418,10 @@ class IroncladCombatPlanner(CombatPlanner):
             return None, None
 
         card_id = canonical_card_name(card)
-        alive_monsters = [(i, m) for i, m in enumerate(state.monsters) if not m['is_gone']]
+        alive_monsters = [
+            (i, m) for i, m in enumerate(state.monsters)
+            if self._is_live_monster_state(m)
+        ]
         if not alive_monsters:
             return None, None
 
@@ -438,7 +448,7 @@ class IroncladCombatPlanner(CombatPlanner):
         if state.primary_target is not None:
             primary_idx = state.primary_target
             # Check if primary target is still alive
-            if primary_idx < len(state.monsters) and not state.monsters[primary_idx]['is_gone']:
+            if primary_idx < len(state.monsters) and self._is_live_monster_state(state.monsters[primary_idx]):
                 # Primary target still alive - focus fire on it
                 if primary_idx < len(context.monsters_alive):
                     return context.monsters_alive[primary_idx], primary_idx
@@ -550,7 +560,11 @@ class IroncladCombatPlanner(CombatPlanner):
             return None, None
 
         card_id = canonical_card_name(card)
-        alive_monsters = [(i, m) for i, m in enumerate(state.monsters) if not m['is_gone']]
+        alive_monsters = [
+            (i, context.monsters_alive[i], m)
+            for i, m in enumerate(state.monsters)
+            if self._is_live_monster_state(m) and i < len(context.monsters_alive)
+        ]
         if not alive_monsters:
             return None, None
 
@@ -562,9 +576,8 @@ class IroncladCombatPlanner(CombatPlanner):
 
         # 1. Summoner handling - check for Reptomancer/Gremlin Leader/etc.
         summoner_targets = []
-        for i, monster_state in alive_monsters:
+        for i, monster, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
-                monster = context.monsters_alive[i]
                 if game_data_loader.is_monster_summoner(monster.name):
                     # Get minions count
                     minions = game_data_loader.get_monster_minions(monster.name)
@@ -597,11 +610,10 @@ class IroncladCombatPlanner(CombatPlanner):
         # 2. Hibernation handling - ignore Lagavulin while sleeping
         hibernating_monsters = []
         awake_monsters = []
-        for i, monster_state in alive_monsters:
+        for i, monster, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
-                monster = context.monsters_alive[i]
                 if game_data_loader.is_monster_hibernating(monster.name, context.turn):
-                    hibernating_monsters.append((i, monster))
+                    hibernating_monsters.append((i, monster, monster_state))
                 else:
                     awake_monsters.append((i, monster, monster_state))
 
@@ -677,9 +689,8 @@ class IroncladCombatPlanner(CombatPlanner):
         # === Fallback to Enhanced Threat-Based Targeting ===
         # Calculate enhanced threat for all monsters
         monster_threats = []
-        for i, monster_state in alive_monsters:
+        for i, real_monster, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
-                real_monster = context.monsters_alive[i]
                 threat = context.compute_threat_v2(real_monster)
                 monster_threats.append((i, monster_state, threat))
 

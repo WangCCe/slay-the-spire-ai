@@ -1428,6 +1428,66 @@ def test_incoming_damage_estimate_clamps_negative_live_move_damage_to_zero():
     assert incoming == 0
 
 
+def test_single_target_selection_ignores_zero_hp_stale_simulated_monsters():
+    strike = _card("Strike_R", "Strike", cost=1)
+    stale = _louse(current_hp=40)
+    live = _louse(current_hp=40)
+    context = _combat_context([strike], energy=1, monsters=[stale, live])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    target, target_idx = IroncladCombatPlanner()._choose_target_for_card(
+        strike,
+        context,
+        state,
+    )
+
+    assert target is live
+    assert target_idx == 1
+
+
+def test_primary_target_selection_clears_zero_hp_stale_simulated_monster():
+    strike = _card("Strike_R", "Strike", cost=1)
+    stale = _louse(current_hp=40)
+    live = _louse(current_hp=40)
+    context = _combat_context([strike], energy=1, monsters=[stale, live])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+    state.primary_target = 0
+
+    target, target_idx = IroncladCombatPlanner()._choose_target_for_card(
+        strike,
+        context,
+        state,
+    )
+
+    assert target is live
+    assert target_idx == 1
+    assert state.primary_target is None
+
+
+def test_v2_single_target_selection_ignores_zero_hp_stale_simulated_monsters():
+    strike = _card("Strike_R", "Strike", cost=1)
+    stale = _louse(current_hp=40)
+    live = _louse(current_hp=40)
+    context = _combat_context([strike], energy=1, monsters=[stale, live])
+    context.compute_threat_v2 = lambda monster: 1
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    target, target_idx = IroncladCombatPlanner()._choose_target_for_card_v2(
+        strike,
+        context,
+        state,
+    )
+
+    assert target is live
+    assert target_idx == 1
+
+
 def test_bludgeon_damage_is_static_not_scaled_by_block(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
