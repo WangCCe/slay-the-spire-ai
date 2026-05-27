@@ -1584,6 +1584,38 @@ def test_artifact_blocks_disarm_strength_down():
     assert result.monsters[0].get("artifact", 0) == 0
 
 
+def test_artifact_blocks_first_debuff_in_card_text_order(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "uppercut": {
+            "name": "Uppercut",
+            "description": "Deal 13 damage.\nApply 1 Weak.\nApply 1 Vulnerable.",
+        }
+    }
+    loader._wiki_data = {
+        "uppercut": {
+            "name": "Uppercut",
+            "text": "Deal 13 damage.\nApply [1|2] #Weak.\nApply [1|2] #Vulnerable.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    uppercut = _card("Uppercut", "Uppercut", cost=2)
+    context = _combat_context([uppercut], energy=2, monsters=[_louse(current_hp=50)])
+    context.monsters_alive[0].powers = [SimpleNamespace(power_name="Artifact", amount=1)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        uppercut,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["weak"] == 0
+    assert result.monsters[0]["vulnerable"] == 1
+    assert result.monsters[0].get("artifact", 0) == 0
+
+
 def test_dropkick_refunds_energy_and_draws_against_vulnerable_enemy(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

@@ -855,20 +855,12 @@ class FastCombatSimulator:
             if card_data:
                 description = self._get_card_effect_text(card_name, card_data)
                 upgraded = getattr(card, 'upgrades', 0) > 0
-                vulnerable_stacks = None
-                weak_stacks = None
-                if 'vulnerable' in description:
-                    vulnerable_stacks = self._extract_debuff_stacks(description, 'vulnerable', upgraded)
-                if 'weak' in description:
-                    weak_stacks = self._extract_debuff_stacks(description, 'weak', upgraded)
-                if vulnerable_stacks or weak_stacks:
+                debuff_effects = self._description_debuff_effects(description, upgraded, card_name)
+                if debuff_effects:
                     for monster in state.monsters:
                         if monster['is_gone']:
                             continue
-                        if vulnerable_stacks:
-                            self._apply_monster_debuff(monster, 'vulnerable', vulnerable_stacks)
-                        if weak_stacks:
-                            self._apply_monster_debuff(monster, 'weak', weak_stacks)
+                        self._apply_monster_debuffs(monster, debuff_effects)
         elif self._is_random_target_attack(card) and target_index is None:
             for hit_index in range(hit_count):
                 alive_monsters = [monster for monster in state.monsters if not monster['is_gone']]
@@ -898,14 +890,10 @@ class FastCombatSimulator:
                     if card_data:
                         description = self._get_card_effect_text(card_name, card_data)
                         upgraded = getattr(card, 'upgrades', 0) > 0
-                        if 'vulnerable' in description:
-                            vulnerable_stacks = self._extract_debuff_stacks(description, 'vulnerable', upgraded)
-                            if vulnerable_stacks:
-                                self._apply_monster_debuff(monster, 'vulnerable', vulnerable_stacks)
-                        if 'weak' in description:
-                            weak_stacks = self._extract_debuff_stacks(description, 'weak', upgraded)
-                            if weak_stacks:
-                                self._apply_monster_debuff(monster, 'weak', weak_stacks)
+                        self._apply_monster_debuffs(
+                            monster,
+                            self._description_debuff_effects(description, upgraded, card_name),
+                        )
 
         self._apply_attack_healing(state, card, starting_total_damage)
         self._apply_attack_resource_effects(state, card, target_index)
@@ -1164,6 +1152,30 @@ class FastCombatSimulator:
         if self._consume_monster_artifact(monster):
             return
         monster[debuff] = monster.get(debuff, 0) + stacks
+
+    def _description_debuff_effects(
+        self,
+        description: str,
+        upgraded: bool,
+        card_name: str = '',
+    ) -> List[Tuple[int, str, int]]:
+        effects = []
+        for debuff in ('weak', 'vulnerable'):
+            if debuff not in description:
+                continue
+            stacks = self._extract_debuff_stacks(description, debuff, upgraded)
+            if stacks is None and card_name == 'Shockwave':
+                stacks = 5 if upgraded else 3
+            if not stacks:
+                continue
+            position = description.find(debuff)
+            effects.append((position if position >= 0 else 9999, debuff, stacks))
+        effects.sort(key=lambda effect: effect[0])
+        return effects
+
+    def _apply_monster_debuffs(self, monster: dict, effects: List[Tuple[int, str, int]]):
+        for _, debuff, stacks in effects:
+            self._apply_monster_debuff(monster, debuff, stacks)
 
     def _get_card_effect_text(self, card_name: str, card_data: Dict[str, Any]) -> str:
         """Prefer wiki text for effect values because items.json stores base text only."""
@@ -1447,21 +1459,12 @@ class FastCombatSimulator:
                     upgrades = getattr(card, 'upgrades', 0) > 0
                     is_aoe = game_data_loader._is_card_aoe(card_data) or 'all enemies' in description
                     if is_aoe:
-                        vuln_stacks = self._extract_debuff_stacks(description, 'vulnerable', upgrades)
-                        weak_stacks = self._extract_debuff_stacks(description, 'weak', upgrades)
-                        if vuln_stacks is None and card_name == 'Shockwave':
-                            vuln_stacks = 5 if upgrades else 3
-                        if weak_stacks is None and card_name == 'Shockwave':
-                            weak_stacks = 5 if upgrades else 3
-
-                        if vuln_stacks or weak_stacks:
+                        debuff_effects = self._description_debuff_effects(description, upgrades, card_name)
+                        if debuff_effects:
                             for monster in state.monsters:
                                 if monster['is_gone']:
                                     continue
-                                if vuln_stacks:
-                                    self._apply_monster_debuff(monster, 'vulnerable', vuln_stacks)
-                                if weak_stacks:
-                                    self._apply_monster_debuff(monster, 'weak', weak_stacks)
+                                self._apply_monster_debuffs(monster, debuff_effects)
         except Exception:
             pass
 
