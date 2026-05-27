@@ -918,14 +918,7 @@ class FastCombatSimulator:
         if card_name == 'Pummel':
             return 5 if upgrades > 0 else 4
         if card_name == 'Fiend Fire' and context is not None:
-            return max(
-                0,
-                sum(
-                    1
-                    for hand_card in getattr(context, 'playable_cards', [])
-                    if hand_card is not card and id(hand_card) not in state.played_card_uuids
-                ),
-            )
+            return len(self._unplayed_hand_cards(state, context, exclude_card=card))
 
         return 1
 
@@ -1054,15 +1047,26 @@ class FastCombatSimulator:
         context: DecisionContext,
         exclude_card: Optional[Card] = None,
     ) -> List[Card]:
+        hand_cards = getattr(getattr(context, 'game', None), 'hand', None)
+        if not hand_cards:
+            hand_cards = getattr(context, 'playable_cards', [])
+
         cards = []
-        for hand_card in getattr(context, 'playable_cards', []):
-            if hand_card is exclude_card:
+        exclude_key = self._card_identity(exclude_card) if exclude_card is not None else None
+        for hand_card in hand_cards:
+            card_key = self._card_identity(hand_card)
+            if hand_card is exclude_card or (exclude_key is not None and card_key == exclude_key):
                 continue
-            card_key = getattr(hand_card, 'uuid', id(hand_card))
             if card_key in state.played_card_uuids or id(hand_card) in state.played_card_uuids:
                 continue
             cards.append(hand_card)
         return cards
+
+    @staticmethod
+    def _card_identity(card: Optional[Card]):
+        if card is None:
+            return None
+        return getattr(card, 'uuid', None) or id(card)
 
     def _card_exhausts_itself(self, description: str) -> bool:
         description = (description or '').lower().replace('#', '')
@@ -1631,10 +1635,8 @@ class FastCombatSimulator:
 
         exhausted_cards = [
             hand_card
-            for hand_card in getattr(context, 'playable_cards', [])
-            if hand_card is not card
-            and id(hand_card) not in state.played_card_uuids
-            and getattr(hand_card, 'type', None) != CardType.ATTACK
+            for hand_card in self._unplayed_hand_cards(state, context, exclude_card=card)
+            if getattr(hand_card, 'type', None) != CardType.ATTACK
         ]
         exhausted_count = len(exhausted_cards)
         if exhausted_count <= 0:

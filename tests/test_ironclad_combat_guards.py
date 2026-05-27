@@ -1383,6 +1383,41 @@ def test_fiend_fire_hits_once_per_other_unplayed_card_with_upgrade_damage(monkey
     assert result.damage_instances == 2
 
 
+def test_fiend_fire_counts_unplayable_hand_cards(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "description": "Exhaust your hand. Deal 7 damage for each card Exhausted. Exhaust.",
+        }
+    }
+    loader._wiki_data = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "text": "#Exhaust your hand.\nDeal [7|10] damage for each card #Exhausted.\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    fiend_fire = _card("Fiend Fire", "Fiend Fire", cost=2)
+    strike = _card("Strike_R", "Strike", cost=1)
+    dazed = _card("Dazed", "Dazed", card_type=CardType.STATUS, cost=-2, has_target=False)
+    context = _combat_context([fiend_fire, strike], energy=2, monsters=[_louse(current_hp=100)])
+    context.game.hand = [fiend_fire, strike, dazed]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        fiend_fire,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 14
+    assert result.damage_instances == 2
+    assert result.exhaust_events == 3
+
+
 def test_exhausting_attack_cards_trigger_feel_no_pain(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -1486,6 +1521,25 @@ def test_sever_soul_exhausts_non_attacks_for_feel_no_pain(monkeypatch):
 
     assert result.exhaust_events == 2
     assert result.player_block == 6
+
+
+def test_second_wind_counts_unplayable_non_attack_cards():
+    second_wind = _card("Second Wind", "Second Wind", card_type=CardType.SKILL, cost=1, has_target=False)
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    wound = _card("Wound", "Wound", card_type=CardType.STATUS, cost=-2, has_target=False)
+    context = _combat_context([second_wind, defend], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.hand = [second_wind, defend, wound]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        second_wind,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 10
+    assert result.exhaust_events == 2
 
 
 def test_uppercut_applies_weak_and_vulnerable_with_upgrade_stacks(monkeypatch):
