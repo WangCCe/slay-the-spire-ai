@@ -107,6 +107,22 @@ def _awakened_one(current_hp=300):
     )
 
 
+def _slime_boss(current_hp=56, max_hp=140):
+    return Monster(
+        name="Slime Boss",
+        monster_id="Slime_Boss",
+        max_hp=max_hp,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.UNKNOWN,
+        half_dead=False,
+        is_gone=False,
+        move_id=3,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+
+
 def _combat_context(cards, energy=3, monsters=None):
     monsters = monsters or [_louse(), _louse()]
     game = SimpleNamespace(
@@ -219,6 +235,33 @@ def test_feel_no_pain_grants_block_for_exhaust_events(monkeypatch):
 
     assert result.exhaust_events == 1
     assert result.player_block == 10
+
+
+def test_slime_boss_split_materializes_large_slimes_with_inherited_hp():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_slime_boss(current_hp=56)])
+    state = SimulationState(context)
+
+    split_state = FastCombatSimulator(SynergyCardEvaluator())._materialize_pending_death_splits(state)
+
+    alive = [monster for monster in split_state.monsters if not monster["is_gone"]]
+    assert [monster["name"] for monster in alive] == ["Acid Slime (L)", "Spike Slime (L)"]
+    assert [monster["hp"] for monster in alive] == [56, 56]
+    assert [monster["max_hp"] for monster in alive] == [56, 56]
+
+
+def test_enemy_lookahead_counts_slime_boss_split_child_threat_immediately():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_slime_boss(current_hp=56)])
+    context.turn = 4
+
+    future_damage = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage >= 15
 
 
 def test_simulator_does_not_treat_upgraded_non_block_skills_as_block(monkeypatch):

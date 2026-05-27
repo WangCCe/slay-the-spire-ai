@@ -1581,12 +1581,13 @@ class FastCombatSimulator:
             Total predicted damage over next N turns (discounted for uncertainty)
         """
         try:
+            lookahead_state = self._materialize_pending_death_splits(state.clone())
             logger.info(
                 "[LOOKAHEAD_ENTRY] turns=%s monsters=%s hp=%s/%s",
                 look_ahead,
-                len([m for m in state.monsters if not m['is_gone']]),
-                state.player_hp,
-                state.player_max_hp
+                len([m for m in lookahead_state.monsters if not m['is_gone']]),
+                lookahead_state.player_hp,
+                lookahead_state.player_max_hp
             )
             total_future_damage = 0
             current_turn = getattr(context, 'turn', 1)
@@ -1594,7 +1595,7 @@ class FastCombatSimulator:
             predicted_by_monster: Dict[int, List[Dict[str, Any]]] = {}
             any_predictions = False
 
-            for idx, monster in enumerate(state.monsters):
+            for idx, monster in enumerate(lookahead_state.monsters):
                 if monster['is_gone']:
                     continue
 
@@ -1615,15 +1616,15 @@ class FastCombatSimulator:
             if not any_predictions:
                 look_ahead = 1
 
-            player_vulnerable = state.player_vulnerable
-            player_weak = state.player_weak
-            player_frail = state.player_frail
+            player_vulnerable = lookahead_state.player_vulnerable
+            player_weak = lookahead_state.player_weak
+            player_frail = lookahead_state.player_frail
 
             for step in range(look_ahead):
                 turn_damage = 0
                 pending_debuffs = {'weak': 0, 'frail': 0, 'vulnerable': 0}
 
-                for idx, monster in enumerate(state.monsters):
+                for idx, monster in enumerate(lookahead_state.monsters):
                     if monster['is_gone']:
                         continue
 
@@ -1688,6 +1689,127 @@ class FastCombatSimulator:
         """Compatibility wrapper for future damage prediction."""
         return self.simulate_enemy_lookahead(state, context, look_ahead)
 
+    def _materialize_pending_death_splits(self, state: SimulationState) -> SimulationState:
+        """Replace due death-split monsters with their spawned monsters for future-turn simulation."""
+        new_monsters = []
+        changed = False
+
+        for monster in state.monsters:
+            split_info = self._get_death_split_info(monster)
+            if not split_info or not self._is_death_split_due(monster, split_info):
+                new_monsters.append(monster)
+                continue
+
+            split_hp = max(0, int(monster.get('hp', 0)))
+            if split_hp <= 0:
+                gone_monster = monster.copy()
+                gone_monster['is_gone'] = True
+                new_monsters.append(gone_monster)
+                continue
+
+            monster_name = monster.get('name', 'Unknown')
+            threshold, split_names = split_info
+            max_hp = monster.get('max_hp', split_hp)
+            hp_percent = (split_hp / max_hp * 100) if max_hp > 0 else 0
+            logger.info(
+                "[DEATH_SPLIT] Materializing %s at %.1f%% HP (threshold: %s%%) into %s",
+                monster_name,
+                hp_percent,
+                threshold,
+                ", ".join(split_names),
+            )
+            new_monsters.extend(
+                self._make_split_monster(child_name, split_hp, monster, child_index)
+                for child_index, child_name in enumerate(split_names)
+            )
+            changed = True
+
+        if changed:
+            state.monsters = new_monsters
+            state.primary_target = None
+
+        return state
+
+    def _get_death_split_info(self, monster: dict) -> Optional[Tuple[float, List[str]]]:
+        monster_name = monster.get('name', '')
+        if not monster_name:
+            return None
+
+        monster_data = game_data_loader.get_enhanced_monster_data(monster_name)
+        if not monster_data:
+            return None
+
+        special_mechanics = monster_data.get('special_mechanics', {})
+        if special_mechanics.get('type') != 'death_split':
+            return None
+
+        split_names = special_mechanics.get('splits_into') or []
+        if not split_names:
+            split_count = special_mechanics.get('split_count', 0)
+            split_names = [monster_name] * int(split_count)
+        if not split_names:
+            return None
+
+        split_conditions = special_mechanics.get('split_conditions', {})
+        threshold = (
+            split_conditions.get('hp_threshold')
+            or special_mechanics.get('split_threshold_percent')
+            or special_mechanics.get('split_threshold')
+            or 50
+        )
+        threshold = float(threshold)
+        if threshold <= 1:
+            threshold *= 100
+
+        return threshold, list(split_names)
+
+    def _is_death_split_due(self, monster: dict, split_info: Tuple[float, List[str]]) -> bool:
+        if monster.get('is_gone') or monster.get('split_materialized'):
+            return False
+
+        threshold, _split_names = split_info
+        hp = monster.get('hp', 0)
+        max_hp = monster.get('max_hp', hp)
+        if hp <= 0 or max_hp <= 0:
+            return False
+
+        hp_percent = hp / max_hp * 100
+        return hp_percent <= threshold
+
+    def _make_split_monster(self, child_name: str, inherited_hp: int, parent: dict, child_index: int) -> dict:
+        attack_damage = self._strongest_known_attack_damage(child_name)
+        return {
+            'name': child_name,
+            'hp': inherited_hp,
+            'max_hp': inherited_hp,
+            'block': 0,
+            'intent': Intent.UNKNOWN,
+            'is_gone': False,
+            'half_dead': False,
+            'vulnerable': 0,
+            'weak': 0,
+            'frail': 0,
+            'thorns': 0,
+            'move_base_damage': attack_damage,
+            'move_adjusted_damage': attack_damage,
+            'move_hits': 1,
+            'strength': 0,
+            'split_parent': parent.get('name', ''),
+            'split_child_index': child_index,
+            'split_materialized': True,
+        }
+
+    def _strongest_known_attack_damage(self, monster_name: str) -> int:
+        damage_values = []
+        for move in game_data_loader.get_monster_moves(monster_name):
+            intent = str(move.get('intent', '')).upper()
+            damage = move.get('damage')
+            if 'ATTACK' not in intent or not isinstance(damage, (int, float)):
+                continue
+            hits = move.get('hits', move.get('move_hits', 1)) or 1
+            damage_values.append(int(damage * hits))
+        return max(damage_values, default=0)
+
     def _handle_death_split(self, state: SimulationState, monster: dict, monster_index: int):
         """
         Handle monster death split mechanics (e.g., Slime Boss splitting at low HP).
@@ -1704,34 +1826,23 @@ class FastCombatSimulator:
             if not monster_name:
                 return
 
-            # Check if monster has death split mechanic
-            if not game_data_loader.does_monster_have_death_split(monster_name):
+            split_info = self._get_death_split_info(monster)
+            if not split_info:
                 return
 
-            # Get death split threshold from Wiki data
-            monster_data = game_data_loader.get_enhanced_monster_data(monster_name)
-            if not monster_data:
-                return
-
-            special_mechanics = monster_data.get('special_mechanics', {})
-            split_threshold = special_mechanics.get('split_threshold_percent', 50)
-            split_count = special_mechanics.get('split_count', 2)
-
-            # Check if HP is below threshold
+            split_threshold, split_names = split_info
             max_hp = monster.get('max_hp', monster['hp'])
             hp_percent = (monster['hp'] / max_hp * 100) if max_hp > 0 else 0
 
-            if hp_percent <= split_threshold and not monster.get('has_split', False):
-                logger.info(f"[DEATH_SPLIT] {monster_name} at {hp_percent:.1f}% HP (threshold: {split_threshold}%) - splitting into {split_count} monsters")
-
-                # Mark monster as having split (avoid re-splitting)
-                monster['has_split'] = True
-
-                # Create split monsters (simplified: add to monster list)
-                # In a full implementation, you would add new monster entries
-                # For now, just mark the original to handle it differently
-                monster['is_split_form'] = True
-                monster['split_count'] = split_count
+            if hp_percent <= split_threshold and not monster.get('split_pending', False):
+                logger.info(
+                    "[DEATH_SPLIT] %s at %.1f%% HP (threshold: %s%%) - split pending into %s",
+                    monster_name,
+                    hp_percent,
+                    split_threshold,
+                    ", ".join(split_names),
+                )
+                monster['split_pending'] = True
 
         except Exception as e:
             logger.warning(f"[DEATH_SPLIT] Failed to handle death split for {monster.get('name', 'Unknown')}: {e}")

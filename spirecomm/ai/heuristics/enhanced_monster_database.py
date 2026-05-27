@@ -313,9 +313,9 @@ class EnhancedMonsterDatabase:
                                 break
 
         # Check for probabilities (less certain prediction)
-        elif "probabilities" in pattern:
+        elif "probabilities" in pattern or "move_probabilities" in pattern:
             probs = self._select_probability_table(
-                pattern["probabilities"],
+                pattern.get("probabilities") or pattern.get("move_probabilities"),
                 current_turn,
                 monster_hp_percent,
             )
@@ -333,7 +333,7 @@ class EnhancedMonsterDatabase:
                 )[:2]
                 for move_name, prob in sorted_probs:
                     for move in moves:
-                        if move["name"].lower().replace(" ", "_") == move_name.lower():
+                        if self._normalize_move_name(move["name"]) == self._normalize_move_name(move_name):
                             predictions.append({
                                 "turn": current_turn,
                                 "move": move,
@@ -391,6 +391,9 @@ class EnhancedMonsterDatabase:
                     break
 
         return predictions[:3]  # Return at most 3 predictions
+
+    def _normalize_move_name(self, move_name: str) -> str:
+        return move_name.lower().replace(" ", "_")
 
     def _select_probability_table(
         self,
