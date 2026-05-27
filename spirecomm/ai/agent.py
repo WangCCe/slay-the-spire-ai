@@ -150,13 +150,23 @@ class SimpleAgent:
         """Return appropriate action to exit shop."""
         self._leaving_shop_room = True
         available = set(getattr(self.game, "available_commands", []) or [])
+        screen_type = getattr(self.game, "screen_type", None)
+
+        if (
+            screen_type == ScreenType.SHOP_SCREEN
+            and getattr(self, "shop_purchase_made", False)
+            and "proceed" not in available
+            and "leave" not in available
+            and "cancel" in available
+        ):
+            return WaitAction(timeout=1)
         if "leave" in available:
             return LeaveAction()
         if "proceed" in available or getattr(self.game, "proceed_available", False):
             return ProceedAction()
-        if "cancel" in available:
+        if "cancel" in available or "return" in available or "skip" in available:
             return CancelAction()
-        if getattr(self.game, "screen_type", None) == ScreenType.SHOP_SCREEN:
+        if screen_type == ScreenType.SHOP_SCREEN:
             return LeaveAction()
         return ProceedAction()
 
@@ -543,7 +553,7 @@ class SimpleAgent:
             if getattr(self, "_leaving_shop_room", False):
                 self.visited_shop = False
                 self.shop_purchase_made = False
-                return ProceedAction()
+                return self._exit_shop()
             if not self.visited_shop:
                 self.visited_shop = True
                 self.shop_purchase_made = False
@@ -551,8 +561,7 @@ class SimpleAgent:
             else:
                 self.visited_shop = False
                 self.shop_purchase_made = False
-                self._leaving_shop_room = True
-                return ProceedAction()
+                return self._exit_shop()
         elif self.game.screen_type == ScreenType.REST:
             return self.choose_rest_option()
         elif self.game.screen_type == ScreenType.CARD_REWARD:
