@@ -1651,6 +1651,44 @@ def test_uppercut_applies_weak_and_vulnerable_with_upgrade_stacks(monkeypatch):
     assert result.monsters[0]["vulnerable"] == 2
 
 
+def test_monster_weak_does_not_reduce_player_attack_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=100)])
+    context.weak_stacks[0] = 2
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 6
+
+
+def test_player_weak_reduces_player_attack_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Weak", amount=1)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 4
+
+
 def test_shockwave_plus_uses_upgraded_stacks_for_all_debuffs(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

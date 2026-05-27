@@ -849,7 +849,7 @@ class FastCombatSimulator:
                         break
                     damage = self._calculate_attack_damage(card, base_damage, state, context)
                     damage = self._apply_vulnerable_damage(damage, monster)
-                    damage = self._apply_weak_damage(damage, monster.get('weak', 0))
+                    damage = self._apply_weak_damage(damage, state.player_weak)
                     self._deal_damage_to_monster(state, monster, damage)
                     state.damage_instances += 1  # Track each damage instance
             if card_data:
@@ -869,7 +869,7 @@ class FastCombatSimulator:
                 monster = alive_monsters[hit_index % len(alive_monsters)]
                 damage = self._calculate_attack_damage(card, base_damage, state, context)
                 damage = self._apply_vulnerable_damage(damage, monster)
-                damage = self._apply_weak_damage(damage, monster.get('weak', 0))
+                damage = self._apply_weak_damage(damage, state.player_weak)
                 self._deal_damage_to_monster(state, monster, damage)
                 state.damage_instances += 1
         else:
@@ -882,7 +882,7 @@ class FastCombatSimulator:
                             break
                         damage = self._calculate_attack_damage(card, base_damage, state, context)
                         damage = self._apply_vulnerable_damage(damage, monster)
-                        damage = self._apply_weak_damage(damage, monster.get('weak', 0))
+                        damage = self._apply_weak_damage(damage, state.player_weak)
                         self._deal_damage_to_monster(state, monster, damage)
                         state.damage_instances += 1  # Track damage instance
 
