@@ -4446,6 +4446,42 @@ def test_ironclad_sequence_strategic_bonus_treats_counted_upgraded_whirlwind_as_
     assert counted_score == canonical_score
 
 
+def test_ironclad_sequence_bash_followup_bonus_ignores_upgraded_bash_as_big_attack():
+    bash = _card("Bash", "Bash", cost=2)
+    bash.uuid = "bash"
+    bash.damage = 8
+    counted_bash = _card("Bash+1", "Bash+1", cost=2, upgrades=1)
+    counted_bash.uuid = "counted-bash"
+    counted_bash.damage = 12
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+
+    solo_context = _combat_context([bash], energy=2, monsters=[_louse(current_hp=100)])
+    solo_initial = SimulationState(solo_context)
+    solo_score = planner._score_sequence(
+        [PlayCardAction(card=bash)],
+        solo_initial,
+        solo_initial.clone(),
+        solo_context,
+    )
+
+    extra_bash_context = _combat_context(
+        [bash, counted_bash],
+        energy=2,
+        monsters=[_louse(current_hp=100)],
+    )
+    extra_bash_initial = SimulationState(extra_bash_context)
+    extra_bash_score = planner._score_sequence(
+        [PlayCardAction(card=bash)],
+        extra_bash_initial,
+        extra_bash_initial.clone(),
+        extra_bash_context,
+    )
+
+    assert extra_bash_score == solo_score
+
+
 def test_ironclad_fallback_priority_treats_counted_upgraded_demon_form_as_demon_form():
     demon_form = _card(
         "Demon Form",

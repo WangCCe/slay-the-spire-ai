@@ -1267,7 +1267,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 if card_id == 'Bash':
                     # Check if we have big attacks remaining
                     big_attack_pending = any(
-                        c.card_id not in ['Bash', 'Strike_R', 'Defend_R']
+                        canonical_card_name(c) not in ['Bash', 'Strike', 'Defend']
                         and hasattr(c, 'damage') and c.damage > 10
                         for c in context.playable_cards
                         if c.uuid != card.uuid
