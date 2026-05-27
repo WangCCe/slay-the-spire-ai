@@ -93,6 +93,38 @@ def _louse(current_hp=50):
     )
 
 
+def _green_louse_debuff(current_hp=13):
+    return Monster(
+        name="Louse",
+        monster_id="FuzzyLouseDefensive",
+        max_hp=current_hp,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.DEBUFF,
+        half_dead=False,
+        is_gone=False,
+        move_id=4,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+
+
+def _red_slaver(move_id=1, current_hp=48, intent=Intent.ATTACK_DEBUFF):
+    return Monster(
+        name="Slaver",
+        monster_id="SlaverRed",
+        max_hp=48,
+        current_hp=current_hp,
+        block=0,
+        intent=intent,
+        half_dead=False,
+        is_gone=False,
+        move_id=move_id,
+        move_adjusted_damage=8,
+        move_hits=1,
+    )
+
+
 def _fungi_beast(current_hp=22):
     return Monster(
         name="Fungi Beast",
@@ -3614,3 +3646,28 @@ def test_awakened_one_penalizes_slow_power_setup_in_beam_score():
     )
 
     assert power_score < empty_score
+
+
+def test_live_red_slaver_id_resolves_scrape_not_blue_rake():
+    context = _combat_context([], monsters=[_red_slaver()])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    state = SimulationState(context)
+
+    move = simulator._current_monster_move(state.monsters[0])
+    debuffs = simulator._extract_move_debuffs(move)
+
+    assert move["name"] == "Scrape"
+    assert debuffs["vulnerable"] == 1
+    assert debuffs["weak"] == 0
+
+
+def test_live_green_louse_id_resolves_spit_web_despite_live_move_id():
+    context = _combat_context([], monsters=[_green_louse_debuff()])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    state = SimulationState(context)
+
+    move = simulator._current_monster_move(state.monsters[0])
+    debuffs = simulator._extract_move_debuffs(move)
+
+    assert move["name"] == "Spit Web"
+    assert debuffs["weak"] == 2

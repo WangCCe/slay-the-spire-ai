@@ -80,6 +80,19 @@ LOOKAHEAD_FRAIL_RISK_PER_STACK = 0.07
 LOOKAHEAD_DEBUFF_RISK_CAP = 0.2
 LOOKAHEAD_DAMAGE_DISCOUNT = 0.8
 
+LIVE_MONSTER_ID_TO_WIKI_NAME = {
+    'slaverred': 'Red Slaver',
+    'redslaver': 'Red Slaver',
+    'slaverblue': 'Blue Slaver',
+    'blueslaver': 'Blue Slaver',
+    'fuzzylousenormal': 'Red Louse',
+    'fuzzylousedefensive': 'Green Louse',
+    'jawworm': 'Jaw Worm',
+    'gremlinnob': 'Gremlin Nob',
+    'slimeboss': 'Slime Boss',
+    'sphericguardian': 'Spheric Guardian',
+}
+
 # Adaptive search parameters
 BEAM_WIDTH_ACT1 = 20  # Beam width for Act 1 (simple enemies) - increased from 12 (+67%)
 BEAM_WIDTH_ACT2 = 30  # Beam width for Act 2 (moderate complexity) - increased from 18 (+67%)
@@ -97,6 +110,24 @@ FASTSCORE_POWER_EARLY_BONUS = 6  # Extra bonus for early-turn powers
 # Progressive widening M values (Stage 2 of two-stage expansion)
 M_VALUES = [20, 18, 15, 12, 10]  # Number of actions to full-simulate at each depth
                                   # Decreases with depth: 20→18→15→12→10 (increased from 12→10→7→5→4)
+
+
+def _monster_field(monster: Any, field_name: str, default: Any = None) -> Any:
+    if isinstance(monster, dict):
+        return monster.get(field_name, default)
+    return getattr(monster, field_name, default)
+
+
+def _normalize_monster_id(monster_id: str) -> str:
+    return re.sub(r'[^a-z0-9]', '', str(monster_id).lower())
+
+
+def _canonical_live_monster_name(monster: Any) -> str:
+    monster_id = _monster_field(monster, 'monster_id', '') or ''
+    mapped_name = LIVE_MONSTER_ID_TO_WIKI_NAME.get(_normalize_monster_id(monster_id))
+    if mapped_name:
+        return mapped_name
+    return str(_monster_field(monster, 'name', '') or '')
 
 # =============================================================================
 # CARD UPGRADE MAPPINGS
@@ -304,28 +335,29 @@ def select_combat_mode_with_monster_data(context) -> CombatMode:
     total_scaling_threat = 0
 
     for monster in context.monsters_alive:
+        monster_name = _canonical_live_monster_name(monster)
         # Check for summoners
-        if game_data_loader.is_monster_summoner(monster.name):
+        if game_data_loader.is_monster_summoner(monster_name):
             has_summoner = True
 
         # Check for phase change
-        if game_data_loader.does_monster_have_phase_change(monster.name):
+        if game_data_loader.does_monster_have_phase_change(monster_name):
             has_phase_change = True
 
         # Check for hibernation
-        if game_data_loader.is_monster_hibernating(monster.name, context.turn):
+        if game_data_loader.is_monster_hibernating(monster_name, context.turn):
             has_hibernating = True
 
         # Check for death split
-        if game_data_loader.does_monster_have_death_split(monster.name):
+        if game_data_loader.does_monster_have_death_split(monster_name):
             has_death_split = True
 
         # Check for duo boss
-        if game_data_loader.is_monster_duo_boss(monster.name):
+        if game_data_loader.is_monster_duo_boss(monster_name):
             has_duo_boss = True
 
         # Get threat profile
-        threat_profile = game_data_loader.get_monster_threat_profile(monster.name)
+        threat_profile = game_data_loader.get_monster_threat_profile(monster_name)
         if threat_profile:
             # Accumulate scaling threat
             scaling_threat = threat_profile.get('scaling_threat', 0)
@@ -338,7 +370,7 @@ def select_combat_mode_with_monster_data(context) -> CombatMode:
                 has_time_pressure = True
 
         # Count elites and bosses
-        monster_type = game_data_loader.get_monster_type(monster.name)
+        monster_type = game_data_loader.get_monster_type(monster_name)
         if monster_type == 'elite':
             elite_count += 1
         elif monster_type == 'boss':
@@ -2184,20 +2216,22 @@ class FastCombatSimulator:
                         split_due_this_turn = True
                         continue
 
-                    monster_name = monster.get('name', '')
+                    monster_name = _canonical_live_monster_name(monster)
                     if not monster_name:
                         continue
 
                     max_hp = monster.get('max_hp', monster['hp'])
                     hp_percent = monster['hp'] / max_hp if max_hp > 0 else 1.0
-                    predicted_moves = game_data_loader.predict_monster_moves(
-                        monster_name,
-                        current_turn + step,
-                        hp_percent,
-                    )
-                    move = None
-                    if predicted_moves:
-                        move = predicted_moves[0].get('move', None)
+                    move = self._current_monster_move(monster) if step == 0 else None
+                    if move is None:
+                        predicted_moves = game_data_loader.predict_monster_moves(
+                            monster_name,
+                            current_turn + step,
+                            hp_percent,
+                        )
+                        if predicted_moves:
+                            move = predicted_moves[0].get('move', None)
+                    if move:
                         any_predictions = True
 
                     if move:
@@ -2299,7 +2333,7 @@ class FastCombatSimulator:
 
                     move = self._current_monster_move(monster) if step == 0 else None
                     if move is None:
-                        monster_name = monster.get('name', '')
+                        monster_name = _canonical_live_monster_name(monster)
                         if not monster_name:
                             continue
                         max_hp = monster.get('max_hp', monster['hp'])
@@ -2336,13 +2370,74 @@ class FastCombatSimulator:
     def _current_monster_move(self, monster: dict) -> Optional[Dict[str, Any]]:
         """Return the current move from live state move_id when available."""
         move_id = monster.get('move_id', None)
-        if move_id is None:
+        try:
+            moves = game_data_loader.get_monster_moves(_canonical_live_monster_name(monster))
+        except AttributeError:
             return None
 
-        for move in game_data_loader.get_monster_moves(monster.get('name', '')):
-            if move.get('move_id') == move_id:
-                return move
-        return None
+        if move_id is not None:
+            for move in moves:
+                if move.get('move_id') == move_id:
+                    return move
+
+        return self._find_current_move_by_live_state(monster, moves)
+
+    def _find_current_move_by_live_state(
+        self,
+        monster: dict,
+        moves: List[Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        live_intent = self._intent_name(monster.get('intent', '')).upper()
+        if not live_intent:
+            return None
+
+        live_damage = (
+            monster.get('move_adjusted_damage', 0)
+            or monster.get('move_base_damage', 0)
+            or 0
+        )
+        live_hits = monster.get('move_hits', 1) or 1
+
+        matches = []
+        for move in moves:
+            if not self._move_intent_matches_live(move, live_intent):
+                continue
+
+            if 'ATTACK' in live_intent and live_damage > 0:
+                move_damage = self._numeric_damage_value(move.get('damage', 0))
+                move_hits = self._move_hit_count(move)
+                if move_damage > 0 and move_damage * move_hits != live_damage * live_hits:
+                    continue
+
+            matches.append(move)
+
+        if len(matches) == 1:
+            return matches[0]
+        return matches[0] if matches else None
+
+    def _intent_name(self, intent: Any) -> str:
+        if hasattr(intent, 'name'):
+            return str(intent.name)
+        text = str(intent or '')
+        return text.rsplit('.', 1)[-1]
+
+    def _move_intent_matches_live(self, move: Dict[str, Any], live_intent: str) -> bool:
+        move_intent = str(move.get('intent', '')).upper()
+        if not move_intent or not live_intent:
+            return False
+        if move_intent == live_intent:
+            return True
+        if live_intent in move_intent or move_intent in live_intent:
+            return True
+        if live_intent == 'ATTACK' and 'ATTACK' in move_intent:
+            return True
+        if live_intent == 'DEBUFF' and 'DEBUFF' in move_intent:
+            return True
+        if live_intent == 'BUFF' and 'BUFF' in move_intent:
+            return True
+        if live_intent == 'DEFEND' and ('DEFEND' in move_intent or 'BLOCK' in move_intent):
+            return True
+        return False
 
     def calculate_future_monster_damage(self, state: SimulationState, context: DecisionContext, look_ahead: int = 2) -> int:
         """Compatibility wrapper for future damage prediction."""
