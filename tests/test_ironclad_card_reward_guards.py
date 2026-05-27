@@ -7,6 +7,25 @@ from spirecomm.ai.priorities import IroncladPriority
 from spirecomm.communication.action import CancelAction, CardRewardAction
 
 
+class _FakeTracker:
+    def __init__(self):
+        self.cards_obtained = []
+        self.cards_skipped = 0
+        self.card_choice_calls = []
+        self.decision_calls = []
+
+    def record_card_choice(self, **kwargs):
+        self.card_choice_calls.append(kwargs)
+        chosen = kwargs.get("chosen")
+        if chosen:
+            self.cards_obtained.append(chosen)
+        else:
+            self.cards_skipped += kwargs.get("skipped", 0)
+
+    def record_decision(self, **kwargs):
+        self.decision_calls.append(kwargs)
+
+
 def _card(card_id, cost=1, upgrades=0):
     return SimpleNamespace(
         card_id=card_id,
@@ -25,26 +44,34 @@ def _agent_for_reward(
     max_hp=80,
     act=1,
     act_boss=None,
+    can_skip=True,
+    can_bowl=False,
+    in_combat=False,
+    room_type="MonsterRoom",
+    monsters=None,
+    game_tracker=None,
 ):
     agent = OptimizedAgent.__new__(OptimizedAgent)
     agent.card_evaluator = IroncladCardEvaluator()
     agent.deck_strategy = IroncladDeckStrategy()
     agent.priorities = IroncladPriority()
-    agent.game_tracker = None
+    agent.game_tracker = game_tracker
     agent.decision_history = []
     agent.skipped_cards = False
+    agent.use_optimized_card_selection = True
     agent.game = SimpleNamespace(
-        screen=SimpleNamespace(cards=reward_cards, can_skip=True, can_bowl=False),
-        in_combat=False,
+        screen=SimpleNamespace(cards=reward_cards, can_skip=can_skip, can_bowl=can_bowl),
+        in_combat=in_combat,
         deck=deck,
         current_hp=hp,
         max_hp=max_hp,
         floor=floor,
         act=act,
         act_boss=act_boss,
+        room_type=room_type,
         turn=1,
         hand=[],
-        monsters=[],
+        monsters=monsters if monsters is not None else [],
         relics=[SimpleNamespace(relic_id="Burning Blood")],
         player=SimpleNamespace(energy=3, powers=[]),
     )
@@ -238,6 +265,45 @@ def test_ironclad_strategy_skips_fire_breathing_without_status_support():
     action = _agent_for_reward(reward_cards, deck, floor=1)._choose_card_reward_optimized()
 
     assert isinstance(action, CancelAction)
+
+
+def test_power_potion_generated_choice_is_not_recorded_as_deck_reward():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Anger", cost=0),
+        _card("Havoc"),
+    ]
+    reward_cards = [
+        _card("Inflame", cost=1),
+        _card("Rupture", cost=1),
+        _card("Combust", cost=1),
+    ]
+    tracker = _FakeTracker()
+    live_monsters = [
+        SimpleNamespace(current_hp=20, is_gone=False, half_dead=False),
+    ]
+    agent = _agent_for_reward(
+        reward_cards,
+        deck,
+        can_skip=False,
+        in_combat=False,
+        room_type="MonsterRoom",
+        monsters=live_monsters,
+        game_tracker=tracker,
+    )
+
+    action = agent.choose_card_reward()
+
+    assert isinstance(action, CardRewardAction)
+    assert tracker.card_choice_calls == []
+    assert tracker.cards_obtained == []
 
 
 def test_ironclad_strategy_prefers_thunderclap_over_second_brutality_before_boss():

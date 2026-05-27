@@ -1690,6 +1690,31 @@ class OptimizedAgent(SimpleAgent):
             import sys
             print(f"Error in game tracking: {e}", file=sys.stderr)
 
+    def _is_generated_combat_card_choice(self, reward_cards=None):
+        screen = getattr(self.game, "screen", None)
+        if screen is None:
+            return False
+        cards = reward_cards
+        if cards is None:
+            cards = getattr(screen, "cards", []) or []
+        if not cards:
+            return False
+        if getattr(screen, "can_skip", False) or getattr(screen, "can_bowl", False):
+            return False
+
+        live_monsters = [
+            monster
+            for monster in (getattr(self.game, "monsters", []) or [])
+            if getattr(monster, "current_hp", 0) > 0
+            and not getattr(monster, "is_gone", False)
+            and not getattr(monster, "half_dead", False)
+        ]
+        if not live_monsters:
+            return False
+
+        room_type = str(getattr(self.game, "room_type", ""))
+        return bool(getattr(self.game, "in_combat", False)) or "Monster" in room_type
+
     def choose_card_reward(self):
         """
         Override with optimized card selection if enabled.
@@ -1714,6 +1739,12 @@ class OptimizedAgent(SimpleAgent):
             logging.info(
                 f"[CARD_REWARD_DEBUG]   Card {i}: {card.card_id} (name={card.name})"
             )
+        combat_generated_choice = self._is_generated_combat_card_choice(reward_cards)
+        if combat_generated_choice:
+            logging.info(
+                "[CARD_REWARD_DEBUG] Treating CARD_REWARD as generated combat card choice; "
+                "deck reward tracking disabled"
+            )
 
         # Check conditions
         use_optimized = (
@@ -1733,18 +1764,34 @@ class OptimizedAgent(SimpleAgent):
         logging.info(f"[CARD_REWARD_DEBUG] Will use optimized path: {use_optimized}")
 
         # Get action from parent (either optimized or simple logic)
+        original_game_tracker = self.game_tracker
+        if combat_generated_choice:
+            self.game_tracker = None
         if use_optimized:
             logging.info(f"[CARD_REWARD_DEBUG] Taking OPTIMIZED path")
-            action = self._choose_card_reward_optimized()
+            try:
+                action = self._choose_card_reward_optimized()
+            finally:
+                self.game_tracker = original_game_tracker
         else:
             logging.info(f"[CARD_REWARD_DEBUG] Taking SIMPLE path (fallback)")
-            action = super().choose_card_reward()
+            try:
+                action = super().choose_card_reward()
+            finally:
+                self.game_tracker = original_game_tracker
 
         # LOG: Action result
         logging.info(f"[CARD_REWARD_DEBUG] Action type: {type(action).__name__}")
         if isinstance(action, CardRewardAction):
             logging.info(f"[CARD_REWARD_DEBUG] Action name: {action.name}")
         logging.info(f"[CARD_REWARD_DEBUG] Action repr: {repr(action)}")
+
+        if combat_generated_choice:
+            logging.info(
+                "[CARD_REWARD_DEBUG] Generated combat card choice selected; "
+                "skipping game_tracker card reward recording"
+            )
+            return action
 
         # Record the choice for statistics
         if self.game_tracker:
