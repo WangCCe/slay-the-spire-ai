@@ -2496,6 +2496,41 @@ def test_lethal_detector_counts_multi_hit_attack_damage(monkeypatch):
     assert CombatEndingDetector()._calculate_affordable_damage(context) == 19
 
 
+def test_lethal_detector_counts_fiend_fire_exhausted_hand_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "description": "Deal 7 damage. Exhaust your hand.",
+        }
+    }
+    loader._wiki_data = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "text": "Deal [7|10] damage. Exhaust your hand.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    fiend_fire = _card("Fiend Fire", "Fiend Fire", cost=2)
+    fiend_fire.uuid = "fiend-fire"
+    other_cards = [
+        _card("Second Wind", "Second Wind", card_type=CardType.SKILL, cost=0),
+        _card("Strike_R", "Strike", cost=1),
+        _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1),
+        _card("Pommel Strike", "Pommel Strike", cost=1),
+    ]
+    cards = [fiend_fire, *other_cards]
+    context = _combat_context(cards, energy=2, monsters=[_louse(current_hp=36)])
+    context.strength = 3
+    context.game.hand = cards
+
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 40
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["fiend-fire"]
+
+
 def test_lethal_detector_counts_heavy_blade_strength_multiplier(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

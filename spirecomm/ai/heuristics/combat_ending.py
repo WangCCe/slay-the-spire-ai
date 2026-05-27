@@ -384,8 +384,26 @@ class CombatEndingDetector:
             return 4 if upgrades > 0 else 3
         if card_name == 'Pummel':
             return 5 if upgrades > 0 else 4
+        if card_name == 'Fiend Fire':
+            return self._count_fiend_fire_exhausted_cards(card, context)
 
         return 1
+
+    def _count_fiend_fire_exhausted_cards(self, card: Card, context: DecisionContext) -> int:
+        """Count cards Fiend Fire will exhaust after the played card leaves hand."""
+        hand_cards = getattr(getattr(context, 'game', None), 'hand', None)
+        if not hand_cards:
+            hand_cards = getattr(context, 'playable_cards', []) or []
+
+        played_uuid = getattr(card, 'uuid', None)
+        count = 0
+        for hand_card in hand_cards:
+            if hand_card is card:
+                continue
+            if played_uuid and getattr(hand_card, 'uuid', None) == played_uuid:
+                continue
+            count += 1
+        return max(0, count)
 
     def _count_strike_cards(self, context: DecisionContext) -> int:
         """Count deck cards whose displayed name or id contains Strike."""
