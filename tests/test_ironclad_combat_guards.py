@@ -3779,6 +3779,35 @@ def test_lethal_targeting_treats_carnage_as_single_target():
     assert CombatEndingDetector()._can_target_all_monsters(context, affordable_damage=40) is False
 
 
+def test_lethal_detector_treats_counted_upgraded_cleave_as_aoe(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "cleave": {
+            "name": "Cleave",
+            "description": "Deal 8 damage to ALL enemies.",
+        }
+    }
+    loader._wiki_data = {
+        "cleave": {
+            "name": "Cleave",
+            "text": "Deal [8|11] damage to ALL enemies.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+
+    cleave = _card("Cleave+1", "Cleave+1", cost=1, has_target=False, upgrades=1)
+    context = _combat_context(
+        [cleave],
+        energy=1,
+        monsters=[_louse(current_hp=5), _louse(current_hp=5)],
+    )
+
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 11
+    assert detector.can_kill_all(context) is True
+
+
 def test_beam_search_does_not_play_more_cards_after_x_cost_whirlwind_spends_all_energy():
     whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
     strike = _card("Strike_R", "Strike", cost=1, cost_for_turn=1)
