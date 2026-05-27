@@ -808,6 +808,7 @@ class FastCombatSimulator:
                                 monster['weak'] += weak_stacks
 
         self._apply_attack_healing(state, card, starting_total_damage)
+        self._apply_attack_resource_effects(state, card, target_index)
 
     def _get_attack_hit_count(
         self,
@@ -850,6 +851,24 @@ class FastCombatSimulator:
         if unblocked_damage <= 0:
             return
         state.player_hp = min(state.player_max_hp, state.player_hp + unblocked_damage)
+
+    def _apply_attack_resource_effects(
+        self,
+        state: SimulationState,
+        card: Card,
+        target_index: Optional[int],
+    ):
+        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        if card_name != 'Dropkick':
+            return
+        if target_index is None or not (0 <= target_index < len(state.monsters)):
+            return
+        if state.monsters[target_index].get('vulnerable', 0) <= 0:
+            return
+
+        state.player_energy += 1
+        state.energy_gained += 1
+        state.cards_drawn += 1
 
     def _calculate_attack_damage(
         self,
