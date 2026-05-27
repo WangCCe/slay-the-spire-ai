@@ -2411,7 +2411,7 @@ class OptimizedAgent(SimpleAgent):
         hp_pct = self.game.current_hp / max(self.game.max_hp, 1)
         incoming_damage = self.get_incoming_damage()
         alive_monsters = [
-            m for m in self.game.monsters if not m.is_gone and not m.half_dead
+            m for m in self.game.monsters if self._is_live_monster(m)
         ]
         is_elite = "Elite" in self.game.room_type
         is_boss = "Boss" in self.game.room_type
@@ -2529,7 +2529,7 @@ class OptimizedAgent(SimpleAgent):
 
         # Monster count
         alive_monsters = [
-            m for m in self.game.monsters if not m.is_gone and not m.half_dead
+            m for m in self.game.monsters if self._is_live_monster(m)
         ]
         danger += min(len(alive_monsters) * 0.15, 0.4)
 
