@@ -116,6 +116,9 @@ class ActionEncoder:
         """
         return self.USE_POTION_OFFSET + potion_index * 10 + monster_index
 
+    def _potion_action_slots(self) -> int:
+        return (self.END_TURN_ACTION - self.USE_POTION_OFFSET) // self.MAX_MONSTERS
+
     def decode_action(self, action_index: int, game: Game) -> Optional[object]:
         """
         Decode action index to Action object.
@@ -692,21 +695,36 @@ class ActionEncoder:
                             mask[action_idx] = True
 
             # Use potion actions (only if potions are available AND can_use=True)
-            for potion_idx in range(min(len(potions), self.MAX_POTIONS)):
-                potion = potions[potion_idx]
-                # Skip empty potion slots
-                if hasattr(potion, "potion_id") and potion.potion_id == "Potion Slot":
-                    continue
-                # Only enable if potion can be used
-                if hasattr(potion, "can_use") and not potion.can_use:
-                    continue
-
-                # Enable potion action for each valid target
-                for monster_idx, monster in enumerate(monsters):
-                    if monster.current_hp <= 0 or monster.is_gone or monster.half_dead:
+            if getattr(game, "potion_available", True):
+                max_potion_slots = min(
+                    len(potions),
+                    self.MAX_POTIONS,
+                    self._potion_action_slots(),
+                )
+                for potion_idx in range(max_potion_slots):
+                    potion = potions[potion_idx]
+                    # Skip empty potion slots
+                    if (
+                        hasattr(potion, "potion_id")
+                        and potion.potion_id == "Potion Slot"
+                    ):
                         continue
-                    action_idx = self.encode_use_potion(potion_idx, monster_idx)
-                    mask[action_idx] = True
+                    # Only enable if potion can be used
+                    if hasattr(potion, "can_use") and not potion.can_use:
+                        continue
+
+                    # Enable potion action for each valid target
+                    for monster_idx, monster in enumerate(
+                        monsters[: self.MAX_MONSTERS]
+                    ):
+                        if (
+                            monster.current_hp <= 0
+                            or monster.is_gone
+                            or monster.half_dead
+                        ):
+                            continue
+                        action_idx = self.encode_use_potion(potion_idx, monster_idx)
+                        mask[action_idx] = True
 
             logger.debug(f"Combat (ScreenType.NONE): {sum(mask)} valid actions")
 

@@ -25,6 +25,31 @@ def _game(**kwargs):
     return SimpleNamespace(**defaults)
 
 
+def _combat_game(**kwargs):
+    defaults = dict(
+        screen_type=None,
+        screen=None,
+        in_combat=True,
+        choice_available=False,
+        choice_list=[],
+        available_commands=[],
+        proceed_available=False,
+        cancel_available=False,
+        end_available=False,
+        play_available=True,
+        potion_available=True,
+        hand=[],
+        monsters=[SimpleNamespace(current_hp=10, is_gone=False, half_dead=False)],
+        potions=[],
+    )
+    defaults.update(kwargs)
+    return SimpleNamespace(**defaults)
+
+
+def _potion(name):
+    return SimpleNamespace(potion_id=name, can_use=True, requires_target=True)
+
+
 def test_legacy_shop_decoder_uses_item_offsets_for_purchases():
     encoder = ActionEncoder()
     card = SimpleNamespace(name="Pommel Strike")
@@ -76,3 +101,31 @@ def test_legacy_shop_mask_uses_structured_items_and_potion_space():
     assert mask[encoder.SHOP_ACTION_OFFSET + 1]
     assert not mask[encoder.SHOP_ACTION_OFFSET + 2]
     assert mask[encoder.SHOP_ACTION_OFFSET + 3]
+
+
+def test_legacy_potion_mask_respects_potion_available():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        potions=[_potion("Fire Potion")],
+        potion_available=False,
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert not any(mask[encoder.USE_POTION_OFFSET:encoder.END_TURN_ACTION])
+
+
+def test_legacy_potion_mask_does_not_collide_with_end_turn_action():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        potions=[
+            _potion("Fire Potion"),
+            _potion("Strength Potion"),
+            _potion("Dexterity Potion"),
+        ],
+        end_available=False,
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert not mask[encoder.END_TURN_ACTION]
