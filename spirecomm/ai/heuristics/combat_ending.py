@@ -6,6 +6,7 @@ combat could be ended this turn.
 """
 
 import logging
+import re
 from typing import List, Tuple, Optional
 from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster
@@ -31,6 +32,15 @@ class CombatEndingDetector:
     def __init__(self):
         """Initialize the combat ending detector."""
         pass
+
+    @staticmethod
+    def _base_card_name(card: Card) -> str:
+        raw_name = getattr(card, 'name', None) or getattr(card, 'card_id', '')
+        return re.sub(r'\+\d*$', '', str(raw_name))
+
+    @staticmethod
+    def _searing_blow_upgrade_damage(upgrades: int) -> int:
+        return upgrades * (upgrades + 7) // 2 if upgrades > 0 else 0
 
     def can_kill_all(self, context: DecisionContext) -> bool:
         """
@@ -363,17 +373,18 @@ class CombatEndingDetector:
         Returns:
             Damage value
         """
-        display_name = getattr(card, 'name', None) or getattr(card, 'card_id', '')
-        if getattr(card, 'upgrades', 0) > 0 and not display_name.endswith('+'):
-            display_name = f"{display_name}+"
-        card_name = display_name.replace('+', '')
+        card_name = self._base_card_name(card)
+        upgrades = getattr(card, 'upgrades', 0)
+        display_name = f"{card_name}+" if upgrades > 0 else card_name
         base_damage = 0
 
         card_data = game_data_loader.get_card_data(card_name)
         if card_data:
             damage_data = dict(card_data)
-            damage_data['name'] = display_name
+            damage_data['name'] = card_name if card_name == 'Searing Blow' else display_name
             base_damage = game_data_loader._parse_card_damage(damage_data) or 0
+            if card_name == 'Searing Blow':
+                base_damage += self._searing_blow_upgrade_damage(upgrades)
 
         if card_name == 'Whirlwind':
             energy = effective_card_cost(card, context.energy_available)
@@ -449,9 +460,7 @@ class CombatEndingDetector:
         context: DecisionContext,
         available_energy: int,
     ) -> int:
-        card_name = (
-            getattr(card, 'name', None) or getattr(card, 'card_id', '')
-        ).replace('+', '')
+        card_name = self._base_card_name(card)
 
         if card_name == 'Whirlwind':
             return max(1, effective_card_cost(card, available_energy))
@@ -474,9 +483,7 @@ class CombatEndingDetector:
 
     def _get_attack_hit_count(self, card: Card, context: DecisionContext) -> int:
         """Return known hit counts for repeated-hit attacks."""
-        card_name = (
-            getattr(card, 'name', None) or getattr(card, 'card_id', '')
-        ).replace('+', '')
+        card_name = self._base_card_name(card)
         upgrades = getattr(card, 'upgrades', 0)
 
         if card_name == 'Twin Strike':

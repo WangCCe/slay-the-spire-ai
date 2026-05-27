@@ -3597,6 +3597,22 @@ def test_lethal_detector_counts_perfected_strike_deck_scaling(monkeypatch):
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["perfected-strike"]
 
 
+def test_lethal_detector_counts_repeated_searing_blow_upgrades(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "searing blow": {
+            "name": "Searing Blow",
+            "description": "Deal 12 damage. Can be Upgraded any number of times.",
+        }
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    searing_blow = _card("Searing Blow", "Searing Blow+2", cost=2, upgrades=2)
+    context = _combat_context([searing_blow], energy=2, monsters=[_louse(current_hp=100)])
+
+    assert CombatEndingDetector()._calculate_affordable_damage(context) == 21
+
+
 def test_lethal_detector_counts_multi_hit_attack_damage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
