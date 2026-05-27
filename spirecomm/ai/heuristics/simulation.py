@@ -973,7 +973,7 @@ class FastCombatSimulator:
         if card_data:
             is_aoe = game_data_loader._is_card_aoe(card_data)
         # Also check known AOE cards by name
-        if card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']:
+        if card_name in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']:
             is_aoe = True
         hit_count = self._get_attack_hit_count(card, state, context)
         starting_total_damage = state.total_damage_dealt
