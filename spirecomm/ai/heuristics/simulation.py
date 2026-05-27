@@ -129,6 +129,15 @@ def _canonical_live_monster_name(monster: Any) -> str:
         return mapped_name
     return str(_monster_field(monster, 'name', '') or '')
 
+
+def _canonical_card_name(card: Any) -> str:
+    raw_name = getattr(card, 'name', None) or getattr(card, 'card_id', '')
+    card_name = re.sub(r'\+\d*$', '', str(raw_name))
+    for suffix in ('_R', '_G', '_B', '_P'):
+        if card_name.endswith(suffix):
+            return card_name[:-2]
+    return card_name
+
 # =============================================================================
 # CARD UPGRADE MAPPINGS
 # =============================================================================
@@ -185,6 +194,12 @@ DAMAGE_UPGRADE_BONUS = {
     # +10 damage
     'Bludgeon': 10,
 }
+
+
+def _known_damage_upgrade_bonus(card: Any, card_name: str) -> int:
+    if getattr(card, 'upgrades', 0) <= 0:
+        return 0
+    return DAMAGE_UPGRADE_BONUS.get(card_name, 0)
 
 # Block card upgrade block bonuses (All characters)
 # Maps card name to block increase when upgraded (upgrades=1)
@@ -908,7 +923,7 @@ class FastCombatSimulator:
         x_energy_spent: Optional[int] = None,
     ):
         """Apply attack card effects with proper damage calculation."""
-        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_name = _canonical_card_name(card)
         dynamic_damage_card = card_name in {'Body Slam', 'Whirlwind'}
         base_damage = getattr(card, 'damage', 0)
         if base_damage is None:
@@ -3941,10 +3956,12 @@ class HeuristicCombatPlanner(CombatPlanner):
             base_damage = getattr(card, 'damage', 0)
             if base_damage == 0 or not hasattr(card, 'damage'):
                 try:
-                    card_name = card.card_id.replace('+', '')
+                    card_name = _canonical_card_name(card)
                     card_data = game_data_loader.get_card_data(card_name)
                     if card_data:
-                        base_damage = game_data_loader._parse_card_damage(card_data)
+                        parsed_damage = game_data_loader._parse_card_damage(card_data)
+                        if parsed_damage is not None:
+                            base_damage = parsed_damage + _known_damage_upgrade_bonus(card, card_name)
                 except:
                     pass
 
@@ -4071,10 +4088,12 @@ class HeuristicCombatPlanner(CombatPlanner):
             # Try to get damage from game data
             if base_damage == 0 or not hasattr(card, 'damage'):
                 try:
-                    card_name = card.card_id.replace('+', '')
+                    card_name = _canonical_card_name(card)
                     card_data = game_data_loader.get_card_data(card_name)
                     if card_data:
-                        base_damage = game_data_loader._parse_card_damage(card_data)
+                        parsed_damage = game_data_loader._parse_card_damage(card_data)
+                        if parsed_damage is not None:
+                            base_damage = parsed_damage + _known_damage_upgrade_bonus(card, card_name)
                 except:
                     pass
 
@@ -4130,7 +4149,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         # === CRITICAL: Rage synergy bonus (play before attacks) ===
         # Rage effect: "Whenever you play an Attack this turn, gain 3 Block"
         # Value depends on how many attack cards can be played after it
-        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_name = _canonical_card_name(card)
         if card_name == 'Rage':
             # Count playable attack cards in hand
             attack_cards = [c for c in context.playable_cards
@@ -4171,7 +4190,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         # Debuff setup bonus when attacks remain (e.g., Shockwave before attacks).
         if monsters_alive and hasattr(card, 'type') and card.type == CardType.SKILL:
-            card_name = card.card_id.replace('+', '')
+            card_name = _canonical_card_name(card)
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
                 description = card_data.get('description', '').lower()
@@ -4206,14 +4225,13 @@ class HeuristicCombatPlanner(CombatPlanner):
         is_aoe = False
         if hasattr(card, 'card_id'):
             # Check known AOE cards
-            from spirecomm.ai.priorities import IroncladPriority
             if hasattr(context, 'player_class'):
                 player_class = str(context.player_class)
             else:
                 player_class = 'IRONCLAD'
 
             if player_class == 'IRONCLAD':
-                is_aoe = card.card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
+                is_aoe = card_name in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
 
         # Base damage estimate with AOE multiplier
         base_damage = 0
@@ -4221,10 +4239,11 @@ class HeuristicCombatPlanner(CombatPlanner):
             base_damage = card.damage
         elif hasattr(card, 'type') and card.type == CardType.ATTACK:
             # Fallback: use game data for damage
-            card_name = card.card_id.replace('+', '')
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
-                base_damage = game_data_loader._parse_card_damage(card_data)
+                parsed_damage = game_data_loader._parse_card_damage(card_data)
+                if parsed_damage is not None:
+                    base_damage = parsed_damage + _known_damage_upgrade_bonus(card, card_name)
 
             # Check for X-damage cards and calculate dynamically
             if base_damage == 0:

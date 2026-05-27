@@ -7,7 +7,7 @@ import spirecomm.ai.heuristics.ironclad_combat as ironclad_combat
 import spirecomm.ai.heuristics.simulation as simulation
 import spirecomm.data.loader as data_loader
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
-from spirecomm.ai.heuristics.simulation import FastCombatSimulator
+from spirecomm.ai.heuristics.simulation import FastCombatSimulator, HeuristicCombatPlanner
 from spirecomm.ai.heuristics.timing.turn_classifier import TurnTimingClassifier
 from spirecomm.ai.heuristics.enhanced_monster_database import EnhancedMonsterDatabase
 from spirecomm.spire.card import Card, CardRarity, CardType
@@ -151,6 +151,86 @@ def test_fast_simulator_does_not_apply_generic_damage_upgrade_for_unknown_cards(
 
     assert state.total_damage_dealt == 8
     assert state.monsters[0]["weak"] == 2
+
+
+def test_fast_simulator_uses_display_name_for_basic_card_ids(monkeypatch):
+    card = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        has_target=True,
+        cost=1,
+        upgrades=1,
+    )
+    card_data = {
+        "name": "Strike",
+        "description": "Deal 6 damage.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Strike" else None,
+    )
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 20,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "thorns": 0,
+            }
+        ],
+        player_strength=0,
+        player_hp=80,
+        total_damage_dealt=0,
+        monsters_killed=0,
+        damage_instances=0,
+    )
+
+    FastCombatSimulator(None)._apply_attack(
+        state,
+        card,
+        target=None,
+        target_index=0,
+        context=None,
+    )
+
+    assert state.total_damage_dealt == 9
+
+
+def test_target_estimation_uses_known_upgrade_damage_for_basic_card_ids(monkeypatch):
+    card = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        has_target=True,
+        cost=1,
+        upgrades=1,
+    )
+    card_data = {
+        "name": "Strike",
+        "description": "Deal 6 damage.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Strike" else None,
+    )
+    killable = SimpleNamespace(current_hp=8, block=0)
+    dangerous = SimpleNamespace(current_hp=30, block=0)
+    context = SimpleNamespace(
+        monsters_alive=[killable, dangerous],
+        player=SimpleNamespace(strength=0),
+        compute_threat=lambda monster: 100 if monster is dangerous else 1,
+    )
+
+    target = HeuristicCombatPlanner()._find_best_target(card, context)
+
+    assert target is killable
 
 
 def test_fast_simulator_falls_back_when_x_damage_calculation_returns_none(monkeypatch):
