@@ -1419,7 +1419,7 @@ class IroncladCombatPlanner(CombatPlanner):
     def _get_card_priority(self, card: Card, context: DecisionContext) -> float:
         """Get priority score for a card (simplified version of existing logic)."""
         card_type = card.type if hasattr(card, 'type') else None
-        card_id = card.card_id
+        card_id = canonical_card_name(card)
         
         # Check if fighting Gremlins or other weak monsters that require aggressive play
         aggressive_mode = False

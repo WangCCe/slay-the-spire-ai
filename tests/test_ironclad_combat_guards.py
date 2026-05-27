@@ -4421,6 +4421,35 @@ def test_ironclad_sequence_strategic_bonus_treats_counted_upgraded_whirlwind_as_
     assert counted_score == canonical_score
 
 
+def test_ironclad_fallback_priority_treats_counted_upgraded_demon_form_as_demon_form():
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    counted_demon_form = _card(
+        "Demon Form+1",
+        "Demon Form+1",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context(
+        [demon_form, counted_demon_form],
+        energy=3,
+        monsters=[_louse(current_hp=100)],
+    )
+    planner = IroncladCombatPlanner()
+
+    canonical_priority = planner._get_card_priority(demon_form, context)
+    counted_priority = planner._get_card_priority(counted_demon_form, context)
+
+    assert counted_priority == canonical_priority
+
+
 def test_awakened_one_penalizes_slow_power_setup_in_beam_score():
     demon_form = _card(
         "Demon Form",
