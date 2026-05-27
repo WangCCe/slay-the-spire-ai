@@ -894,6 +894,37 @@ def test_second_wind_exhausting_sentinel_grants_energy():
     assert result.energy_gained == 2
 
 
+def test_playing_sentinel_does_not_trigger_exhaust_synergy(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "sentinel": {
+            "name": "Sentinel",
+            "description": "Gain 5 Block. If this card is Exhausted, gain [R] [R].",
+        }
+    }
+    loader._wiki_data = {
+        "sentinel": {
+            "name": "Sentinel",
+            "text": "Gain [5|8] #Block. If this card is #Exhausted, gain [R] [R].",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    sentinel = _card("Sentinel", "Sentinel", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([sentinel], energy=1, monsters=[_louse(current_hp=50)])
+    context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        sentinel,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.exhaust_events == 0
+    assert result.player_block == 5
+
+
 def test_upgraded_bludgeon_damage_is_42(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -2037,6 +2068,7 @@ def test_corruption_makes_followup_skills_cost_zero(monkeypatch):
     assert result.player_energy == 0
     assert result.energy_saved == 1
     assert result.player_block == 5
+    assert result.exhaust_events == 1
 
     context = _combat_context([defend], energy=0, monsters=[_louse(current_hp=100)])
     context.game.player.powers = [SimpleNamespace(power_name="Corruption", amount=1)]
@@ -2051,6 +2083,7 @@ def test_corruption_makes_followup_skills_cost_zero(monkeypatch):
     assert result.player_energy == 0
     assert result.energy_saved == 1
     assert result.player_block == 5
+    assert result.exhaust_events == 1
 
 
 def test_demon_form_does_not_add_strength_on_the_turn_it_is_played():

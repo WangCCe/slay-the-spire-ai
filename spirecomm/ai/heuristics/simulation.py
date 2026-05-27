@@ -730,7 +730,10 @@ class FastCombatSimulator:
                 self._apply_self_damage(new_state, card)
         elif card_type == CardType.SKILL:
             new_state.skills_played += 1
+            corruption_exhausts_skill = new_state.corruption_active
             self._apply_skill(new_state, card, context, resolved_target_index)
+            if corruption_exhausts_skill and not self._skill_exhausts_itself(card):
+                new_state.exhaust_events += 1
         elif card_type == CardType.POWER:
             self._apply_power(new_state, card)
 
@@ -1078,6 +1081,23 @@ class FastCombatSimulator:
         if any(line.strip() in {'exhaust', 'exhaust.'} for line in description.splitlines()):
             return True
         return bool(re.search(r'\bexhaust\.\s*$', description))
+
+    def _skill_exhaust_events_from_description(self, description: str) -> int:
+        description = (description or '').lower().replace('#', '')
+        if not description:
+            return 0
+        if self._card_exhausts_itself(description):
+            return 1
+        if re.search(r'\bexhaust\s+\d+\s+cards?\b', description):
+            return 1
+        return 0
+
+    def _skill_exhausts_itself(self, card: Card) -> bool:
+        card_name = (getattr(card, 'name', None) or getattr(card, 'card_id', '')).replace('+', '')
+        card_data = game_data_loader.get_card_data(card_name)
+        if not card_data:
+            return False
+        return self._card_exhausts_itself(self._get_card_effect_text(card_name, card_data))
 
     def _calculate_attack_damage(
         self,
@@ -1451,9 +1471,7 @@ class FastCombatSimulator:
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
                 description = card_data.get('description', '').lower()
-                # Check if card exhausts
-                if 'exhaust' in description or card.card_id in ['Pommel Strike', 'Offering', 'Reaper']:
-                    state.exhaust_events += 1
+                state.exhaust_events += self._skill_exhaust_events_from_description(description)
                 # Track draw events
                 if 'draw' in description:
                     self._add_card_draw(
