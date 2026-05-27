@@ -374,6 +374,7 @@ def test_fast_simulator_reaper_healing_uses_counted_upgrade_suffix(monkeypatch):
         total_damage_dealt=0,
         monsters_killed=0,
         damage_instances=0,
+        exhaust_events=0,
     )
 
     FastCombatSimulator(None)._apply_attack(
@@ -491,6 +492,80 @@ def test_fast_simulator_iron_wave_block_uses_counted_upgrade_suffix(monkeypatch)
 
     assert state.total_damage_dealt == 7
     assert state.player_block == 7
+
+
+def test_fast_simulator_fiend_fire_exhaust_uses_counted_upgrade_suffix(monkeypatch):
+    fiend_fire = Card(
+        card_id="Fiend Fire+1",
+        name="Fiend Fire+1",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.RARE,
+        has_target=True,
+        cost=2,
+        upgrades=1,
+        uuid="fiend-fire",
+    )
+    strike = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        has_target=True,
+        cost=1,
+        uuid="strike",
+    )
+    defend = Card(
+        card_id="Defend_R",
+        name="Defend",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.BASIC,
+        has_target=False,
+        cost=1,
+        uuid="defend",
+    )
+    card_data = {
+        "name": "Fiend Fire",
+        "description": "Exhaust your hand. Deal 7 damage for each card Exhausted. Exhaust.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Fiend Fire" else None,
+    )
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 100,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "thorns": 0,
+            }
+        ],
+        player_strength=0,
+        player_hp=80,
+        total_damage_dealt=0,
+        monsters_killed=0,
+        damage_instances=0,
+        exhaust_events=0,
+        played_card_uuids=set(),
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(hand=[fiend_fire, strike, defend]),
+        playable_cards=[fiend_fire, strike, defend],
+    )
+
+    FastCombatSimulator(None)._apply_attack(
+        state,
+        fiend_fire,
+        target=None,
+        target_index=0,
+        context=context,
+    )
+
+    assert state.exhaust_events == 3
+    assert {"strike", "defend"} <= state.played_card_uuids
 
 
 def test_game_data_parser_applies_counted_searing_blow_upgrade_suffix():

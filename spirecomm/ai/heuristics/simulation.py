@@ -1142,7 +1142,7 @@ class FastCombatSimulator:
         card_data: Optional[Dict[str, Any]],
     ):
         """Track attack-card exhaust events so exhaust synergies can score correctly."""
-        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_name = _canonical_card_name(card)
 
         if card_name == 'Fiend Fire' and context is not None:
             exhausted_cards = self._unplayed_hand_cards(state, context, exclude_card=card)
