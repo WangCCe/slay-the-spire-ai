@@ -861,6 +861,35 @@ def test_ironclad_prune_targets_falls_back_when_damage_parse_returns_none(monkey
     assert pruned == [(monster, 0, 10)]
 
 
+def test_ironclad_fallback_damage_uses_canonical_name_for_counted_upgrades(monkeypatch):
+    card = Card(
+        card_id="Cleave+1",
+        name="Cleave+1",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.COMMON,
+        has_target=False,
+        cost=1,
+        upgrades=1,
+    )
+    card.damage = None
+
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"description": "Deal 11 damage."} if card_name == "Cleave" else None,
+    )
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: 11,
+    )
+    context = SimpleNamespace(strength=0)
+
+    damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(card, context)
+
+    assert damage == 11
+
+
 def test_damage_curve_handles_hexaghost_divider_formula_without_warning(caplog):
     classifier = TurnTimingClassifier()
     context = SimpleNamespace(
