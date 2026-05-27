@@ -529,6 +529,11 @@ class SilentPriority(Priority):
 
 class IroncladPriority(Priority):
 
+    BOSS_RELIC_AVOID_LIST = Priority.BOSS_RELIC_AVOID_LIST + [
+        "Busted Crown",
+        "Coffee Dripper",
+    ]
+
     CARD_PRIORITY_LIST = [
         # === 90-100 分 (神级) - From Tier List ===
         "Offering",

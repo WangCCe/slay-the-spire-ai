@@ -95,6 +95,18 @@ def test_ironclad_boss_relic_selection_avoids_runic_dome_when_safe_options_exist
     assert best_relic.relic_id == "Empty Cage"
 
 
+def test_ironclad_boss_relic_selection_avoids_crown_and_dripper_for_low_risk_option():
+    relics = [
+        _relic("Busted Crown"),
+        _relic("Coffee Dripper"),
+        _relic("Black Star"),
+    ]
+
+    best_relic = IroncladPriority().get_best_boss_relic(relics)
+
+    assert best_relic.relic_id == "Black Star"
+
+
 def test_ironclad_strategy_can_take_carnage_despite_legacy_zero_copy_cap():
     deck = [
         _card("Strike_R"),
