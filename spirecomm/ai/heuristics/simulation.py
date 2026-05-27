@@ -1794,7 +1794,7 @@ class FastCombatSimulator:
 
         # Apply enemy debuffs from skill cards (e.g., Shockwave).
         try:
-            card_name = (getattr(card, 'name', None) or card.card_id).replace('+', '')
+            card_name = _canonical_card_name(card)
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
                 description = self._get_card_effect_text(card_name, card_data)

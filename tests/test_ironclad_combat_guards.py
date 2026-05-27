@@ -2854,6 +2854,33 @@ def test_shockwave_plus_uses_upgraded_stacks_for_all_debuffs(monkeypatch):
     assert [monster["strength"] for monster in result.monsters] == [-5, -5]
     assert [monster["move_adjusted_damage"] for monster in result.monsters] == [2, 2]
 
+    counted_shockwave = _card(
+        "Shockwave+1",
+        "Shockwave+1",
+        card_type=CardType.SKILL,
+        cost=2,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context(
+        [counted_shockwave],
+        energy=2,
+        monsters=[_louse(current_hp=100), _louse(current_hp=100)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        counted_shockwave,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert [monster["weak"] for monster in result.monsters] == [5, 5]
+    assert [monster["vulnerable"] for monster in result.monsters] == [5, 5]
+    assert [monster["strength"] for monster in result.monsters] == [-5, -5]
+    assert [monster["move_adjusted_damage"] for monster in result.monsters] == [2, 2]
+
 
 def test_artifact_blocks_attack_debuff_and_is_consumed(monkeypatch):
     loader = GameDataLoader(auto_load=False)
