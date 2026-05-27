@@ -241,6 +241,20 @@ def test_effect_pattern_lookup_uses_base_name_for_upgraded_cards(monkeypatch):
     assert scores["combo"] > 0
 
 
+def test_archetype_base_cards_use_base_name_for_upgraded_cards(monkeypatch):
+    analyzer = DeckAnalyzer()
+    context = MockDecisionContext([
+        Card("Inflame+1", "Inflame+1", CardType.POWER, CardRarity.UNCOMMON, upgrades=1),
+        Card("Limit Break+1", "Limit Break+1", CardType.SKILL, CardRarity.RARE, upgrades=1),
+        Card("Spot Weakness+1", "Spot Weakness+1", CardType.SKILL, CardRarity.UNCOMMON, upgrades=1),
+    ])
+    monkeypatch.setattr(deck_module, "game_data_loader", MockCardDataLoader({}))
+
+    scores = analyzer.get_archetype_score(context)
+
+    assert scores["strength"] == 1.0
+
+
 def test_non_healing_hp_and_exhaust_cards_do_not_create_heal_archetype(monkeypatch):
     analyzer = DeckAnalyzer()
     context = MockDecisionContext([

@@ -8,7 +8,7 @@ the strategic archetype (poison, strength, block, etc.) of a deck.
 from typing import Dict, List, Tuple, Optional, TYPE_CHECKING
 from spirecomm.spire.card import Card
 from spirecomm.data.loader import game_data_loader
-from spirecomm.ai.heuristics.card_names import card_data_key
+from spirecomm.ai.heuristics.card_names import canonical_card_name, card_data_key
 import re
 
 # Avoid circular imports using TYPE_CHECKING
@@ -62,10 +62,23 @@ class DeckAnalyzer:
             'heal': self.HEAL_CARDS,
             'malice': self.MALICE_CARDS
         }
+        self.normalized_card_categories = {
+            archetype: self._canonical_card_set(cards)
+            for archetype, cards in self.card_categories.items()
+        }
+        self.normalized_bad_curses = self._canonical_card_set(self.BAD_CURSES)
 
     @staticmethod
     def _card_data_key(card: Card) -> str:
         return card_data_key(card)
+
+    @staticmethod
+    def _card_name(card: Card) -> str:
+        return canonical_card_name(card)
+
+    @staticmethod
+    def _canonical_card_set(cards) -> set:
+        return {canonical_card_name(card) for card in cards}
 
     def get_archetype(self, context: 'DecisionContext') -> str:
         """
@@ -149,12 +162,13 @@ class DeckAnalyzer:
         }
 
         # Detect cards by effect using game data for each archetype
-        for archetype, base_cards in self.card_categories.items():
+        for archetype in self.card_categories:
+            normalized_base_cards = self.normalized_card_categories[archetype]
             count = 0
-            
+
             # Count base archetype cards
             for card in deck:
-                if card.card_id in base_cards:
+                if self._card_name(card) in normalized_base_cards:
                     count += 1
                 
                 # Enhanced detection using card descriptions from game data loader
@@ -173,7 +187,8 @@ class DeckAnalyzer:
         
         # Add enhanced exhaust archetype detection
         exhaust_cards = {'Corruption', 'Feel No Pain', 'Dark Embrace', 'Exhume', 'Second Wind', 'Apotheosis'}
-        exhaust_count = sum(1 for card in deck if card.card_id in exhaust_cards)
+        normalized_exhaust_cards = self._canonical_card_set(exhaust_cards)
+        exhaust_count = sum(1 for card in deck if self._card_name(card) in normalized_exhaust_cards)
         
         # Enhanced exhaust detection using game data
         for card in deck:
@@ -187,7 +202,8 @@ class DeckAnalyzer:
         
         # Add enhanced combo archetype detection
         combo_cards = {'Backflip', 'Finesse', 'Well-Laid Plans', 'Reflex', 'Tactician', 'After Image'}
-        combo_count = sum(1 for card in deck if card.card_id in combo_cards)
+        normalized_combo_cards = self._canonical_card_set(combo_cards)
+        combo_count = sum(1 for card in deck if self._card_name(card) in normalized_combo_cards)
         
         # Enhanced combo detection using game data
         for card in deck:
@@ -235,7 +251,7 @@ class DeckAnalyzer:
             quality += 0.05
 
         # 2. Curse/bad card penalty
-        bad_cards = sum(1 for card in deck if card.card_id in self.BAD_CURSES)
+        bad_cards = sum(1 for card in deck if self._card_name(card) in self.normalized_bad_curses)
         quality -= bad_cards * 0.05
 
         # 3. Synergy bonus - use context's precomputed synergies
@@ -281,7 +297,7 @@ class DeckAnalyzer:
             'attack_count': sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'ATTACK'),
             'skill_count': sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'SKILL'),
             'power_count': sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'POWER'),
-            'curse_count': sum(1 for c in deck if c.card_id in self.BAD_CURSES),
+            'curse_count': sum(1 for c in deck if self._card_name(c) in self.normalized_bad_curses),
             'upgraded_count': sum(1 for c in deck if hasattr(c, 'upgrades') and c.upgrades > 0),
             'archetype': self.get_archetype(context),
             'archetype_scores': self.get_archetype_score(context),
@@ -326,7 +342,7 @@ class DeckAnalyzer:
 
         elif card_type in self.card_categories:
             # Archetype-specific cards
-            count = sum(1 for c in deck if c.card_id in self.card_categories[card_type])
+            count = sum(1 for c in deck if self._card_name(c) in self.normalized_card_categories[card_type])
             # Want enough to support archetype but not too many
             target = len(deck) * 0.15
             return count < target + 2
@@ -350,26 +366,29 @@ class DeckAnalyzer:
             return None
 
         exclude = exclude or []
-        deck = [c for c in context.game.deck if c.card_id not in exclude]
+        exclude_names = self._canonical_card_set(exclude)
+        deck = [c for c in context.game.deck if self._card_name(c) not in exclude_names]
 
         if not deck:
             return None
 
         # Priority for removal: curses > bad cards > off-archetype > weak cards
         def removal_priority(card):
+            card_name = self._card_name(card)
+
             # Curses first
-            if card.card_id in self.BAD_CURSES:
+            if card_name in self.normalized_bad_curses:
                 return 100  # High priority to remove
 
             # Off-archetype cards
             deck_archetype = self.get_archetype(context)
             if deck_archetype in self.card_categories:
-                archetype_cards = self.card_categories[deck_archetype]
-                if card.card_id not in archetype_cards:
+                archetype_cards = self.normalized_card_categories[deck_archetype]
+                if card_name not in archetype_cards:
                     # Check if it fits a different archetype
                     fits_other = any(
-                        card.card_id in card_set
-                        for arch, card_set in self.card_categories.items()
+                        card_name in card_set
+                        for arch, card_set in self.normalized_card_categories.items()
                         if arch != deck_archetype
                     )
                     if fits_other:
