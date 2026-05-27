@@ -722,6 +722,64 @@ def test_pommel_strike_tracks_attack_card_draw(monkeypatch):
     assert result.cards_drawn == 2
 
 
+def test_battle_trance_blocks_later_card_draw_this_turn(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "battle trance": {
+            "name": "Battle Trance",
+            "description": "Draw 3 cards.\nYou cannot draw additional cards this turn.",
+        },
+        "pommel strike": {
+            "name": "Pommel Strike",
+            "description": "Deal 9 damage.\nDraw 1 card.",
+        },
+    }
+    loader._wiki_data = {
+        "battle trance": {
+            "name": "Battle Trance",
+            "text": "Draw [3|4] cards.\nYou cannot draw additional cards this turn.",
+        },
+        "pommel strike": {
+            "name": "Pommel Strike",
+            "text": "Deal [9|10] damage.\nDraw [1|2] cards.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    battle_trance = _card(
+        "Battle Trance",
+        "Battle Trance",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    pommel = _card("Pommel Strike", "Pommel Strike", cost=1)
+    context = _combat_context(
+        [battle_trance, pommel],
+        energy=1,
+        monsters=[_louse(current_hp=30)],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        battle_trance,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        pommel,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert state.cards_drawn == 3
+    assert result.cards_drawn == 3
+
+
 def test_entrench_doubles_current_block():
     entrench = _card(
         "Entrench",

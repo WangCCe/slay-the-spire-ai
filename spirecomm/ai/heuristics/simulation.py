@@ -421,6 +421,10 @@ class SimulationState:
         self.player_frail = self._get_player_debuff_stacks(context, 'Frail')
         # Rage power: block gained per attack played.
         self.rage_block_per_attack = self._get_player_power_amount(context, 'Rage')
+        self.draw_blocked = (
+            self._has_player_power(context, 'No Draw')
+            or self._has_player_power(context, 'NoDraw')
+        )
         self.double_tap_charges = 0
         self.corruption_active = self._has_player_power(context, 'Corruption')
         self.feel_no_pain_block_per_exhaust = self._get_player_power_amount(context, 'Feel No Pain')
@@ -521,6 +525,7 @@ class SimulationState:
         new_state.player_weak = self.player_weak
         new_state.player_frail = self.player_frail
         new_state.rage_block_per_attack = self.rage_block_per_attack
+        new_state.draw_blocked = self.draw_blocked
         new_state.double_tap_charges = self.double_tap_charges
         new_state.corruption_active = self.corruption_active
         new_state.feel_no_pain_block_per_exhaust = self.feel_no_pain_block_per_exhaust
@@ -567,6 +572,7 @@ class SimulationState:
             self.player_weak,
             self.player_frail,
             self.rage_block_per_attack,
+            self.draw_blocked,
             self.double_tap_charges,
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
@@ -950,7 +956,7 @@ class FastCombatSimulator:
 
         state.player_energy += 1
         state.energy_gained += 1
-        state.cards_drawn += 1
+        self._add_card_draw(state, 1)
 
     def _apply_attack_draw_effects(
         self,
@@ -969,7 +975,7 @@ class FastCombatSimulator:
             return
 
         upgraded = getattr(card, 'upgrades', 0) > 0
-        state.cards_drawn += self._extract_draw_count(description, upgraded)
+        self._add_card_draw(state, self._extract_draw_count(description, upgraded))
 
     def _apply_attack_block_effects(
         self,
@@ -1135,6 +1141,11 @@ class FastCombatSimulator:
             return int(draw_match.group(1))
 
         return 0
+
+    def _add_card_draw(self, state: SimulationState, count: int):
+        if count <= 0 or state.draw_blocked:
+            return
+        state.cards_drawn += count
 
     def _apply_frail_block(self, block: int, player_frail: int) -> int:
         """Apply frail multiplier (0.75x). Binary: any frail stacks = 0.75x block gained."""
@@ -1402,12 +1413,18 @@ class FastCombatSimulator:
                     state.exhaust_events += 1
                 # Track draw events
                 if 'draw' in description:
-                    state.cards_drawn += self._extract_draw_count(
-                        description,
-                        getattr(card, 'upgrades', 0) > 0,
+                    self._add_card_draw(
+                        state,
+                        self._extract_draw_count(
+                            description,
+                            getattr(card, 'upgrades', 0) > 0,
+                        ),
                     )
         except:
             pass
+
+        if card.card_id.replace('+', '') == 'Battle Trance':
+            state.draw_blocked = True
 
     def _apply_power(self, state: SimulationState, card: Card):
         """Apply power card effects."""
@@ -1479,7 +1496,7 @@ class FastCombatSimulator:
         if exhaust_delta <= 0 or state.dark_embrace_draw_per_exhaust <= 0:
             return
 
-        state.cards_drawn += exhaust_delta * state.dark_embrace_draw_per_exhaust
+        self._add_card_draw(state, exhaust_delta * state.dark_embrace_draw_per_exhaust)
 
     def _apply_strength_skill(
         self,
