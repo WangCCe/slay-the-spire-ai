@@ -355,6 +355,66 @@ def test_entrench_doubles_current_block():
     assert result.player_block == 24
 
 
+def test_second_wind_gains_block_for_each_non_attack_card_exhausted():
+    second_wind = _card(
+        "Second Wind",
+        "Second Wind",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    power_through = _card(
+        "Power Through",
+        "Power Through",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [second_wind, defend, power_through, strike],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        second_wind,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 10
+    assert result.exhaust_events == 2
+
+    second_wind_plus = _card(
+        "Second Wind",
+        "Second Wind+",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context(
+        [second_wind_plus, defend, power_through, strike],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        second_wind_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 14
+    assert result.exhaust_events == 2
+
+
 def test_upgraded_bludgeon_damage_is_42(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

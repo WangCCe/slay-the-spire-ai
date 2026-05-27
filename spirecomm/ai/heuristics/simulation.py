@@ -1117,6 +1117,8 @@ class FastCombatSimulator:
         """Apply skill card effects."""
         if self._apply_block_multiplier_skill(state, card):
             return
+        if self._apply_second_wind(state, card, context):
+            return
 
         # Block skills - apply frail multiplier if player has frail
         if hasattr(card, 'block') and card.block is not None:
@@ -1318,6 +1320,34 @@ class FastCombatSimulator:
 
         state.player_energy += energy_gain
         state.energy_gained += energy_gain
+
+    def _apply_second_wind(
+        self,
+        state: SimulationState,
+        card: Card,
+        context: Optional[DecisionContext],
+    ) -> bool:
+        card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        if card_id != 'Second Wind':
+            return False
+        if context is None:
+            return False
+
+        exhausted_count = sum(
+            1
+            for hand_card in getattr(context, 'playable_cards', [])
+            if hand_card is not card
+            and id(hand_card) not in state.played_card_uuids
+            and getattr(hand_card, 'type', None) != CardType.ATTACK
+        )
+        if exhausted_count <= 0:
+            return True
+
+        block_per_card = 7 if getattr(card, 'upgrades', 0) > 0 else 5
+        block_gain = self._apply_frail_block(block_per_card * exhausted_count, state.player_frail)
+        state.player_block += block_gain
+        state.exhaust_events += exhausted_count
+        return True
 
     def _apply_block_multiplier_skill(self, state: SimulationState, card: Card) -> bool:
         card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
