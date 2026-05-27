@@ -1969,7 +1969,7 @@ class FastCombatSimulator:
         card: Card,
         context: Optional[DecisionContext],
     ) -> bool:
-        card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_id = _canonical_card_name(card)
         if card_id != 'Second Wind':
             return False
         if context is None:

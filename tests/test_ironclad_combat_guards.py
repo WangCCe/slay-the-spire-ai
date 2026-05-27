@@ -1692,6 +1692,31 @@ def test_second_wind_gains_block_for_each_non_attack_card_exhausted():
     assert result.player_block == 14
     assert result.exhaust_events == 2
 
+    counted_second_wind = _card(
+        "Second Wind+1",
+        "Second Wind+1",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context(
+        [counted_second_wind, defend, power_through, strike],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        counted_second_wind,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 14
+    assert result.exhaust_events == 2
+
 
 def test_second_wind_marks_exhausted_cards_unavailable_for_later_search():
     second_wind = _card(
