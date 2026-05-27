@@ -1501,6 +1501,58 @@ def test_uppercut_applies_weak_and_vulnerable_with_upgrade_stacks(monkeypatch):
     assert result.monsters[0]["vulnerable"] == 2
 
 
+def test_artifact_blocks_attack_debuff_and_is_consumed(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bash": {
+            "name": "Bash",
+            "description": "Deal 8 damage.\nApply 2 Vulnerable.",
+        }
+    }
+    loader._wiki_data = {
+        "bash": {
+            "name": "Bash",
+            "text": "Deal [8|10] damage.\nApply [2|3] #Vulnerable.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    bash = _card("Bash", "Bash", cost=2)
+    context = _combat_context([bash], energy=2, monsters=[_louse(current_hp=50)])
+    context.monsters_alive[0].powers = [SimpleNamespace(power_name="Artifact", amount=1)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        bash,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 8
+    assert result.monsters[0]["vulnerable"] == 0
+    assert result.monsters[0].get("artifact", 0) == 0
+
+
+def test_artifact_blocks_disarm_strength_down():
+    disarm = _card("Disarm", "Disarm", card_type=CardType.SKILL, cost=1)
+    context = _combat_context([disarm], energy=1, monsters=[_louse(current_hp=50)])
+    context.monsters_alive[0].strength = 5
+    context.monsters_alive[0].move_adjusted_damage = 10
+    context.monsters_alive[0].powers = [SimpleNamespace(power_name="Artifact", amount=1)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        disarm,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["strength"] == 5
+    assert result.monsters[0]["move_adjusted_damage"] == 10
+    assert result.monsters[0].get("artifact", 0) == 0
+
+
 def test_dropkick_refunds_energy_and_draws_against_vulnerable_enemy(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

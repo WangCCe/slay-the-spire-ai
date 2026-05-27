@@ -452,6 +452,7 @@ class SimulationState:
                 'weak': context.weak_stacks.get(i, 0),  # Weak stacks (by index)
                 'frail': context.frail_stacks.get(i, 0),  # Frail stacks (by index)
                 'thorns': context.thorns_stacks.get(i, 0),  # Thorns/反伤 stacks (by index)
+                'artifact': self._get_monster_power_amount(monster, 'Artifact'),
                 'move_base_damage': monster.move_base_damage if hasattr(monster, 'move_base_damage') else 0,
                 'move_adjusted_damage': monster.move_adjusted_damage if hasattr(monster, 'move_adjusted_damage') else 0,
                 'move_hits': monster.move_hits if hasattr(monster, 'move_hits') else 1,
@@ -504,6 +505,16 @@ class SimulationState:
         if not hasattr(context.game, 'player') or not hasattr(context.game.player, 'powers'):
             return False
         return any(self._power_name(power) == power_name for power in context.game.player.powers)
+
+    def _get_monster_power_amount(self, monster: Any, power_name: str) -> int:
+        if not hasattr(monster, 'powers'):
+            return 0
+
+        for power in monster.powers:
+            if self._power_name(power) == power_name:
+                amount = getattr(power, 'amount', None)
+                return amount if amount is not None else 1
+        return 0
 
     def _power_name(self, power: Any) -> Optional[str]:
         return (
@@ -591,6 +602,7 @@ class SimulationState:
                 m['vulnerable'],
                 m['weak'],
                 m['frail'],
+                m.get('artifact', 0),
                 str(m['intent']) if m['intent'] else None,  # Convert intent to string
                 m['is_gone'],
                 m['name']  # Include name for elite/boss identification
@@ -851,9 +863,9 @@ class FastCombatSimulator:
                         if monster['is_gone']:
                             continue
                         if vulnerable_stacks:
-                            monster['vulnerable'] += vulnerable_stacks
+                            self._apply_monster_debuff(monster, 'vulnerable', vulnerable_stacks)
                         if weak_stacks:
-                            monster['weak'] += weak_stacks
+                            self._apply_monster_debuff(monster, 'weak', weak_stacks)
         elif self._is_random_target_attack(card) and target_index is None:
             for hit_index in range(hit_count):
                 alive_monsters = [monster for monster in state.monsters if not monster['is_gone']]
@@ -886,11 +898,11 @@ class FastCombatSimulator:
                         if 'vulnerable' in description:
                             vulnerable_stacks = self._extract_debuff_stacks(description, 'vulnerable', upgraded)
                             if vulnerable_stacks:
-                                monster['vulnerable'] += vulnerable_stacks
+                                self._apply_monster_debuff(monster, 'vulnerable', vulnerable_stacks)
                         if 'weak' in description:
                             weak_stacks = self._extract_debuff_stacks(description, 'weak', upgraded)
                             if weak_stacks:
-                                monster['weak'] += weak_stacks
+                                self._apply_monster_debuff(monster, 'weak', weak_stacks)
 
         self._apply_attack_healing(state, card, starting_total_damage)
         self._apply_attack_resource_effects(state, card, target_index)
@@ -1118,6 +1130,20 @@ class FastCombatSimulator:
         if player_weak > 0:
             return int(damage * 0.75)
         return damage
+
+    def _consume_monster_artifact(self, monster: dict) -> bool:
+        artifact = monster.get('artifact', 0)
+        if artifact <= 0:
+            return False
+        monster['artifact'] = artifact - 1
+        return True
+
+    def _apply_monster_debuff(self, monster: dict, debuff: str, stacks: int):
+        if stacks <= 0:
+            return
+        if self._consume_monster_artifact(monster):
+            return
+        monster[debuff] = monster.get(debuff, 0) + stacks
 
     def _get_card_effect_text(self, card_name: str, card_data: Dict[str, Any]) -> str:
         """Prefer wiki text for effect values because items.json stores base text only."""
@@ -1413,9 +1439,9 @@ class FastCombatSimulator:
                                 if monster['is_gone']:
                                     continue
                                 if vuln_stacks:
-                                    monster['vulnerable'] += vuln_stacks
+                                    self._apply_monster_debuff(monster, 'vulnerable', vuln_stacks)
                                 if weak_stacks:
-                                    monster['weak'] += weak_stacks
+                                    self._apply_monster_debuff(monster, 'weak', weak_stacks)
         except Exception:
             pass
 
@@ -1630,6 +1656,9 @@ class FastCombatSimulator:
 
         monster = state.monsters[target_index]
         if monster['is_gone']:
+            return
+
+        if self._consume_monster_artifact(monster):
             return
 
         strength_loss = 3 if getattr(card, 'upgrades', 0) > 0 else 2
