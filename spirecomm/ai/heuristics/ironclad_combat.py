@@ -405,7 +405,7 @@ class IroncladCombatPlanner(CombatPlanner):
         if not state.monsters:
             return None, None
 
-        card_id = card.card_id
+        card_id = canonical_card_name(card)
         alive_monsters = [(i, m) for i, m in enumerate(state.monsters) if not m['is_gone']]
         if not alive_monsters:
             return None, None
@@ -544,20 +544,14 @@ class IroncladCombatPlanner(CombatPlanner):
         if not state.monsters:
             return None, None
 
-        card_id = card.card_id
+        card_id = canonical_card_name(card)
         alive_monsters = [(i, m) for i, m in enumerate(state.monsters) if not m['is_gone']]
         if not alive_monsters:
             return None, None
 
         # === AOE Cards - Enhanced Logic ===
         if card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']:
-            # Check if we should use AOE based on monster composition
-            should_use_aoe = self._should_use_aoe(card_id, context, state)
-            if should_use_aoe:
-                return None, None  # AOE is optimal
-            else:
-                # Fall through to single-target logic
-                pass
+            return None, None
 
         # === Special Mechanics Targeting ===
 

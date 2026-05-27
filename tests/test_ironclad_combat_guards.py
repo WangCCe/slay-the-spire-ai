@@ -3884,6 +3884,26 @@ def test_lethal_detector_treats_counted_upgraded_cleave_as_aoe(monkeypatch):
     assert detector.can_kill_all(context) is True
 
 
+def test_ironclad_targeting_treats_counted_upgraded_cleave_as_aoe():
+    cleave = _card("Cleave+1", "Cleave+1", cost=1, has_target=False, upgrades=1)
+    context = _combat_context(
+        [cleave],
+        energy=1,
+        monsters=[_louse(current_hp=50), _louse(current_hp=50)],
+    )
+    context.compute_threat_v2 = lambda monster: 1
+    state = SimulationState(context)
+    planner = IroncladCombatPlanner()
+
+    target, target_index = planner._choose_target_for_card(cleave, context, state)
+    assert target is None
+    assert target_index is None
+
+    target, target_index = planner._choose_target_for_card_v2(cleave, context, state)
+    assert target is None
+    assert target_index is None
+
+
 def test_beam_search_does_not_play_more_cards_after_x_cost_whirlwind_spends_all_energy():
     whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
     strike = _card("Strike_R", "Strike", cost=1, cost_for_turn=1)
