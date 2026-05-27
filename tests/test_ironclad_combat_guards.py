@@ -2062,6 +2062,39 @@ def test_lethal_detector_counts_whirlwind_damage_without_negative_energy():
     assert CombatEndingDetector()._calculate_affordable_damage(context) == 15
 
 
+def test_thorns_deals_full_stack_damage_per_attack_hit():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])
+    context.thorns_stacks = {0: 3}
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.player_hp == 77
+
+
+def test_thorns_triggers_on_killing_attack_hit():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=1)])
+    context.thorns_stacks = {0: 3}
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters_killed == 1
+    assert result.player_hp == 77
+
+
 def test_awakened_one_penalizes_slow_power_setup_in_beam_score():
     demon_form = _card(
         "Demon Form",

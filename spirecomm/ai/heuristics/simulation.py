@@ -1287,21 +1287,16 @@ class FastCombatSimulator:
         monster['hp'] -= hp_damage
         state.total_damage_dealt += hp_damage
 
+        if trigger_thorns and damage > 0:
+            # Apply thorns/Sharp Hide as fixed damage per attack hit.
+            thorns = monster.get('thorns', 0)
+            if thorns > 0:
+                state.player_hp = max(0, state.player_hp - thorns)
+
         # Check if killed
         if monster['hp'] <= 0:
             monster['is_gone'] = True
             state.monsters_killed += 1
-        elif trigger_thorns:
-            # Apply thorns/反伤: take damage when attacking enemies with thorns
-            thorns = monster.get('thorns', 0)
-            if thorns > 0:
-                # Calculate thorns damage (typically 1 damage per thorns stack)
-                # But we'll use a more conservative approach based on damage dealt
-                # because thorns damage is usually proportional to attack damage
-                thorns_damage = min(int(hp_damage * 0.3), thorns)  # Conservative estimate
-                if thorns_damage > 0:
-                    state.player_hp -= thorns_damage
-                    state.player_hp = max(0, state.player_hp)  # Ensure HP doesn't go negative
 
     def project_end_turn_effects(self, state: SimulationState) -> SimulationState:
         """Project deterministic end-of-turn effects before enemy attacks."""
