@@ -418,12 +418,37 @@ class SimpleAgent:
                 return True
         return False
 
+    @staticmethod
+    def _is_live_monster(monster):
+        return (
+            getattr(monster, "current_hp", 1) > 0
+            and not getattr(monster, "is_gone", False)
+            and not getattr(monster, "half_dead", False)
+        )
+
+    @staticmethod
+    def _positive_move_hits(monster):
+        try:
+            return max(1, int(getattr(monster, "move_hits", 1) or 1))
+        except (TypeError, ValueError):
+            return 1
+
+    @classmethod
+    def _move_damage_contribution(cls, monster):
+        damage = getattr(monster, "move_adjusted_damage", None)
+        if damage is None:
+            return 0
+        try:
+            return max(0, int(damage)) * cls._positive_move_hits(monster)
+        except (TypeError, ValueError):
+            return 0
+
     def get_incoming_damage(self):
         incoming_damage = 0
         for monster in self.game.monsters:
-            if not monster.is_gone and not monster.half_dead:
-                if monster.move_adjusted_damage is not None:
-                    incoming_damage += monster.move_adjusted_damage * monster.move_hits
+            if self._is_live_monster(monster):
+                if getattr(monster, "move_adjusted_damage", None) is not None:
+                    incoming_damage += self._move_damage_contribution(monster)
                 elif monster.intent == Intent.NONE:
                     incoming_damage += 5 * self.game.act
         return incoming_damage
