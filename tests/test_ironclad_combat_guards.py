@@ -653,6 +653,33 @@ def test_iron_wave_deals_damage_and_gains_block(monkeypatch):
     assert result.player_block == 7
 
 
+def test_thunderclap_applies_vulnerable_to_all_enemies(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "thunderclap": {
+            "name": "Thunderclap",
+            "description": "Deal 4 damage and apply 1 Vulnerable to ALL enemies.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    thunderclap = _card("Thunderclap", "Thunderclap", cost=1, has_target=False)
+    context = _combat_context(
+        [thunderclap],
+        energy=1,
+        monsters=[_louse(current_hp=30), _louse(current_hp=30)],
+    )
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        thunderclap,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert [monster["vulnerable"] for monster in result.monsters] == [1, 1]
+
+
 def test_entrench_doubles_current_block():
     entrench = _card(
         "Entrench",

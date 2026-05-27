@@ -831,6 +831,23 @@ class FastCombatSimulator:
                     damage = self._apply_weak_damage(damage, monster.get('weak', 0))
                     self._deal_damage_to_monster(state, monster, damage)
                     state.damage_instances += 1  # Track each damage instance
+            if card_data:
+                description = self._get_card_effect_text(card_name, card_data)
+                upgraded = getattr(card, 'upgrades', 0) > 0
+                vulnerable_stacks = None
+                weak_stacks = None
+                if 'vulnerable' in description:
+                    vulnerable_stacks = self._extract_debuff_stacks(description, 'vulnerable', upgraded)
+                if 'weak' in description:
+                    weak_stacks = self._extract_debuff_stacks(description, 'weak', upgraded)
+                if vulnerable_stacks or weak_stacks:
+                    for monster in state.monsters:
+                        if monster['is_gone']:
+                            continue
+                        if vulnerable_stacks:
+                            monster['vulnerable'] += vulnerable_stacks
+                        if weak_stacks:
+                            monster['weak'] += weak_stacks
         elif self._is_random_target_attack(card) and target_index is None:
             for hit_index in range(hit_count):
                 alive_monsters = [monster for monster in state.monsters if not monster['is_gone']]
