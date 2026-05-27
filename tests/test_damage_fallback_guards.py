@@ -274,3 +274,22 @@ def test_safe_window_detection_handles_null_attack_damage_without_warning(monkey
     assert len(windows) == 1
     assert windows[0].expected_damage == 0
     assert "[SAFE_WINDOWS] Detection failed" not in caplog.text
+
+
+def test_spike_imminent_handles_monster_damage_ranges_without_warning(monkeypatch, caplog):
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        lambda *_args, **_kwargs: [
+            {"move": {"name": "Heavy Bite", "intent": "ATTACK", "damage": {"min": 16, "max": 22}, "hits": 1}}
+        ],
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(
+        game=SimpleNamespace(current_hp=80, ascension_level=0),
+        turn=1,
+        monsters_alive=[SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength=0)],
+    )
+
+    assert classifier._spike_imminent(context) is True
+    assert "[SPIKE_IMMINENT] Check failed" not in caplog.text

@@ -715,9 +715,10 @@ class TurnTimingClassifier:
 
                     if predicted_moves and turn_offset <= len(predicted_moves):
                         move = predicted_moves[turn_offset - 1].get('move', {})
-                        damage = move.get('damage') or 0
+                        damage = self._resolve_move_damage(monster.name, move, context)
+                        hits = self._coerce_int(move.get('hits', 1), default=1)
 
-                        if damage >= 20:
+                        if damage * hits >= 20:
                             # Big attack imminent
                             return True
 
