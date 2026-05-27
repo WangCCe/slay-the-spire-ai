@@ -469,8 +469,9 @@ class SimulationState:
             return 0
 
         for power in context.game.player.powers:
-            if hasattr(power, 'name') and power.name == power_name:
-                return hasattr(power, 'amount') and power.amount or 1
+            if self._power_name(power) == power_name:
+                amount = getattr(power, 'amount', None)
+                return amount if amount is not None else 1
         return 0
 
     def _get_player_power_amount(self, context: DecisionContext, power_name: str) -> int:
@@ -479,9 +480,17 @@ class SimulationState:
             return 0
 
         for power in context.game.player.powers:
-            if hasattr(power, 'name') and power.name == power_name:
-                return hasattr(power, 'amount') and power.amount or 0
+            if self._power_name(power) == power_name:
+                amount = getattr(power, 'amount', None)
+                return amount if amount is not None else 0
         return 0
+
+    def _power_name(self, power: Any) -> Optional[str]:
+        return (
+            getattr(power, 'name', None)
+            or getattr(power, 'power_name', None)
+            or getattr(power, 'power_id', None)
+        )
 
     def clone(self) -> 'SimulationState':
         """Create a deep copy of this state."""

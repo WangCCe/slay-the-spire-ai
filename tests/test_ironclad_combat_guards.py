@@ -174,6 +174,22 @@ def test_x_cost_whirlwind_spends_current_energy_without_negative_simulation_stat
     assert result.total_damage_dealt == 30
 
 
+def test_simulation_reads_power_name_field_from_player_powers():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Rage", amount=3)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.player_block == 3
+
+
 def test_simulator_does_not_treat_upgraded_non_block_skills_as_block(monkeypatch):
     burning_pact = _card(
         "Burning Pact",
