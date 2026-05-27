@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from spirecomm.ai.rl.v2.action_encoder import ActionEncoderV2
 from spirecomm.ai.rl.v2 import action_space as space
 from spirecomm.communication.action import (
+    BossRewardAction,
     BuyCardAction,
     BuyPotionAction,
     CombatRewardAction,
@@ -229,3 +230,38 @@ def test_combat_reward_encoder_rejects_full_slot_potion_reward():
     )
 
     assert encoder.encode_action(CombatRewardAction(potion_reward), game) is None
+
+
+def test_boss_reward_mask_uses_screen_relics():
+    encoder = ActionEncoderV2()
+    relics = [
+        SimpleNamespace(name="Black Star"),
+        SimpleNamespace(name="Coffee Dripper"),
+    ]
+    game = _make_game(
+        screen_type=ScreenType.BOSS_REWARD,
+        screen=SimpleNamespace(relics=relics),
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert mask[space.REWARD_OFFSET]
+    assert mask[space.REWARD_OFFSET + 1]
+    assert not mask[space.REWARD_OFFSET + 2]
+
+
+def test_boss_reward_decoder_returns_boss_reward_action():
+    encoder = ActionEncoderV2()
+    relics = [
+        SimpleNamespace(name="Black Star"),
+        SimpleNamespace(name="Coffee Dripper"),
+    ]
+    game = _make_game(
+        screen_type=ScreenType.BOSS_REWARD,
+        screen=SimpleNamespace(relics=relics),
+    )
+
+    action = encoder.decode_action(space.REWARD_OFFSET + 1, game)
+
+    assert isinstance(action, BossRewardAction)
+    assert action.name == "Coffee Dripper"

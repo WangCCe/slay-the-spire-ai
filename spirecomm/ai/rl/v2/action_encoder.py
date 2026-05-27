@@ -171,6 +171,11 @@ class ActionEncoderV2:
                 cards = game.screen.cards or []
                 if choice_index < len(cards):
                     return CardRewardAction(cards[choice_index])
+            if screen_type == ScreenType.BOSS_REWARD and hasattr(game.screen, "relics"):
+                relics = game.screen.relics or []
+                if choice_index < len(relics):
+                    return BossRewardAction(relics[choice_index])
+                return self._fallback_system_action(game)
             return self._choose_or_fallback(choice_index, game, screen_type)
 
         if space.MAP_OFFSET <= action_index < space.EVENT_OFFSET:
@@ -665,6 +670,8 @@ class ActionEncoderV2:
             return len(screen.cards or [])
         if hasattr(screen, "rewards"):
             return len(screen.rewards or [])
+        if hasattr(screen, "relics"):
+            return len(screen.relics or [])
         if hasattr(screen, "next_nodes"):
             return len(screen.next_nodes or [])
         return 0
