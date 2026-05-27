@@ -281,6 +281,20 @@ def test_fast_simulator_applies_all_searing_blow_upgrades(monkeypatch):
     assert state.total_damage_dealt == 21
 
 
+def test_game_data_parser_applies_counted_searing_blow_upgrade_suffix():
+    loader = data_loader.GameDataLoader(auto_load=False)
+    loader._wiki_data = {}
+
+    damage = loader._parse_card_damage(
+        {
+            "name": "Searing Blow+2",
+            "description": "Deal 12 damage. Can be Upgraded any number of times.",
+        }
+    )
+
+    assert damage == 21
+
+
 def test_fast_score_values_upgraded_rage_block_per_attack():
     attacks = [
         Card(

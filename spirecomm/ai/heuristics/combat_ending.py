@@ -37,10 +37,6 @@ class CombatEndingDetector:
     def _base_card_name(card: Card) -> str:
         return canonical_card_name(card)
 
-    @staticmethod
-    def _searing_blow_upgrade_damage(upgrades: int) -> int:
-        return upgrades * (upgrades + 7) // 2 if upgrades > 0 else 0
-
     def can_kill_all(self, context: DecisionContext) -> bool:
         """
         Check if all monsters can be killed this turn.
@@ -374,16 +370,17 @@ class CombatEndingDetector:
         """
         card_name = self._base_card_name(card)
         upgrades = getattr(card, 'upgrades', 0)
-        display_name = f"{card_name}+" if upgrades > 0 else card_name
+        display_name = getattr(card, 'name', None) or card_name
+        if upgrades > 0 and '+' not in display_name:
+            upgrade_suffix = f"+{upgrades}" if card_name == 'Searing Blow' and upgrades > 1 else '+'
+            display_name = f"{card_name}{upgrade_suffix}"
         base_damage = 0
 
         card_data = game_data_loader.get_card_data(card_name)
         if card_data:
             damage_data = dict(card_data)
-            damage_data['name'] = card_name if card_name == 'Searing Blow' else display_name
+            damage_data['name'] = display_name
             base_damage = game_data_loader._parse_card_damage(damage_data) or 0
-            if card_name == 'Searing Blow':
-                base_damage += self._searing_blow_upgrade_damage(upgrades)
 
         if card_name == 'Whirlwind':
             energy = effective_card_cost(card, context.energy_available)

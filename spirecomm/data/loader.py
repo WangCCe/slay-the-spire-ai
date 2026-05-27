@@ -133,6 +133,22 @@ CARD_METADATA = {
 }
 
 
+def _split_card_upgrade_suffix(card_name: str) -> Tuple[str, int]:
+    match = re.match(r'^(.*?)(?:\+(\d*))?$', card_name)
+    if not match:
+        return card_name, 0
+    base_name, upgrade_count = match.groups()
+    if base_name == card_name:
+        return card_name, 0
+    if upgrade_count:
+        return base_name, int(upgrade_count)
+    return base_name, 1
+
+
+def _searing_blow_upgrade_damage(upgrades: int) -> int:
+    return upgrades * (upgrades + 7) // 2 if upgrades > 0 else 0
+
+
 class GameDataLoader:
     """
     Load and provide access to Slay the Spire game data from export files.
@@ -667,8 +683,8 @@ class GameDataLoader:
             return int(card_data['damage']) if card_data['damage'] else None
 
         card_name = card_data.get('name', '').lower()
-        is_upgraded = card_name.endswith('+')
-        base_card_name = card_name.rstrip('+')  # Remove '+' for lookup
+        base_card_name, upgrade_count = _split_card_upgrade_suffix(card_name)
+        is_upgraded = upgrade_count > 0
 
         # Stage 2: Check CARD_METADATA first for X-cards and complex formulas (priority over wiki)
         if base_card_name in CARD_METADATA:
@@ -707,7 +723,10 @@ class GameDataLoader:
         description = card_data.get('description', '').lower()
         match = re.search(r'deal (\d+) damage', description)
         if match:
-            return int(match.group(1))
+            damage = int(match.group(1))
+            if base_card_name == 'searing blow':
+                damage += _searing_blow_upgrade_damage(upgrade_count)
+            return damage
 
         return None
 
