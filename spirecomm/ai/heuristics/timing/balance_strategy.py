@@ -263,6 +263,29 @@ class CombatBalanceStrategy:
 
         return 1.0  # Default to full HP
 
+    @staticmethod
+    def _is_live_monster(monster) -> bool:
+        return (
+            getattr(monster, 'current_hp', 1) > 0
+            and not getattr(monster, 'is_gone', False)
+            and not getattr(monster, 'half_dead', False)
+        )
+
+    @staticmethod
+    def _positive_move_hits(monster) -> int:
+        try:
+            return max(1, int(getattr(monster, 'move_hits', 1) or 1))
+        except (TypeError, ValueError):
+            return 1
+
+    @classmethod
+    def _move_damage_contribution(cls, monster) -> int:
+        try:
+            damage = max(0, int(getattr(monster, 'move_adjusted_damage', 0) or 0))
+        except (TypeError, ValueError):
+            damage = 0
+        return damage * cls._positive_move_hits(monster)
+
     def _estimate_current_damage(self, context) -> int:
         """Estimate current turn incoming damage."""
         try:
@@ -270,10 +293,8 @@ class CombatBalanceStrategy:
             total_damage = 0
 
             for monster in monsters:
-                # Get adjusted damage
-                damage = getattr(monster, 'move_adjusted_damage', 0)
-                hits = getattr(monster, 'move_hits', 1)
-                total_damage += damage * hits
+                if self._is_live_monster(monster):
+                    total_damage += self._move_damage_contribution(monster)
 
             return total_damage
 
