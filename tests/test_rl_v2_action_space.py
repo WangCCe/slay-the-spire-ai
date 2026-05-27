@@ -21,8 +21,8 @@ def _make_card(has_target=True, is_playable=True):
     return SimpleNamespace(has_target=has_target, is_playable=is_playable)
 
 
-def _make_monster(hp=10, is_gone=False):
-    return SimpleNamespace(current_hp=hp, is_gone=is_gone)
+def _make_monster(hp=10, is_gone=False, half_dead=False):
+    return SimpleNamespace(current_hp=hp, is_gone=is_gone, half_dead=half_dead)
 
 
 def _make_game(**kwargs):
@@ -65,6 +65,21 @@ def test_combat_mask_targets():
     assert mask[space.encode_play_card(0, 1)]
     assert mask[space.encode_play_card(0, 2)]
     assert not mask[space.encode_play_card(0, 3)]
+
+
+def test_combat_mask_ignores_half_dead_monsters():
+    encoder = ActionEncoderV2()
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[_make_card(has_target=True)],
+        monsters=[_make_monster(half_dead=True), _make_monster()],
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert not mask[space.encode_play_card(0, 1)]
+    assert mask[space.encode_play_card(0, 2)]
 
 
 def test_combat_mask_nontarget_card():
@@ -120,6 +135,21 @@ def test_combat_decoder_falls_back_for_target_on_nontarget_card():
         in_combat=True,
         hand=[_make_card(has_target=False, is_playable=True)],
         monsters=[_make_monster()],
+        end_available=True,
+    )
+
+    action = encoder.decode_action(space.encode_play_card(0, 1), game)
+
+    assert isinstance(action, EndTurnAction)
+
+
+def test_combat_decoder_falls_back_for_half_dead_target():
+    encoder = ActionEncoderV2()
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[_make_card(has_target=True, is_playable=True)],
+        monsters=[_make_monster(half_dead=True)],
         end_available=True,
     )
 

@@ -352,6 +352,14 @@ class ActionEncoderV2:
         return self._fallback_system_action(game)
 
     @staticmethod
+    def _is_targetable_monster(monster) -> bool:
+        return (
+            getattr(monster, "current_hp", 0) > 0
+            and not getattr(monster, "is_gone", False)
+            and not getattr(monster, "half_dead", False)
+        )
+
+    @staticmethod
     def _resolve_target_slot(action) -> int:
         target_index = getattr(action, "target_index", None)
         if target_index is None:
@@ -577,7 +585,7 @@ class ActionEncoderV2:
         alive_targets = [
             idx + 1
             for idx, monster in enumerate(monsters[:5])
-            if getattr(monster, "current_hp", 0) > 0 and not getattr(monster, "is_gone", False)
+            if self._is_targetable_monster(monster)
         ]
 
         if getattr(game, "play_available", True):
@@ -861,9 +869,6 @@ class ActionEncoderV2:
         monster_index = target_index - 1
         if monster_index < len(monsters):
             monster = monsters[monster_index]
-            if (
-                getattr(monster, "current_hp", 0) > 0
-                and not getattr(monster, "is_gone", False)
-            ):
+            if ActionEncoderV2._is_targetable_monster(monster):
                 return monster_index
         return None
