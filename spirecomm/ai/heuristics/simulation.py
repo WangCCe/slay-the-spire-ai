@@ -4243,7 +4243,10 @@ class HeuristicCombatPlanner(CombatPlanner):
             score += power_bonus
 
         # Attack bonus when monsters alive
-        monsters_alive = [m for m in state.monsters if not m['is_gone']]
+        monsters_alive = [
+            m for m in state.monsters
+            if self.simulator._is_live_monster_state(m)
+        ]
         num_monsters = len(monsters_alive)
         if monsters_alive and hasattr(card, 'type') and card.type == CardType.ATTACK:
             score += FASTSCORE_ATTACK_BONUS

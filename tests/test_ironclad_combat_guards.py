@@ -4046,6 +4046,35 @@ def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     assert score == simulation.FASTSCORE_ATTACK_BONUS + 20 * simulation.FASTSCORE_DAMAGE_MULTIPLIER
 
 
+def test_fast_score_aoe_multiplier_ignores_zero_hp_stale_simulated_monsters(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "cleave": {
+            "name": "Cleave",
+            "description": "Deal 8 damage to ALL enemies.",
+        }
+    }
+    loader._wiki_data = {
+        "cleave": {
+            "name": "Cleave",
+            "text": "Deal [8|11] damage to ALL enemies.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    monkeypatch.setattr(HeuristicCombatPlanner, "_calculate_x_block", lambda *_args, **_kwargs: 0, raising=False)
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    stale = _louse(current_hp=30)
+    live = _louse(current_hp=30)
+    context = _combat_context([cleave], energy=1, monsters=[stale, live])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    score = HeuristicCombatPlanner().fast_score_action(cleave, state, context)
+
+    assert score == simulation.FASTSCORE_ATTACK_BONUS + 8 * simulation.FASTSCORE_DAMAGE_MULTIPLIER
+
+
 def test_lethal_targeting_treats_carnage_as_single_target():
     carnage = _card("Carnage", "Carnage", cost=2)
     context = _combat_context([carnage], energy=2, monsters=[_louse(current_hp=20), _louse(current_hp=20)])
