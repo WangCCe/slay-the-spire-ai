@@ -14,6 +14,7 @@ from spirecomm.ai.heuristics.simulation import (
     DAMAGE_UPGRADE_BONUS,
     BLOCK_UPGRADE_BONUS,
 )
+from spirecomm.ai.heuristics.card_names import canonical_card_name
 
 # Note: Logging is configured in main.py to write to ai_debug.log
 # No need to configure here
@@ -85,16 +86,9 @@ class SimpleAgent:
         return StateAction()
 
     def _normalize_card_name(self, card):
-        name = getattr(card, "name", None) or getattr(card, "card_id", "")
-        name = name.replace("+", "")
-        for suffix in ("_R", "_G", "_B"):
-            if name.endswith(suffix):
-                name = name[:-2]
-        if name.startswith("Strike"):
-            return "Strike"
-        if name.startswith("Defend"):
-            return "Defend"
-        return name
+        if card is None:
+            return ""
+        return canonical_card_name(card)
 
     def _get_upgrade_bonus(self, card):
         if getattr(card, "upgrades", 0) > 0:
@@ -2085,7 +2079,7 @@ class OptimizedAgent(SimpleAgent):
                             try:
                                 strategy_scores[id(card)] = float(
                                     self.deck_strategy._get_card_baseline_score(
-                                        card.card_id
+                                        self._normalize_card_name(card)
                                     )
                                 )
                             except Exception:
@@ -2110,7 +2104,12 @@ class OptimizedAgent(SimpleAgent):
             # Limit Break conditional check (A20 expert strategy)
             # Only pick Limit Break when we have Strength support
             limit_break_card = next(
-                (c for c in pickable_cards if c.card_id == "Limit Break"), None
+                (
+                    c
+                    for c in pickable_cards
+                    if self._normalize_card_name(c) == "Limit Break"
+                ),
+                None,
             )
             if limit_break_card and not must_choose_card:
                 current_strength = (
@@ -2121,7 +2120,7 @@ class OptimizedAgent(SimpleAgent):
                 strength_scaling_cards = ["Demon Form", "Inflame", "Spot Weakness"]
                 has_strength_scaling = (
                     any(
-                        any(c.card_id == sc for sc in strength_scaling_cards)
+                        self._normalize_card_name(c) in strength_scaling_cards
                         for c in self.game.deck
                     )
                     if hasattr(self.game, "deck") and self.game.deck
@@ -2136,7 +2135,9 @@ class OptimizedAgent(SimpleAgent):
                         f"[REWARD] Skipping Limit Break - no Strength support (Str={current_strength}, has_scaling={has_strength_scaling})\n"
                     )
                     pickable_cards = [
-                        c for c in pickable_cards if c.card_id != "Limit Break"
+                        c
+                        for c in pickable_cards
+                        if self._normalize_card_name(c) != "Limit Break"
                     ]
 
                     if not pickable_cards:
@@ -2182,7 +2183,7 @@ class OptimizedAgent(SimpleAgent):
             act_1_block_cards.update({"Metallicize"})
 
             deck_ids = [
-                getattr(deck_card, "card_id", "")
+                self._normalize_card_name(deck_card)
                 for deck_card in (getattr(self.game, "deck", None) or [])
             ]
             frontload_count = sum(
@@ -2227,9 +2228,10 @@ class OptimizedAgent(SimpleAgent):
                     score = 50
 
                 if slime_boss_frontload_gap:
-                    if card.card_id in act_1_frontload_cards:
+                    card_name = self._normalize_card_name(card)
+                    if card_name in act_1_frontload_cards:
                         return max(score, 94)
-                    if card.card_id in act_1_block_cards:
+                    if card_name in act_1_block_cards:
                         return min(score, 68)
                 return score
 

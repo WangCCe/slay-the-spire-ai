@@ -240,6 +240,40 @@ def test_ironclad_strategy_prefers_slime_boss_frontload_when_damage_is_thin():
     assert action.name == "Heavy Blade"
 
 
+def test_ironclad_slime_boss_frontload_gap_counts_upgraded_damage_cards():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Pommel Strike+1", upgrades=1),
+        _card("Anger+1", cost=0, upgrades=1),
+        _card("Heavy Blade+1", cost=2, upgrades=1),
+        _card("Cleave+1", upgrades=1),
+    ]
+    reward_cards = [
+        _card("Heavy Blade", cost=2),
+        _card("Flame Barrier", cost=2),
+        _card("Metallicize", cost=1),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=13,
+        hp=74,
+        max_hp=80,
+        act_boss="Slime Boss",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Flame Barrier"
+
+
 def test_ironclad_strategy_prefers_power_through_for_guardian_survival_gap():
     deck = [
         _card("Strike_R", upgrades=1),
