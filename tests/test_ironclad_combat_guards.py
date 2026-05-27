@@ -483,6 +483,57 @@ def test_pummel_uses_hit_count_upgrade_not_hit_count_as_damage(monkeypatch):
     assert result.damage_instances == 5
 
 
+def test_sword_boomerang_hits_random_enemy_three_or_four_times_without_target(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "sword boomerang": {
+            "name": "Sword Boomerang",
+            "description": "Deal 3 damage to a random enemy 3 times.",
+        }
+    }
+    loader._wiki_data = {
+        "sword boomerang": {
+            "name": "Sword Boomerang",
+            "text": "Deal 3 damage to a random enemy [3|4] times.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    sword_boomerang = _card("Sword Boomerang", "Sword Boomerang", cost=1, has_target=False)
+    context = _combat_context([sword_boomerang], energy=1, monsters=[_louse(current_hp=100)])
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        sword_boomerang,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 9
+    assert result.damage_instances == 3
+
+    sword_boomerang_plus = _card(
+        "Sword Boomerang",
+        "Sword Boomerang+",
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([sword_boomerang_plus], energy=1, monsters=[_louse(current_hp=100)])
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        sword_boomerang_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 12
+    assert result.damage_instances == 4
+
+
 def test_upgraded_single_hit_attacks_use_exported_damage_bonus(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
