@@ -85,3 +85,30 @@ def test_incoming_damage_ignores_zero_hp_stale_monsters():
     context.act = 1
 
     assert context._calculate_incoming_damage() == 0
+
+
+def test_incoming_damage_clamps_negative_live_move_damage_to_zero():
+    monster = SimpleNamespace(
+        is_gone=False,
+        half_dead=False,
+        current_hp=20,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=-3,
+        move_hits=2,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.game = SimpleNamespace(monsters=[monster])
+    context.act = 1
+
+    assert context._calculate_incoming_damage() == 0
+
+
+def test_base_immediate_threat_clamps_negative_live_move_damage_to_zero():
+    monster = SimpleNamespace(
+        move_adjusted_damage=-3,
+        move_hits=2,
+        strength=0,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+
+    assert context._compute_base_immediate_threat(monster) == 0

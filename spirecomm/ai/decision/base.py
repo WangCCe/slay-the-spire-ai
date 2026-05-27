@@ -152,6 +152,23 @@ class DecisionContext:
         # Convenience property: is this an elite/scaling fight?
         self.is_elite_fight = self.threat_category in [ThreatCategory.ELITE, ThreatCategory.SCALING]
 
+    @staticmethod
+    def _positive_move_hits(monster) -> int:
+        try:
+            return max(1, int(getattr(monster, 'move_hits', 1) or 1))
+        except (TypeError, ValueError):
+            return 1
+
+    @classmethod
+    def _move_damage_contribution(cls, monster) -> int:
+        damage = getattr(monster, 'move_adjusted_damage', None)
+        if damage is None:
+            return 0
+        try:
+            return max(0, int(damage)) * cls._positive_move_hits(monster)
+        except (TypeError, ValueError):
+            return 0
+
     def _calculate_incoming_damage(self) -> int:
         """Calculate total incoming damage from all monsters.
 
@@ -188,8 +205,7 @@ class DecisionContext:
 
                 # Calculate damage from attacking monsters
                 if hasattr(monster, 'move_adjusted_damage') and monster.move_adjusted_damage is not None:
-                    hits = hasattr(monster, 'move_hits') and monster.move_hits or 1
-                    total += monster.move_adjusted_damage * hits
+                    total += self._move_damage_contribution(monster)
                 elif hasattr(monster, 'intent') and monster.intent == Intent.NONE:
                     # Unknown intent, estimate based on act
                     total += 5 * self.act
@@ -209,8 +225,8 @@ class DecisionContext:
         """
         threat = 0
         if hasattr(monster, 'move_adjusted_damage') and monster.move_adjusted_damage is not None:
-            hits = hasattr(monster, 'move_hits') and monster.move_hits or 1
-            threat += monster.move_adjusted_damage * hits
+            hits = self._positive_move_hits(monster)
+            threat += self._move_damage_contribution(monster)
 
             # Add current Strength to damage
             if hasattr(monster, 'strength') and monster.strength > 0:
