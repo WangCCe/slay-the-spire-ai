@@ -568,6 +568,51 @@ def test_fast_simulator_fiend_fire_exhaust_uses_counted_upgrade_suffix(monkeypat
     assert {"strike", "defend"} <= state.played_card_uuids
 
 
+def test_fast_simulator_body_slam_damage_uses_counted_upgrade_suffix(monkeypatch):
+    card = Card(
+        card_id="Body Slam+1",
+        name="Body Slam+1",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.COMMON,
+        has_target=True,
+        cost=1,
+        upgrades=1,
+    )
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"name": "Body Slam"} if card_name == "Body Slam" else None,
+    )
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 40,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "thorns": 0,
+            }
+        ],
+        player_strength=0,
+        player_hp=80,
+        player_block=18,
+        total_damage_dealt=0,
+        monsters_killed=0,
+        damage_instances=0,
+    )
+
+    FastCombatSimulator(None)._apply_attack(
+        state,
+        card,
+        target=None,
+        target_index=0,
+        context=SimpleNamespace(energy_available=1),
+    )
+
+    assert state.total_damage_dealt == 18
+
+
 def test_game_data_parser_applies_counted_searing_blow_upgrade_suffix():
     loader = data_loader.GameDataLoader(auto_load=False)
     loader._wiki_data = {}

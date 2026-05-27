@@ -1562,8 +1562,7 @@ class FastCombatSimulator:
             >>> _calculate_x_damage(Card('Body Slam'), state, context)
             20
         """
-        # Normalize card name by removing '+' suffix (handles upgraded cards)
-        card_name = card.card_id.replace('+', '')
+        card_name = _canonical_card_name(card)
 
         if card_name == 'Body Slam':
             # Body Slam deals damage equal to your current block
