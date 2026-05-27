@@ -421,6 +421,7 @@ class SimulationState:
 
         # Player debuffs (binary: >0 means debuffed)
         self.player_vulnerable = self._get_player_debuff_stacks(context, 'Vulnerable')
+        self.player_vulnerable_added = 0
         self.player_weak = self._get_player_debuff_stacks(context, 'Weak')
         self.player_frail = self._get_player_debuff_stacks(context, 'Frail')
         self.player_hex = self._get_player_hex_stacks(context)
@@ -554,6 +555,7 @@ class SimulationState:
         new_state.player_energy = self.player_energy
         new_state.player_strength = self.player_strength
         new_state.player_vulnerable = self.player_vulnerable
+        new_state.player_vulnerable_added = self.player_vulnerable_added
         new_state.player_weak = self.player_weak
         new_state.player_frail = self.player_frail
         new_state.player_hex = self.player_hex
@@ -605,6 +607,7 @@ class SimulationState:
             self.player_energy,
             self.player_strength,
             self.player_vulnerable,
+            self.player_vulnerable_added,
             self.player_weak,
             self.player_frail,
             self.player_hex,
@@ -1468,6 +1471,7 @@ class FastCombatSimulator:
 
         # Check if killed
         if monster['hp'] <= 0:
+            self._apply_monster_death_effects(state, monster)
             monster['is_gone'] = True
             state.monsters_killed += 1
 
@@ -1490,6 +1494,41 @@ class FastCombatSimulator:
         monster_id = str(monster.get('monster_id', ''))
         monster_name = str(monster.get('name', ''))
         return monster_id == 'TheGuardian' or monster_name == 'The Guardian'
+
+    def _apply_monster_death_effects(self, state: SimulationState, monster: dict):
+        """Apply deterministic monster death effects such as Fungi Beast spores."""
+        if monster.get('death_effect_applied'):
+            return
+        monster['death_effect_applied'] = True
+
+        monster_name = monster.get('name', '')
+        if not monster_name:
+            return
+
+        try:
+            monster_data = game_data_loader.get_enhanced_monster_data(monster_name)
+        except Exception:
+            monster_data = None
+        if not monster_data:
+            return
+
+        mechanics = monster_data.get('special_mechanics', {}) or {}
+        death_effect = mechanics.get('death_effect', {}) or {}
+        effect_type = death_effect.get('type')
+        if effect_type != 'apply_vulnerable':
+            return
+
+        amount = int(death_effect.get('amount', 0) or 0)
+        if amount <= 0:
+            return
+
+        state.player_vulnerable += amount
+        state.player_vulnerable_added += amount
+        logger.debug(
+            "[DEATH_EFFECT] %s applied %s Vulnerable to player",
+            monster_name,
+            amount,
+        )
 
     def project_end_turn_effects(self, state: SimulationState) -> SimulationState:
         """Project deterministic end-of-turn effects before enemy attacks."""
@@ -1870,12 +1909,18 @@ class FastCombatSimulator:
         except Exception:
             pass
 
-    def _estimate_incoming_damage(self, monsters_state: list) -> int:
+    def _estimate_incoming_damage(
+        self,
+        monsters_state: list,
+        player_vulnerable_added: int = 0,
+    ) -> int:
         """
         Estimate expected incoming damage from monsters next turn.
 
         Args:
             monsters_state: List of monster state dictionaries
+            player_vulnerable_added: Vulnerable stacks newly applied during simulation.
+                Current game intent damage already includes pre-existing player Vulnerable.
 
         Returns:
             Expected total damage
@@ -1955,11 +2000,19 @@ class FastCombatSimulator:
                     monster.get('weak', 0),
                 )
 
+                total = damage * hits
+                if player_vulnerable_added > 0:
+                    total = self._apply_player_vulnerable_damage(
+                        total,
+                        player_vulnerable_added,
+                        hits,
+                    )
+
                 debug_entries.append(
                     f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"
                     f"intent={intent_str} damage={damage} hits={hits} source={damage_source}"
                 )
-                total_damage += damage * hits
+                total_damage += total
             else:
                 debug_entries.append(
                     f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"
@@ -2663,7 +2716,10 @@ class FastCombatSimulator:
         score -= hp_lost * HP_LOSS_PENALTY
 
         # 6. Survival-first scoring (estimate next turn incoming damage)
-        expected_incoming = self._estimate_incoming_damage(final_state.monsters)
+        expected_incoming = self._estimate_incoming_damage(
+            final_state.monsters,
+            final_state.player_vulnerable_added,
+        )
         hp_loss_next_turn = max(0, expected_incoming - final_turn_block)
 
         # Log defensive analysis for debugging

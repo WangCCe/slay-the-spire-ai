@@ -93,6 +93,22 @@ def _louse(current_hp=50):
     )
 
 
+def _fungi_beast(current_hp=22):
+    return Monster(
+        name="Fungi Beast",
+        monster_id="FungiBeast",
+        max_hp=current_hp,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=0,
+        move_adjusted_damage=6,
+        move_hits=1,
+    )
+
+
 def _awakened_one(current_hp=300):
     return Monster(
         name="Awakened One",
@@ -362,6 +378,85 @@ def test_hex_status_pollution_is_scored_as_a_cost(monkeypatch):
     )
 
     assert hex_score < no_hex_score
+
+
+def test_fungi_beast_death_applies_vulnerable_to_player():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_fungi_beast(current_hp=6), _louse(current_hp=50)],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters_killed == 1
+    assert result.player_vulnerable == 2
+    assert result.player_vulnerable_added == 2
+
+
+def test_fungi_beast_death_vulnerable_applies_to_same_turn_incoming_damage():
+    strike = _card("Strike_R", "Strike", cost=1)
+    remaining_attacker = _louse(current_hp=50)
+    remaining_attacker.move_adjusted_damage = 10
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_fungi_beast(current_hp=6), remaining_attacker],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    initial_state = SimulationState(context)
+
+    result = simulator.simulate_card_play(
+        initial_state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert simulator._estimate_incoming_damage(
+        result.monsters,
+        result.player_vulnerable_added,
+    ) == 15
+
+
+def test_fungi_beast_death_vulnerable_can_make_same_turn_attack_lethal():
+    strike = _card("Strike_R", "Strike", cost=1)
+    remaining_attacker = _louse(current_hp=50)
+    remaining_attacker.move_adjusted_damage = 10
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_fungi_beast(current_hp=6), remaining_attacker],
+    )
+    context.game.current_hp = 14
+    context.player_hp = 14
+    context.player_hp_pct = 14 / 80
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    initial_state = SimulationState(context)
+
+    result = simulator.simulate_card_play(
+        initial_state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+    score = simulator.calculate_outcome_score(
+        initial_state,
+        result,
+        context=context,
+    )
+
+    assert score == float("-inf")
 
 
 def test_feel_no_pain_grants_block_for_exhaust_events(monkeypatch):
