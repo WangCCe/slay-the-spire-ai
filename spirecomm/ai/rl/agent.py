@@ -1010,7 +1010,7 @@ class CombatRLAgent:
             try:
                 action = self.rl_agent.get_next_action_in_game(game)
 
-                logger.info(f"[CombatRLAgent] RL returned: {type(action).__name__} - {action}")
+                logger.info("[CombatRLAgent] RL returned: %s", self._describe_combat_action(action, game))
 
                 # Check if RL returned None
                 if action is None:
@@ -1045,6 +1045,24 @@ class CombatRLAgent:
                     from spirecomm.communication.action import EndTurnAction
 
                     return EndTurnAction()
+                elif self._should_override_risky_havoc(action, game):
+                    replacement = self._get_havoc_safe_replacement(game)
+                    if replacement is not None:
+                        from spirecomm.communication.action import EndTurnAction
+
+                        self.rl_failure_count = 0
+                        if not isinstance(replacement, EndTurnAction):
+                            self._fallback_turn_key = self._combat_turn_key(game)
+                        logger.info(
+                            "[HAVOC_GUARD] Replacing RL Havoc with %s on floor=%s turn=%s",
+                            self._describe_combat_action(replacement, game),
+                            getattr(game, "floor", None),
+                            getattr(game, "turn", None),
+                        )
+                        return replacement
+                    self.rl_failure_count = 0
+                    logger.info("[HAVOC_GUARD] No safe replacement found; allowing Havoc")
+                    return action
                 elif self._is_valid_combat_action(action, game):
                     logger.info(f"[CombatRLAgent] RL action validated, returning it")
                     # Valid action for current combat context
@@ -1248,7 +1266,12 @@ class CombatRLAgent:
 
         return self._first_playable_card_action(game)
 
-    def _first_playable_card_action(self, game: Game, allow_power: bool = True) -> Optional[Action]:
+    def _first_playable_card_action(
+        self,
+        game: Game,
+        allow_power: bool = True,
+        excluded_card_names=None,
+    ) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
 
         energy = self._player_energy(game)
@@ -1256,9 +1279,15 @@ class CombatRLAgent:
         if not playable:
             return None
 
+        excluded = {
+            self._normalize_identifier(name)
+            for name in (excluded_card_names or [])
+        }
         target_index = self._best_monster_index(game)
         for card_index, card in playable:
             if not allow_power and self._is_power_card(card):
+                continue
+            if excluded and self._card_matches_normalized_names(card, excluded):
                 continue
             if getattr(card, "has_target", False):
                 if target_index is None:
@@ -1289,6 +1318,83 @@ class CombatRLAgent:
         card = self._card_for_action(action, game)
         return self._is_power_card(card)
 
+    def _should_override_risky_havoc(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return False
+        if not self._is_havoc_action(action, game):
+            return False
+
+        energy = self._player_energy(game)
+        for _, card in self._playable_cards(game, energy):
+            if not self._card_matches_normalized_names(card, {"havoc"}):
+                return True
+        return False
+
+    def _get_havoc_safe_replacement(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import EndTurnAction
+
+        try:
+            fallback_action = self.fallback_agent.get_next_action_in_game(game)
+            if (
+                fallback_action is not None
+                and not isinstance(fallback_action, EndTurnAction)
+                and self._is_valid_combat_action(fallback_action, game)
+                and not self._is_havoc_action(fallback_action, game)
+            ):
+                return fallback_action
+        except Exception as exc:
+            logger.debug("[HAVOC_GUARD] Fallback action failed: %s", exc)
+
+        return self._first_playable_card_action(game, excluded_card_names={"havoc"})
+
+    def _is_havoc_action(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        return self._card_matches_normalized_names(self._card_for_action(action, game), {"havoc"})
+
+    def _describe_combat_action(self, action: Action, game: Game) -> str:
+        from spirecomm.communication.action import PlayCardAction, PotionAction
+
+        if action is None:
+            return "None"
+
+        parts = [type(action).__name__]
+        if isinstance(action, PlayCardAction):
+            card = self._card_for_action(action, game)
+            parts.append(f"card_index={getattr(action, 'card_index', None)}")
+            if card is not None:
+                parts.append(f"card={self._card_label(card)}")
+                card_id = getattr(card, "card_id", None)
+                if card_id:
+                    parts.append(f"card_id={card_id}")
+                cost = getattr(card, "cost_for_turn", None)
+                if cost is None:
+                    cost = getattr(card, "cost", None)
+                parts.append(f"cost={cost}")
+            parts.append(f"target_index={getattr(action, 'target_index', None)}")
+        elif isinstance(action, PotionAction):
+            potion = getattr(action, "potion", None)
+            if potion is not None:
+                parts.append(f"potion={getattr(potion, 'name', getattr(potion, 'potion_id', None))}")
+            parts.append(f"target_index={getattr(action, 'target_index', None)}")
+
+        hand = ", ".join(
+            self._card_label(card)
+            for card in (getattr(game, "hand", []) or [])
+        )
+        parts.append(f"floor={getattr(game, 'floor', None)}")
+        parts.append(f"turn={getattr(game, 'turn', None)}")
+        parts.append(f"energy={self._player_energy(game)}")
+        parts.append(f"hand=[{hand}]")
+        return " ".join(parts)
+
     @staticmethod
     def _card_for_action(action: Action, game: Game):
         card = getattr(action, "card", None)
@@ -1303,6 +1409,34 @@ class CombatRLAgent:
         if 0 <= card_index < len(hand):
             return hand[card_index]
         return None
+
+    @staticmethod
+    def _card_label(card) -> str:
+        if card is None:
+            return "UNKNOWN"
+        return str(
+            getattr(card, "name", None)
+            or getattr(card, "card_id", None)
+            or "UNKNOWN"
+        )
+
+    @staticmethod
+    def _normalize_identifier(value) -> str:
+        return "".join(ch for ch in str(value).lower() if ch.isalnum())
+
+    @classmethod
+    def _card_matches_normalized_names(cls, card, normalized_names) -> bool:
+        if card is None:
+            return False
+        for value in (getattr(card, "name", None), getattr(card, "card_id", None)):
+            normalized = cls._normalize_identifier(value)
+            if not normalized:
+                continue
+            if normalized in normalized_names:
+                return True
+            if any(normalized.startswith(name) for name in normalized_names):
+                return True
+        return False
 
     @staticmethod
     def _is_power_card(card) -> bool:
