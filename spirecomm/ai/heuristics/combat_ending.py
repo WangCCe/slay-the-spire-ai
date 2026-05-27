@@ -39,7 +39,6 @@ class CombatEndingDetector:
         Improved detection with:
         - Energy constraint validation
         - Targeting feasibility check
-        - HP safety threshold
         - Reduced margin (10% instead of 20%)
 
         Args:
@@ -85,17 +84,18 @@ class CombatEndingDetector:
             # Step 4: Validate targeting (single-target vs AOE constraints)
             targeting_feasible = self._can_target_all_monsters(context, affordable_damage)
 
-            # Step 5: HP safety check (only go for lethal if not too risky)
-            hp_safe = context.player_hp > 30 or context.player_hp_pct > 0.3
+            # Low HP must not suppress a deterministic kill. The margin and
+            # targeting checks already keep this detector conservative.
+            low_hp = context.player_hp <= 30 and context.player_hp_pct <= 0.3
 
             # Log detection results
             logger.info(f"[LETHAL_DETECTION] affordable_damage={affordable_damage}, "
                        f"total_monster_hp={total_monster_hp}, margin_ok={has_damage_potential}, "
-                       f"targeting_ok={targeting_feasible}, hp_safe={hp_safe}, "
+                       f"targeting_ok={targeting_feasible}, low_hp={low_hp}, "
                        f"player_hp={context.player_hp}, player_hp_pct={context.player_hp_pct:.2f}")
 
             # Final decision
-            lethal_detected = has_damage_potential and targeting_feasible and hp_safe
+            lethal_detected = has_damage_potential and targeting_feasible
 
             if lethal_detected:
                 logger.info(f"[LETHAL_DETECTION] LETHAL DETECTED! All checks passed")
@@ -105,8 +105,6 @@ class CombatEndingDetector:
                     reasons.append(f"Insufficient damage ({affordable_damage} < {int(total_monster_hp * margin_multiplier)} with 10% margin)")
                 if not targeting_feasible:
                     reasons.append("Targeting constraints prevent lethal")
-                if not hp_safe:
-                    reasons.append(f"HP too low for risky lethal ({context.player_hp} HP, {context.player_hp_pct:.1%})")
                 logger.info(f"[LETHAL_DETECTION] No lethal. Reason: {'; '.join(reasons)}")
 
             return lethal_detected
@@ -141,6 +139,7 @@ class CombatEndingDetector:
         remaining_monsters = context.monsters_alive.copy()
         remaining_monster_indices = list(range(len(remaining_monsters)))
         played_cards = set()
+        remaining_energy = context.energy_available
 
         # Sort monsters by HP (kill weakest first)
         combined = list(zip(remaining_monsters, remaining_monster_indices))
@@ -154,13 +153,14 @@ class CombatEndingDetector:
         attack_cards.sort(key=lambda c: self._get_card_damage(c, context), reverse=True)
 
         for monster, monster_idx in zip(remaining_monsters, remaining_monster_indices):
+            damage_needed = monster.current_hp + monster.block
             for card in attack_cards:
-                card_uuid = card.uuid if hasattr(card, 'uuid') else id(card)
+                card_uuid = getattr(card, 'uuid', None) or id(card)
                 if card_uuid in played_cards:
                     continue
 
-                cost = effective_card_cost(card, context.energy_available)
-                if cost > context.energy_available:
+                cost = effective_card_cost(card, remaining_energy)
+                if cost > remaining_energy:
                     continue
 
                 # Check vulnerable status
@@ -169,12 +169,20 @@ class CombatEndingDetector:
                 if vulnerable > 0:
                     damage = int(damage * 1.5)
 
-                # Estimate if this card can kill the monster
-                total_damage = damage
-                if total_damage >= monster.current_hp + monster.block:
-                    sequence.append(PlayCardAction(card=card, target_monster=monster))
-                    played_cards.add(card_uuid)
+                sequence.append(PlayCardAction(card=card, target_monster=monster))
+                played_cards.add(card_uuid)
+                remaining_energy -= cost
+                damage_needed -= damage
+                if damage_needed <= 0:
                     break
+
+            if damage_needed > 0:
+                logger.warning(
+                    "[LETHAL_SEQUENCE] Construction failed: %s still has %s HP/block remaining",
+                    getattr(monster, 'name', 'monster'),
+                    damage_needed,
+                )
+                return []
 
         if sequence:
             card_names = [action.card.card_id if hasattr(action, 'card') and hasattr(action.card, 'card_id') else 'Unknown' for action in sequence]

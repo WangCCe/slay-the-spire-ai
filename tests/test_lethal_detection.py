@@ -6,7 +6,7 @@ This script validates the fixes to CombatEndingDetector:
 1. Reduced margin (20% → 10%)
 2. Energy constraint validation
 3. Targeting feasibility check
-4. HP safety threshold
+4. Critical HP still allows deterministic lethal
 5. ALL_LETHAL_BONUS in scoring
 6. Block penalty when lethal available
 """
@@ -157,8 +157,8 @@ def test_energy_constraints():
     print(f"  Expected: False (can't afford both cards with only 2 energy)")
     print(f"  Result: {result}")
 
-def test_hp_safety_threshold():
-    """Test that HP safety threshold prevents risky lethal."""
+def test_low_hp_deterministic_lethal():
+    """Test that critical HP does not suppress deterministic lethal."""
     print("\n" + "="*80)
     print("TEST 3: HP Safety Threshold")
     print("="*80)
@@ -179,7 +179,7 @@ def test_hp_safety_threshold():
 
     result = detector.can_kill_all(context)
     print(f"✓ Test: 15 HP monster, 14 damage available, player at 10 HP (12.5%)")
-    print(f"  Expected: False (HP too low for risky lethal)")
+    print(f"  Expected: True (critical HP should still take deterministic lethal)")
     print(f"  Result: {result}")
 
     # Test case: Safe HP, lethal available
@@ -260,7 +260,7 @@ if __name__ == '__main__':
     try:
         test_margin_reduction()
         test_energy_constraints()
-        test_hp_safety_threshold()
+        test_low_hp_deterministic_lethal()
         test_all_lethal_bonus()
         test_targeting_constraints()
 
@@ -275,7 +275,7 @@ if __name__ == '__main__':
         print("- AI should detect lethal more accurately (10% margin instead of 20%)")
         print("- AI should respect energy constraints when checking for lethal")
         print("- AI should prioritize lethal over defense (500-point bonus + block penalty)")
-        print("- AI should avoid risky lethal at low HP (<30 HP or <30%)")
+        print("- AI should still take deterministic lethal at low HP")
 
     except Exception as e:
         print(f"\n✗ TEST FAILED: {e}")

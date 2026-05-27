@@ -2387,6 +2387,32 @@ def test_lethal_detector_counts_whirlwind_damage_without_negative_energy():
     assert CombatEndingDetector()._calculate_affordable_damage(context) == 15
 
 
+def test_lethal_detector_allows_certain_kill_at_critical_hp():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=5)])
+    context.game.current_hp = 6
+    context.player_hp = 6
+    context.player_hp_pct = 6 / 80
+
+    assert CombatEndingDetector().can_kill_all(context) is True
+
+
+def test_lethal_sequence_uses_multiple_attacks_on_one_monster():
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_1.uuid = "strike-1"
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    strike_2.uuid = "strike-2"
+    context = _combat_context(
+        [strike_1, strike_2],
+        energy=2,
+        monsters=[_louse(current_hp=10)],
+    )
+
+    sequence = CombatEndingDetector().find_lethal_sequence(context)
+
+    assert [action.card.uuid for action in sequence] == ["strike-1", "strike-2"]
+
+
 def test_thorns_deals_full_stack_damage_per_attack_hit():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])
