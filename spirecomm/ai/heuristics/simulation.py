@@ -438,6 +438,7 @@ class SimulationState:
                 'thorns': context.thorns_stacks.get(i, 0),  # Thorns/反伤 stacks (by index)
                 'move_base_damage': monster.move_base_damage if hasattr(monster, 'move_base_damage') else 0,
                 'move_adjusted_damage': monster.move_adjusted_damage if hasattr(monster, 'move_adjusted_damage') else 0,
+                'move_hits': monster.move_hits if hasattr(monster, 'move_hits') else 1,
                 'strength': monster.strength if hasattr(monster, 'strength') else 0,
             }
             self.monsters.append(monster_state)
@@ -1425,7 +1426,7 @@ class FastCombatSimulator:
                     f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"
                     f"intent={intent_str} damage={damage} hits={hits} source={damage_source}"
                 )
-                total_damage += damage
+                total_damage += damage * hits
             else:
                 debug_entries.append(
                     f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"

@@ -241,6 +241,18 @@ def test_simulator_resolves_target_object_when_target_index_is_omitted(monkeypat
     assert result.monsters[1]["hp"] == 40
 
 
+def test_incoming_damage_estimate_multiplies_monster_hits():
+    monster = _louse(current_hp=40)
+    monster.move_adjusted_damage = 6
+    monster.move_hits = 3
+    context = _combat_context([], energy=3, monsters=[monster])
+    state = SimulationState(context)
+
+    incoming = FastCombatSimulator(SynergyCardEvaluator())._estimate_incoming_damage(state.monsters)
+
+    assert incoming == 18
+
+
 def test_bludgeon_damage_is_static_not_scaled_by_block(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
