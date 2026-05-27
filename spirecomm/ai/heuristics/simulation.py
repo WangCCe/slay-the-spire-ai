@@ -1993,7 +1993,7 @@ class FastCombatSimulator:
         return True
 
     def _apply_double_tap(self, state: SimulationState, card: Card) -> bool:
-        card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_id = _canonical_card_name(card)
         if card_id != 'Double Tap':
             return False
 

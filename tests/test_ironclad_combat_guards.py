@@ -3483,6 +3483,44 @@ def test_double_tap_repeats_next_attack_once_or_twice():
     assert result.total_damage_dealt == 24
     assert result.attacks_played == 4
 
+    counted_double_tap = _card(
+        "Double Tap+1",
+        "Double Tap+1",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context(
+        [counted_double_tap, strike, strike],
+        energy=3,
+        monsters=[_louse(current_hp=100)],
+    )
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        counted_double_tap,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    state = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 24
+    assert result.attacks_played == 4
+
 
 def test_corruption_makes_followup_skills_cost_zero(monkeypatch):
     loader = GameDataLoader(auto_load=False)
