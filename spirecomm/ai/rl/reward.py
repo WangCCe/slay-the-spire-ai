@@ -131,11 +131,13 @@ class RewardCalculator:
 
     def calculate_progression_reward(self, game: Game, floor_advanced: bool = False,
                                     elite_killed: bool = False,
-                                    boss_killed: bool = False) -> float:
+                                    boss_killed: bool = False,
+                                    previous_floor: Optional[int] = None) -> float:
         """Calculate reward for game progression."""
         reward = 0.0
         if floor_advanced:
-            floors_gained = game.floor - self.last_floor
+            floor_before = self.last_floor if previous_floor is None else previous_floor
+            floors_gained = max(0, game.floor - floor_before)
             reward += floors_gained * self.FLOOR_REWARD_SCALE
             self.last_floor = game.floor
         if elite_killed:
@@ -422,7 +424,8 @@ class RewardCalculator:
                     current_game,
                     floor_advanced=True,
                     elite_killed=False,  # TODO: detect elite kills
-                    boss_killed=False    # TODO: detect boss kills
+                    boss_killed=False,   # TODO: detect boss kills
+                    previous_floor=last_game.floor
                 )
                 reward += progress_reward
                 if info is not None:
