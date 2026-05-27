@@ -92,6 +92,14 @@ class EnhancedMonsterDatabase:
             if key.lower() == monster_name.lower():
                 return value
 
+        # Try explicit aliases from data records
+        for value in self._data.values():
+            aliases = value.get("aliases", [])
+            if isinstance(aliases, list):
+                for alias in aliases:
+                    if str(alias).lower() == monster_name.lower():
+                        return value
+
         # Try partial match (for names like "The Champ" vs "Champ")
         for key, value in self._data.items():
             if monster_name.lower() in key.lower() or key.lower() in monster_name.lower():

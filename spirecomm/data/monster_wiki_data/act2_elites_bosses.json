@@ -389,5 +389,136 @@
       "scaling_threat": 4.0,
       "party_threat_multiplier": 1.5
     }
+  },
+  "Bronze Automaton": {
+    "monster_id": "Bronze_Automaton",
+    "name": "Bronze Automaton",
+    "aliases": ["Automaton"],
+    "monster_type": "boss",
+    "hp_ranges": {
+      "normal": {"min": 300, "max": 320},
+      "ascension_9+": {"min": 320, "max": 340}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Spawn Orbs",
+        "intent": "UNKNOWN",
+        "damage": null,
+        "effect": "Summons two Bronze Orbs.",
+        "summons": ["Bronze Orb", "Bronze Orb"]
+      },
+      {
+        "move_id": 1,
+        "name": "Flail",
+        "intent": "ATTACK",
+        "damage": 7,
+        "hits": 2,
+        "effect": "Deals 7 x 2 damage.",
+        "ascension_modifiers": {
+          "4+": {"damage": 8, "hits": 2}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Boost",
+        "intent": "BUFF",
+        "damage": null,
+        "strength_gain": 3,
+        "effect": "Gains 3 Strength.",
+        "ascension_modifiers": {
+          "19+": {"strength_gain": 4}
+        }
+      },
+      {
+        "move_id": 3,
+        "name": "Hyper Beam",
+        "intent": "ATTACK",
+        "damage": 45,
+        "effect": "Deals 45 damage.",
+        "ascension_modifiers": {
+          "4+": {"damage": 50}
+        }
+      },
+      {
+        "move_id": 4,
+        "name": "Stunned",
+        "intent": "STUN",
+        "damage": null,
+        "effect": "Skips the turn after Hyper Beam."
+      }
+    ],
+    "pattern": {
+      "description": "Opens by summoning Bronze Orbs, then cycles Flail, Boost, Flail, Hyper Beam, and a stunned turn.",
+      "move_cycle": ["Spawn Orbs", "Flail", "Boost", "Flail", "Hyper Beam", "Stunned"]
+    },
+    "special_mechanics": {
+      "type": "summoner_burst",
+      "summons": ["Bronze Orb"],
+      "recommended_strategy": {
+        "primary": "prepare_for_hyper_beam",
+        "secondary": "kill_orbs_before_stasis_steals_key_cards",
+        "note": "Hyper Beam is the main predictable spike; Bronze Orbs disrupt the deck with Stasis."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 30,
+      "summoning_threat": 12,
+      "hyper_beam_threat": 45,
+      "scaling_threat": 3.0
+    }
+  },
+  "Bronze Orb": {
+    "monster_id": "Bronze_Orb",
+    "name": "Bronze Orb",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {"min": 52, "max": 58},
+      "ascension_7+": {"min": 54, "max": 60}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Stasis",
+        "intent": "DEBUFF",
+        "damage": null,
+        "effect": "Puts a card into Stasis."
+      },
+      {
+        "move_id": 1,
+        "name": "Beam",
+        "intent": "ATTACK",
+        "damage": 8,
+        "effect": "Deals 8 damage.",
+        "ascension_modifiers": {
+          "4+": {"damage": 10}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Support Beam",
+        "intent": "ATTACK",
+        "damage": 12,
+        "effect": "Deals 12 damage.",
+        "ascension_modifiers": {
+          "4+": {"damage": 14}
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Uses Stasis first, then attacks with Beam and Support Beam.",
+      "opening": ["Stasis"],
+      "then": ["Beam"],
+      "alternating": ["Beam", "Support Beam"]
+    },
+    "special_mechanics": {
+      "type": "stasis",
+      "description": "Can temporarily remove a card from the player's deck."
+    },
+    "threat_profile": {
+      "base_threat": 12,
+      "disruption_threat": 8,
+      "scaling_threat": 1.0
+    }
   }
 }

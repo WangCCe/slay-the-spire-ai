@@ -407,3 +407,27 @@ def test_hp_threshold_modes_predict_guardian_sequence():
         "Charged",
         "Twin Slam",
     ]
+
+
+def test_enhanced_monster_database_covers_common_act2_threats():
+    database = EnhancedMonsterDatabase()
+
+    expected_moves = {
+        "Shell Parasite": {"Double Strike", "Suck"},
+        "Shelled Parasite": {"Double Strike", "Suck"},
+        "Byrd": {"Swoop", "Peck"},
+        "Spire Growth": {"Quick Tackle", "Smash"},
+        "Centurion": {"Slash"},
+        "Mystic": {"Heal", "Attack"},
+        "Healer": {"Heal", "Attack"},
+        "Bronze Automaton": {"Spawn Orbs"},
+        "Automaton": {"Spawn Orbs"},
+        "Bronze Orb": {"Stasis", "Beam"},
+    }
+
+    for monster_name, moves in expected_moves.items():
+        monster_data = database.get_monster_data(monster_name)
+        predictions = database.predict_next_moves(monster_name, current_turn=1, monster_hp_percent=1.0)
+
+        assert monster_data is not None, monster_name
+        assert {prediction["move"]["name"] for prediction in predictions} & moves, monster_name

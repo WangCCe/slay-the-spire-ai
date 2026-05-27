@@ -401,5 +401,301 @@
       "scaling_threat": 4.0,
       "notes": "Very dangerous with Hex debuff that floods deck with Dazed when playing non-Attack cards. Drain applies Weak to reduce your damage while gaining Strength to increase its own damage. Must prioritize Attack cards or remove Hex quickly. High HP makes it a lengthy fight."
     }
+  },
+  {
+    "monster_id": "Shell_Parasite",
+    "name": "Shell Parasite",
+    "aliases": ["Shelled Parasite"],
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {"min": 68, "max": 72},
+      "ascension_7+": {"min": 70, "max": 75}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Double Strike",
+        "intent": "ATTACK",
+        "damage": 6,
+        "hits": 2,
+        "effect": "Deals 6 x 2 damage.",
+        "ascension_modifiers": {
+          "2+": {"damage": 7, "hits": 2}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Suck",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 10,
+        "frail": 2,
+        "effect": "Deals 10 damage and applies 2 Frail.",
+        "ascension_modifiers": {
+          "2+": {"damage": 12}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Harden",
+        "intent": "DEFEND",
+        "damage": null,
+        "block_gain": 14,
+        "effect": "Gains 14 Block.",
+        "ascension_modifiers": {
+          "17+": {"block_gain": 18}
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Mixes Double Strike, Suck, and Harden. Damage planning should treat it as a recurring 10-14 damage threat.",
+      "move_probabilities": {
+        "Double Strike": 0.45,
+        "Suck": 0.35,
+        "Harden": 0.20
+      }
+    },
+    "special_mechanics": {
+      "type": "block_and_debuff",
+      "description": "Alternates attacks with defensive turns and can apply Frail."
+    },
+    "threat_profile": {
+      "base_threat": 17,
+      "debuff_threat": 4,
+      "scaling_threat": 1.0
+    }
+  },
+  {
+    "monster_id": "Byrd",
+    "name": "Byrd",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {"min": 25, "max": 31},
+      "ascension_7+": {"min": 26, "max": 33}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Peck",
+        "intent": "ATTACK",
+        "damage": 1,
+        "hits": 5,
+        "effect": "Deals 1 x 5 damage.",
+        "ascension_modifiers": {
+          "2+": {"damage": 1, "hits": 6}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Swoop",
+        "intent": "ATTACK",
+        "damage": 12,
+        "effect": "Deals 12 damage.",
+        "ascension_modifiers": {
+          "2+": {"damage": 14}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Caw",
+        "intent": "BUFF",
+        "damage": null,
+        "strength_gain": 1,
+        "effect": "Gains 1 Strength.",
+        "ascension_modifiers": {
+          "17+": {"strength_gain": 2}
+        }
+      },
+      {
+        "move_id": 3,
+        "name": "Stunned",
+        "intent": "STUN",
+        "damage": null,
+        "effect": "Loses Flying and skips the turn."
+      }
+    ],
+    "pattern": {
+      "description": "Randomly uses Peck, Swoop, and Caw while Flying. Knocked down Byrds are stunned for a turn.",
+      "move_probabilities": {
+        "Swoop": 0.45,
+        "Peck": 0.35,
+        "Caw": 0.20
+      }
+    },
+    "special_mechanics": {
+      "type": "flying",
+      "description": "Flying reduces attack damage until enough attack hits knock it down."
+    },
+    "threat_profile": {
+      "base_threat": 14,
+      "multi_hit_threat": 3,
+      "scaling_threat": 2.0
+    }
+  },
+  {
+    "monster_id": "Spire_Growth",
+    "name": "Spire Growth",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {"min": 170, "max": 190},
+      "ascension_7+": {"min": 180, "max": 190}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Quick Tackle",
+        "intent": "ATTACK",
+        "damage": 16,
+        "effect": "Deals 16 damage.",
+        "ascension_modifiers": {
+          "2+": {"damage": 18}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Smash",
+        "intent": "ATTACK",
+        "damage": 22,
+        "effect": "Deals 22 damage.",
+        "ascension_modifiers": {
+          "2+": {"damage": 25}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Constrict",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 10,
+        "constricted": 10,
+        "effect": "Deals 10 damage and applies Constricted.",
+        "ascension_modifiers": {
+          "2+": {"damage": 12}
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Large HP normal monster with recurring medium attacks and Constricted pressure.",
+      "move_probabilities": {
+        "Quick Tackle": 0.45,
+        "Smash": 0.35,
+        "Constrict": 0.20
+      }
+    },
+    "special_mechanics": {
+      "type": "constricted",
+      "description": "Constricted causes additional damage at end of turn until removed by killing the monster."
+    },
+    "threat_profile": {
+      "base_threat": 22,
+      "debuff_threat": 6,
+      "scaling_threat": 2.0
+    }
+  },
+  {
+    "monster_id": "Centurion",
+    "name": "Centurion",
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {"min": 78, "max": 83},
+      "ascension_7+": {"min": 80, "max": 86}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Slash",
+        "intent": "ATTACK",
+        "damage": 12,
+        "effect": "Deals 12 damage.",
+        "ascension_modifiers": {
+          "2+": {"damage": 14}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Defend",
+        "intent": "DEFEND",
+        "damage": null,
+        "block_gain": 15,
+        "effect": "Grants Block to an ally."
+      },
+      {
+        "move_id": 2,
+        "name": "Fury",
+        "intent": "BUFF",
+        "damage": null,
+        "strength_gain": 3,
+        "effect": "Gains Strength after Mystic dies."
+      }
+    ],
+    "pattern": {
+      "description": "Protects Mystic and attacks with Slash.",
+      "move_probabilities": {
+        "Slash": 0.65,
+        "Defend": 0.35
+      }
+    },
+    "special_mechanics": {
+      "type": "protector",
+      "description": "Often appears with Mystic and can protect the backline."
+    },
+    "threat_profile": {
+      "base_threat": 16,
+      "party_threat_multiplier": 1.5,
+      "scaling_threat": 1.5
+    }
+  },
+  {
+    "monster_id": "Mystic",
+    "name": "Mystic",
+    "aliases": ["Healer"],
+    "monster_type": "normal",
+    "hp_ranges": {
+      "normal": {"min": 48, "max": 56},
+      "ascension_7+": {"min": 50, "max": 58}
+    },
+    "moves": [
+      {
+        "move_id": 0,
+        "name": "Attack",
+        "intent": "ATTACK",
+        "damage": 8,
+        "effect": "Deals 8 damage.",
+        "ascension_modifiers": {
+          "2+": {"damage": 9}
+        }
+      },
+      {
+        "move_id": 1,
+        "name": "Heal",
+        "intent": "BUFF",
+        "damage": null,
+        "heal": 16,
+        "effect": "Heals an ally."
+      },
+      {
+        "move_id": 2,
+        "name": "Buff",
+        "intent": "BUFF",
+        "damage": null,
+        "strength_gain": 2,
+        "effect": "Gives Strength to allies."
+      }
+    ],
+    "pattern": {
+      "description": "Heals and buffs Centurion, occasionally attacking.",
+      "move_probabilities": {
+        "Heal": 0.45,
+        "Buff": 0.35,
+        "Attack": 0.20
+      }
+    },
+    "special_mechanics": {
+      "type": "healer",
+      "description": "Sustains and buffs the encounter; should usually be killed first."
+    },
+    "threat_profile": {
+      "base_threat": 18,
+      "healing_threat": 8,
+      "scaling_threat": 3.0
+    }
   }
 ]
