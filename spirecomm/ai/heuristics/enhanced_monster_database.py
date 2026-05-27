@@ -463,9 +463,10 @@ class EnhancedMonsterDatabase:
             confidence = prediction["confidence"]
 
             # Add damage-based threat
-            if "damage" in move and move["damage"]:
+            damage = self._numeric_damage_value(move.get("damage", 0))
+            if damage > 0:
                 hits = move.get("hits", 1)
-                total_damage = move["damage"] * hits
+                total_damage = damage * hits
                 threat += total_damage * 0.3 * confidence
 
             # Add debuff threat
@@ -662,7 +663,7 @@ class EnhancedMonsterDatabase:
 
         # Check for big attack moves
         for move in moves:
-            damage = move.get("damage", 0)
+            damage = self._numeric_damage_value(move.get("damage", 0))
             if damage >= 20:  # Threshold for "big"
                 # Try to find turn number from pattern
                 move_name = move.get("name", "")
@@ -678,6 +679,21 @@ class EnhancedMonsterDatabase:
             big_attacks.extend(pattern["big_attack_turns"])
 
         return big_attacks
+
+    def _numeric_damage_value(self, damage: Any) -> int:
+        if isinstance(damage, (int, float)):
+            return int(damage)
+        if isinstance(damage, dict):
+            for key in ("max", "normal", "base", "min"):
+                value = damage.get(key)
+                if isinstance(value, (int, float)):
+                    return int(value)
+            numeric_values = [
+                value for value in damage.values()
+                if isinstance(value, (int, float))
+            ]
+            return int(max(numeric_values, default=0))
+        return 0
 
     def get_all_monsters(self) -> List[str]:
         """Get list of all monster names in the database."""

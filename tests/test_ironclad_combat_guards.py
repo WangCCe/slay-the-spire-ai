@@ -6,7 +6,7 @@ from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.combat_ending import CombatEndingDetector
 from spirecomm.ai.heuristics.simulation import FastCombatSimulator, HeuristicCombatPlanner, SimulationState
 from spirecomm.communication.action import PlayCardAction
-from spirecomm.data.loader import GameDataLoader
+from spirecomm.data.loader import GameDataLoader, game_data_loader
 from spirecomm.spire.card import Card, CardRarity, CardType
 from spirecomm.spire.character import Intent, Monster
 
@@ -118,6 +118,22 @@ def _slime_boss(current_hp=56, max_hp=140):
         half_dead=False,
         is_gone=False,
         move_id=3,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+
+
+def _hexaghost(current_hp=250):
+    return Monster(
+        name="Hexaghost",
+        monster_id="Hexaghost",
+        max_hp=250,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
         move_adjusted_damage=0,
         move_hits=1,
     )
@@ -262,6 +278,41 @@ def test_enemy_lookahead_counts_slime_boss_split_child_threat_immediately():
     )
 
     assert future_damage >= 15
+
+
+def test_enemy_lookahead_handles_monster_damage_ranges():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])
+    context.turn = 1
+
+    future_damage = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 7
+
+
+def test_hexaghost_divider_uses_player_hp_formula_in_lookahead():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_hexaghost()])
+    context.turn = 2
+    context.game.current_hp = 53
+    context.player_hp = 53
+    context.player_hp_pct = 53 / 80
+
+    future_damage = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 30
+
+
+def test_big_attack_pattern_handles_monster_damage_ranges():
+    assert game_data_loader.get_monster_big_attack_pattern("Louse") == []
 
 
 def test_simulator_does_not_treat_upgraded_non_block_skills_as_block(monkeypatch):

@@ -1635,10 +1635,10 @@ class FastCombatSimulator:
 
                     if move:
                         move_intent = move.get('intent', '').upper()
-                        move_damage = move.get('damage', 0)
+                        move_damage = self._move_damage_value(move, lookahead_state)
                         move_hits = move.get('hits', 1)
 
-                        if 'ATTACK' in move_intent and move_damage:
+                        if 'ATTACK' in move_intent and move_damage > 0:
                             damage = move_damage * move_hits
                             current_strength = monster.get('strength', 0)
                             if current_strength > 0:
@@ -1654,6 +1654,7 @@ class FastCombatSimulator:
                         pending_debuffs['vulnerable'] += move_debuffs['vulnerable']
                     else:
                         fallback_damage = monster.get('move_adjusted_damage', 0) or monster.get('move_base_damage', 0)
+                        fallback_damage = self._numeric_damage_value(fallback_damage)
                         if fallback_damage > 0:
                             move_hits = monster.get('move_hits', 1)
                             damage = fallback_damage * move_hits
@@ -1688,6 +1689,31 @@ class FastCombatSimulator:
     def calculate_future_monster_damage(self, state: SimulationState, context: DecisionContext, look_ahead: int = 2) -> int:
         """Compatibility wrapper for future damage prediction."""
         return self.simulate_enemy_lookahead(state, context, look_ahead)
+
+    def _move_damage_value(self, move: Dict[str, Any], state: SimulationState) -> int:
+        """Return a numeric damage estimate for predicted monster moves."""
+        move_name = str(move.get('name', ''))
+        if move_name == 'Divider':
+            return self._hexaghost_divider_damage(state.player_hp)
+        return self._numeric_damage_value(move.get('damage', 0))
+
+    def _numeric_damage_value(self, damage: Any) -> int:
+        if isinstance(damage, (int, float)):
+            return int(damage)
+        if isinstance(damage, dict):
+            for key in ('max', 'normal', 'base', 'min'):
+                value = damage.get(key)
+                if isinstance(value, (int, float)):
+                    return int(value)
+            numeric_values = [
+                value for value in damage.values()
+                if isinstance(value, (int, float))
+            ]
+            return int(max(numeric_values, default=0))
+        return 0
+
+    def _hexaghost_divider_damage(self, player_hp: int) -> int:
+        return ((max(0, player_hp) // 12) + 1) * 6
 
     def _materialize_pending_death_splits(self, state: SimulationState) -> SimulationState:
         """Replace due death-split monsters with their spawned monsters for future-turn simulation."""
@@ -1803,8 +1829,8 @@ class FastCombatSimulator:
         damage_values = []
         for move in game_data_loader.get_monster_moves(monster_name):
             intent = str(move.get('intent', '')).upper()
-            damage = move.get('damage')
-            if 'ATTACK' not in intent or not isinstance(damage, (int, float)):
+            damage = self._numeric_damage_value(move.get('damage'))
+            if 'ATTACK' not in intent or damage <= 0:
                 continue
             hits = move.get('hits', move.get('move_hits', 1)) or 1
             damage_values.append(int(damage * hits))
