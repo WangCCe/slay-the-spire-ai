@@ -1655,6 +1655,43 @@ def test_entrench_doubles_current_block():
     assert result.player_block == 24
 
 
+def test_counted_upgraded_block_skill_uses_upgrade_block_value(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "power through": {
+            "name": "Power Through",
+            "description": "Gain 15 Block.\nAdd 2 Wounds into your hand.",
+        }
+    }
+    loader._wiki_data = {
+        "power through": {
+            "name": "Power Through",
+            "text": "Gain [15|20] #Block.\nAdd 2 #Wounds into your hand.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    power_through = _card(
+        "Power Through+1",
+        "Power Through+1",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([power_through], energy=1, monsters=[_louse(current_hp=100)])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        power_through,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 20
+
+
 def test_second_wind_gains_block_for_each_non_attack_card_exhausted():
     second_wind = _card(
         "Second Wind",

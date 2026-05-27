@@ -1751,16 +1751,15 @@ class FastCombatSimulator:
                 else:
                     # Not an X-block card - try to get block from game data
                     # (needed because Card objects don't have block attribute set)
-                    card_name = (getattr(card, 'name', None) or card.card_id).replace('+', '')
+                    card_name = _canonical_card_name(card)
                     card_data = game_data_loader.get_card_data(card_name)
                     if card_data:
                         block_data = dict(card_data)
-                        display_name = getattr(card, 'name', None) or card.card_id
-                        block_data['name'] = display_name
+                        upgrades = getattr(card, 'upgrades', 0)
+                        block_data['name'] = f"{card_name}+" if upgrades > 0 else card_name
                         base_block = game_data_loader._parse_card_block(block_data)
                         if base_block and base_block > 0:
                             # Apply upgrade bonus if card is upgraded
-                            upgrades = getattr(card, 'upgrades', 0)
                             if upgrades > 0:
                                 base_data = dict(card_data)
                                 base_data['name'] = card_name
