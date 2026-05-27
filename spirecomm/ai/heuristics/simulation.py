@@ -1419,11 +1419,8 @@ class FastCombatSimulator:
 
     def _extract_draw_count(self, description: str, upgraded: bool) -> int:
         """Extract card draw count, including wiki [base|upgraded] notation."""
-        bracket_match = re.search(r'draw\s*\[(\d+)\|(\d+)\]\s*cards?', description)
-        if bracket_match:
-            return int(bracket_match.group(2 if upgraded else 1))
-
-        draw_match = re.search(r'draw\s+(\d+)\s+cards?', description)
+        effect_text = self._effect_text_for_upgrade(description, upgraded).lower()
+        draw_match = re.search(r'draw\s+(\d+)\s+cards?', effect_text)
         if draw_match:
             return int(draw_match.group(1))
 

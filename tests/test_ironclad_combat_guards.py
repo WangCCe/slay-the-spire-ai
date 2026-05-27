@@ -1442,6 +1442,52 @@ def test_pommel_strike_tracks_attack_card_draw(monkeypatch):
     assert result.cards_drawn == 2
 
 
+def test_warcry_plus_tracks_upgraded_draw_card_plural_text(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "warcry": {
+            "name": "Warcry",
+            "description": (
+                "Draw 1 card.\n"
+                "Put a card from your hand onto the top of your draw pile.\n"
+                "Exhaust."
+            ),
+        },
+    }
+    loader._wiki_data = {
+        "warcry": {
+            "name": "Warcry",
+            "text": (
+                "Draw [1|2] [card|cards].\n"
+                "Put a card from your hand onto the top of your draw pile.\n"
+                "#Exhaust."
+            ),
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    warcry_plus = _card(
+        "Warcry",
+        "Warcry+",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([warcry_plus], energy=0, monsters=[_louse(current_hp=30)])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        warcry_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.cards_drawn == 2
+    assert result.exhaust_events == 1
+
+
 def test_battle_trance_blocks_later_card_draw_this_turn(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
