@@ -9,6 +9,7 @@ Identifies and tracks three main Ironclad archetypes:
 
 from typing import Dict, List, Optional, Tuple
 from ..decision.base import DecisionContext
+from .card_names import canonical_card_name
 from spirecomm.spire.card import Card
 
 
@@ -46,6 +47,10 @@ class IroncladArchetypeManager:
         'Bash', 'Iron Wave', 'Shrug It Off', 'True Grit', 'Pommel Strike',
         'Cleave', 'Uppercut', 'Headbutt', 'Anger',
     ]
+
+    @staticmethod
+    def _card_name(card: Card) -> str:
+        return canonical_card_name(card)
 
     def detect_archetype(self, context: DecisionContext) -> str:
         """
@@ -100,9 +105,9 @@ class IroncladArchetypeManager:
 
         for archetype, definition in self.ARCHETYPES.items():
             core_count = sum(1 for card in deck
-                           if card.card_id in definition['core'])
+                           if self._card_name(card) in definition['core'])
             support_count = sum(1 for card in deck
-                              if card.card_id in definition['support'])
+                              if self._card_name(card) in definition['support'])
 
             # Core cards count more (2x weight)
             weighted_count = (core_count * 2) + support_count
@@ -153,7 +158,7 @@ class IroncladArchetypeManager:
 
         # Check what we already have
         deck = context.game.deck if hasattr(context.game, 'deck') else []
-        existing_cards = set(card.card_id for card in deck)
+        existing_cards = {self._card_name(card) for card in deck}
 
         recommended = []
 
@@ -170,7 +175,7 @@ class IroncladArchetypeManager:
         }
 
         support_count = sum(1 for card in deck
-                          if card.card_id in self.ARCHETYPES[archetype]['support'])
+                          if self._card_name(card) in self.ARCHETYPES[archetype]['support'])
 
         for support_card in self.ARCHETYPES[archetype]['support']:
             if support_card not in existing_cards:
@@ -195,16 +200,17 @@ class IroncladArchetypeManager:
         # Check if card fits archetype
         if archetype in self.ARCHETYPES:
             definition = self.ARCHETYPES[archetype]
+            card_name = self._card_name(card)
 
             # Core card - always accept
-            if card.card_id in definition['core']:
+            if card_name in definition['core']:
                 return (True, f"Core {archetype} card")
 
             # Support card - accept if not too many
-            if card.card_id in definition['support']:
+            if card_name in definition['support']:
                 deck = context.game.deck
                 support_count = sum(1 for c in deck
-                                  if c.card_id in definition['support'])
+                                  if self._card_name(c) in definition['support'])
                 if support_count < 6:
                     return (True, f"Support {archetype} card")
                 else:
