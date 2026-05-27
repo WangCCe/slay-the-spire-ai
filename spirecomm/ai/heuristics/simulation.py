@@ -412,6 +412,8 @@ class SimulationState:
 
     def __init__(self, context: DecisionContext):
         """Initialize simulation state from decision context."""
+        self.turn = getattr(context, 'turn', 1)
+
         # Player state
         self.player_hp = context.game.current_hp
         self.player_max_hp = context.game.max_hp
@@ -565,6 +567,7 @@ class SimulationState:
     def clone(self) -> 'SimulationState':
         """Create a deep copy of this state."""
         new_state = SimulationState.__new__(SimulationState)
+        new_state.turn = self.turn
         new_state.player_hp = self.player_hp
         new_state.player_max_hp = self.player_max_hp
         new_state.player_block = self.player_block
@@ -2627,9 +2630,23 @@ class FastCombatSimulator:
             if special_mechanics.get('type') != 'hibernation':
                 return  # Not a hibernating monster
 
-            # Check if monster is hibernating
-            current_turn = getattr(state, 'turn', 1)
-            is_hibernating = game_data_loader.is_monster_hibernating(monster_name, current_turn)
+            monster.pop('is_hibernating', None)
+            monster.pop('is_awakened', None)
+
+            # Prefer the live game intent over turn-count guesses. Lagavulin
+            # wakes immediately when damaged, so an attacking/debuffing intent
+            # is authoritative even if the global turn is still early.
+            intent = monster.get('intent')
+            intent_name = getattr(intent, 'name', str(intent or '')).upper()
+            move_damage = monster.get('move_adjusted_damage', 0) or monster.get('move_base_damage', 0) or 0
+
+            if intent_name == 'SLEEP':
+                is_hibernating = True
+            elif 'ATTACK' in intent_name or 'DEBUFF' in intent_name or move_damage > 0:
+                is_hibernating = False
+            else:
+                current_turn = getattr(state, 'turn', 1)
+                is_hibernating = game_data_loader.is_monster_hibernating(monster_name, current_turn)
 
             if is_hibernating:
                 monster['is_hibernating'] = True

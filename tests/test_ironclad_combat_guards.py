@@ -143,6 +143,27 @@ def _gremlin_nob(current_hp=82, move_adjusted_damage=14):
     return monster
 
 
+def _lagavulin(
+    current_hp=82,
+    intent=Intent.ATTACK,
+    move_id=0,
+    move_adjusted_damage=18,
+):
+    return Monster(
+        name="Lagavulin",
+        monster_id="Lagavulin",
+        max_hp=109,
+        current_hp=current_hp,
+        block=0,
+        intent=intent,
+        half_dead=False,
+        is_gone=False,
+        move_id=move_id,
+        move_adjusted_damage=move_adjusted_damage,
+        move_hits=1,
+    )
+
+
 def _awakened_one(current_hp=300):
     return Monster(
         name="Awakened One",
@@ -597,6 +618,18 @@ def test_enemy_lookahead_applies_strength_gain_to_future_attacks(monkeypatch):
     )
 
     assert future_damage == int(9 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
+
+
+def test_awakened_lagavulin_attack_is_not_marked_hibernating():
+    context = _combat_context([], energy=0, monsters=[_lagavulin()])
+    context.turn = 6
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    simulator._handle_hibernation(state, state.monsters[0])
+
+    assert not state.monsters[0].get("is_hibernating", False)
+    assert state.monsters[0].get("is_awakened", False)
 
 
 def test_feel_no_pain_grants_block_for_exhaust_events(monkeypatch):
