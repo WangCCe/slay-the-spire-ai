@@ -13,6 +13,44 @@ from spirecomm.ai.heuristics.enhanced_monster_database import EnhancedMonsterDat
 from spirecomm.spire.card import Card, CardRarity, CardType
 
 
+def test_champ_phase_transition_predicts_anger_then_execute():
+    db = EnhancedMonsterDatabase()
+
+    predictions = db.predict_next_moves(
+        "The Champ",
+        current_turn=8,
+        monster_hp_percent=206 / 420,
+    )
+
+    assert [(p["turn"], p["move"]["name"]) for p in predictions[:2]] == [
+        (8, "Anger"),
+        (9, "Execute"),
+    ]
+
+
+def test_damage_curve_counts_champ_execute_after_transition_strength():
+    classifier = TurnTimingClassifier()
+    champ = SimpleNamespace(
+        name="The Champ",
+        current_hp=206,
+        max_hp=420,
+        strength=0,
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(current_hp=50, ascension_level=0),
+        ascension_level=0,
+    )
+
+    damage_curve = classifier._calculate_damage_curve(
+        context,
+        [champ],
+        current_turn=8,
+        look_ahead=2,
+    )
+
+    assert damage_curve[0] == 32
+
+
 def _unknown_attack():
     card = Card(
         card_id="UnknownAttack",

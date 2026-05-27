@@ -342,15 +342,33 @@ class EnhancedMonsterDatabase:
 
         # Check for phase-based patterns
         elif "phases" in pattern:
-            # Determine current phase
-            current_phase = None
-            for phase in pattern["phases"]:
-                if "hp_threshold" in phase:
-                    if monster_hp_percent < (phase["hp_threshold"] / 100.0):
-                        current_phase = phase
-                        break
+            current_phase = self._get_threshold_phase(pattern["phases"], monster_hp_percent)
+            transition_phase = self._get_transition_phase_after_threshold(
+                pattern["phases"],
+                monster_hp_percent,
+            )
 
-            if current_phase and "pattern" in current_phase:
+            if transition_phase:
+                transition_move = transition_phase.get("transition_move")
+                if transition_move:
+                    self._append_named_move_prediction(
+                        predictions,
+                        monster_name,
+                        transition_move,
+                        current_turn,
+                        confidence=1.0,
+                    )
+                for i, move_name in enumerate(transition_phase.get("pattern", [])):
+                    if move_name != "random":
+                        self._append_named_move_prediction(
+                            predictions,
+                            monster_name,
+                            move_name,
+                            current_turn + i + 1,
+                            confidence=0.9,
+                        )
+
+            elif current_phase and "pattern" in current_phase:
                 # Handle simple patterns like ["Execute", "random", "random", "Execute"]
                 pattern_list = current_phase["pattern"]
                 for i, move_name in enumerate(pattern_list):
@@ -535,6 +553,47 @@ class EnhancedMonsterDatabase:
                     break
 
         return predictions[:3]  # Return at most 3 predictions
+
+    def _get_threshold_phase(
+        self,
+        phases: List[Dict[str, Any]],
+        monster_hp_percent: float,
+    ) -> Optional[Dict[str, Any]]:
+        for phase in phases:
+            if "hp_threshold" in phase and monster_hp_percent < (phase["hp_threshold"] / 100.0):
+                return phase
+        return None
+
+    def _get_transition_phase_after_threshold(
+        self,
+        phases: List[Dict[str, Any]],
+        monster_hp_percent: float,
+    ) -> Optional[Dict[str, Any]]:
+        for idx, phase in enumerate(phases):
+            if "hp_threshold" not in phase:
+                continue
+            if monster_hp_percent >= (phase["hp_threshold"] / 100.0):
+                continue
+            for next_phase in phases[idx + 1:]:
+                if next_phase.get("transition_move"):
+                    return next_phase
+        return None
+
+    def _append_named_move_prediction(
+        self,
+        predictions: List[Dict[str, Any]],
+        monster_name: str,
+        move_name: str,
+        turn: int,
+        confidence: float,
+    ) -> None:
+        move = self.get_move_by_name(monster_name, move_name)
+        if move:
+            predictions.append({
+                "turn": turn,
+                "move": move,
+                "confidence": confidence,
+            })
 
     def _append_sequence_predictions(
         self,

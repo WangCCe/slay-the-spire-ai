@@ -267,13 +267,20 @@ class TurnTimingClassifier:
                     else:
                         hp_percent = 1.0
 
-                    # Predict moves for this turn
-                    predicted_moves = game_data_loader.predict_monster_moves(
-                        monster.name, target_turn, hp_percent
+                    anchored_predictions = game_data_loader.predict_monster_moves(
+                        monster.name,
+                        current_turn,
+                        hp_percent,
+                    )
+                    prediction = self._select_prediction_for_turn(
+                        anchored_predictions,
+                        monster.name,
+                        target_turn,
+                        hp_percent,
                     )
 
-                    if predicted_moves:
-                        move = predicted_moves[0].get('move', {})
+                    if prediction:
+                        move = prediction.get('move', {})
                         intent = move.get('intent', '').upper()
 
                         # Check if attack
@@ -341,13 +348,20 @@ class TurnTimingClassifier:
                     else:
                         hp_percent = 1.0
 
-                    # Get predicted moves
-                    predicted_moves = game_data_loader.predict_monster_moves(
-                        monster.name, target_turn, hp_percent
+                    anchored_predictions = game_data_loader.predict_monster_moves(
+                        monster.name,
+                        current_turn,
+                        hp_percent,
+                    )
+                    prediction = self._select_prediction_for_turn(
+                        anchored_predictions,
+                        monster.name,
+                        target_turn,
+                        hp_percent,
                     )
 
-                    if predicted_moves:
-                        move = predicted_moves[0].get('move', {})
+                    if prediction:
+                        move = prediction.get('move', {})
                         intent = move.get('intent', '').upper()
 
                         if 'ATTACK' in intent:
@@ -368,10 +382,18 @@ class TurnTimingClassifier:
                             if hasattr(context, 'game') and hasattr(context.game, 'ascension_level'):
                                 ascension_level = context.game.ascension_level or 0
 
-                            # Predict future strength considering Ritual scaling
-                            predicted_strength = self._predict_future_strength(
+                            # Predict future strength considering scripted buffs and Ritual scaling.
+                            scripted_strength = self._predict_strength_from_move_sequence(
+                                anchored_predictions,
+                                current_turn,
+                                target_turn,
+                                current_strength,
+                                ascension_level,
+                            )
+                            scaling_strength = self._predict_future_strength(
                                 monster, current_turn, target_turn, current_strength, ascension_level
                             )
+                            predicted_strength = max(scripted_strength, scaling_strength)
 
                             total_damage += (damage + predicted_strength) * hits
 
@@ -382,6 +404,74 @@ class TurnTimingClassifier:
         except Exception as e:
             logger.warning(f"[DAMAGE_CURVE] Calculation failed: {e}")
             return [0] * look_ahead
+
+    def _select_prediction_for_turn(
+        self,
+        anchored_predictions: List[Dict[str, Any]],
+        monster_name: str,
+        target_turn: int,
+        hp_percent: float,
+    ) -> Optional[Dict[str, Any]]:
+        for prediction in anchored_predictions:
+            if prediction.get('turn') == target_turn:
+                return prediction
+
+        try:
+            from spirecomm.data.loader import game_data_loader
+
+            fallback_predictions = game_data_loader.predict_monster_moves(
+                monster_name,
+                target_turn,
+                hp_percent,
+            )
+            return fallback_predictions[0] if fallback_predictions else None
+        except Exception:
+            return None
+
+    def _predict_strength_from_move_sequence(
+        self,
+        predictions: List[Dict[str, Any]],
+        current_turn: int,
+        target_turn: int,
+        current_strength: int,
+        ascension_level: int,
+    ) -> int:
+        predicted_strength = current_strength
+        for prediction in predictions:
+            turn = prediction.get('turn')
+            if not isinstance(turn, int):
+                continue
+            if turn < current_turn or turn >= target_turn:
+                continue
+            predicted_strength += self._resolve_move_strength_gain(
+                prediction.get('move', {}),
+                ascension_level,
+            )
+        return predicted_strength
+
+    def _resolve_move_strength_gain(self, move: Dict[str, Any], ascension_level: int) -> int:
+        value = move.get('strength_gain', 0)
+        if isinstance(value, (int, float)):
+            strength_gain = int(value)
+        else:
+            return 0
+
+        ascension_modifiers = move.get('ascension_modifiers', {})
+        if isinstance(ascension_modifiers, dict):
+            thresholds = [
+                int(key.split('+')[0])
+                for key in ascension_modifiers
+                if isinstance(key, str) and key.endswith('+') and key.split('+')[0].isdigit()
+            ]
+            for threshold in sorted(thresholds, reverse=True):
+                if ascension_level < threshold:
+                    continue
+                modifier = ascension_modifiers.get(f"{threshold}+", {})
+                if isinstance(modifier, dict) and 'strength_gain' in modifier:
+                    return int(modifier['strength_gain'])
+                break
+
+        return strength_gain
 
     def _resolve_move_damage(
         self,
@@ -773,14 +863,22 @@ class TurnTimingClassifier:
                     hp_percent = 1.0
 
                 # Check next 2 turns
+                anchored_predictions = game_data_loader.predict_monster_moves(
+                    monster.name,
+                    current_turn,
+                    hp_percent,
+                )
                 for turn_offset in range(1, 3):
                     target_turn = current_turn + turn_offset
-                    predicted_moves = game_data_loader.predict_monster_moves(
-                        monster.name, target_turn, hp_percent
+                    prediction = self._select_prediction_for_turn(
+                        anchored_predictions,
+                        monster.name,
+                        target_turn,
+                        hp_percent,
                     )
 
-                    if predicted_moves:
-                        move = predicted_moves[0].get('move', {})
+                    if prediction:
+                        move = prediction.get('move', {})
                         damage = self._resolve_move_damage(
                             monster.name, move, context, target_turn=target_turn)
                         hits = self._resolve_move_hits(move, context, target_turn=target_turn)

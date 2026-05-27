@@ -2165,12 +2165,49 @@ class FastCombatSimulator:
             monsters_alive = sum(1 for monster in state.monsters if not monster['is_gone'])
             playable_cards = len(getattr(context, 'playable_cards', []))
 
+            if self._needs_multi_turn_enemy_lookahead(state, context):
+                return max_depth
+
             if monsters_alive <= 1 and playable_cards <= 3:
                 return 1
 
             return max_depth
         except Exception:
             return max_depth
+
+    def _needs_multi_turn_enemy_lookahead(
+        self,
+        state: SimulationState,
+        context: DecisionContext,
+    ) -> bool:
+        current_turn = getattr(context, 'turn', 1)
+        for monster in state.monsters:
+            if monster.get('is_gone'):
+                continue
+
+            current_move = self._current_monster_move(monster)
+            if self._is_live_phase_transition_move(monster, current_move):
+                return True
+
+            monster_name = _canonical_live_monster_name(monster)
+            if not monster_name:
+                continue
+            max_hp = monster.get('max_hp', monster.get('hp', 1))
+            hp_percent = monster.get('hp', max_hp) / max_hp if max_hp > 0 else 1.0
+            predicted_moves = self._predict_monster_moves(monster_name, current_turn, hp_percent)
+            if not predicted_moves:
+                continue
+
+            first_move = predicted_moves[0].get('move', {})
+            first_intent = str(first_move.get('intent', '')).upper()
+            later_attack = any(
+                'ATTACK' in str(prediction.get('move', {}).get('intent', '')).upper()
+                for prediction in predicted_moves[1:]
+            )
+            if later_attack and 'ATTACK' not in first_intent:
+                return True
+
+        return False
 
     def simulate_enemy_lookahead(self, state: SimulationState, context: DecisionContext, look_ahead: int = 2) -> int:
         """
@@ -2224,13 +2261,12 @@ class FastCombatSimulator:
                     hp_percent = monster['hp'] / max_hp if max_hp > 0 else 1.0
                     move = self._current_monster_move(monster) if step == 0 else None
                     if move is None:
-                        predicted_moves = game_data_loader.predict_monster_moves(
+                        move = self._predicted_monster_move_for_step(
                             monster_name,
-                            current_turn + step,
+                            current_turn,
+                            step,
                             hp_percent,
                         )
-                        if predicted_moves:
-                            move = predicted_moves[0].get('move', None)
                     if move:
                         any_predictions = True
 
@@ -2339,13 +2375,12 @@ class FastCombatSimulator:
                             continue
                         max_hp = monster.get('max_hp', monster['hp'])
                         hp_percent = monster['hp'] / max_hp if max_hp > 0 else 1.0
-                        predicted_moves = game_data_loader.predict_monster_moves(
+                        move = self._predicted_monster_move_for_step(
                             monster_name,
-                            current_turn + step,
+                            current_turn,
+                            step,
                             hp_percent,
                         )
-                        if predicted_moves:
-                            move = predicted_moves[0].get('move', None)
 
                     if not move:
                         continue
@@ -2367,6 +2402,42 @@ class FastCombatSimulator:
         except Exception as e:
             logger.warning(f"[STATUS_LOOKAHEAD] Failed to simulate enemy status pollution: {e}")
             return totals
+
+    def _predicted_monster_move_for_step(
+        self,
+        monster_name: str,
+        current_turn: int,
+        step: int,
+        hp_percent: float,
+    ) -> Optional[Dict[str, Any]]:
+        target_turn = current_turn + step
+        predictions = self._predict_monster_moves(monster_name, current_turn, hp_percent)
+        for prediction in predictions:
+            if prediction.get('turn') == target_turn:
+                return prediction.get('move', None)
+
+        if predictions and step == 0:
+            return predictions[0].get('move', None)
+
+        predictions = self._predict_monster_moves(monster_name, target_turn, hp_percent)
+        if predictions:
+            return predictions[0].get('move', None)
+        return None
+
+    def _predict_monster_moves(
+        self,
+        monster_name: str,
+        current_turn: int,
+        hp_percent: float,
+    ) -> List[Dict[str, Any]]:
+        try:
+            return game_data_loader.predict_monster_moves(
+                monster_name,
+                current_turn,
+                hp_percent,
+            )
+        except AttributeError:
+            return []
 
     def _current_monster_move(self, monster: dict) -> Optional[Dict[str, Any]]:
         """Return the current move from live state move_id when available."""
@@ -2415,9 +2486,69 @@ class FastCombatSimulator:
 
             matches.append(move)
 
+        phase_transition_move = self._phase_transition_live_move(monster, matches)
+        if phase_transition_move:
+            return phase_transition_move
+
         if len(matches) == 1:
             return matches[0]
         return matches[0] if matches else None
+
+    def _phase_transition_live_move(
+        self,
+        monster: dict,
+        moves: List[Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        transition_move_name = self._live_phase_transition_move_name(monster)
+        if not transition_move_name:
+            return None
+
+        for move in moves:
+            if move.get('name') == transition_move_name:
+                return move
+        return None
+
+    def _is_live_phase_transition_move(
+        self,
+        monster: dict,
+        move: Optional[Dict[str, Any]],
+    ) -> bool:
+        if not move:
+            return False
+        transition_move_name = self._live_phase_transition_move_name(monster)
+        return bool(transition_move_name and move.get('name') == transition_move_name)
+
+    def _live_phase_transition_move_name(self, monster: dict) -> Optional[str]:
+        monster_name = _canonical_live_monster_name(monster)
+        if not monster_name:
+            return None
+
+        try:
+            pattern = game_data_loader.get_monster_pattern(monster_name)
+        except AttributeError:
+            return None
+
+        if not isinstance(pattern, dict):
+            return None
+
+        phases = pattern.get('phases')
+        if not isinstance(phases, list):
+            return None
+
+        max_hp = _monster_field(monster, 'max_hp', _monster_field(monster, 'hp', 1))
+        hp = _monster_field(monster, 'hp', max_hp)
+        hp_percent = hp / max_hp if max_hp and max_hp > 0 else 1.0
+        for idx, phase in enumerate(phases):
+            threshold = phase.get('hp_threshold')
+            if threshold is None or hp_percent >= (threshold / 100.0):
+                continue
+            if phase.get('transition_move'):
+                return phase.get('transition_move')
+            for next_phase in phases[idx + 1:]:
+                transition_move = next_phase.get('transition_move')
+                if transition_move:
+                    return transition_move
+        return None
 
     def _intent_name(self, intent: Any) -> str:
         if hasattr(intent, 'name'):

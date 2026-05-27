@@ -289,6 +289,22 @@ def _guardian(current_hp=240, mode_shift=0, thorns=0):
     return monster
 
 
+def _champ_transition(current_hp=206):
+    return Monster(
+        name="The Champ",
+        monster_id="Champ",
+        max_hp=420,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.BUFF,
+        half_dead=False,
+        is_gone=False,
+        move_id=7,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+
+
 def _combat_context(cards, energy=3, monsters=None):
     monsters = monsters or [_louse(), _louse()]
     game = SimpleNamespace(
@@ -656,6 +672,42 @@ def test_enemy_lookahead_applies_strength_gain_to_future_attacks(monkeypatch):
     )
 
     assert future_damage == int(9 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
+
+
+def test_live_champ_transition_buff_resolves_to_anger_despite_live_move_id():
+    context = _combat_context([], energy=0, monsters=[_champ_transition()])
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    move = simulator._current_monster_move(state.monsters[0])
+
+    assert move["name"] == "Anger"
+    assert move["strength_gain"] == 6
+
+
+def test_champ_transition_buff_uses_multi_turn_lookahead():
+    cards = [
+        _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False),
+        _card("Shrug It Off", "Shrug It Off", card_type=CardType.SKILL, cost=1, has_target=False),
+        _card("Second Wind", "Second Wind", card_type=CardType.SKILL, cost=1, has_target=False),
+    ]
+    context = _combat_context(cards, energy=1, monsters=[_champ_transition()])
+    context.turn = 8
+    context.game.current_hp = 50
+    context.player_hp = 50
+    context.player_hp_pct = 50 / 80
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    depth = simulator._get_enemy_lookahead_depth(state, context)
+    future_damage = simulator.simulate_enemy_lookahead(
+        state,
+        context,
+        look_ahead=depth,
+    )
+
+    assert depth == 2
+    assert future_damage >= int(32 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
 
 
 def test_awakened_lagavulin_attack_is_not_marked_hibernating():
