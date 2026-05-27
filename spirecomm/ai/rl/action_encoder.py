@@ -139,17 +139,7 @@ class ActionEncoder:
             offset = action_index - self.PLAY_CARD_OFFSET
             card_index = offset // 10
             monster_index = offset % 10
-
-            # Determine target index based on card and monster availability
-            target_index = None
-            if 0 <= card_index < len(game.hand):
-                card = game.hand[card_index]
-                if hasattr(card, "has_target") and card.has_target:
-                    target_index = (
-                        monster_index if monster_index < len(game.monsters) else 0
-                    )
-            # Use named parameters: card_index=X, target_index=Y
-            return PlayCardAction(card_index=card_index, target_index=target_index)
+            return self._decode_play_card_action(card_index, monster_index, game)
 
         # Use potion
         elif self.USE_POTION_OFFSET <= action_index < self.END_TURN_ACTION:
@@ -348,6 +338,49 @@ class ActionEncoder:
             return BuyPurgeAction()
 
         return None
+
+    @staticmethod
+    def _is_targetable_monster(monster) -> bool:
+        return (
+            getattr(monster, "current_hp", 0) > 0
+            and not getattr(monster, "is_gone", False)
+            and not getattr(monster, "half_dead", False)
+        )
+
+    def _fallback_combat_action(self, game: Game):
+        if getattr(game, "end_available", False):
+            return EndTurnAction()
+        return ProceedAction()
+
+    def _decode_play_card_action(
+        self,
+        card_index: int,
+        monster_index: int,
+        game: Game,
+    ):
+        hand = getattr(game, "hand", []) or []
+        if not getattr(game, "play_available", True):
+            return self._fallback_combat_action(game)
+        if card_index < 0 or card_index >= min(len(hand), self.MAX_CARDS):
+            return self._fallback_combat_action(game)
+
+        card = hand[card_index]
+        if hasattr(card, "is_playable") and not card.is_playable:
+            return self._fallback_combat_action(game)
+
+        if hasattr(card, "has_target") and card.has_target:
+            monsters = getattr(game, "monsters", []) or []
+            if monster_index < 0 or monster_index >= min(
+                len(monsters),
+                self.MAX_MONSTERS,
+            ):
+                return self._fallback_combat_action(game)
+            monster = monsters[monster_index]
+            if not self._is_targetable_monster(monster):
+                return self._fallback_combat_action(game)
+            return PlayCardAction(card_index=card_index, target_index=monster_index)
+
+        return PlayCardAction(card_index=card_index, target_index=None)
 
     def _mask_shop_purchase_actions(self, mask: List[bool], game: Game) -> bool:
         screen = getattr(game, "screen", None)
@@ -695,7 +728,7 @@ class ActionEncoder:
                         mask[action_idx] = True
                     else:
                         for monster_idx, monster in enumerate(monsters):
-                            if monster.current_hp <= 0 or monster.is_gone or monster.half_dead:
+                            if not self._is_targetable_monster(monster):
                                 continue
                             action_idx = self.encode_play_card(card_idx, monster_idx)
                             mask[action_idx] = True
@@ -726,11 +759,7 @@ class ActionEncoder:
                         for monster_idx, monster in enumerate(
                             monsters[: self.MAX_MONSTERS]
                         ):
-                            if (
-                                monster.current_hp <= 0
-                                or monster.is_gone
-                                or monster.half_dead
-                            ):
+                            if not self._is_targetable_monster(monster):
                                 continue
                             action_idx = self.encode_use_potion(
                                 potion_idx,

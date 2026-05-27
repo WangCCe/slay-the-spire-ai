@@ -6,6 +6,8 @@ from spirecomm.communication.action import (
     BuyPotionAction,
     BuyPurgeAction,
     BuyRelicAction,
+    EndTurnAction,
+    PlayCardAction,
     PotionAction,
 )
 from spirecomm.spire.screen import ScreenType
@@ -53,6 +55,10 @@ def _potion(name, requires_target=True):
         can_use=True,
         requires_target=requires_target,
     )
+
+
+def _card(has_target=True, is_playable=True):
+    return SimpleNamespace(has_target=has_target, is_playable=is_playable)
 
 
 def test_legacy_shop_decoder_uses_item_offsets_for_purchases():
@@ -164,3 +170,43 @@ def test_legacy_nontarget_potion_decoder_omits_target():
     assert isinstance(action, PotionAction)
     assert action.potion_index == 0
     assert action.target_index is None
+
+
+def test_legacy_card_decoder_falls_back_for_unplayable_card():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        hand=[_card(has_target=True, is_playable=False)],
+        end_available=True,
+    )
+
+    action = encoder.decode_action(encoder.encode_play_card(0, 0), game)
+
+    assert isinstance(action, EndTurnAction)
+
+
+def test_legacy_card_decoder_falls_back_for_dead_target():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        hand=[_card(has_target=True)],
+        monsters=[SimpleNamespace(current_hp=0, is_gone=False, half_dead=False)],
+        end_available=True,
+    )
+
+    action = encoder.decode_action(encoder.encode_play_card(0, 0), game)
+
+    assert isinstance(action, EndTurnAction)
+
+
+def test_legacy_card_decoder_keeps_valid_targeted_card():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        hand=[_card(has_target=True)],
+        monsters=[SimpleNamespace(current_hp=10, is_gone=False, half_dead=False)],
+        end_available=True,
+    )
+
+    action = encoder.decode_action(encoder.encode_play_card(0, 0), game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index == 0
