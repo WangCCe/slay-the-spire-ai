@@ -1514,6 +1514,19 @@ def test_rank_targets_ignores_zero_hp_stale_simulated_monsters():
     assert ranked == [(live, 1, ranked[0][2])]
 
 
+def test_outcome_score_counts_zero_hp_stale_monsters_as_killed():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=7)])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    initial_state = SimulationState(context)
+    final_state = initial_state.clone()
+    final_state.monsters[0]["hp"] = 0
+    final_state.monsters[0]["is_gone"] = False
+
+    score = simulator.calculate_outcome_score(initial_state, final_state)
+
+    assert score >= simulation.KILL_BONUS + simulation.ALL_LETHAL_BONUS
+
+
 def test_bludgeon_damage_is_static_not_scaled_by_block(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

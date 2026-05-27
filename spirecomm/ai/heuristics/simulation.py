@@ -2084,6 +2084,13 @@ class FastCombatSimulator:
         except (TypeError, ValueError):
             return 1
 
+    @staticmethod
+    def _is_live_monster_state(monster: dict) -> bool:
+        return (
+            not monster.get('is_gone', False)
+            and monster.get('hp', monster.get('current_hp', 1)) > 0
+        )
+
     def _estimate_incoming_damage(
         self,
         monsters_state: list,
@@ -3131,8 +3138,8 @@ class FastCombatSimulator:
         score = 0.0
 
         # 1. Monsters killed (high priority)
-        initial_alive = sum(1 for m in initial_state.monsters if not m['is_gone'])
-        final_alive = sum(1 for m in final_state.monsters if not m['is_gone'])
+        initial_alive = sum(1 for m in initial_state.monsters if self._is_live_monster_state(m))
+        final_alive = sum(1 for m in final_state.monsters if self._is_live_monster_state(m))
         kills = max(0, initial_alive - final_alive)
         score += kills * weights['KILL_BONUS']
 
@@ -3146,7 +3153,7 @@ class FastCombatSimulator:
                       sum(m['hp'] for m in final_state.monsters)
 
         # Multi-monster detection and adaptive damage weighting
-        num_monsters = len([m for m in initial_state.monsters if not m['is_gone']])
+        num_monsters = len([m for m in initial_state.monsters if self._is_live_monster_state(m)])
 
         # Get floor for special Floor 6-7 handling
         current_floor = getattr(context, 'floor', 0) if context else 0
@@ -3173,7 +3180,7 @@ class FastCombatSimulator:
         # Debuff application bonus (reward setting up future damage).
         debuff_bonus = 0.0
         for before, after in zip(initial_state.monsters, final_state.monsters):
-            if before['is_gone'] or after['is_gone']:
+            if not self._is_live_monster_state(before) or not self._is_live_monster_state(after):
                 continue
             vuln_delta = max(0, after.get('vulnerable', 0) - before.get('vulnerable', 0))
             weak_delta = max(0, after.get('weak', 0) - before.get('weak', 0))
@@ -3215,7 +3222,11 @@ class FastCombatSimulator:
 
         # Apply block penalty when lethal is available (all monsters could be killed)
         # Calculate if lethal is possible by checking if total damage could kill all
-        total_monster_hp = sum(m['hp'] + m['block'] for m in initial_state.monsters if not m['is_gone'])
+        total_monster_hp = sum(
+            m['hp'] + m['block']
+            for m in initial_state.monsters
+            if self._is_live_monster_state(m)
+        )
         if final_alive > 0 and total_damage >= total_monster_hp * 1.1:
             # Lethal is available but we chose defense - penalize heavily
             score += block_gained * weights['BLOCK_WEIGHT'] * 0.3  # 70% reduction
