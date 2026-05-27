@@ -452,6 +452,41 @@ def test_pummel_uses_hit_count_upgrade_not_hit_count_as_damage(monkeypatch):
     assert result.damage_instances == 5
 
 
+def test_upgraded_single_hit_attacks_use_exported_damage_bonus(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "anger": {"name": "Anger", "description": "Deal 6 damage."},
+        "dropkick": {"name": "Dropkick", "description": "Deal 5 damage."},
+        "reckless charge": {"name": "Reckless Charge", "description": "Deal 7 damage."},
+    }
+    loader._wiki_data = {
+        "anger": {"name": "Anger", "text": "Deal [6|8] damage.\nAdd a copy of this card into your discard pile."},
+        "dropkick": {"name": "Dropkick", "text": "Deal [5|8] damage.\nIf the enemy has #Vulnerable,\ngain <R> and\ndraw 1 card."},
+        "reckless charge": {"name": "Reckless Charge", "text": "Deal [7|10] damage.\nShuffle a *Dazed into your draw pile."},
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    for card_name, expected_damage in (
+        ("Anger", 8),
+        ("Dropkick", 8),
+        ("Reckless Charge", 10),
+    ):
+        card = _card(card_name, f"{card_name}+", cost=1, upgrades=1)
+        context = _combat_context([card], energy=1, monsters=[_louse(current_hp=100)])
+
+        result = simulator.simulate_card_play(
+            SimulationState(context),
+            card,
+            target=context.monsters_alive[0],
+            target_index=0,
+            context=context,
+        )
+
+        assert result.total_damage_dealt == expected_damage
+        assert result.damage_instances == 1
+
+
 def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

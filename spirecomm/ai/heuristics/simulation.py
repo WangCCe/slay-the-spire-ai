@@ -113,21 +113,21 @@ DAMAGE_UPGRADE_BONUS = {
 
     # +1 damage
     'Pommel Strike': 1,
-    'Anger': 1,
-    'Dropkick': 1,
     'Fiend Fire': 1,
-    'Reckless Charge': 1,
     'Reaper': 1,
 
     # +2 damage
+    'Anger': 2,
     'Bash': 2,
     'Iron Wave': 2,
     'Clothesline': 2,
+    'Twin Strike': 2,
 
     # +3 damage
+    'Dropkick': 3,
+    'Reckless Charge': 3,
     'Strike': 3,
     'Thunderclap': 3,
-    'Twin Strike': 2,
     'Headbutt': 3,
     'Cleave': 3,
 
