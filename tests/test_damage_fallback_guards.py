@@ -1157,6 +1157,7 @@ def test_heuristic_incoming_damage_clamps_negative_live_move_damage_to_zero():
     monster = SimpleNamespace(
         name="Spike Slime (M)",
         monster_id="SpikeSlime_M",
+        current_hp=25,
         is_gone=False,
         half_dead=False,
         intent="Intent.DEBUFF",
@@ -1170,6 +1171,49 @@ def test_heuristic_incoming_damage_clamps_negative_live_move_damage_to_zero():
     )
 
     assert HeuristicCombatPlanner()._get_incoming_damage(context) == 0
+
+
+def test_heuristic_incoming_damage_ignores_zero_hp_stale_monsters():
+    monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        current_hp=0,
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_id=1,
+        move_adjusted_damage=12,
+        move_hits=1,
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(monsters=[monster]),
+        act=1,
+    )
+
+    assert HeuristicCombatPlanner()._get_incoming_damage(context) == 0
+
+
+def test_damage_potion_score_ignores_zero_hp_stale_monsters():
+    monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        current_hp=0,
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_id=1,
+        move_adjusted_damage=12,
+        move_hits=1,
+    )
+    potion = SimpleNamespace(effect_type="damage", effect_value=20)
+    context = SimpleNamespace(
+        game=SimpleNamespace(monsters=[monster], room_type="Monster"),
+        act=1,
+        vulnerable_stacks={0: 0},
+    )
+    state = SimpleNamespace(player_hp=80, player_max_hp=80)
+
+    assert HeuristicCombatPlanner()._score_potion(potion, context, state) == 0
 
 
 def test_hp_threshold_modes_predict_guardian_sequence():

@@ -3753,12 +3753,20 @@ class HeuristicCombatPlanner(CombatPlanner):
         """Check if potion is a block potion."""
         return potion.effect_type in ['block', 'plated_armor', 'metallicize']
 
+    @staticmethod
+    def _is_live_monster_object(monster) -> bool:
+        return (
+            getattr(monster, 'current_hp', 0) > 0
+            and not getattr(monster, 'is_gone', False)
+            and not getattr(monster, 'half_dead', False)
+        )
+
     def _get_incoming_damage(self, context: DecisionContext) -> int:
         """Calculate total incoming damage from all monsters."""
         incoming = 0
         debug_entries = []
         for monster in context.game.monsters:
-            if not monster.is_gone and not monster.half_dead:
+            if self._is_live_monster_object(monster):
                 adjusted_damage = monster.move_adjusted_damage
                 if adjusted_damage is not None:
                     incoming += max(0, adjusted_damage) * monster.move_hits
@@ -3796,7 +3804,11 @@ class HeuristicCombatPlanner(CombatPlanner):
         score = 0.0
         hp_pct = state.player_hp / max(state.player_max_hp, 1)
         incoming_damage = self._get_incoming_damage(context)
-        alive_monsters = [m for m in context.game.monsters if not m.is_gone]
+        alive_monsters = [
+            (i, m)
+            for i, m in enumerate(context.game.monsters)
+            if self._is_live_monster_object(m)
+        ]
 
         # Healing potions: high value when HP is low
         if self._is_healing_potion(potion):
@@ -3809,7 +3821,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         elif self._is_damage_potion(potion):
             if alive_monsters:
                 # Immediate lethal check for any target (ignore incoming damage gating).
-                for i, monster in enumerate(alive_monsters):
+                for i, monster in alive_monsters:
                     vuln = context.vulnerable_stacks.get(i, 0) if hasattr(context, 'vulnerable_stacks') else 0
                     damage = potion.effect_value * (1.5 if vuln > 0 else 1.0)
                     if damage >= monster.current_hp:
@@ -3824,7 +3836,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                 if len(alive_monsters) >= 2:
                     score += 25
                 # Bonus when close to lethal
-                total_monster_hp = sum(m.current_hp for m in alive_monsters)
+                total_monster_hp = sum(m.current_hp for _i, m in alive_monsters)
                 if total_monster_hp < 50:
                     score += 20
 
