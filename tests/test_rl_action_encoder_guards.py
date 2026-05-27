@@ -172,6 +172,45 @@ def test_legacy_nontarget_potion_decoder_omits_target():
     assert action.target_index is None
 
 
+def test_legacy_potion_decoder_falls_back_for_unusable_potion():
+    encoder = ActionEncoder()
+    potion = _potion("Fire Potion")
+    potion.can_use = False
+    game = _combat_game(
+        potions=[potion],
+        end_available=True,
+    )
+
+    action = encoder.decode_action(encoder.encode_use_potion(0, 0), game)
+
+    assert isinstance(action, EndTurnAction)
+
+
+def test_legacy_potion_decoder_falls_back_for_empty_potion_slot():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        potions=[_potion("Potion Slot")],
+        end_available=True,
+    )
+
+    action = encoder.decode_action(encoder.encode_use_potion(0, 0), game)
+
+    assert isinstance(action, EndTurnAction)
+
+
+def test_legacy_potion_decoder_falls_back_for_dead_target():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        potions=[_potion("Fire Potion", requires_target=True)],
+        monsters=[SimpleNamespace(current_hp=0, is_gone=False, half_dead=False)],
+        end_available=True,
+    )
+
+    action = encoder.decode_action(encoder.encode_use_potion(0, 0), game)
+
+    assert isinstance(action, EndTurnAction)
+
+
 def test_legacy_card_decoder_falls_back_for_unplayable_card():
     encoder = ActionEncoder()
     game = _combat_game(

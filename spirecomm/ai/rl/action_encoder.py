@@ -146,20 +146,7 @@ class ActionEncoder:
             offset = action_index - self.USE_POTION_OFFSET
             potion_index = offset // 10
             monster_index = offset % 10
-            potion = None
-            if 0 <= potion_index < len(getattr(game, "potions", []) or []):
-                potion = game.potions[potion_index]
-            target_index = None
-            if getattr(potion, "requires_target", True):
-                target_index = (
-                    monster_index if monster_index < len(game.monsters) else -1
-                )
-            # Use named parameters to avoid confusion: use=True, potion_index=X, target_index=Y
-            return PotionAction(
-                use=True,
-                potion_index=potion_index,
-                target_index=target_index,
-            )
+            return self._decode_potion_action(potion_index, monster_index, game)
 
         # Card reward selection
         elif self.CARD_REWARD_OFFSET <= action_index < self.MAP_PATH_OFFSET:
@@ -381,6 +368,41 @@ class ActionEncoder:
             return PlayCardAction(card_index=card_index, target_index=monster_index)
 
         return PlayCardAction(card_index=card_index, target_index=None)
+
+    def _decode_potion_action(self, potion_index: int, monster_index: int, game: Game):
+        potions = getattr(game, "potions", []) or []
+        if not getattr(game, "potion_available", True):
+            return self._fallback_combat_action(game)
+        if potion_index < 0 or potion_index >= min(
+            len(potions),
+            self._potion_action_slots(),
+        ):
+            return self._fallback_combat_action(game)
+
+        potion = potions[potion_index]
+        if getattr(potion, "potion_id", None) == "Potion Slot":
+            return self._fallback_combat_action(game)
+        if hasattr(potion, "can_use") and not potion.can_use:
+            return self._fallback_combat_action(game)
+
+        target_index = None
+        if getattr(potion, "requires_target", True):
+            monsters = getattr(game, "monsters", []) or []
+            if monster_index < 0 or monster_index >= min(
+                len(monsters),
+                self.MAX_MONSTERS,
+            ):
+                return self._fallback_combat_action(game)
+            monster = monsters[monster_index]
+            if not self._is_targetable_monster(monster):
+                return self._fallback_combat_action(game)
+            target_index = monster_index
+
+        return PotionAction(
+            use=True,
+            potion_index=potion_index,
+            target_index=target_index,
+        )
 
     def _mask_shop_purchase_actions(self, mask: List[bool], game: Game) -> bool:
         screen = getattr(game, "screen", None)
