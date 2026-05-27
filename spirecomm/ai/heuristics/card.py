@@ -14,7 +14,7 @@ from spirecomm.data.loader import game_data_loader
 from spirecomm.ai.decision.base import DecisionContext, CardEvaluator
 from spirecomm.ai.priorities import Priority, SilentPriority, IroncladPriority, DefectPowerPriority
 from spirecomm.ai.heuristics.deck import DeckAnalyzer
-from spirecomm.ai.heuristics.card_names import card_data_key
+from spirecomm.ai.heuristics.card_names import canonical_card_name, card_data_key
 
 
 class SynergyCardEvaluator(CardEvaluator):
@@ -76,7 +76,7 @@ class SynergyCardEvaluator(CardEvaluator):
         for i, card_id in enumerate(priority.CARD_PRIORITY_LIST):
             # Convert to score where higher is better
             # Use a log-like scale to give more separation to top cards
-            self.baseline_scores[card_id] = 100 - i * 0.5
+            self.baseline_scores[canonical_card_name(card_id)] = 100 - i * 0.5
 
         # Add "Skip" as a baseline reference
         if 'Skip' in priority.CARD_PRIORITY_LIST:
@@ -86,6 +86,10 @@ class SynergyCardEvaluator(CardEvaluator):
     @staticmethod
     def _card_data_key(card: Card) -> str:
         return card_data_key(card)
+
+    @staticmethod
+    def _card_name(card: Card) -> str:
+        return canonical_card_name(card)
 
     def evaluate_card(self, card: Card, context: DecisionContext) -> float:
         """
@@ -123,7 +127,8 @@ class SynergyCardEvaluator(CardEvaluator):
     def _calculate_baseline_score(self, card: Card, card_data: Dict[str, any]) -> float:
         """Calculate baseline score using game data."""
         # Start with legacy priority baseline
-        baseline = self.baseline_scores.get(card.card_id, 50)
+        card_name = self._card_name(card)
+        baseline = self.baseline_scores.get(card_name, 50)
         
         if card_data:
             # Adjust based on card rarity
@@ -214,7 +219,8 @@ class SynergyCardEvaluator(CardEvaluator):
     def _calculate_synergy_bonus(self, card: Card, context: DecisionContext, card_data: Dict[str, any]) -> float:
         """Calculate bonus based on deck composition and synergies."""
         bonus = 0.0
-        card_id_lower = card.card_id.lower()
+        card_name = self._card_name(card)
+        card_name_lower = card_name.lower()
         has_poison = False
         has_strength = False
         has_draw = False
@@ -228,7 +234,7 @@ class SynergyCardEvaluator(CardEvaluator):
                 has_poison = True
             if 'strength' in description or 'deal' in description:
                 has_strength = True
-            if 'draw' in description or 'draw' in card_id_lower:
+            if 'draw' in description or 'draw' in card_name_lower:
                 has_draw = True
             if 'exhaust' in description:
                 has_exhaust = True
@@ -237,27 +243,27 @@ class SynergyCardEvaluator(CardEvaluator):
                 has_scaling = True
 
         # Poison synergy
-        if has_poison or card.card_id == 'Catalyst':
+        if has_poison or card_name == 'Catalyst':
             poison_synergy = context.card_synergies.get('poison', 0)
             bonus += poison_synergy * 20 * self.SYNERGY_WEIGHTS['poison']
 
         # Strength synergy
-        if has_strength or card.card_id in ['Demon Form', 'Inflame', 'Limit Break', 'Flex']:
+        if has_strength or card_name in ['Demon Form', 'Inflame', 'Limit Break', 'Flex']:
             strength_synergy = context.card_synergies.get('strength', 0)
             bonus += strength_synergy * 25 * self.SYNERGY_WEIGHTS['strength']
 
         # Draw synergy
-        if has_draw or 'draw' in card_id_lower or card.card_id in ['Adrenaline', 'Impatience', 'Acrobatics']:
+        if has_draw or 'draw' in card_name_lower or card_name in ['Adrenaline', 'Impatience', 'Acrobatics']:
             draw_synergy = context.card_synergies.get('draw', 0)
             bonus += draw_synergy * 15 * self.SYNERGY_WEIGHTS['draw']
 
         # Exhaust synergy
-        if has_exhaust or 'exhaust' in card_id_lower:
+        if has_exhaust or 'exhaust' in card_name_lower:
             exhaust_synergy = context.card_synergies.get('exhaust', 0)
             bonus += exhaust_synergy * 18 * self.SYNERGY_WEIGHTS['exhaust']
 
         # Scaling synergy
-        if has_scaling or card.card_id in ['Noxious Fumes', 'A Thousand Cuts', 'Infinite Blades', 'Demon Form']:
+        if has_scaling or card_name in ['Noxious Fumes', 'A Thousand Cuts', 'Infinite Blades', 'Demon Form']:
             scaling_synergy = context.card_synergies.get('scaling', 0)
             bonus += scaling_synergy * 22 * self.SYNERGY_WEIGHTS['scaling']
 
@@ -270,29 +276,30 @@ class SynergyCardEvaluator(CardEvaluator):
         if not hasattr(context.game, 'deck'):
             return 0.0
 
-        deck_card_ids = {c.card_id for c in context.game.deck}
+        card_name = self._card_name(card)
+        deck_card_names = {self._card_name(c) for c in context.game.deck}
 
         # Check specific combo synergies
         for (card1, card2), bonus in self.COMBO_SYNERGIES.items():
-            if card.card_id == card1:
+            if card_name == card1:
                 if card2 == 'unupgraded':
                     # Special case: count unupgraded cards
                     unupgraded = sum(1 for c in context.game.deck
                                    if hasattr(c, 'upgrades') and c.upgrades == 0)
                     combo_score += unupgraded * bonus / 10
-                elif card2 in deck_card_ids:
+                elif card2 in deck_card_names:
                     combo_score += bonus
 
         # Additional archetype-specific combo detection
         if context.deck_archetype == 'poison':
-            if card.card_id == 'Catalyst':
+            if card_name == 'Catalyst':
                 # Catalyst scales with poison count
                 poison_count = sum(1 for c in context.game.deck
-                                 if 'poison' in c.card_id.lower())
+                                 if 'poison' in self._card_name(c).lower())
                 combo_score += poison_count * 5
 
         elif context.deck_archetype == 'strength':
-            if card.card_id == 'Body Slam':
+            if card_name == 'Body Slam':
                 # Body Slam with high block synergy
                 if context.game.player.block > 20:
                     combo_score += 15
@@ -315,7 +322,7 @@ class SynergyCardEvaluator(CardEvaluator):
                     return True
         
         # Fallback to card name based detection
-        card_lower = card.card_id.lower()
+        card_lower = self._card_name(card).lower()
         return any(keyword in card_lower for keyword in defensive_keywords)
 
     def _is_offensive_card(self, card: Card) -> bool:
@@ -334,7 +341,7 @@ class SynergyCardEvaluator(CardEvaluator):
         
         # Fallback to skill-based detection
         offensive_skills = ['noxious fumes', 'thousand cuts', 'infinite blades']
-        card_lower = card.card_id.lower()
+        card_lower = self._card_name(card).lower()
         return any(skill in card_lower for skill in offensive_skills)
 
     def get_confidence(self, context: DecisionContext) -> float:
