@@ -1047,7 +1047,7 @@ class FastCombatSimulator:
         context: Optional[DecisionContext] = None,
     ) -> int:
         """Return known static hit counts for repeated-hit Ironclad attacks."""
-        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_name = _canonical_card_name(card)
         upgrades = getattr(card, 'upgrades', 0)
 
         if card_name == 'Twin Strike':
@@ -1062,7 +1062,7 @@ class FastCombatSimulator:
         return 1
 
     def _is_random_target_attack(self, card: Card) -> bool:
-        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_name = _canonical_card_name(card)
         return card_name in {'Sword Boomerang'}
 
     def _apply_attack_healing(self, state: SimulationState, card: Card, starting_total_damage: int):
