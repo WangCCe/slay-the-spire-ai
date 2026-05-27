@@ -19,6 +19,7 @@ from typing import List, Tuple, Optional, Dict
 from enum import Enum
 from .simulation import CombatPlanner, SimulationState, FastCombatSimulator, W_DEATHRISK
 from .card_costs import effective_card_cost, is_x_cost_card
+from .card_names import canonical_card_name
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
@@ -1131,7 +1132,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
             for action in sequence:
                 if isinstance(action, PlayCardAction) and hasattr(action.card, 'card_id'):
-                    card_id = action.card.card_id.replace('+', '')  # Handle upgraded cards
+                    card_id = canonical_card_name(action.card)
 
                     if card_id in aoe_cards:
                         aoe_bonus = 40 if num_monsters >= 3 else 20
@@ -1185,8 +1186,8 @@ class IroncladCombatPlanner(CombatPlanner):
         for action in sequence:
             if isinstance(action, PlayCardAction):
                 card = action.card
-                card_id = card.card_id
-                card_id_base = card_id.replace('+', '')
+                card_id = canonical_card_name(card)
+                raw_card_id = getattr(card, 'card_id', card_id)
                 card_type = card.type if hasattr(card, 'type') else None
 
                 if card_type == CardType.POWER:
@@ -1197,7 +1198,7 @@ class IroncladCombatPlanner(CombatPlanner):
                     else:
                         power_bonus = POWER_BONUS_LATE
                     score += power_bonus
-                    logger.debug(f"[POWER_BONUS] +{power_bonus} for {card_id} on turn {context.turn}")
+                    logger.debug(f"[POWER_BONUS] +{power_bonus} for {raw_card_id} on turn {context.turn}")
 
                     if has_awakened_one and not all_killed:
                         score -= AWAKENED_ONE_POWER_PENALTY
@@ -1213,8 +1214,8 @@ class IroncladCombatPlanner(CombatPlanner):
                     'Bloodletting': 3,
                     'Hemokinesis': 2,
                 }
-                if card_id_base in hp_costs and not all_killed:
-                    hp_cost = hp_costs[card_id_base]
+                if card_id in hp_costs and not all_killed:
+                    hp_cost = hp_costs[card_id]
                     if context.player_hp <= hp_cost:
                         score -= 1000
                     else:
@@ -1243,7 +1244,7 @@ class IroncladCombatPlanner(CombatPlanner):
                     score += 15
 
                 # Armaments: value upgrades proportional to available targets
-                if card_id_base == 'Armaments':
+                if card_id == 'Armaments':
                     upgradeable = self._count_upgradeable_cards(
                         context, exclude_uuid=getattr(card, 'uuid', None)
                     )
@@ -1338,8 +1339,10 @@ class IroncladCombatPlanner(CombatPlanner):
                     # Double Tap: enables powerful combos
                     score += 25  # Base combo potential
                     # Check if we have high-damage cards to combo with
-                    has_high_damage = any(c.card_id in ['Perfected Strike', 'Heavy Blade', 'Body Slam']
-                                       for c in context.playable_cards)
+                    has_high_damage = any(
+                        canonical_card_name(c) in ['Perfected Strike', 'Heavy Blade', 'Body Slam']
+                        for c in context.playable_cards
+                    )
                     if has_high_damage:
                         score += 20
 

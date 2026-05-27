@@ -4253,6 +4253,74 @@ def test_state_key_distinguishes_guardian_mode_shift_and_thorns():
     assert state.state_key(context.playable_cards) != before_shift_key
 
 
+def test_ironclad_sequence_aoe_bonus_treats_counted_upgraded_cleave_as_cleave():
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    counted_cleave = _card("Cleave+1", "Cleave+1", cost=1, has_target=False, upgrades=1)
+    context = _combat_context(
+        [cleave, counted_cleave],
+        energy=1,
+        monsters=[_louse(current_hp=50), _louse(current_hp=50)],
+    )
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+    initial_state = SimulationState(context)
+    final_state = initial_state.clone()
+
+    canonical_score = planner._score_sequence(
+        [PlayCardAction(card=cleave)],
+        initial_state,
+        final_state,
+        context,
+    )
+    counted_score = planner._score_sequence(
+        [PlayCardAction(card=counted_cleave)],
+        initial_state,
+        final_state,
+        context,
+    )
+
+    assert counted_score == canonical_score
+
+
+def test_ironclad_sequence_strategic_bonus_treats_counted_upgraded_whirlwind_as_whirlwind():
+    whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
+    counted_whirlwind = _card(
+        "Whirlwind+1",
+        "Whirlwind+1",
+        cost=-1,
+        cost_for_turn=-1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context(
+        [whirlwind, counted_whirlwind],
+        energy=3,
+        monsters=[_louse(current_hp=50), _louse(current_hp=50)],
+    )
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+    initial_state = SimulationState(context)
+    final_state = initial_state.clone()
+    final_state.energy_spent = 3
+
+    canonical_score = planner._score_sequence(
+        [PlayCardAction(card=whirlwind)],
+        initial_state,
+        final_state,
+        context,
+    )
+    counted_score = planner._score_sequence(
+        [PlayCardAction(card=counted_whirlwind)],
+        initial_state,
+        final_state,
+        context,
+    )
+
+    assert counted_score == canonical_score
+
+
 def test_awakened_one_penalizes_slow_power_setup_in_beam_score():
     demon_form = _card(
         "Demon Form",
