@@ -3206,6 +3206,26 @@ def test_energy_gain_skills_add_usable_energy(monkeypatch):
     assert result.player_energy == 2
     assert result.energy_gained == 2
 
+    counted_seeing_red = _card(
+        "Seeing Red+1",
+        "Seeing Red+1",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([counted_seeing_red], energy=1, monsters=[_louse(current_hp=100)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        counted_seeing_red,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 2
+    assert result.energy_gained == 2
+
 
 def test_wiki_escaped_newline_exhaust_triggers_feel_no_pain(monkeypatch):
     loader = GameDataLoader(auto_load=False)

@@ -1948,7 +1948,7 @@ class FastCombatSimulator:
         return 'ATTACK' in intent_name.upper()
 
     def _apply_energy_gain_skill(self, state: SimulationState, card: Card):
-        card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_id = _canonical_card_name(card)
         upgrades = getattr(card, 'upgrades', 0)
         energy_gain = 0
 
