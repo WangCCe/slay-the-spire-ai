@@ -1936,6 +1936,8 @@ class OptimizedAgent(SimpleAgent):
             if not reward_cards:
                 return CancelAction()
 
+            must_choose_card = self._is_generated_combat_card_choice(reward_cards)
+
             # Create decision context with error handling
             try:
                 context = DecisionContext(self.game)
@@ -1949,7 +1951,8 @@ class OptimizedAgent(SimpleAgent):
             # Ironclad's deck strategy/evaluator supersedes the legacy copy caps;
             # some old zero-copy caps are intentional skips for SimpleAgent only.
             if (
-                self.game.screen.can_skip
+                not must_choose_card
+                and self.game.screen.can_skip
                 and not self.game.in_combat
                 and self.deck_strategy is None
             ):
@@ -1964,8 +1967,10 @@ class OptimizedAgent(SimpleAgent):
                 pickable_cards = reward_cards
 
             if not pickable_cards:
+                if must_choose_card:
+                    pickable_cards = reward_cards
                 # Only use bowl when not in combat (bowl is for post-combat rewards only)
-                if self.game.screen.can_bowl and not self.game.in_combat:
+                elif self.game.screen.can_bowl and not self.game.in_combat:
                     return CardRewardAction(bowl=True)
                 else:
                     self.skipped_cards = True
@@ -1985,7 +1990,7 @@ class OptimizedAgent(SimpleAgent):
                     return CancelAction()
 
             strategy_scores = {}
-            if self.deck_strategy is not None:
+            if self.deck_strategy is not None and not must_choose_card:
                 strategy_filtered = []
                 for card in pickable_cards:
                     try:
@@ -2038,7 +2043,7 @@ class OptimizedAgent(SimpleAgent):
             limit_break_card = next(
                 (c for c in pickable_cards if c.card_id == "Limit Break"), None
             )
-            if limit_break_card:
+            if limit_break_card and not must_choose_card:
                 current_strength = (
                     context.strength if hasattr(context, "strength") else 0
                 )
@@ -2173,7 +2178,7 @@ class OptimizedAgent(SimpleAgent):
                 if hasattr(self.game, "deck") and self.game.deck
                 else 10
             )
-            if deck_size >= 18:
+            if deck_size >= 18 and not must_choose_card:
                 import sys
 
                 # Be very selective - only high priority cards
@@ -2260,6 +2265,11 @@ class OptimizedAgent(SimpleAgent):
 
                 return CardRewardAction(best_card)
             else:
+                if must_choose_card and reward_cards:
+                    logging.info(
+                        "[REWARD] Generated combat card choice had no evaluator pick; choosing first option"
+                    )
+                    return CardRewardAction(reward_cards[0])
                 return CancelAction()
         except Exception as e:
             import sys

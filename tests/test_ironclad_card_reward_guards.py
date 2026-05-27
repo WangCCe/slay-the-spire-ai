@@ -322,6 +322,58 @@ def test_power_potion_generated_choice_is_not_recorded_as_deck_reward():
     assert tracker.cards_obtained == []
 
 
+def test_generated_combat_card_choice_cannot_skip_when_deck_is_large():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Shrug It Off"),
+        _card("True Grit"),
+        _card("Iron Wave"),
+        _card("Thunderclap"),
+        _card("Anger", cost=0),
+        _card("Battle Trance", cost=0),
+        _card("Flex", cost=0),
+        _card("Headbutt"),
+        _card("Clothesline", cost=2),
+        _card("Cleave"),
+        _card("Discovery", cost=1, upgrades=1),
+        _card("Fiend Fire", cost=2, upgrades=1),
+        _card("Swift Strike", cost=0),
+    ]
+    reward_cards = [
+        _card("Rampage", cost=1),
+        _card("Limit Break", cost=1),
+        _card("Bludgeon", cost=3),
+    ]
+    tracker = _FakeTracker()
+    live_monsters = [
+        SimpleNamespace(current_hp=298, is_gone=False, half_dead=False),
+    ]
+    agent = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=33,
+        act=3,
+        can_skip=False,
+        in_combat=False,
+        room_type="MonsterRoom",
+        monsters=live_monsters,
+        game_tracker=tracker,
+    )
+
+    action = agent.choose_card_reward()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name in {"Rampage", "Limit Break", "Bludgeon"}
+    assert tracker.card_choice_calls == []
+
+
 def test_ironclad_strategy_prefers_thunderclap_over_second_brutality_before_boss():
     deck = [
         _card("Strike_R"),
