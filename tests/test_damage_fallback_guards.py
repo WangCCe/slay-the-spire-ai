@@ -200,6 +200,33 @@ def test_damage_parser_keeps_heavy_blade_base_damage_static():
     assert loader._parse_card_damage({"name": "Heavy Blade+", "description": "Deal 14 damage."}) == 14
 
 
+def test_aoe_parser_does_not_treat_generic_all_as_all_enemies():
+    loader = data_loader.GameDataLoader(auto_load=False)
+    loader._wiki_data = {
+        "sever soul": {
+            "name": "Sever Soul",
+            "text": "Exhaust all non-Attack cards in your hand.\nDeal [16|22] damage.",
+        },
+        "thunderclap": {
+            "name": "Thunderclap",
+            "text": "Deal [4|7] damage and apply 1 #Vulnerable to ALL enemies.",
+        },
+    }
+
+    assert not loader._is_card_aoe(
+        {
+            "name": "Sever Soul",
+            "description": "Exhaust all non-Attack cards in your hand. Deal 16 damage.",
+        }
+    )
+    assert loader._is_card_aoe(
+        {
+            "name": "Thunderclap",
+            "description": "Deal 4 damage and apply 1 Vulnerable to ALL enemies.",
+        }
+    )
+
+
 def test_ironclad_prune_targets_falls_back_when_damage_parse_returns_none(monkeypatch):
     monkeypatch.setattr(
         ironclad_combat.game_data_loader,

@@ -813,13 +813,13 @@ class GameDataLoader:
         if self._wiki_data and base_card_name in self._wiki_data:
             wiki_entry = self._wiki_data[base_card_name]
             text = wiki_entry.get('text', '').lower()
-            aoe_keywords = ['all enemies', 'every enemy', 'each enemy', 'all']
+            aoe_keywords = ['all enemies', 'every enemy', 'each enemy']
             if any(keyword in text for keyword in aoe_keywords):
                 return True
 
         # Stage 3: Check description for AOE keywords
         description = card_data.get('description', '').lower()
-        aoe_keywords = ['all enemies', 'every enemy', 'each enemy', 'all']
+        aoe_keywords = ['all enemies', 'every enemy', 'each enemy']
         return any(keyword in description for keyword in aoe_keywords)
 
     # ===== Enhanced Monster Database Methods =====
