@@ -48,6 +48,11 @@ class Priority:
         self.CARD_PRIORITIES = {self.CARD_PRIORITY_LIST[i]: i for i in range(len(self.CARD_PRIORITY_LIST))}
         self.PLAY_PRIORITIES = {self.PLAY_PRIORITY_LIST[i]: i for i in range(len(self.PLAY_PRIORITY_LIST))}
         self.BOSS_RELIC_PRIORITIES = {self.BOSS_RELIC_PRIORITY_LIST[i]: i for i in range(len(self.BOSS_RELIC_PRIORITY_LIST))}
+        self.CARD_PRIORITIES_BY_NAME = self._canonicalized_mapping(self.CARD_PRIORITIES)
+        self.PLAY_PRIORITIES_BY_NAME = self._canonicalized_mapping(self.PLAY_PRIORITIES)
+        self.MAX_COPIES_BY_NAME = self._canonicalized_mapping(self.MAX_COPIES)
+        self.AOE_CARD_NAMES = self._canonicalized_names(self.AOE_CARDS)
+        self.DEFENSIVE_CARD_NAMES = self._canonicalized_names(self.DEFENSIVE_CARDS)
         self.MAP_NODE_PRIORITIES = {
             1: self.MAP_NODE_PRIORITIES_1,
             2: self.MAP_NODE_PRIORITIES_2,
@@ -55,13 +60,37 @@ class Priority:
             4: self.MAP_NODE_PRIORITIES_3  # Doesn't really matter anyway
         }
 
+    @staticmethod
+    def _canonical_card_name(card):
+        from spirecomm.ai.heuristics.card_names import canonical_card_name
+
+        return canonical_card_name(card)
+
+    @staticmethod
+    def _card_name(card):
+        raw_name = getattr(card, "card_id", None) or getattr(card, "name", None) or card
+        return Priority._canonical_card_name(raw_name)
+
+    @staticmethod
+    def _canonicalized_mapping(mapping):
+        result = dict(mapping)
+        for name, value in mapping.items():
+            result.setdefault(Priority._canonical_card_name(name), value)
+        return result
+
+    @staticmethod
+    def _canonicalized_names(names):
+        return {Priority._canonical_card_name(name) for name in names}
+
     def _card_priority_score(self, card):
         """Calculate priority score for a card."""
-        return self.CARD_PRIORITIES.get(card.card_id, math.inf) - 0.5 * card.upgrades
+        priority = self.CARD_PRIORITIES_BY_NAME.get(self._card_name(card), math.inf)
+        return priority - 0.5 * getattr(card, "upgrades", 0)
 
     def _card_play_score(self, card):
         """Calculate play priority score for a card."""
-        return self.PLAY_PRIORITIES.get(card.card_id, math.inf) - 0.5 * card.upgrades
+        priority = self.PLAY_PRIORITIES_BY_NAME.get(self._card_name(card), math.inf)
+        return priority - 0.5 * getattr(card, "upgrades", 0)
 
     def get_best_card(self, card_list):
         return min(card_list, key=self._card_priority_score)
@@ -82,8 +111,8 @@ class Priority:
         return max(card_list, key=self._card_play_score)
 
     def should_skip(self, card):
-        card_priority = self.CARD_PRIORITIES.get(card.card_id, math.inf)
-        skip_priority = self.CARD_PRIORITIES.get("Skip", float('inf'))
+        card_priority = self.CARD_PRIORITIES_BY_NAME.get(self._card_name(card), math.inf)
+        skip_priority = self.CARD_PRIORITIES_BY_NAME.get("Skip", float('inf'))
         return card_priority > skip_priority
 
     def needs_more_copies(self, card, num_copies, deck=None):
@@ -99,13 +128,18 @@ class Priority:
             True if we should take this card
         """
         # Check if card belongs to a group with shared limit
-        if deck is not None and card.card_id in self.MAX_COPIES:
-            limit = self.MAX_COPIES[card.card_id]
+        card_name = self._card_name(card)
+        if deck is not None and card_name in self.MAX_COPIES_BY_NAME:
+            limit = self.MAX_COPIES_BY_NAME[card_name]
             # If limit is a string, it's a group reference
             if isinstance(limit, str):
                 return self._check_group_limit(card, limit, deck)
             # If limit is an int, do direct comparison
             elif isinstance(limit, int):
+                num_copies = sum(
+                    1 for deck_card in deck
+                    if self._card_name(deck_card) == card_name
+                )
                 return limit > num_copies
 
         # Default: no limit specified, allow taking
@@ -124,15 +158,16 @@ class Priority:
             True if within group limit, False otherwise
         """
         # Get all cards in this group
-        group_cards = [
-            card_id for card_id, limit in self.MAX_COPIES.items()
+        group_cards = {
+            self._canonical_card_name(card_id)
+            for card_id, limit in self.MAX_COPIES.items()
             if isinstance(limit, str) and limit == group_name
-        ]
+        }
 
         # Count how many cards from this group are already in deck
         group_count = sum(
             1 for deck_card in deck
-            if deck_card.card_id in group_cards
+            if self._card_name(deck_card) in group_cards
         )
 
         # Get the group limit
@@ -149,10 +184,10 @@ class Priority:
         return min(relic_list, key=self._boss_relic_priority_score)
 
     def is_card_aoe(self, card):
-        return card.card_id in self.AOE_CARDS
+        return self._card_name(card) in self.AOE_CARD_NAMES
 
     def is_card_defensive(self, card):
-        return card.card_id in self.DEFENSIVE_CARDS
+        return self._card_name(card) in self.DEFENSIVE_CARD_NAMES
 
     def get_cards_for_action(self, action, cards, max_cards):
         if action in self.GOOD_CARD_ACTIONS:
