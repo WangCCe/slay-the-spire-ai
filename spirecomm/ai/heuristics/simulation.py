@@ -421,6 +421,7 @@ class SimulationState:
         # Rage power: block gained per attack played.
         self.rage_block_per_attack = self._get_player_power_amount(context, 'Rage')
         self.double_tap_charges = 0
+        self.corruption_active = self._has_player_power(context, 'Corruption')
 
         # Monster state (each monster tracked independently)
         self.monsters = []
@@ -485,6 +486,11 @@ class SimulationState:
                 return amount if amount is not None else 0
         return 0
 
+    def _has_player_power(self, context: DecisionContext, power_name: str) -> bool:
+        if not hasattr(context.game, 'player') or not hasattr(context.game.player, 'powers'):
+            return False
+        return any(self._power_name(power) == power_name for power in context.game.player.powers)
+
     def _power_name(self, power: Any) -> Optional[str]:
         return (
             getattr(power, 'name', None)
@@ -505,6 +511,7 @@ class SimulationState:
         new_state.player_frail = self.player_frail
         new_state.rage_block_per_attack = self.rage_block_per_attack
         new_state.double_tap_charges = self.double_tap_charges
+        new_state.corruption_active = self.corruption_active
         new_state.monsters = [m.copy() for m in self.monsters]
         new_state.played_card_uuids = self.played_card_uuids.copy()
         new_state.energy_spent = self.energy_spent
@@ -543,7 +550,8 @@ class SimulationState:
             self.player_weak,
             self.player_frail,
             self.rage_block_per_attack,
-            self.double_tap_charges
+            self.double_tap_charges,
+            self.corruption_active
         )
 
         # Monster states (sorted for consistent hashing)
@@ -628,11 +636,14 @@ class FastCombatSimulator:
             New simulation state after playing the card
         """
         new_state = state.clone()
+        card_type = card.type if hasattr(card, 'type') else None
 
         # Use actual cost (for Snecko Eye and other cost modifiers). X-cost
         # cards arrive as -1, but planning should spend all current energy.
         raw_cost = raw_card_cost(card)
         cost = effective_card_cost(card, new_state.player_energy)
+        if card_type == CardType.SKILL and new_state.corruption_active:
+            cost = 0
         base_cost = raw_cost if raw_cost >= 0 else cost
         x_energy_spent = cost if is_x_cost_card(card) else None
 
@@ -653,7 +664,6 @@ class FastCombatSimulator:
                 self._handle_hibernation(new_state, monster)
 
         # Apply card effects based on type
-        card_type = card.type if hasattr(card, 'type') else None
         resolved_target_index = self._resolve_target_index(target, target_index, context)
 
         if card_type == CardType.ATTACK:
@@ -1259,8 +1269,7 @@ class FastCombatSimulator:
 
         # Corruption - skills cost 0 (track for synergy evaluation)
         elif card_id == 'Corruption':
-            # This is tracked implicitly via energy_saved when skills are played
-            pass
+            state.corruption_active = True
 
         # Feel No Pain - gain block when cards exhaust
         elif card_id == 'Feel No Pain':

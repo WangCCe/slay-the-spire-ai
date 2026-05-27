@@ -1313,6 +1313,66 @@ def test_double_tap_repeats_next_attack_once_or_twice():
     assert result.attacks_played == 4
 
 
+def test_corruption_makes_followup_skills_cost_zero(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "defend": {
+            "name": "Defend",
+            "description": "Gain 5 Block.",
+        }
+    }
+    loader._wiki_data = {
+        "defend": {
+            "name": "Defend",
+            "text": "Gain [5|8] #Block.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    corruption = _card(
+        "Corruption",
+        "Corruption",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    defend = _card("Defend", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([corruption, defend], energy=3, monsters=[_louse(current_hp=100)])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        corruption,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        defend,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 0
+    assert result.energy_saved == 1
+    assert result.player_block == 5
+
+    context = _combat_context([defend], energy=0, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Corruption", amount=1)]
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        defend,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 0
+    assert result.energy_saved == 1
+    assert result.player_block == 5
+
+
 def test_demon_form_does_not_add_strength_on_the_turn_it_is_played():
     demon_form = _card(
         "Demon Form",
