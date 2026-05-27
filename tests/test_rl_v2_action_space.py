@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from spirecomm.ai.rl.v2.action_encoder import ActionEncoderV2
 from spirecomm.ai.rl.v2 import action_space as space
+from spirecomm.communication.action import BuyCardAction
 from spirecomm.spire.screen import ScreenType
 
 
@@ -100,3 +101,50 @@ def test_map_choice_truncation():
         assert mask[space.MAP_OFFSET + idx]
     for idx in range(3, space.MAP_COUNT):
         assert not mask[space.MAP_OFFSET + idx]
+
+
+def test_shop_mask_hides_unaffordable_purchases_and_purge():
+    encoder = ActionEncoderV2()
+    expensive_card = SimpleNamespace(name="Inflame", price=75)
+    cheap_card = SimpleNamespace(name="Pommel Strike", price=30)
+    expensive_relic = SimpleNamespace(name="Anchor", price=150)
+    expensive_potion = SimpleNamespace(name="Fire Potion", price=50)
+    screen = SimpleNamespace(
+        cards=[expensive_card, cheap_card],
+        relics=[expensive_relic],
+        potions=[expensive_potion],
+        purge_available=True,
+        purge_cost=100,
+    )
+    game = _make_game(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=screen,
+        gold=40,
+        has_potion_space=lambda: True,
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert not mask[space.SHOP_OFFSET]
+    assert mask[space.SHOP_OFFSET + 1]
+    assert not mask[space.SHOP_OFFSET + 2]
+    assert not mask[space.SHOP_OFFSET + 3]
+    assert not mask[space.SHOP_OFFSET + 4]
+
+
+def test_shop_encoder_rejects_unaffordable_buy_card_action():
+    encoder = ActionEncoderV2()
+    expensive_card = SimpleNamespace(name="Inflame", price=75)
+    screen = SimpleNamespace(
+        cards=[expensive_card],
+        relics=[],
+        potions=[],
+        purge_available=False,
+    )
+    game = _make_game(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=screen,
+        gold=40,
+    )
+
+    assert encoder.encode_action(BuyCardAction(expensive_card), game) is None

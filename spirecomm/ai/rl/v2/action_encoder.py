@@ -93,6 +93,16 @@ class ActionEncoderV2:
             return not game.are_potions_full()
         return False
 
+    @staticmethod
+    def _can_afford(game: Game, item) -> bool:
+        price = getattr(item, "price", None)
+        if price is None:
+            return True
+        try:
+            return int(getattr(game, "gold", 0) or 0) >= int(price)
+        except Exception:
+            return False
+
     def decode_action(self, action_index: int, game: Game):
         if action_index == space.END_TURN_ACTION:
             return EndTurnAction()
@@ -398,22 +408,35 @@ class ActionEncoderV2:
 
         if isinstance(action, BuyCardAction):
             for idx, card in enumerate(cards):
-                if getattr(card, "name", None) == getattr(action, "name", None):
+                if (
+                    getattr(card, "name", None) == getattr(action, "name", None)
+                    and self._can_afford(game, card)
+                ):
                     return space.SHOP_OFFSET + idx
             return None
         if isinstance(action, BuyRelicAction):
             for idx, relic in enumerate(relics):
-                if getattr(relic, "name", None) == getattr(action, "name", None):
+                if (
+                    getattr(relic, "name", None) == getattr(action, "name", None)
+                    and self._can_afford(game, relic)
+                ):
                     return space.SHOP_OFFSET + len(cards) + idx
             return None
         if isinstance(action, BuyPotionAction):
             if not self._has_potion_space(game):
                 return None
             for idx, potion in enumerate(potions):
-                if getattr(potion, "name", None) == getattr(action, "name", None):
+                if (
+                    getattr(potion, "name", None) == getattr(action, "name", None)
+                    and self._can_afford(game, potion)
+                ):
                     return space.SHOP_OFFSET + len(cards) + len(relics) + idx
             return None
-        if isinstance(action, BuyPurgeAction) and purge_available:
+        if (
+            isinstance(action, BuyPurgeAction)
+            and purge_available
+            and int(getattr(game, "gold", 0) or 0) >= int(getattr(screen, "purge_cost", 0) or 0)
+        ):
             return space.SHOP_OFFSET + len(cards) + len(relics) + len(potions)
 
         return self._encode_choose_action(action, game)
@@ -512,23 +535,25 @@ class ActionEncoderV2:
         purge_available = getattr(screen, "purge_available", False)
 
         index = 0
-        for _ in cards:
-            if index < space.SHOP_COUNT:
+        for card in cards:
+            if index < space.SHOP_COUNT and self._can_afford(game, card):
                 mask[space.SHOP_OFFSET + index] = True
             index += 1
-        for _ in relics:
-            if index < space.SHOP_COUNT:
+        for relic in relics:
+            if index < space.SHOP_COUNT and self._can_afford(game, relic):
                 mask[space.SHOP_OFFSET + index] = True
             index += 1
         has_potion_space = self._has_potion_space(game)
         if has_potion_space:
-            for _ in potions:
-                if index < space.SHOP_COUNT:
+            for potion in potions:
+                if index < space.SHOP_COUNT and self._can_afford(game, potion):
                     mask[space.SHOP_OFFSET + index] = True
                 index += 1
         else:
             index += len(potions)
-        if purge_available and index < space.SHOP_COUNT:
+        purge_cost = getattr(screen, "purge_cost", 0) or 0
+        can_purge = int(getattr(game, "gold", 0) or 0) >= int(purge_cost)
+        if purge_available and can_purge and index < space.SHOP_COUNT:
             mask[space.SHOP_OFFSET + index] = True
 
         logging.getLogger(__name__).debug(
