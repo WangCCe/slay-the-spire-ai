@@ -1173,6 +1173,26 @@ def test_heuristic_incoming_damage_clamps_negative_live_move_damage_to_zero():
     assert HeuristicCombatPlanner()._get_incoming_damage(context) == 0
 
 
+def test_heuristic_incoming_damage_clamps_negative_live_move_hits_to_one():
+    monster = SimpleNamespace(
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+        current_hp=25,
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_id=2,
+        move_adjusted_damage=7,
+        move_hits=-2,
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(monsters=[monster]),
+        act=1,
+    )
+
+    assert HeuristicCombatPlanner()._get_incoming_damage(context) == 7
+
+
 def test_heuristic_incoming_damage_ignores_zero_hp_stale_monsters():
     monster = SimpleNamespace(
         name="Cultist",

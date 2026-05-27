@@ -3772,6 +3772,13 @@ class HeuristicCombatPlanner(CombatPlanner):
             and not getattr(monster, 'half_dead', False)
         )
 
+    @staticmethod
+    def _positive_live_move_hits(monster) -> int:
+        try:
+            return max(1, int(getattr(monster, 'move_hits', 1) or 1))
+        except (TypeError, ValueError):
+            return 1
+
     def _get_incoming_damage(self, context: DecisionContext) -> int:
         """Calculate total incoming damage from all monsters."""
         incoming = 0
@@ -3780,7 +3787,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             if self._is_live_monster_object(monster):
                 adjusted_damage = monster.move_adjusted_damage
                 if adjusted_damage is not None:
-                    incoming += max(0, adjusted_damage) * monster.move_hits
+                    incoming += max(0, adjusted_damage) * self._positive_live_move_hits(monster)
                     debug_entries.append(
                         f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "
                         f"adjusted={monster.move_adjusted_damage} hits={monster.move_hits}"
