@@ -2047,6 +2047,14 @@ def test_beam_search_does_not_play_more_cards_after_x_cost_whirlwind_spends_all_
     assert card_ids[-1] == "Whirlwind"
 
 
+def test_beam_search_skips_zero_energy_whirlwind():
+    whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
+    context = _combat_context([whirlwind], energy=0, monsters=[_louse(current_hp=50)])
+    planner = IroncladCombatPlanner()
+
+    assert planner._beam_search_turn(context, [whirlwind], 10, 4) == []
+
+
 def test_lethal_detector_counts_whirlwind_damage_without_negative_energy():
     whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
     context = _combat_context([whirlwind], energy=3, monsters=[_louse(current_hp=50)])
