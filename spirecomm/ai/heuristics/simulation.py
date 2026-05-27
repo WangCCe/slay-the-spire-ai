@@ -1843,6 +1843,13 @@ class FastCombatSimulator:
         if card_id == 'Demon Form':
             pass
 
+        # Berserk applies Vulnerable immediately and grants extra energy on future turns.
+        elif card_id == 'Berserk':
+            vulnerable = 1 if card.upgrades > 0 else 2
+            state.player_vulnerable += vulnerable
+            state.player_vulnerable_added += vulnerable
+            state.energy_gained += 1
+
         # Inflame - adds strength
         elif card_id == 'Inflame':
             state.player_strength += 3 if card.upgrades > 0 else 2

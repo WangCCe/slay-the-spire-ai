@@ -3163,6 +3163,54 @@ def test_inflame_uses_real_strength_amount_before_attacks():
     assert result.total_damage_dealt == 9
 
 
+def test_berserk_applies_self_vulnerable_without_immediate_energy_gain():
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    berserk = _card(
+        "Berserk",
+        "Berserk",
+        card_type=CardType.POWER,
+        cost=0,
+        has_target=False,
+    )
+    context = _combat_context([berserk], energy=1, monsters=[_louse(current_hp=100)])
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        berserk,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_vulnerable == 2
+    assert result.player_vulnerable_added == 2
+    assert result.player_energy == 1
+    assert result.energy_gained == 1
+
+    counted_berserk = _card(
+        "Berserk+1",
+        "Berserk+1",
+        card_type=CardType.POWER,
+        cost=0,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([counted_berserk], energy=1, monsters=[_louse(current_hp=100)])
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        counted_berserk,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_vulnerable == 1
+    assert result.player_vulnerable_added == 1
+    assert result.player_energy == 1
+    assert result.energy_gained == 1
+
+
 def test_strength_skill_cards_affect_followup_attacks():
     strike = _card("Strike_R", "Strike", cost=1)
     simulator = FastCombatSimulator(SynergyCardEvaluator())
