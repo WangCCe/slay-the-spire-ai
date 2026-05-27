@@ -185,6 +185,9 @@ BLOCK_UPGRADE_BONUS = {
 # Timeout protection
 TIMEOUT_BUDGET = 0.15  # Seconds (150ms budget for beam search) - increased from 80ms
 
+GUARDIAN_MODE_SHIFT_BLOCK = 20
+GUARDIAN_SHARP_HIDE = 3
+
 
 # =============================================================================
 # COMBAT MODE CONFIGURATION
@@ -440,7 +443,12 @@ class SimulationState:
         # Monster state (each monster tracked independently)
         self.monsters = []
         for i, monster in enumerate(context.monsters_alive):
+            mode_shift = (
+                self._get_monster_power_amount(monster, 'Mode Shift')
+                or self._get_monster_power_amount(monster, 'ModeShift')
+            )
             monster_state = {
+                'monster_id': getattr(monster, 'monster_id', ''),
                 'name': monster.name,
                 'hp': monster.current_hp,
                 'max_hp': monster.max_hp,
@@ -457,6 +465,7 @@ class SimulationState:
                 'move_adjusted_damage': monster.move_adjusted_damage if hasattr(monster, 'move_adjusted_damage') else 0,
                 'move_hits': monster.move_hits if hasattr(monster, 'move_hits') else 1,
                 'strength': monster.strength if hasattr(monster, 'strength') else 0,
+                'mode_shift': mode_shift,
             }
             self.monsters.append(monster_state)
 
@@ -602,9 +611,12 @@ class SimulationState:
                 m['vulnerable'],
                 m['weak'],
                 m['frail'],
+                m.get('thorns', 0),
+                m.get('mode_shift', 0),
                 m.get('artifact', 0),
                 str(m['intent']) if m['intent'] else None,  # Convert intent to string
                 m['is_gone'],
+                m.get('monster_id', ''),
                 m['name']  # Include name for elite/boss identification
             )
             for m in self.monsters
@@ -1417,10 +1429,33 @@ class FastCombatSimulator:
             if thorns > 0:
                 state.player_hp = max(0, state.player_hp - thorns)
 
+        if trigger_thorns and hp_damage > 0 and monster['hp'] > 0:
+            self._apply_guardian_mode_shift(monster, hp_damage)
+
         # Check if killed
         if monster['hp'] <= 0:
             monster['is_gone'] = True
             state.monsters_killed += 1
+
+    def _apply_guardian_mode_shift(self, monster: dict, hp_damage: int):
+        """Apply The Guardian's Mode Shift transition after attack HP damage."""
+        if not self._is_guardian(monster):
+            return
+
+        mode_shift = monster.get('mode_shift', 0)
+        if mode_shift <= 0:
+            return
+
+        mode_shift = max(0, mode_shift - hp_damage)
+        monster['mode_shift'] = mode_shift
+        if mode_shift == 0:
+            monster['block'] += GUARDIAN_MODE_SHIFT_BLOCK
+            monster['thorns'] = max(monster.get('thorns', 0), GUARDIAN_SHARP_HIDE)
+
+    def _is_guardian(self, monster: dict) -> bool:
+        monster_id = str(monster.get('monster_id', ''))
+        monster_name = str(monster.get('name', ''))
+        return monster_id == 'TheGuardian' or monster_name == 'The Guardian'
 
     def project_end_turn_effects(self, state: SimulationState) -> SimulationState:
         """Project deterministic end-of-turn effects before enemy attacks."""

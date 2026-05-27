@@ -141,6 +141,29 @@ def _hexaghost(current_hp=250):
     )
 
 
+def _guardian(current_hp=240, mode_shift=0, thorns=0):
+    monster = Monster(
+        name="The Guardian",
+        monster_id="TheGuardian",
+        max_hp=240,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=4,
+        move_adjusted_damage=20,
+        move_hits=1,
+    )
+    powers = []
+    if mode_shift:
+        powers.append(SimpleNamespace(power_name="Mode Shift", amount=mode_shift))
+    if thorns:
+        powers.append(SimpleNamespace(power_name="Sharp Hide", amount=thorns))
+    monster.powers = powers
+    return monster
+
+
 def _combat_context(cards, energy=3, monsters=None):
     monsters = monsters or [_louse(), _louse()]
     game = SimpleNamespace(
@@ -3011,6 +3034,87 @@ def test_thorns_triggers_on_killing_attack_hit():
 
     assert result.monsters_killed == 1
     assert result.player_hp == 77
+
+
+def test_guardian_mode_shift_power_is_tracked_in_simulation_state():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_guardian(mode_shift=12)],
+    )
+
+    state = SimulationState(context)
+
+    assert state.monsters[0]["mode_shift"] == 12
+
+
+def test_guardian_mode_shift_adds_block_and_sharp_hide_after_threshold():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_guardian(mode_shift=5)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["hp"] == 234
+    assert result.monsters[0]["mode_shift"] == 0
+    assert result.monsters[0]["block"] == 20
+    assert result.monsters[0]["thorns"] == 3
+    assert result.player_hp == 80
+
+
+def test_guardian_sharp_hide_applies_to_attacks_after_mode_shift_trigger():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [strike],
+        energy=2,
+        monsters=[_guardian(mode_shift=5)],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    first = simulator.simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+    first.player_energy = 1
+    second = simulator.simulate_card_play(
+        first,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert second.player_hp == 77
+    assert second.monsters[0]["block"] == 14
+
+
+def test_state_key_distinguishes_guardian_mode_shift_and_thorns():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_guardian(mode_shift=5)],
+    )
+    state = SimulationState(context)
+    before_shift_key = state.state_key(context.playable_cards)
+
+    state.monsters[0]["mode_shift"] = 0
+    state.monsters[0]["thorns"] = 3
+
+    assert state.state_key(context.playable_cards) != before_shift_key
 
 
 def test_awakened_one_penalizes_slow_power_setup_in_beam_score():
