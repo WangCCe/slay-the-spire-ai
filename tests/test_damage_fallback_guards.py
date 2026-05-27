@@ -1,4 +1,6 @@
 from types import SimpleNamespace
+import json
+from pathlib import Path
 
 import spirecomm.ai.heuristics.ironclad_combat as ironclad_combat
 import spirecomm.ai.heuristics.simulation as simulation
@@ -316,3 +318,92 @@ def test_chosen_opening_and_phase_probabilities_predict_moves():
 
     assert [prediction["move"]["name"] for prediction in opening[:2]] == ["Poke", "Hex"]
     assert {prediction["move"]["name"] for prediction in phase[:2]} == {"Debilitate", "Drain"}
+
+
+def test_monster_multi_hit_damage_fields_are_per_hit():
+    root = Path("spirecomm/data/monster_wiki_data")
+    with (root / "act1_normal_monsters.json").open(encoding="utf-8") as f:
+        act1_normal = json.load(f)
+    with (root / "act2_normal_monsters.json").open(encoding="utf-8") as f:
+        act2_normal = json.load(f)
+
+    spheric_guardian = next(monster for monster in act1_normal if monster["name"] == "Spheric Guardian")
+    chosen = next(monster for monster in act2_normal if monster["name"] == "Chosen")
+
+    spheric_slam = next(move for move in spheric_guardian["moves"] if move["name"] == "Slam")
+    chosen_poke = next(move for move in chosen["moves"] if move["name"] == "Poke")
+
+    assert spheric_slam["damage"] == 10
+    assert spheric_slam["hits"] == 2
+    assert chosen_poke["damage"] == 5
+    assert chosen_poke["hits"] == 2
+
+
+def test_damage_curve_uses_first_prediction_for_each_target_turn(monkeypatch):
+    def fake_predict_monster_moves(_monster_name, current_turn, _hp_percent):
+        return [
+            {
+                "move": {
+                    "name": f"Turn {current_turn}",
+                    "intent": "ATTACK",
+                    "damage": current_turn,
+                    "hits": 1,
+                }
+            },
+            {
+                "move": {
+                    "name": f"Skipped {current_turn}",
+                    "intent": "ATTACK",
+                    "damage": current_turn + 10,
+                    "hits": 1,
+                }
+            },
+        ]
+
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        fake_predict_monster_moves,
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0))
+    monster = SimpleNamespace(name="Scripted", current_hp=20, max_hp=20, strength=0)
+
+    damage_curve = classifier._calculate_damage_curve(
+        context,
+        [monster],
+        current_turn=1,
+        look_ahead=2,
+    )
+
+    assert damage_curve == [2, 3]
+
+
+def test_opening_then_alternating_patterns_predict_full_sequence():
+    database = EnhancedMonsterDatabase()
+
+    predictions = database.predict_next_moves("Spheric Guardian", current_turn=1, monster_hp_percent=1.0)
+
+    assert [prediction["move"]["name"] for prediction in predictions] == [
+        "Activate",
+        "Attack/Debuff",
+        "Slam",
+    ]
+
+
+def test_hp_threshold_modes_predict_guardian_sequence():
+    database = EnhancedMonsterDatabase()
+
+    high_hp = database.predict_next_moves("The Guardian", current_turn=1, monster_hp_percent=1.0)
+    low_hp = database.predict_next_moves("The Guardian", current_turn=1, monster_hp_percent=0.4)
+
+    assert [prediction["move"]["name"] for prediction in high_hp] == [
+        "Charged",
+        "Twin Slam",
+        "Charged",
+    ]
+    assert [prediction["move"]["name"] for prediction in low_hp] == [
+        "Wrist Drill",
+        "Charged",
+        "Twin Slam",
+    ]

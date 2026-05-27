@@ -271,8 +271,8 @@ class TurnTimingClassifier:
                         monster.name, target_turn, hp_percent
                     )
 
-                    if predicted_moves and turn_offset < len(predicted_moves):
-                        move = predicted_moves[turn_offset].get('move', {})
+                    if predicted_moves:
+                        move = predicted_moves[0].get('move', {})
                         intent = move.get('intent', '').upper()
 
                         # Check if attack
@@ -345,8 +345,8 @@ class TurnTimingClassifier:
                         monster.name, target_turn, hp_percent
                     )
 
-                    if predicted_moves and turn_offset <= len(predicted_moves):
-                        move = predicted_moves[turn_offset - 1].get('move', {})
+                    if predicted_moves:
+                        move = predicted_moves[0].get('move', {})
                         intent = move.get('intent', '').upper()
 
                         if 'ATTACK' in intent:
@@ -713,8 +713,8 @@ class TurnTimingClassifier:
                         monster.name, target_turn, hp_percent
                     )
 
-                    if predicted_moves and turn_offset <= len(predicted_moves):
-                        move = predicted_moves[turn_offset - 1].get('move', {})
+                    if predicted_moves:
+                        move = predicted_moves[0].get('move', {})
                         damage = self._resolve_move_damage(monster.name, move, context)
                         hits = self._coerce_int(move.get('hits', 1), default=1)
 

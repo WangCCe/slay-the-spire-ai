@@ -287,6 +287,18 @@ class EnhancedMonsterDatabase:
                         "confidence": 1.0  # Certain prediction
                     })
 
+        # Check for explicit HP-threshold mode sequences (e.g., Guardian)
+        elif "hp_threshold_modes" in pattern:
+            modes = pattern["hp_threshold_modes"]
+            threshold = (
+                pattern.get("defensive_trigger", {}).get("hp_below")
+                if isinstance(pattern.get("defensive_trigger"), dict)
+                else None
+            )
+            mode_key = "low_hp" if threshold is not None and monster_hp_percent < threshold else "high_hp"
+            sequence = modes.get(mode_key) or modes.get("normal") or []
+            self._append_sequence_predictions(predictions, monster_name, sequence, current_turn)
+
         # Check for phase-based patterns
         elif "phases" in pattern:
             # Determine current phase
@@ -382,12 +394,30 @@ class EnhancedMonsterDatabase:
         elif "opening" in pattern:
             opening_moves = pattern["opening"]
             opening_length = len(opening_moves) if isinstance(opening_moves, list) else 0
+            then_moves = pattern.get("then", [])
+            if not isinstance(then_moves, list):
+                then_moves = []
+            fixed_sequence = opening_moves + then_moves if isinstance(opening_moves, list) else then_moves
+            alternating_moves = pattern.get("alternating", [])
+            if not isinstance(alternating_moves, list):
+                alternating_moves = []
 
             for i in range(3):
                 target_turn = current_turn + i
 
-                if 1 <= target_turn <= opening_length:
-                    move = self.get_move_by_name(monster_name, opening_moves[target_turn - 1])
+                if 1 <= target_turn <= len(fixed_sequence):
+                    move = self.get_move_by_name(monster_name, fixed_sequence[target_turn - 1])
+                    if move:
+                        predictions.append({
+                            "turn": target_turn,
+                            "move": move,
+                            "confidence": 1.0
+                        })
+                    continue
+
+                if alternating_moves:
+                    alternating_index = (target_turn - len(fixed_sequence) - 1) % len(alternating_moves)
+                    move = self.get_move_by_name(monster_name, alternating_moves[alternating_index])
                     if move:
                         predictions.append({
                             "turn": target_turn,
@@ -405,6 +435,10 @@ class EnhancedMonsterDatabase:
                         target_turn,
                     )
 
+        # Check for simple named move cycles
+        elif "move_cycle" in pattern:
+            self._append_sequence_predictions(predictions, monster_name, pattern["move_cycle"], current_turn)
+
         # Special handling for initial moves
         if "initial_move" in pattern and current_turn == 1:
             initial_move_name = pattern["initial_move"]
@@ -418,6 +452,29 @@ class EnhancedMonsterDatabase:
                     break
 
         return predictions[:3]  # Return at most 3 predictions
+
+    def _append_sequence_predictions(
+        self,
+        predictions: List[Dict[str, Any]],
+        monster_name: str,
+        sequence: List[str],
+        current_turn: int,
+    ) -> None:
+        if not isinstance(sequence, list) or not sequence:
+            return
+
+        sequence_length = len(sequence)
+        for i in range(3):
+            target_turn = current_turn + i
+            move_name = sequence[(target_turn - 1) % sequence_length]
+            move = self.get_move_by_name(monster_name, move_name)
+            if not move:
+                continue
+            predictions.append({
+                "turn": target_turn,
+                "move": move,
+                "confidence": 1.0,
+            })
 
     def _phase_probability_key(self, pattern: Dict[str, Any], target_turn: int, opening_length: int) -> Optional[str]:
         phase_keys = sorted(

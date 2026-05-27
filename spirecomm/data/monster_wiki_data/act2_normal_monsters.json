@@ -318,12 +318,12 @@
         "move_id": 0,
         "name": "Poke",
         "intent": "ATTACK",
-        "damage": 10,
+        "damage": 5,
         "hits": 2,
         "effect": "Deals 5 x 2 damage.",
         "ascension_modifiers": {
           "2+": {
-            "damage": 12,
+            "damage": 6,
             "hits": 2
           }
         }

@@ -381,15 +381,15 @@
         "move_id": 1,
         "name": "Slam",
         "intent": "ATTACK",
-        "damage": 20,
+        "damage": 10,
         "hits": 2,
         "effect": "Deals 10 x 2 damage (11 x 2 on A2+ and A17+).",
         "ascension_modifiers": {
           "2+": {
-            "damage": 22
+            "damage": 11
           },
           "17+": {
-            "damage": 22
+            "damage": 11
           }
         }
       },
