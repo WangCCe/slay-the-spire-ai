@@ -179,3 +179,37 @@ def test_build_report_searches_archived_logs_when_current_log_misses(tmp_path):
 
     assert "log source: ai_debug.log.20260527-123100.bak" in report
     assert "[LOOKAHEAD] archived damage=32" in report
+
+
+def test_build_report_searches_rotated_logs_before_archives(tmp_path):
+    game_dir = tmp_path / "SlayTheSpire"
+    _write_run(game_dir, timestamp="12345")
+    (game_dir / "ai_debug.log").write_text(
+        "2026-05-27 12:40:00,000 - INFO - unrelated current log\n",
+        encoding="utf-8",
+    )
+    (game_dir / "ai_debug.log.1").write_text(
+        "2026-05-27 12:29:50,000 - INFO - [LOOKAHEAD] rotated damage=32\n"
+        "2026-05-27 12:30:01,000 - INFO - [GAME_OVER] rotated state\n",
+        encoding="utf-8",
+    )
+    archive_dir = game_dir / "logs_archive"
+    archive_dir.mkdir()
+    (archive_dir / "ai_debug.log.20260527-123100.bak").write_text(
+        "2026-05-27 12:29:50,000 - INFO - [LOOKAHEAD] archived damage=32\n",
+        encoding="utf-8",
+    )
+
+    report = build_report(
+        run_ref="12345",
+        game_dir=game_dir,
+        character="IRONCLAD",
+        before_seconds=20,
+        after_seconds=5,
+        signals_only=True,
+        max_log_lines=20,
+    )
+
+    assert "log source: ai_debug.log.1" in report
+    assert "[LOOKAHEAD] rotated damage=32" in report
+    assert "archived damage=32" not in report

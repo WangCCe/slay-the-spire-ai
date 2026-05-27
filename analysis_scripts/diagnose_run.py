@@ -210,6 +210,14 @@ def _candidate_debug_logs(game_dir: Path, local_time: str, before_seconds: int) 
         if end_time
         else None
     )
+    rotated_logs = sorted(
+        game_dir.glob("ai_debug.log.*"),
+        key=lambda path: _rotated_log_index(path.name),
+    )
+    candidates.extend(
+        path for path in rotated_logs
+        if path.name.rsplit(".", 1)[-1].isdigit()
+    )
     archive_dir = game_dir / "logs_archive"
     if archive_dir.exists():
         archives = sorted(
@@ -224,6 +232,13 @@ def _candidate_debug_logs(game_dir: Path, local_time: str, before_seconds: int) 
             ]
         candidates.extend(archives)
     return candidates
+
+
+def _rotated_log_index(file_name: str) -> int:
+    try:
+        return int(file_name.rsplit(".", 1)[-1])
+    except ValueError:
+        return 10_000
 
 
 def _parse_run_local_time(local_time: str) -> Optional[datetime]:
