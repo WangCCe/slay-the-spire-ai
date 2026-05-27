@@ -256,6 +256,19 @@ class ChooseAction(Action):
         self.choice_index = choice_index
         self.name = name
 
+    def can_be_executed(self, coordinator):
+        if super().can_be_executed(coordinator):
+            return True
+
+        game = getattr(coordinator, "last_game_state", None)
+        if (
+            getattr(game, "screen_type", None) == ScreenType.EVENT
+            and "choose" in (getattr(game, "available_commands", None) or [])
+        ):
+            return True
+
+        return False
+
     def execute(self, coordinator):
         if self.name is not None:
             coordinator.send_message(
