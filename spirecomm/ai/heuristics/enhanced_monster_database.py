@@ -334,8 +334,48 @@ class EnhancedMonsterDatabase:
                                     "turn": current_turn + i,
                                     "move": move,
                                     "confidence": 0.9
-                                })
+                })
                                 break
+
+        # Check for simple one-move monsters (e.g., Spike Slime (S))
+        elif "only_move" in pattern:
+            self._append_sequence_predictions(predictions, monster_name, [pattern["only_move"]], current_turn)
+
+        # Check for explicit turn-one probabilities with a separate later pattern.
+        elif "turn_1_probabilities" in pattern:
+            for i in range(3):
+                target_turn = current_turn + i
+                if target_turn == 1:
+                    self._append_probability_predictions(
+                        predictions,
+                        moves,
+                        pattern.get("turn_1_probabilities", {}),
+                        target_turn,
+                    )
+                    continue
+
+                subsequent_probs = pattern.get("subsequent_probabilities")
+                if isinstance(subsequent_probs, dict):
+                    self._append_probability_predictions(
+                        predictions,
+                        moves,
+                        subsequent_probs,
+                        target_turn,
+                    )
+                    continue
+
+                if pattern.get("subsequent_pattern") == "alternating":
+                    move_names = list(pattern.get("turn_1_probabilities", {}).keys())
+                    if not move_names:
+                        continue
+                    move_name = move_names[(target_turn - 1) % len(move_names)]
+                    move = self.get_move_by_name(monster_name, move_name)
+                    if move:
+                        predictions.append({
+                            "turn": target_turn,
+                            "move": move,
+                            "confidence": 0.5,
+                        })
 
         # Check for probabilities (less certain prediction)
         elif "probabilities" in pattern or "move_probabilities" in pattern:

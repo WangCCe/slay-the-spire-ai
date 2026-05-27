@@ -469,6 +469,35 @@ def test_opening_then_alternating_patterns_predict_full_sequence():
     ]
 
 
+def test_small_slime_patterns_predict_future_damage_for_timing_classifier():
+    database = EnhancedMonsterDatabase()
+
+    spike_predictions = database.predict_next_moves("Spike Slime (S)", current_turn=2, monster_hp_percent=1.0)
+    acid_predictions = database.predict_next_moves("Acid Slime (S)", current_turn=2, monster_hp_percent=1.0)
+
+    assert [prediction["move"]["name"] for prediction in spike_predictions] == [
+        "Tackle",
+        "Tackle",
+        "Tackle",
+    ]
+    assert [prediction["move"]["name"] for prediction in acid_predictions] == [
+        "Tackle",
+        "Lick",
+        "Tackle",
+    ]
+
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=55, ascension_level=0), ascension_level=0)
+    monsters = [
+        SimpleNamespace(name="Acid Slime (S)", current_hp=12, max_hp=12, strength=0),
+        SimpleNamespace(name="Spike Slime (S)", current_hp=13, max_hp=13, strength=0),
+        SimpleNamespace(name="Spike Slime (S)", current_hp=14, max_hp=14, strength=0),
+        SimpleNamespace(name="Spike Slime (S)", current_hp=12, max_hp=12, strength=0),
+    ]
+
+    assert classifier._calculate_damage_curve(context, monsters, current_turn=1, look_ahead=2) == [18, 15]
+
+
 def test_hp_threshold_modes_predict_guardian_sequence():
     database = EnhancedMonsterDatabase()
 
