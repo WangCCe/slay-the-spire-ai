@@ -340,6 +340,37 @@ class ActionEncoder:
 
         return None
 
+    def _mask_shop_purchase_actions(self, mask: List[bool], game: Game) -> bool:
+        screen = getattr(game, "screen", None)
+        if screen is None:
+            return False
+
+        cards = getattr(screen, "cards", []) or []
+        relics = getattr(screen, "relics", []) or []
+        potions = getattr(screen, "potions", []) or []
+        purge_available = getattr(screen, "purge_available", False)
+        if not (cards or relics or potions or purge_available):
+            return False
+
+        capacity = self.REST_OPTION_OFFSET - self.SHOP_ACTION_OFFSET
+        index = 0
+        for _card in cards:
+            if index < capacity:
+                mask[self.SHOP_ACTION_OFFSET + index] = True
+            index += 1
+        for _relic in relics:
+            if index < capacity:
+                mask[self.SHOP_ACTION_OFFSET + index] = True
+            index += 1
+        has_potion_space = self._has_potion_space(game)
+        for _potion in potions:
+            if index < capacity and has_potion_space:
+                mask[self.SHOP_ACTION_OFFSET + index] = True
+            index += 1
+        if purge_available and index < capacity:
+            mask[self.SHOP_ACTION_OFFSET + index] = True
+        return True
+
     def get_action_mask(self, game: Game) -> List[bool]:
         """
         Compute boolean mask of valid actions for current game state.
@@ -542,10 +573,15 @@ class ActionEncoder:
         if self._is_screen_type(game, "SHOP_SCREEN"):
             available = getattr(game, "available_commands", []) or []
             if "choose" in available:
-                if game.choice_list and len(game.choice_list) > 0:
+                masked_structured_shop = self._mask_shop_purchase_actions(mask, game)
+                if (
+                    not masked_structured_shop
+                    and game.choice_list
+                    and len(game.choice_list) > 0
+                ):
                     for i in range(min(len(game.choice_list), 10)):
                         mask[self.SHOP_ACTION_OFFSET + i] = True
-                else:
+                elif not masked_structured_shop:
                     for i in range(3):
                         mask[self.SHOP_ACTION_OFFSET + i] = True
                 logger.debug(
