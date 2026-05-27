@@ -466,9 +466,10 @@ class DecisionContext:
         draw_count = 0
         scaling_count = 0
         card_count = len(self.game.deck)
+        from spirecomm.ai.heuristics.card_names import card_data_key
 
         for card in self.game.deck:
-            card_name = card.card_id.replace('+', '')  # Remove + from upgraded cards
+            card_name = card_data_key(card)
             card_data = game_data_loader.get_card_data(card_name)
             
             if card_data:
@@ -554,8 +555,10 @@ class DecisionContext:
         }
 
         # First pass: count cards by archetype
+        from spirecomm.ai.heuristics.card_names import card_data_key
+
         for card in deck_cards:
-            card_name = card.card_id.replace('+', '')
+            card_name = card_data_key(card)
             card_data = game_data_loader.get_card_data(card_name)
             
             if card_data:
@@ -591,8 +594,8 @@ class DecisionContext:
                 card1 = deck_cards[i]
                 card2 = deck_cards[j]
                 
-                card1_name = card1.card_id.replace('+', '')
-                card2_name = card2.card_id.replace('+', '')
+                card1_name = card_data_key(card1)
+                card2_name = card_data_key(card2)
                 
                 card1_data = game_data_loader.get_card_data(card1_name)
                 card2_data = game_data_loader.get_card_data(card2_name)
