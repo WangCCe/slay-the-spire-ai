@@ -2,8 +2,14 @@ from types import SimpleNamespace
 
 from spirecomm.ai.rl.v2.action_encoder import ActionEncoderV2
 from spirecomm.ai.rl.v2 import action_space as space
-from spirecomm.communication.action import BuyCardAction, BuyPotionAction, LeaveAction
-from spirecomm.spire.screen import ScreenType
+from spirecomm.communication.action import (
+    BuyCardAction,
+    BuyPotionAction,
+    CombatRewardAction,
+    LeaveAction,
+    ProceedAction,
+)
+from spirecomm.spire.screen import RewardType, ScreenType
 
 
 def _make_card(has_target=True, is_playable=True):
@@ -171,3 +177,55 @@ def test_shop_decoder_falls_back_for_unaffordable_purchase_slots():
     assert isinstance(encoder.decode_action(space.SHOP_OFFSET, game), LeaveAction)
     assert isinstance(encoder.decode_action(space.SHOP_OFFSET + 1, game), BuyPotionAction)
     assert isinstance(encoder.decode_action(space.SHOP_OFFSET + 2, game), LeaveAction)
+
+
+def test_combat_reward_mask_hides_potion_reward_when_potion_slots_are_full():
+    encoder = ActionEncoderV2()
+    potion_reward = SimpleNamespace(
+        reward_type=RewardType.POTION,
+        potion=SimpleNamespace(name="Fire Potion"),
+    )
+    gold_reward = SimpleNamespace(reward_type=RewardType.GOLD, gold=25)
+    game = _make_game(
+        screen_type=ScreenType.COMBAT_REWARD,
+        screen=SimpleNamespace(rewards=[potion_reward, gold_reward]),
+        are_potions_full=lambda: True,
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert not mask[space.REWARD_OFFSET]
+    assert mask[space.REWARD_OFFSET + 1]
+
+
+def test_combat_reward_decoder_falls_back_for_full_potion_slots():
+    encoder = ActionEncoderV2()
+    potion_reward = SimpleNamespace(
+        reward_type=RewardType.POTION,
+        potion=SimpleNamespace(name="Fire Potion"),
+    )
+    game = _make_game(
+        screen_type=ScreenType.COMBAT_REWARD,
+        screen=SimpleNamespace(rewards=[potion_reward]),
+        available_commands=["proceed"],
+        are_potions_full=lambda: True,
+    )
+
+    action = encoder.decode_action(space.REWARD_OFFSET, game)
+
+    assert isinstance(action, ProceedAction)
+
+
+def test_combat_reward_encoder_rejects_full_slot_potion_reward():
+    encoder = ActionEncoderV2()
+    potion_reward = SimpleNamespace(
+        reward_type=RewardType.POTION,
+        potion=SimpleNamespace(name="Fire Potion"),
+    )
+    game = _make_game(
+        screen_type=ScreenType.COMBAT_REWARD,
+        screen=SimpleNamespace(rewards=[potion_reward]),
+        are_potions_full=lambda: True,
+    )
+
+    assert encoder.encode_action(CombatRewardAction(potion_reward), game) is None

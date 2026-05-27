@@ -24,7 +24,7 @@ from spirecomm.communication.action import (
     ChooseMapNodeAction,
     ChooseMapBossAction,
 )
-from spirecomm.spire.screen import ScreenType, RestOption
+from spirecomm.spire.screen import ScreenType, RestOption, RewardType
 from spirecomm.spire.game import Game
 
 from . import action_space as space
@@ -112,6 +112,30 @@ class ActionEncoderV2:
             return False
         return gold >= purge_cost
 
+    @staticmethod
+    def _are_potions_full(game: Game) -> bool:
+        if hasattr(game, "are_potions_full"):
+            try:
+                return bool(game.are_potions_full())
+            except Exception:
+                return False
+        if hasattr(game, "has_potion_space"):
+            try:
+                return not bool(game.has_potion_space())
+            except Exception:
+                return False
+        return False
+
+    def _is_unclaimable_combat_reward(self, game: Game, reward) -> bool:
+        reward_type = getattr(reward, "reward_type", None)
+        reward_type_name = getattr(reward_type, "name", reward_type)
+        is_potion_reward = (
+            reward_type == RewardType.POTION or reward_type_name == "POTION"
+        )
+        if not is_potion_reward and getattr(reward, "potion", None) is None:
+            return False
+        return self._are_potions_full(game)
+
     def decode_action(self, action_index: int, game: Game):
         if action_index == space.END_TURN_ACTION:
             return EndTurnAction()
@@ -138,7 +162,10 @@ class ActionEncoderV2:
             if screen_type == ScreenType.COMBAT_REWARD and hasattr(game.screen, "rewards"):
                 rewards = game.screen.rewards or []
                 if choice_index < len(rewards):
-                    return CombatRewardAction(rewards[choice_index])
+                    reward = rewards[choice_index]
+                    if self._is_unclaimable_combat_reward(game, reward):
+                        return self._fallback_system_action(game)
+                    return CombatRewardAction(reward)
                 return ProceedAction()
             if screen_type == ScreenType.CARD_REWARD and hasattr(game.screen, "cards"):
                 cards = game.screen.cards or []
@@ -186,7 +213,12 @@ class ActionEncoderV2:
             self._mask_system_actions(mask, available)
             return mask
 
-        if screen_type in (ScreenType.CARD_REWARD, ScreenType.COMBAT_REWARD, ScreenType.CHEST, ScreenType.BOSS_REWARD):
+        if screen_type == ScreenType.COMBAT_REWARD:
+            self._mask_combat_reward_actions(mask, game)
+            self._mask_system_actions(mask, available)
+            return mask
+
+        if screen_type in (ScreenType.CARD_REWARD, ScreenType.CHEST, ScreenType.BOSS_REWARD):
             self._mask_choice_group(mask, space.REWARD_OFFSET, space.REWARD_COUNT, self._get_choice_count(game, screen_type))
             self._mask_system_actions(mask, available)
             return mask
@@ -383,6 +415,8 @@ class ActionEncoderV2:
         if isinstance(action, CombatRewardAction):
             rewards = getattr(screen, "rewards", None) if screen else None
             if rewards and action.combat_reward in rewards:
+                if self._is_unclaimable_combat_reward(game, action.combat_reward):
+                    return None
                 return space.REWARD_OFFSET + rewards.index(action.combat_reward)
         if isinstance(action, CardRewardAction):
             name = getattr(action, "name", None)
@@ -522,6 +556,23 @@ class ActionEncoderV2:
         enabled = min(capacity, max(count, 0))
         for idx in range(enabled):
             mask[offset + idx] = True
+
+    def _mask_combat_reward_actions(self, mask: List[bool], game: Game) -> None:
+        screen = getattr(game, "screen", None)
+        rewards = getattr(screen, "rewards", None) if screen else None
+        if not rewards:
+            self._mask_choice_group(
+                mask,
+                space.REWARD_OFFSET,
+                space.REWARD_COUNT,
+                self._get_choice_count(game, ScreenType.COMBAT_REWARD),
+            )
+            return
+
+        for idx, reward in enumerate(rewards[:space.REWARD_COUNT]):
+            if not self._is_unclaimable_combat_reward(game, reward):
+                mask[space.REWARD_OFFSET + idx] = True
+
     def _mask_shop_actions(self, mask: List[bool], game: Game) -> None:
         import logging
 
