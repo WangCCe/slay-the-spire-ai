@@ -197,8 +197,11 @@ DAMAGE_UPGRADE_BONUS = {
 
 
 def _known_damage_upgrade_bonus(card: Any, card_name: str) -> int:
-    if getattr(card, 'upgrades', 0) <= 0:
+    upgrades = getattr(card, 'upgrades', 0) or 0
+    if upgrades <= 0:
         return 0
+    if card_name == 'Searing Blow':
+        return upgrades * (upgrades + 7) // 2
     return DAMAGE_UPGRADE_BONUS.get(card_name, 0)
 
 # Block card upgrade block bonuses (All characters)
@@ -941,9 +944,9 @@ class FastCombatSimulator:
                 upgrades = getattr(card, 'upgrades', 0)
                 if upgrades > 0 and base_damage:
                     # Check if we have a known upgrade bonus for this card
-                    upgrade_bonus = DAMAGE_UPGRADE_BONUS.get(card_name)
-                    if upgrade_bonus is not None:
+                    if card_name in DAMAGE_UPGRADE_BONUS:
                         # Use known bonus
+                        upgrade_bonus = _known_damage_upgrade_bonus(card, card_name)
                         base_damage += upgrade_bonus
                         logger.debug(f"[DAMAGE_UPGRADE] {card.card_id} (upgrades={upgrades}): {base_damage} damage (+{upgrade_bonus})")
                     else:
