@@ -51,12 +51,15 @@ def test_path_conversion():
         print("  - Code can be imported in WSL without crashing")
         print("  - Windows paths are automatically converted to WSL paths")
         print("  - Tests can run even if game data is not found")
-        return 0
     except Exception as e:
         print(f"✗ Import failed: {e}")
         import traceback
         traceback.print_exc()
-        return 1
+        raise AssertionError(f"Import failed: {e}") from e
 
 if __name__ == '__main__':
-    sys.exit(test_path_conversion())
+    try:
+        test_path_conversion()
+    except Exception:
+        sys.exit(1)
+    sys.exit(0)

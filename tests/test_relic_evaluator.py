@@ -20,12 +20,11 @@ def test_imports():
         from spirecomm.spire.relic import Relic
         from spirecomm.data.loader import game_data_loader
         print("  [OK] Relic evaluator components imported")
-        return True
     except ImportError as e:
         print(f"  [FAIL] Failed to import relic evaluator: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Failed to import relic evaluator: {e}") from e
 
 
 def test_relic_data_loading():
@@ -50,13 +49,11 @@ def test_relic_data_loading():
             else:
                 print(f"    [WARN] Could not find data for: {name}")
                 
-        return True
-        
     except Exception as e:
         print(f"  [FAIL] Error loading relic data: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Error loading relic data: {e}") from e
 
 
 def test_relic_evaluator_instantiation():
@@ -71,13 +68,11 @@ def test_relic_evaluator_instantiation():
         print(f"    - Effect values: {len(evaluator.EFFECT_VALUES)} effects defined")
         print(f"    - Archetype bonuses: {len(evaluator.ARCHETYPE_BONUSES)} archetypes supported")
         
-        return True
-        
     except Exception as e:
         print(f"  [FAIL] Error instantiating RelicEvaluator: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Error instantiating RelicEvaluator: {e}") from e
 
 
 def test_relic_evaluation_basic():
@@ -120,13 +115,11 @@ def test_relic_evaluation_basic():
             score = evaluator.evaluate_relic(relic, context)
             print(f"  [OK] {relic.relic_id} evaluated: {score:.2f}")
             
-        return True
-        
     except Exception as e:
         print(f"  [FAIL] Error evaluating relics: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Error evaluating relics: {e}") from e
 
 
 def test_relic_evaluation_context():
@@ -191,13 +184,11 @@ def test_relic_evaluation_context():
         # Verify that scores differ based on context
         assert abs(score1 - score2) > 0.1 or abs(score2 - score3) > 0.1, "Scores should differ with context"
         
-        return True
-        
     except Exception as e:
         print(f"  [FAIL] Error testing context evaluation: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Error testing context evaluation: {e}") from e
 
 
 def test_archetype_bonuses():
@@ -242,14 +233,12 @@ def test_archetype_bonuses():
         # Verify that strength archetype gets highest bonus
         scores.sort(key=lambda x: x[1], reverse=True)
         print(f"  [INFO] Highest scoring archetype: {scores[0][0]} ({scores[0][1]:.2f})")
-        
-        return True
-        
+
     except Exception as e:
         print(f"  [FAIL] Error testing archetype bonuses: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Error testing archetype bonuses: {e}") from e
 
 
 def test_relic_combinations():
@@ -304,14 +293,12 @@ def test_relic_combinations():
             print(f"  [OK] Combo bonus applied: {score_with - score_without:.2f}")
         else:
             print(f"  [WARN] Combo bonus not detected")
-        
-        return True
-        
+
     except Exception as e:
         print(f"  [FAIL] Error testing relic combinations: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Error testing relic combinations: {e}") from e
 
 
 def main():
@@ -322,13 +309,22 @@ def main():
 
     all_passed = True
 
-    all_passed &= test_imports()
-    all_passed &= test_relic_data_loading()
-    all_passed &= test_relic_evaluator_instantiation()
-    all_passed &= test_relic_evaluation_basic()
-    all_passed &= test_relic_evaluation_context()
-    all_passed &= test_archetype_bonuses()
-    all_passed &= test_relic_combinations()
+    tests = [
+        test_imports,
+        test_relic_data_loading,
+        test_relic_evaluator_instantiation,
+        test_relic_evaluation_basic,
+        test_relic_evaluation_context,
+        test_archetype_bonuses,
+        test_relic_combinations,
+    ]
+
+    for test in tests:
+        try:
+            test()
+        except Exception as e:
+            print(f"[FAIL] {test.__name__}: {e}")
+            all_passed = False
 
     print("\n" + "="*60)
     if all_passed:

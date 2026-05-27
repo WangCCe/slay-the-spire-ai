@@ -65,7 +65,6 @@ def test_vulnerable_multiplier():
     print("  ✓ PASS")
 
     print("\n✓ All Vulnerable multiplier tests PASSED")
-    return True
 
 
 def test_weak_multiplier():
@@ -121,7 +120,6 @@ def test_weak_multiplier():
     print("  ✓ PASS")
 
     print("\n✓ All Weak multiplier tests PASSED")
-    return True
 
 
 def test_frail_multiplier():
@@ -164,7 +162,6 @@ def test_frail_multiplier():
     print("  ✓ PASS")
 
     print("\n✓ All Frail multiplier tests PASSED")
-    return True
 
 
 def test_survival_death_penalty():
@@ -245,7 +242,6 @@ def test_survival_death_penalty():
     print("  ✓ PASS: No penalty when damage fully blocked")
 
     print("\n✓ All survival death penalty tests PASSED")
-    return True
 
 
 def test_danger_threshold_penalty():
@@ -356,7 +352,6 @@ def test_danger_threshold_penalty():
     print("  ✓ PASS: No danger penalty when safe")
 
     print("\n✓ All danger threshold tests PASSED")
-    return True
 
 
 def test_damage_estimation():
@@ -468,7 +463,6 @@ def test_damage_estimation():
     print("  ✓ PASS")
 
     print("\n✓ All damage estimation tests PASSED")
-    return True
 
 
 def run_all_tests():
@@ -490,8 +484,8 @@ def run_all_tests():
     results = []
     for test_name, test_func in tests:
         try:
-            result = test_func()
-            results.append((test_name, result))
+            test_func()
+            results.append((test_name, True))
         except AssertionError as e:
             print(f"\n✗ {test_name} FAILED: {e}")
             results.append((test_name, False))

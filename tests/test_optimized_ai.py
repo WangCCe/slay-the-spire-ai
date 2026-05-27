@@ -6,7 +6,13 @@ can be imported and instantiated without errors.
 """
 
 import sys
-from spirecomm.spire.character import PlayerClass
+from spirecomm.spire.character import PlayerClass, Player
+
+
+def _set_player(game, current_hp, max_hp=80, energy=3):
+    game.current_hp = current_hp
+    game.max_hp = max_hp
+    game.player = Player(max_hp=max_hp, current_hp=current_hp, energy=energy)
 
 
 def test_imports():
@@ -24,14 +30,14 @@ def test_imports():
         print("  [OK] Base decision interfaces imported")
     except ImportError as e:
         print(f"  [FAIL] Failed to import base interfaces: {e}")
-        return False
+        raise AssertionError(f"Failed to import base interfaces: {e}") from e
 
     try:
         from spirecomm.ai.heuristics.card import SynergyCardEvaluator
         print("  [OK] SynergyCardEvaluator imported")
     except ImportError as e:
         print(f"  [FAIL] Failed to import SynergyCardEvaluator: {e}")
-        return False
+        raise AssertionError(f"Failed to import SynergyCardEvaluator: {e}") from e
 
     try:
         from spirecomm.ai.heuristics.simulation import (
@@ -41,14 +47,14 @@ def test_imports():
         print("  [OK] Combat simulator imported")
     except ImportError as e:
         print(f"  [FAIL] Failed to import combat simulator: {e}")
-        return False
+        raise AssertionError(f"Failed to import combat simulator: {e}") from e
 
     try:
         from spirecomm.ai.heuristics.deck import DeckAnalyzer
         print("  [OK] DeckAnalyzer imported")
     except ImportError as e:
         print(f"  [FAIL] Failed to import DeckAnalyzer: {e}")
-        return False
+        raise AssertionError(f"Failed to import DeckAnalyzer: {e}") from e
 
     try:
         from spirecomm.ai.agent import SimpleAgent, OptimizedAgent, OPTIMIZED_AI_AVAILABLE
@@ -56,9 +62,7 @@ def test_imports():
         print(f"  [INFO] OPTIMIZED_AI_AVAILABLE = {OPTIMIZED_AI_AVAILABLE}")
     except ImportError as e:
         print(f"  [FAIL] Failed to import agent classes: {e}")
-        return False
-
-    return True
+        raise AssertionError(f"Failed to import agent classes: {e}") from e
 
 
 def test_agent_instantiation():
@@ -92,13 +96,11 @@ def test_agent_instantiation():
             print(f"  [WARN] OptimizedAgent instantiation had issues (may fall back to SimpleAgent): {e}")
             # This is okay - it means optimized components aren't fully available
 
-        return True
-
     except Exception as e:
         print(f"  [FAIL] Failed to instantiate agents: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Failed to instantiate agents: {e}") from e
 
 
 def test_decision_context():
@@ -111,9 +113,7 @@ def test_decision_context():
 
         # Create a minimal game state
         game = Game()
-        game.current_hp = 50
-        game.max_hp = 80
-        game.player.energy = 3
+        _set_player(game, current_hp=50)
         game.act = 1
         game.floor = 5
         game.turn = 2
@@ -129,13 +129,11 @@ def test_decision_context():
         print(f"    - Deck archetype: {context.deck_archetype}")
         print(f"    - Monsters alive: {len(context.monsters_alive)}")
 
-        return True
-
     except Exception as e:
         print(f"  [FAIL] Failed to create DecisionContext: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Failed to create DecisionContext: {e}") from e
 
 
 def test_card_evaluator():
@@ -146,13 +144,11 @@ def test_card_evaluator():
         from spirecomm.ai.heuristics.card import SynergyCardEvaluator
         from spirecomm.ai.decision.base import DecisionContext
         from spirecomm.spire.game import Game
-        from spirecomm.spire.card import Card
+        from spirecomm.spire.card import Card, CardType, CardRarity
 
         # Create game state
         game = Game()
-        game.current_hp = 60
-        game.max_hp = 80
-        game.player.energy = 3
+        _set_player(game, current_hp=60)
         game.act = 1
         game.floor = 3
         game.turn = 1
@@ -161,15 +157,8 @@ def test_card_evaluator():
         game.monsters = []
 
         # Create some mock cards
-        card1 = Card()
-        card1.card_id = "Strike_R"
-        card1.cost = 1
-        card1.upgrades = 0
-
-        card2 = Card()
-        card2.card_id = "Defend_R"
-        card2.cost = 1
-        card2.upgrades = 0
+        card1 = Card("Strike_R", "Strike", CardType.ATTACK, CardRarity.BASIC, cost=1)
+        card2 = Card("Defend_R", "Defend", CardType.SKILL, CardRarity.BASIC, cost=1)
 
         # Create evaluator
         evaluator = SynergyCardEvaluator(player_class='THE_SILENT')
@@ -184,13 +173,11 @@ def test_card_evaluator():
         print(f"    - Defend_R score: {score2:.2f}")
         print(f"    - Confidence: {evaluator.get_confidence(context):.2f}")
 
-        return True
-
     except Exception as e:
         print(f"  [FAIL] Failed to test SynergyCardEvaluator: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Failed to test SynergyCardEvaluator: {e}") from e
 
 
 def test_deck_analyzer():
@@ -201,13 +188,11 @@ def test_deck_analyzer():
         from spirecomm.ai.heuristics.deck import DeckAnalyzer
         from spirecomm.ai.decision.base import DecisionContext
         from spirecomm.spire.game import Game
-        from spirecomm.spire.card import Card
+        from spirecomm.spire.card import Card, CardType, CardRarity
 
         # Create game with some cards
         game = Game()
-        game.current_hp = 70
-        game.max_hp = 80
-        game.player.energy = 3
+        _set_player(game, current_hp=70)
         game.act = 1
         game.floor = 5
         game.turn = 3
@@ -216,18 +201,25 @@ def test_deck_analyzer():
 
         # Add some poison cards for Silent
         game.deck = []
-        poison_card = Card()
-        poison_card.card_id = "Deadly Poison"
-        poison_card.cost = 1
-        poison_card.upgrades = 0
+        poison_card = Card(
+            "Deadly Poison",
+            "Deadly Poison",
+            CardType.SKILL,
+            CardRarity.COMMON,
+            cost=1,
+        )
         game.deck.append(poison_card)
 
         game.deck.append(poison_card)
 
-        defend_card = Card()
-        defend_card.card_id = "Defend_G"
-        defend_card.cost = 1
-        defend_card.upgrades = 1
+        defend_card = Card(
+            "Defend_G",
+            "Defend",
+            CardType.SKILL,
+            CardRarity.BASIC,
+            upgrades=1,
+            cost=1,
+        )
         game.deck.append(defend_card)
 
         # Create analyzer and context
@@ -245,13 +237,11 @@ def test_deck_analyzer():
         print(f"    - Deck size: {stats['size']}")
         print(f"    - Avg cost: {stats['avg_cost']:.2f}")
 
-        return True
-
     except Exception as e:
         print(f"  [FAIL] Failed to test DeckAnalyzer: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Failed to test DeckAnalyzer: {e}") from e
 
 
 def main():
@@ -262,11 +252,20 @@ def main():
 
     all_passed = True
 
-    all_passed &= test_imports()
-    all_passed &= test_agent_instantiation()
-    all_passed &= test_decision_context()
-    all_passed &= test_card_evaluator()
-    all_passed &= test_deck_analyzer()
+    tests = [
+        test_imports,
+        test_agent_instantiation,
+        test_decision_context,
+        test_card_evaluator,
+        test_deck_analyzer,
+    ]
+
+    for test in tests:
+        try:
+            test()
+        except Exception as e:
+            print(f"[FAIL] {test.__name__}: {e}")
+            all_passed = False
 
     print("\n" + "="*60)
     if all_passed:

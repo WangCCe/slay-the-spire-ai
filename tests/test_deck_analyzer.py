@@ -51,10 +51,9 @@ def test_deck_analyzer_import():
     try:
         from spirecomm.ai.heuristics.deck import DeckAnalyzer
         print("  [OK] DeckAnalyzer imported successfully")
-        return True
     except ImportError as e:
         print(f"  [ERROR] Failed to import DeckAnalyzer: {e}")
-        return False
+        raise AssertionError(f"Failed to import DeckAnalyzer: {e}") from e
 
 def test_empty_deck():
     """Test deck analyzer with empty deck."""
@@ -72,10 +71,9 @@ def test_empty_deck():
         print(f"  [OK] Empty deck scores: {scores}")
         print(f"  [OK] Empty deck stats: {stats}")
         print(f"  [OK] Empty deck quality: {quality}")
-        return True
     except Exception as e:
         print(f"  [ERROR] Failed to analyze empty deck: {e}")
-        return False
+        raise AssertionError(f"Failed to analyze empty deck: {e}") from e
 
 def test_strength_deck():
     """Test deck analyzer with strength archetype deck."""
@@ -108,16 +106,11 @@ def test_strength_deck():
         print(f"  [OK] Strength deck stats: {stats}")
         print(f"  [OK] Strength deck quality: {quality}")
         
-        # Verify that strength is the detected archetype
-        if archetype == 'strength':
-            print(f"  [PASS] Correctly detected strength archetype")
-        else:
-            print(f"  [FAIL] Expected strength archetype, got {archetype}")
-            
-        return True
+        assert archetype == 'strength', f"Expected strength archetype, got {archetype}"
+        print(f"  [PASS] Correctly detected strength archetype")
     except Exception as e:
         print(f"  [ERROR] Failed to analyze strength deck: {e}")
-        return False
+        raise AssertionError(f"Failed to analyze strength deck: {e}") from e
 
 def test_exhaust_deck():
     """Test deck analyzer with exhaust archetype deck."""
@@ -149,17 +142,14 @@ def test_exhaust_deck():
         print(f"  [OK] Exhaust deck stats: {stats}")
         print(f"  [OK] Exhaust deck quality: {quality}")
         
-        # Check if exhaust archetype is detected
-        if archetype == 'exhaust':
-            print(f"  [PASS] Correctly detected exhaust archetype")
-        else:
-            print(f"  [FAIL] Expected exhaust archetype, got {archetype}")
-            print(f"  [INFO] Exhaust score: {scores.get('exhaust', 0)}")
-            
-        return True
+        assert archetype == 'exhaust', (
+            f"Expected exhaust archetype, got {archetype}; "
+            f"exhaust score: {scores.get('exhaust', 0)}"
+        )
+        print(f"  [PASS] Correctly detected exhaust archetype")
     except Exception as e:
         print(f"  [ERROR] Failed to analyze exhaust deck: {e}")
-        return False
+        raise AssertionError(f"Failed to analyze exhaust deck: {e}") from e
 
 def test_combo_deck():
     """Test deck analyzer with combo archetype deck."""
@@ -191,17 +181,14 @@ def test_combo_deck():
         print(f"  [OK] Combo deck stats: {stats}")
         print(f"  [OK] Combo deck quality: {quality}")
         
-        # Check if combo archetype is detected
-        if archetype == 'combo':
-            print(f"  [PASS] Correctly detected combo archetype")
-        else:
-            print(f"  [FAIL] Expected combo archetype, got {archetype}")
-            print(f"  [INFO] Combo score: {scores.get('combo', 0)}")
-            
-        return True
+        assert archetype == 'combo', (
+            f"Expected combo archetype, got {archetype}; "
+            f"combo score: {scores.get('combo', 0)}"
+        )
+        print(f"  [PASS] Correctly detected combo archetype")
     except Exception as e:
         print(f"  [ERROR] Failed to analyze combo deck: {e}")
-        return False
+        raise AssertionError(f"Failed to analyze combo deck: {e}") from e
 
 def test_balanced_deck():
     """Test deck analyzer with balanced deck."""
@@ -233,16 +220,11 @@ def test_balanced_deck():
         print(f"  [OK] Balanced deck stats: {stats}")
         print(f"  [OK] Balanced deck quality: {quality}")
         
-        # Check if balanced deck is detected
-        if archetype == 'balanced':
-            print(f"  [PASS] Correctly detected balanced deck")
-        else:
-            print(f"  [FAIL] Expected balanced deck, got {archetype}")
-            
-        return True
+        assert archetype == 'balanced', f"Expected balanced deck, got {archetype}"
+        print(f"  [PASS] Correctly detected balanced deck")
     except Exception as e:
         print(f"  [ERROR] Failed to analyze balanced deck: {e}")
-        return False
+        raise AssertionError(f"Failed to analyze balanced deck: {e}") from e
 
 def test_deck_stats():
     """Test deck statistics functionality."""
@@ -276,10 +258,9 @@ def test_deck_stats():
         assert stats['upgraded_count'] >= 2  # At least 2 upgraded cards
         
         print(f"  [PASS] Deck stats verified correctly")
-        return True
     except Exception as e:
         print(f"  [ERROR] Failed to get deck stats: {e}")
-        return False
+        raise AssertionError(f"Failed to get deck stats: {e}") from e
 
 def test_deck_quality():
     """Test deck quality evaluation."""
@@ -315,16 +296,11 @@ def test_deck_quality():
         print(f"  [OK] Good deck quality: {good_quality}")
         print(f"  [OK] Bad deck quality: {bad_quality}")
         
-        # Verify that good deck has higher quality than bad deck
-        if good_quality > bad_quality:
-            print(f"  [PASS] Good deck has higher quality than bad deck")
-        else:
-            print(f"  [FAIL] Good deck should have higher quality than bad deck")
-            
-        return True
+        assert good_quality > bad_quality, "Good deck should have higher quality than bad deck"
+        print(f"  [PASS] Good deck has higher quality than bad deck")
     except Exception as e:
         print(f"  [ERROR] Failed to evaluate deck quality: {e}")
-        return False
+        raise AssertionError(f"Failed to evaluate deck quality: {e}") from e
 
 def test_needs_cards():
     """Test needs_cards_of_type functionality."""
@@ -355,16 +331,13 @@ def test_needs_cards():
         print(f"  [OK] Needs more skills: {needs_skill}")
         print(f"  [OK] Needs more powers: {needs_power}")
         
-        # Verify expected results
-        if not needs_attack and needs_skill and needs_power:
-            print(f"  [PASS] Correctly identified needed card types")
-        else:
-            print(f"  [FAIL] Unexpected results for needed card types")
-            
-        return True
+        assert not needs_attack and needs_skill and needs_power, (
+            "Unexpected results for needed card types"
+        )
+        print(f"  [PASS] Correctly identified needed card types")
     except Exception as e:
         print(f"  [ERROR] Failed to check needed cards: {e}")
-        return False
+        raise AssertionError(f"Failed to check needed cards: {e}") from e
 
 def test_find_weakest_card():
     """Test find_weakest_card functionality."""
@@ -388,16 +361,11 @@ def test_find_weakest_card():
         
         print(f"  [OK] Weakest card: {weakest.name if weakest else 'None'}")
         
-        # Verify that curse is identified as weakest
-        if weakest and weakest.name == 'Burn':
-            print(f"  [PASS] Correctly identified curse as weakest card")
-        else:
-            print(f"  [FAIL] Should have identified Burn as weakest card")
-            
-        return True
+        assert weakest and weakest.name == 'Burn', "Should have identified Burn as weakest card"
+        print(f"  [PASS] Correctly identified curse as weakest card")
     except Exception as e:
         print(f"  [ERROR] Failed to find weakest card: {e}")
-        return False
+        raise AssertionError(f"Failed to find weakest card: {e}") from e
 
 def main():
     """Run all tests."""
@@ -423,9 +391,11 @@ def main():
     failed = 0
     
     for test in tests:
-        if test():
+        try:
+            test()
             passed += 1
-        else:
+        except Exception as e:
+            print(f"[FAIL] {test.__name__}: {e}")
             failed += 1
     
     print("\n============================================================")

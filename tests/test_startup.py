@@ -19,7 +19,7 @@ def test_agent_startup():
         print(f"   SimpleAgent created: {type(simple_agent).__name__}")
     except Exception as e:
         print(f"   ERROR creating SimpleAgent: {e}")
-        return False
+        raise AssertionError(f"ERROR creating SimpleAgent: {e}") from e
 
     # Test OptimizedAgent
     print("\n2. Testing OptimizedAgent...")
@@ -35,12 +35,11 @@ def test_agent_startup():
             print(f"   ERROR creating OptimizedAgent: {e}")
             import traceback
             traceback.print_exc()
-            return False
+            raise AssertionError(f"ERROR creating OptimizedAgent: {e}") from e
     else:
         print("   OptimizedAgent not available (missing dependencies)")
 
     print("\n3. All agents started successfully!")
-    return True
 
 
 def test_json_parsing():
@@ -50,6 +49,7 @@ def test_json_parsing():
     # Minimal game state
     game_state_json = {
         "screen_type": "HAND_SELECT",
+        "screen_state": {"hand": [], "selected": []},
         "hand": [],
         "monsters": [],
         "current_hp": 70,
@@ -65,16 +65,17 @@ def test_json_parsing():
     # Try to parse it
     try:
         from spirecomm.spire.game import Game
-        game = Game.from_json(game_state_json)
+        game = Game.from_json(game_state_json, available_commands=[])
         print(f"\n2. Parsed game successfully")
         print(f"   Current HP: {game.current_hp}/{game.max_hp}")
-        print(f"   Energy: {game.player.energy if hasattr(game, 'player') else 'N/A'}")
-        return True
+        print(f"   Energy: {getattr(getattr(game, 'player', None), 'energy', 'N/A')}")
+        assert game.current_hp == 70
+        assert game.max_hp == 80
     except Exception as e:
         print(f"\n2. ERROR parsing game: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"ERROR parsing game: {e}") from e
 
 
 def main():
@@ -85,13 +86,12 @@ def main():
 
     success = True
 
-    # Test agent creation
-    if not test_agent_startup():
-        success = False
-
-    # Test JSON parsing
-    if not test_json_parsing():
-        success = False
+    for test in (test_agent_startup, test_json_parsing):
+        try:
+            test()
+        except Exception as e:
+            print(f"[FAIL] {test.__name__}: {e}")
+            success = False
 
     print("\n" + "=" * 60)
     if success:

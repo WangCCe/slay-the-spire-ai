@@ -34,7 +34,7 @@ def test_tracking():
         print(f"[FAIL] Failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Failed to get initial action: {e}") from e
 
     # Simulate entering combat
     print("\nSimulating combat start...")
@@ -50,7 +50,7 @@ def test_tracking():
         print(f"[FAIL] Failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Failed to handle combat start: {e}") from e
 
     # Simulate combat end
     print("\nSimulating combat end...")
@@ -64,13 +64,15 @@ def test_tracking():
         print(f"[FAIL] Failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise AssertionError(f"Failed to handle combat end: {e}") from e
 
     print("\n" + "="*60)
     print("All tests passed!")
     print("="*60)
-    return True
 
 if __name__ == "__main__":
-    success = test_tracking()
-    exit(0 if success else 1)
+    try:
+        test_tracking()
+    except Exception:
+        exit(1)
+    exit(0)
