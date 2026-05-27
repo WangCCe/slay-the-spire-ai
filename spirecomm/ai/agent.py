@@ -51,6 +51,7 @@ class SimpleAgent:
         self.visited_shop = False
         self.shop_purchase_made = False
         self._leaving_shop_room = False
+        self._shop_exit_waits = 0
         self.map_route = []
         self._last_route_hp_pct = None
         self._last_route_floor = None
@@ -157,10 +158,30 @@ class SimpleAgent:
             and getattr(self, "shop_purchase_made", False)
             and "proceed" not in available
         ):
-            return WaitAction(timeout=1)
+            can_cancel = (
+                "cancel" in available
+                or "return" in available
+                or "leave" in available
+                or "skip" in available
+                or getattr(self.game, "cancel_available", False)
+            )
+            exit_waits = getattr(self, "_shop_exit_waits", 0)
+            if not can_cancel or exit_waits < 2:
+                self._shop_exit_waits = exit_waits + 1
+                logging.info(
+                    "[SHOP_SCREEN] Waiting for post-purchase exit state (%s/2), can_cancel=%s",
+                    self._shop_exit_waits,
+                    can_cancel,
+                )
+                return WaitAction(timeout=1)
+            self._shop_exit_waits = 0
+            logging.info("[SHOP_SCREEN] Post-purchase exit stable, sending cancel")
+            return CancelAction()
         if "leave" in available:
+            self._shop_exit_waits = 0
             return LeaveAction()
         if "proceed" in available or getattr(self.game, "proceed_available", False):
+            self._shop_exit_waits = 0
             return ProceedAction()
         if (
             "cancel" in available
@@ -168,9 +189,12 @@ class SimpleAgent:
             or "skip" in available
             or getattr(self.game, "cancel_available", False)
         ):
+            self._shop_exit_waits = 0
             return CancelAction()
         if screen_type == ScreenType.SHOP_SCREEN:
+            self._shop_exit_waits = 0
             return LeaveAction()
+        self._shop_exit_waits = 0
         return ProceedAction()
 
     def _validate_shop_cards(self, screen):

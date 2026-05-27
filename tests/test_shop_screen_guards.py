@@ -111,6 +111,26 @@ def test_shop_screen_waits_after_purchase_when_only_leave_is_visible():
     assert isinstance(action, WaitAction)
 
 
+def test_shop_screen_post_purchase_wait_is_bounded_when_cancel_stays_visible():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(cards=[], relics=[], potions=[], purge_available=False),
+        gold=43,
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "key", "click", "wait", "state"],
+    )
+    agent.shop_purchase_made = True
+
+    first = agent.handle_screen()
+    second = agent.handle_screen()
+    third = agent.handle_screen()
+
+    assert isinstance(first, WaitAction)
+    assert isinstance(second, WaitAction)
+    assert isinstance(third, CancelAction)
+
+
 def test_shop_room_exit_uses_cancel_group_from_cancel_available_flag():
     agent = _agent_for_shop(
         screen_type=ScreenType.SHOP_ROOM,
