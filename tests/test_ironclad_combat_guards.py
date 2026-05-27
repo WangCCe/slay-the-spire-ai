@@ -2413,6 +2413,18 @@ def test_lethal_sequence_uses_multiple_attacks_on_one_monster():
     assert [action.card.uuid for action in sequence] == ["strike-1", "strike-2"]
 
 
+def test_lethal_detector_counts_vulnerable_damage_on_single_target():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike-vulnerable"
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=8)])
+    context.vulnerable_stacks[0] = 1
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["strike-vulnerable"]
+
+
 def test_thorns_deals_full_stack_damage_per_attack_hit():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])

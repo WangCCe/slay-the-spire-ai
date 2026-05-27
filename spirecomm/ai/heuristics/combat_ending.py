@@ -235,6 +235,8 @@ class CombatEndingDetector:
             if hasattr(card, 'type') and card.type == CardType.ATTACK:
                 cost = effective_card_cost(card, context.energy_available)
                 damage = self._get_card_damage(card, context)
+                if len(context.monsters_alive) == 1 and context.vulnerable_stacks.get(0, 0) > 0:
+                    damage = int(damage * 1.5)
                 logger.info(f"[LETHAL_CALC] {card.name}: cost={cost}, damage={damage}, eff={damage/cost if cost > 0 else 'inf'}")
                 if cost > 0:
                     efficiency = damage / cost
