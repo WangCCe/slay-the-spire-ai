@@ -281,6 +281,53 @@ def test_fast_simulator_applies_all_searing_blow_upgrades(monkeypatch):
     assert state.total_damage_dealt == 21
 
 
+def test_fast_score_values_upgraded_rage_block_per_attack():
+    attacks = [
+        Card(
+            card_id="Strike_R",
+            name="Strike",
+            card_type=CardType.ATTACK,
+            rarity=CardRarity.BASIC,
+            has_target=True,
+            cost=1,
+        )
+        for _ in range(2)
+    ]
+    state = SimpleNamespace(
+        monsters=[{"is_gone": False}],
+        player_hp=50,
+        player_energy=3,
+    )
+    context = SimpleNamespace(
+        playable_cards=attacks,
+        player_class="IRONCLAD",
+        turn=1,
+    )
+    base_rage = Card(
+        card_id="Rage",
+        name="Rage",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.UNCOMMON,
+        has_target=False,
+        cost=0,
+    )
+    upgraded_rage = Card(
+        card_id="Rage",
+        name="Rage+",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.UNCOMMON,
+        has_target=False,
+        cost=0,
+        upgrades=1,
+    )
+    planner = HeuristicCombatPlanner()
+
+    base_score = planner.fast_score_action(base_rage, state, context)
+    upgraded_score = planner.fast_score_action(upgraded_rage, state, context)
+
+    assert upgraded_score == base_score + 6
+
+
 def test_fast_simulator_falls_back_when_x_damage_calculation_returns_none(monkeypatch):
     monkeypatch.setattr(
         simulation.game_data_loader,

@@ -4158,8 +4158,8 @@ class HeuristicCombatPlanner(CombatPlanner):
             attack_cards = [c for c in context.playable_cards
                           if hasattr(c, 'type') and c.type == CardType.ATTACK]
 
-            # Calculate potential block from Rage (3 block per attack)
-            potential_block = len(attack_cards) * 3
+            rage_block = 5 if getattr(card, 'upgrades', 0) > 0 else 3
+            potential_block = len(attack_cards) * rage_block
 
             # Base bonus for Rage (it's 0 cost and enables block generation)
             score += 15  # Base value for playing a 0-cost skill
