@@ -1481,6 +1481,7 @@ class FastCombatSimulator:
 
         projected.end_turn_aoe_damage = 0
         projected.end_turn_hp_loss = 0
+        projected = self._materialize_pending_death_splits(projected)
         return projected
 
     def _apply_skill(
@@ -2176,7 +2177,7 @@ class FastCombatSimulator:
             return None
 
         special_mechanics = monster_data.get('special_mechanics', {})
-        if special_mechanics.get('type') != 'death_split':
+        if special_mechanics.get('type') not in {'death_split', 'split'}:
             return None
 
         split_names = special_mechanics.get('splits_into') or []
@@ -2185,6 +2186,7 @@ class FastCombatSimulator:
             split_names = [monster_name] * int(split_count)
         if not split_names:
             return None
+        split_names = [self._canonical_monster_name(name) for name in split_names]
 
         split_conditions = special_mechanics.get('split_conditions', {})
         threshold = (
@@ -2198,6 +2200,12 @@ class FastCombatSimulator:
             threshold *= 100
 
         return threshold, list(split_names)
+
+    def _canonical_monster_name(self, monster_name: str) -> str:
+        monster_data = game_data_loader.get_enhanced_monster_data(monster_name)
+        if monster_data and monster_data.get('name'):
+            return monster_data['name']
+        return monster_name
 
     def _is_death_split_due(self, monster: dict, split_info: Tuple[float, List[str]]) -> bool:
         if monster.get('is_gone') or monster.get('split_materialized'):
@@ -2213,6 +2221,7 @@ class FastCombatSimulator:
         return hp_percent <= threshold
 
     def _make_split_monster(self, child_name: str, inherited_hp: int, parent: dict, child_index: int) -> dict:
+        child_name = self._canonical_monster_name(child_name)
         attack_damage = self._strongest_known_attack_damage(child_name)
         return {
             'name': child_name,
@@ -2518,7 +2527,7 @@ class FastCombatSimulator:
         # 1. Monsters killed (high priority)
         initial_alive = sum(1 for m in initial_state.monsters if not m['is_gone'])
         final_alive = sum(1 for m in final_state.monsters if not m['is_gone'])
-        kills = initial_alive - final_alive
+        kills = max(0, initial_alive - final_alive)
         score += kills * weights['KILL_BONUS']
 
         # ALL_LETHAL_BONUS: Exponential bonus for killing all monsters

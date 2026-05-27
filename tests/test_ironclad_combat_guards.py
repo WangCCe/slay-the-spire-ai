@@ -125,6 +125,22 @@ def _slime_boss(current_hp=56, max_hp=140):
     )
 
 
+def _acid_slime_l(current_hp=30, max_hp=65):
+    return Monster(
+        name="Acid Slime (L)",
+        monster_id="Acid_Slime_L",
+        max_hp=max_hp,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.UNKNOWN,
+        half_dead=False,
+        is_gone=False,
+        move_id=3,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+
+
 def _hexaghost(current_hp=250):
     return Monster(
         name="Hexaghost",
@@ -488,6 +504,58 @@ def test_slime_boss_split_materializes_large_slimes_with_inherited_hp():
     assert [monster["name"] for monster in alive] == ["Acid Slime (L)", "Spike Slime (L)"]
     assert [monster["hp"] for monster in alive] == [56, 56]
     assert [monster["max_hp"] for monster in alive] == [56, 56]
+
+
+def test_end_turn_projection_materializes_due_slime_boss_split():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_slime_boss(current_hp=56)])
+    state = SimulationState(context)
+
+    projected = FastCombatSimulator(SynergyCardEvaluator()).project_end_turn_effects(state)
+
+    alive = [monster for monster in projected.monsters if not monster["is_gone"]]
+    assert [monster["name"] for monster in alive] == ["Acid Slime (L)", "Spike Slime (L)"]
+    assert [monster["hp"] for monster in alive] == [56, 56]
+
+
+def test_large_slime_split_materializes_medium_slime_names_and_threat():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_acid_slime_l(current_hp=30)])
+    state = SimulationState(context)
+
+    split_state = FastCombatSimulator(SynergyCardEvaluator())._materialize_pending_death_splits(state)
+
+    alive = [monster for monster in split_state.monsters if not monster["is_gone"]]
+    assert [monster["name"] for monster in alive] == ["Acid Slime (M)", "Acid Slime (M)"]
+    assert [monster["hp"] for monster in alive] == [30, 30]
+    assert all(monster["move_base_damage"] >= 10 for monster in alive)
+
+
+def test_outcome_score_penalizes_shallow_slime_boss_split():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_slime_boss(current_hp=80)])
+    context.turn = 3
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    initial_state = SimulationState(context)
+    above_split_state = initial_state.clone()
+    above_split_state.monsters[0]["hp"] = 71
+    above_split_state.total_damage_dealt = 9
+    shallow_split_state = initial_state.clone()
+    shallow_split_state.monsters[0]["hp"] = 69
+    shallow_split_state.total_damage_dealt = 11
+
+    above_split_score = simulator.calculate_outcome_score(
+        initial_state,
+        above_split_state,
+        context=context,
+    )
+    shallow_split_score = simulator.calculate_outcome_score(
+        initial_state,
+        shallow_split_state,
+        context=context,
+    )
+
+    assert shallow_split_score < above_split_score
 
 
 def test_enemy_lookahead_delays_slime_boss_split_child_threat_until_after_split_turn():

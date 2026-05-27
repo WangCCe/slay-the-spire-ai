@@ -87,6 +87,11 @@ class EnhancedMonsterDatabase:
         if monster_name in self._data:
             return self._data[monster_name]
 
+        # Some mechanics records refer to spawned monsters by monster_id.
+        for value in self._data.values():
+            if str(value.get("monster_id", "")).lower() == monster_name.lower():
+                return value
+
         # Try case-insensitive match
         for key, value in self._data.items():
             if key.lower() == monster_name.lower():
@@ -677,7 +682,7 @@ class EnhancedMonsterDatabase:
         """Check if monster splits on death."""
         mechanics = self.get_special_mechanics(monster_name)
         if mechanics:
-            return mechanics.get("type") == "death_split"
+            return mechanics.get("type") in {"death_split", "split"}
         return False
 
     def get_recommended_strategy(self, monster_name: str) -> Optional[Dict[str, Any]]:
