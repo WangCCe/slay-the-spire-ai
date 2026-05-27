@@ -156,15 +156,18 @@ class SimpleAgent:
             screen_type == ScreenType.SHOP_SCREEN
             and getattr(self, "shop_purchase_made", False)
             and "proceed" not in available
-            and "leave" not in available
-            and "cancel" in available
         ):
             return WaitAction(timeout=1)
         if "leave" in available:
             return LeaveAction()
         if "proceed" in available or getattr(self.game, "proceed_available", False):
             return ProceedAction()
-        if "cancel" in available or "return" in available or "skip" in available:
+        if (
+            "cancel" in available
+            or "return" in available
+            or "skip" in available
+            or getattr(self.game, "cancel_available", False)
+        ):
             return CancelAction()
         if screen_type == ScreenType.SHOP_SCREEN:
             return LeaveAction()

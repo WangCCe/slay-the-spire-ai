@@ -19,7 +19,7 @@ def _agent_for_shop(**game_overrides):
     return agent
 
 
-def test_shop_screen_exit_uses_leave_instead_of_stale_cancel_flag():
+def test_shop_screen_exit_uses_leave_when_not_in_purchase_transition():
     agent = _agent_for_shop(
         screen_type=ScreenType.SHOP_SCREEN,
         screen=SimpleNamespace(cards=[], relics=[], potions=[], purge_available=False),
@@ -28,7 +28,6 @@ def test_shop_screen_exit_uses_leave_instead_of_stale_cancel_flag():
         proceed_available=False,
         available_commands=["choose", "potion", "leave", "key", "click", "wait", "state"],
     )
-    agent.shop_purchase_made = True
 
     action = agent.handle_screen()
 
@@ -94,3 +93,33 @@ def test_shop_screen_waits_after_purchase_when_only_cancel_is_visible():
     action = agent.handle_screen()
 
     assert isinstance(action, WaitAction)
+
+
+def test_shop_screen_waits_after_purchase_when_only_leave_is_visible():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(cards=[], relics=[], potions=[], purge_available=False),
+        gold=0,
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "leave", "key", "click", "wait", "state"],
+    )
+    agent.shop_purchase_made = True
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, WaitAction)
+
+
+def test_shop_room_exit_uses_cancel_group_from_cancel_available_flag():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_ROOM,
+        choice_available=True,
+        cancel_available=True,
+        available_commands=["choose", "potion", "key", "click", "wait", "state"],
+    )
+    agent._leaving_shop_room = True
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CancelAction)
