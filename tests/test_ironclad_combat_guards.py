@@ -623,6 +623,60 @@ def test_uppercut_applies_weak_and_vulnerable_with_upgrade_stacks(monkeypatch):
     assert result.monsters[0]["vulnerable"] == 2
 
 
+def test_perfected_strike_counts_strike_cards_in_deck(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "perfected strike": {
+            "name": "Perfected Strike",
+            "description": "Deal 6 damage. Deals 2 additional damage for ALL your cards containing \"Strike\".",
+        }
+    }
+    loader._wiki_data = {
+        "perfected strike": {
+            "name": "Perfected Strike",
+            "text": "Deal 6 damage.\nDeals [2|3] additional damage for ALL your cards containing \"Strike\".",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    perfected_strike = _card("Perfected Strike", "Perfected Strike", cost=2)
+    context = _combat_context([perfected_strike], energy=2, monsters=[_louse(current_hp=100)])
+    context.game.deck = [
+        _card("Strike_R", "Strike"),
+        _card("Strike_R", "Strike"),
+        _card("Twin Strike", "Twin Strike"),
+        _card("Perfected Strike", "Perfected Strike"),
+    ]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        perfected_strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 14
+
+    perfected_strike_plus = _card("Perfected Strike", "Perfected Strike+", cost=2, upgrades=1)
+    context = _combat_context([perfected_strike_plus], energy=2, monsters=[_louse(current_hp=100)])
+    context.game.deck = [
+        _card("Strike_R", "Strike"),
+        _card("Strike_R", "Strike"),
+        _card("Twin Strike", "Twin Strike"),
+        _card("Perfected Strike", "Perfected Strike"),
+    ]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        perfected_strike_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 18
+
+
 def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

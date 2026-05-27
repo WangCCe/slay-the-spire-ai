@@ -732,7 +732,7 @@ class FastCombatSimulator:
                 for _ in range(hit_count):
                     if monster['is_gone']:
                         break
-                    damage = self._calculate_attack_damage(card, base_damage, state)
+                    damage = self._calculate_attack_damage(card, base_damage, state, context)
                     damage = self._apply_vulnerable_damage(damage, monster)
                     damage = self._apply_weak_damage(damage, monster.get('weak', 0))
                     self._deal_damage_to_monster(state, monster, damage)
@@ -745,7 +745,7 @@ class FastCombatSimulator:
                     for _ in range(hit_count):
                         if monster['is_gone']:
                             break
-                        damage = self._calculate_attack_damage(card, base_damage, state)
+                        damage = self._calculate_attack_damage(card, base_damage, state, context)
                         damage = self._apply_vulnerable_damage(damage, monster)
                         damage = self._apply_weak_damage(damage, monster.get('weak', 0))
                         self._deal_damage_to_monster(state, monster, damage)
@@ -790,7 +790,13 @@ class FastCombatSimulator:
 
         return 1
 
-    def _calculate_attack_damage(self, card: Card, base_damage: int, state: SimulationState) -> int:
+    def _calculate_attack_damage(
+        self,
+        card: Card,
+        base_damage: int,
+        state: SimulationState,
+        context: Optional[DecisionContext] = None,
+    ) -> int:
         """Apply Strength, including cards with non-standard Strength scaling."""
         card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
 
@@ -798,7 +804,25 @@ class FastCombatSimulator:
             multiplier = 5 if getattr(card, 'upgrades', 0) > 0 else 3
             return base_damage + state.player_strength * multiplier
 
+        if card_name == 'Perfected Strike':
+            per_strike_bonus = 3 if getattr(card, 'upgrades', 0) > 0 else 2
+            return base_damage + self._count_strike_cards(context) * per_strike_bonus + state.player_strength
+
         return base_damage + state.player_strength
+
+    def _count_strike_cards(self, context: Optional[DecisionContext]) -> int:
+        """Count deck cards whose displayed name or id contains Strike."""
+        deck = getattr(getattr(context, 'game', None), 'deck', None)
+        if not deck:
+            return 0
+
+        count = 0
+        for deck_card in deck:
+            card_name = getattr(deck_card, 'name', '') or ''
+            card_id = getattr(deck_card, 'card_id', '') or ''
+            if 'strike' in card_name.lower() or 'strike' in card_id.lower():
+                count += 1
+        return count
 
     def _apply_vulnerable_damage(self, damage: int, monster: dict) -> int:
         """Apply vulnerable multiplier (1.5x). Binary: any vulnerable stacks = 1.5x damage."""
