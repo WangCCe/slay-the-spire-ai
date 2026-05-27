@@ -4,6 +4,27 @@
 
 ## 脚本列表
 
+### 0. `diagnose_live_batch.py` / `diagnose_run.py` - 实战批次诊断
+
+**功能：**
+- 汇总最近一批 `.run` 文件：胜利数、最佳楼层、平均楼层、死因、卡牌奖励选择/跳过
+- 扫描 `ai_debug.log` 和 `communication_mod_errors.log` 的危险信号
+- 对单局输出 deck、relic、boss relic、campfire、card reward、damage taken 和末局日志窗口
+- 自动匹配 `runs/ai_games.txt` 的 AI 标记；单局诊断会回退搜索 `logs_archive`
+
+**用法：**
+```bash
+python analysis_scripts/diagnose_live_batch.py --game-dir D:\SteamLibrary\steamapps\common\SlayTheSpire --since 1779896308 --tail-lines 120
+python analysis_scripts/diagnose_run.py 1779896509 --game-dir D:\SteamLibrary\steamapps\common\SlayTheSpire --before-seconds 90 --after-seconds 10
+```
+
+**何时使用：**
+- 每次验证批次结束后，先用 `diagnose_live_batch.py` 找最佳楼层和重复死因
+- 选中具体失败局后，用 `diagnose_run.py` 快速拿到这一局的可读证据包
+- 机制修复前，用这两个脚本把 `.run` 证据和日志证据对齐
+
+---
+
 ### 1. `analyze_rl_card_choices.py` - 卡牌选择分析
 
 **功能：**
