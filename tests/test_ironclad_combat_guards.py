@@ -3047,6 +3047,32 @@ def test_strength_skill_cards_affect_followup_attacks():
 
     assert result.total_damage_dealt == 8
 
+    counted_flex_plus = _card(
+        "Flex+1",
+        "Flex+1",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([counted_flex_plus, strike], energy=1, monsters=[_louse(current_hp=100)])
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        counted_flex_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 10
+
     spot_weakness = _card(
         "Spot Weakness",
         "Spot Weakness",

@@ -1915,7 +1915,7 @@ class FastCombatSimulator:
         target_index: Optional[int] = None,
     ):
         """Apply immediate Strength-changing Ironclad skills."""
-        card_id = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_id = _canonical_card_name(card)
         upgrades = getattr(card, 'upgrades', 0)
 
         if card_id == 'Flex':
