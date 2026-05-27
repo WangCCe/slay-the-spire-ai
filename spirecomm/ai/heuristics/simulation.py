@@ -1793,7 +1793,7 @@ class FastCombatSimulator:
                             logger.debug(f"[BLOCK_NONE] No block found for {card.card_id}")
                     else:
                         logger.debug(f"[BLOCK_NODATA] No card data found for {card_name}")
-        if card.card_id == 'Rage':
+        if _canonical_card_name(card) == 'Rage':
             rage_gain = 5 if getattr(card, 'upgrades', 0) > 0 else 3
             state.rage_block_per_attack += rage_gain
 

@@ -388,6 +388,38 @@ def test_simulation_reads_power_name_field_from_player_powers():
     assert result.player_block == 3
 
 
+def test_upgraded_rage_card_id_sets_attack_block_trigger():
+    rage_plus = _card(
+        "Rage+",
+        "Rage+",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+        upgrades=1,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([rage_plus, strike], energy=1, monsters=[_louse(current_hp=100)])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        rage_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert state.rage_block_per_attack == 5
+    assert result.player_block == 5
+
+
 def test_simulation_tracks_chosen_hex_power_from_player_powers():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=100)])
