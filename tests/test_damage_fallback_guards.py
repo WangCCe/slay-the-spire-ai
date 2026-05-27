@@ -1153,6 +1153,25 @@ def test_timing_analysis_clamps_negative_live_move_damage_to_zero():
     assert analysis["current_damage"] == 0
 
 
+def test_heuristic_incoming_damage_clamps_negative_live_move_damage_to_zero():
+    monster = SimpleNamespace(
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.DEBUFF",
+        move_id=2,
+        move_adjusted_damage=-1,
+        move_hits=3,
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(monsters=[monster]),
+        act=1,
+    )
+
+    assert HeuristicCombatPlanner()._get_incoming_damage(context) == 0
+
+
 def test_hp_threshold_modes_predict_guardian_sequence():
     database = EnhancedMonsterDatabase()
 

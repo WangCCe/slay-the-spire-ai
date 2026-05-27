@@ -3759,8 +3759,9 @@ class HeuristicCombatPlanner(CombatPlanner):
         debug_entries = []
         for monster in context.game.monsters:
             if not monster.is_gone and not monster.half_dead:
-                if monster.move_adjusted_damage is not None:
-                    incoming += monster.move_adjusted_damage * monster.move_hits
+                adjusted_damage = monster.move_adjusted_damage
+                if adjusted_damage is not None:
+                    incoming += max(0, adjusted_damage) * monster.move_hits
                     debug_entries.append(
                         f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "
                         f"adjusted={monster.move_adjusted_damage} hits={monster.move_hits}"
