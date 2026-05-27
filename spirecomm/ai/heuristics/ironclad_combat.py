@@ -926,6 +926,9 @@ class IroncladCombatPlanner(CombatPlanner):
         if before <= 0:
             return 0
 
+        if not hasattr(state, 'clone'):
+            return self._estimate_attack_damage_without_simulation(card, context)
+
         target = (
             context.monsters_alive[target_idx]
             if target_idx < len(context.monsters_alive)
@@ -943,6 +946,31 @@ class IroncladCombatPlanner(CombatPlanner):
 
         after = result.monsters[target_idx]['hp'] + result.monsters[target_idx]['block']
         return max(0, before - after)
+
+    def _estimate_attack_damage_without_simulation(
+        self,
+        card: Card,
+        context: DecisionContext,
+    ) -> int:
+        base_damage = getattr(card, 'damage', 0)
+        if base_damage is None:
+            base_damage = 0
+
+        if base_damage == 0 or not hasattr(card, 'damage'):
+            try:
+                card_name = card.card_id.replace('+', '')
+                card_data = game_data_loader.get_card_data(card_name)
+                if card_data:
+                    parsed_damage = game_data_loader._parse_card_damage(card_data)
+                    base_damage = parsed_damage if parsed_damage is not None else 0
+            except Exception:
+                base_damage = 0
+
+        if base_damage == 0:
+            base_damage = 6
+
+        strength = getattr(context, 'strength', 0)
+        return base_damage + strength
 
     def _should_explore_targets(self, context: DecisionContext, elapsed_time: float) -> bool:
         """
