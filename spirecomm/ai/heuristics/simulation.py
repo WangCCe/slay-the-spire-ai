@@ -422,6 +422,7 @@ class SimulationState:
         self.rage_block_per_attack = self._get_player_power_amount(context, 'Rage')
         self.double_tap_charges = 0
         self.corruption_active = self._has_player_power(context, 'Corruption')
+        self.feel_no_pain_block_per_exhaust = self._get_player_power_amount(context, 'Feel No Pain')
 
         # Monster state (each monster tracked independently)
         self.monsters = []
@@ -512,6 +513,7 @@ class SimulationState:
         new_state.rage_block_per_attack = self.rage_block_per_attack
         new_state.double_tap_charges = self.double_tap_charges
         new_state.corruption_active = self.corruption_active
+        new_state.feel_no_pain_block_per_exhaust = self.feel_no_pain_block_per_exhaust
         new_state.monsters = [m.copy() for m in self.monsters]
         new_state.played_card_uuids = self.played_card_uuids.copy()
         new_state.energy_spent = self.energy_spent
@@ -551,7 +553,8 @@ class SimulationState:
             self.player_frail,
             self.rage_block_per_attack,
             self.double_tap_charges,
-            self.corruption_active
+            self.corruption_active,
+            self.feel_no_pain_block_per_exhaust
         )
 
         # Monster states (sorted for consistent hashing)
@@ -654,6 +657,7 @@ class FastCombatSimulator:
 
         new_state.player_energy -= cost
         new_state.energy_spent += cost
+        starting_exhaust_events = new_state.exhaust_events
 
         # Check special monster abilities before applying card effects
         for i, monster in enumerate(new_state.monsters):
@@ -691,6 +695,8 @@ class FastCombatSimulator:
 
         if card_type != CardType.ATTACK:
             self._apply_self_damage(new_state, card)
+
+        self._apply_feel_no_pain_block(new_state, starting_exhaust_events)
 
         return new_state
 
@@ -1273,8 +1279,7 @@ class FastCombatSimulator:
 
         # Feel No Pain - gain block when cards exhaust
         elif card_id == 'Feel No Pain':
-            # Track as exhaust synergy
-            pass
+            state.feel_no_pain_block_per_exhaust = 4 if card.upgrades > 0 else 3
 
         # Draw power
         elif card_id == 'Draw':
@@ -1295,6 +1300,14 @@ class FastCombatSimulator:
                 pass
 
         # Other powers can be added as needed
+
+    def _apply_feel_no_pain_block(self, state: SimulationState, starting_exhaust_events: int):
+        exhaust_delta = state.exhaust_events - starting_exhaust_events
+        if exhaust_delta <= 0 or state.feel_no_pain_block_per_exhaust <= 0:
+            return
+
+        block_gain = exhaust_delta * state.feel_no_pain_block_per_exhaust
+        state.player_block += self._apply_frail_block(block_gain, state.player_frail)
 
     def _apply_strength_skill(
         self,

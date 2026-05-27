@@ -190,6 +190,37 @@ def test_simulation_reads_power_name_field_from_player_powers():
     assert result.player_block == 3
 
 
+def test_feel_no_pain_grants_block_for_exhaust_events(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "true grit": {
+            "name": "True Grit",
+            "description": "Gain 7 Block.\nExhaust 1 card at random.",
+        }
+    }
+    loader._wiki_data = {
+        "true grit": {
+            "name": "True Grit",
+            "text": "Gain [7|9] #Block.\n#Exhaust 1 card at random.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    true_grit = _card("True Grit", "True Grit", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([true_grit], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        true_grit,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.exhaust_events == 1
+    assert result.player_block == 10
+
+
 def test_simulator_does_not_treat_upgraded_non_block_skills_as_block(monkeypatch):
     burning_pact = _card(
         "Burning Pact",
