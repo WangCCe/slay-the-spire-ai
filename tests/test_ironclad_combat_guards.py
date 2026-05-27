@@ -680,6 +680,48 @@ def test_thunderclap_applies_vulnerable_to_all_enemies(monkeypatch):
     assert [monster["vulnerable"] for monster in result.monsters] == [1, 1]
 
 
+def test_pommel_strike_tracks_attack_card_draw(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "pommel strike": {
+            "name": "Pommel Strike",
+            "description": "Deal 9 damage.\nDraw 1 card.",
+        },
+    }
+    loader._wiki_data = {
+        "pommel strike": {
+            "name": "Pommel Strike",
+            "text": "Deal [9|10] damage.\nDraw [1|2] cards.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    pommel = _card("Pommel Strike", "Pommel Strike", cost=1)
+    context = _combat_context([pommel], energy=1, monsters=[_louse(current_hp=30)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        pommel,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.cards_drawn == 1
+
+    pommel_plus = _card("Pommel Strike", "Pommel Strike+", cost=1, upgrades=1)
+    context = _combat_context([pommel_plus], energy=1, monsters=[_louse(current_hp=30)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        pommel_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.cards_drawn == 2
+
+
 def test_entrench_doubles_current_block():
     entrench = _card(
         "Entrench",

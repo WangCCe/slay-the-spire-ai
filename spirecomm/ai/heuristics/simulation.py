@@ -888,6 +888,7 @@ class FastCombatSimulator:
 
         self._apply_attack_healing(state, card, starting_total_damage)
         self._apply_attack_resource_effects(state, card, target_index)
+        self._apply_attack_draw_effects(state, card, card_data)
         self._apply_attack_block_effects(state, card, card_data)
         self._apply_attack_exhaust_effects(state, card, context, card_data)
 
@@ -950,6 +951,25 @@ class FastCombatSimulator:
         state.player_energy += 1
         state.energy_gained += 1
         state.cards_drawn += 1
+
+    def _apply_attack_draw_effects(
+        self,
+        state: SimulationState,
+        card: Card,
+        card_data: Optional[Dict[str, Any]],
+    ):
+        if not card_data:
+            return
+
+        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        if card_name == 'Dropkick':
+            return
+        description = self._get_card_effect_text(card_name, card_data)
+        if 'draw' not in description:
+            return
+
+        upgraded = getattr(card, 'upgrades', 0) > 0
+        state.cards_drawn += self._extract_draw_count(description, upgraded)
 
     def _apply_attack_block_effects(
         self,
@@ -1103,6 +1123,18 @@ class FastCombatSimulator:
                 return int(match.group(1))
 
         return None
+
+    def _extract_draw_count(self, description: str, upgraded: bool) -> int:
+        """Extract card draw count, including wiki [base|upgraded] notation."""
+        bracket_match = re.search(r'draw\s*\[(\d+)\|(\d+)\]\s*cards?', description)
+        if bracket_match:
+            return int(bracket_match.group(2 if upgraded else 1))
+
+        draw_match = re.search(r'draw\s+(\d+)\s+cards?', description)
+        if draw_match:
+            return int(draw_match.group(1))
+
+        return 0
 
     def _apply_frail_block(self, block: int, player_frail: int) -> int:
         """Apply frail multiplier (0.75x). Binary: any frail stacks = 0.75x block gained."""
@@ -1370,9 +1402,10 @@ class FastCombatSimulator:
                     state.exhaust_events += 1
                 # Track draw events
                 if 'draw' in description:
-                    draw_match = re.search(r'draw (\d+)', description)
-                    if draw_match:
-                        state.cards_drawn += int(draw_match.group(1))
+                    state.cards_drawn += self._extract_draw_count(
+                        description,
+                        getattr(card, 'upgrades', 0) > 0,
+                    )
         except:
             pass
 
