@@ -330,6 +330,64 @@ def test_fast_simulator_counts_upgraded_sword_boomerang_hits_with_counted_suffix
     assert state.total_damage_dealt == 12
 
 
+def test_fast_simulator_reaper_healing_uses_counted_upgrade_suffix(monkeypatch):
+    card = Card(
+        card_id="Reaper+1",
+        name="Reaper+1",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.RARE,
+        has_target=False,
+        cost=2,
+        upgrades=1,
+    )
+    card_data = {
+        "name": "Reaper",
+        "description": "Deal 4 damage to ALL enemies. Heal HP equal to unblocked damage.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Reaper" else None,
+    )
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 40,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "thorns": 0,
+            },
+            {
+                "hp": 40,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "thorns": 0,
+            },
+        ],
+        player_strength=0,
+        player_hp=40,
+        player_max_hp=80,
+        total_damage_dealt=0,
+        monsters_killed=0,
+        damage_instances=0,
+    )
+
+    FastCombatSimulator(None)._apply_attack(
+        state,
+        card,
+        target=None,
+        target_index=None,
+        context=None,
+    )
+
+    assert state.total_damage_dealt == 10
+    assert state.player_hp == 50
+
+
 def test_game_data_parser_applies_counted_searing_blow_upgrade_suffix():
     loader = data_loader.GameDataLoader(auto_load=False)
     loader._wiki_data = {}

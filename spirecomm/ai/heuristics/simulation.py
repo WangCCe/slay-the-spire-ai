@@ -1066,7 +1066,7 @@ class FastCombatSimulator:
         return card_name in {'Sword Boomerang'}
 
     def _apply_attack_healing(self, state: SimulationState, card: Card, starting_total_damage: int):
-        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_name = _canonical_card_name(card)
         if card_name != 'Reaper':
             return
 
