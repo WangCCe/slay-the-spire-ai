@@ -1632,6 +1632,28 @@ def test_entrench_doubles_current_block():
 
     assert result.player_block == 24
 
+    counted_entrench = _card(
+        "Entrench+1",
+        "Entrench+1",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([counted_entrench], energy=1, monsters=[_louse(current_hp=100)])
+    initial_state = SimulationState(context)
+    initial_state.player_block = 12
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        initial_state,
+        counted_entrench,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 24
+
 
 def test_second_wind_gains_block_for_each_non_attack_card_exhausted():
     second_wind = _card(
