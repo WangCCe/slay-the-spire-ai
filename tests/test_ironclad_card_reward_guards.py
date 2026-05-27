@@ -36,6 +36,10 @@ def _card(card_id, cost=1, upgrades=0):
     )
 
 
+def _relic(relic_id):
+    return SimpleNamespace(relic_id=relic_id, name=relic_id)
+
+
 def _agent_for_reward(
     reward_cards,
     deck,
@@ -76,6 +80,18 @@ def _agent_for_reward(
         player=SimpleNamespace(energy=3, powers=[]),
     )
     return agent
+
+
+def test_ironclad_boss_relic_selection_avoids_runic_dome_when_safe_options_exist():
+    relics = [
+        _relic("Runic Dome"),
+        _relic("Empty Cage"),
+        _relic("Pandora's Box"),
+    ]
+
+    best_relic = IroncladPriority().get_best_boss_relic(relics)
+
+    assert best_relic.relic_id == "Empty Cage"
 
 
 def test_ironclad_strategy_can_take_carnage_despite_legacy_zero_copy_cap():

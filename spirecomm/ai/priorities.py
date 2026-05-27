@@ -16,6 +16,10 @@ class Priority:
 
     BOSS_RELIC_PRIORITY_LIST = []
 
+    BOSS_RELIC_AVOID_LIST = [
+        "Runic Dome",
+    ]
+
     MAP_NODE_PRIORITIES_1 = {'R': 1000, 'E': -50, '$': 100, '?': 100, 'M': 1, 'T': 0}  # E: 10→-50, avoid elites in Act 1
 
     MAP_NODE_PRIORITIES_2 = {'R': 1000, 'E': 100, '$': 10, '?': 10, 'M': 1, 'T': 0}
@@ -136,8 +140,13 @@ class Priority:
 
         return group_count < group_limit
 
+    def _boss_relic_priority_score(self, relic):
+        relic_id = getattr(relic, "relic_id", getattr(relic, "name", str(relic)))
+        avoid_rank = 1 if relic_id in self.BOSS_RELIC_AVOID_LIST else 0
+        return (avoid_rank, self.BOSS_RELIC_PRIORITIES.get(relic_id, math.inf))
+
     def get_best_boss_relic(self, relic_list):
-        return min(relic_list, key=lambda x: self.BOSS_RELIC_PRIORITIES.get(x.relic_id, 0))
+        return min(relic_list, key=self._boss_relic_priority_score)
 
     def is_card_aoe(self, card):
         return card.card_id in self.AOE_CARDS
