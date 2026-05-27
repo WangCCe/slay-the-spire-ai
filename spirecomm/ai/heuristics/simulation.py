@@ -1263,7 +1263,7 @@ class FastCombatSimulator:
         context: Optional[DecisionContext] = None,
     ) -> int:
         """Apply Strength, including cards with non-standard Strength scaling."""
-        card_name = card.card_id.replace('+', '') if hasattr(card, 'card_id') else ''
+        card_name = _canonical_card_name(card)
 
         if card_name == 'Heavy Blade':
             multiplier = 5 if getattr(card, 'upgrades', 0) > 0 else 3

@@ -2222,6 +2222,19 @@ def test_heavy_blade_uses_strength_multiplier_and_static_base_damage(monkeypatch
 
     assert result.total_damage_dealt == 29
 
+    counted_heavy_blade_plus = _card("Heavy Blade+1", "Heavy Blade+1", cost=2, upgrades=1)
+    context = _combat_context([counted_heavy_blade_plus], energy=2, monsters=[_louse(current_hp=100)])
+    context.strength = 3
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        counted_heavy_blade_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 29
+
 
 def test_fiend_fire_hits_once_per_other_unplayed_card_with_upgrade_damage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
