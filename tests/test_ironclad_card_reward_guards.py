@@ -502,6 +502,43 @@ def test_ironclad_strategy_prefers_thunderclap_over_second_brutality_before_boss
     assert action.name == "Thunderclap"
 
 
+def test_ironclad_strategy_prefers_immolate_over_armaments_before_act1_boss():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Bandage Up", cost=0),
+        _card("Havoc", cost=0, upgrades=1),
+        _card("Thunderclap"),
+        _card("Thunderclap"),
+        _card("Ghostly Armor", cost=1),
+        _card("Shrug It Off", upgrades=1),
+        _card("Shrug It Off"),
+    ]
+    reward_cards = [
+        _card("Immolate", cost=2),
+        _card("Armaments", cost=1),
+        _card("Anger", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=14,
+        hp=34,
+        max_hp=80,
+        act_boss="Hexaghost",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Immolate"
+
+
 def test_large_deck_reward_keeps_strategy_good_card_despite_energy_curve_penalty():
     deck = [
         _card("Strike_R"),

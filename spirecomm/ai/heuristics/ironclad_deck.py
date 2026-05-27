@@ -41,7 +41,7 @@ class IroncladDeckStrategy:
         'Disarm', 'Headbutt', 'Uppercut', 'Pommel Strike',
         'Whirlwind', 'True Grit', 'Inflame',
         'Hemokinesis', 'Carnage', 'Anger', 'Clothesline', 'Cleave',
-        'Thunderclap',
+        'Thunderclap', 'Immolate',
     }
 
     # Act 1 damage priorities
@@ -50,7 +50,7 @@ class IroncladDeckStrategy:
         'Inflame', 'Rampage', 'Heavy Blade', 'Headbutt',
         'Uppercut', 'Spot Weakness', 'Twin Strike', 'Reaper',
         'Hemokinesis', 'Carnage', 'Anger', 'Clothesline',
-        'Thunderclap',
+        'Thunderclap', 'Immolate',
     }
 
     # HP-cost cards (spend HP to play, avoid at low HP)

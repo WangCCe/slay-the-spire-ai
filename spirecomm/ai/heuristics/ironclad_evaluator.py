@@ -49,7 +49,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         'Whirlwind': 78,     # AOE damage, synergizes with Strength
         'Battle Trance': 80,  # Key card draw, essential for consistency
         'Double Tap': 72,    # Enables powerful combos, especially with heavy hitters
-        'Immolate': 73,      # Excellent AOE damage + card draw, despite self-damage
+        'Immolate': 95,      # Premium Act 1 AoE frontload; adds a Burn, not HP loss
         'Metallicize': 70,   # Good persistent block, great for early game
         'Feed': 72,          # Damage + max HP gain, excellent sustain
         'Heavy Blade': 75,   # Scales well with Strength, efficient damage
@@ -110,13 +110,13 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         'Inflame', 'Rampage', 'Heavy Blade', 'Headbutt',
         'Uppercut', 'Spot Weakness', 'Twin Strike', 'Reaper',
         'Hemokinesis', 'Carnage', 'Anger', 'Clothesline',
-        'Thunderclap',
+        'Thunderclap', 'Immolate',
     }
 
     ACT_1_PREMIUM_FRONTLOAD = {
         'Pommel Strike', 'Anger', 'Clothesline', 'Uppercut',
         'Hemokinesis', 'Carnage', 'Cleave', 'Headbutt',
-        'Twin Strike', 'Iron Wave', 'Whirlwind', 'Thunderclap',
+        'Twin Strike', 'Iron Wave', 'Whirlwind', 'Thunderclap', 'Immolate',
     }
 
     ACT_1_SURVIVAL_BLOCK = {
@@ -148,7 +148,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
 
     # Self-damage cards (deal HP loss as a side effect)
     SELF_DAMAGE_CARDS = {
-        'Immolate', 'Combust', 'Brutality',
+        'Combust', 'Brutality',
     }
 
     def __init__(self, player_class='IRONCLAD'):
