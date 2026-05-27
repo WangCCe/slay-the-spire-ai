@@ -423,6 +423,7 @@ class SimulationState:
         self.double_tap_charges = 0
         self.corruption_active = self._has_player_power(context, 'Corruption')
         self.feel_no_pain_block_per_exhaust = self._get_player_power_amount(context, 'Feel No Pain')
+        self.dark_embrace_draw_per_exhaust = self._get_player_power_amount(context, 'Dark Embrace')
 
         # Monster state (each monster tracked independently)
         self.monsters = []
@@ -514,6 +515,7 @@ class SimulationState:
         new_state.double_tap_charges = self.double_tap_charges
         new_state.corruption_active = self.corruption_active
         new_state.feel_no_pain_block_per_exhaust = self.feel_no_pain_block_per_exhaust
+        new_state.dark_embrace_draw_per_exhaust = self.dark_embrace_draw_per_exhaust
         new_state.monsters = [m.copy() for m in self.monsters]
         new_state.played_card_uuids = self.played_card_uuids.copy()
         new_state.energy_spent = self.energy_spent
@@ -554,7 +556,8 @@ class SimulationState:
             self.rage_block_per_attack,
             self.double_tap_charges,
             self.corruption_active,
-            self.feel_no_pain_block_per_exhaust
+            self.feel_no_pain_block_per_exhaust,
+            self.dark_embrace_draw_per_exhaust,
         )
 
         # Monster states (sorted for consistent hashing)
@@ -697,6 +700,7 @@ class FastCombatSimulator:
             self._apply_self_damage(new_state, card)
 
         self._apply_feel_no_pain_block(new_state, starting_exhaust_events)
+        self._apply_dark_embrace_draw(new_state, starting_exhaust_events)
 
         return new_state
 
@@ -1328,6 +1332,10 @@ class FastCombatSimulator:
         elif card_id == 'Feel No Pain':
             state.feel_no_pain_block_per_exhaust = 4 if card.upgrades > 0 else 3
 
+        # Dark Embrace - draw when cards exhaust
+        elif card_id == 'Dark Embrace':
+            state.dark_embrace_draw_per_exhaust = 1
+
         # Draw power
         elif card_id == 'Draw':
             state.cards_drawn += 1 if card.upgrades == 0 else 2
@@ -1355,6 +1363,13 @@ class FastCombatSimulator:
 
         block_gain = exhaust_delta * state.feel_no_pain_block_per_exhaust
         state.player_block += self._apply_frail_block(block_gain, state.player_frail)
+
+    def _apply_dark_embrace_draw(self, state: SimulationState, starting_exhaust_events: int):
+        exhaust_delta = state.exhaust_events - starting_exhaust_events
+        if exhaust_delta <= 0 or state.dark_embrace_draw_per_exhaust <= 0:
+            return
+
+        state.cards_drawn += exhaust_delta * state.dark_embrace_draw_per_exhaust
 
     def _apply_strength_skill(
         self,
