@@ -109,6 +109,22 @@ def _fungi_beast(current_hp=22):
     )
 
 
+def _sentry(current_hp=39, move_id=1, intent=Intent.DEBUFF):
+    return Monster(
+        name="Sentry",
+        monster_id="Sentry",
+        max_hp=current_hp,
+        current_hp=current_hp,
+        block=0,
+        intent=intent,
+        half_dead=False,
+        is_gone=False,
+        move_id=move_id,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+
+
 def _awakened_one(current_hp=300):
     return Monster(
         name="Awakened One",
@@ -457,6 +473,61 @@ def test_fungi_beast_death_vulnerable_can_make_same_turn_attack_lethal():
     )
 
     assert score == float("-inf")
+
+
+def test_enemy_status_lookahead_counts_sentry_bolt_dazed_cards():
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_sentry(move_id=1), _sentry(move_id=1)],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    status = simulator.simulate_enemy_status_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert status["dazed"] == 4
+    assert status["total"] == 4
+
+
+def test_enemy_status_pollution_penalizes_outcome_score():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=50)])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 1
+    simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+    initial_state = SimulationState(context)
+    final_state = initial_state.clone()
+
+    simulator.simulate_enemy_status_lookahead = lambda *_args, **_kwargs: {
+        "total": 2,
+        "dazed": 2,
+        "burn": 0,
+        "slimed": 0,
+        "wound": 0,
+    }
+    polluted_score = simulator.calculate_outcome_score(
+        initial_state,
+        final_state,
+        context=context,
+    )
+
+    simulator.simulate_enemy_status_lookahead = lambda *_args, **_kwargs: {
+        "total": 0,
+        "dazed": 0,
+        "burn": 0,
+        "slimed": 0,
+        "wound": 0,
+    }
+    clean_score = simulator.calculate_outcome_score(
+        initial_state,
+        final_state,
+        context=context,
+    )
+
+    assert polluted_score < clean_score
 
 
 def test_feel_no_pain_grants_block_for_exhaust_events(monkeypatch):

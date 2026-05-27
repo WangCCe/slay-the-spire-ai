@@ -68,6 +68,7 @@ EXHAULT_SYNERGY_VALUE = 3.0  # Points per exhaust event (Feel No Pain)
 DRAW_SYNERGY_VALUE = 3.0  # Points per card drawn
 ENERGY_SYNERGY_VALUE = 4.0  # Points per energy gained/saved (Corruption, Bloodletting)
 STATUS_CARD_PENALTY = 12.0  # Cost of adding Dazed/Burn/Wound-style deck pollution
+ENEMY_STATUS_LOOKAHEAD_WEIGHT = 0.5  # Enemy status predictions are useful but uncertain
 
 # Debuff application bonuses
 VULNERABLE_APPLY_BONUS = 6.0
@@ -457,6 +458,7 @@ class SimulationState:
                 'max_hp': monster.max_hp,
                 'block': monster.block if hasattr(monster, 'block') else 0,
                 'intent': monster.intent if hasattr(monster, 'intent') else None,
+                'move_id': getattr(monster, 'move_id', None),
                 'is_gone': monster.is_gone,
                 'half_dead': monster.half_dead,
                 'vulnerable': context.vulnerable_stacks.get(i, 0),  # Vulnerable stacks (by index)
@@ -638,6 +640,7 @@ class SimulationState:
                 m.get('mode_shift', 0),
                 m.get('artifact', 0),
                 str(m['intent']) if m['intent'] else None,  # Convert intent to string
+                m.get('move_id', None),
                 m['is_gone'],
                 m.get('monster_id', ''),
                 m['name']  # Include name for elite/boss identification
@@ -1371,6 +1374,30 @@ class FastCombatSimulator:
             'weak': _get_stack('weak') or _get_stack('weak_applied') or _get_stack('weak_amount'),
             'frail': _get_stack('frail') or _get_stack('frail_applied') or _get_stack('frail_amount'),
             'vulnerable': _get_stack('vulnerable') or _get_stack('vulnerable_applied') or _get_stack('vulnerable_amount'),
+        }
+
+    def _extract_move_status_cards(self, move: Dict[str, Any]) -> Dict[str, int]:
+        """Extract status cards added by a monster move from wiki data fields."""
+        def _get_count(*keys: str) -> int:
+            for key in keys:
+                value = move.get(key, 0)
+                if isinstance(value, bool):
+                    return 1 if value else 0
+                if isinstance(value, (int, float)):
+                    return int(value)
+            return 0
+
+        dazed = _get_count('dazed', 'dazed_count', 'dazed_added')
+        burn = _get_count('burn', 'burn_count', 'burn_added')
+        slimed = _get_count('slimed', 'slimed_count', 'slimed_added')
+        wound = _get_count('wound', 'wounds', 'wound_count', 'wound_added')
+        total = dazed + burn + slimed + wound
+        return {
+            'total': total,
+            'dazed': dazed,
+            'burn': burn,
+            'slimed': slimed,
+            'wound': wound,
         }
 
     def _calculate_x_damage(
@@ -2178,6 +2205,68 @@ class FastCombatSimulator:
             logger.warning(f"[LOOKAHEAD] Failed to simulate enemy lookahead: {e}")
             return 0
 
+    def simulate_enemy_status_lookahead(
+        self,
+        state: SimulationState,
+        context: DecisionContext,
+        look_ahead: int = 2,
+    ) -> Dict[str, int]:
+        """Estimate status-card pollution from current and near-future monster moves."""
+        totals = {'total': 0, 'dazed': 0, 'burn': 0, 'slimed': 0, 'wound': 0}
+        try:
+            current_turn = getattr(context, 'turn', 1)
+            for step in range(look_ahead):
+                for monster in state.monsters:
+                    if monster['is_gone']:
+                        continue
+
+                    move = self._current_monster_move(monster) if step == 0 else None
+                    if move is None:
+                        monster_name = monster.get('name', '')
+                        if not monster_name:
+                            continue
+                        max_hp = monster.get('max_hp', monster['hp'])
+                        hp_percent = monster['hp'] / max_hp if max_hp > 0 else 1.0
+                        predicted_moves = game_data_loader.predict_monster_moves(
+                            monster_name,
+                            current_turn + step,
+                            hp_percent,
+                        )
+                        if predicted_moves:
+                            move = predicted_moves[0].get('move', None)
+
+                    if not move:
+                        continue
+
+                    counts = self._extract_move_status_cards(move)
+                    for key in totals:
+                        totals[key] += counts.get(key, 0)
+
+            if totals['total'] > 0:
+                logger.info(
+                    "[STATUS_LOOKAHEAD] predicted=%s dazed=%s burn=%s slimed=%s wound=%s",
+                    totals['total'],
+                    totals['dazed'],
+                    totals['burn'],
+                    totals['slimed'],
+                    totals['wound'],
+                )
+            return totals
+        except Exception as e:
+            logger.warning(f"[STATUS_LOOKAHEAD] Failed to simulate enemy status pollution: {e}")
+            return totals
+
+    def _current_monster_move(self, monster: dict) -> Optional[Dict[str, Any]]:
+        """Return the current move from live state move_id when available."""
+        move_id = monster.get('move_id', None)
+        if move_id is None:
+            return None
+
+        for move in game_data_loader.get_monster_moves(monster.get('name', '')):
+            if move.get('move_id') == move_id:
+                return move
+        return None
+
     def calculate_future_monster_damage(self, state: SimulationState, context: DecisionContext, look_ahead: int = 2) -> int:
         """Compatibility wrapper for future damage prediction."""
         return self.simulate_enemy_lookahead(state, context, look_ahead)
@@ -2316,6 +2405,7 @@ class FastCombatSimulator:
             'max_hp': inherited_hp,
             'block': 0,
             'intent': Intent.UNKNOWN,
+            'move_id': None,
             'is_gone': False,
             'half_dead': False,
             'vulnerable': 0,
@@ -2765,6 +2855,24 @@ class FastCombatSimulator:
                     logger.info(
                         f"[FUTURE_DAMAGE_PENALTY] -{future_damage_penalty:.1f} score for "
                         f"{future_damage} predicted damage over next {lookahead_turns} turns"
+                    )
+
+                future_status = self.simulate_enemy_status_lookahead(
+                    final_state,
+                    context,
+                    look_ahead=lookahead_turns,
+                )
+                if future_status.get('total', 0) > 0:
+                    future_status_penalty = (
+                        future_status['total']
+                        * STATUS_CARD_PENALTY
+                        * ENEMY_STATUS_LOOKAHEAD_WEIGHT
+                    )
+                    score -= future_status_penalty
+                    logger.info(
+                        "[FUTURE_STATUS_PENALTY] -%.1f score for %s predicted status cards",
+                        future_status_penalty,
+                        future_status['total'],
                     )
             except Exception as e:
                 logger.warning(f"[FUTURE_DAMAGE_PENALTY] Failed to apply future damage penalty: {e}")
