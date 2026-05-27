@@ -993,17 +993,48 @@ class SimpleAgent:
             f"[MAP_ROUTING] Generating route: Act={act}, Floor={floor}, HP={hp_pct:.1%}, Class={self.chosen_class}\n"
         )
 
-        best_rewards = {
-            0: {
+        map_height = max(self.game.map.nodes.keys())
+        min_reward = -(10**9)
+        screen = getattr(self.game, "screen", None)
+        next_nodes = getattr(screen, "next_nodes", []) or []
+        at_act_start = bool(next_nodes) and getattr(next_nodes[0], "y", None) == 0
+        current_node = getattr(screen, "current_node", None)
+        current_map_node = None
+        if (
+            not at_act_start
+            and current_node is not None
+            and getattr(current_node, "y", -1) >= 0
+        ):
+            current_map_node = self.game.map.get_node(current_node.x, current_node.y)
+
+        start_y = current_map_node.y if current_map_node is not None else 0
+        best_rewards = {}
+        best_parents = {}
+        if current_map_node is not None:
+            best_rewards[start_y] = {
+                node.x: min_reward * 20
+                for node in self.game.map.nodes[start_y].values()
+            }
+            best_rewards[start_y][current_map_node.x] = 0
+            best_parents[start_y] = {
+                node.x: -1 for node in self.game.map.nodes[start_y].values()
+            }
+            logging.info(
+                "[MAP_ROUTING] Replan seed: current_node=(%s,%s) symbol=%s\n",
+                current_map_node.x,
+                current_map_node.y,
+                current_map_node.symbol,
+            )
+        else:
+            best_rewards[0] = {
                 node.x: self._calculate_map_node_priority(node, context)
                 for node in self.game.map.nodes[0].values()
             }
-        }
-        best_parents = {0: {node.x: 0 for node in self.game.map.nodes[0].values()}}
-        map_height = max(self.game.map.nodes.keys())
-        min_reward = -(10**9)
+            best_parents[0] = {
+                node.x: 0 for node in self.game.map.nodes[0].values()
+            }
 
-        for y in range(0, map_height):
+        for y in range(start_y, map_height):
             best_rewards[y + 1] = {
                 node.x: min_reward * 20 for node in self.game.map.nodes[y + 1].values()
             }
@@ -1030,8 +1061,10 @@ class SimpleAgent:
         best_path[map_height] = max(
             best_rewards[map_height].keys(), key=lambda x: best_rewards[map_height][x]
         )
-        for y in range(map_height, 0, -1):
+        for y in range(map_height, start_y, -1):
             best_path[y - 1] = best_parents[y][best_path[y]]
+        if current_map_node is not None:
+            best_path[start_y] = current_map_node.x
         self.map_route = best_path
 
         # Log chosen path
