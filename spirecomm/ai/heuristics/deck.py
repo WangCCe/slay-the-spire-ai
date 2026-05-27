@@ -62,6 +62,11 @@ class DeckAnalyzer:
             'malice': self.MALICE_CARDS
         }
 
+    @staticmethod
+    def _card_data_key(card: Card) -> str:
+        raw_name = getattr(card, 'name', None) or getattr(card, 'card_id', '')
+        return re.sub(r'\+\d*$', '', str(raw_name)).lower()
+
     def get_archetype(self, context: 'DecisionContext') -> str:
         """
         Determine the deck's archetype based on card composition and synergies.
@@ -153,7 +158,7 @@ class DeckAnalyzer:
                     count += 1
                 
                 # Enhanced detection using card descriptions from game data loader
-                card_data = game_data_loader.get_card_data(card.name.lower())
+                card_data = game_data_loader.get_card_data(self._card_data_key(card))
                 if card_data:
                     description = card_data.get('description', '').lower()
                     
@@ -172,7 +177,7 @@ class DeckAnalyzer:
         
         # Enhanced exhaust detection using game data
         for card in deck:
-            card_data = game_data_loader.get_card_data(card.name.lower())
+            card_data = game_data_loader.get_card_data(self._card_data_key(card))
             if card_data:
                 description = card_data.get('description', '').lower()
                 if any(re.search(pattern, description) for pattern in ['exhaust.*draw', 'gain.*when.*exhaust', 'exhaust']):
@@ -186,7 +191,7 @@ class DeckAnalyzer:
         
         # Enhanced combo detection using game data
         for card in deck:
-            card_data = game_data_loader.get_card_data(card.name.lower())
+            card_data = game_data_loader.get_card_data(self._card_data_key(card))
             if card_data:
                 description = card_data.get('description', '').lower()
                 if any(re.search(pattern, description) for pattern in ['cost.*0', 'retain', 'draw.*1', 'exhaust.*draw', 'gain.*energy']):

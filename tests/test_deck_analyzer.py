@@ -221,6 +221,26 @@ def test_combo_effect_patterns_use_regex_for_energy_cards(monkeypatch):
     assert scores["combo"] > 0
 
 
+def test_effect_pattern_lookup_uses_base_name_for_upgraded_cards(monkeypatch):
+    analyzer = DeckAnalyzer()
+    context = MockDecisionContext([
+        Card("Seeing Red", "Seeing Red+", CardType.SKILL, CardRarity.UNCOMMON, upgrades=1),
+    ])
+    monkeypatch.setattr(
+        deck_module,
+        "game_data_loader",
+        MockCardDataLoader({
+            "seeing red": {
+                "description": "Gain 3 Energy. Exhaust.",
+            },
+        }),
+    )
+
+    scores = analyzer.get_archetype_score(context)
+
+    assert scores["combo"] > 0
+
+
 def test_balanced_deck():
     """Test deck analyzer with balanced deck."""
     print("\nTesting balanced deck...")
