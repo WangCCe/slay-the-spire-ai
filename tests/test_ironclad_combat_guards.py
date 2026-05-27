@@ -180,18 +180,24 @@ def _awakened_one(current_hp=300):
     )
 
 
-def _slime_boss(current_hp=56, max_hp=140):
+def _slime_boss(
+    current_hp=56,
+    max_hp=140,
+    move_id=3,
+    intent=Intent.UNKNOWN,
+    move_adjusted_damage=0,
+):
     return Monster(
         name="Slime Boss",
         monster_id="Slime_Boss",
         max_hp=max_hp,
         current_hp=current_hp,
         block=0,
-        intent=Intent.UNKNOWN,
+        intent=intent,
         half_dead=False,
         is_gone=False,
-        move_id=3,
-        move_adjusted_damage=0,
+        move_id=move_id,
+        move_adjusted_damage=move_adjusted_damage,
         move_hits=1,
     )
 
@@ -630,6 +636,30 @@ def test_awakened_lagavulin_attack_is_not_marked_hibernating():
 
     assert not state.monsters[0].get("is_hibernating", False)
     assert state.monsters[0].get("is_awakened", False)
+
+
+def test_slime_boss_goop_spray_counts_slimed_status_from_effect_text():
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[
+            _slime_boss(
+                current_hp=140,
+                move_id=0,
+                intent=Intent.DEBUFF,
+            )
+        ],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    status = simulator.simulate_enemy_status_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert status["slimed"] == 3
+    assert status["total"] == 3
 
 
 def test_feel_no_pain_grants_block_for_exhaust_events(monkeypatch):

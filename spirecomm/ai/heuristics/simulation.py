@@ -1440,10 +1440,31 @@ class FastCombatSimulator:
                     return int(value)
             return 0
 
+        def _parse_effect_count(card_name: str) -> int:
+            effect = str(move.get('effect') or move.get('description') or '')
+            if not effect:
+                return 0
+
+            match = re.search(rf'\b(\d+)\s+{re.escape(card_name)}s?\b', effect, re.IGNORECASE)
+            if match:
+                return int(match.group(1))
+
+            if re.search(rf'\b(?:a|an)\s+{re.escape(card_name)}\b', effect, re.IGNORECASE):
+                return 1
+            return 0
+
         dazed = _get_count('dazed', 'dazed_count', 'dazed_added')
         burn = _get_count('burn', 'burn_count', 'burn_added')
         slimed = _get_count('slimed', 'slimed_count', 'slimed_added')
         wound = _get_count('wound', 'wounds', 'wound_count', 'wound_added')
+        if dazed == 0:
+            dazed = _parse_effect_count('Dazed')
+        if burn == 0:
+            burn = _parse_effect_count('Burn')
+        if slimed == 0:
+            slimed = _parse_effect_count('Slimed')
+        if wound == 0:
+            wound = _parse_effect_count('Wound')
         total = dazed + burn + slimed + wound
         return {
             'total': total,
