@@ -1488,6 +1488,32 @@ def test_v2_single_target_selection_ignores_zero_hp_stale_simulated_monsters():
     assert target_idx == 1
 
 
+def test_aoe_decision_ignores_zero_hp_stale_simulated_monsters():
+    stale = _louse(current_hp=40)
+    first_live = _louse(current_hp=40)
+    second_live = _louse(current_hp=40)
+    context = _combat_context([], monsters=[stale, first_live, second_live])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    assert not IroncladCombatPlanner()._should_use_aoe("Cleave", context, state)
+
+
+def test_rank_targets_ignores_zero_hp_stale_simulated_monsters():
+    strike = _card("Strike_R", "Strike", cost=1)
+    stale = _louse(current_hp=40)
+    live = _louse(current_hp=40)
+    context = _combat_context([strike], energy=1, monsters=[stale, live])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    ranked = IroncladCombatPlanner()._rank_targets(strike, context, state)
+
+    assert ranked == [(live, 1, ranked[0][2])]
+
+
 def test_bludgeon_damage_is_static_not_scaled_by_block(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

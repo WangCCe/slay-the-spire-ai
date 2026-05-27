@@ -759,12 +759,15 @@ class IroncladCombatPlanner(CombatPlanner):
         if not state.monsters:
             return False
 
-        alive_monsters = [m for m in state.monsters if not m['is_gone']]
+        alive_monsters = [
+            (i, m) for i, m in enumerate(state.monsters)
+            if self._is_live_monster_state(m)
+        ]
         if len(alive_monsters) < 2:
             return False  # Single target - no AOE benefit
 
         # Check for death split monsters
-        for i, monster_state in enumerate(alive_monsters):
+        for i, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
                 monster = context.monsters_alive[i]
                 if game_data_loader.does_monster_have_death_split(monster.name):
@@ -773,7 +776,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
         # Check for summoner with minions
         summoner_with_minions = False
-        for i, monster_state in enumerate(alive_monsters):
+        for i, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
                 monster = context.monsters_alive[i]
                 if game_data_loader.is_monster_summoner(monster.name):
@@ -789,7 +792,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
         # Check for 3+ monsters with similar HP
         if len(alive_monsters) >= 3:
-            hp_values = [m['hp'] for m in alive_monsters]
+            hp_values = [m['hp'] for _, m in alive_monsters]
             hp_std_dev = (max(hp_values) - min(hp_values)) / max(sum(hp_values), 1)
 
             # If HP values are within 30% of each other, AOE is efficient
@@ -798,7 +801,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
         # Check for duo boss
         duo_count = 0
-        for i, monster_state in enumerate(alive_monsters):
+        for i, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
                 monster = context.monsters_alive[i]
                 if game_data_loader.is_monster_duo_boss(monster.name):
@@ -834,7 +837,7 @@ class IroncladCombatPlanner(CombatPlanner):
         # Rank all monsters by threat
         ranked_targets = []
         for i, monster_state in enumerate(state.monsters):
-            if monster_state['is_gone']:
+            if not self._is_live_monster_state(monster_state):
                 continue
 
             if i < len(context.monsters_alive):
