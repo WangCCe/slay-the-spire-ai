@@ -909,8 +909,10 @@ class TurnTimingClassifier:
         hints: MonsterTimingHints
     ) -> bool:
         """Check if intent indicates a threat spike."""
+        current_intent = self._intent_name(current_intent)
+
         # High damage attack
-        if current_damage > 15:
+        if self._is_attack_intent(current_intent) and current_damage > 15:
             return True
 
         # Check Wiki hints

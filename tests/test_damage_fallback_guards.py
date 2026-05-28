@@ -1538,6 +1538,25 @@ def test_timing_analysis_ignores_non_attack_current_intents():
     assert analysis["current_damage"] == 14
 
 
+def test_timing_analysis_does_not_mark_non_attack_stale_damage_as_spike():
+    classifier = TurnTimingClassifier()
+    buffing = SimpleNamespace(
+        name="Spike Slime (M)",
+        current_hp=25,
+        max_hp=25,
+        strength=0,
+        intent="Intent.BUFF",
+        move_adjusted_damage=30,
+        move_hits=1,
+    )
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0))
+
+    analysis = classifier._analyze_monster_timing(context, [buffing], current_turn=7)
+
+    assert analysis["current_damage"] == 0
+    assert analysis["spike_monster_count"] == 0
+
+
 def test_safe_intent_detection_accepts_enum_string_names():
     classifier = TurnTimingClassifier()
     hints = SimpleNamespace(is_safe_turn=lambda _intent: False)
