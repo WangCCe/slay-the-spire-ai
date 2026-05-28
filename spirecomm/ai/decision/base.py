@@ -179,6 +179,13 @@ class DecisionContext:
     def _should_count_immediate_damage(cls, monster) -> bool:
         return monster_intends_attack(monster)
 
+    @staticmethod
+    def _intent_tokens(intent) -> set:
+        if not intent:
+            return set()
+        intent_name = str(intent).upper().split('.')[-1]
+        return {token for token in intent_name.split('_') if token}
+
     def _calculate_incoming_damage(self) -> int:
         """Calculate total incoming damage from all monsters.
 
@@ -270,17 +277,15 @@ class DecisionContext:
 
         # 2. Debuff threat (Weak/Vulnerable are dangerous)
         if intent_type:
-            intent_str = str(intent_type).upper() if intent_type else ''
+            intent_tokens = self._intent_tokens(intent_type)
 
             # Check if monster applies debuffs
-            if 'DEBUFF_WEAK' in intent_str or 'DEBUFF_VULNERABLE' in intent_str:
+            if (
+                'DEBUFF' in intent_tokens
+                or 'WEAK' in intent_tokens
+                or 'VULNERABLE' in intent_tokens
+            ):
                 threat += 10  # Debuff application is high threat
-            elif 'WEAK' in intent_str or 'VULNERABLE' in intent_str:
-                # Some monsters have WEAK/VULNERABLE as their name
-                # Only add threat if it's actually applying a debuff
-                if hasattr(monster, 'move_base_damage'):
-                    # If it has damage, it's probably an attack+debuff
-                    threat += 10
 
         # 3. Scaling threat (elite/boss monsters that grow stronger)
         if hasattr(monster, 'name'):
@@ -302,8 +307,7 @@ class DecisionContext:
 
         # 4. AOE threat (buffs other monsters)
         if intent_type:
-            intent_str = str(intent_type).upper() if intent_type else ''
-            if 'BUFF' in intent_str:
+            if 'BUFF' in self._intent_tokens(intent_type):
                 threat += 8  # Buffing allies is threatening
 
         # 5. High HP threat (more HP = more dangerous if left alive)

@@ -191,3 +191,33 @@ def test_base_immediate_threat_ignores_non_attack_intents():
     context = DecisionContext.__new__(DecisionContext)
 
     assert context._compute_base_immediate_threat(monster) == 0
+
+
+def test_compute_threat_counts_actual_attack_debuff_intent_as_debuff_threat():
+    monster = SimpleNamespace(
+        name="Jaw Worm",
+        intent=Intent.ATTACK_DEBUFF,
+        move_adjusted_damage=7,
+        move_hits=1,
+        strength=0,
+        current_hp=10,
+        max_hp=100,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+
+    assert context.compute_threat(monster) == 17
+
+
+def test_compute_threat_counts_actual_debuff_intent_as_debuff_threat():
+    monster = SimpleNamespace(
+        name="Acid Slime (L)",
+        intent=Intent.DEBUFF,
+        move_adjusted_damage=0,
+        move_hits=1,
+        strength=0,
+        current_hp=10,
+        max_hp=100,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+
+    assert context.compute_threat(monster) == 10
