@@ -2439,6 +2439,13 @@ class OptimizedAgent(SimpleAgent):
                 or "health" in potion.name.lower()
                 or "strawberry" in potion.name.lower()
                 or "apple" in potion.name.lower()
+                or getattr(potion, "effect_type", None) in (
+                    "heal",
+                    "heal_percent",
+                    "regen",
+                    "fairy",
+                    "max_hp",
+                )
             ):
                 # Use healing potions when HP is critical or in dangerous situations
                 if (

@@ -188,3 +188,38 @@ def test_defensive_potion_uses_effect_metadata_not_only_name():
 
     assert isinstance(action, PotionAction)
     assert action.potion is potion
+
+
+def test_healing_potion_uses_effect_metadata_not_only_name():
+    monster = SimpleNamespace(
+        current_hp=40,
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=10,
+        move_hits=1,
+        block=0,
+    )
+    potion = Potion(
+        potion_id="BloodPotion",
+        name="Blood Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.game_tracker = None
+    agent.game = SimpleNamespace(
+        monsters=[monster],
+        player=SimpleNamespace(block=0),
+        current_hp=20,
+        max_hp=80,
+        act=1,
+        room_type="Monster",
+        get_real_potions=lambda: [potion],
+    )
+
+    action = agent.use_next_potion()
+
+    assert isinstance(action, PotionAction)
+    assert action.potion is potion
