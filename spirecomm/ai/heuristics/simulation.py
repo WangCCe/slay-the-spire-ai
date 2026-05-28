@@ -1942,10 +1942,14 @@ class FastCombatSimulator:
         """Return whether Spot Weakness has a valid attacking target."""
         if target_index is not None and 0 <= target_index < len(state.monsters):
             monster = state.monsters[target_index]
-            return not monster['is_gone'] and self._monster_intends_attack(monster)
+            return (
+                self._is_live_monster_state(monster)
+                and self._monster_intends_attack(monster)
+            )
 
         return any(
-            not monster['is_gone'] and self._monster_intends_attack(monster)
+            self._is_live_monster_state(monster)
+            and self._monster_intends_attack(monster)
             for monster in state.monsters
         )
 

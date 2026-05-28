@@ -3556,6 +3556,30 @@ def test_strength_skill_cards_affect_followup_attacks():
     assert result.total_damage_dealt == 12
 
 
+def test_spot_weakness_ignores_zero_hp_stale_attacking_target():
+    spot_weakness = _card(
+        "Spot Weakness",
+        "Spot Weakness",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=True,
+    )
+    context = _combat_context([spot_weakness], energy=1, monsters=[_louse(current_hp=20)])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        spot_weakness,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.player_strength == 0
+
+
 def test_energy_gain_skills_add_usable_energy(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
