@@ -1886,6 +1886,59 @@ def test_ironclad_prune_targets_falls_back_when_damage_parse_returns_none(monkey
     assert pruned == [(monster, 0, 10)]
 
 
+def test_generic_prune_targets_falls_back_when_damage_parse_returns_none(monkeypatch):
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"description": "Deal unknown damage."},
+    )
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: None,
+    )
+    monster = SimpleNamespace(current_hp=20, block=0)
+    context = SimpleNamespace(
+        monsters_alive=[monster],
+        player=SimpleNamespace(strength=0),
+    )
+
+    pruned = HeuristicCombatPlanner()._prune_targets(
+        _unknown_attack(),
+        [(monster, 10)],
+        context,
+    )
+
+    assert pruned == [(monster, 10)]
+
+
+def test_generic_find_best_target_falls_back_when_damage_parse_returns_none(monkeypatch):
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"description": "Deal unknown damage."},
+    )
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: None,
+    )
+    high_threat = SimpleNamespace(current_hp=20, block=0, threat=20)
+    killable = SimpleNamespace(current_hp=6, block=0, threat=1)
+    context = SimpleNamespace(
+        monsters_alive=[high_threat, killable],
+        player=SimpleNamespace(strength=0),
+        compute_threat=lambda monster: monster.threat,
+    )
+
+    target = HeuristicCombatPlanner()._find_best_target(
+        _unknown_attack(),
+        context,
+    )
+
+    assert target is killable
+
+
 def test_ironclad_fallback_damage_uses_canonical_name_for_counted_upgrades(monkeypatch):
     card = Card(
         card_id="Cleave+1",

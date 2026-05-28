@@ -4580,6 +4580,8 @@ class HeuristicCombatPlanner(CombatPlanner):
         if is_attack:
             # Estimate damage for attack cards
             base_damage = getattr(card, 'damage', 0)
+            if base_damage is None:
+                base_damage = 0
             if base_damage == 0 or not hasattr(card, 'damage'):
                 try:
                     card_name = _canonical_card_name(card)
@@ -4710,6 +4712,8 @@ class HeuristicCombatPlanner(CombatPlanner):
         if is_attack:
             # Estimate damage for this attack
             base_damage = getattr(card, 'damage', 0)
+            if base_damage is None:
+                base_damage = 0
 
             # Try to get damage from game data
             if base_damage == 0 or not hasattr(card, 'damage'):
