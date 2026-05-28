@@ -2350,6 +2350,12 @@ class FastCombatSimulator:
                         move_intent = move.get('intent', '').upper()
                         target_turn = current_turn + step
                         move_damage = self._move_damage_value(move, lookahead_state, target_turn=target_turn)
+                        move_damage = self._apply_ascension_move_value(
+                            move,
+                            context,
+                            'damage',
+                            move_damage,
+                        )
                         move_hits = self._move_hit_count(move, target_turn=target_turn)
 
                         if 'ATTACK' in move_intent and move_damage > 0:
@@ -2677,6 +2683,37 @@ class FastCombatSimulator:
         if formula_damage is not None:
             return formula_damage
         return self._numeric_damage_value(move.get('damage', 0))
+
+    def _apply_ascension_move_value(self, move: Dict[str, Any], context: DecisionContext, key: str, base_value: int) -> int:
+        ascension_modifiers = move.get('ascension_modifiers', {})
+        if not isinstance(ascension_modifiers, dict):
+            return base_value
+
+        ascension_level = self._context_ascension_level(context)
+        thresholds = [
+            int(threshold_key.split('+')[0])
+            for threshold_key in ascension_modifiers
+            if (
+                isinstance(threshold_key, str)
+                and threshold_key.endswith('+')
+                and threshold_key.split('+')[0].isdigit()
+            )
+        ]
+        for threshold in sorted(thresholds, reverse=True):
+            if ascension_level < threshold:
+                continue
+            modifier = ascension_modifiers.get(f"{threshold}+", {})
+            if isinstance(modifier, dict) and key in modifier:
+                value = self._numeric_damage_value(modifier.get(key))
+                return value if value is not None else base_value
+            break
+
+        return base_value
+
+    def _context_ascension_level(self, context: DecisionContext) -> int:
+        if hasattr(context, 'game') and hasattr(context.game, 'ascension_level'):
+            return int(context.game.ascension_level or 0)
+        return int(getattr(context, 'ascension_level', 0) or 0)
 
     def _move_hit_count(self, move: Dict[str, Any], target_turn: Optional[int] = None) -> int:
         move_name = str(move.get('name', ''))
