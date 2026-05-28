@@ -1377,6 +1377,22 @@ class FastCombatSimulator:
         state.player_vulnerable_added += stacks
         return True
 
+    def _queue_player_predicted_debuffs(
+        self,
+        pending_debuffs: Dict[str, int],
+        move_debuffs: Dict[str, int],
+        player_artifact: int,
+    ) -> int:
+        for debuff in ('weak', 'frail', 'vulnerable'):
+            stacks = move_debuffs.get(debuff, 0)
+            if stacks <= 0:
+                continue
+            if player_artifact > 0:
+                player_artifact -= 1
+                continue
+            pending_debuffs[debuff] += stacks
+        return player_artifact
+
     def _description_debuff_effects(
         self,
         description: str,
@@ -2432,6 +2448,7 @@ class FastCombatSimulator:
             player_vulnerable = lookahead_state.player_vulnerable
             player_weak = lookahead_state.player_weak
             player_frail = lookahead_state.player_frail
+            player_artifact = max(0, getattr(lookahead_state, 'player_artifact', 0))
 
             for step in range(look_ahead):
                 turn_damage = 0
@@ -2505,9 +2522,11 @@ class FastCombatSimulator:
                             turn_damage += int(damage * discount)
 
                         move_debuffs = self._extract_move_debuffs(move, context)
-                        pending_debuffs['weak'] += move_debuffs['weak']
-                        pending_debuffs['frail'] += move_debuffs['frail']
-                        pending_debuffs['vulnerable'] += move_debuffs['vulnerable']
+                        player_artifact = self._queue_player_predicted_debuffs(
+                            pending_debuffs,
+                            move_debuffs,
+                            player_artifact,
+                        )
                         strength_gain = self._extract_move_strength_gain(move, context)
                         if strength_gain > 0:
                             monster['strength'] = monster.get('strength', 0) + strength_gain
