@@ -469,6 +469,7 @@ class SimulationState:
         self.player_energy = context.energy_available
         self.player_strength = context.strength
         self.player_dexterity = self._get_player_power_amount(context, 'Dexterity')
+        self.player_thorns = self._get_player_power_amount(context, 'Thorns')
 
         # Player debuffs (binary: >0 means debuffed)
         self.player_vulnerable = self._get_player_debuff_stacks(context, 'Vulnerable')
@@ -624,6 +625,7 @@ class SimulationState:
         new_state.player_energy = self.player_energy
         new_state.player_strength = self.player_strength
         new_state.player_dexterity = self.player_dexterity
+        new_state.player_thorns = self.player_thorns
         new_state.player_vulnerable = self.player_vulnerable
         new_state.player_vulnerable_added = self.player_vulnerable_added
         new_state.player_weak = self.player_weak
@@ -677,6 +679,7 @@ class SimulationState:
             self.player_energy,
             self.player_strength,
             self.player_dexterity,
+            self.player_thorns,
             self.player_vulnerable,
             self.player_vulnerable_added,
             self.player_weak,
@@ -2294,6 +2297,28 @@ class FastCombatSimulator:
 
         return total_damage
 
+    def _estimate_player_thorns_damage(self, state: SimulationState) -> int:
+        """Estimate damage current attackers will take from player Thorns."""
+        player_thorns = max(0, getattr(state, 'player_thorns', 0))
+        if player_thorns <= 0:
+            return 0
+
+        total_damage = 0
+        for monster in state.monsters:
+            if (
+                not self._is_live_monster_state(monster)
+                or not self._monster_intends_attack(monster)
+            ):
+                continue
+            hits = self._positive_monster_hits(monster)
+            reflected_damage = player_thorns * hits
+            effective_hp = max(0, monster.get('hp', 0)) + max(
+                0,
+                monster.get('block', 0),
+            )
+            total_damage += min(reflected_damage, effective_hp)
+        return total_damage
+
     def _get_enemy_lookahead_depth(self, state: SimulationState, context: DecisionContext, max_depth: int = 2) -> int:
         """Gate lookahead depth based on combat complexity and data availability."""
         try:
@@ -3309,6 +3334,15 @@ class FastCombatSimulator:
 
         score += total_damage * weights['DAMAGE_WEIGHT'] * damage_multiplier
 
+        thorns_damage = self._estimate_player_thorns_damage(final_state)
+        if thorns_damage > 0:
+            score += thorns_damage * weights['DAMAGE_WEIGHT']
+            logger.debug(
+                "[THORNS_SCORE] +%.1f for %s reflected damage",
+                thorns_damage * weights['DAMAGE_WEIGHT'],
+                thorns_damage,
+            )
+
         # Debuff application bonus (reward setting up future damage).
         debuff_bonus = 0.0
         for before, after in zip(initial_state.monsters, final_state.monsters):
@@ -3783,6 +3817,8 @@ class HeuristicCombatPlanner(CombatPlanner):
                             new_state.player_strength += potion.effect_value
                         elif potion.effect_type in ['buff_dexterity', 'temp_dexterity']:
                             new_state.player_dexterity += potion.effect_value
+                        elif potion.effect_type == 'thorns':
+                            new_state.player_thorns += potion.effect_value
                         elif potion.effect_type == 'energy':
                             new_state.player_energy += potion.effect_value
                             new_state.energy_gained += potion.effect_value

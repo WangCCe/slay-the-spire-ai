@@ -2155,6 +2155,128 @@ def test_beam_search_simulates_plated_armor_potion_as_end_turn_block():
     assert observed_end_turn_block == [4]
 
 
+def test_beam_search_simulates_liquid_bronze_as_player_thorns():
+    potion = Potion(
+        potion_id="LiquidBronze",
+        name="Liquid Bronze",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    monster = SimpleNamespace(
+        name="Lagavulin",
+        monster_id="Lagavulin",
+        max_hp=100,
+        current_hp=100,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=18,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+            room_type="Monster",
+            get_real_potions=lambda: [potion],
+        ),
+        act=1,
+        turn=1,
+        floor=5,
+        energy_available=0,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[],
+        compute_threat=lambda monster: 18,
+    )
+    planner = HeuristicCombatPlanner()
+    observed_thorns = []
+
+    def score(_initial_state, final_state, _act, _weights, _context, sequence):
+        if sequence and isinstance(sequence[-1], PotionAction):
+            observed_thorns.append(getattr(final_state, "player_thorns", 0))
+        return 0
+
+    planner.simulator.calculate_outcome_score = score
+
+    sequence = planner.plan_turn(context)
+
+    assert isinstance(sequence[0], PotionAction)
+    assert observed_thorns == [3]
+
+
+def test_outcome_score_values_player_thorns_against_current_attackers():
+    monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        max_hp=50,
+        current_hp=50,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=6,
+        move_hits=2,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+        ),
+        act=1,
+        turn=1,
+        energy_available=0,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[],
+    )
+    simulator = FastCombatSimulator(None)
+    weights = simulation.get_combat_mode_weights(simulation.CombatMode.BALANCED)
+    initial_state = simulation.SimulationState(context)
+    no_thorns = initial_state.clone()
+    with_thorns = initial_state.clone()
+    with_thorns.player_thorns = 3
+
+    base_score = simulator.calculate_outcome_score(
+        initial_state,
+        no_thorns,
+        current_act=1,
+        weights=weights,
+        context=None,
+        sequence=[],
+    )
+    thorns_score = simulator.calculate_outcome_score(
+        initial_state,
+        with_thorns,
+        current_act=1,
+        weights=weights,
+        context=None,
+        sequence=[],
+    )
+
+    assert thorns_score - base_score == 6 * weights["DAMAGE_WEIGHT"]
+
+
 def test_beam_search_preserves_candidate_shape_across_depths():
     monster = SimpleNamespace(
         name="Lagavulin",
