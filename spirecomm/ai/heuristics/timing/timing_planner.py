@@ -154,14 +154,15 @@ class TimingAwareCombatPlanner:
                 # Simple estimate: use card's base damage
                 card_damage = self._estimate_card_damage(card, context)
                 if card_damage > 0:
-                    total_damage += card_damage
-
-                    # Check energy cost
                     cost = effective_card_cost(card, energy)
+                    if cost > energy:
+                        continue
+
+                    total_damage += card_damage
                     energy -= cost
 
-                    if energy < 0:
-                        break  # Can't afford more cards
+                    if energy <= 0:
+                        break
 
             # Check if damage is enough to kill all monsters
             total_hp = sum(
