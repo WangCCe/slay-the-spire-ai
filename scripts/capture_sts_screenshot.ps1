@@ -13,6 +13,20 @@ function Write-CaptureInfo {
     Write-Host "[capture-sts] $Message"
 }
 
+function New-ScreenshotPath {
+    param([string]$Directory)
+
+    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss_fff"
+    return Join-Path $Directory "sts_screen_$timestamp.png"
+}
+
+if ($DryRun -and $AllScreens) {
+    $outputPath = New-ScreenshotPath -Directory $OutputDir
+    Write-CaptureInfo "dry run: target=all-screens title='All screens' bounds=not-enumerated"
+    Write-CaptureInfo "would write $outputPath"
+    exit 0
+}
+
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Windows.Forms
 
@@ -39,13 +53,6 @@ public static class StsCaptureNative {
     public static extern bool SetForegroundWindow(IntPtr hWnd);
 }
 "@
-}
-
-function New-ScreenshotPath {
-    param([string]$Directory)
-
-    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss_fff"
-    return Join-Path $Directory "sts_screen_$timestamp.png"
 }
 
 function Get-AllScreensTarget {

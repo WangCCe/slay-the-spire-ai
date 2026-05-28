@@ -42,6 +42,19 @@ def test_capture_script_supports_all_screens_dry_run(tmp_path):
     assert not list(tmp_path.glob("*.png"))
 
 
+def test_capture_script_bypasses_gui_assemblies_for_all_screens_dry_run():
+    assert SCRIPT.exists()
+
+    text = SCRIPT.read_text(encoding="utf-8")
+
+    fast_path_index = text.find("if ($DryRun -and $AllScreens)")
+    forms_index = text.find("Add-Type -AssemblyName System.Windows.Forms")
+
+    assert fast_path_index != -1
+    assert forms_index != -1
+    assert fast_path_index < forms_index
+
+
 def test_capture_script_reports_missing_window(tmp_path):
     assert SCRIPT.exists()
 
