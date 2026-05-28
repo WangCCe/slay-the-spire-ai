@@ -70,3 +70,16 @@ def test_grid_removal_prioritizes_upgraded_strike_before_defend():
 
     assert isinstance(action, CardSelectAction)
     assert action.cards == [upgraded_strike]
+
+
+def test_count_copies_in_deck_counts_upgraded_and_display_name_variants():
+    agent = _agent(
+        deck=[
+            _card("Pommel Strike+1", upgrades=1),
+            _card("Pommel_Strike"),
+            _card("Shrug It Off"),
+        ]
+    )
+    offered = _card("Pommel Strike")
+
+    assert agent.count_copies_in_deck(offered) == 2

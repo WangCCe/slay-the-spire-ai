@@ -90,7 +90,7 @@ class SimpleAgent:
     def _normalize_card_name(self, card):
         if card is None:
             return ""
-        return canonical_card_name(card)
+        return canonical_card_name(card).replace("_", " ")
 
     def _get_upgrade_bonus(self, card):
         if getattr(card, "upgrades", 0) > 0:
@@ -961,8 +961,9 @@ class SimpleAgent:
 
     def count_copies_in_deck(self, card):
         count = 0
+        target_name = self._normalize_card_name(card)
         for deck_card in self.game.deck:
-            if deck_card.card_id == card.card_id:
+            if self._normalize_card_name(deck_card) == target_name:
                 count += 1
         return count
 
