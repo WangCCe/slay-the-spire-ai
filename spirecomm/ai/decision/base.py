@@ -169,6 +169,28 @@ class DecisionContext:
         except (TypeError, ValueError):
             return 0
 
+    @staticmethod
+    def _is_attack_intent(intent) -> bool:
+        if intent is None:
+            return False
+        if hasattr(intent, 'is_attack'):
+            return intent.is_attack()
+
+        return 'ATTACK' in str(intent).upper()
+
+    @staticmethod
+    def _is_unknown_intent(intent) -> bool:
+        if intent is None:
+            return False
+        if intent in (Intent.NONE, Intent.UNKNOWN):
+            return True
+        return str(intent).upper() in (
+            'NONE',
+            'INTENT.NONE',
+            'UNKNOWN',
+            'INTENT.UNKNOWN',
+        )
+
     def _calculate_incoming_damage(self) -> int:
         """Calculate total incoming damage from all monsters.
 
@@ -185,30 +207,19 @@ class DecisionContext:
                 and not getattr(monster, 'half_dead', False)
                 and getattr(monster, 'current_hp', 1) > 0
             ):
-                # Check if monster is attacking this turn
-                is_attacking = False
-                if hasattr(monster, 'intent') and monster.intent is not None:
-                    try:
-                        from spirecomm.spire.character import Intent
-                        intent_str = str(monster.intent).upper()
+                intent = getattr(monster, 'intent', None)
 
-                        # Only count attack intents
-                        if any(attack_type in intent_str for attack_type in ['ATTACK', 'ATTACK_BUFF', 'ATTACK_DEBUFF', 'ATTACK_DEFEND']):
-                            is_attacking = True
-                    except:
-                        # If intent parsing fails, check move_adjusted_damage as fallback
-                        is_attacking = True
-
-                # Skip non-attacking monsters (DEFEND, BUFF, DEBUG, STUNNED, etc.)
-                if not is_attacking:
+                if self._is_unknown_intent(intent):
+                    total += 5 * self.act
                     continue
 
                 # Calculate damage from attacking monsters
-                if hasattr(monster, 'move_adjusted_damage') and monster.move_adjusted_damage is not None:
+                if (
+                    self._is_attack_intent(intent)
+                    and hasattr(monster, 'move_adjusted_damage')
+                    and monster.move_adjusted_damage is not None
+                ):
                     total += self._move_damage_contribution(monster)
-                elif hasattr(monster, 'intent') and monster.intent == Intent.NONE:
-                    # Unknown intent, estimate based on act
-                    total += 5 * self.act
         return total
 
     def _compute_base_immediate_threat(self, monster) -> int:

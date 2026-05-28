@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import spirecomm.ai.decision.base as decision_base
 from spirecomm.ai.decision.base import DecisionContext
 from spirecomm.spire.card import Card, CardRarity, CardType
+from spirecomm.spire.character import Intent
 
 
 class _FakeCardDataLoader:
@@ -99,6 +100,38 @@ def test_incoming_damage_clamps_negative_live_move_damage_to_zero():
     context = DecisionContext.__new__(DecisionContext)
     context.game = SimpleNamespace(monsters=[monster])
     context.act = 1
+
+    assert context._calculate_incoming_damage() == 0
+
+
+def test_incoming_damage_estimates_unknown_intent_by_act():
+    monster = SimpleNamespace(
+        is_gone=False,
+        half_dead=False,
+        current_hp=20,
+        intent=Intent.NONE,
+        move_adjusted_damage=None,
+        move_hits=1,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.game = SimpleNamespace(monsters=[monster])
+    context.act = 2
+
+    assert context._calculate_incoming_damage() == 10
+
+
+def test_incoming_damage_ignores_missing_intent_without_damage():
+    monster = SimpleNamespace(
+        is_gone=False,
+        half_dead=False,
+        current_hp=20,
+        intent=None,
+        move_adjusted_damage=None,
+        move_hits=1,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.game = SimpleNamespace(monsters=[monster])
+    context.act = 2
 
     assert context._calculate_incoming_damage() == 0
 
