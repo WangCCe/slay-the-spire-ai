@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import spirecomm.ai.heuristics.simulation as simulation
 import spirecomm.ai.heuristics.combat_ending as combat_ending
 import spirecomm.ai.heuristics.ironclad_combat as ironclad_combat
+from spirecomm.ai.heuristics.enhanced_monster_database import EnhancedMonsterDatabase
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.combat_ending import CombatEndingDetector
@@ -1720,6 +1721,22 @@ def test_enemy_lookahead_applies_player_vulnerable_per_hit():
 
 def test_big_attack_pattern_handles_monster_damage_ranges():
     assert game_data_loader.get_monster_big_attack_pattern("Louse") == []
+
+
+def test_big_attack_pattern_ignores_high_damage_non_attack_moves():
+    database = EnhancedMonsterDatabase()
+    database._data["Training Dummy"] = {
+        "moves": [
+            {"name": "Feint", "intent": "NOT_ATTACK", "damage": 99},
+            {"name": "Harden", "intent": "BUFF", "damage": 50},
+            {"name": "Heavy Strike", "intent": "ATTACK", "damage": 21},
+        ],
+        "pattern": {},
+    }
+
+    big_attacks = database.get_big_attack_pattern("Training Dummy")
+
+    assert [attack["move"] for attack in big_attacks] == ["Heavy Strike"]
 
 
 def test_simulator_does_not_treat_upgraded_non_block_skills_as_block(monkeypatch):

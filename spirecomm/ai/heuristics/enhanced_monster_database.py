@@ -17,6 +17,8 @@ import logging
 from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
 
+from spirecomm.ai.intent_utils import intent_is_attack
+
 
 class EnhancedMonsterDatabase:
     """
@@ -944,7 +946,7 @@ class EnhancedMonsterDatabase:
         # Check for big attack moves
         for move in moves:
             damage = self._numeric_damage_value(move.get("damage", 0))
-            if damage >= 20:  # Threshold for "big"
+            if intent_is_attack(move.get("intent", "")) and damage >= 20:  # Threshold for "big"
                 # Try to find turn number from pattern
                 move_name = move.get("name", "")
                 big_attacks.append({
