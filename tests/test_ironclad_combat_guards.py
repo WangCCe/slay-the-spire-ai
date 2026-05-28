@@ -1900,6 +1900,24 @@ def test_incoming_damage_estimate_ignores_negated_attack_intent_string():
     assert incoming == 0
 
 
+def test_strongest_known_attack_damage_ignores_negated_attack_intent(monkeypatch):
+    class FakeLoader:
+        def get_monster_moves(self, _monster_name):
+            return [
+                {"name": "Feint", "intent": "NOT_ATTACK", "damage": 99, "hits": 1},
+                {"name": "Harden", "intent": "BUFF", "damage": 50, "hits": 1},
+                {"name": "Strike", "intent": "ATTACK", "damage": 7, "hits": 2},
+            ]
+
+    monkeypatch.setattr(simulation, "game_data_loader", FakeLoader())
+
+    damage = FastCombatSimulator(SynergyCardEvaluator())._strongest_known_attack_damage(
+        "Training Dummy"
+    )
+
+    assert damage == 14
+
+
 def test_incoming_damage_estimate_keeps_explicit_zero_adjusted_damage():
     simulator = FastCombatSimulator(SynergyCardEvaluator())
 

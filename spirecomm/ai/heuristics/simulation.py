@@ -3309,9 +3309,8 @@ class FastCombatSimulator:
     def _strongest_known_attack_damage(self, monster_name: str) -> int:
         damage_values = []
         for move in game_data_loader.get_monster_moves(monster_name):
-            intent = str(move.get('intent', '')).upper()
             damage = self._numeric_damage_value(move.get('damage'))
-            if 'ATTACK' not in intent or damage <= 0:
+            if not intent_is_attack(move.get('intent', '')) or damage <= 0:
                 continue
             hits = move.get('hits', move.get('move_hits', 1)) or 1
             damage_values.append(int(damage * hits))
