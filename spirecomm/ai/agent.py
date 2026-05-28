@@ -416,7 +416,8 @@ class SimpleAgent:
 
     def is_monster_attacking(self):
         for monster in self.game.monsters:
-            if monster.intent.is_attack() or monster.intent == Intent.NONE:
+            intent = getattr(monster, "intent", None)
+            if monster_intends_attack(monster, missing_intent_counts=False) or intent_is_unknown(intent):
                 return True
         return False
 

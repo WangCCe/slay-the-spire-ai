@@ -14,6 +14,12 @@ def _agent_with_monsters(monsters):
     return agent
 
 
+def test_simple_agent_is_monster_attacking_accepts_string_intents():
+    assert _agent_with_monsters([SimpleNamespace(intent="Intent.ATTACK")]).is_monster_attacking()
+    assert _agent_with_monsters([SimpleNamespace(intent="Intent.NONE")]).is_monster_attacking()
+    assert not _agent_with_monsters([SimpleNamespace(intent="NOT_ATTACK")]).is_monster_attacking()
+
+
 def test_simple_agent_incoming_damage_ignores_zero_hp_stale_monsters():
     monster = SimpleNamespace(
         current_hp=0,
