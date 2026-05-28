@@ -2277,6 +2277,129 @@ def test_outcome_score_values_player_thorns_against_current_attackers():
     assert thorns_score - base_score == 6 * weights["DAMAGE_WEIGHT"]
 
 
+def test_beam_search_simulates_ghost_in_a_jar_as_player_intangible():
+    potion = Potion(
+        potion_id="GhostInAJar",
+        name="Ghost in a Jar",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    monster = SimpleNamespace(
+        name="Lagavulin",
+        monster_id="Lagavulin",
+        max_hp=100,
+        current_hp=100,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=30,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=20,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+            room_type="Monster",
+            get_real_potions=lambda: [potion],
+        ),
+        act=1,
+        turn=1,
+        floor=5,
+        energy_available=0,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[],
+        compute_threat=lambda monster: 30,
+    )
+    planner = HeuristicCombatPlanner()
+    observed_intangible = []
+
+    def score(_initial_state, final_state, _act, _weights, _context, sequence):
+        if sequence and isinstance(sequence[-1], PotionAction):
+            observed_intangible.append(getattr(final_state, "player_intangible", 0))
+        return 0
+
+    planner.simulator.calculate_outcome_score = score
+
+    sequence = planner.plan_turn(context)
+
+    assert isinstance(sequence[0], PotionAction)
+    assert observed_intangible == [1]
+
+
+def test_outcome_score_uses_intangible_for_current_incoming_damage():
+    monster = SimpleNamespace(
+        name="Lagavulin",
+        monster_id="Lagavulin",
+        max_hp=100,
+        current_hp=100,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=30,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=20,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+        ),
+        act=1,
+        turn=1,
+        energy_available=0,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[],
+    )
+    simulator = FastCombatSimulator(None)
+    weights = simulation.get_combat_mode_weights(simulation.CombatMode.BALANCED)
+    initial_state = simulation.SimulationState(context)
+    no_intangible = initial_state.clone()
+    with_intangible = initial_state.clone()
+    with_intangible.player_intangible = 1
+
+    base_score = simulator.calculate_outcome_score(
+        initial_state,
+        no_intangible,
+        current_act=1,
+        weights=weights,
+        context=None,
+        sequence=[],
+    )
+    intangible_score = simulator.calculate_outcome_score(
+        initial_state,
+        with_intangible,
+        current_act=1,
+        weights=weights,
+        context=None,
+        sequence=[],
+    )
+
+    assert base_score == float("-inf")
+    assert intangible_score > float("-inf")
+
+
 def test_beam_search_preserves_candidate_shape_across_depths():
     monster = SimpleNamespace(
         name="Lagavulin",

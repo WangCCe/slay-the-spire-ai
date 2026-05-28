@@ -470,6 +470,10 @@ class SimulationState:
         self.player_strength = context.strength
         self.player_dexterity = self._get_player_power_amount(context, 'Dexterity')
         self.player_thorns = self._get_player_power_amount(context, 'Thorns')
+        self.player_intangible = max(
+            self._get_player_power_amount(context, 'Intangible'),
+            self._get_player_power_amount(context, 'IntangiblePlayer'),
+        )
 
         # Player debuffs (binary: >0 means debuffed)
         self.player_vulnerable = self._get_player_debuff_stacks(context, 'Vulnerable')
@@ -626,6 +630,7 @@ class SimulationState:
         new_state.player_strength = self.player_strength
         new_state.player_dexterity = self.player_dexterity
         new_state.player_thorns = self.player_thorns
+        new_state.player_intangible = self.player_intangible
         new_state.player_vulnerable = self.player_vulnerable
         new_state.player_vulnerable_added = self.player_vulnerable_added
         new_state.player_weak = self.player_weak
@@ -680,6 +685,7 @@ class SimulationState:
             self.player_strength,
             self.player_dexterity,
             self.player_thorns,
+            self.player_intangible,
             self.player_vulnerable,
             self.player_vulnerable_added,
             self.player_weak,
@@ -2180,6 +2186,7 @@ class FastCombatSimulator:
         self,
         monsters_state: list,
         player_vulnerable_added: int = 0,
+        player_intangible: int = 0,
     ) -> int:
         """
         Estimate expected incoming damage from monsters next turn.
@@ -2188,6 +2195,7 @@ class FastCombatSimulator:
             monsters_state: List of monster state dictionaries
             player_vulnerable_added: Vulnerable stacks newly applied during simulation.
                 Current game intent damage already includes pre-existing player Vulnerable.
+            player_intangible: Intangible stacks active for the upcoming enemy attacks.
 
         Returns:
             Expected total damage
@@ -2278,6 +2286,8 @@ class FastCombatSimulator:
                         player_vulnerable_added,
                         hits,
                     )
+                if player_intangible > 0 and total > 0:
+                    total = min(total, hits)
 
                 debug_entries.append(
                     f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"
@@ -3415,6 +3425,7 @@ class FastCombatSimulator:
         expected_incoming = self._estimate_incoming_damage(
             final_state.monsters,
             final_state.player_vulnerable_added,
+            getattr(final_state, 'player_intangible', 0),
         )
         hp_loss_next_turn = max(0, expected_incoming - final_turn_block)
 
@@ -3819,6 +3830,8 @@ class HeuristicCombatPlanner(CombatPlanner):
                             new_state.player_dexterity += potion.effect_value
                         elif potion.effect_type == 'thorns':
                             new_state.player_thorns += potion.effect_value
+                        elif potion.effect_type == 'intangible':
+                            new_state.player_intangible += potion.effect_value
                         elif potion.effect_type == 'energy':
                             new_state.player_energy += potion.effect_value
                             new_state.energy_gained += potion.effect_value
