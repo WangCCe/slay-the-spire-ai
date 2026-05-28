@@ -1398,7 +1398,7 @@ class IroncladCombatPlanner(CombatPlanner):
     def _is_draw_card(self, card: Card) -> bool:
         """Check if card draws cards."""
         draw_keywords = ['draw', 'pommel strike', 'shrug it off', 'battle trance']
-        card_lower = card.card_id.lower()
+        card_lower = canonical_card_name(card).lower().replace('_', ' ')
         return any(kw in card_lower for kw in draw_keywords)
 
     def _count_upgradeable_cards(self, context: DecisionContext, exclude_uuid=None) -> int:
@@ -1539,7 +1539,7 @@ class IroncladCombatPlanner(CombatPlanner):
             'sentinel', 'shrug it off', 'spirit shield', 'steam barrier', 'survivor', 'swivel',
             'third eye', 'true grit', 'vigilance'
         ]
-        card_lower = card.card_id.lower()
+        card_lower = canonical_card_name(card).lower().replace('_', ' ')
         return any(keyword in card_lower for keyword in defensive_keywords)
 
     def _is_cultist_ritual_turn(self, context: DecisionContext) -> bool:

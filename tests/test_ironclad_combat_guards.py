@@ -421,6 +421,24 @@ def test_lagavulin_hibernating_handles_string_defend_intent():
     assert IroncladCombatPlanner()._is_lagavulin_hibernating(context) is True
 
 
+def test_ironclad_planner_draw_card_detection_uses_display_name():
+    pommel = _card("Pommel_Strike", "Pommel Strike", cost=1)
+
+    assert IroncladCombatPlanner()._is_draw_card(pommel) is True
+
+
+def test_ironclad_planner_defensive_card_detection_uses_display_name():
+    shrug = _card(
+        "Shrug_It_Off",
+        "Shrug It Off",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+
+    assert IroncladCombatPlanner()._is_defensive_card(shrug) is True
+
+
 def test_simulation_reads_power_name_field_from_player_powers():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=100)])
