@@ -1488,20 +1488,30 @@ class FastCombatSimulator:
             'vulnerable': _get_stack('vulnerable') or _get_stack('vulnerable_applied') or _get_stack('vulnerable_amount'),
         }
 
-    def _extract_move_strength_gain(self, move: Dict[str, Any]) -> int:
+    def _extract_move_strength_gain(self, move: Dict[str, Any], context: Optional[DecisionContext] = None) -> int:
         """Extract monster Strength gained by a predicted move."""
         value = move.get('strength_gain', 0)
         if isinstance(value, bool):
-            return 0
-        if isinstance(value, (int, float)):
-            return max(0, int(value))
-        if isinstance(value, dict):
+            strength_gain = 0
+        elif isinstance(value, (int, float)):
+            strength_gain = max(0, int(value))
+        elif isinstance(value, dict):
             numeric_values = [
                 int(v) for v in value.values()
                 if isinstance(v, (int, float)) and not isinstance(v, bool)
             ]
-            return max(numeric_values, default=0)
-        return 0
+            strength_gain = max(numeric_values, default=0)
+        else:
+            strength_gain = 0
+
+        if context is None:
+            return strength_gain
+        return max(0, self._apply_ascension_move_value(
+            move,
+            context,
+            'strength_gain',
+            strength_gain,
+        ))
 
     def _extract_move_status_cards(self, move: Dict[str, Any]) -> Dict[str, int]:
         """Extract status cards added by a monster move from wiki data fields."""
@@ -2388,7 +2398,7 @@ class FastCombatSimulator:
                         pending_debuffs['weak'] += move_debuffs['weak']
                         pending_debuffs['frail'] += move_debuffs['frail']
                         pending_debuffs['vulnerable'] += move_debuffs['vulnerable']
-                        strength_gain = self._extract_move_strength_gain(move)
+                        strength_gain = self._extract_move_strength_gain(move, context)
                         if strength_gain > 0:
                             monster['strength'] = monster.get('strength', 0) + strength_gain
                     else:
