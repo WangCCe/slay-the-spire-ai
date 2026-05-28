@@ -285,14 +285,19 @@ class TurnTimingClassifier:
 
                         # Check if attack
                         if 'ATTACK' in intent:
-                            damage = self._resolve_move_damage(monster.name, move, context)
+                            damage = self._resolve_move_damage(
+                                monster.name,
+                                move,
+                                context,
+                                target_turn=target_turn,
+                            )
                             damage = self._apply_ascension_damage_modifiers(
                                 monster.name,
                                 move,
                                 damage,
                                 context,
                             )
-                            hits = self._resolve_move_hits(move, context)
+                            hits = self._resolve_move_hits(move, context, target_turn=target_turn)
                             predicted_strength = self._predict_attack_strength(
                                 monster,
                                 anchored_predictions,

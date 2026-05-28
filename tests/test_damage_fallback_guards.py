@@ -1059,6 +1059,43 @@ def test_safe_window_detection_counts_scripted_strength_gain_before_attack(monke
     ]
 
 
+def test_safe_window_detection_uses_target_turn_for_damage_and_hits_formulas(monkeypatch):
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        lambda *_args, **_kwargs: [
+            {
+                "turn": 5,
+                "move": {
+                    "name": "Scaling Strike",
+                    "intent": "ATTACK",
+                    "damage_formula": {
+                        "type": "linear_by_turn",
+                        "base": 0,
+                        "per_turn": 1,
+                    },
+                    "hits_formula": {
+                        "type": "ceil_turn_divisor",
+                        "divisor": 3,
+                    },
+                },
+            }
+        ],
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0))
+    monster = SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength=0)
+
+    windows = classifier._detect_safe_windows(
+        context,
+        [monster],
+        current_turn=5,
+        look_ahead=1,
+    )
+
+    assert windows == []
+
+
 def test_spike_imminent_handles_monster_damage_ranges_without_warning(monkeypatch, caplog):
     monkeypatch.setattr(
         data_loader.game_data_loader,
