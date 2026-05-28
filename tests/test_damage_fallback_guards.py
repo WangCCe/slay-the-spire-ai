@@ -1803,6 +1803,83 @@ def test_beam_search_can_use_potion_when_no_cards_are_playable():
     assert sequence[0].potion is potion
 
 
+def test_beam_search_damage_potion_updates_damage_events():
+    potion = Potion(
+        potion_id="FirePotion",
+        name="Fire Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=True,
+    )
+    monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        max_hp=50,
+        current_hp=15,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=6,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+            room_type="Monster",
+            get_real_potions=lambda: [potion],
+        ),
+        act=1,
+        turn=1,
+        floor=5,
+        energy_available=0,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[],
+        compute_threat=lambda monster: 6,
+    )
+    planner = HeuristicCombatPlanner()
+    observed = []
+
+    def score(_initial_state, final_state, _act, _weights, _context, sequence):
+        if sequence and isinstance(sequence[-1], PotionAction):
+            observed.append(
+                {
+                    "hp": final_state.monsters[0]["hp"],
+                    "is_gone": final_state.monsters[0]["is_gone"],
+                    "damage": final_state.total_damage_dealt,
+                    "kills": final_state.monsters_killed,
+                    "instances": final_state.damage_instances,
+                }
+            )
+        return 0
+
+    planner.simulator.calculate_outcome_score = score
+
+    sequence = planner.plan_turn(context)
+
+    assert isinstance(sequence[0], PotionAction)
+    assert observed == [
+        {
+            "hp": 0,
+            "is_gone": True,
+            "damage": 15,
+            "kills": 1,
+            "instances": 1,
+        }
+    ]
+
+
 def test_beam_search_simulates_debuff_potion_effect():
     potion = Potion(
         potion_id="FearPotion",

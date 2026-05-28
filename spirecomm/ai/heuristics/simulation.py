@@ -3710,18 +3710,30 @@ class HeuristicCombatPlanner(CombatPlanner):
                         new_state = copy.deepcopy(state)
                         # Apply potion effect to state
                         if potion.effect_type == 'damage':
-                            # Reduce target HP (handle single target or AOE)
                             if potion.target_type == 'all_monsters':
-                                for i, m in enumerate(new_state.monsters):
-                                    if not m.get('is_gone') and m['hp'] > 0:
-                                        new_state.monsters[i]['hp'] = max(0, m['hp'] - potion.effect_value)
+                                for monster in new_state.monsters:
+                                    if self.simulator._is_live_monster_state(monster):
+                                        self.simulator._deal_damage_to_monster(
+                                            new_state,
+                                            monster,
+                                            potion.effect_value,
+                                            trigger_thorns=False,
+                                        )
+                                        new_state.damage_instances += 1
                             else:
                                 target_index = self._state_monster_index_for_potion_target(
                                     new_state, target
                                 )
                                 if target_index is not None:
-                                    m = new_state.monsters[target_index]
-                                    m['hp'] = max(0, m['hp'] - potion.effect_value)
+                                    monster = new_state.monsters[target_index]
+                                    if self.simulator._is_live_monster_state(monster):
+                                        self.simulator._deal_damage_to_monster(
+                                            new_state,
+                                            monster,
+                                            potion.effect_value,
+                                            trigger_thorns=False,
+                                        )
+                                        new_state.damage_instances += 1
                         elif potion.effect_type == 'poison':
                             target_index = self._state_monster_index_for_potion_target(
                                 new_state, target
