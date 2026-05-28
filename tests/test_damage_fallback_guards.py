@@ -997,6 +997,28 @@ def test_safe_window_detection_applies_ascension_damage_modifiers(monkeypatch):
     assert windows == []
 
 
+def test_safe_window_detection_counts_monster_strength(monkeypatch):
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        lambda *_args, **_kwargs: [
+            {"move": {"name": "Bite", "intent": "ATTACK", "damage": 8, "hits": 1}}
+        ],
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0))
+    monster = SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength=3)
+
+    windows = classifier._detect_safe_windows(
+        context,
+        [monster],
+        current_turn=1,
+        look_ahead=1,
+    )
+
+    assert windows == []
+
+
 def test_spike_imminent_handles_monster_damage_ranges_without_warning(monkeypatch, caplog):
     monkeypatch.setattr(
         data_loader.game_data_loader,
@@ -1037,6 +1059,24 @@ def test_spike_imminent_applies_ascension_damage_modifiers(monkeypatch):
         game=SimpleNamespace(current_hp=80, ascension_level=2),
         turn=1,
         monsters_alive=[SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength=0)],
+    )
+
+    assert classifier._spike_imminent(context) is True
+
+
+def test_spike_imminent_counts_monster_strength(monkeypatch):
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        lambda *_args, **_kwargs: [
+            {"move": {"name": "Heavy Strike", "intent": "ATTACK", "damage": 18, "hits": 1}}
+        ],
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(
+        game=SimpleNamespace(current_hp=80, ascension_level=0),
+        turn=1,
+        monsters_alive=[SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength=2)],
     )
 
     assert classifier._spike_imminent(context) is True

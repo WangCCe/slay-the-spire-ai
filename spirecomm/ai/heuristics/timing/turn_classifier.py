@@ -293,7 +293,8 @@ class TurnTimingClassifier:
                                 context,
                             )
                             hits = self._resolve_move_hits(move, context)
-                            total_damage += damage * hits
+                            strength = getattr(monster, 'strength', 0)
+                            total_damage += (damage + strength) * hits
                         else:
                             # Non-attack move = safe
                             monsters_safe.append(monster.name)
@@ -938,8 +939,9 @@ class TurnTimingClassifier:
                             context,
                         )
                         hits = self._resolve_move_hits(move, context, target_turn=target_turn)
+                        strength = getattr(monster, 'strength', 0)
 
-                        if damage * hits >= 20:
+                        if (damage + strength) * hits >= 20:
                             # Big attack imminent
                             return True
 
