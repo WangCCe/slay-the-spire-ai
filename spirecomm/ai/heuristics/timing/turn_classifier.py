@@ -293,8 +293,14 @@ class TurnTimingClassifier:
                                 context,
                             )
                             hits = self._resolve_move_hits(move, context)
-                            strength = getattr(monster, 'strength', 0)
-                            total_damage += (damage + strength) * hits
+                            predicted_strength = self._predict_attack_strength(
+                                monster,
+                                anchored_predictions,
+                                current_turn,
+                                target_turn,
+                                context,
+                            )
+                            total_damage += (damage + predicted_strength) * hits
                         else:
                             # Non-attack move = safe
                             monsters_safe.append(monster.name)

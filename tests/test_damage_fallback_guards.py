@@ -1019,6 +1019,46 @@ def test_safe_window_detection_counts_monster_strength(monkeypatch):
     assert windows == []
 
 
+def test_safe_window_detection_counts_scripted_strength_gain_before_attack(monkeypatch):
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        lambda *_args, **_kwargs: [
+            {
+                "turn": 2,
+                "move": {
+                    "name": "Grow",
+                    "intent": "BUFF",
+                    "strength_gain": 3,
+                },
+            },
+            {
+                "turn": 3,
+                "move": {
+                    "name": "Bite",
+                    "intent": "ATTACK",
+                    "damage": 8,
+                    "hits": 1,
+                },
+            },
+        ],
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0))
+    monster = SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength=0)
+
+    windows = classifier._detect_safe_windows(
+        context,
+        [monster],
+        current_turn=2,
+        look_ahead=2,
+    )
+
+    assert [(window.start_turn, window.end_turn, window.expected_damage) for window in windows] == [
+        (2, 2, 0)
+    ]
+
+
 def test_spike_imminent_handles_monster_damage_ranges_without_warning(monkeypatch, caplog):
     monkeypatch.setattr(
         data_loader.game_data_loader,
