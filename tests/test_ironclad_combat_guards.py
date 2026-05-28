@@ -3222,6 +3222,53 @@ def test_shockwave_plus_uses_upgraded_stacks_for_all_debuffs(monkeypatch):
     assert [monster["move_adjusted_damage"] for monster in result.monsters] == [2, 2]
 
 
+def test_shockwave_ignores_zero_hp_stale_simulated_monsters(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "shockwave": {
+            "name": "Shockwave",
+            "description": "Apply 3 Weak, Vulnerable, and Strength Down to ALL enemies. Exhaust.",
+        }
+    }
+    loader._wiki_data = {
+        "shockwave": {
+            "name": "Shockwave",
+            "text": "Apply [3|5] #Weak, #Vulnerable, and #Strength Down to ALL enemies.\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    shockwave = _card(
+        "Shockwave",
+        "Shockwave",
+        card_type=CardType.SKILL,
+        cost=2,
+        has_target=False,
+    )
+    context = _combat_context(
+        [shockwave],
+        energy=2,
+        monsters=[_louse(current_hp=20), _louse(current_hp=20)],
+    )
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        shockwave,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.monsters[0]["weak"] == 0
+    assert result.monsters[0]["vulnerable"] == 0
+    assert result.monsters[0]["strength"] == 0
+    assert result.monsters[1]["weak"] == 3
+    assert result.monsters[1]["vulnerable"] == 3
+    assert result.monsters[1]["strength"] == -3
+
+
 def test_artifact_blocks_attack_debuff_and_is_consumed(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

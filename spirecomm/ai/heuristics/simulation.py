@@ -1822,7 +1822,7 @@ class FastCombatSimulator:
                         debuff_effects = self._description_debuff_effects(description, upgrades, card_name)
                         if debuff_effects:
                             for monster in state.monsters:
-                                if monster['is_gone']:
+                                if not self._is_live_monster_state(monster):
                                     continue
                                 self._apply_monster_debuffs(monster, debuff_effects)
         except Exception:
