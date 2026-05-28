@@ -1039,7 +1039,12 @@ class FastCombatSimulator:
                 monster = state.monsters[target_index]
                 target_was_live_at_attack_start = self._is_live_monster_state(monster)
                 if target_was_live_at_attack_start:
-                    for _ in range(hit_count):
+                    target_hit_count = self._get_attack_hit_count_against_monster(
+                        card,
+                        hit_count,
+                        monster,
+                    )
+                    for _ in range(target_hit_count):
                         if not self._is_live_monster_state(monster):
                             break
                         damage = self._calculate_attack_damage(card, base_damage, state, context)
@@ -1092,6 +1097,17 @@ class FastCombatSimulator:
     def _is_random_target_attack(self, card: Card) -> bool:
         card_name = _canonical_card_name(card)
         return card_name in {'Sword Boomerang'}
+
+    def _get_attack_hit_count_against_monster(
+        self,
+        card: Card,
+        hit_count: int,
+        monster: dict,
+    ) -> int:
+        card_name = _canonical_card_name(card)
+        if card_name == 'Bane' and monster.get('poison', 0) > 0:
+            return 2
+        return hit_count
 
     def _apply_attack_healing(self, state: SimulationState, card: Card, starting_total_damage: int):
         card_name = _canonical_card_name(card)

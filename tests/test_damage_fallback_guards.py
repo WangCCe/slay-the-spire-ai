@@ -259,6 +259,84 @@ def test_attack_simulation_applies_poison_card_effect(monkeypatch):
     assert state.monsters[0]["poison"] == 3
 
 
+def test_attack_simulation_bane_adds_extra_hit_only_against_poisoned_target(monkeypatch):
+    card = Card(
+        card_id="Bane",
+        name="Bane",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.COMMON,
+        has_target=True,
+        cost=1,
+    )
+    card_data = {
+        "name": "Bane",
+        "description": "Deal 7 damage. If the enemy has Poison, deal 7 damage again.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Bane" else None,
+    )
+
+    unpoisoned_state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 40,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "thorns": 0,
+                "poison": 0,
+            }
+        ],
+        player_strength=0,
+        player_hp=80,
+        total_damage_dealt=0,
+        monsters_killed=0,
+        damage_instances=0,
+    )
+    poisoned_state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 40,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "thorns": 0,
+                "poison": 1,
+            }
+        ],
+        player_strength=0,
+        player_hp=80,
+        total_damage_dealt=0,
+        monsters_killed=0,
+        damage_instances=0,
+    )
+
+    simulator = FastCombatSimulator(None)
+    simulator._apply_attack(
+        unpoisoned_state,
+        card,
+        target=None,
+        target_index=0,
+        context=None,
+    )
+    simulator._apply_attack(
+        poisoned_state,
+        card,
+        target=None,
+        target_index=0,
+        context=None,
+    )
+
+    assert unpoisoned_state.total_damage_dealt == 7
+    assert unpoisoned_state.damage_instances == 1
+    assert poisoned_state.total_damage_dealt == 14
+    assert poisoned_state.damage_instances == 2
+
+
 def test_skill_simulation_applies_targeted_poison(monkeypatch):
     card = Card(
         card_id="Deadly Poison",
