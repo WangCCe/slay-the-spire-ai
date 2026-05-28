@@ -2506,6 +2506,8 @@ class OptimizedAgent(SimpleAgent):
                     or getattr(potion, "effect_type", None) in ("damage", "poison")
                 ):
                     target = max(alive_monsters, key=lambda m: m.current_hp)
+                elif str(getattr(potion, "effect_type", "")).startswith("debuff_"):
+                    target = max(alive_monsters, key=lambda m: m.current_hp)
                 else:
                     target = self.get_low_hp_target()
                 potion_action = PotionAction(True, potion=potion, target_monster=target)
