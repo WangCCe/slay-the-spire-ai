@@ -388,6 +388,24 @@ def test_simulation_reads_power_name_field_from_player_powers():
     assert result.player_block == 3
 
 
+def test_gremlin_nob_skill_reaction_ignores_zero_hp_stale_simulated_monsters():
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1)
+    context = _combat_context([defend], energy=1, monsters=[_gremlin_nob(current_hp=20)])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        defend,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.monsters[0]["strength"] == 0
+
+
 def test_upgraded_rage_card_id_sets_attack_block_trigger():
     rage_plus = _card(
         "Rage+",

@@ -856,7 +856,7 @@ class FastCombatSimulator:
     def _apply_skill_reactive_monster_powers(self, state: SimulationState):
         """Apply monster reactions such as Gremlin Nob's Anger after Skill cards."""
         for monster in state.monsters:
-            if monster.get('is_gone'):
+            if not self._is_live_monster_state(monster):
                 continue
 
             strength_gain = int(monster.get('skill_strength_gain', 0) or 0)
