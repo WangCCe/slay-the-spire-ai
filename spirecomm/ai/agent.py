@@ -2501,7 +2501,10 @@ class OptimizedAgent(SimpleAgent):
             _, potion = potions_to_use[0]
             if potion.requires_target:
                 # For damage potions, target highest HP monster; for others, target as appropriate
-                if "damage" in potion.name.lower():
+                if (
+                    "damage" in potion.name.lower()
+                    or getattr(potion, "effect_type", None) in ("damage", "poison")
+                ):
                     target = max(alive_monsters, key=lambda m: m.current_hp)
                 else:
                     target = self.get_low_hp_target()
