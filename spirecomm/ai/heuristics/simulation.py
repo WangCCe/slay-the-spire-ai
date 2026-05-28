@@ -3615,7 +3615,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         timeout_budget = TIMEOUT_BUDGET  # Configurable timeout budget
 
         # Initialize beam with empty sequence
-        beam = [([], initial_state, 0)]  # (actions, state, energy_spent)
+        beam = [([], initial_state, 0, 0)]  # (actions, state, energy_spent, score)
 
         best_sequence = []
         best_score = float('-inf')
@@ -3635,7 +3635,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             explore_targets = self._should_explore_targets(context, elapsed_ms)
             new_candidates = []
 
-            for sequence, state, energy_spent in beam:
+            for sequence, state, energy_spent, _beam_score in beam:
                 # === Two-stage action expansion ===
                 # Collect playable cards
                 playable_actions = []

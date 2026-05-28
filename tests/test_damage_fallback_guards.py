@@ -1760,6 +1760,68 @@ def test_beam_search_simulates_debuff_potion_effect():
     assert observed_vulnerable == [3]
 
 
+def test_beam_search_preserves_candidate_shape_across_depths():
+    monster = SimpleNamespace(
+        name="Lagavulin",
+        monster_id="Lagavulin",
+        max_hp=100,
+        current_hp=100,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=18,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    cards = [
+        SimpleNamespace(
+            card_id=f"Strike{i}",
+            name=f"Strike {i}",
+            cost=1,
+            cost_for_turn=1,
+            has_target=False,
+        )
+        for i in range(3)
+    ]
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+            room_type="Monster",
+            get_real_potions=lambda: [],
+        ),
+        act=1,
+        turn=1,
+        floor=5,
+        energy_available=3,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=cards,
+    )
+    planner = HeuristicCombatPlanner()
+    planner.fast_score_action = lambda _card, _state, _context: 1
+    planner.card_evaluator.evaluate_card = lambda _card, _context: 0
+    planner.simulator.simulate_card_play = (
+        lambda state, _card, _target, context=None: state.clone()
+    )
+    planner.simulator.calculate_outcome_score = (
+        lambda _initial_state, _final_state, _act, _weights, _context, _sequence: 0
+    )
+
+    sequence = planner.plan_turn(context)
+
+    assert len(sequence) >= 1
+
+
 def test_hp_threshold_modes_predict_guardian_sequence():
     database = EnhancedMonsterDatabase()
 
