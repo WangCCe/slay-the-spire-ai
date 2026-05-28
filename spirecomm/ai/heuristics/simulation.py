@@ -1116,7 +1116,7 @@ class FastCombatSimulator:
             if energy is None:
                 energy = getattr(state, '_current_x_energy_spent', None)
             if energy is None:
-                energy = effective_card_cost(card, getattr(state, 'player_energy', 0))
+                energy = x_effect_energy(card, getattr(state, 'player_energy', 0), context)
             return max(0, energy)
         if card_name == 'Twin Strike':
             return 2
@@ -1875,7 +1875,7 @@ class FastCombatSimulator:
                 energy = getattr(state, '_current_x_energy_spent', None)
             if energy is None:
                 fallback_energy = getattr(state, 'player_energy', 0)
-                energy = effective_card_cost(card, fallback_energy)
+                energy = x_effect_energy(card, fallback_energy, context)
             energy = max(0, energy)
             per_hit_damage = 8 if getattr(card, 'upgrades', 0) > 0 else 5
             if per_hit:
