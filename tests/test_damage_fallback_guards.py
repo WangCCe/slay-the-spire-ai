@@ -1937,6 +1937,70 @@ def test_beam_search_does_not_simulate_poison_potion_as_immediate_damage():
     assert observed_poison == [6]
 
 
+def test_beam_search_simulates_plated_armor_potion_as_end_turn_block():
+    potion = Potion(
+        potion_id="EssenceOfSteel",
+        name="Essence of Steel",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    monster = SimpleNamespace(
+        name="Lagavulin",
+        monster_id="Lagavulin",
+        max_hp=100,
+        current_hp=100,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=30,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+            room_type="Monster",
+            get_real_potions=lambda: [potion],
+        ),
+        act=1,
+        turn=1,
+        floor=5,
+        energy_available=0,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[],
+        compute_threat=lambda monster: 30,
+    )
+    planner = HeuristicCombatPlanner()
+    observed_current_block = []
+    observed_end_turn_block = []
+
+    def score(_initial_state, final_state, _act, _weights, _context, sequence):
+        if sequence and isinstance(sequence[-1], PotionAction):
+            observed_current_block.append(final_state.player_block)
+            observed_end_turn_block.append(final_state.end_turn_block)
+        return 0
+
+    planner.simulator.calculate_outcome_score = score
+
+    sequence = planner.plan_turn(context)
+
+    assert isinstance(sequence[0], PotionAction)
+    assert observed_current_block == [0]
+    assert observed_end_turn_block == [4]
+
+
 def test_beam_search_preserves_candidate_shape_across_depths():
     monster = SimpleNamespace(
         name="Lagavulin",

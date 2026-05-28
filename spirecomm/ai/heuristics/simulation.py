@@ -3744,8 +3744,10 @@ class HeuristicCombatPlanner(CombatPlanner):
                                     debuff,
                                     potion.effect_value,
                                 )
-                        elif potion.effect_type in ['block', 'plated_armor', 'metallicize']:
+                        elif potion.effect_type == 'block':
                             new_state.player_block += potion.effect_value
+                        elif potion.effect_type in ['plated_armor', 'metallicize']:
+                            new_state.end_turn_block += potion.effect_value
                         elif potion.effect_type in ['heal', 'regen']:
                             new_state.player_hp = min(new_state.player_max_hp, new_state.player_hp + potion.effect_value)
                         elif potion.effect_type == 'heal_percent':
