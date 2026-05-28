@@ -1252,6 +1252,24 @@ def test_enemy_lookahead_ignores_zero_hp_stale_simulated_monsters():
     assert future_damage == 0
 
 
+def test_enemy_lookahead_depth_counts_only_live_simulated_monsters():
+    strike = _card("Strike_R", "Strike", cost=1)
+    stale = _louse(current_hp=50)
+    live = _louse(current_hp=50)
+    context = _combat_context([strike], energy=1, monsters=[stale, live])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    depth = FastCombatSimulator(SynergyCardEvaluator())._get_enemy_lookahead_depth(
+        state,
+        context,
+        max_depth=2,
+    )
+
+    assert depth == 1
+
+
 def test_enemy_lookahead_applies_negative_monster_strength():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])

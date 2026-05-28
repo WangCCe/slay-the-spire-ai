@@ -2235,7 +2235,10 @@ class FastCombatSimulator:
     def _get_enemy_lookahead_depth(self, state: SimulationState, context: DecisionContext, max_depth: int = 2) -> int:
         """Gate lookahead depth based on combat complexity and data availability."""
         try:
-            monsters_alive = sum(1 for monster in state.monsters if not monster['is_gone'])
+            monsters_alive = sum(
+                1 for monster in state.monsters
+                if self._is_live_monster_state(monster)
+            )
             playable_cards = len(getattr(context, 'playable_cards', []))
 
             if self._needs_multi_turn_enemy_lookahead(state, context):
@@ -2255,7 +2258,7 @@ class FastCombatSimulator:
     ) -> bool:
         current_turn = getattr(context, 'turn', 1)
         for monster in state.monsters:
-            if monster.get('is_gone'):
+            if not self._is_live_monster_state(monster):
                 continue
 
             current_move = self._current_monster_move(monster)
