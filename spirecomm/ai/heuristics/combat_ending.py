@@ -164,6 +164,14 @@ class CombatEndingDetector:
             if self._is_aoe_attack(card) and self._aoe_card_kills_all(card, context, remaining_energy):
                 return [PlayCardAction(card=card)]
 
+        aoe_cleanup_sequence = self._find_aoe_cleanup_sequence(
+            context,
+            attack_cards,
+            remaining_energy,
+        )
+        if aoe_cleanup_sequence:
+            return aoe_cleanup_sequence
+
         for monster, monster_idx in zip(remaining_monsters, remaining_monster_indices):
             damage_needed = monster.current_hp + monster.block
             for card in attack_cards:
@@ -245,6 +253,113 @@ class CombatEndingDetector:
             if damage < monster.current_hp + monster.block:
                 return False
         return True
+
+    @staticmethod
+    def _card_play_key(card: Card):
+        return getattr(card, 'uuid', None) or id(card)
+
+    def _card_damage_against_monster(
+        self,
+        card: Card,
+        context: DecisionContext,
+        monster_idx: int,
+        available_energy: int,
+    ) -> int:
+        damage = self._get_card_damage(card, context)
+        damage = self._apply_player_weak_to_card_damage(
+            card,
+            context,
+            damage,
+            available_energy,
+        )
+        if context.vulnerable_stacks.get(monster_idx, 0) > 0:
+            damage = self._apply_vulnerable_to_card_damage(
+                card,
+                context,
+                damage,
+                available_energy,
+            )
+        return max(0, damage)
+
+    def _find_aoe_cleanup_sequence(
+        self,
+        context: DecisionContext,
+        attack_cards: List[Card],
+        available_energy: int,
+    ) -> List[PlayCardAction]:
+        """Prove a lethal line where one AOE leaves single-target cleanup."""
+        if len(context.monsters_alive) <= 1:
+            return []
+
+        aoe_cards = [card for card in attack_cards if self._is_aoe_attack(card)]
+        aoe_cards.sort(key=lambda card: self._get_card_damage(card, context), reverse=True)
+
+        for aoe_card in aoe_cards:
+            aoe_cost = effective_card_cost(aoe_card, available_energy)
+            if aoe_cost > available_energy:
+                continue
+
+            survivors = []
+            for monster_idx, monster in enumerate(context.monsters_alive):
+                damage = self._card_damage_against_monster(
+                    aoe_card,
+                    context,
+                    monster_idx,
+                    available_energy,
+                )
+                hp_after_aoe = monster.current_hp + monster.block - damage
+                if hp_after_aoe > 0:
+                    survivors.append((hp_after_aoe, monster_idx, monster))
+
+            if not survivors:
+                return [PlayCardAction(card=aoe_card)]
+
+            sequence = [PlayCardAction(card=aoe_card)]
+            remaining_energy = available_energy - aoe_cost
+            played_cards = {self._card_play_key(aoe_card)}
+            survivors.sort(key=lambda item: item[0], reverse=True)
+
+            for damage_needed, monster_idx, monster in survivors:
+                while damage_needed > 0:
+                    best_card = None
+                    best_cost = 0
+                    best_damage = 0
+
+                    for card in attack_cards:
+                        card_key = self._card_play_key(card)
+                        if card_key in played_cards or self._is_aoe_attack(card):
+                            continue
+
+                        cost = effective_card_cost(card, remaining_energy)
+                        if cost > remaining_energy:
+                            continue
+
+                        damage = self._card_damage_against_monster(
+                            card,
+                            context,
+                            monster_idx,
+                            remaining_energy,
+                        )
+                        if damage > best_damage:
+                            best_card = card
+                            best_cost = cost
+                            best_damage = damage
+
+                    if best_card is None or best_damage <= 0:
+                        sequence = []
+                        break
+
+                    sequence.append(PlayCardAction(card=best_card, target_monster=monster))
+                    played_cards.add(self._card_play_key(best_card))
+                    remaining_energy -= best_cost
+                    damage_needed -= best_damage
+
+                if damage_needed > 0:
+                    break
+            else:
+                return sequence
+
+        return []
 
     def should_skip_defense(self, context: DecisionContext) -> bool:
         """
@@ -370,11 +485,13 @@ class CombatEndingDetector:
         num_monsters = len(context.monsters_alive)
 
         # Count attacks by targeting behavior
+        attack_cards = []
         aoe_cards = []
         single_target_count = 0
 
         for card in context.playable_cards:
             if hasattr(card, 'type') and card.type == CardType.ATTACK:
+                attack_cards.append(card)
                 if self._is_aoe_attack(card):
                     aoe_cards.append(card)
                 else:
@@ -388,6 +505,13 @@ class CombatEndingDetector:
                 getattr(context, 'energy_available', 0),
             ):
                 return True
+
+        if aoe_cards and self._find_aoe_cleanup_sequence(
+            context,
+            attack_cards,
+            getattr(context, 'energy_available', 0),
+        ):
+            return True
 
         if aoe_cards and single_target_count == 0:
             return False
