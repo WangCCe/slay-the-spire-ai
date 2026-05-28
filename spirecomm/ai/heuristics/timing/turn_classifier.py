@@ -381,26 +381,13 @@ class TurnTimingClassifier:
                                 monster.name, move, damage, context
                             )
 
-                            # Get current strength
-                            current_strength = getattr(monster, 'strength', 0)
-
-                            # Get ascension level from context
-                            ascension_level = getattr(context, 'ascension_level', 0)
-                            if hasattr(context, 'game') and hasattr(context.game, 'ascension_level'):
-                                ascension_level = context.game.ascension_level or 0
-
-                            # Predict future strength considering scripted buffs and Ritual scaling.
-                            scripted_strength = self._predict_strength_from_move_sequence(
+                            predicted_strength = self._predict_attack_strength(
+                                monster,
                                 anchored_predictions,
                                 current_turn,
                                 target_turn,
-                                current_strength,
-                                ascension_level,
+                                context,
                             )
-                            scaling_strength = self._predict_future_strength(
-                                monster, current_turn, target_turn, current_strength, ascension_level
-                            )
-                            predicted_strength = max(scripted_strength, scaling_strength)
 
                             total_damage += (damage + predicted_strength) * hits
 
@@ -434,6 +421,32 @@ class TurnTimingClassifier:
             return fallback_predictions[0] if fallback_predictions else None
         except Exception:
             return None
+
+    def _predict_attack_strength(
+        self,
+        monster,
+        anchored_predictions: List[Dict[str, Any]],
+        current_turn: int,
+        target_turn: int,
+        context,
+    ) -> int:
+        current_strength = getattr(monster, 'strength', 0)
+        ascension_level = self._context_ascension_level(context)
+        scripted_strength = self._predict_strength_from_move_sequence(
+            anchored_predictions,
+            current_turn,
+            target_turn,
+            current_strength,
+            ascension_level,
+        )
+        scaling_strength = self._predict_future_strength(
+            monster,
+            current_turn,
+            target_turn,
+            current_strength,
+            ascension_level,
+        )
+        return max(scripted_strength, scaling_strength)
 
     def _predict_strength_from_move_sequence(
         self,
@@ -939,23 +952,13 @@ class TurnTimingClassifier:
                             context,
                         )
                         hits = self._resolve_move_hits(move, context, target_turn=target_turn)
-                        current_strength = getattr(monster, 'strength', 0)
-                        ascension_level = self._context_ascension_level(context)
-                        scripted_strength = self._predict_strength_from_move_sequence(
+                        predicted_strength = self._predict_attack_strength(
+                            monster,
                             anchored_predictions,
                             current_turn,
                             target_turn,
-                            current_strength,
-                            ascension_level,
+                            context,
                         )
-                        scaling_strength = self._predict_future_strength(
-                            monster,
-                            current_turn,
-                            target_turn,
-                            current_strength,
-                            ascension_level,
-                        )
-                        predicted_strength = max(scripted_strength, scaling_strength)
 
                         if (damage + predicted_strength) * hits >= 20:
                             # Big attack imminent
