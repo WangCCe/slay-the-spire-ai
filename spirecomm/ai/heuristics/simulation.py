@@ -170,6 +170,7 @@ DAMAGE_UPGRADE_BONUS = {
     'Headbutt': 3,
     'Cleave': 3,
     'Bane': 3,
+    'Skewer': 3,
 
     # +4 damage
     'Clash': 4,
@@ -1000,7 +1001,12 @@ class FastCombatSimulator:
         # Also check known AOE cards by name
         if card_name in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']:
             is_aoe = True
-        hit_count = self._get_attack_hit_count(card, state, context)
+        hit_count = self._get_attack_hit_count(
+            card,
+            state,
+            context,
+            x_energy_spent=x_energy_spent,
+        )
         starting_total_damage = state.total_damage_dealt
         target_was_live_at_attack_start = False
 
@@ -1085,11 +1091,19 @@ class FastCombatSimulator:
         card: Card,
         state: SimulationState,
         context: Optional[DecisionContext] = None,
+        x_energy_spent: Optional[int] = None,
     ) -> int:
-        """Return known static hit counts for repeated-hit Ironclad attacks."""
+        """Return known hit counts for repeated-hit attacks."""
         card_name = _canonical_card_name(card)
         upgrades = getattr(card, 'upgrades', 0)
 
+        if card_name == 'Skewer':
+            energy = x_energy_spent
+            if energy is None:
+                energy = getattr(state, '_current_x_energy_spent', None)
+            if energy is None:
+                energy = effective_card_cost(card, getattr(state, 'player_energy', 0))
+            return max(0, energy)
         if card_name == 'Twin Strike':
             return 2
         if card_name == 'Sword Boomerang':

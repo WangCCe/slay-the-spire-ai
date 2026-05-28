@@ -456,6 +456,78 @@ def test_simulate_card_play_spends_x_energy_on_malaise_debuffs(monkeypatch):
         assert result.player_energy == 0
 
 
+def test_simulate_card_play_spends_x_energy_on_skewer_hits(monkeypatch):
+    card_data = {
+        "name": "Skewer",
+        "description": "Deal [7|10] damage X times.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Skewer" else None,
+    )
+    monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        max_hp=100,
+        current_hp=100,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=6,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+        ),
+        act=1,
+        turn=1,
+        energy_available=3,
+        strength=2,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[],
+    )
+    for card_name, upgrades, expected_damage in (
+        ("Skewer", 0, 27),
+        ("Skewer+", 1, 36),
+    ):
+        state = simulation.SimulationState(context)
+        card = Card(
+            card_id="Skewer",
+            name=card_name,
+            card_type=CardType.ATTACK,
+            rarity=CardRarity.UNCOMMON,
+            upgrades=upgrades,
+            has_target=True,
+            cost=-1,
+            cost_for_turn=-1,
+        )
+
+        result = FastCombatSimulator(None).simulate_card_play(
+            state,
+            card,
+            target=monster,
+            context=context,
+        )
+
+        assert result.total_damage_dealt == expected_damage
+        assert result.damage_instances == 3
+        assert result.monsters[0]["hp"] == 100 - expected_damage
+        assert result.player_energy == 0
+
+
 def test_attack_simulation_applies_poison_card_effect(monkeypatch):
     card = Card(
         card_id="Poisoned Stab",
