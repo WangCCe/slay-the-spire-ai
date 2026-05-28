@@ -892,6 +892,9 @@ class TurnTimingClassifier:
         if current_intent in non_attack_intents:
             return True
 
+        if intent_is_attack(current_intent):
+            return False
+
         # Check Wiki hints
         if hints.is_safe_turn(current_intent):
             return True

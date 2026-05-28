@@ -898,11 +898,14 @@ class EnhancedMonsterDatabase:
                 )
                 if predicted_moves:
                     current_move = predicted_moves[0].get("move", {})
-                    current_intent = current_move.get("intent", "").upper()
+                    current_intent = current_move.get("intent", "")
+                    if intent_is_attack(current_intent):
+                        return False
+                    current_intent_name = str(current_intent or "").upper()
 
                     # Check if intent matches safe indicators
                     for indicator in safe_indicators:
-                        if indicator.upper() in current_intent:
+                        if indicator.upper() in current_intent_name:
                             return True
 
         # Fallback: check if current move is non-attack

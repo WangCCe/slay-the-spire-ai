@@ -8,6 +8,7 @@ import spirecomm.ai.heuristics.simulation as simulation
 import spirecomm.data.loader as data_loader
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
 from spirecomm.ai.heuristics.simulation import FastCombatSimulator, HeuristicCombatPlanner
+from spirecomm.ai.heuristics.timing.models import MonsterTimingHints
 from spirecomm.ai.heuristics.timing.turn_classifier import TurnTimingClassifier
 from spirecomm.communication.action import PlayCardAction, PotionAction
 from spirecomm.ai.heuristics.enhanced_monster_database import EnhancedMonsterDatabase
@@ -2353,6 +2354,16 @@ def test_enhanced_monster_database_safe_turn_accepts_enum_string_non_attack():
     assert database.is_safe_turn("Cultist", current_turn=1, monster_hp_percent=1.0) is True
 
 
+def test_enhanced_monster_database_safe_turn_hint_rejects_attack_buff_overlap():
+    database = EnhancedMonsterDatabase()
+    database.get_timing_hints = lambda _monster_name: {"safe_turn_indicators": ["BUFF"]}
+    database.predict_next_moves = lambda *_args, **_kwargs: [
+        {"move": {"name": "Attack Buff", "intent": "Intent.ATTACK_BUFF"}}
+    ]
+
+    assert database.is_safe_turn("Jaw Worm", current_turn=2, monster_hp_percent=1.0) is False
+
+
 def test_chosen_opening_and_phase_probabilities_predict_moves():
     database = EnhancedMonsterDatabase()
 
@@ -2704,6 +2715,13 @@ def test_safe_intent_detection_accepts_enum_string_names():
     hints = SimpleNamespace(is_safe_turn=lambda _intent: False)
 
     assert classifier._is_safe_intent("Intent.BUFF", "Intent.ATTACK", hints) is True
+
+
+def test_safe_intent_detection_rejects_attack_buff_even_when_hint_matches_buff():
+    classifier = TurnTimingClassifier()
+    hints = MonsterTimingHints(safe_turn_indicators=["BUFF"])
+
+    assert classifier._is_safe_intent("Intent.ATTACK_BUFF", "Intent.BUFF", hints) is False
 
 
 def test_heuristic_incoming_damage_clamps_negative_live_move_damage_to_zero():
