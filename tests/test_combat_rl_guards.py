@@ -137,6 +137,32 @@ def test_rl_incoming_damage_estimates_unknown_intent_by_act():
     assert CombatRLAgent._incoming_damage(game) == 10
 
 
+def test_rl_incoming_damage_ignores_known_no_damage_unknown_moves():
+    preparing = _monster(
+        hp=99,
+        damage=0,
+        name="Slime Boss",
+        monster_id="Slime_Boss",
+    )
+    preparing.max_hp = 140
+    preparing.intent = Intent.UNKNOWN
+    preparing.move_id = 1
+
+    splitting = _monster(
+        hp=15,
+        damage=0,
+        name="Acid Slime (L)",
+        monster_id="Acid_Slime_L",
+    )
+    splitting.max_hp = 65
+    splitting.intent = Intent.UNKNOWN
+    splitting.move_id = 3
+
+    game = _game(monsters=[preparing, splitting], act=2)
+
+    assert CombatRLAgent._incoming_damage(game) == 0
+
+
 def test_energy_guard_replaces_wasteful_end_turn_with_play_card():
     card = SimpleNamespace(is_playable=True, cost=1, has_target=True)
     game = _game(hand=[card], monsters=[_monster(hp=30, damage=8, index=0)])
