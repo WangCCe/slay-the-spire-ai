@@ -3643,7 +3643,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                     card_idx = id(card)
                     if card_idx not in state.played_card_uuids:
                         cost = effective_card_cost(card, state.player_energy)
-                        if energy_spent + cost <= context.energy_available:
+                        if cost <= state.player_energy:
                             playable_actions.append((card, card_idx, cost))
 
                 # Collect potion actions (only at depth 0 to limit search complexity)
