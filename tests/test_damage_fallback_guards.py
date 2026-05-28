@@ -2091,6 +2091,72 @@ def test_beam_search_does_not_simulate_poison_potion_as_immediate_damage():
     assert observed_poison == [6]
 
 
+def test_beam_search_poison_potion_consumes_monster_artifact():
+    potion = Potion(
+        potion_id="PoisonPotion",
+        name="Poison Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=True,
+    )
+    monster = SimpleNamespace(
+        name="Lagavulin",
+        monster_id="Lagavulin",
+        max_hp=100,
+        current_hp=50,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=18,
+        move_hits=1,
+        strength=0,
+        powers=[SimpleNamespace(power_name="Artifact", amount=1)],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+            room_type="Monster",
+            get_real_potions=lambda: [potion],
+        ),
+        act=1,
+        turn=1,
+        floor=5,
+        energy_available=0,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[],
+        compute_threat=lambda monster: 18,
+    )
+    planner = HeuristicCombatPlanner()
+    observed = []
+
+    def score(_initial_state, final_state, _act, _weights, _context, sequence):
+        if sequence and isinstance(sequence[-1], PotionAction):
+            observed.append(
+                {
+                    "poison": final_state.monsters[0].get("poison", 0),
+                    "artifact": final_state.monsters[0].get("artifact", 0),
+                }
+            )
+        return 0
+
+    planner.simulator.calculate_outcome_score = score
+
+    sequence = planner.plan_turn(context)
+
+    assert isinstance(sequence[0], PotionAction)
+    assert observed == [{"poison": 0, "artifact": 0}]
+
+
 def test_beam_search_simulates_plated_armor_potion_as_end_turn_block():
     potion = Potion(
         potion_id="EssenceOfSteel",

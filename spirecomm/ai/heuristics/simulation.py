@@ -1368,6 +1368,13 @@ class FastCombatSimulator:
             return
         monster[debuff] = monster.get(debuff, 0) + stacks
 
+    def _apply_monster_poison(self, monster: dict, stacks: int):
+        if stacks <= 0:
+            return
+        if self._consume_monster_artifact(monster):
+            return
+        monster['poison'] = monster.get('poison', 0) + stacks
+
     def _apply_player_vulnerable_debuff(self, state: SimulationState, stacks: int) -> bool:
         if stacks <= 0:
             return False
@@ -3837,8 +3844,10 @@ class HeuristicCombatPlanner(CombatPlanner):
                                 new_state, target
                             )
                             if target_index is not None:
-                                m = new_state.monsters[target_index]
-                                m['poison'] = m.get('poison', 0) + potion.effect_value
+                                self.simulator._apply_monster_poison(
+                                    new_state.monsters[target_index],
+                                    potion.effect_value,
+                                )
                         elif potion.effect_type in ['debuff_weak', 'debuff_vulnerable']:
                             target_index = self._state_monster_index_for_potion_target(
                                 new_state, target
