@@ -2666,12 +2666,11 @@ class FastCombatSimulator:
                 continue
 
             first_move = predicted_moves[0].get('move', {})
-            first_intent = str(first_move.get('intent', '')).upper()
             later_attack = any(
-                'ATTACK' in str(prediction.get('move', {}).get('intent', '')).upper()
+                intent_is_attack(prediction.get('move', {}).get('intent', ''))
                 for prediction in predicted_moves[1:]
             )
-            if later_attack and 'ATTACK' not in first_intent:
+            if later_attack and not intent_is_attack(first_move.get('intent', '')):
                 return True
 
         return False
@@ -2739,7 +2738,6 @@ class FastCombatSimulator:
                         any_predictions = True
 
                     if move:
-                        move_intent = move.get('intent', '').upper()
                         target_turn = current_turn + step
                         move_damage = self._move_damage_value(move, lookahead_state, target_turn=target_turn)
                         move_damage = self._apply_ascension_move_value(
@@ -2756,7 +2754,7 @@ class FastCombatSimulator:
                             move_hits,
                         )
 
-                        if 'ATTACK' in move_intent and move_damage > 0:
+                        if intent_is_attack(move.get('intent', '')) and move_damage > 0:
                             current_strength = monster.get('strength', 0)
                             per_hit_damage = self._apply_monster_strength_to_per_hit_damage(
                                 move_damage,
@@ -2960,7 +2958,7 @@ class FastCombatSimulator:
             if not self._move_intent_matches_live(move, live_intent):
                 continue
 
-            if 'ATTACK' in live_intent and live_damage > 0:
+            if intent_is_attack(live_intent) and live_damage > 0:
                 move_damage = self._numeric_damage_value(move.get('damage', 0))
                 move_hits = self._move_hit_count(move)
                 if move_damage > 0 and move_damage * move_hits != live_damage * live_hits:
@@ -3473,7 +3471,7 @@ class FastCombatSimulator:
 
             if intent_name == 'SLEEP':
                 is_hibernating = True
-            elif 'ATTACK' in intent_name or 'DEBUFF' in intent_name or move_damage > 0:
+            elif intent_is_attack(intent) or 'DEBUFF' in intent_tokens(intent) or move_damage > 0:
                 is_hibernating = False
             else:
                 current_turn = getattr(state, 'turn', 1)

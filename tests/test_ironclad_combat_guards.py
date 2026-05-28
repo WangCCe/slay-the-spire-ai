@@ -823,6 +823,31 @@ def test_enemy_lookahead_applies_strength_gain_to_future_attacks(monkeypatch):
     assert future_damage == int(9 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
 
 
+def test_enemy_lookahead_ignores_negated_attack_intent(monkeypatch):
+    class FakeLoader:
+        def get_enhanced_monster_data(self, _monster_name):
+            return None
+
+        def predict_monster_moves(self, _monster_name, _turn, _hp_percent):
+            return [
+                {"move": {"intent": "NOT_ATTACK", "damage": 20, "hits": 1}}
+            ]
+
+    monkeypatch.setattr(simulation, "game_data_loader", FakeLoader())
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=50)])
+    context.turn = 1
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._current_monster_move = lambda *_args, **_kwargs: None
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 0
+
+
 def test_enemy_lookahead_applies_ascension_ritual_gain_to_future_attacks():
     context = _combat_context([], energy=0, monsters=[_cultist_ritual()])
     context.turn = 1
@@ -1046,6 +1071,26 @@ def test_live_champ_transition_buff_resolves_to_anger_despite_live_move_id():
     assert move["strength_gain"] == 6
 
 
+def test_live_move_resolution_ignores_damage_matching_for_negated_attack_intent():
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    move = simulator._find_current_move_by_live_state(
+        {
+            "name": "Training Dummy",
+            "hp": 20,
+            "intent": "NOT_ATTACK",
+            "move_adjusted_damage": 20,
+            "move_hits": 1,
+        },
+        [
+            {"name": "Preferred Feint", "intent": "NOT_ATTACK", "damage": 5, "hits": 1},
+            {"name": "Stale Damage Feint", "intent": "NOT_ATTACK", "damage": 20, "hits": 1},
+        ],
+    )
+
+    assert move["name"] == "Preferred Feint"
+
+
 def test_champ_transition_buff_uses_multi_turn_lookahead():
     cards = [
         _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False),
@@ -1071,6 +1116,20 @@ def test_champ_transition_buff_uses_multi_turn_lookahead():
     assert future_damage >= int(32 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
 
 
+def test_enemy_lookahead_depth_ignores_negated_future_attack_intent():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=50)])
+    context.turn = 1
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._current_monster_move = lambda *_args, **_kwargs: None
+    simulator._predict_monster_moves = lambda *_args, **_kwargs: [
+        {"move": {"intent": "BUFF"}},
+        {"move": {"intent": "NOT_ATTACK", "damage": 20, "hits": 1}},
+    ]
+
+    assert simulator._needs_multi_turn_enemy_lookahead(state, context) is False
+
+
 def test_awakened_lagavulin_attack_is_not_marked_hibernating():
     context = _combat_context([], energy=0, monsters=[_lagavulin()])
     context.turn = 6
@@ -1081,6 +1140,31 @@ def test_awakened_lagavulin_attack_is_not_marked_hibernating():
 
     assert not state.monsters[0].get("is_hibernating", False)
     assert state.monsters[0].get("is_awakened", False)
+
+
+def test_lagavulin_negated_attack_intent_does_not_wake_hibernation(monkeypatch):
+    monkeypatch.setattr(
+        game_data_loader,
+        "get_enhanced_monster_data",
+        lambda _monster_name: {"special_mechanics": {"type": "hibernation"}},
+    )
+    monkeypatch.setattr(
+        game_data_loader,
+        "is_monster_hibernating",
+        lambda _monster_name, _turn: True,
+    )
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_lagavulin(intent="NOT_ATTACK", move_adjusted_damage=0)],
+    )
+    context.turn = 1
+    state = SimulationState(context)
+
+    FastCombatSimulator(SynergyCardEvaluator())._handle_hibernation(state, state.monsters[0])
+
+    assert state.monsters[0].get("is_hibernating", False)
+    assert not state.monsters[0].get("is_awakened", False)
 
 
 def test_slime_boss_goop_spray_counts_slimed_status_from_effect_text():
