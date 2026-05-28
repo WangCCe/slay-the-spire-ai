@@ -3990,8 +3990,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             if alive_monsters:
                 # Immediate lethal check for any target (ignore incoming damage gating).
                 for i, monster in alive_monsters:
-                    vuln = context.vulnerable_stacks.get(i, 0) if hasattr(context, 'vulnerable_stacks') else 0
-                    damage = potion.effect_value * (1.5 if vuln > 0 else 1.0)
+                    damage = potion.effect_value
                     if damage >= monster.current_hp:
                         score += 100
                         break
