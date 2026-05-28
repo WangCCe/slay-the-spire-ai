@@ -1511,6 +1511,40 @@ def test_timing_analysis_clamps_negative_live_move_damage_to_zero():
     assert analysis["current_damage"] == 0
 
 
+def test_timing_analysis_ignores_non_attack_current_intents():
+    classifier = TurnTimingClassifier()
+    buffing = SimpleNamespace(
+        name="Spike Slime (M)",
+        current_hp=25,
+        max_hp=25,
+        strength=0,
+        intent="Intent.DEBUFF",
+        move_adjusted_damage=12,
+        move_hits=1,
+    )
+    attacking = SimpleNamespace(
+        name="Jaw Worm",
+        current_hp=40,
+        max_hp=40,
+        strength=0,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=7,
+        move_hits=2,
+    )
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0))
+
+    analysis = classifier._analyze_monster_timing(context, [buffing, attacking], current_turn=7)
+
+    assert analysis["current_damage"] == 14
+
+
+def test_safe_intent_detection_accepts_enum_string_names():
+    classifier = TurnTimingClassifier()
+    hints = SimpleNamespace(is_safe_turn=lambda _intent: False)
+
+    assert classifier._is_safe_intent("Intent.BUFF", "Intent.ATTACK", hints) is True
+
+
 def test_heuristic_incoming_damage_clamps_negative_live_move_damage_to_zero():
     monster = SimpleNamespace(
         name="Spike Slime (M)",

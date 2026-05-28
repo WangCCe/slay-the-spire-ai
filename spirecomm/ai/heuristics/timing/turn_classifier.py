@@ -36,6 +36,14 @@ class TurnTimingClassifier:
         """Initialize the classifier."""
         self._cache = {}  # Cache for timing analysis results
 
+    @staticmethod
+    def _intent_name(intent: Any) -> str:
+        return str(intent or '').upper().split('.')[-1]
+
+    @classmethod
+    def _is_attack_intent(cls, intent: Any) -> bool:
+        return 'ATTACK' in cls._intent_name(intent)
+
     def classify_turn(self, context) -> TimingContext:
         """
         Classify the current turn's timing and build complete timing context.
@@ -128,7 +136,7 @@ class TurnTimingClassifier:
                 monster_name = monster.name
 
                 # Get current intent
-                current_intent = str(getattr(monster, 'intent', 'UNKNOWN')).upper()
+                current_intent = self._intent_name(getattr(monster, 'intent', 'UNKNOWN'))
 
                 # Calculate HP percentage
                 if hasattr(monster, 'current_hp') and hasattr(monster, 'max_hp'):
@@ -140,7 +148,8 @@ class TurnTimingClassifier:
                 current_damage = self._coerce_damage_value(getattr(monster, 'move_adjusted_damage', 0))
                 current_damage = max(0, current_damage or 0)
                 hits = max(1, self._coerce_int(getattr(monster, 'move_hits', 1), default=1))
-                total_current_damage += current_damage * hits
+                if self._is_attack_intent(current_intent):
+                    total_current_damage += current_damage * hits
 
                 # Get Wiki timing hints
                 hints = game_data_loader.get_monster_timing_hints(monster_name)
@@ -157,7 +166,7 @@ class TurnTimingClassifier:
 
                 if predicted_moves:
                     next_move = predicted_moves[0].get('move', {})
-                    next_intent = next_move.get('intent', '').upper()
+                    next_intent = self._intent_name(next_move.get('intent', ''))
 
                     # Check if current turn is safe (monster buffing/defending)
                     if self._is_safe_intent(current_intent, next_intent, monster_hints[monster_name]):
@@ -878,6 +887,9 @@ class TurnTimingClassifier:
         hints: MonsterTimingHints
     ) -> bool:
         """Check if intent indicates a safe turn."""
+        current_intent = self._intent_name(current_intent)
+        next_intent = self._intent_name(next_intent)
+
         # Non-attack intents are generally safe
         non_attack_intents = ['BUFF', 'DEFEND', 'DEBUFF', 'DEBUG', 'NONE', 'STUN', 'SLEEP']
 
