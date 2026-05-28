@@ -515,8 +515,21 @@ class TurnTimingClassifier:
     ) -> int:
         formula_hits = self._resolve_hits_formula(move.get('hits_formula'), target_turn)
         if formula_hits is not None:
-            return formula_hits
-        return self._coerce_int(move.get('hits', 1), default=1)
+            hits = formula_hits
+        else:
+            hits = self._coerce_int(move.get('hits', 1), default=1)
+
+        ascension_mods = self._applicable_ascension_modifiers(
+            move,
+            context,
+            required_keys=('hits',),
+        )
+        if ascension_mods:
+            ascension_hits = self._coerce_damage_value(ascension_mods.get('hits'))
+            if ascension_hits is not None:
+                return ascension_hits
+
+        return hits
 
     def _resolve_damage_formula(self, formula: Any, target_turn: Optional[int]) -> Optional[int]:
         if not isinstance(formula, dict):
@@ -589,6 +602,42 @@ class TurnTimingClassifier:
         coerced = self._coerce_damage_value(value)
         return default if coerced is None else coerced
 
+    def _context_ascension_level(self, context) -> int:
+        if hasattr(context, 'game') and hasattr(context.game, 'ascension_level'):
+            return int(context.game.ascension_level or 0)
+        return int(getattr(context, 'ascension_level', 0) or 0)
+
+    def _applicable_ascension_modifiers(
+        self,
+        move: Dict[str, Any],
+        context,
+        required_keys: Optional[Tuple[str, ...]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        asc_mods = move.get('ascension_modifiers', {})
+        if not isinstance(asc_mods, dict):
+            return None
+
+        thresholds = []
+        for key in asc_mods:
+            if not isinstance(key, str) or not key.endswith('+'):
+                continue
+            threshold_text = key[:-1]
+            if threshold_text.isdigit():
+                thresholds.append(int(threshold_text))
+
+        ascension_level = self._context_ascension_level(context)
+        for threshold in sorted(thresholds, reverse=True):
+            if ascension_level < threshold:
+                continue
+            modifiers = asc_mods.get(f"{threshold}+")
+            if not isinstance(modifiers, dict):
+                continue
+            if required_keys and not any(key in modifiers for key in required_keys):
+                continue
+            return modifiers
+
+        return None
+
     def _apply_ascension_damage_modifiers(
         self,
         monster_name: str,
@@ -609,32 +658,27 @@ class TurnTimingClassifier:
             Damage adjusted for ascension level
         """
         try:
-            from spirecomm.data.loader import game_data_loader
-
             # Get ascension level
-            ascension_level = 0
-            if hasattr(context, 'game') and hasattr(context.game, 'ascension_level'):
-                ascension_level = context.game.ascension_level or 0
-
-            # Check if move has ascension modifiers
-            if 'ascension_modifiers' not in move:
+            ascension_level = self._context_ascension_level(context)
+            mods = self._applicable_ascension_modifiers(
+                move,
+                context,
+                required_keys=('damage', 'damage_bonus'),
+            )
+            if not mods:
                 return base_damage
 
-            asc_mods = move['ascension_modifiers']
             adjusted_damage = base_damage
 
-            # Apply modifiers in order (highest first)
-            for asc_threshold in sorted([int(k.split('+')[0]) for k in asc_mods.keys() if '+' in k], reverse=True):
-                if ascension_level >= asc_threshold:
-                    # Find the modifier key for this threshold
-                    mod_key = f"{asc_threshold}+"
-                    if mod_key in asc_mods:
-                        mods = asc_mods[mod_key]
-                        if 'damage_bonus' in mods:
-                            adjusted_damage += mods['damage_bonus']
-                            logger.debug(f"[ASCENSION_DAMAGE] {monster_name} A{ascension_level}+: "
-                                       f"damage {base_damage} + {mods['damage_bonus']} = {adjusted_damage}")
-                        break  # Apply highest applicable modifier only
+            absolute_damage = self._coerce_damage_value(mods.get('damage'))
+            if absolute_damage is not None:
+                adjusted_damage = absolute_damage
+                logger.debug(f"[ASCENSION_DAMAGE] {monster_name} A{ascension_level}+: "
+                           f"damage {base_damage} -> {adjusted_damage}")
+            elif 'damage_bonus' in mods:
+                adjusted_damage += mods['damage_bonus']
+                logger.debug(f"[ASCENSION_DAMAGE] {monster_name} A{ascension_level}+: "
+                           f"damage {base_damage} + {mods['damage_bonus']} = {adjusted_damage}")
 
             return adjusted_damage
 

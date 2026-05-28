@@ -1118,6 +1118,108 @@ def test_damage_curve_uses_first_prediction_for_each_target_turn(monkeypatch):
     assert damage_curve == [2, 3]
 
 
+def test_damage_curve_applies_absolute_ascension_damage_modifiers(monkeypatch):
+    def fake_predict_monster_moves(_monster_name, _current_turn, _hp_percent):
+        return [
+            {
+                "move": {
+                    "name": "Heavy Strike",
+                    "intent": "ATTACK",
+                    "damage": 12,
+                    "hits": 1,
+                    "ascension_modifiers": {"2+": {"damage": 14}},
+                }
+            }
+        ]
+
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        fake_predict_monster_moves,
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=2))
+    monster = SimpleNamespace(name="Scripted", current_hp=20, max_hp=20, strength=0)
+
+    damage_curve = classifier._calculate_damage_curve(
+        context,
+        [monster],
+        current_turn=1,
+        look_ahead=1,
+    )
+
+    assert damage_curve == [14]
+
+
+def test_damage_curve_applies_absolute_ascension_hit_modifiers(monkeypatch):
+    def fake_predict_monster_moves(_monster_name, _current_turn, _hp_percent):
+        return [
+            {
+                "move": {
+                    "name": "Twin Tackle",
+                    "intent": "ATTACK",
+                    "damage": 5,
+                    "hits": 1,
+                    "ascension_modifiers": {"4+": {"hits": 2}},
+                }
+            }
+        ]
+
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        fake_predict_monster_moves,
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=4))
+    monster = SimpleNamespace(name="Scripted", current_hp=20, max_hp=20, strength=0)
+
+    damage_curve = classifier._calculate_damage_curve(
+        context,
+        [monster],
+        current_turn=1,
+        look_ahead=1,
+    )
+
+    assert damage_curve == [10]
+
+
+def test_damage_curve_keeps_lower_ascension_damage_when_higher_modifier_changes_debuff(monkeypatch):
+    def fake_predict_monster_moves(_monster_name, _current_turn, _hp_percent):
+        return [
+            {
+                "move": {
+                    "name": "Rake",
+                    "intent": "ATTACK_DEBUFF",
+                    "damage": 7,
+                    "hits": 1,
+                    "ascension_modifiers": {
+                        "2+": {"damage": 8},
+                        "17+": {"weak_applied": 2},
+                    },
+                }
+            }
+        ]
+
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        fake_predict_monster_moves,
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=17))
+    monster = SimpleNamespace(name="Gremlin Nob", current_hp=82, max_hp=82, strength=0)
+
+    damage_curve = classifier._calculate_damage_curve(
+        context,
+        [monster],
+        current_turn=1,
+        look_ahead=1,
+    )
+
+    assert damage_curve == [8]
+
+
 def test_opening_then_alternating_patterns_predict_full_sequence():
     database = EnhancedMonsterDatabase()
 
