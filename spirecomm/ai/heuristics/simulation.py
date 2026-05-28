@@ -3517,6 +3517,16 @@ class HeuristicCombatPlanner(CombatPlanner):
         self.player_class = player_class
         self.act = act  # Store act for reference
 
+    @staticmethod
+    def _card_cost_for_state(card, state: SimulationState) -> int:
+        cost = effective_card_cost(card, state.player_energy)
+        if (
+            getattr(card, 'type', None) == CardType.SKILL
+            and getattr(state, 'corruption_active', False)
+        ):
+            return 0
+        return cost
+
     def plan_turn(self, context: DecisionContext) -> List[Action]:
         """
         Plan optimal action sequence for this turn.
@@ -3555,7 +3565,11 @@ class HeuristicCombatPlanner(CombatPlanner):
                              if hasattr(c, 'cost_for_turn') and c.cost_for_turn == 0)
 
         # Extra energy beyond base 3
-        extra_energy = context.energy_available - 3 if hasattr(context, 'energy_available') else 0
+        extra_energy = (
+            max(0, context.energy_available - 3)
+            if hasattr(context, 'energy_available')
+            else 0
+        )
 
         # Calculate adaptive depth: base 3 + bonuses
         # More cards, zero-cost cards, or extra energy → deeper search
@@ -3642,7 +3656,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                 for card in context.playable_cards:
                     card_idx = id(card)
                     if card_idx not in state.played_card_uuids:
-                        cost = effective_card_cost(card, state.player_energy)
+                        cost = self._card_cost_for_state(card, state)
                         if cost <= state.player_energy:
                             playable_actions.append((card, card_idx, cost))
 
@@ -4376,7 +4390,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             logger.debug(f"Rage score bonus: {potential_block} potential block from {len(attack_cards)} attacks")
 
         # Zero-cost bonus (Apex, Clothesline after Corruption, etc.)
-        cost = effective_card_cost(card, state.player_energy)
+        cost = self._card_cost_for_state(card, state)
         if cost == 0:
             score += FASTSCORE_ZERO_COST_BONUS
 

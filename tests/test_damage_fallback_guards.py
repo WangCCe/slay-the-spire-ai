@@ -9,7 +9,7 @@ import spirecomm.data.loader as data_loader
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
 from spirecomm.ai.heuristics.simulation import FastCombatSimulator, HeuristicCombatPlanner
 from spirecomm.ai.heuristics.timing.turn_classifier import TurnTimingClassifier
-from spirecomm.communication.action import PotionAction
+from spirecomm.communication.action import PlayCardAction, PotionAction
 from spirecomm.ai.heuristics.enhanced_monster_database import EnhancedMonsterDatabase
 from spirecomm.spire.card import Card, CardRarity, CardType
 from spirecomm.spire.character import Intent
@@ -1896,6 +1896,73 @@ def test_beam_search_can_spend_energy_gained_from_potion():
 
     assert isinstance(sequence[0], PotionAction)
     assert sequence[1].card is expensive_attack
+
+
+def test_beam_search_treats_corruption_skills_as_playable_without_energy():
+    monster = SimpleNamespace(
+        name="Lagavulin",
+        monster_id="Lagavulin",
+        max_hp=100,
+        current_hp=100,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=18,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    skills = [
+        Card(
+            card_id=f"Defend{i}",
+            name=f"Defend {i}",
+            card_type=CardType.SKILL,
+            rarity=CardRarity.BASIC,
+            cost=1,
+            cost_for_turn=1,
+            has_target=False,
+            uuid=f"defend-{i}",
+        )
+        for i in range(3)
+    ]
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            player=SimpleNamespace(
+                block=0,
+                powers=[SimpleNamespace(power_name="Corruption", amount=1)],
+            ),
+            monsters=[monster],
+            room_type="Monster",
+            get_real_potions=lambda: [],
+        ),
+        act=1,
+        turn=1,
+        floor=5,
+        energy_available=0,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=skills,
+    )
+    planner = HeuristicCombatPlanner()
+    planner._simple_plan = lambda _context: []
+    planner.fast_score_action = lambda _card, _state, _context: 1
+    planner.card_evaluator.evaluate_card = lambda _card, _context: 0
+    planner.simulator.calculate_outcome_score = (
+        lambda _initial_state, _final_state, _act, _weights, _context, sequence: len(sequence) * 10
+    )
+
+    sequence = planner.plan_turn(context)
+
+    assert len(sequence) >= 2
+    assert all(isinstance(action, PlayCardAction) for action in sequence[:2])
 
 
 def test_hp_threshold_modes_predict_guardian_sequence():
