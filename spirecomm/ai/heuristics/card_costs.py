@@ -1,6 +1,7 @@
 """Helpers for card cost values used by combat planners."""
 
-from typing import Optional
+import re
+from typing import Any, Optional
 
 
 def raw_card_cost(card) -> int:
@@ -36,6 +37,38 @@ def effective_card_cost(card, available_energy: Optional[int] = None) -> int:
         except (TypeError, ValueError):
             return 0
     return max(0, cost)
+
+
+def _normalized_game_id(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
+
+
+def context_has_relic(context, relic_name: str) -> bool:
+    game = getattr(context, "game", None)
+    relics = getattr(game, "relics", []) or []
+    wanted = _normalized_game_id(relic_name)
+    for relic in relics:
+        names = [
+            getattr(relic, "relic_id", None),
+            getattr(relic, "name", None),
+        ]
+        if isinstance(relic, str):
+            names.append(relic)
+        if any(_normalized_game_id(name) == wanted for name in names):
+            return True
+    return False
+
+
+def chemical_x_bonus(context) -> int:
+    return 2 if context_has_relic(context, "Chemical X") else 0
+
+
+def x_effect_energy(card, available_energy: Optional[int] = None, context=None) -> int:
+    """Return the X value used by card effects, distinct from energy consumed."""
+    energy = effective_card_cost(card, available_energy)
+    if is_x_cost_card(card):
+        energy += chemical_x_bonus(context)
+    return energy
 
 
 def whirlwind_damage(card, energy_spent: int, strength: int = 0) -> int:

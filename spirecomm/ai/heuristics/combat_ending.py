@@ -13,7 +13,7 @@ from spirecomm.communication.action import PlayCardAction
 from spirecomm.data.loader import game_data_loader
 from ..decision.base import DecisionContext
 from .card_names import canonical_card_name
-from .card_costs import effective_card_cost, whirlwind_damage
+from .card_costs import effective_card_cost, whirlwind_damage, x_effect_energy
 
 logger = logging.getLogger(__name__)
 
@@ -383,7 +383,7 @@ class CombatEndingDetector:
             base_damage = game_data_loader._parse_card_damage(damage_data) or 0
 
         if card_name == 'Whirlwind':
-            energy = effective_card_cost(card, context.energy_available)
+            energy = x_effect_energy(card, context.energy_available, context)
             return whirlwind_damage(card, energy, getattr(context, 'strength', 0))
 
         if hasattr(card, 'type') and card.type == CardType.ATTACK:
@@ -459,7 +459,7 @@ class CombatEndingDetector:
         card_name = self._base_card_name(card)
 
         if card_name == 'Whirlwind':
-            return max(1, effective_card_cost(card, available_energy))
+            return max(1, x_effect_energy(card, available_energy, context))
 
         return self._get_attack_hit_count(card, context)
 

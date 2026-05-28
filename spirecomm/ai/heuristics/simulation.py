@@ -20,6 +20,7 @@ from spirecomm.ai.heuristics.card_costs import (
     effective_card_cost,
     is_x_cost_card,
     raw_card_cost,
+    x_effect_energy,
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.data.loader import game_data_loader
@@ -777,28 +778,6 @@ class FastCombatSimulator:
         """
         self.timing_context = timing_context
 
-    @staticmethod
-    def _normalized_relic_name(value: Any) -> str:
-        return re.sub(r'[^a-z0-9]', '', str(value or '').lower())
-
-    def _context_has_relic(self, context: Optional[DecisionContext], relic_name: str) -> bool:
-        game = getattr(context, 'game', None)
-        relics = getattr(game, 'relics', []) or []
-        wanted = self._normalized_relic_name(relic_name)
-        for relic in relics:
-            names = [
-                getattr(relic, 'relic_id', None),
-                getattr(relic, 'name', None),
-            ]
-            if isinstance(relic, str):
-                names.append(relic)
-            if any(self._normalized_relic_name(name) == wanted for name in names):
-                return True
-        return False
-
-    def _chemical_x_bonus(self, context: Optional[DecisionContext]) -> int:
-        return 2 if self._context_has_relic(context, 'Chemical X') else 0
-
     def simulate_card_play(self, state: SimulationState, card: Card,
                           target: Optional[Monster] = None,
                           target_index: Optional[int] = None,
@@ -837,7 +816,7 @@ class FastCombatSimulator:
             cost = 0
         base_cost = raw_cost if raw_cost >= 0 else cost
         x_energy_spent = (
-            cost + self._chemical_x_bonus(context)
+            x_effect_energy(card, cost, context)
             if is_x_cost_card(card)
             else None
         )
@@ -1935,8 +1914,7 @@ class FastCombatSimulator:
                 energy = getattr(state, '_current_x_energy_spent', None)
             if energy is None:
                 energy = (
-                    effective_card_cost(card, getattr(state, 'player_energy', 0))
-                    + self._chemical_x_bonus(context)
+                    x_effect_energy(card, getattr(state, 'player_energy', 0), context)
                 )
             per_energy_block = 9 if getattr(card, 'upgrades', 0) > 0 else 7
             return max(0, energy) * per_energy_block

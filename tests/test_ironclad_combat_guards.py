@@ -4827,6 +4827,23 @@ def test_lethal_detector_counts_whirlwind_damage_without_negative_energy():
     assert CombatEndingDetector()._calculate_affordable_damage(context) == 15
 
 
+def test_lethal_detector_applies_chemical_x_to_whirlwind_damage():
+    whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
+    context = _combat_context([whirlwind], energy=3, monsters=[_louse(current_hp=50)])
+    context.game.relics = [SimpleNamespace(relic_id="Chemical X", name="Chemical X")]
+
+    assert CombatEndingDetector()._calculate_affordable_damage(context) == 25
+
+
+def test_lethal_detector_applies_chemical_x_to_whirlwind_vulnerable_hits():
+    whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
+    context = _combat_context([whirlwind], energy=3, monsters=[_louse(current_hp=100)])
+    context.game.relics = [SimpleNamespace(relic_id="Chemical X", name="Chemical X")]
+    context.vulnerable_stacks[0] = 1
+
+    assert CombatEndingDetector()._calculate_affordable_damage(context) == 35
+
+
 def test_lethal_detector_allows_certain_kill_at_critical_hp():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=5)])
