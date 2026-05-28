@@ -384,6 +384,78 @@ def test_simulate_card_play_spends_all_energy_on_reinforced_body_block(monkeypat
         assert result.player_energy == 0
 
 
+def test_simulate_card_play_spends_x_energy_on_malaise_debuffs(monkeypatch):
+    card_data = {
+        "name": "Malaise",
+        "description": "Enemy loses [X|X+1] Strength. Apply [X|X+1] Weak.\nExhaust.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Malaise" else None,
+    )
+    monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        max_hp=50,
+        current_hp=50,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=12,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+        ),
+        act=1,
+        turn=1,
+        energy_available=3,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[],
+    )
+    for card_name, upgrades, expected_debuff in (
+        ("Malaise", 0, 3),
+        ("Malaise+", 1, 4),
+    ):
+        state = simulation.SimulationState(context)
+        card = Card(
+            card_id="Malaise",
+            name=card_name,
+            card_type=CardType.SKILL,
+            rarity=CardRarity.RARE,
+            upgrades=upgrades,
+            has_target=True,
+            cost=-1,
+            cost_for_turn=-1,
+        )
+
+        result = FastCombatSimulator(None).simulate_card_play(
+            state,
+            card,
+            target=monster,
+            context=context,
+        )
+
+        assert result.monsters[0]["strength"] == -expected_debuff
+        assert result.monsters[0]["weak"] == expected_debuff
+        assert result.monsters[0]["move_adjusted_damage"] == 12 - expected_debuff
+        assert result.player_energy == 0
+
+
 def test_attack_simulation_applies_poison_card_effect(monkeypatch):
     card = Card(
         card_id="Poisoned Stab",

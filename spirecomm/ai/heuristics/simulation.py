@@ -1428,12 +1428,20 @@ class FastCombatSimulator:
         description: str,
         upgraded: bool,
         card_name: str = '',
+        x_energy_spent: Optional[int] = None,
     ) -> List[Tuple[int, str, int]]:
         effects = []
         for debuff in ('weak', 'vulnerable', 'poison'):
             if debuff not in description:
                 continue
             stacks = self._extract_debuff_stacks(description, debuff, upgraded)
+            if stacks is None:
+                stacks = self._extract_x_debuff_stacks(
+                    description,
+                    debuff,
+                    upgraded,
+                    x_energy_spent,
+                )
             if stacks is None and card_name == 'Shockwave':
                 stacks = 5 if upgraded else 3
             if not stacks:
@@ -1447,7 +1455,11 @@ class FastCombatSimulator:
             if stacks:
                 position = description.find('strength down')
                 effects.append((position if position >= 0 else 9999, 'strength_down', stacks))
-        enemy_strength_loss = self._enemy_strength_loss_effect(description, upgraded)
+        enemy_strength_loss = self._enemy_strength_loss_effect(
+            description,
+            upgraded,
+            x_energy_spent,
+        )
         if enemy_strength_loss:
             position, stacks, temporary = enemy_strength_loss
             debuff = 'temporary_strength_down' if temporary else 'strength_down'
@@ -1455,25 +1467,74 @@ class FastCombatSimulator:
         effects.sort(key=lambda effect: effect[0])
         return effects
 
+    def _x_or_numeric_stack_value(
+        self,
+        token: str,
+        x_energy_spent: Optional[int],
+    ) -> Optional[int]:
+        token = (token or '').lower().replace(' ', '')
+        if token.isdigit():
+            return int(token)
+        if x_energy_spent is None:
+            return None
+        if token == 'x':
+            return max(0, x_energy_spent)
+        if token == 'x+1':
+            return max(0, x_energy_spent) + 1
+        return None
+
+    def _extract_x_debuff_stacks(
+        self,
+        description: str,
+        keyword: str,
+        upgraded: bool,
+        x_energy_spent: Optional[int],
+    ) -> Optional[int]:
+        if x_energy_spent is None:
+            return None
+
+        effect_text = self._effect_text_for_upgrade(description, upgraded)
+        effect_text = (effect_text or '').lower().replace('#', '')
+        keyword_pattern = re.escape(keyword)
+        x_token = r'(x(?:\s*\+\s*1)?)'
+        patterns = [
+            rf'{keyword_pattern}\s*{x_token}',
+            rf'{x_token}\s*{keyword_pattern}',
+            rf'apply\s*{x_token}\s*{keyword_pattern}',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, effect_text)
+            if match:
+                return self._x_or_numeric_stack_value(
+                    match.group(1),
+                    x_energy_spent,
+                )
+        return None
+
     def _enemy_strength_loss_effect(
         self,
         description: str,
         upgraded: bool,
+        x_energy_spent: Optional[int] = None,
     ) -> Optional[Tuple[int, int, bool]]:
         effect_text = self._effect_text_for_upgrade(description, upgraded)
         effect_text = (effect_text or '').lower().replace('#', '')
         match = re.search(
-            r'\b(?:all\s+)?enem(?:y|ies)\s+los(?:e|es)\s+(\d+)\s+strength\b',
+            r'\b(?:all\s+)?enem(?:y|ies)\s+los(?:e|es)\s+'
+            r'(\d+|x(?:\s*\+\s*1)?)\s+strength\b',
             effect_text,
         )
         if not match:
+            return None
+        stacks = self._x_or_numeric_stack_value(match.group(1), x_energy_spent)
+        if not stacks:
             return None
 
         sentence_tail = effect_text[match.start():]
         sentence_end = re.search(r'[\.\n]', sentence_tail)
         sentence = sentence_tail[:sentence_end.start()] if sentence_end else sentence_tail
         temporary = 'this turn' in sentence
-        return match.start(), int(match.group(1)), temporary
+        return match.start(), stacks, temporary
 
     def _apply_monster_strength_down(self, monster: dict, stacks: int):
         if stacks <= 0:
@@ -2045,12 +2106,21 @@ class FastCombatSimulator:
                 )
                 has_debuff = (
                     has_debuff
-                    or self._enemy_strength_loss_effect(description, upgrades) is not None
+                    or self._enemy_strength_loss_effect(
+                        description,
+                        upgrades,
+                        x_energy_spent,
+                    ) is not None
                 )
                 # Disarm is handled above as a data-independent fallback.
                 if has_debuff and card_name != 'Disarm':
                     is_aoe = game_data_loader._is_card_aoe(card_data) or 'all enemies' in description
-                    debuff_effects = self._description_debuff_effects(description, upgrades, card_name)
+                    debuff_effects = self._description_debuff_effects(
+                        description,
+                        upgrades,
+                        card_name,
+                        x_energy_spent=x_energy_spent,
+                    )
                     if is_aoe:
                         if debuff_effects:
                             for monster in state.monsters:
