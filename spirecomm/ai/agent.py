@@ -433,6 +433,19 @@ class SimpleAgent:
         except (TypeError, ValueError):
             return 1
 
+    @staticmethod
+    def _is_attack_intent(monster):
+        if not hasattr(monster, "intent"):
+            return True
+
+        intent = getattr(monster, "intent", None)
+        if intent is None:
+            return True
+        if hasattr(intent, "is_attack"):
+            return intent.is_attack()
+
+        return "ATTACK" in str(intent).upper()
+
     @classmethod
     def _move_damage_contribution(cls, monster):
         damage = getattr(monster, "move_adjusted_damage", None)
@@ -447,7 +460,10 @@ class SimpleAgent:
         incoming_damage = 0
         for monster in self.game.monsters:
             if self._is_live_monster(monster):
-                if getattr(monster, "move_adjusted_damage", None) is not None:
+                if (
+                    getattr(monster, "move_adjusted_damage", None) is not None
+                    and self._is_attack_intent(monster)
+                ):
                     incoming_damage += self._move_damage_contribution(monster)
                 elif monster.intent == Intent.NONE:
                     incoming_damage += 5 * self.game.act

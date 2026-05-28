@@ -1476,6 +1476,8 @@ class CombatRLAgent:
     def _incoming_damage(game: Game) -> int:
         total = 0
         for monster in CombatRLAgent._alive_monsters(game):
+            if not CombatRLAgent._is_attack_intent(monster):
+                continue
             damage = getattr(monster, "move_adjusted_damage", None)
             if damage is None:
                 damage = getattr(monster, "move_base_damage", 0) or 0
@@ -1485,6 +1487,19 @@ class CombatRLAgent:
             except Exception:
                 pass
         return total
+
+    @staticmethod
+    def _is_attack_intent(monster) -> bool:
+        if not hasattr(monster, "intent"):
+            return True
+
+        intent = getattr(monster, "intent", None)
+        if intent is None:
+            return True
+        if hasattr(intent, "is_attack"):
+            return intent.is_attack()
+
+        return "ATTACK" in str(intent).upper()
 
     @classmethod
     def _has_awakened_one(cls, game: Game) -> bool:
