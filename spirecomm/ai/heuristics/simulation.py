@@ -1472,7 +1472,11 @@ class FastCombatSimulator:
                 if monster.get(debuff, 0) > 0:
                     monster[debuff] = max(0, monster[debuff] - 1)
 
-    def _extract_move_debuffs(self, move: Dict[str, Any]) -> Dict[str, int]:
+    def _extract_move_debuffs(
+        self,
+        move: Dict[str, Any],
+        context: Optional[DecisionContext] = None,
+    ) -> Dict[str, int]:
         """Extract debuff stacks applied to the player from a monster move."""
         def _get_stack(key: str) -> int:
             value = move.get(key, 0)
@@ -1482,11 +1486,29 @@ class FastCombatSimulator:
                 return int(value)
             return 0
 
-        return {
+        debuffs = {
             'weak': _get_stack('weak') or _get_stack('weak_applied') or _get_stack('weak_amount'),
             'frail': _get_stack('frail') or _get_stack('frail_applied') or _get_stack('frail_amount'),
             'vulnerable': _get_stack('vulnerable') or _get_stack('vulnerable_applied') or _get_stack('vulnerable_amount'),
         }
+        if context is None:
+            return debuffs
+
+        for debuff in ('weak', 'frail', 'vulnerable'):
+            debuffs[debuff] = self._apply_ascension_move_value(move, context, debuff, debuffs[debuff])
+            debuffs[debuff] = self._apply_ascension_move_value(
+                move,
+                context,
+                f'{debuff}_applied',
+                debuffs[debuff],
+            )
+            debuffs[debuff] = self._apply_ascension_move_value(
+                move,
+                context,
+                f'{debuff}_amount',
+                debuffs[debuff],
+            )
+        return debuffs
 
     def _extract_move_strength_gain(self, move: Dict[str, Any], context: Optional[DecisionContext] = None) -> int:
         """Extract monster Strength gained by a predicted move."""
@@ -2406,7 +2428,7 @@ class FastCombatSimulator:
                             discount = LOOKAHEAD_DAMAGE_DISCOUNT ** step
                             turn_damage += int(damage * discount)
 
-                        move_debuffs = self._extract_move_debuffs(move)
+                        move_debuffs = self._extract_move_debuffs(move, context)
                         pending_debuffs['weak'] += move_debuffs['weak']
                         pending_debuffs['frail'] += move_debuffs['frail']
                         pending_debuffs['vulnerable'] += move_debuffs['vulnerable']

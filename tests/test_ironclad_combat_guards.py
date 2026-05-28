@@ -885,6 +885,41 @@ def test_enemy_lookahead_applies_ascension_strength_gain_modifiers(monkeypatch):
     assert future_damage == int(10 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
 
 
+def test_enemy_lookahead_applies_ascension_debuff_modifiers(monkeypatch):
+    class FakeLoader:
+        def get_enhanced_monster_data(self, _monster_name):
+            return None
+
+        def predict_monster_moves(self, _monster_name, turn, _hp_percent):
+            move = (
+                {
+                    "move": {
+                        "intent": "DEBUFF",
+                        "vulnerable_applied": 1,
+                        "ascension_modifiers": {"17+": {"vulnerable_applied": 2}},
+                    }
+                }
+                if turn == 1
+                else {"move": {"intent": "ATTACK", "damage": 10, "hits": 1}}
+            )
+            return [move]
+
+    monkeypatch.setattr(simulation, "game_data_loader", FakeLoader())
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=50)])
+    context.turn = 1
+    context.ascension_level = 17
+    context.game.ascension_level = 17
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=2,
+    )
+
+    assert future_damage == int(15 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
+
+
 def test_live_champ_transition_buff_resolves_to_anger_despite_live_move_id():
     context = _combat_context([], energy=0, monsters=[_champ_transition()])
     state = SimulationState(context)
