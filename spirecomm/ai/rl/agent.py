@@ -21,7 +21,7 @@ from .network import (
 )
 from spirecomm.spire.game import Game
 from spirecomm.communication.action import Action
-from spirecomm.ai.intent_utils import monster_intends_attack
+from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
 from spirecomm.spire.character import PlayerClass
 
 logger = logging.getLogger(__name__)
@@ -1477,6 +1477,9 @@ class CombatRLAgent:
     def _incoming_damage(game: Game) -> int:
         total = 0
         for monster in CombatRLAgent._alive_monsters(game):
+            if intent_is_unknown(getattr(monster, "intent", None)):
+                total += 5 * getattr(game, "act", 1)
+                continue
             if not monster_intends_attack(monster):
                 continue
             damage = getattr(monster, "move_adjusted_damage", None)

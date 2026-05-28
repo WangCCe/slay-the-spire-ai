@@ -10,6 +10,7 @@ from spirecomm.communication.action import (
     WaitAction,
 )
 from spirecomm.spire.card import CardType
+from spirecomm.spire.character import Intent
 from spirecomm.spire.screen import ScreenType
 
 
@@ -126,6 +127,14 @@ def test_rl_incoming_damage_ignores_non_attack_intents():
     game = _game(monsters=[monster])
 
     assert CombatRLAgent._incoming_damage(game) == 0
+
+
+def test_rl_incoming_damage_estimates_unknown_intent_by_act():
+    monster = _monster(hp=25, damage=None)
+    monster.intent = Intent.UNKNOWN
+    game = _game(monsters=[monster], act=2)
+
+    assert CombatRLAgent._incoming_damage(game) == 10
 
 
 def test_energy_guard_replaces_wasteful_end_turn_with_play_card():
