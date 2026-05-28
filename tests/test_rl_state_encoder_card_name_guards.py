@@ -47,3 +47,14 @@ def test_rl_state_encoder_traits_strip_counted_upgrade_suffix():
     bash_features = encoder._encode_single_card(_card("Bash+1", upgrades=1))
 
     assert bash_features[-1] == 1.0
+
+
+def test_rl_state_encoder_intent_encoding_accepts_string_representations():
+    encoder = StateEncoder()
+
+    assert encoder._encode_intent("Intent.ATTACK_DEBUFF") == [1.0, 0.0, 0.0, 0.0, 0.0]
+    assert encoder._encode_intent("Attack/Debuff") == [1.0, 0.0, 0.0, 0.0, 0.0]
+    assert encoder._encode_intent("Intent.DEFEND_BUFF") == [0.0, 1.0, 0.0, 0.0, 0.0]
+    assert encoder._encode_intent("Intent.BUFF") == [0.0, 0.0, 1.0, 0.0, 0.0]
+    assert encoder._encode_intent("Intent.STRONG_DEBUFF") == [0.0, 0.0, 0.0, 1.0, 0.0]
+    assert encoder._encode_intent("NOT_ATTACK") == [0.0, 0.0, 0.0, 0.0, 1.0]

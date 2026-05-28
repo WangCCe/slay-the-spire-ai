@@ -9,6 +9,7 @@ from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.spire.game import Game
 from spirecomm.spire.card import Card, CardType, CardRarity
 from spirecomm.spire.character import Monster, PlayerClass, Intent
+from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 
 _UPGRADE_SUFFIX_RE = re.compile(r'\+\d*$')
 
@@ -578,12 +579,13 @@ class StateEncoder:
 
     @staticmethod
     def _encode_intent(intent):
-        if intent in (Intent.ATTACK, Intent.ATTACK_BUFF, Intent.ATTACK_DEBUFF, Intent.ATTACK_DEFEND):
+        tokens = intent_tokens(intent)
+        if intent_is_attack(intent):
             return [1.0, 0.0, 0.0, 0.0, 0.0]
-        if intent in (Intent.DEFEND, Intent.DEFEND_BUFF, Intent.DEFEND_DEBUFF):
+        if "DEFEND" in tokens:
             return [0.0, 1.0, 0.0, 0.0, 0.0]
-        if intent == Intent.BUFF:
+        if "BUFF" in tokens:
             return [0.0, 0.0, 1.0, 0.0, 0.0]
-        if intent in (Intent.DEBUFF, Intent.STRONG_DEBUFF):
+        if "DEBUFF" in tokens:
             return [0.0, 0.0, 0.0, 1.0, 0.0]
         return [0.0, 0.0, 0.0, 0.0, 1.0]
