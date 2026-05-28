@@ -4323,6 +4323,41 @@ class HeuristicCombatPlanner(CombatPlanner):
         except (TypeError, ValueError):
             return 1
 
+    @staticmethod
+    def _live_monster_state_dict(monster) -> Dict[str, Any]:
+        current_hp = getattr(monster, 'current_hp', 1)
+        return {
+            'name': getattr(monster, 'name', ''),
+            'monster_id': getattr(monster, 'monster_id', ''),
+            'hp': current_hp,
+            'current_hp': current_hp,
+            'max_hp': getattr(monster, 'max_hp', current_hp),
+            'intent': getattr(monster, 'intent', None),
+            'move_id': getattr(monster, 'move_id', None),
+            'move_base_damage': getattr(monster, 'move_base_damage', 0),
+            'move_adjusted_damage': getattr(monster, 'move_adjusted_damage', 0),
+            'move_hits': getattr(monster, 'move_hits', 1),
+            'is_gone': getattr(monster, 'is_gone', False),
+            'half_dead': getattr(monster, 'half_dead', False),
+        }
+
+    def _known_unknown_move_has_no_immediate_damage(self, monster) -> bool:
+        try:
+            move = self.simulator._current_monster_move(
+                self._live_monster_state_dict(monster)
+            )
+        except Exception:
+            return False
+
+        if not move:
+            return False
+
+        move_intent = str(move.get('intent', '')).upper()
+        if 'ATTACK' in move_intent:
+            return False
+
+        return self.simulator._numeric_damage_value(move.get('damage', 0)) <= 0
+
     def _get_incoming_damage(self, context: DecisionContext) -> int:
         """Calculate total incoming damage from all monsters."""
         incoming = 0
@@ -4337,6 +4372,12 @@ class HeuristicCombatPlanner(CombatPlanner):
                         f"adjusted={monster.move_adjusted_damage} hits={monster.move_hits}"
                     )
                 elif intent_is_unknown(getattr(monster, 'intent', None)):
+                    if self._known_unknown_move_has_no_immediate_damage(monster):
+                        debug_entries.append(
+                            f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "
+                            "known_no_damage_unknown"
+                        )
+                        continue
                     incoming += 5 * context.act
                     debug_entries.append(
                         f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "

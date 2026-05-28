@@ -2678,6 +2678,53 @@ def test_heuristic_incoming_damage_estimates_unknown_intent_by_act():
     assert HeuristicCombatPlanner()._get_incoming_damage(context) == 10
 
 
+def test_heuristic_incoming_damage_ignores_known_no_damage_unknown_moves():
+    monsters = [
+        SimpleNamespace(
+            name="Slime Boss",
+            monster_id="Slime_Boss",
+            current_hp=99,
+            max_hp=140,
+            is_gone=False,
+            half_dead=False,
+            intent=Intent.UNKNOWN,
+            move_id=1,
+            move_adjusted_damage=0,
+            move_hits=1,
+        ),
+        SimpleNamespace(
+            name="Slime Boss",
+            monster_id="Slime_Boss",
+            current_hp=65,
+            max_hp=140,
+            is_gone=False,
+            half_dead=False,
+            intent=Intent.UNKNOWN,
+            move_id=3,
+            move_adjusted_damage=0,
+            move_hits=1,
+        ),
+        SimpleNamespace(
+            name="Acid Slime (L)",
+            monster_id="Acid_Slime_L",
+            current_hp=15,
+            max_hp=65,
+            is_gone=False,
+            half_dead=False,
+            intent=Intent.UNKNOWN,
+            move_id=3,
+            move_adjusted_damage=0,
+            move_hits=1,
+        ),
+    ]
+    context = SimpleNamespace(
+        game=SimpleNamespace(monsters=monsters),
+        act=2,
+    )
+
+    assert HeuristicCombatPlanner()._get_incoming_damage(context) == 0
+
+
 def test_heuristic_incoming_damage_clamps_negative_live_move_hits_to_one():
     monster = SimpleNamespace(
         name="Spike Slime (M)",
