@@ -191,6 +191,16 @@ class DecisionContext:
             'INTENT.UNKNOWN',
         )
 
+    @classmethod
+    def _should_count_immediate_damage(cls, monster) -> bool:
+        if not hasattr(monster, 'intent'):
+            return True
+
+        intent = getattr(monster, 'intent', None)
+        if intent is None:
+            return True
+        return cls._is_attack_intent(intent)
+
     def _calculate_incoming_damage(self) -> int:
         """Calculate total incoming damage from all monsters.
 
@@ -235,7 +245,11 @@ class DecisionContext:
             Base threat score from immediate damage and strength
         """
         threat = 0
-        if hasattr(monster, 'move_adjusted_damage') and monster.move_adjusted_damage is not None:
+        if (
+            self._should_count_immediate_damage(monster)
+            and hasattr(monster, 'move_adjusted_damage')
+            and monster.move_adjusted_damage is not None
+        ):
             hits = self._positive_move_hits(monster)
             threat += self._move_damage_contribution(monster)
 

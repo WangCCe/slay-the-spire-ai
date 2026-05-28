@@ -145,3 +145,15 @@ def test_base_immediate_threat_clamps_negative_live_move_damage_to_zero():
     context = DecisionContext.__new__(DecisionContext)
 
     assert context._compute_base_immediate_threat(monster) == 0
+
+
+def test_base_immediate_threat_ignores_non_attack_intents():
+    monster = SimpleNamespace(
+        intent=Intent.DEBUFF,
+        move_adjusted_damage=12,
+        move_hits=2,
+        strength=0,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+
+    assert context._compute_base_immediate_threat(monster) == 0
