@@ -4759,7 +4759,7 @@ def test_lethal_detector_treats_counted_upgraded_cleave_as_aoe(monkeypatch):
 
     detector = CombatEndingDetector()
 
-    assert detector._calculate_affordable_damage(context) == 11
+    assert detector._calculate_affordable_damage(context) == 22
     assert detector.can_kill_all(context) is True
 
 
@@ -4900,6 +4900,28 @@ def test_lethal_sequence_uses_single_aoe_card_for_multiple_monsters():
 
     assert [action.card.card_id for action in sequence] == ["Whirlwind"]
     assert sequence[0].target_monster is None
+
+
+def test_lethal_detector_counts_aoe_damage_against_each_monster(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "cleave": {
+            "name": "Cleave",
+            "description": "Deal 8 damage to ALL enemies.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    context = _combat_context(
+        [cleave],
+        energy=1,
+        monsters=[_louse(current_hp=7), _louse(current_hp=7)],
+    )
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 16
+    assert detector.can_kill_all(context) is True
+    assert [action.card.card_id for action in detector.find_lethal_sequence(context)] == ["Cleave"]
 
 
 def test_lethal_detector_counts_vulnerable_damage_on_single_target():

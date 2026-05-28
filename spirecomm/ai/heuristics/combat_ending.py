@@ -301,6 +301,13 @@ class CombatEndingDetector:
                         damage,
                         context.energy_available,
                     )
+                elif self._is_aoe_attack(card):
+                    damage = self._aoe_damage_potential(
+                        card,
+                        context,
+                        damage,
+                        context.energy_available,
+                    )
                 logger.info(f"[LETHAL_CALC] {card.name}: cost={cost}, damage={damage}, eff={damage/cost if cost > 0 else 'inf'}")
                 if cost > 0:
                     efficiency = damage / cost
@@ -325,6 +332,26 @@ class CombatEndingDetector:
 
         logger.info(f"[LETHAL_CALC] Selected: {selected}, total_damage={total_damage}, energy_used={energy_used}/{context.energy_available}")
         return total_damage
+
+    def _aoe_damage_potential(
+        self,
+        card: Card,
+        context: DecisionContext,
+        base_damage: int,
+        available_energy: int,
+    ) -> int:
+        total = 0
+        for monster_idx, _monster in enumerate(context.monsters_alive):
+            damage = base_damage
+            if context.vulnerable_stacks.get(monster_idx, 0) > 0:
+                damage = self._apply_vulnerable_to_card_damage(
+                    card,
+                    context,
+                    damage,
+                    available_energy,
+                )
+            total += damage
+        return total
 
     def _can_target_all_monsters(self, context: DecisionContext, affordable_damage: int) -> bool:
         """
