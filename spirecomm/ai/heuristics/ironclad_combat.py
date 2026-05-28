@@ -17,7 +17,13 @@ import copy
 import time
 from typing import List, Tuple, Optional, Dict
 from enum import Enum
-from .simulation import CombatPlanner, SimulationState, FastCombatSimulator, W_DEATHRISK
+from .simulation import (
+    CombatPlanner,
+    SimulationState,
+    FastCombatSimulator,
+    W_DEATHRISK,
+    _known_damage_upgrade_bonus,
+)
 from .card_costs import effective_card_cost, is_x_cost_card, x_effect_energy
 from .card_names import canonical_card_name
 from .combat_ending import CombatEndingDetector
@@ -994,6 +1000,31 @@ class IroncladCombatPlanner(CombatPlanner):
         strength = getattr(context, 'strength', 0)
         return base_damage + strength
 
+    def _known_attack_damage_for_bonus(self, card: Card) -> int:
+        """Return known attack damage for strategic bonuses without generic fallback."""
+        card_type = getattr(card, 'type', None)
+        if card_type is not None and card_type != CardType.ATTACK:
+            return 0
+
+        base_damage = getattr(card, 'damage', 0)
+        if base_damage is None:
+            base_damage = 0
+        if base_damage > 0:
+            return base_damage
+
+        try:
+            card_name = canonical_card_name(card)
+            card_data = game_data_loader.get_card_data(card_name)
+            if not card_data:
+                return 0
+
+            parsed_damage = game_data_loader._parse_card_damage(card_data)
+            if parsed_damage is None or parsed_damage <= 0:
+                return 0
+            return parsed_damage + _known_damage_upgrade_bonus(card, card_name)
+        except Exception:
+            return 0
+
     def _should_explore_targets(self, context: DecisionContext, elapsed_time: float) -> bool:
         """
         Determine if target exploration should be enabled based on game state.
@@ -1316,16 +1347,18 @@ class IroncladCombatPlanner(CombatPlanner):
                     if block_val > 0:
                         score += block_val * 3  # Value block
 
-                    if hasattr(card, 'damage') and card.damage > 0:
-                        score += card.damage * 1.5  # Value damage
+                    damage_value = self._known_attack_damage_for_bonus(card)
+                    if damage_value > 0:
+                        score += damage_value * 1.5  # Value damage
                     # Bonus for hybrid nature
                     score += 15
                 
                 # High priority cards that need special handling
                 elif card_id == 'Immolate':
                     # Immolate: high damage + card draw, despite self-damage
-                    if hasattr(card, 'damage') and card.damage > 0:
-                        score += card.damage * 2.0  # Value damage highly
+                    damage_value = self._known_attack_damage_for_bonus(card)
+                    if damage_value > 0:
+                        score += damage_value * 2.0  # Value damage highly
                     # Value card draw potential
                     score += 10
                     # Penalize for self-damage only if HP is low
@@ -1344,8 +1377,9 @@ class IroncladCombatPlanner(CombatPlanner):
                     monster_count = len(context.monsters_alive)
                     if monster_count >= 2:
                         score += 25  # Bonus for multiple monsters
-                    if hasattr(card, 'damage') and card.damage > 0:
-                        score += card.damage * monster_count * 0.5  # Value per target
+                    damage_value = self._known_attack_damage_for_bonus(card)
+                    if damage_value > 0:
+                        score += damage_value * monster_count * 0.5  # Value per target
                 
                 elif card_id == 'Battle Trance':
                     # Battle Trance: critical card draw

@@ -5869,6 +5869,64 @@ def test_ironclad_sequence_bash_followup_bonus_uses_parsed_big_attack(monkeypatc
     assert followup_score - solo_score == 25
 
 
+def test_ironclad_sequence_immolate_bonus_uses_parsed_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "immolate": {
+            "name": "Immolate",
+            "description": "Deal 21 damage to ALL enemies. Add a Burn into your discard pile.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+
+    immolate = _card("Immolate", "Immolate", cost=2, has_target=False)
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+    context = _combat_context(
+        [immolate],
+        energy=2,
+        monsters=[_louse(current_hp=100), _louse(current_hp=100)],
+    )
+    initial = SimulationState(context)
+
+    score = planner._score_sequence(
+        [PlayCardAction(card=immolate)],
+        initial,
+        initial.clone(),
+        context,
+    )
+
+    assert score == 72
+
+
+def test_ironclad_sequence_iron_wave_hybrid_bonus_uses_parsed_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "iron wave": {
+            "name": "Iron Wave",
+            "description": "Gain 5 Block. Deal 5 damage.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+
+    iron_wave = _card("Iron Wave", "Iron Wave", cost=1)
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+    context = _combat_context([iron_wave], energy=1, monsters=[_louse(current_hp=100)])
+    initial = SimulationState(context)
+
+    score = planner._score_sequence(
+        [PlayCardAction(card=iron_wave)],
+        initial,
+        initial.clone(),
+        context,
+    )
+
+    assert score == 37.5
+
+
 def test_target_exploration_ignores_counted_upgraded_aoe_target_flag():
     counted_cleave = _card("Cleave+1", "Cleave+1", cost=1, has_target=True, upgrades=1)
     context = _combat_context(
