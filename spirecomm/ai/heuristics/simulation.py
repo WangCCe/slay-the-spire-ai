@@ -3695,26 +3695,27 @@ class HeuristicCombatPlanner(CombatPlanner):
                                     if not m.get('is_gone') and m['hp'] > 0:
                                         new_state.monsters[i]['hp'] = max(0, m['hp'] - potion.effect_value)
                             else:
-                                target_index = None
-                                if target:
-                                    # Match by name first, then closest HP to avoid duplicate-name ambiguity.
-                                    candidates = []
-                                    for i, m in enumerate(new_state.monsters):
-                                        if m['hp'] > 0 and m['name'] == target.name:
-                                            hp_delta = abs(m['hp'] - getattr(target, 'current_hp', m['hp']))
-                                            candidates.append((hp_delta, i))
-                                    if candidates:
-                                        candidates.sort(key=lambda x: x[0])
-                                        target_index = candidates[0][1]
-                                if target_index is None:
-                                    # Fallback: first alive monster.
-                                    for i, m in enumerate(new_state.monsters):
-                                        if m['hp'] > 0 and not m.get('is_gone'):
-                                            target_index = i
-                                            break
+                                target_index = self._state_monster_index_for_potion_target(
+                                    new_state, target
+                                )
                                 if target_index is not None:
                                     m = new_state.monsters[target_index]
                                     m['hp'] = max(0, m['hp'] - potion.effect_value)
+                        elif potion.effect_type in ['debuff_weak', 'debuff_vulnerable']:
+                            target_index = self._state_monster_index_for_potion_target(
+                                new_state, target
+                            )
+                            if target_index is not None:
+                                debuff = (
+                                    'weak'
+                                    if potion.effect_type == 'debuff_weak'
+                                    else 'vulnerable'
+                                )
+                                self.simulator._apply_monster_debuff(
+                                    new_state.monsters[target_index],
+                                    debuff,
+                                    potion.effect_value,
+                                )
                         elif potion.effect_type in ['block', 'plated_armor', 'metallicize']:
                             new_state.player_block += potion.effect_value
                         elif potion.effect_type in ['heal', 'regen']:
@@ -4024,6 +4025,31 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         # Default: highest threat
         return max(context.monsters_alive, key=lambda m: context.compute_threat(m))
+
+    @staticmethod
+    def _state_monster_index_for_potion_target(state, target):
+        if target:
+            target_name = getattr(target, 'name', None)
+            candidates = []
+            for i, monster in enumerate(state.monsters):
+                if (
+                    monster.get('hp', 0) > 0
+                    and not monster.get('is_gone')
+                    and monster.get('name') == target_name
+                ):
+                    hp_delta = abs(
+                        monster.get('hp', 0)
+                        - getattr(target, 'current_hp', monster.get('hp', 0))
+                    )
+                    candidates.append((hp_delta, i))
+            if candidates:
+                candidates.sort(key=lambda x: x[0])
+                return candidates[0][1]
+
+        for i, monster in enumerate(state.monsters):
+            if monster.get('hp', 0) > 0 and not monster.get('is_gone'):
+                return i
+        return None
 
     def _get_potion_actions(self, context: DecisionContext, state: SimulationState) -> List[Tuple]:
         """

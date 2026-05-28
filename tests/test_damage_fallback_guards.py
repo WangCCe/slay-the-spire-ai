@@ -9,9 +9,11 @@ import spirecomm.data.loader as data_loader
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
 from spirecomm.ai.heuristics.simulation import FastCombatSimulator, HeuristicCombatPlanner
 from spirecomm.ai.heuristics.timing.turn_classifier import TurnTimingClassifier
+from spirecomm.communication.action import PotionAction
 from spirecomm.ai.heuristics.enhanced_monster_database import EnhancedMonsterDatabase
 from spirecomm.spire.card import Card, CardRarity, CardType
 from spirecomm.spire.character import Intent
+from spirecomm.spire.potion import Potion
 
 
 def test_champ_phase_transition_predicts_anger_then_execute():
@@ -1686,6 +1688,76 @@ def test_damage_potion_score_ignores_zero_hp_stale_monsters():
     state = SimpleNamespace(player_hp=80, player_max_hp=80)
 
     assert HeuristicCombatPlanner()._score_potion(potion, context, state) == 0
+
+
+def test_beam_search_simulates_debuff_potion_effect():
+    potion = Potion(
+        potion_id="FearPotion",
+        name="Fear Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=True,
+    )
+    monster = SimpleNamespace(
+        name="Lagavulin",
+        monster_id="Lagavulin",
+        max_hp=100,
+        current_hp=100,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=18,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    expensive_cards = [
+        SimpleNamespace(
+            card_id=f"Expensive{i}",
+            name=f"Expensive {i}",
+            cost=99,
+            cost_for_turn=99,
+            has_target=False,
+        )
+        for i in range(3)
+    ]
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+            room_type="Monster",
+            get_real_potions=lambda: [potion],
+        ),
+        act=1,
+        turn=1,
+        floor=5,
+        energy_available=1,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=expensive_cards,
+    )
+    planner = HeuristicCombatPlanner()
+    observed_vulnerable = []
+
+    def score(_initial_state, final_state, _act, _weights, _context, sequence):
+        if sequence and isinstance(sequence[-1], PotionAction):
+            observed_vulnerable.append(final_state.monsters[0]["vulnerable"])
+        return 0
+
+    planner.simulator.calculate_outcome_score = score
+
+    sequence = planner.plan_turn(context)
+
+    assert isinstance(sequence[0], PotionAction)
+    assert observed_vulnerable == [3]
 
 
 def test_hp_threshold_modes_predict_guardian_sequence():
