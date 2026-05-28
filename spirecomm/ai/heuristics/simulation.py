@@ -513,6 +513,7 @@ class SimulationState:
                 'vulnerable': context.vulnerable_stacks.get(i, 0),  # Vulnerable stacks (by index)
                 'weak': context.weak_stacks.get(i, 0),  # Weak stacks (by index)
                 'frail': context.frail_stacks.get(i, 0),  # Frail stacks (by index)
+                'poison': self._get_monster_power_amount(monster, 'Poison'),
                 'thorns': context.thorns_stacks.get(i, 0),  # Thorns/反伤 stacks (by index)
                 'artifact': self._get_monster_power_amount(monster, 'Artifact'),
                 'move_base_damage': monster.move_base_damage if hasattr(monster, 'move_base_damage') else 0,
@@ -701,6 +702,7 @@ class SimulationState:
                 m['vulnerable'],
                 m['weak'],
                 m['frail'],
+                m.get('poison', 0),
                 m.get('thorns', 0),
                 m.get('mode_shift', 0),
                 m.get('artifact', 0),
@@ -3707,7 +3709,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                         # Simulate potion use (simplified simulation for now)
                         new_state = copy.deepcopy(state)
                         # Apply potion effect to state
-                        if potion.effect_type in ['damage', 'poison']:
+                        if potion.effect_type == 'damage':
                             # Reduce target HP (handle single target or AOE)
                             if potion.target_type == 'all_monsters':
                                 for i, m in enumerate(new_state.monsters):
@@ -3720,6 +3722,13 @@ class HeuristicCombatPlanner(CombatPlanner):
                                 if target_index is not None:
                                     m = new_state.monsters[target_index]
                                     m['hp'] = max(0, m['hp'] - potion.effect_value)
+                        elif potion.effect_type == 'poison':
+                            target_index = self._state_monster_index_for_potion_target(
+                                new_state, target
+                            )
+                            if target_index is not None:
+                                m = new_state.monsters[target_index]
+                                m['poison'] = m.get('poison', 0) + potion.effect_value
                         elif potion.effect_type in ['debuff_weak', 'debuff_vulnerable']:
                             target_index = self._state_monster_index_for_potion_target(
                                 new_state, target
@@ -3908,7 +3917,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
     def _is_damage_potion(self, potion) -> bool:
         """Check if potion is a damage potion."""
-        return potion.effect_type in ['damage', 'poison']
+        return potion.effect_type == 'damage'
 
     def _is_block_potion(self, potion) -> bool:
         """Check if potion is a block potion."""
