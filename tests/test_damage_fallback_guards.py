@@ -315,6 +315,75 @@ def test_skill_simulation_applies_temporary_aoe_strength_loss(monkeypatch):
     assert [monster["strength"] for monster in state.monsters] == [0, 0]
 
 
+def test_simulate_card_play_spends_all_energy_on_reinforced_body_block(monkeypatch):
+    card_data = {
+        "name": "Reinforced Body",
+        "description": "Gain 7 Block X times.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Reinforced Body" else None,
+    )
+    monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        max_hp=50,
+        current_hp=50,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=6,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+        ),
+        act=1,
+        turn=1,
+        energy_available=3,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[],
+    )
+    for card_name, upgrades, expected_block in (
+        ("Reinforced Body", 0, 21),
+        ("Reinforced Body+", 1, 27),
+    ):
+        state = simulation.SimulationState(context)
+        card = Card(
+            card_id="Reinforced Body",
+            name=card_name,
+            card_type=CardType.SKILL,
+            rarity=CardRarity.UNCOMMON,
+            upgrades=upgrades,
+            has_target=False,
+            cost=-1,
+            cost_for_turn=-1,
+        )
+
+        result = FastCombatSimulator(None).simulate_card_play(
+            state,
+            card,
+            context=context,
+        )
+
+        assert result.player_block == expected_block
+        assert result.player_energy == 0
+
+
 def test_attack_simulation_applies_poison_card_effect(monkeypatch):
     card = Card(
         card_id="Poisoned Stab",

@@ -855,7 +855,13 @@ class FastCombatSimulator:
         elif card_type == CardType.SKILL:
             new_state.skills_played += 1
             corruption_exhausts_skill = new_state.corruption_active
-            self._apply_skill(new_state, card, context, resolved_target_index)
+            self._apply_skill(
+                new_state,
+                card,
+                context,
+                resolved_target_index,
+                x_energy_spent=x_energy_spent,
+            )
             self._apply_skill_reactive_monster_powers(new_state)
             if corruption_exhausts_skill and not self._skill_exhausts_itself(card):
                 new_state.exhaust_events += 1
@@ -1789,7 +1795,13 @@ class FastCombatSimulator:
         # Fallback: not an X-damage card
         return 0
 
-    def _calculate_x_block(self, card: Card, state: SimulationState, context: DecisionContext) -> int:
+    def _calculate_x_block(
+        self,
+        card: Card,
+        state: SimulationState,
+        context: DecisionContext,
+        x_energy_spent: Optional[int] = None,
+    ) -> int:
         """
         Calculate dynamic block gain for X-block cards.
 
@@ -1804,6 +1816,16 @@ class FastCombatSimulator:
             Calculated block value, or 0 if not an X-block card
 
         """
+        card_name = _canonical_card_name(card)
+        if card_name == 'Reinforced Body':
+            energy = x_energy_spent
+            if energy is None:
+                energy = getattr(state, '_current_x_energy_spent', None)
+            if energy is None:
+                energy = effective_card_cost(card, getattr(state, 'player_energy', 0))
+            per_energy_block = 9 if getattr(card, 'upgrades', 0) > 0 else 7
+            return max(0, energy) * per_energy_block
+
         # Fallback: not an X-block card
         return 0
 
@@ -1935,6 +1957,7 @@ class FastCombatSimulator:
         card: Card,
         context: Optional[DecisionContext] = None,
         target_index: Optional[int] = None,
+        x_energy_spent: Optional[int] = None,
     ):
         """Apply skill card effects."""
         if self._apply_block_multiplier_skill(state, card):
@@ -1953,7 +1976,12 @@ class FastCombatSimulator:
         else:
             # Check for X-block cards first
             if context is not None:
-                block_gain = self._calculate_x_block(card, state, context)
+                block_gain = self._calculate_x_block(
+                    card,
+                    state,
+                    context,
+                    x_energy_spent=x_energy_spent,
+                )
                 if block_gain > 0:
                     logger.debug(f"[BLOCK_X] X-block calculated: {block_gain} for {card.card_id}")
                     # Apply frail multiplier
