@@ -1881,7 +1881,7 @@ class FastCombatSimulator:
             if per_hit:
                 return per_hit_damage
             strength = getattr(state, 'player_strength', 0)
-            return per_hit_damage * energy + max(0, energy - 1) * strength
+            return (per_hit_damage + strength) * energy
 
         # Fallback: not an X-damage card
         return 0
