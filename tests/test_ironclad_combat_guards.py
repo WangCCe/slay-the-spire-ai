@@ -1679,6 +1679,37 @@ def test_thunderclap_applies_vulnerable_to_all_enemies(monkeypatch):
     assert [monster["vulnerable"] for monster in result.monsters] == [1, 1]
 
 
+def test_aoe_attack_does_not_count_zero_hp_stale_simulated_monster_hits(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "cleave": {
+            "name": "Cleave",
+            "description": "Deal 8 damage to ALL enemies.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    context = _combat_context(
+        [cleave],
+        energy=1,
+        monsters=[_louse(current_hp=20), _louse(current_hp=20)],
+    )
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        cleave,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 8
+    assert result.damage_instances == 1
+
+
 def test_simulator_known_aoe_fallback_uses_base_name_for_upgraded_cards(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {}

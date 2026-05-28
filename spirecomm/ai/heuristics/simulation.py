@@ -982,10 +982,10 @@ class FastCombatSimulator:
         if is_aoe:
             # AOE - apply to all monsters
             for monster in state.monsters:
-                if monster['is_gone']:
+                if not self._is_live_monster_state(monster):
                     continue
                 for _ in range(hit_count):
-                    if monster['is_gone']:
+                    if not self._is_live_monster_state(monster):
                         break
                     damage = self._calculate_attack_damage(card, base_damage, state, context)
                     damage = self._apply_weak_damage(damage, getattr(state, 'player_weak', 0))
@@ -998,7 +998,7 @@ class FastCombatSimulator:
                 debuff_effects = self._description_debuff_effects(description, upgraded, card_name)
                 if debuff_effects:
                     for monster in state.monsters:
-                        if monster['is_gone']:
+                        if not self._is_live_monster_state(monster):
                             continue
                         self._apply_monster_debuffs(monster, debuff_effects)
         elif self._is_random_target_attack(card) and target_index is None:
