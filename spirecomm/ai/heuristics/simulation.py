@@ -2357,6 +2357,12 @@ class FastCombatSimulator:
                             move_damage,
                         )
                         move_hits = self._move_hit_count(move, target_turn=target_turn)
+                        move_hits = self._apply_ascension_move_value(
+                            move,
+                            context,
+                            'hits',
+                            move_hits,
+                        )
 
                         if 'ATTACK' in move_intent and move_damage > 0:
                             current_strength = monster.get('strength', 0)

@@ -801,6 +801,39 @@ def test_enemy_lookahead_applies_ascension_damage_modifiers(monkeypatch):
     assert future_damage == 12
 
 
+def test_enemy_lookahead_applies_ascension_hit_modifiers(monkeypatch):
+    class FakeLoader:
+        def get_enhanced_monster_data(self, _monster_name):
+            return None
+
+        def predict_monster_moves(self, _monster_name, _turn, _hp_percent):
+            return [
+                {
+                    "move": {
+                        "intent": "ATTACK",
+                        "damage": 5,
+                        "hits": 1,
+                        "ascension_modifiers": {"4+": {"hits": 2}},
+                    }
+                }
+            ]
+
+    monkeypatch.setattr(simulation, "game_data_loader", FakeLoader())
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=50)])
+    context.turn = 1
+    context.ascension_level = 4
+    context.game.ascension_level = 4
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 10
+
+
 def test_live_champ_transition_buff_resolves_to_anger_despite_live_move_id():
     context = _combat_context([], energy=0, monsters=[_champ_transition()])
     state = SimulationState(context)
