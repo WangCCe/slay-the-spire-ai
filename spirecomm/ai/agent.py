@@ -2461,6 +2461,7 @@ class OptimizedAgent(SimpleAgent):
                 or "fire" in potion.name.lower()
                 or "ice" in potion.name.lower()
                 or "lightning" in potion.name.lower()
+                or getattr(potion, "effect_type", None) in ("damage", "poison")
             ):
                 # Use damage potions in elite/boss fights or when multiple monsters
                 if (
