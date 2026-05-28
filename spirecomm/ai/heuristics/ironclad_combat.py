@@ -27,6 +27,7 @@ from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster
 from spirecomm.communication.action import Action, PlayCardAction
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
+from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 from spirecomm.data.loader import game_data_loader
 # === TIMING AWARENESS IMPORTS ===
 from .timing import TurnTimingClassifier, CombatBalanceStrategy
@@ -1558,8 +1559,7 @@ class IroncladCombatPlanner(CombatPlanner):
         for monster in context.monsters_alive:
             if monster.monster_id == "Cultist":
                 if hasattr(monster, 'intent'):
-                    from spirecomm.spire.character import Intent
-                    if monster.intent != Intent.ATTACK and monster.intent != Intent.ATTACK_BUFF:
+                    if not intent_is_attack(monster.intent):
                         return True
         return False
 
@@ -1625,8 +1625,7 @@ class IroncladCombatPlanner(CombatPlanner):
         for monster in context.monsters_alive:
             if monster.monster_id == "Lagavulin":
                 if hasattr(monster, 'intent'):
-                    from spirecomm.spire.character import Intent
-                    if monster.intent == Intent.DEFEND:
+                    if "DEFEND" in intent_tokens(monster.intent):
                         return True
         return False
 

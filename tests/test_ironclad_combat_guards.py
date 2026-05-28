@@ -389,6 +389,38 @@ def test_x_cost_whirlwind_spends_current_energy_without_negative_simulation_stat
     assert result.total_damage_dealt == 30
 
 
+def test_cultist_ritual_turn_handles_string_attack_intents():
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[
+            _cultist_ritual(),
+            _cultist_ritual(),
+            _cultist_ritual(),
+        ],
+    )
+    context.monsters_alive[0].intent = "Intent.BUFF"
+    context.monsters_alive[1].intent = "Intent.ATTACK"
+    context.monsters_alive[2].intent = "Attack/Buff"
+    planner = IroncladCombatPlanner()
+
+    assert planner._is_cultist_ritual_turn(context) is True
+
+    context.monsters_alive = context.monsters_alive[1:]
+
+    assert planner._is_cultist_ritual_turn(context) is False
+
+
+def test_lagavulin_hibernating_handles_string_defend_intent():
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_lagavulin(intent="Intent.DEFEND")],
+    )
+
+    assert IroncladCombatPlanner()._is_lagavulin_hibernating(context) is True
+
+
 def test_simulation_reads_power_name_field_from_player_powers():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=100)])
