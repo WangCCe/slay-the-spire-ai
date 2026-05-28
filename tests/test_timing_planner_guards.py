@@ -263,3 +263,32 @@ def test_timing_fallback_scores_parsed_damage_and_block_for_plain_cards(monkeypa
 
     assert len(actions) == 1
     assert actions[0].card is strike
+
+
+def test_timing_fallback_does_not_target_no_target_cards(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, has_target=False)
+    defend.uuid = "defend"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[defend],
+        monsters_alive=[SimpleNamespace(current_hp=30, block=0, monster_index=0)],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.THREAT_SPIKE,
+        current_damage=12,
+        balance_weights=BalanceWeights.threat_spike_weights(),
+    )
+
+    actions = TimingAwareCombatPlanner()._fallback_plan(context, timing_ctx)
+
+    assert len(actions) == 1
+    assert actions[0].card is defend
+    assert actions[0].target_monster is None

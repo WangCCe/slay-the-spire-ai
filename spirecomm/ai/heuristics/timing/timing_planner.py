@@ -301,7 +301,9 @@ class TimingAwareCombatPlanner:
             if best_card:
                 # Find target if needed
                 monsters = getattr(context, 'monsters_alive', [])
-                target = monsters[0] if monsters else None
+                target = None
+                if getattr(best_card, 'has_target', False) and not self._is_card_aoe(best_card):
+                    target = monsters[0] if monsters else None
 
                 return [PlayCardAction(card=best_card, target_monster=target)]
 
