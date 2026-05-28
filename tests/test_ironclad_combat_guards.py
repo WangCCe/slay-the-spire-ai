@@ -1795,6 +1795,48 @@ def test_incoming_damage_estimate_clamps_negative_live_move_damage_to_zero():
     assert incoming == 0
 
 
+def test_incoming_damage_estimate_keeps_explicit_zero_adjusted_damage():
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    explicit_zero = simulator._estimate_incoming_damage(
+        [
+            {
+                "name": "Jaw Worm",
+                "monster_id": "JawWorm",
+                "move_id": 1,
+                "current_hp": 40,
+                "is_gone": False,
+                "intent": "Intent.ATTACK",
+                "move_adjusted_damage": 0,
+                "move_base_damage": 11,
+                "move_hits": 1,
+                "strength": 0,
+                "weak": 0,
+            }
+        ]
+    )
+    missing_adjusted = simulator._estimate_incoming_damage(
+        [
+            {
+                "name": "Jaw Worm",
+                "monster_id": "JawWorm",
+                "move_id": 1,
+                "current_hp": 40,
+                "is_gone": False,
+                "intent": "Intent.ATTACK",
+                "move_adjusted_damage": None,
+                "move_base_damage": 11,
+                "move_hits": 1,
+                "strength": 0,
+                "weak": 0,
+            }
+        ]
+    )
+
+    assert explicit_zero == 0
+    assert missing_adjusted == 11
+
+
 def test_single_target_selection_ignores_zero_hp_stale_simulated_monsters():
     strike = _card("Strike_R", "Strike", cost=1)
     stale = _louse(current_hp=40)

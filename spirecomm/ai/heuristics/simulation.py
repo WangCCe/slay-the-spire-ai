@@ -2542,11 +2542,12 @@ class FastCombatSimulator:
             if 'ATTACK' in intent_str.upper() or 'ATTACK_BUFF' in intent_str.upper() or 'ATTACK_DEBUFF' in intent_str.upper() or 'ATTACK_DEFEND' in intent_str.upper():
                 attack_intent_present = True
                 # Use actual monster damage data from game state
-                raw_damage = monster.get('move_adjusted_damage', 0)
+                has_adjusted_damage = 'move_adjusted_damage' in monster
+                raw_damage = monster.get('move_adjusted_damage', None)
                 damage = max(0, raw_damage) if isinstance(raw_damage, (int, float)) else 0
                 hits = self._positive_monster_hits(monster)
                 damage_source = "adjusted"
-                should_use_damage_fallback = raw_damage is None or raw_damage == 0
+                should_use_damage_fallback = not has_adjusted_damage or raw_damage is None
 
                 # Fallback to base_damage if adjusted_damage not available
                 if should_use_damage_fallback:
