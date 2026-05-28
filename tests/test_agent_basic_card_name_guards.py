@@ -83,3 +83,14 @@ def test_count_copies_in_deck_counts_upgraded_and_display_name_variants():
     offered = _card("Pommel Strike")
 
     assert agent.count_copies_in_deck(offered) == 2
+
+
+def test_upgrade_candidate_priority_uses_normalized_display_name():
+    agent = _agent(deck=[])
+    display_name_card = _card("Pommel Strike")
+    internal_id_card = _card("Pommel_Strike")
+    internal_id_card.name = "Pommel Strike"
+
+    assert agent._score_upgrade_candidate(internal_id_card) == agent._score_upgrade_candidate(
+        display_name_card
+    )

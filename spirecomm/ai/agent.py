@@ -117,7 +117,9 @@ class SimpleAgent:
         if getattr(card, "upgrades", 0) > 0:
             return -999.0
         bonus = self._get_upgrade_bonus(card)
-        priority_rank = self.priorities.CARD_PRIORITIES.get(card.card_id)
+        priority_rank = self.priorities.CARD_PRIORITIES_BY_NAME.get(
+            self._normalize_card_name(card)
+        )
         priority_boost = 0.0
         if priority_rank is not None:
             list_len = max(len(self.priorities.CARD_PRIORITY_LIST), 1)
