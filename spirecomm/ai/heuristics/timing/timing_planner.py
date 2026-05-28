@@ -146,8 +146,8 @@ class TimingAwareCombatPlanner:
             if not playable_cards:
                 return False
 
-            # Calculate affordable damage effects.
-            damage_effects = []
+            # Calculate damage options, then choose a lethal affordable subset.
+            damage_options = []
             energy = getattr(context, 'energy_available', 3)
 
             for card in playable_cards:
@@ -159,11 +159,7 @@ class TimingAwareCombatPlanner:
                         continue
 
                     effect_type = 'aoe' if self._is_card_aoe(card) else 'single'
-                    damage_effects.append((effect_type, card_damage))
-                    energy -= cost
-
-                    if energy <= 0:
-                        break
+                    damage_options.append((effect_type, card_damage, cost))
 
             monster_hp = [
                 m.current_hp + getattr(m, 'block', 0)
@@ -171,14 +167,15 @@ class TimingAwareCombatPlanner:
                 if hasattr(m, 'current_hp')
             ]
 
-            can_kill = self._damage_effects_can_kill_all(
-                damage_effects,
+            can_kill = self._affordable_damage_effects_can_kill_all(
+                damage_options,
                 monster_hp,
+                energy,
             )
 
             if can_kill:
                 logger.debug(
-                    f"[LETHAL_CHECK] Possible! effects={damage_effects}, hp={sum(monster_hp)}"
+                    f"[LETHAL_CHECK] Possible! options={damage_options}, hp={sum(monster_hp)}"
                 )
 
             return can_kill
@@ -371,6 +368,40 @@ class TimingAwareCombatPlanner:
             return False
 
         return search(0, remaining)
+
+    def _affordable_damage_effects_can_kill_all(self, damage_options, monster_hp, energy) -> bool:
+        """Check whether any affordable subset of damage effects can kill all monsters."""
+        options = tuple(
+            (effect_type, int(damage), max(0, int(cost)))
+            for effect_type, damage, cost in damage_options
+            if damage > 0
+        )
+        starting_energy = max(0, int(energy))
+        seen = set()
+
+        def search(option_index, remaining_energy, selected_effects):
+            if self._damage_effects_can_kill_all(selected_effects, monster_hp):
+                return True
+            if option_index >= len(options):
+                return False
+
+            key = (option_index, remaining_energy, selected_effects)
+            if key in seen:
+                return False
+            seen.add(key)
+
+            if search(option_index + 1, remaining_energy, selected_effects):
+                return True
+
+            effect_type, damage, cost = options[option_index]
+            if cost <= remaining_energy:
+                next_effects = selected_effects + ((effect_type, damage),)
+                if search(option_index + 1, remaining_energy - cost, next_effects):
+                    return True
+
+            return False
+
+        return search(0, starting_energy, ())
 
     def _single_target_damage_can_kill_all(self, damage_instances, monster_hp) -> bool:
         """Check whether single-target damage instances can cover each monster HP pool."""

@@ -34,6 +34,10 @@ def _loader_with_basic_ironclad_cards():
             "name": "Cleave",
             "description": "Deal 8 damage to ALL enemies.",
         },
+        "bash": {
+            "name": "Bash",
+            "description": "Deal 8 damage. Apply 2 Vulnerable.",
+        },
     }
     return loader
 
@@ -140,6 +144,33 @@ def test_timing_lethal_check_applies_aoe_damage_to_each_monster(monkeypatch):
             SimpleNamespace(current_hp=8, block=0),
             SimpleNamespace(current_hp=8, block=0),
         ],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
+def test_timing_lethal_check_chooses_lethal_subset_over_hand_order(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    bash = _card("Bash", "Bash", cost=2)
+    bash.uuid = "bash"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=2,
+        playable_cards=[strike, bash],
+        monsters_alive=[SimpleNamespace(current_hp=8, block=0)],
     )
     timing_ctx = TimingContext(
         turn_timing=TurnTiming.SAFE,
