@@ -1294,10 +1294,8 @@ class IroncladCombatPlanner(CombatPlanner):
                 if card_id == 'Bash':
                     # Check if we have big attacks remaining
                     big_attack_pending = any(
-                        canonical_card_name(c) not in ['Bash', 'Strike', 'Defend']
-                        and hasattr(c, 'damage') and c.damage > 10
+                        self._is_big_attack_followup(c, context, current_card=card)
                         for c in context.playable_cards
-                        if c.uuid != card.uuid
                     )
                     if big_attack_pending:
                         score += 25
@@ -1522,13 +1520,33 @@ class IroncladCombatPlanner(CombatPlanner):
     def _should_bash_now(self, context: DecisionContext) -> bool:
         """Check if Bash should be played now."""
         # Bash is good if we have big attacks to follow up
-        big_attacks = [
-            c for c in context.playable_cards
-            if canonical_card_name(c) != 'Bash'
-            and getattr(c, 'type', None) == CardType.ATTACK
-            and hasattr(c, 'damage') and c.damage > 10
-        ]
-        return len(big_attacks) > 0
+        return any(
+            self._is_big_attack_followup(card, context)
+            for card in context.playable_cards
+        )
+
+    def _is_big_attack_followup(
+        self,
+        candidate: Card,
+        context: DecisionContext,
+        current_card: Optional[Card] = None,
+    ) -> bool:
+        """Return whether candidate is a meaningful attack to amplify after Bash."""
+        if candidate is current_card:
+            return False
+
+        current_uuid = getattr(current_card, 'uuid', None)
+        if current_uuid and getattr(candidate, 'uuid', None) == current_uuid:
+            return False
+
+        card_name = canonical_card_name(candidate)
+        if card_name in ['Bash', 'Strike', 'Defend']:
+            return False
+
+        if getattr(candidate, 'type', None) != CardType.ATTACK:
+            return False
+
+        return self._estimate_attack_damage_without_simulation(candidate, context) > 10
 
     def _is_defensive_card(self, card: Card) -> bool:
         """Check if card is defensive."""

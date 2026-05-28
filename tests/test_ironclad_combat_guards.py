@@ -5826,6 +5826,49 @@ def test_ironclad_sequence_bash_followup_bonus_ignores_upgraded_bash_as_big_atta
     assert extra_bash_score == solo_score
 
 
+def test_ironclad_sequence_bash_followup_bonus_uses_parsed_big_attack(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "carnage": {
+            "name": "Carnage",
+            "description": "Ethereal. Deal 20 damage.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+
+    bash = _card("Bash", "Bash", cost=2)
+    bash.uuid = "bash"
+    carnage = _card("Carnage", "Carnage", cost=2)
+    carnage.uuid = "carnage"
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+
+    solo_context = _combat_context([bash], energy=2, monsters=[_louse(current_hp=100)])
+    solo_initial = SimulationState(solo_context)
+    solo_score = planner._score_sequence(
+        [PlayCardAction(card=bash)],
+        solo_initial,
+        solo_initial.clone(),
+        solo_context,
+    )
+
+    followup_context = _combat_context(
+        [bash, carnage],
+        energy=3,
+        monsters=[_louse(current_hp=100)],
+    )
+    followup_initial = SimulationState(followup_context)
+    followup_score = planner._score_sequence(
+        [PlayCardAction(card=bash)],
+        followup_initial,
+        followup_initial.clone(),
+        followup_context,
+    )
+
+    assert followup_score - solo_score == 25
+
+
 def test_target_exploration_ignores_counted_upgraded_aoe_target_flag():
     counted_cleave = _card("Cleave+1", "Cleave+1", cost=1, has_target=True, upgrades=1)
     context = _combat_context(
@@ -5902,6 +5945,27 @@ def test_ironclad_fallback_priority_values_bash_before_big_attacks():
     bash = _card("Bash+1", "Bash+1", cost=2, upgrades=1)
     carnage = _card("Carnage", "Carnage", cost=2)
     carnage.damage = 20
+    context = _combat_context(
+        [bash, carnage],
+        energy=3,
+        monsters=[_louse(current_hp=100)],
+    )
+
+    assert IroncladCombatPlanner()._get_card_priority(bash, context) == 850
+
+
+def test_ironclad_fallback_priority_values_bash_before_parsed_big_attacks(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "carnage": {
+            "name": "Carnage",
+            "description": "Ethereal. Deal 20 damage.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+
+    bash = _card("Bash", "Bash", cost=2)
+    carnage = _card("Carnage", "Carnage", cost=2)
     context = _combat_context(
         [bash, carnage],
         energy=3,
