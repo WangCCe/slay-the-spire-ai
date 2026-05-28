@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 
+import spirecomm.ai.incoming_damage as incoming_damage
 from spirecomm.ai.agent import OptimizedAgent, SimpleAgent
+from spirecomm.ai.incoming_damage import known_unknown_move_has_no_immediate_damage
 from spirecomm.communication.action import PotionAction
 from spirecomm.spire.character import Intent
 from spirecomm.spire.potion import Potion
@@ -93,6 +95,26 @@ def test_simple_agent_incoming_damage_ignores_known_no_damage_unknown_moves():
     ]
 
     assert _agent_with_monsters(monsters).get_incoming_damage() == 0
+
+
+def test_known_unknown_move_guard_ignores_negated_attack_intent(monkeypatch):
+    class FakeMonsterMoveLoader:
+        def get_monster_moves(self, _monster_name):
+            return [{"move_id": 9, "intent": "NOT_ATTACK", "damage": 0}]
+
+    monkeypatch.setattr(incoming_damage, "game_data_loader", FakeMonsterMoveLoader())
+    monster = SimpleNamespace(
+        name="Training Dummy",
+        current_hp=20,
+        is_gone=False,
+        half_dead=False,
+        intent=Intent.UNKNOWN,
+        move_id=9,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+
+    assert known_unknown_move_has_no_immediate_damage(monster)
 
 
 def test_optimized_agent_combat_danger_ignores_zero_hp_stale_monsters():

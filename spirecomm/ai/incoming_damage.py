@@ -5,7 +5,7 @@ Shared helpers for live monster incoming-damage estimates.
 import re
 from typing import Any
 
-from spirecomm.ai.intent_utils import intent_is_unknown
+from spirecomm.ai.intent_utils import intent_is_attack, intent_is_unknown
 from spirecomm.data.loader import game_data_loader
 
 
@@ -69,8 +69,7 @@ def known_unknown_move_has_no_immediate_damage(monster: Any) -> bool:
     for move in moves:
         if move.get('move_id') != move_id:
             continue
-        move_intent = str(move.get('intent', '')).upper()
-        if 'ATTACK' in move_intent:
+        if intent_is_attack(move.get('intent', '')):
             return False
         return numeric_damage_value(move.get('damage', 0)) <= 0
     return False
