@@ -351,6 +351,13 @@ class DecisionContext:
 
         # ===== Component 1: Immediate threat (current intent) =====
         threat += self._compute_base_immediate_threat(monster)
+        intent_tokens = self._intent_tokens(getattr(monster, 'intent', None))
+        if (
+            'DEBUFF' in intent_tokens
+            or 'WEAK' in intent_tokens
+            or 'VULNERABLE' in intent_tokens
+        ):
+            threat += 10
 
         # ===== Component 2: Future threat (predict next 2-3 moves) =====
         # Get monster HP percentage for phase detection
@@ -464,11 +471,9 @@ class DecisionContext:
 
         # ===== Component 5: Composition threat (party buffs) =====
         # Check if monster buffs other monsters
-        if hasattr(monster, 'intent'):
-            intent_str = str(monster.intent).upper() if monster.intent else ''
-            if 'BUFF' in intent_str and len(self.monsters_alive) > 1:
-                # Party-wide buff is more threatening with more monsters
-                threat += len(self.monsters_alive) * 5
+        if 'BUFF' in intent_tokens and len(self.monsters_alive) > 1:
+            # Party-wide buff is more threatening with more monsters
+            threat += len(self.monsters_alive) * 5
 
         # ===== Component 6: Base threat adjustment =====
         if threat_profile:

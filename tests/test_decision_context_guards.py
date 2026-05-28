@@ -14,6 +14,20 @@ class _FakeCardDataLoader:
         return self.cards.get(card_name.lower())
 
 
+class _FakeEnhancedMonsterDataLoader:
+    def get_enhanced_monster_data(self, monster_name):
+        return {"name": monster_name}
+
+    def predict_monster_moves(self, monster_name, turn, monster_hp_percent):
+        return []
+
+    def get_monster_threat_profile(self, monster_name):
+        return None
+
+    def get_monster_special_mechanics(self, monster_name):
+        return None
+
+
 def _context_for_deck(deck):
     context = DecisionContext.__new__(DecisionContext)
     context.game = SimpleNamespace(deck=deck)
@@ -221,3 +235,49 @@ def test_compute_threat_counts_actual_debuff_intent_as_debuff_threat():
     context = DecisionContext.__new__(DecisionContext)
 
     assert context.compute_threat(monster) == 10
+
+
+def test_compute_threat_v2_counts_actual_debuff_intent_as_debuff_threat(monkeypatch):
+    monkeypatch.setattr(
+        decision_base,
+        "game_data_loader",
+        _FakeEnhancedMonsterDataLoader(),
+    )
+    monster = SimpleNamespace(
+        name="Acid Slime (L)",
+        intent=Intent.DEBUFF,
+        move_adjusted_damage=0,
+        move_hits=1,
+        strength=0,
+        current_hp=10,
+        max_hp=100,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.turn = 1
+    context.monsters_alive = [monster]
+
+    assert context.compute_threat_v2(monster) == 10
+
+
+def test_compute_threat_v2_does_not_count_debuff_intent_as_party_buff(monkeypatch):
+    monkeypatch.setattr(
+        decision_base,
+        "game_data_loader",
+        _FakeEnhancedMonsterDataLoader(),
+    )
+    monster = SimpleNamespace(
+        name="Acid Slime (L)",
+        intent=Intent.DEBUFF,
+        move_adjusted_damage=0,
+        move_hits=1,
+        strength=0,
+        current_hp=10,
+        max_hp=100,
+    )
+    first_ally = SimpleNamespace(name="Spike Slime (M)")
+    second_ally = SimpleNamespace(name="Spike Slime (S)")
+    context = DecisionContext.__new__(DecisionContext)
+    context.turn = 1
+    context.monsters_alive = [monster, first_ally, second_ally]
+
+    assert context.compute_threat_v2(monster) == 10
