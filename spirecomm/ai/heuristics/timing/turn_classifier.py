@@ -288,10 +288,9 @@ class TurnTimingClassifier:
 
                     if prediction:
                         move = prediction.get('move', {})
-                        intent = move.get('intent', '').upper()
 
                         # Check if attack
-                        if 'ATTACK' in intent:
+                        if intent_is_attack(move.get('intent', '')):
                             damage = self._resolve_move_damage(
                                 monster.name,
                                 move,
@@ -387,9 +386,8 @@ class TurnTimingClassifier:
 
                     if prediction:
                         move = prediction.get('move', {})
-                        intent = move.get('intent', '').upper()
 
-                        if 'ATTACK' in intent:
+                        if intent_is_attack(move.get('intent', '')):
                             damage = self._resolve_move_damage(
                                 monster.name, move, context, target_turn=target_turn)
                             hits = self._resolve_move_hits(move, context, target_turn=target_turn)
@@ -966,8 +964,7 @@ class TurnTimingClassifier:
 
                     if prediction:
                         move = prediction.get('move', {})
-                        intent = move.get('intent', '').upper()
-                        if 'ATTACK' not in intent:
+                        if not intent_is_attack(move.get('intent', '')):
                             continue
 
                         damage = self._resolve_move_damage(

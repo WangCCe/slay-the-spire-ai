@@ -2073,6 +2073,30 @@ def test_safe_window_detection_counts_monster_strength(monkeypatch):
     assert windows == []
 
 
+def test_safe_window_detection_treats_negated_attack_intent_as_safe(monkeypatch):
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        lambda *_args, **_kwargs: [
+            {"move": {"name": "Feint", "intent": "NOT_ATTACK", "damage": 20, "hits": 1}}
+        ],
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0))
+    monster = SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength=0)
+
+    windows = classifier._detect_safe_windows(
+        context,
+        [monster],
+        current_turn=1,
+        look_ahead=1,
+    )
+
+    assert len(windows) == 1
+    assert windows[0].expected_damage == 0
+    assert windows[0].monsters_safe == ["Unknown"]
+
+
 def test_safe_window_detection_counts_scripted_strength_gain_before_attack(monkeypatch):
     monkeypatch.setattr(
         data_loader.game_data_loader,
@@ -2272,6 +2296,27 @@ def test_spike_imminent_ignores_non_attack_moves_with_high_strength(monkeypatch)
     assert classifier._spike_imminent(context) is False
 
 
+def test_spike_imminent_ignores_negated_attack_intent(monkeypatch):
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        lambda *_args, **_kwargs: [
+            {
+                "turn": 2,
+                "move": {"name": "Feint", "intent": "NOT_ATTACK", "damage": 30, "hits": 1},
+            }
+        ],
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(
+        game=SimpleNamespace(current_hp=80, ascension_level=0),
+        turn=1,
+        monsters_alive=[SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength=0)],
+    )
+
+    assert classifier._spike_imminent(context) is False
+
+
 def test_enhanced_monster_database_loads_act2_normal_monsters():
     database = EnhancedMonsterDatabase()
 
@@ -2435,6 +2480,39 @@ def test_damage_curve_applies_absolute_ascension_damage_modifiers(monkeypatch):
     )
 
     assert damage_curve == [14]
+
+
+def test_damage_curve_ignores_negated_attack_intent(monkeypatch):
+    def fake_predict_monster_moves(_monster_name, _current_turn, _hp_percent):
+        return [
+            {
+                "turn": 2,
+                "move": {
+                    "name": "Feint",
+                    "intent": "NOT_ATTACK",
+                    "damage": 20,
+                    "hits": 1,
+                },
+            }
+        ]
+
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        fake_predict_monster_moves,
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0))
+    monster = SimpleNamespace(name="Scripted", current_hp=20, max_hp=20, strength=0)
+
+    damage_curve = classifier._calculate_damage_curve(
+        context,
+        [monster],
+        current_turn=1,
+        look_ahead=1,
+    )
+
+    assert damage_curve == [0]
 
 
 def test_damage_curve_applies_absolute_ascension_hit_modifiers(monkeypatch):
