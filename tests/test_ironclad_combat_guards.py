@@ -664,6 +664,22 @@ def test_enemy_status_lookahead_counts_sentry_bolt_dazed_cards():
     assert status["total"] == 4
 
 
+def test_enemy_status_lookahead_applies_ascension_status_card_modifiers():
+    context = _combat_context([], energy=0, monsters=[_sentry(move_id=1)])
+    context.ascension_level = 18
+    context.game.ascension_level = 18
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    status = simulator.simulate_enemy_status_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert status["dazed"] == 3
+    assert status["total"] == 3
+
+
 def test_enemy_status_lookahead_ignores_zero_hp_stale_simulated_monsters():
     context = _combat_context([], energy=0, monsters=[_sentry(move_id=1)])
     state = SimulationState(context)

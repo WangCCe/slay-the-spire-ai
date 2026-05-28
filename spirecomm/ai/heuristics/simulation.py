@@ -1513,7 +1513,11 @@ class FastCombatSimulator:
             strength_gain,
         ))
 
-    def _extract_move_status_cards(self, move: Dict[str, Any]) -> Dict[str, int]:
+    def _extract_move_status_cards(
+        self,
+        move: Dict[str, Any],
+        context: Optional[DecisionContext] = None,
+    ) -> Dict[str, int]:
         """Extract status cards added by a monster move from wiki data fields."""
         def _get_count(*keys: str) -> int:
             for key in keys:
@@ -1549,6 +1553,14 @@ class FastCombatSimulator:
             slimed = _parse_effect_count('Slimed')
         if wound == 0:
             wound = _parse_effect_count('Wound')
+        if context is not None:
+            dazed = self._apply_ascension_move_value(move, context, 'dazed', dazed)
+            burn = self._apply_ascension_move_value(move, context, 'burn_count', burn)
+            burn = self._apply_ascension_move_value(move, context, 'burn_cards_added', burn)
+            slimed = self._apply_ascension_move_value(move, context, 'slimed_count', slimed)
+            slimed = self._apply_ascension_move_value(move, context, 'slimed_added', slimed)
+            wound = self._apply_ascension_move_value(move, context, 'wound_count', wound)
+            wound = self._apply_ascension_move_value(move, context, 'wound_added', wound)
         total = dazed + burn + slimed + wound
         return {
             'total': total,
@@ -2483,7 +2495,7 @@ class FastCombatSimulator:
                     if not move:
                         continue
 
-                    counts = self._extract_move_status_cards(move)
+                    counts = self._extract_move_status_cards(move, context)
                     for key in totals:
                         totals[key] += counts.get(key, 0)
 
