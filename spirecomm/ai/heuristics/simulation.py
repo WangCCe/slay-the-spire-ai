@@ -1392,7 +1392,7 @@ class FastCombatSimulator:
 
     def _get_card_effect_text(self, card_name: str, card_data: Dict[str, Any]) -> str:
         """Prefer wiki text for effect values because items.json stores base text only."""
-        base_card_name = card_name.lower().rstrip('+')
+        base_card_name = canonical_card_name(card_name).lower()
         try:
             if getattr(game_data_loader, '_wiki_data', None) is None:
                 game_data_loader._load_wiki_data()

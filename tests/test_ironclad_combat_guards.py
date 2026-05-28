@@ -3081,6 +3081,24 @@ def test_uppercut_applies_weak_and_vulnerable_with_upgrade_stacks(monkeypatch):
     assert result.monsters[0]["vulnerable"] == 2
 
 
+def test_effect_text_lookup_handles_counted_upgrade_suffixes(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._wiki_data = {
+        "uppercut": {
+            "name": "Uppercut",
+            "text": "Deal 13 damage.\nApply [1|2] #Weak.\nApply [1|2] #Vulnerable.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    text = FastCombatSimulator(SynergyCardEvaluator())._get_card_effect_text(
+        "Uppercut+1",
+        {"description": "Deal 13 damage.\nApply 1 Weak.\nApply 1 Vulnerable."},
+    )
+
+    assert "[1|2] #weak" in text
+
+
 def test_monster_weak_does_not_reduce_player_attack_damage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
