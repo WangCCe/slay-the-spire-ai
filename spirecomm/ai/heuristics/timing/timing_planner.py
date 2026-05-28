@@ -518,6 +518,8 @@ class TimingAwareCombatPlanner:
 
         if card_name == 'Twin Strike':
             return 2
+        if card_name == 'Sword Boomerang':
+            return 4 if upgrades > 0 else 3
         if card_name == 'Pummel':
             return 5 if upgrades > 0 else 4
 

@@ -46,6 +46,10 @@ def _loader_with_basic_ironclad_cards():
             "name": "Twin Strike",
             "description": "Deal 5 damage 2 times.",
         },
+        "sword boomerang": {
+            "name": "Sword Boomerang",
+            "description": "Deal 3 damage to a random enemy 3 times.",
+        },
     }
     return loader
 
@@ -233,6 +237,36 @@ def test_timing_lethal_check_counts_multi_hit_attack_damage(monkeypatch):
         energy_available=1,
         playable_cards=[twin_strike],
         monsters_alive=[SimpleNamespace(current_hp=10, block=0)],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
+def test_timing_lethal_check_counts_random_hit_attack_damage_against_single_monster(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    sword_boomerang = _card(
+        "Sword Boomerang",
+        "Sword Boomerang",
+        cost=1,
+        has_target=False,
+    )
+    sword_boomerang.uuid = "sword-boomerang"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[sword_boomerang],
+        monsters_alive=[SimpleNamespace(current_hp=9, block=0)],
     )
     timing_ctx = TimingContext(
         turn_timing=TurnTiming.SAFE,
