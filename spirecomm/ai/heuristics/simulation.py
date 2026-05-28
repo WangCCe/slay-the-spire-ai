@@ -474,6 +474,7 @@ class SimulationState:
             self._get_player_power_amount(context, 'Intangible'),
             self._get_player_power_amount(context, 'IntangiblePlayer'),
         )
+        self.player_artifact = self._get_player_power_amount(context, 'Artifact')
 
         # Player debuffs (binary: >0 means debuffed)
         self.player_vulnerable = self._get_player_debuff_stacks(context, 'Vulnerable')
@@ -631,6 +632,7 @@ class SimulationState:
         new_state.player_dexterity = self.player_dexterity
         new_state.player_thorns = self.player_thorns
         new_state.player_intangible = self.player_intangible
+        new_state.player_artifact = self.player_artifact
         new_state.player_vulnerable = self.player_vulnerable
         new_state.player_vulnerable_added = self.player_vulnerable_added
         new_state.player_weak = self.player_weak
@@ -686,6 +688,7 @@ class SimulationState:
             self.player_dexterity,
             self.player_thorns,
             self.player_intangible,
+            self.player_artifact,
             self.player_vulnerable,
             self.player_vulnerable_added,
             self.player_weak,
@@ -1351,12 +1354,28 @@ class FastCombatSimulator:
         monster['artifact'] = artifact - 1
         return True
 
+    def _consume_player_artifact(self, state: SimulationState) -> bool:
+        artifact = getattr(state, 'player_artifact', 0)
+        if artifact <= 0:
+            return False
+        state.player_artifact = artifact - 1
+        return True
+
     def _apply_monster_debuff(self, monster: dict, debuff: str, stacks: int):
         if stacks <= 0:
             return
         if self._consume_monster_artifact(monster):
             return
         monster[debuff] = monster.get(debuff, 0) + stacks
+
+    def _apply_player_vulnerable_debuff(self, state: SimulationState, stacks: int) -> bool:
+        if stacks <= 0:
+            return False
+        if self._consume_player_artifact(state):
+            return False
+        state.player_vulnerable += stacks
+        state.player_vulnerable_added += stacks
+        return True
 
     def _description_debuff_effects(
         self,
@@ -1767,8 +1786,13 @@ class FastCombatSimulator:
         if amount <= 0:
             return
 
-        state.player_vulnerable += amount
-        state.player_vulnerable_added += amount
+        applied = self._apply_player_vulnerable_debuff(state, amount)
+        if not applied:
+            logger.debug(
+                "[DEATH_EFFECT] %s Vulnerable blocked by player Artifact",
+                monster_name,
+            )
+            return
         logger.debug(
             "[DEATH_EFFECT] %s applied %s Vulnerable to player",
             monster_name,
@@ -1930,8 +1954,7 @@ class FastCombatSimulator:
         # Berserk applies Vulnerable immediately and grants extra energy on future turns.
         elif card_id == 'Berserk':
             vulnerable = 1 if card.upgrades > 0 else 2
-            state.player_vulnerable += vulnerable
-            state.player_vulnerable_added += vulnerable
+            self._apply_player_vulnerable_debuff(state, vulnerable)
             state.energy_gained += 1
 
         # Inflame - adds strength
@@ -3832,6 +3855,8 @@ class HeuristicCombatPlanner(CombatPlanner):
                             new_state.player_thorns += potion.effect_value
                         elif potion.effect_type == 'intangible':
                             new_state.player_intangible += potion.effect_value
+                        elif potion.effect_type == 'artifact':
+                            new_state.player_artifact += potion.effect_value
                         elif potion.effect_type == 'energy':
                             new_state.player_energy += potion.effect_value
                             new_state.energy_gained += potion.effect_value

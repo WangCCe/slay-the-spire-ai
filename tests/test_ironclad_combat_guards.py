@@ -605,6 +605,29 @@ def test_fungi_beast_death_applies_vulnerable_to_player():
     assert result.player_vulnerable_added == 2
 
 
+def test_fungi_beast_death_vulnerable_consumes_player_artifact():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_fungi_beast(current_hp=6), _louse(current_hp=50)],
+    )
+    context.game.player.powers = [SimpleNamespace(power_name="Artifact", amount=1)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters_killed == 1
+    assert result.player_vulnerable == 0
+    assert result.player_vulnerable_added == 0
+    assert result.player_artifact == 0
+
+
 def test_fungi_beast_death_vulnerable_applies_to_same_turn_incoming_damage():
     strike = _card("Strike_R", "Strike", cost=1)
     remaining_attacker = _louse(current_hp=50)
@@ -3929,6 +3952,33 @@ def test_berserk_applies_self_vulnerable_without_immediate_energy_gain():
 
     assert result.player_vulnerable == 1
     assert result.player_vulnerable_added == 1
+    assert result.player_energy == 1
+    assert result.energy_gained == 1
+
+
+def test_berserk_self_vulnerable_consumes_player_artifact():
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    berserk = _card(
+        "Berserk",
+        "Berserk",
+        card_type=CardType.POWER,
+        cost=0,
+        has_target=False,
+    )
+    context = _combat_context([berserk], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Artifact", amount=1)]
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        berserk,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_vulnerable == 0
+    assert result.player_vulnerable_added == 0
+    assert result.player_artifact == 0
     assert result.player_energy == 1
     assert result.energy_gained == 1
 
