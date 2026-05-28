@@ -18,7 +18,7 @@ import time
 from typing import List, Tuple, Optional, Dict
 from enum import Enum
 from .simulation import CombatPlanner, SimulationState, FastCombatSimulator, W_DEATHRISK
-from .card_costs import effective_card_cost, is_x_cost_card
+from .card_costs import effective_card_cost, is_x_cost_card, x_effect_energy
 from .card_names import canonical_card_name
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
@@ -249,7 +249,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
                     # Check energy
                     cost = effective_card_cost(card, state.player_energy)
-                    if self._is_zero_energy_x_attack(card, cost):
+                    if self._is_zero_effect_x_attack(card, cost, context):
                         continue
                     if energy_spent + cost > context.energy_available:
                         continue
@@ -392,9 +392,9 @@ class IroncladCombatPlanner(CombatPlanner):
         return best_sequence
 
     @staticmethod
-    def _is_zero_energy_x_attack(card: Card, cost: int) -> bool:
+    def _is_zero_effect_x_attack(card: Card, cost: int, context: DecisionContext) -> bool:
         return (
-            cost <= 0
+            x_effect_energy(card, cost, context) <= 0
             and is_x_cost_card(card)
             and getattr(card, "type", None) == CardType.ATTACK
         )

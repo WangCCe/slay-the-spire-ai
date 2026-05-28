@@ -4820,6 +4820,21 @@ def test_beam_search_skips_zero_energy_whirlwind_in_multi_monster_fight():
     assert planner._beam_search_turn(context, [whirlwind], 10, 4) == []
 
 
+def test_beam_search_allows_zero_energy_whirlwind_with_chemical_x():
+    whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
+    context = _combat_context(
+        [whirlwind],
+        energy=0,
+        monsters=[_louse(current_hp=50), _louse(current_hp=50)],
+    )
+    context.game.relics = [SimpleNamespace(relic_id="Chemical X", name="Chemical X")]
+    planner = IroncladCombatPlanner()
+
+    sequence = planner._beam_search_turn(context, [whirlwind], 10, 4)
+
+    assert [action.card.card_id for action in sequence] == ["Whirlwind"]
+
+
 def test_lethal_detector_counts_whirlwind_damage_without_negative_energy():
     whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
     context = _combat_context([whirlwind], energy=3, monsters=[_louse(current_hp=50)])
