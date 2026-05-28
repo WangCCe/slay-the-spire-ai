@@ -2467,6 +2467,11 @@ class OptimizedAgent(SimpleAgent):
                 "block" in potion.name.lower()
                 or "shield" in potion.name.lower()
                 or "barrier" in potion.name.lower()
+                or getattr(potion, "effect_type", None) in (
+                    "block",
+                    "plated_armor",
+                    "metallicize",
+                )
             ):
                 # Use defensive potions when incoming damage exceeds current HP or block
                 current_block = getattr(getattr(self.game, "player", None), "block", 0)
