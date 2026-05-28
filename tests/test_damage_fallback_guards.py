@@ -209,6 +209,112 @@ def test_skill_simulation_applies_targeted_debuff_to_selected_monster(monkeypatc
     assert state.monsters[1]["weak"] == 2
 
 
+def test_skill_simulation_applies_temporary_targeted_strength_loss(monkeypatch):
+    card = Card(
+        card_id="Dark Shackles",
+        name="Dark Shackles",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.UNCOMMON,
+        has_target=True,
+        cost=0,
+    )
+    card_data = {
+        "name": "Dark Shackles",
+        "description": "Enemy loses 9 Strength this turn.\nExhaust.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Dark Shackles" else None,
+    )
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 30,
+                "block": 0,
+                "is_gone": False,
+                "intent": Intent.ATTACK,
+                "move_adjusted_damage": 12,
+                "strength": 0,
+                "vulnerable": 0,
+                "weak": 0,
+                "frail": 0,
+                "artifact": 0,
+            }
+        ],
+        player_block=0,
+        player_energy=0,
+        player_strength=0,
+        energy_gained=0,
+        exhaust_events=0,
+        cards_drawn=0,
+    )
+
+    FastCombatSimulator(None)._apply_skill(state, card, target_index=0)
+
+    assert state.monsters[0]["move_adjusted_damage"] == 3
+    assert state.monsters[0]["strength"] == 0
+
+
+def test_skill_simulation_applies_temporary_aoe_strength_loss(monkeypatch):
+    card = Card(
+        card_id="Piercing Wail",
+        name="Piercing Wail",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.COMMON,
+        has_target=False,
+        cost=1,
+    )
+    card_data = {
+        "name": "Piercing Wail",
+        "description": "ALL enemies lose 6 Strength this turn.\nExhaust.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Piercing Wail" else None,
+    )
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 30,
+                "block": 0,
+                "is_gone": False,
+                "intent": Intent.ATTACK,
+                "move_adjusted_damage": 8,
+                "strength": 0,
+                "vulnerable": 0,
+                "weak": 0,
+                "frail": 0,
+                "artifact": 0,
+            },
+            {
+                "hp": 30,
+                "block": 0,
+                "is_gone": False,
+                "intent": Intent.ATTACK,
+                "move_adjusted_damage": 12,
+                "strength": 0,
+                "vulnerable": 0,
+                "weak": 0,
+                "frail": 0,
+                "artifact": 0,
+            },
+        ],
+        player_block=0,
+        player_energy=0,
+        player_strength=0,
+        energy_gained=0,
+        exhaust_events=0,
+        cards_drawn=0,
+    )
+
+    FastCombatSimulator(None)._apply_skill(state, card)
+
+    assert [monster["move_adjusted_damage"] for monster in state.monsters] == [2, 6]
+    assert [monster["strength"] for monster in state.monsters] == [0, 0]
+
+
 def test_attack_simulation_applies_poison_card_effect(monkeypatch):
     card = Card(
         card_id="Poisoned Stab",

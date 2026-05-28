@@ -1441,8 +1441,33 @@ class FastCombatSimulator:
             if stacks:
                 position = description.find('strength down')
                 effects.append((position if position >= 0 else 9999, 'strength_down', stacks))
+        enemy_strength_loss = self._enemy_strength_loss_effect(description, upgraded)
+        if enemy_strength_loss:
+            position, stacks, temporary = enemy_strength_loss
+            debuff = 'temporary_strength_down' if temporary else 'strength_down'
+            effects.append((position, debuff, stacks))
         effects.sort(key=lambda effect: effect[0])
         return effects
+
+    def _enemy_strength_loss_effect(
+        self,
+        description: str,
+        upgraded: bool,
+    ) -> Optional[Tuple[int, int, bool]]:
+        effect_text = self._effect_text_for_upgrade(description, upgraded)
+        effect_text = (effect_text or '').lower().replace('#', '')
+        match = re.search(
+            r'\b(?:all\s+)?enem(?:y|ies)\s+los(?:e|es)\s+(\d+)\s+strength\b',
+            effect_text,
+        )
+        if not match:
+            return None
+
+        sentence_tail = effect_text[match.start():]
+        sentence_end = re.search(r'[\.\n]', sentence_tail)
+        sentence = sentence_tail[:sentence_end.start()] if sentence_end else sentence_tail
+        temporary = 'this turn' in sentence
+        return match.start(), int(match.group(1)), temporary
 
     def _apply_monster_strength_down(self, monster: dict, stacks: int):
         if stacks <= 0:
@@ -1457,10 +1482,23 @@ class FastCombatSimulator:
                 monster.get('move_adjusted_damage', 0) - stacks,
             )
 
+    def _apply_monster_temporary_strength_down(self, monster: dict, stacks: int):
+        if stacks <= 0:
+            return
+        if self._consume_monster_artifact(monster):
+            return
+        if self._monster_intends_attack(monster):
+            monster['move_adjusted_damage'] = max(
+                0,
+                monster.get('move_adjusted_damage', 0) - stacks,
+            )
+
     def _apply_monster_debuffs(self, monster: dict, effects: List[Tuple[int, str, int]]):
         for _, debuff, stacks in effects:
             if debuff == 'strength_down':
                 self._apply_monster_strength_down(monster, stacks)
+            elif debuff == 'temporary_strength_down':
+                self._apply_monster_temporary_strength_down(monster, stacks)
             elif debuff == 'poison':
                 self._apply_monster_poison(monster, stacks)
             else:
@@ -1972,12 +2010,17 @@ class FastCombatSimulator:
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
                 description = self._get_card_effect_text(card_name, card_data)
+                upgrades = getattr(card, 'upgrades', 0) > 0
                 has_debuff = any(
                     debuff in description
-                    for debuff in ('vulnerable', 'weak', 'poison')
+                    for debuff in ('vulnerable', 'weak', 'poison', 'strength down')
                 )
-                if has_debuff:
-                    upgrades = getattr(card, 'upgrades', 0) > 0
+                has_debuff = (
+                    has_debuff
+                    or self._enemy_strength_loss_effect(description, upgrades) is not None
+                )
+                # Disarm is handled above as a data-independent fallback.
+                if has_debuff and card_name != 'Disarm':
                     is_aoe = game_data_loader._is_card_aoe(card_data) or 'all enemies' in description
                     debuff_effects = self._description_debuff_effects(description, upgrades, card_name)
                     if is_aoe:
