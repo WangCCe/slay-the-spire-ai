@@ -2343,6 +2343,16 @@ def test_enhanced_monster_database_loads_jaw_worm_opening_and_moves():
     assert {prediction["move"]["name"] for prediction in later[:2]} == {"Bellow", "Thrash"}
 
 
+def test_enhanced_monster_database_safe_turn_accepts_enum_string_non_attack():
+    database = EnhancedMonsterDatabase()
+    database.get_timing_hints = lambda _monster_name: None
+    database.predict_next_moves = lambda *_args, **_kwargs: [
+        {"move": {"name": "Ritual", "intent": "Intent.BUFF"}}
+    ]
+
+    assert database.is_safe_turn("Cultist", current_turn=1, monster_hp_percent=1.0) is True
+
+
 def test_chosen_opening_and_phase_probabilities_predict_moves():
     database = EnhancedMonsterDatabase()
 

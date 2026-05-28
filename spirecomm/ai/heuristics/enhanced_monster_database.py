@@ -17,7 +17,7 @@ import logging
 from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
 
-from spirecomm.ai.intent_utils import intent_is_attack
+from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 
 
 class EnhancedMonsterDatabase:
@@ -911,11 +911,14 @@ class EnhancedMonsterDatabase:
         )
         if predicted_moves:
             current_move = predicted_moves[0].get("move", {})
-            current_intent = current_move.get("intent", "").upper()
+            current_intent = current_move.get("intent", "")
 
             # Non-attack intents are safe
-            non_attack_intents = ["BUFF", "DEFEND", "DEBUFF", "DEBUG", "NONE", "STUN", "SLEEP"]
-            return current_intent in non_attack_intents
+            non_attack_intents = {"BUFF", "DEFEND", "DEBUFF", "DEBUG", "NONE", "STUN", "SLEEP"}
+            return (
+                not intent_is_attack(current_intent)
+                and bool(intent_tokens(current_intent) & non_attack_intents)
+            )
 
         return False
 
