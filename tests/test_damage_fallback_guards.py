@@ -209,6 +209,100 @@ def test_skill_simulation_applies_targeted_debuff_to_selected_monster(monkeypatc
     assert state.monsters[1]["weak"] == 2
 
 
+def test_attack_simulation_applies_poison_card_effect(monkeypatch):
+    card = Card(
+        card_id="Poisoned Stab",
+        name="Poisoned Stab",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.COMMON,
+        has_target=True,
+        cost=1,
+    )
+    card_data = {
+        "name": "Poisoned Stab",
+        "description": "Deal 6 damage. Apply 3 Poison.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Poisoned Stab" else None,
+    )
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 20,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "frail": 0,
+                "poison": 0,
+                "artifact": 0,
+            }
+        ],
+        player_strength=0,
+        player_hp=80,
+        total_damage_dealt=0,
+        monsters_killed=0,
+        damage_instances=0,
+    )
+
+    FastCombatSimulator(None)._apply_attack(
+        state,
+        card,
+        target=None,
+        target_index=0,
+        context=None,
+    )
+
+    assert state.total_damage_dealt == 6
+    assert state.monsters[0]["poison"] == 3
+
+
+def test_skill_simulation_applies_targeted_poison(monkeypatch):
+    card = Card(
+        card_id="Deadly Poison",
+        name="Deadly Poison",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.COMMON,
+        has_target=True,
+        cost=1,
+    )
+    card_data = {
+        "name": "Deadly Poison",
+        "description": "Apply 5 Poison.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Deadly Poison" else None,
+    )
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 30,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "frail": 0,
+                "poison": 0,
+                "artifact": 0,
+            }
+        ],
+        player_block=0,
+        player_energy=0,
+        player_strength=0,
+        energy_gained=0,
+        exhaust_events=0,
+        cards_drawn=0,
+    )
+
+    FastCombatSimulator(None)._apply_skill(state, card, target_index=0)
+
+    assert state.monsters[0]["poison"] == 5
+
+
 def test_fast_simulator_uses_display_name_for_basic_card_ids(monkeypatch):
     card = Card(
         card_id="Strike_R",

@@ -1407,7 +1407,7 @@ class FastCombatSimulator:
         card_name: str = '',
     ) -> List[Tuple[int, str, int]]:
         effects = []
-        for debuff in ('weak', 'vulnerable'):
+        for debuff in ('weak', 'vulnerable', 'poison'):
             if debuff not in description:
                 continue
             stacks = self._extract_debuff_stacks(description, debuff, upgraded)
@@ -1444,6 +1444,8 @@ class FastCombatSimulator:
         for _, debuff, stacks in effects:
             if debuff == 'strength_down':
                 self._apply_monster_strength_down(monster, stacks)
+            elif debuff == 'poison':
+                self._apply_monster_poison(monster, stacks)
             else:
                 self._apply_monster_debuff(monster, debuff, stacks)
 
@@ -1929,7 +1931,10 @@ class FastCombatSimulator:
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
                 description = self._get_card_effect_text(card_name, card_data)
-                has_debuff = 'vulnerable' in description or 'weak' in description
+                has_debuff = any(
+                    debuff in description
+                    for debuff in ('vulnerable', 'weak', 'poison')
+                )
                 if has_debuff:
                     upgrades = getattr(card, 'upgrades', 0) > 0
                     is_aoe = game_data_loader._is_card_aoe(card_data) or 'all enemies' in description
