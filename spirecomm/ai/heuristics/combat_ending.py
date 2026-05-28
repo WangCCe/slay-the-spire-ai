@@ -157,6 +157,13 @@ class CombatEndingDetector:
                        if hasattr(c, 'type') and c.type == CardType.ATTACK]
         attack_cards.sort(key=lambda c: self._get_card_damage(c, context), reverse=True)
 
+        for card in attack_cards:
+            cost = effective_card_cost(card, remaining_energy)
+            if cost > remaining_energy:
+                continue
+            if self._is_aoe_attack(card) and self._aoe_card_kills_all(card, context, remaining_energy):
+                return [PlayCardAction(card=card)]
+
         for monster, monster_idx in zip(remaining_monsters, remaining_monster_indices):
             damage_needed = monster.current_hp + monster.block
             for card in attack_cards:
@@ -208,6 +215,36 @@ class CombatEndingDetector:
             logger.warning(f"[LETHAL_SEQUENCE] Debug: attacks={len(attack_cards)}, energy={context.energy_available}")
 
         return sequence
+
+    def _is_aoe_attack(self, card: Card) -> bool:
+        card_id = self._base_card_name(card)
+        return card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
+
+    def _aoe_card_kills_all(
+        self,
+        card: Card,
+        context: DecisionContext,
+        available_energy: int,
+    ) -> bool:
+        base_damage = self._get_card_damage(card, context)
+        base_damage = self._apply_player_weak_to_card_damage(
+            card,
+            context,
+            base_damage,
+            available_energy,
+        )
+        for monster_idx, monster in enumerate(context.monsters_alive):
+            damage = base_damage
+            if context.vulnerable_stacks.get(monster_idx, 0) > 0:
+                damage = self._apply_vulnerable_to_card_damage(
+                    card,
+                    context,
+                    damage,
+                    available_energy,
+                )
+            if damage < monster.current_hp + monster.block:
+                return False
+        return True
 
     def should_skip_defense(self, context: DecisionContext) -> bool:
         """
@@ -311,11 +348,7 @@ class CombatEndingDetector:
 
         for card in context.playable_cards:
             if hasattr(card, 'type') and card.type == CardType.ATTACK:
-                # Check if this is an AOE attack
-                card_id = self._base_card_name(card)
-                is_aoe = card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
-
-                if is_aoe:
+                if self._is_aoe_attack(card):
                     aoe_count += 1
                 else:
                     single_target_count += 1

@@ -4885,6 +4885,23 @@ def test_lethal_sequence_uses_multiple_attacks_on_one_monster():
     assert [action.card.uuid for action in sequence] == ["strike-1", "strike-2"]
 
 
+def test_lethal_sequence_uses_single_aoe_card_for_multiple_monsters():
+    whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
+    context = _combat_context(
+        [whirlwind],
+        energy=3,
+        monsters=[_louse(current_hp=6), _louse(current_hp=6)],
+    )
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+
+    sequence = detector.find_lethal_sequence(context)
+
+    assert [action.card.card_id for action in sequence] == ["Whirlwind"]
+    assert sequence[0].target_monster is None
+
+
 def test_lethal_detector_counts_vulnerable_damage_on_single_target():
     strike = _card("Strike_R", "Strike", cost=1)
     strike.uuid = "strike-vulnerable"
