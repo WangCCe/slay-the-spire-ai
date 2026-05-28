@@ -1082,6 +1082,40 @@ def test_spike_imminent_counts_monster_strength(monkeypatch):
     assert classifier._spike_imminent(context) is True
 
 
+def test_spike_imminent_counts_scripted_strength_gain_before_attack(monkeypatch):
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        lambda *_args, **_kwargs: [
+            {
+                "turn": 2,
+                "move": {
+                    "name": "Grow",
+                    "intent": "BUFF",
+                    "strength_gain": 3,
+                },
+            },
+            {
+                "turn": 3,
+                "move": {
+                    "name": "Heavy Strike",
+                    "intent": "ATTACK",
+                    "damage": 18,
+                    "hits": 1,
+                },
+            },
+        ],
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(
+        game=SimpleNamespace(current_hp=80, ascension_level=0),
+        turn=1,
+        monsters_alive=[SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength=0)],
+    )
+
+    assert classifier._spike_imminent(context) is True
+
+
 def test_enhanced_monster_database_loads_act2_normal_monsters():
     database = EnhancedMonsterDatabase()
 

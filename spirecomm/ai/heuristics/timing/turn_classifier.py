@@ -939,9 +939,25 @@ class TurnTimingClassifier:
                             context,
                         )
                         hits = self._resolve_move_hits(move, context, target_turn=target_turn)
-                        strength = getattr(monster, 'strength', 0)
+                        current_strength = getattr(monster, 'strength', 0)
+                        ascension_level = self._context_ascension_level(context)
+                        scripted_strength = self._predict_strength_from_move_sequence(
+                            anchored_predictions,
+                            current_turn,
+                            target_turn,
+                            current_strength,
+                            ascension_level,
+                        )
+                        scaling_strength = self._predict_future_strength(
+                            monster,
+                            current_turn,
+                            target_turn,
+                            current_strength,
+                            ascension_level,
+                        )
+                        predicted_strength = max(scripted_strength, scaling_strength)
 
-                        if (damage + strength) * hits >= 20:
+                        if (damage + predicted_strength) * hits >= 20:
                             # Big attack imminent
                             return True
 
