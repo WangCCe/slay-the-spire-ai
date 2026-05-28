@@ -983,7 +983,16 @@ class FastCombatSimulator:
                 if x_energy_spent is not None:
                     setattr(state, '_current_x_energy_spent', x_energy_spent)
                 try:
-                    base_damage = self._calculate_x_damage(card, state, context)
+                    if card_name == 'Whirlwind' or x_energy_spent is not None:
+                        base_damage = self._calculate_x_damage(
+                            card,
+                            state,
+                            context,
+                            x_energy_spent=x_energy_spent,
+                            per_hit=card_name == 'Whirlwind',
+                        )
+                    else:
+                        base_damage = self._calculate_x_damage(card, state, context)
                 finally:
                     if x_energy_spent is not None and hasattr(state, '_current_x_energy_spent'):
                         delattr(state, '_current_x_energy_spent')
@@ -1097,7 +1106,7 @@ class FastCombatSimulator:
         card_name = _canonical_card_name(card)
         upgrades = getattr(card, 'upgrades', 0)
 
-        if card_name == 'Skewer':
+        if card_name in {'Skewer', 'Whirlwind'}:
             energy = x_energy_spent
             if energy is None:
                 energy = getattr(state, '_current_x_energy_spent', None)
@@ -1825,6 +1834,7 @@ class FastCombatSimulator:
         state: SimulationState,
         context: DecisionContext,
         x_energy_spent: Optional[int] = None,
+        per_hit: bool = False,
     ) -> int:
         """
         Calculate dynamic damage for X-damage cards.
@@ -1853,9 +1863,8 @@ class FastCombatSimulator:
             return state.player_block
 
         elif card_name == 'Whirlwind':
-            # Whirlwind: 5/8 damage to all enemies X times, where X is
-            # current energy. _apply_attack adds Strength once after this
-            # helper, so include the remaining Strength hits here.
+            # Combat simulation needs per-hit damage so Weak, Vulnerable,
+            # thorns, and damage instance tracking happen once per hit.
             energy = x_energy_spent
             if energy is None:
                 energy = getattr(state, '_current_x_energy_spent', None)
@@ -1863,9 +1872,11 @@ class FastCombatSimulator:
                 fallback_energy = getattr(state, 'player_energy', 0)
                 energy = effective_card_cost(card, fallback_energy)
             energy = max(0, energy)
-            per_hit = 8 if getattr(card, 'upgrades', 0) > 0 else 5
+            per_hit_damage = 8 if getattr(card, 'upgrades', 0) > 0 else 5
+            if per_hit:
+                return per_hit_damage
             strength = getattr(state, 'player_strength', 0)
-            return per_hit * energy + max(0, energy - 1) * strength
+            return per_hit_damage * energy + max(0, energy - 1) * strength
 
         # Fallback: not an X-damage card
         return 0

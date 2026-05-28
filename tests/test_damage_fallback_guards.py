@@ -528,6 +528,79 @@ def test_simulate_card_play_spends_x_energy_on_skewer_hits(monkeypatch):
         assert result.player_energy == 0
 
 
+def test_simulate_card_play_spends_x_energy_on_whirlwind_aoe_hits(monkeypatch):
+    card_data = {
+        "name": "Whirlwind",
+        "description": "Deal [5|8] damage to ALL enemies X times.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Whirlwind" else None,
+    )
+    monsters = [
+        SimpleNamespace(
+            name=f"Cultist {index}",
+            monster_id="Cultist",
+            max_hp=50,
+            current_hp=50,
+            block=0,
+            intent=Intent.ATTACK,
+            half_dead=False,
+            is_gone=False,
+            move_id=1,
+            move_adjusted_damage=6,
+            move_hits=1,
+            strength=0,
+            powers=[],
+        )
+        for index in range(2)
+    ]
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            player=SimpleNamespace(
+                block=0,
+                powers=[SimpleNamespace(power_name="Weak", amount=1)],
+            ),
+            monsters=monsters,
+        ),
+        act=1,
+        turn=1,
+        energy_available=3,
+        strength=0,
+        monsters_alive=monsters,
+        vulnerable_stacks={0: 0, 1: 0},
+        weak_stacks={0: 0, 1: 0},
+        frail_stacks={0: 0, 1: 0},
+        thorns_stacks={0: 0, 1: 0},
+        playable_cards=[],
+    )
+    state = simulation.SimulationState(context)
+    card = Card(
+        card_id="Whirlwind",
+        name="Whirlwind",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.UNCOMMON,
+        upgrades=0,
+        has_target=False,
+        cost=-1,
+        cost_for_turn=-1,
+    )
+
+    result = FastCombatSimulator(None).simulate_card_play(
+        state,
+        card,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 18
+    assert result.damage_instances == 6
+    assert [monster["hp"] for monster in result.monsters] == [41, 41]
+    assert result.player_energy == 0
+
+
 def test_attack_simulation_applies_poison_card_effect(monkeypatch):
     card = Card(
         card_id="Poisoned Stab",
