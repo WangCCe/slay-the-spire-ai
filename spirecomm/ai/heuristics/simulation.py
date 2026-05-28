@@ -3048,30 +3048,35 @@ class FastCombatSimulator:
         text = str(intent or '')
         return text.rsplit('.', 1)[-1]
 
+    def _intent_tokens(self, intent: Any) -> set:
+        intent_name = self._intent_name(intent).upper()
+        return {token for token in re.split(r'[^A-Z0-9]+', intent_name) if token}
+
     def _move_intent_matches_live(self, move: Dict[str, Any], live_intent: str) -> bool:
-        move_intent = str(move.get('intent', '')).upper()
-        if not move_intent or not live_intent:
+        move_tokens = self._intent_tokens(move.get('intent', ''))
+        live_tokens = self._intent_tokens(live_intent)
+        if not move_tokens or not live_tokens:
             return False
-        if move_intent == live_intent:
+        if move_tokens == live_tokens:
             return True
 
-        live_has_attack = 'ATTACK' in live_intent
-        move_has_attack = 'ATTACK' in move_intent
+        live_has_attack = 'ATTACK' in live_tokens
+        move_has_attack = 'ATTACK' in move_tokens
         if live_has_attack:
             if not move_has_attack:
                 return False
             for required_tag in ('DEFEND', 'DEBUFF', 'BUFF'):
-                if required_tag in live_intent and required_tag not in move_intent:
+                if required_tag in live_tokens and required_tag not in move_tokens:
                     return False
             return True
 
         if move_has_attack:
             return False
-        if live_intent == 'DEBUFF' and 'DEBUFF' in move_intent:
+        if 'DEBUFF' in live_tokens and 'DEBUFF' in move_tokens:
             return True
-        if live_intent == 'BUFF' and 'BUFF' in move_intent:
+        if 'BUFF' in live_tokens and 'BUFF' in move_tokens:
             return True
-        if live_intent == 'DEFEND' and ('DEFEND' in move_intent or 'BLOCK' in move_intent):
+        if 'DEFEND' in live_tokens and ('DEFEND' in move_tokens or 'BLOCK' in move_tokens):
             return True
         return False
 

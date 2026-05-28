@@ -5637,3 +5637,29 @@ def test_live_spheric_guardian_defend_intent_overrides_mismatched_move_id():
 
     assert move["name"] == "Activate"
     assert damage == 0
+
+
+def test_live_buff_intent_does_not_resolve_to_debuff_move(monkeypatch):
+    class FakeLoader:
+        def get_monster_moves(self, _monster_name):
+            return [
+                {"name": "Actual Debuff", "move_id": 1, "intent": "DEBUFF"},
+                {"name": "Actual Buff", "move_id": 2, "intent": "BUFF"},
+            ]
+
+    monkeypatch.setattr(simulation, "game_data_loader", FakeLoader())
+    monster = {
+        "name": "Intent Test",
+        "monster_id": "IntentTest",
+        "hp": 20,
+        "max_hp": 20,
+        "intent": Intent.BUFF,
+        "move_id": 99,
+        "move_adjusted_damage": 0,
+        "move_hits": 1,
+    }
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    move = simulator._current_monster_move(monster)
+
+    assert move["name"] == "Actual Buff"
