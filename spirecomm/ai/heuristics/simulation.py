@@ -1933,13 +1933,21 @@ class FastCombatSimulator:
                 if has_debuff:
                     upgrades = getattr(card, 'upgrades', 0) > 0
                     is_aoe = game_data_loader._is_card_aoe(card_data) or 'all enemies' in description
+                    debuff_effects = self._description_debuff_effects(description, upgrades, card_name)
                     if is_aoe:
-                        debuff_effects = self._description_debuff_effects(description, upgrades, card_name)
                         if debuff_effects:
                             for monster in state.monsters:
                                 if not self._is_live_monster_state(monster):
                                     continue
                                 self._apply_monster_debuffs(monster, debuff_effects)
+                    elif (
+                        debuff_effects
+                        and target_index is not None
+                        and 0 <= target_index < len(state.monsters)
+                    ):
+                        monster = state.monsters[target_index]
+                        if self._is_live_monster_state(monster):
+                            self._apply_monster_debuffs(monster, debuff_effects)
         except Exception:
             pass
 

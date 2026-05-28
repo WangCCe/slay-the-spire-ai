@@ -156,6 +156,59 @@ def test_fast_simulator_does_not_apply_generic_damage_upgrade_for_unknown_cards(
     assert state.monsters[0]["weak"] == 2
 
 
+def test_skill_simulation_applies_targeted_debuff_to_selected_monster(monkeypatch):
+    card = Card(
+        card_id="Leg Sweep",
+        name="Leg Sweep",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.UNCOMMON,
+        has_target=True,
+        cost=2,
+    )
+    card_data = {
+        "name": "Leg Sweep",
+        "description": "Apply 2 Weak.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Leg Sweep" else None,
+    )
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 30,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "frail": 0,
+                "artifact": 0,
+            },
+            {
+                "hp": 30,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "frail": 0,
+                "artifact": 0,
+            },
+        ],
+        player_block=0,
+        player_energy=0,
+        player_strength=0,
+        energy_gained=0,
+        exhaust_events=0,
+        cards_drawn=0,
+    )
+
+    FastCombatSimulator(None)._apply_skill(state, card, target_index=1)
+
+    assert state.monsters[0]["weak"] == 0
+    assert state.monsters[1]["weak"] == 2
+
+
 def test_fast_simulator_uses_display_name_for_basic_card_ids(monkeypatch):
     card = Card(
         card_id="Strike_R",
