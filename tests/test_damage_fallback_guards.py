@@ -848,6 +848,18 @@ def test_aoe_parser_does_not_treat_generic_all_as_all_enemies():
     )
 
 
+def test_aoe_parser_handles_counted_upgrade_suffixes():
+    loader = data_loader.GameDataLoader(auto_load=False)
+    loader._wiki_data = {
+        "cleave": {
+            "name": "Cleave",
+            "text": "Deal [8|11] damage to ALL enemies.",
+        },
+    }
+
+    assert loader._is_card_aoe({"name": "Cleave+1"}) is True
+
+
 def test_ironclad_prune_targets_falls_back_when_damage_parse_returns_none(monkeypatch):
     monkeypatch.setattr(
         ironclad_combat.game_data_loader,

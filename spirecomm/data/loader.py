@@ -821,7 +821,7 @@ class GameDataLoader:
             return False
 
         card_name = card_data.get('name', '').lower()
-        base_card_name = card_name.rstrip('+')  # Remove '+' for lookup
+        base_card_name, _upgrade_count = _split_card_upgrade_suffix(card_name)
 
         # Stage 1: Check CARD_METADATA first (complex cards)
         if base_card_name in CARD_METADATA:
