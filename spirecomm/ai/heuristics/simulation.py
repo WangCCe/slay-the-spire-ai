@@ -468,6 +468,7 @@ class SimulationState:
         self.end_turn_block = self._get_player_power_amount(context, 'Metallicize')
         self.player_energy = context.energy_available
         self.player_strength = context.strength
+        self.player_dexterity = self._get_player_power_amount(context, 'Dexterity')
 
         # Player debuffs (binary: >0 means debuffed)
         self.player_vulnerable = self._get_player_debuff_stacks(context, 'Vulnerable')
@@ -622,6 +623,7 @@ class SimulationState:
         new_state.end_turn_block = self.end_turn_block
         new_state.player_energy = self.player_energy
         new_state.player_strength = self.player_strength
+        new_state.player_dexterity = self.player_dexterity
         new_state.player_vulnerable = self.player_vulnerable
         new_state.player_vulnerable_added = self.player_vulnerable_added
         new_state.player_weak = self.player_weak
@@ -674,6 +676,7 @@ class SimulationState:
             self.end_turn_block,
             self.player_energy,
             self.player_strength,
+            self.player_dexterity,
             self.player_vulnerable,
             self.player_vulnerable_added,
             self.player_weak,
@@ -1148,7 +1151,7 @@ class FastCombatSimulator:
         if upgrades > 0:
             block_gain += BLOCK_UPGRADE_BONUS.get(card_name, 2)
 
-        state.player_block += self._apply_frail_block(block_gain, state.player_frail)
+        state.player_block += self._apply_card_block_modifiers(block_gain, state)
 
     def _apply_attack_exhaust_effects(
         self,
@@ -1445,6 +1448,11 @@ class FastCombatSimulator:
         if player_frail > 0:
             return int(block * 0.75)
         return block
+
+    def _apply_card_block_modifiers(self, block: int, state: SimulationState) -> int:
+        """Apply player modifiers for block gained by a card."""
+        block_with_dexterity = max(0, block + getattr(state, 'player_dexterity', 0))
+        return self._apply_frail_block(block_with_dexterity, state.player_frail)
 
     def _apply_debuff_risk_multiplier(self, damage: int, player_weak: int, player_frail: int) -> int:
         """Adjust expected damage based on player Weak/Frail stacks."""
@@ -1804,7 +1812,7 @@ class FastCombatSimulator:
         if hasattr(card, 'block') and card.block is not None:
             block_gain = card.block
             logger.debug(f"[BLOCK_SKILL] Using card.block attribute: {block_gain} for {card.card_id}")
-            block_gain = self._apply_frail_block(block_gain, state.player_frail)
+            block_gain = self._apply_card_block_modifiers(block_gain, state)
             state.player_block += block_gain
         else:
             # Check for X-block cards first
@@ -1813,7 +1821,7 @@ class FastCombatSimulator:
                 if block_gain > 0:
                     logger.debug(f"[BLOCK_X] X-block calculated: {block_gain} for {card.card_id}")
                     # Apply frail multiplier
-                    block_gain = self._apply_frail_block(block_gain, state.player_frail)
+                    block_gain = self._apply_card_block_modifiers(block_gain, state)
                     state.player_block += block_gain
                 else:
                     # Not an X-block card - try to get block from game data
@@ -1845,7 +1853,7 @@ class FastCombatSimulator:
                             else:
                                 logger.debug(f"[BLOCK_BASE] {card.card_id} (upgrades={upgrades}): {base_block} block")
 
-                            block_gain = self._apply_frail_block(base_block, state.player_frail)
+                            block_gain = self._apply_card_block_modifiers(base_block, state)
                             state.player_block += block_gain
                         else:
                             logger.debug(f"[BLOCK_NONE] No block found for {card.card_id}")
@@ -3770,6 +3778,8 @@ class HeuristicCombatPlanner(CombatPlanner):
                             new_state.player_hp += potion.effect_value
                         elif potion.effect_type in ['buff_strength', 'temp_strength']:
                             new_state.player_strength += potion.effect_value
+                        elif potion.effect_type in ['buff_dexterity', 'temp_dexterity']:
+                            new_state.player_dexterity += potion.effect_value
                         elif potion.effect_type == 'energy':
                             new_state.player_energy += potion.effect_value
                             new_state.energy_gained += potion.effect_value

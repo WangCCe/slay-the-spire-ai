@@ -1880,6 +1880,83 @@ def test_beam_search_damage_potion_updates_damage_events():
     ]
 
 
+def test_beam_search_speed_potion_improves_later_card_block():
+    potion = Potion(
+        potion_id="SpeedPotion",
+        name="Speed Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    defend = Card(
+        card_id="Defend_R",
+        name="Defend",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.BASIC,
+        has_target=False,
+        cost=1,
+        uuid="defend",
+    )
+    monster = SimpleNamespace(
+        name="Lagavulin",
+        monster_id="Lagavulin",
+        max_hp=100,
+        current_hp=100,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=18,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            hand=[defend],
+            monsters=[monster],
+            room_type="Monster",
+            get_real_potions=lambda: [potion],
+        ),
+        act=1,
+        turn=1,
+        floor=5,
+        energy_available=1,
+        strength=0,
+        player_hp_pct=0.5,
+        incoming_damage=18,
+        card_synergies={},
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[defend],
+        compute_threat=lambda monster: 18,
+    )
+    planner = HeuristicCombatPlanner()
+    observed_block = []
+
+    def score(_initial_state, final_state, _act, _weights, _context, sequence):
+        if (
+            len(sequence) == 2
+            and isinstance(sequence[0], PotionAction)
+            and isinstance(sequence[1], PlayCardAction)
+        ):
+            observed_block.append(final_state.player_block)
+        return final_state.player_block
+
+    planner.simulator.calculate_outcome_score = score
+
+    planner.plan_turn(context)
+
+    assert observed_block == [10]
+
+
 def test_beam_search_simulates_debuff_potion_effect():
     potion = Potion(
         potion_id="FearPotion",
