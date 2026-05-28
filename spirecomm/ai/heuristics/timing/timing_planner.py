@@ -146,8 +146,8 @@ class TimingAwareCombatPlanner:
             if not playable_cards:
                 return False
 
-            # Calculate total potential damage
-            total_damage = 0
+            # Calculate affordable single-target damage instances
+            damage_instances = []
             energy = getattr(context, 'energy_available', 3)
 
             for card in playable_cards:
@@ -158,24 +158,26 @@ class TimingAwareCombatPlanner:
                     if cost > energy:
                         continue
 
-                    total_damage += card_damage
+                    damage_instances.append(card_damage)
                     energy -= cost
 
                     if energy <= 0:
                         break
 
-            # Check if damage is enough to kill all monsters
-            total_hp = sum(
+            monster_hp = [
                 m.current_hp + getattr(m, 'block', 0)
                 for m in monsters
                 if hasattr(m, 'current_hp')
-            )
+            ]
 
-            can_kill = total_damage >= total_hp
+            can_kill = self._single_target_damage_can_kill_all(
+                damage_instances,
+                monster_hp,
+            )
 
             if can_kill:
                 logger.debug(
-                    f"[LETHAL_CHECK] Possible! damage={total_damage}, hp={total_hp}"
+                    f"[LETHAL_CHECK] Possible! damage={sum(damage_instances)}, hp={sum(monster_hp)}"
                 )
 
             return can_kill
@@ -287,6 +289,51 @@ class TimingAwareCombatPlanner:
         except Exception as e:
             logger.warning(f"[FALLBACK_PLAN] Failed: {e}")
             return []
+
+    def _single_target_damage_can_kill_all(self, damage_instances, monster_hp) -> bool:
+        """Check whether single-target damage instances can cover each monster HP pool."""
+        remaining = tuple(sorted((hp for hp in monster_hp if hp > 0), reverse=True))
+        damages = tuple(sorted((damage for damage in damage_instances if damage > 0), reverse=True))
+
+        if not remaining:
+            return True
+        if sum(damages) < sum(remaining):
+            return False
+
+        seen = set()
+
+        def search(damage_index, hp_state):
+            if not hp_state:
+                return True
+            if damage_index >= len(damages):
+                return False
+
+            key = (damage_index, hp_state)
+            if key in seen:
+                return False
+            seen.add(key)
+
+            damage = damages[damage_index]
+
+            # It can be correct to leave a high-overkill hit unused.
+            if search(damage_index + 1, hp_state):
+                return True
+
+            tried_hp = set()
+            for idx, hp in enumerate(hp_state):
+                if hp in tried_hp:
+                    continue
+                tried_hp.add(hp)
+
+                next_hp = list(hp_state)
+                next_hp[idx] = max(0, next_hp[idx] - damage)
+                next_state = tuple(sorted((value for value in next_hp if value > 0), reverse=True))
+                if search(damage_index + 1, next_state):
+                    return True
+
+            return False
+
+        return search(0, remaining)
 
     def _estimate_card_damage(self, card, context) -> int:
         """Estimate card damage for timing decisions from methods or parsed data."""
