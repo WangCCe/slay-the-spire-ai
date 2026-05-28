@@ -459,30 +459,26 @@ class IroncladCombatPlanner(CombatPlanner):
 
         # Prefer finishing a killable low-HP target in multi-monster fights to reduce incoming attacks.
         if hasattr(card, 'type') and card.type == CardType.ATTACK and len(alive_monsters) >= 2:
-            damage = None
-            if hasattr(card, 'damage_for'):
-                try:
-                    damage = card.damage_for(context.turn, context.strength)
-                except Exception:
-                    damage = None
-            elif hasattr(card, 'damage'):
-                damage = card.damage + getattr(context, 'strength', 0)
+            killable_targets = []
+            for i, monster_state in alive_monsters:
+                if i >= len(context.monsters_alive):
+                    continue
+                effective_hp = monster_state.get('hp', 0) + monster_state.get('block', 0)
+                damage = self._estimate_attack_damage_to_target(
+                    card,
+                    context,
+                    state,
+                    i,
+                )
+                if damage >= effective_hp:
+                    real_monster = context.monsters_alive[i]
+                    threat = evaluate_monster_threat(real_monster, context)
+                    killable_targets.append((effective_hp, -threat, i))
 
-            if damage is not None:
-                killable_targets = []
-                for i, monster_state in alive_monsters:
-                    if i >= len(context.monsters_alive):
-                        continue
-                    effective_hp = monster_state.get('hp', 0) + monster_state.get('block', 0)
-                    if damage >= effective_hp:
-                        real_monster = context.monsters_alive[i]
-                        threat = evaluate_monster_threat(real_monster, context)
-                        killable_targets.append((effective_hp, -threat, i))
-
-                if killable_targets:
-                    killable_targets.sort()
-                    _, _, i = killable_targets[0]
-                    return context.monsters_alive[i], i
+            if killable_targets:
+                killable_targets.sort()
+                _, _, i = killable_targets[0]
+                return context.monsters_alive[i], i
 
         # Calculate threat levels for all alive monsters
         monster_threats = []

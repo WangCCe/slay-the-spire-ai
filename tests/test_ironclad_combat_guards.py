@@ -2067,6 +2067,37 @@ def test_primary_target_selection_clears_zero_hp_stale_simulated_monster():
     assert state.primary_target is None
 
 
+def test_standard_targeting_uses_parsed_damage_for_plain_card_lethals(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    strike = _card("Strike_R", "Strike", cost=1)
+    high_threat = _louse(current_hp=40)
+    killable = _louse(current_hp=6)
+    context = _combat_context([strike], energy=1, monsters=[high_threat, killable])
+    monkeypatch.setattr(
+        ironclad_combat,
+        "evaluate_monster_threat",
+        lambda monster, _context: 100 if monster is high_threat else 1,
+    )
+    state = SimulationState(context)
+
+    target, target_idx = IroncladCombatPlanner()._choose_target_for_card(
+        strike,
+        context,
+        state,
+    )
+
+    assert target is killable
+    assert target_idx == 1
+
+
 def test_v2_single_target_selection_ignores_zero_hp_stale_simulated_monsters():
     strike = _card("Strike_R", "Strike", cost=1)
     stale = _louse(current_hp=40)
