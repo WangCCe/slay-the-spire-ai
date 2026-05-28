@@ -31,6 +31,7 @@ def test_intent_tokens_does_not_conflate_buff_and_debuff():
 def test_intent_is_attack_accepts_enum_string_and_protocol_objects():
     assert intent_is_attack(Intent.ATTACK)
     assert intent_is_attack("Intent.ATTACK_DEBUFF")
+    assert intent_is_attack("Attack/Debuff")
     assert intent_is_attack(_CustomIntent(True))
 
 
@@ -38,6 +39,8 @@ def test_intent_is_attack_rejects_none_and_non_attack_intents():
     assert not intent_is_attack(None)
     assert not intent_is_attack(Intent.DEBUFF)
     assert not intent_is_attack("Intent.BUFF")
+    assert not intent_is_attack("NOT_ATTACK")
+    assert not intent_is_attack("NON_ATTACKING")
     assert not intent_is_attack(_CustomIntent(False))
 
 

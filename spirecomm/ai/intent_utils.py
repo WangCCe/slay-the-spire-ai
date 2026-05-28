@@ -37,7 +37,10 @@ def intent_is_attack(intent) -> bool:
     if hasattr(intent, "is_attack"):
         return intent.is_attack()
 
-    return "ATTACK" in str(intent).upper()
+    intent_name = str(intent or "").rsplit(".", 1)[-1].upper()
+    if intent_name.startswith(("NO_ATTACK", "NON_ATTACK", "NOT_ATTACK")):
+        return False
+    return "ATTACK" in intent_tokens(intent)
 
 
 def monster_intends_attack(monster, missing_intent_counts: bool = True) -> bool:
