@@ -14,7 +14,7 @@ from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster, Intent
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.incoming_damage import known_unknown_move_has_no_immediate_damage
-from spirecomm.ai.intent_utils import intent_is_unknown, intent_tokens, monster_intends_attack
+from spirecomm.ai.intent_utils import intent_is_attack, intent_is_unknown, intent_tokens, monster_intends_attack
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.card_costs import (
@@ -2318,8 +2318,7 @@ class FastCombatSimulator:
         intent = monster.get('intent')
         if intent is None:
             return False
-        intent_name = getattr(intent, 'name', str(intent))
-        return 'ATTACK' in intent_name.upper()
+        return intent_is_attack(intent)
 
     def _apply_energy_gain_skill(self, state: SimulationState, card: Card):
         card_id = _canonical_card_name(card)
