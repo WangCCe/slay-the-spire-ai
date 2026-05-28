@@ -2689,6 +2689,37 @@ def test_counted_upgraded_block_skill_uses_upgrade_block_value(monkeypatch):
     assert result.player_block == 20
 
 
+def test_block_skill_ignores_stale_zero_block_attribute(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "defend": {
+            "name": "Defend",
+            "description": "Gain 5 Block.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend.block = 0
+    context = _combat_context([defend], energy=1, monsters=[_louse(current_hp=100)])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        defend,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 5
+
+
 def test_second_wind_gains_block_for_each_non_attack_card_exhausted():
     second_wind = _card(
         "Second Wind",

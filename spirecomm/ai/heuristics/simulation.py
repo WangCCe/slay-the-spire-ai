@@ -2062,7 +2062,7 @@ class FastCombatSimulator:
             return
 
         # Block skills - apply frail multiplier if player has frail
-        if hasattr(card, 'block') and card.block is not None:
+        if hasattr(card, 'block') and card.block is not None and card.block > 0:
             block_gain = card.block
             logger.debug(f"[BLOCK_SKILL] Using card.block attribute: {block_gain} for {card.card_id}")
             block_gain = self._apply_card_block_modifiers(block_gain, state)
