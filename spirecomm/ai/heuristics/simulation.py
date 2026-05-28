@@ -807,7 +807,7 @@ class FastCombatSimulator:
 
         # Check special monster abilities before applying card effects
         for i, monster in enumerate(new_state.monsters):
-            if not monster['is_gone']:
+            if self._is_live_monster_state(monster):
                 self._handle_death_split(new_state, monster, i)
                 self._handle_summoner(new_state, monster)
                 self._handle_phase_change(new_state, monster)

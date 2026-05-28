@@ -1141,6 +1141,24 @@ def test_end_turn_projection_materializes_due_slime_boss_split():
     assert [monster["hp"] for monster in alive] == [56, 56]
 
 
+def test_special_monster_preprocessing_ignores_zero_hp_stale_simulated_monsters():
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([defend], energy=1, monsters=[_slime_boss(current_hp=56)])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        defend,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert not result.monsters[0].get("split_pending", False)
+
+
 def test_large_slime_split_materializes_medium_slime_names_and_threat():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_acid_slime_l(current_hp=30)])
