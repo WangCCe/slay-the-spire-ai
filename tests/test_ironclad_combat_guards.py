@@ -4924,6 +4924,28 @@ def test_lethal_detector_counts_aoe_damage_against_each_monster(monkeypatch):
     assert [action.card.card_id for action in detector.find_lethal_sequence(context)] == ["Cleave"]
 
 
+def test_lethal_detector_rejects_aoe_overkill_false_positive(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "cleave": {
+            "name": "Cleave",
+            "description": "Deal 8 damage to ALL enemies.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    context = _combat_context(
+        [cleave],
+        energy=1,
+        monsters=[_louse(current_hp=1), _louse(current_hp=12)],
+    )
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 16
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
+
+
 def test_lethal_detector_counts_vulnerable_damage_on_single_target():
     strike = _card("Strike_R", "Strike", cost=1)
     strike.uuid = "strike-vulnerable"

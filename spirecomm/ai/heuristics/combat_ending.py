@@ -369,20 +369,28 @@ class CombatEndingDetector:
         """
         num_monsters = len(context.monsters_alive)
 
-        # Count AOE attacks
-        aoe_count = 0
+        # Count attacks by targeting behavior
+        aoe_cards = []
         single_target_count = 0
 
         for card in context.playable_cards:
             if hasattr(card, 'type') and card.type == CardType.ATTACK:
                 if self._is_aoe_attack(card):
-                    aoe_count += 1
+                    aoe_cards.append(card)
                 else:
                     single_target_count += 1
 
-        # If we have AOE, targeting is always feasible
-        if aoe_count > 0:
-            return True
+        for card in aoe_cards:
+            cost = effective_card_cost(card, getattr(context, 'energy_available', 0))
+            if cost <= getattr(context, 'energy_available', 0) and self._aoe_card_kills_all(
+                card,
+                context,
+                getattr(context, 'energy_available', 0),
+            ):
+                return True
+
+        if aoe_cards and single_target_count == 0:
+            return False
 
         # If we have enough single-target attacks for each monster, feasible
         if single_target_count >= num_monsters:
