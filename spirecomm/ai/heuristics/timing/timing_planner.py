@@ -203,25 +203,36 @@ class TimingAwareCombatPlanner:
             if not playable_cards or not monsters:
                 return []
 
-            # Sort cards by damage (highest first)
-            attack_cards = []
+            attack_options = []
             for card in playable_cards:
                 damage = self._estimate_card_damage(card, context)
                 if damage > 0:
-                    attack_cards.append((card, damage))
+                    cost = effective_card_cost(card, getattr(context, 'energy_available', 3))
+                    effect_type = 'aoe' if self._is_card_aoe(card) else 'single'
+                    attack_options.append((card, effect_type, damage, cost))
 
-            # Sort by damage descending
-            attack_cards.sort(key=lambda x: x[1], reverse=True)
-
-            # Generate actions (play highest damage cards until out of energy)
-            actions = []
-            energy = getattr(context, 'energy_available', 3)
-            remaining_hp = [
+            monster_hp = [
                 max(0, getattr(monster, 'current_hp', 0) + getattr(monster, 'block', 0))
                 for monster in monsters
             ]
+            selected_options = self._find_affordable_lethal_card_options(
+                attack_options,
+                monster_hp,
+                getattr(context, 'energy_available', 3),
+            )
+            if not selected_options:
+                selected_options = sorted(
+                    attack_options,
+                    key=lambda option: option[2],
+                    reverse=True,
+                )
 
-            for card, damage in attack_cards:
+            # Generate actions from the proven lethal subset when one exists.
+            actions = []
+            energy = getattr(context, 'energy_available', 3)
+            remaining_hp = list(monster_hp)
+
+            for card, _effect_type, damage, _planned_cost in selected_options:
                 cost = effective_card_cost(card, energy)
 
                 if energy >= cost:
@@ -370,6 +381,44 @@ class TimingAwareCombatPlanner:
             return False
 
         return search(0, remaining)
+
+    def _find_affordable_lethal_card_options(self, card_options, monster_hp, energy):
+        """Return an affordable card subset whose damage effects kill all monsters."""
+        options = tuple(
+            (card, effect_type, int(damage), max(0, int(cost)))
+            for card, effect_type, damage, cost in card_options
+            if damage > 0
+        )
+        starting_energy = max(0, int(energy))
+        seen = set()
+
+        def selected_effects(selected_options):
+            return tuple(
+                (effect_type, damage)
+                for _card, effect_type, damage, _cost in selected_options
+            )
+
+        def search(option_index, remaining_energy, selected_options):
+            if self._damage_effects_can_kill_all(selected_effects(selected_options), monster_hp):
+                return selected_options
+            if option_index >= len(options):
+                return None
+
+            key = (option_index, remaining_energy, selected_effects(selected_options))
+            if key in seen:
+                return None
+            seen.add(key)
+
+            card, effect_type, damage, cost = options[option_index]
+            if cost <= remaining_energy:
+                with_card = selected_options + ((card, effect_type, damage, cost),)
+                result = search(option_index + 1, remaining_energy - cost, with_card)
+                if result is not None:
+                    return result
+
+            return search(option_index + 1, remaining_energy, selected_options)
+
+        return search(0, starting_energy, ())
 
     def _affordable_damage_effects_can_kill_all(self, damage_options, monster_hp, energy) -> bool:
         """Check whether any affordable subset of damage effects can kill all monsters."""

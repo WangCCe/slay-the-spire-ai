@@ -235,6 +235,44 @@ def test_timing_lethal_sequence_targets_multiple_single_target_monsters(monkeypa
     assert [action.target_monster for action in actions] == [first_monster, second_monster]
 
 
+def test_timing_lethal_sequence_uses_lethal_subset_not_highest_damage_greedy(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    bash = _card("Bash", "Bash", cost=2)
+    bash.uuid = "bash"
+    strike_a = _card("Strike_R", "Strike", cost=1)
+    strike_a.uuid = "strike-a"
+    strike_b = _card("Strike_R", "Strike", cost=1)
+    strike_b.uuid = "strike-b"
+    monster = SimpleNamespace(current_hp=12, block=0, monster_index=0)
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=2,
+        playable_cards=[bash, strike_a, strike_b],
+        monsters_alive=[monster],
+    )
+
+    planner = TimingAwareCombatPlanner()
+
+    assert planner._can_kill_all_this_turn(
+        context,
+        TimingContext(
+            turn_timing=TurnTiming.SAFE,
+            current_damage=0,
+            balance_weights=BalanceWeights.safe_turn_weights(),
+        ),
+    )
+    actions = planner._generate_lethal_sequence(context)
+
+    assert [action.card for action in actions] == [strike_a, strike_b]
+    assert [action.target_monster for action in actions] == [monster, monster]
+
+
 def test_timing_fallback_scores_parsed_damage_and_block_for_plain_cards(monkeypatch):
     monkeypatch.setattr(
         timing_planner,
