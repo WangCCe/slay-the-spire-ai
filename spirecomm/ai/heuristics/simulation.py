@@ -977,6 +977,7 @@ class FastCombatSimulator:
             is_aoe = True
         hit_count = self._get_attack_hit_count(card, state, context)
         starting_total_damage = state.total_damage_dealt
+        target_was_live_at_attack_start = False
 
         if is_aoe:
             # AOE - apply to all monsters
@@ -1018,9 +1019,10 @@ class FastCombatSimulator:
             # Single-target attack
             if target_index is not None and 0 <= target_index < len(state.monsters):
                 monster = state.monsters[target_index]
-                if not monster['is_gone']:
+                target_was_live_at_attack_start = self._is_live_monster_state(monster)
+                if target_was_live_at_attack_start:
                     for _ in range(hit_count):
-                        if monster['is_gone']:
+                        if not self._is_live_monster_state(monster):
                             break
                         damage = self._calculate_attack_damage(card, base_damage, state, context)
                         damage = self._apply_weak_damage(damage, getattr(state, 'player_weak', 0))
@@ -1038,7 +1040,12 @@ class FastCombatSimulator:
                         )
 
         self._apply_attack_healing(state, card, starting_total_damage)
-        self._apply_attack_resource_effects(state, card, target_index)
+        self._apply_attack_resource_effects(
+            state,
+            card,
+            target_index,
+            target_was_live_at_attack_start,
+        )
         self._apply_attack_draw_effects(state, card, card_data)
         self._apply_attack_block_effects(state, card, card_data)
         self._apply_attack_exhaust_effects(state, card, context, card_data)
@@ -1083,9 +1090,12 @@ class FastCombatSimulator:
         state: SimulationState,
         card: Card,
         target_index: Optional[int],
+        target_was_live_at_attack_start: bool,
     ):
         card_name = _canonical_card_name(card)
         if card_name != 'Dropkick':
+            return
+        if not target_was_live_at_attack_start:
             return
         if target_index is None or not (0 <= target_index < len(state.monsters)):
             return

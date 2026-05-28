@@ -3308,6 +3308,42 @@ def test_dropkick_refunds_energy_and_draws_against_vulnerable_enemy(monkeypatch)
     assert result.cards_drawn == 1
 
 
+def test_dropkick_does_not_refund_against_zero_hp_stale_vulnerable_target(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "dropkick": {
+            "name": "Dropkick",
+            "description": "Deal 5 damage.\nIf the enemy has Vulnerable,\ngain [R] and\ndraw 1 card.",
+        }
+    }
+    loader._wiki_data = {
+        "dropkick": {
+            "name": "Dropkick",
+            "text": "Deal [5|8] damage.\nIf the enemy has #Vulnerable,\ngain [R] and\ndraw 1 card.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    dropkick = _card("Dropkick", "Dropkick", cost=1)
+    context = _combat_context([dropkick], energy=1, monsters=[_louse(current_hp=20)])
+    context.vulnerable_stacks[0] = 1
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        dropkick,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 0
+    assert result.player_energy == 0
+    assert result.energy_gained == 0
+    assert result.cards_drawn == 0
+
+
 def test_perfected_strike_counts_strike_cards_in_deck(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
