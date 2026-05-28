@@ -303,6 +303,50 @@ def test_skill_simulation_applies_targeted_poison(monkeypatch):
     assert state.monsters[0]["poison"] == 5
 
 
+def test_skill_simulation_applies_random_enemy_poison_to_only_live_monster(monkeypatch):
+    card = Card(
+        card_id="Bouncing Flask",
+        name="Bouncing Flask",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.UNCOMMON,
+        has_target=False,
+        cost=2,
+    )
+    card_data = {
+        "name": "Bouncing Flask",
+        "description": "Apply 3 Poison to a random enemy 3 times.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Bouncing Flask" else None,
+    )
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 30,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "frail": 0,
+                "poison": 0,
+                "artifact": 0,
+            }
+        ],
+        player_block=0,
+        player_energy=0,
+        player_strength=0,
+        energy_gained=0,
+        exhaust_events=0,
+        cards_drawn=0,
+    )
+
+    FastCombatSimulator(None)._apply_skill(state, card, target_index=None)
+
+    assert state.monsters[0]["poison"] == 9
+
+
 def test_fast_simulator_uses_display_name_for_basic_card_ids(monkeypatch):
     card = Card(
         card_id="Strike_R",

@@ -1449,6 +1449,29 @@ class FastCombatSimulator:
             else:
                 self._apply_monster_debuff(monster, debuff, stacks)
 
+    def _apply_random_enemy_debuffs(
+        self,
+        state: SimulationState,
+        effects: List[Tuple[int, str, int]],
+        repeat_count: int,
+    ):
+        for _ in range(max(1, repeat_count)):
+            alive_monsters = [
+                monster for monster in state.monsters
+                if self._is_live_monster_state(monster)
+            ]
+            if not alive_monsters:
+                return
+            monster = min(alive_monsters, key=lambda m: m.get('hp', 0))
+            self._apply_monster_debuffs(monster, effects)
+
+    def _extract_effect_repeat_count(self, description: str, upgraded: bool) -> int:
+        effect_text = self._effect_text_for_upgrade(description, upgraded).lower()
+        match = re.search(r'\b(\d+)\s+times\b', effect_text)
+        if match:
+            return int(match.group(1))
+        return 1
+
     def _get_card_effect_text(self, card_name: str, card_data: Dict[str, Any]) -> str:
         """Prefer wiki text for effect values because items.json stores base text only."""
         base_card_name = canonical_card_name(card_name).lower()
@@ -1953,6 +1976,12 @@ class FastCombatSimulator:
                         monster = state.monsters[target_index]
                         if self._is_live_monster_state(monster):
                             self._apply_monster_debuffs(monster, debuff_effects)
+                    elif debuff_effects and 'random enemy' in description:
+                        self._apply_random_enemy_debuffs(
+                            state,
+                            debuff_effects,
+                            self._extract_effect_repeat_count(description, upgrades),
+                        )
         except Exception:
             pass
 
