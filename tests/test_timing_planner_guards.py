@@ -42,6 +42,10 @@ def _loader_with_basic_ironclad_cards():
             "name": "Whirlwind",
             "description": "Deal 5 damage to ALL enemies X times.",
         },
+        "twin strike": {
+            "name": "Twin Strike",
+            "description": "Deal 5 damage 2 times.",
+        },
     }
     return loader
 
@@ -204,6 +208,31 @@ def test_timing_lethal_check_counts_whirlwind_x_energy_damage(monkeypatch):
             SimpleNamespace(current_hp=15, block=0),
             SimpleNamespace(current_hp=15, block=0),
         ],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
+def test_timing_lethal_check_counts_multi_hit_attack_damage(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    twin_strike = _card("Twin Strike", "Twin Strike", cost=1)
+    twin_strike.uuid = "twin-strike"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[twin_strike],
+        monsters_alive=[SimpleNamespace(current_hp=10, block=0)],
     )
     timing_ctx = TimingContext(
         turn_timing=TurnTiming.SAFE,

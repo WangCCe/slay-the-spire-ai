@@ -508,7 +508,20 @@ class TimingAwareCombatPlanner:
         if base_damage <= 0:
             return 0
 
-        return max(0, int(base_damage + strength))
+        hit_count = self._get_attack_hit_count(card)
+        return max(0, int((base_damage + strength) * hit_count))
+
+    def _get_attack_hit_count(self, card) -> int:
+        """Return known deterministic hit counts for attack damage estimates."""
+        card_name = canonical_card_name(card)
+        upgrades = getattr(card, 'upgrades', 0)
+
+        if card_name == 'Twin Strike':
+            return 2
+        if card_name == 'Pummel':
+            return 5 if upgrades > 0 else 4
+
+        return 1
 
     def _estimate_card_block(self, card) -> int:
         """Estimate card block for timing decisions from methods or parsed data."""
