@@ -2282,7 +2282,7 @@ class FastCombatSimulator:
             logger.info(
                 "[LOOKAHEAD_ENTRY] turns=%s monsters=%s hp=%s/%s",
                 look_ahead,
-                len([m for m in lookahead_state.monsters if not m['is_gone']]),
+                len([m for m in lookahead_state.monsters if self._is_live_monster_state(m)]),
                 lookahead_state.player_hp,
                 lookahead_state.player_max_hp
             )
@@ -2300,7 +2300,7 @@ class FastCombatSimulator:
                 split_due_this_turn = False
 
                 for idx, monster in enumerate(lookahead_state.monsters):
-                    if monster['is_gone']:
+                    if not self._is_live_monster_state(monster):
                         continue
 
                     split_info = self._get_death_split_info(monster)
@@ -2421,7 +2421,7 @@ class FastCombatSimulator:
             current_turn = getattr(context, 'turn', 1)
             for step in range(look_ahead):
                 for monster in state.monsters:
-                    if monster['is_gone']:
+                    if not self._is_live_monster_state(monster):
                         continue
 
                     move = self._current_monster_move(monster) if step == 0 else None

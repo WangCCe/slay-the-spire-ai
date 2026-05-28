@@ -646,6 +646,22 @@ def test_enemy_status_lookahead_counts_sentry_bolt_dazed_cards():
     assert status["total"] == 4
 
 
+def test_enemy_status_lookahead_ignores_zero_hp_stale_simulated_monsters():
+    context = _combat_context([], energy=0, monsters=[_sentry(move_id=1)])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    status = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_status_lookahead(
+        state,
+        context,
+        look_ahead=1,
+    )
+
+    assert status["dazed"] == 0
+    assert status["total"] == 0
+
+
 def test_enemy_status_pollution_penalizes_outcome_score():
     context = _combat_context([], energy=0, monsters=[_louse(current_hp=50)])
     simulator = FastCombatSimulator(SynergyCardEvaluator())
@@ -1182,6 +1198,22 @@ def test_enemy_lookahead_handles_monster_damage_ranges():
     )
 
     assert future_damage == 7
+
+
+def test_enemy_lookahead_ignores_zero_hp_stale_simulated_monsters():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+
+    future_damage = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_lookahead(
+        state,
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 0
 
 
 def test_enemy_lookahead_applies_negative_monster_strength():
