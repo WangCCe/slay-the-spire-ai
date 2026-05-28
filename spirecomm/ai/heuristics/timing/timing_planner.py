@@ -146,8 +146,8 @@ class TimingAwareCombatPlanner:
             if not playable_cards:
                 return False
 
-            # Calculate affordable single-target damage instances
-            damage_instances = []
+            # Calculate affordable damage effects.
+            damage_effects = []
             energy = getattr(context, 'energy_available', 3)
 
             for card in playable_cards:
@@ -158,7 +158,8 @@ class TimingAwareCombatPlanner:
                     if cost > energy:
                         continue
 
-                    damage_instances.append(card_damage)
+                    effect_type = 'aoe' if self._is_card_aoe(card) else 'single'
+                    damage_effects.append((effect_type, card_damage))
                     energy -= cost
 
                     if energy <= 0:
@@ -170,14 +171,14 @@ class TimingAwareCombatPlanner:
                 if hasattr(m, 'current_hp')
             ]
 
-            can_kill = self._single_target_damage_can_kill_all(
-                damage_instances,
+            can_kill = self._damage_effects_can_kill_all(
+                damage_effects,
                 monster_hp,
             )
 
             if can_kill:
                 logger.debug(
-                    f"[LETHAL_CHECK] Possible! damage={sum(damage_instances)}, hp={sum(monster_hp)}"
+                    f"[LETHAL_CHECK] Possible! effects={damage_effects}, hp={sum(monster_hp)}"
                 )
 
             return can_kill
@@ -224,7 +225,10 @@ class TimingAwareCombatPlanner:
                 cost = effective_card_cost(card, energy)
 
                 if energy >= cost:
-                    actions.append(PlayCardAction(card=card, target_monster=target))
+                    action_target = None
+                    if getattr(card, 'has_target', False) and not self._is_card_aoe(card):
+                        action_target = target
+                    actions.append(PlayCardAction(card=card, target_monster=action_target))
                     energy -= cost
 
                 if energy <= 0:
@@ -290,34 +294,47 @@ class TimingAwareCombatPlanner:
             logger.warning(f"[FALLBACK_PLAN] Failed: {e}")
             return []
 
-    def _single_target_damage_can_kill_all(self, damage_instances, monster_hp) -> bool:
-        """Check whether single-target damage instances can cover each monster HP pool."""
+    def _damage_effects_can_kill_all(self, damage_effects, monster_hp) -> bool:
+        """Check whether single-target and AOE damage can cover each monster HP pool."""
         remaining = tuple(sorted((hp for hp in monster_hp if hp > 0), reverse=True))
-        damages = tuple(sorted((damage for damage in damage_instances if damage > 0), reverse=True))
+        effects = tuple(
+            (effect_type, int(damage))
+            for effect_type, damage in damage_effects
+            if damage > 0
+        )
 
         if not remaining:
             return True
-        if sum(damages) < sum(remaining):
+        total_potential = sum(
+            damage * len(remaining) if effect_type == 'aoe' else damage
+            for effect_type, damage in effects
+        )
+        if total_potential < sum(remaining):
             return False
 
         seen = set()
 
-        def search(damage_index, hp_state):
+        def search(effect_index, hp_state):
             if not hp_state:
                 return True
-            if damage_index >= len(damages):
+            if effect_index >= len(effects):
                 return False
 
-            key = (damage_index, hp_state)
+            key = (effect_index, hp_state)
             if key in seen:
                 return False
             seen.add(key)
 
-            damage = damages[damage_index]
+            effect_type, damage = effects[effect_index]
 
             # It can be correct to leave a high-overkill hit unused.
-            if search(damage_index + 1, hp_state):
+            if search(effect_index + 1, hp_state):
                 return True
+
+            if effect_type == 'aoe':
+                next_hp = [max(0, hp - damage) for hp in hp_state]
+                next_state = tuple(sorted((hp for hp in next_hp if hp > 0), reverse=True))
+                return search(effect_index + 1, next_state)
 
             tried_hp = set()
             for idx, hp in enumerate(hp_state):
@@ -328,12 +345,29 @@ class TimingAwareCombatPlanner:
                 next_hp = list(hp_state)
                 next_hp[idx] = max(0, next_hp[idx] - damage)
                 next_state = tuple(sorted((value for value in next_hp if value > 0), reverse=True))
-                if search(damage_index + 1, next_state):
+                if search(effect_index + 1, next_state):
                     return True
 
             return False
 
         return search(0, remaining)
+
+    def _single_target_damage_can_kill_all(self, damage_instances, monster_hp) -> bool:
+        """Check whether single-target damage instances can cover each monster HP pool."""
+        effects = [('single', damage) for damage in damage_instances]
+        return self._damage_effects_can_kill_all(effects, monster_hp)
+
+    def _is_card_aoe(self, card) -> bool:
+        """Check card data for damage that applies to every monster."""
+        try:
+            card_name = canonical_card_name(card)
+            card_data = game_data_loader.get_card_data(card_name)
+            if card_data:
+                return game_data_loader._is_card_aoe(card_data)
+        except Exception:
+            pass
+
+        return False
 
     def _estimate_card_damage(self, card, context) -> int:
         """Estimate card damage for timing decisions from methods or parsed data."""
