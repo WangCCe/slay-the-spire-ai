@@ -1963,22 +1963,30 @@ class IroncladCombatPlanner(CombatPlanner):
             if isinstance(action, PlayCardAction):
                 card = action.card
                 card_id = canonical_card_name(card)
+                damage = 0
+                if hasattr(card, 'type') and card.type == CardType.ATTACK:
+                    damage = self._estimate_attack_damage_to_target(
+                        card,
+                        context,
+                        SimulationState(context),
+                        0,
+                    )
 
                 # AOE damage multiplier (×1.5)
                 if card_id in aoe_cards:
                     monster_count = len(context.monsters_alive)
-                    if hasattr(card, 'damage') and card.damage > 0:
-                        aoe_damage = card.damage * monster_count
+                    if damage > 0:
+                        aoe_damage = damage * monster_count
                         bonus = aoe_damage * 1.5
                         score += bonus
                         logger.info(f"[SLIME_AOE] +{bonus:.1f} for {card_id} ({aoe_damage} damage × 1.5 to {monster_count} targets)")
 
                 # Near split threshold (40-60% HP): Extra bonus for high damage
                 if 0.4 < hp_pct < 0.6:
-                    if hasattr(card, 'damage') and card.damage > 12:
+                    if damage > 12:
                         burst_bonus = 30
                         score += burst_bonus
-                        logger.info(f"[SLIME_BURST] +{burst_bonus} for high damage ({card.damage}) near split threshold")
+                        logger.info(f"[SLIME_BURST] +{burst_bonus} for high damage ({damage}) near split threshold")
 
         return score
 

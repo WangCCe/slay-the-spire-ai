@@ -1531,6 +1531,32 @@ def test_slime_boss_strategy_treats_counted_upgraded_cleave_as_aoe():
     assert counted_score == canonical_score
 
 
+def test_slime_boss_strategy_uses_parsed_aoe_damage_without_damage_field(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "cleave": {
+            "name": "Cleave",
+            "description": "Deal 8 damage to ALL enemies.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    context = _combat_context(
+        [cleave],
+        energy=1,
+        monsters=[_slime_boss(current_hp=80)],
+    )
+
+    score = IroncladCombatPlanner()._apply_slime_boss_strategy(
+        [PlayCardAction(card=cleave)],
+        context,
+        0.0,
+    )
+
+    assert score == 12.0
+
+
 def test_end_turn_projection_materializes_due_slime_boss_split():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_slime_boss(current_hp=56)])
