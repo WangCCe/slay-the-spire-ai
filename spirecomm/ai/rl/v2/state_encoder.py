@@ -9,6 +9,7 @@ from spirecomm.spire.game import Game
 from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Intent, PlayerClass
 from spirecomm.spire.screen import ScreenType
+from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 
 from .id_mapping import IdMapper, load_default_id_mapper
 from .types import EncodedStateV2
@@ -165,8 +166,7 @@ class StateEncoderV2:
         block_ratio = min(max(getattr(monster, "block", 0) or 0, 0), 100) / 100.0
         is_alive = 1.0 if current_hp > 0 and not getattr(monster, "is_gone", False) else 0.0
 
-        intent = getattr(monster, "intent", Intent.UNKNOWN)
-        intent = self.INTENT_ALIAS.get(intent, intent)
+        intent = self._normalize_intent(getattr(monster, "intent", Intent.UNKNOWN))
         intent_one_hot = [1.0 if intent == value else 0.0 for value in self.INTENT_ORDER]
 
         intent_damage = np.tanh((getattr(monster, "move_adjusted_damage", 0) or 0) / 50.0)
@@ -183,6 +183,34 @@ class StateEncoderV2:
             intent_hits,
             *keyword_values,
         ]
+
+    @classmethod
+    def _normalize_intent(cls, intent):
+        intent = cls.INTENT_ALIAS.get(intent, intent)
+        if intent in cls.INTENT_ORDER:
+            return intent
+
+        tokens = intent_tokens(intent)
+        if intent_is_attack(intent):
+            if "BUFF" in tokens:
+                return Intent.ATTACK_BUFF
+            if "DEBUFF" in tokens:
+                return Intent.ATTACK_DEBUFF
+            if "DEFEND" in tokens or "BLOCK" in tokens:
+                return Intent.ATTACK_DEFEND
+            return Intent.ATTACK
+
+        if "DEFEND" in tokens or "BLOCK" in tokens:
+            if "BUFF" in tokens:
+                return Intent.DEFEND_BUFF
+            if "DEBUFF" in tokens:
+                return Intent.DEFEND_DEBUFF
+            return Intent.DEFEND
+        if "DEBUFF" in tokens:
+            return Intent.DEBUFF
+        if "BUFF" in tokens:
+            return Intent.BUFF
+        return intent
 
     def _encode_hand(self, game: Game) -> List[float]:
         features: List[float] = []
