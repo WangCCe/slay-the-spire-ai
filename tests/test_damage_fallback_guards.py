@@ -967,6 +967,36 @@ def test_safe_window_detection_handles_null_attack_damage_without_warning(monkey
     assert "[SAFE_WINDOWS] Detection failed" not in caplog.text
 
 
+def test_safe_window_detection_applies_ascension_damage_modifiers(monkeypatch):
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        lambda *_args, **_kwargs: [
+            {
+                "move": {
+                    "name": "Heavy Bite",
+                    "intent": "ATTACK",
+                    "damage": 8,
+                    "hits": 1,
+                    "ascension_modifiers": {"2+": {"damage": 12}},
+                }
+            }
+        ],
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=2))
+    monster = SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength=0)
+
+    windows = classifier._detect_safe_windows(
+        context,
+        [monster],
+        current_turn=1,
+        look_ahead=1,
+    )
+
+    assert windows == []
+
+
 def test_spike_imminent_handles_monster_damage_ranges_without_warning(monkeypatch, caplog):
     monkeypatch.setattr(
         data_loader.game_data_loader,
@@ -984,6 +1014,32 @@ def test_spike_imminent_handles_monster_damage_ranges_without_warning(monkeypatc
 
     assert classifier._spike_imminent(context) is True
     assert "[SPIKE_IMMINENT] Check failed" not in caplog.text
+
+
+def test_spike_imminent_applies_ascension_damage_modifiers(monkeypatch):
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        lambda *_args, **_kwargs: [
+            {
+                "move": {
+                    "name": "Heavy Strike",
+                    "intent": "ATTACK",
+                    "damage": 18,
+                    "hits": 1,
+                    "ascension_modifiers": {"2+": {"damage": 20}},
+                }
+            }
+        ],
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(
+        game=SimpleNamespace(current_hp=80, ascension_level=2),
+        turn=1,
+        monsters_alive=[SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength=0)],
+    )
+
+    assert classifier._spike_imminent(context) is True
 
 
 def test_enhanced_monster_database_loads_act2_normal_monsters():
