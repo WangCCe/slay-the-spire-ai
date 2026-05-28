@@ -8,6 +8,8 @@ intent patterns and Wiki move predictions.
 import logging
 from typing import List, Dict, Any, Optional, Tuple
 
+from spirecomm.ai.intent_utils import intent_is_attack
+
 from .models import (
     TurnTiming,
     SafeWindow,
@@ -39,10 +41,6 @@ class TurnTimingClassifier:
     @staticmethod
     def _intent_name(intent: Any) -> str:
         return str(intent or '').upper().split('.')[-1]
-
-    @classmethod
-    def _is_attack_intent(cls, intent: Any) -> bool:
-        return 'ATTACK' in cls._intent_name(intent)
 
     def classify_turn(self, context) -> TimingContext:
         """
@@ -148,7 +146,7 @@ class TurnTimingClassifier:
                 current_damage = self._coerce_damage_value(getattr(monster, 'move_adjusted_damage', 0))
                 current_damage = max(0, current_damage or 0)
                 hits = max(1, self._coerce_int(getattr(monster, 'move_hits', 1), default=1))
-                if self._is_attack_intent(current_intent):
+                if intent_is_attack(current_intent):
                     total_current_damage += current_damage * hits
 
                 # Get Wiki timing hints
@@ -912,7 +910,7 @@ class TurnTimingClassifier:
         current_intent = self._intent_name(current_intent)
 
         # High damage attack
-        if self._is_attack_intent(current_intent) and current_damage > 15:
+        if intent_is_attack(current_intent) and current_damage > 15:
             return True
 
         # Check Wiki hints

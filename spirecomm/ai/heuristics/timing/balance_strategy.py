@@ -8,6 +8,8 @@ to concrete scoring weights used in beam search simulation.
 import logging
 from typing import Optional
 
+from spirecomm.ai.intent_utils import monster_intends_attack
+
 from .models import (
     TurnTiming,
     BalanceWeights,
@@ -272,17 +274,6 @@ class CombatBalanceStrategy:
         )
 
     @staticmethod
-    def _is_attacking_intent(monster) -> bool:
-        if not hasattr(monster, 'intent'):
-            return True
-
-        intent = getattr(monster, 'intent', None)
-        if intent is None:
-            return True
-
-        return 'ATTACK' in str(intent).upper()
-
-    @staticmethod
     def _positive_move_hits(monster) -> int:
         try:
             return max(1, int(getattr(monster, 'move_hits', 1) or 1))
@@ -304,7 +295,7 @@ class CombatBalanceStrategy:
             total_damage = 0
 
             for monster in monsters:
-                if self._is_live_monster(monster) and self._is_attacking_intent(monster):
+                if self._is_live_monster(monster) and monster_intends_attack(monster):
                     total_damage += self._move_damage_contribution(monster)
 
             return total_damage
