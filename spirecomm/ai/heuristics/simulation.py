@@ -1002,7 +1002,10 @@ class FastCombatSimulator:
                         self._apply_monster_debuffs(monster, debuff_effects)
         elif self._is_random_target_attack(card) and target_index is None:
             for hit_index in range(hit_count):
-                alive_monsters = [monster for monster in state.monsters if not monster['is_gone']]
+                alive_monsters = [
+                    monster for monster in state.monsters
+                    if self._is_live_monster_state(monster)
+                ]
                 if not alive_monsters:
                     break
                 monster = alive_monsters[hit_index % len(alive_monsters)]
