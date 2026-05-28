@@ -759,8 +759,8 @@ class GameDataLoader:
             return int(card_data['block']) if card_data['block'] else None
 
         card_name = card_data.get('name', '').lower()
-        is_upgraded = card_name.endswith('+')
-        base_card_name = card_name.rstrip('+')  # Remove '+' for lookup
+        base_card_name, upgrade_count = _split_card_upgrade_suffix(card_name)
+        is_upgraded = upgrade_count > 0
 
         # Stage 2: Check CARD_METADATA first for X-block cards (priority over wiki)
         if base_card_name in CARD_METADATA:

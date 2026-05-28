@@ -750,6 +750,18 @@ def test_block_parser_reads_upgrade_pairs_from_block_sentence():
     assert loader._parse_card_block({"name": "Power Through+"}) == 20
 
 
+def test_block_parser_handles_counted_upgrade_suffixes():
+    loader = data_loader.GameDataLoader(auto_load=False)
+    loader._wiki_data = {
+        "power through": {
+            "name": "Power Through",
+            "text": "Gain [15|20] #Block.\nAdd 2 #Wounds into your hand.",
+        },
+    }
+
+    assert loader._parse_card_block({"name": "Power Through+1"}) == 20
+
+
 def test_damage_parser_reads_reaper_static_damage_despite_healing_text():
     loader = data_loader.GameDataLoader(auto_load=False)
     loader._wiki_data = {
