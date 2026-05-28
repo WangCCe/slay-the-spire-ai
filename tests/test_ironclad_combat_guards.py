@@ -141,6 +141,22 @@ def _fungi_beast(current_hp=22):
     )
 
 
+def _cultist_ritual(current_hp=50):
+    return Monster(
+        name="Cultist",
+        monster_id="Cultist",
+        max_hp=current_hp,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.BUFF,
+        half_dead=False,
+        is_gone=False,
+        move_id=0,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+
+
 def _sentry(current_hp=39, move_id=1, intent=Intent.DEBUFF):
     return Monster(
         name="Sentry",
@@ -782,6 +798,22 @@ def test_enemy_lookahead_applies_strength_gain_to_future_attacks(monkeypatch):
     )
 
     assert future_damage == int(9 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
+
+
+def test_enemy_lookahead_applies_ascension_ritual_gain_to_future_attacks():
+    context = _combat_context([], energy=0, monsters=[_cultist_ritual()])
+    context.turn = 1
+    context.ascension_level = 2
+    context.game.ascension_level = 2
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=2,
+    )
+
+    assert future_damage == int(10 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
 
 
 def test_enemy_lookahead_applies_ascension_damage_modifiers(monkeypatch):

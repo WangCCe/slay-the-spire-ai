@@ -1512,7 +1512,11 @@ class FastCombatSimulator:
 
     def _extract_move_strength_gain(self, move: Dict[str, Any], context: Optional[DecisionContext] = None) -> int:
         """Extract monster Strength gained by a predicted move."""
-        value = move.get('strength_gain', 0)
+        modifier_key = 'strength_gain'
+        value = move.get('strength_gain')
+        if value is None and 'ritual_gain' in move:
+            modifier_key = 'ritual_gain'
+            value = move.get('ritual_gain', 0)
         if isinstance(value, bool):
             strength_gain = 0
         elif isinstance(value, (int, float)):
@@ -1531,7 +1535,7 @@ class FastCombatSimulator:
         return max(0, self._apply_ascension_move_value(
             move,
             context,
-            'strength_gain',
+            modifier_key,
             strength_gain,
         ))
 
