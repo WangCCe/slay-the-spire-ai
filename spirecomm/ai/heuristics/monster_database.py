@@ -9,6 +9,8 @@ This module provides a database of monster characteristics, including:
 - Recommended strategies
 """
 
+from spirecomm.ai.intent_utils import monster_intends_attack
+
 # Monster database mapping monster IDs to their characteristics
 MONSTER_DATABASE = {
     # Common Act 1 monsters
@@ -231,19 +233,6 @@ def get_monster_info(monster_id):
     })
 
 
-def _should_count_attack_power(monster):
-    if not hasattr(monster, 'intent'):
-        return True
-
-    intent = getattr(monster, 'intent', None)
-    if intent is None:
-        return True
-    if hasattr(intent, 'is_attack'):
-        return intent.is_attack()
-
-    return 'ATTACK' in str(intent).upper()
-
-
 def evaluate_monster_threat(monster, context):
     """
     Evaluate the threat level of a monster in current context.
@@ -259,9 +248,9 @@ def evaluate_monster_threat(monster, context):
     
     # Start with base threat level
     threat = monster_info["threat_level"]
-    
+
     # Add threat based on current attack power
-    counts_attack_power = _should_count_attack_power(monster)
+    counts_attack_power = monster_intends_attack(monster)
     if counts_attack_power and hasattr(monster, 'move_adjusted_damage'):
         if monster.move_adjusted_damage > 15:
             threat += 2

@@ -12,6 +12,7 @@ from spirecomm.spire.game import Game
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster, Intent
 from spirecomm.communication.action import Action
+from spirecomm.ai.intent_utils import intent_is_attack, monster_intends_attack
 from spirecomm.data.loader import game_data_loader
 
 
@@ -170,15 +171,6 @@ class DecisionContext:
             return 0
 
     @staticmethod
-    def _is_attack_intent(intent) -> bool:
-        if intent is None:
-            return False
-        if hasattr(intent, 'is_attack'):
-            return intent.is_attack()
-
-        return 'ATTACK' in str(intent).upper()
-
-    @staticmethod
     def _is_unknown_intent(intent) -> bool:
         if intent is None:
             return False
@@ -193,13 +185,7 @@ class DecisionContext:
 
     @classmethod
     def _should_count_immediate_damage(cls, monster) -> bool:
-        if not hasattr(monster, 'intent'):
-            return True
-
-        intent = getattr(monster, 'intent', None)
-        if intent is None:
-            return True
-        return cls._is_attack_intent(intent)
+        return monster_intends_attack(monster)
 
     def _calculate_incoming_damage(self) -> int:
         """Calculate total incoming damage from all monsters.
@@ -225,7 +211,7 @@ class DecisionContext:
 
                 # Calculate damage from attacking monsters
                 if (
-                    self._is_attack_intent(intent)
+                    intent_is_attack(intent)
                     and hasattr(monster, 'move_adjusted_damage')
                     and monster.move_adjusted_damage is not None
                 ):
