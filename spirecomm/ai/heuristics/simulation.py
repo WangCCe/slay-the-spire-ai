@@ -13,6 +13,7 @@ from typing import List, Dict, Tuple, Optional, Any
 from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster, Intent
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
+from spirecomm.ai.intent_utils import monster_intends_attack
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.card_costs import (
@@ -3908,19 +3909,6 @@ class HeuristicCombatPlanner(CombatPlanner):
         except (TypeError, ValueError):
             return 1
 
-    @staticmethod
-    def _is_attack_intent_object(monster) -> bool:
-        if not hasattr(monster, 'intent'):
-            return True
-
-        intent = getattr(monster, 'intent', None)
-        if intent is None:
-            return True
-        if hasattr(intent, 'is_attack'):
-            return intent.is_attack()
-
-        return 'ATTACK' in str(intent).upper()
-
     def _get_incoming_damage(self, context: DecisionContext) -> int:
         """Calculate total incoming damage from all monsters."""
         incoming = 0
@@ -3928,7 +3916,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         for monster in context.game.monsters:
             if self._is_live_monster_object(monster):
                 adjusted_damage = monster.move_adjusted_damage
-                if adjusted_damage is not None and self._is_attack_intent_object(monster):
+                if adjusted_damage is not None and monster_intends_attack(monster):
                     incoming += max(0, adjusted_damage) * self._positive_live_move_hits(monster)
                     debug_entries.append(
                         f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "

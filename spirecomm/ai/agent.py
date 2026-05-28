@@ -9,6 +9,7 @@ from spirecomm.spire.character import Intent, PlayerClass
 import spirecomm.spire.card
 from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
+from spirecomm.ai.intent_utils import monster_intends_attack
 from spirecomm.ai.priorities import *
 from spirecomm.ai.heuristics.simulation import (
     DAMAGE_UPGRADE_BONUS,
@@ -433,19 +434,6 @@ class SimpleAgent:
         except (TypeError, ValueError):
             return 1
 
-    @staticmethod
-    def _is_attack_intent(monster):
-        if not hasattr(monster, "intent"):
-            return True
-
-        intent = getattr(monster, "intent", None)
-        if intent is None:
-            return True
-        if hasattr(intent, "is_attack"):
-            return intent.is_attack()
-
-        return "ATTACK" in str(intent).upper()
-
     @classmethod
     def _move_damage_contribution(cls, monster):
         damage = getattr(monster, "move_adjusted_damage", None)
@@ -462,7 +450,7 @@ class SimpleAgent:
             if self._is_live_monster(monster):
                 if (
                     getattr(monster, "move_adjusted_damage", None) is not None
-                    and self._is_attack_intent(monster)
+                    and monster_intends_attack(monster)
                 ):
                     incoming_damage += self._move_damage_contribution(monster)
                 elif monster.intent == Intent.NONE:
