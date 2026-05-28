@@ -231,6 +231,19 @@ def get_monster_info(monster_id):
     })
 
 
+def _should_count_attack_power(monster):
+    if not hasattr(monster, 'intent'):
+        return True
+
+    intent = getattr(monster, 'intent', None)
+    if intent is None:
+        return True
+    if hasattr(intent, 'is_attack'):
+        return intent.is_attack()
+
+    return 'ATTACK' in str(intent).upper()
+
+
 def evaluate_monster_threat(monster, context):
     """
     Evaluate the threat level of a monster in current context.
@@ -248,10 +261,12 @@ def evaluate_monster_threat(monster, context):
     threat = monster_info["threat_level"]
     
     # Add threat based on current attack power
-    if hasattr(monster, 'move_adjusted_damage') and monster.move_adjusted_damage > 15:
-        threat += 2
-    elif hasattr(monster, 'move_adjusted_damage') and monster.move_adjusted_damage > 10:
-        threat += 1
+    counts_attack_power = _should_count_attack_power(monster)
+    if counts_attack_power and hasattr(monster, 'move_adjusted_damage'):
+        if monster.move_adjusted_damage > 15:
+            threat += 2
+        elif monster.move_adjusted_damage > 10:
+            threat += 1
     
     # Add threat based on special abilities
     if "summon" in monster_info["attacks"] or "summon" in monster_info["special_abilities"]:
