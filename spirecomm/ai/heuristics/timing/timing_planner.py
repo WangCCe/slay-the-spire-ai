@@ -12,7 +12,11 @@ from .models import TimingContext, TurnTiming, BalanceWeights
 from .turn_classifier import TurnTimingClassifier
 from .balance_strategy import CombatBalanceStrategy
 from spirecomm.ai.heuristics.card_names import canonical_card_name
-from spirecomm.ai.heuristics.card_costs import effective_card_cost
+from spirecomm.ai.heuristics.card_costs import (
+    effective_card_cost,
+    whirlwind_damage,
+    x_effect_energy,
+)
 from spirecomm.ai.heuristics.simulation import BLOCK_UPGRADE_BONUS, _known_damage_upgrade_bonus
 from spirecomm.data.loader import game_data_loader
 from spirecomm.spire.card import CardType
@@ -483,10 +487,16 @@ class TimingAwareCombatPlanner:
             except Exception:
                 pass
 
+        card_name = canonical_card_name(card)
+        strength = getattr(context, 'strength', 0)
+
+        if card_name == 'Whirlwind':
+            energy = x_effect_energy(card, getattr(context, 'energy_available', 0), context)
+            return whirlwind_damage(card, energy, strength)
+
         base_damage = getattr(card, 'damage', 0) or 0
         if base_damage <= 0:
             try:
-                card_name = canonical_card_name(card)
                 card_data = game_data_loader.get_card_data(card_name)
                 if card_data:
                     parsed_damage = game_data_loader._parse_card_damage(card_data)
@@ -498,7 +508,7 @@ class TimingAwareCombatPlanner:
         if base_damage <= 0:
             return 0
 
-        return max(0, int(base_damage + getattr(context, 'strength', 0)))
+        return max(0, int(base_damage + strength))
 
     def _estimate_card_block(self, card) -> int:
         """Estimate card block for timing decisions from methods or parsed data."""
