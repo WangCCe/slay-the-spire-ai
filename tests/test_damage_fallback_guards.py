@@ -11,6 +11,7 @@ from spirecomm.ai.heuristics.simulation import FastCombatSimulator, HeuristicCom
 from spirecomm.ai.heuristics.timing.turn_classifier import TurnTimingClassifier
 from spirecomm.ai.heuristics.enhanced_monster_database import EnhancedMonsterDatabase
 from spirecomm.spire.card import Card, CardRarity, CardType
+from spirecomm.spire.character import Intent
 
 
 def test_champ_phase_transition_predicts_anger_then_execute():
@@ -1602,6 +1603,26 @@ def test_heuristic_incoming_damage_ignores_non_attack_intents():
     )
 
     assert HeuristicCombatPlanner()._get_incoming_damage(context) == 0
+
+
+def test_heuristic_incoming_damage_estimates_unknown_intent_by_act():
+    monster = SimpleNamespace(
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+        current_hp=25,
+        is_gone=False,
+        half_dead=False,
+        intent=Intent.UNKNOWN,
+        move_id=2,
+        move_adjusted_damage=None,
+        move_hits=1,
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(monsters=[monster]),
+        act=2,
+    )
+
+    assert HeuristicCombatPlanner()._get_incoming_damage(context) == 10
 
 
 def test_heuristic_incoming_damage_clamps_negative_live_move_hits_to_one():

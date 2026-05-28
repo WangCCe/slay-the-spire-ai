@@ -9,7 +9,7 @@ from spirecomm.spire.character import Intent, PlayerClass
 import spirecomm.spire.card
 from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
-from spirecomm.ai.intent_utils import monster_intends_attack
+from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
 from spirecomm.ai.priorities import *
 from spirecomm.ai.heuristics.simulation import (
     DAMAGE_UPGRADE_BONUS,
@@ -453,7 +453,7 @@ class SimpleAgent:
                     and monster_intends_attack(monster)
                 ):
                     incoming_damage += self._move_damage_contribution(monster)
-                elif monster.intent == Intent.NONE:
+                elif intent_is_unknown(getattr(monster, "intent", None)):
                     incoming_damage += 5 * self.game.act
         return incoming_damage
 

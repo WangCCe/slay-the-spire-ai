@@ -1,7 +1,18 @@
+import ast
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _imports_from_intent_utils(path: Path, name: str) -> bool:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    return any(
+        isinstance(node, ast.ImportFrom)
+        and node.module == "spirecomm.ai.intent_utils"
+        and any(alias.name == name for alias in node.names)
+        for node in ast.walk(tree)
+    )
 
 
 def test_combat_damage_paths_use_shared_intent_helper():
@@ -13,7 +24,7 @@ def test_combat_damage_paths_use_shared_intent_helper():
 
     for path in paths:
         text = path.read_text(encoding="utf-8")
-        assert "from spirecomm.ai.intent_utils import monster_intends_attack" in text
+        assert _imports_from_intent_utils(path, "monster_intends_attack")
         assert "def _is_attack_intent" not in text
         assert "def _is_attack_intent_object" not in text
 
@@ -21,13 +32,13 @@ def test_combat_damage_paths_use_shared_intent_helper():
 def test_timing_paths_use_shared_intent_helper():
     expectations = {
         ROOT / "spirecomm" / "ai" / "heuristics" / "timing" / "turn_classifier.py":
-            "from spirecomm.ai.intent_utils import intent_is_attack",
+            "intent_is_attack",
         ROOT / "spirecomm" / "ai" / "heuristics" / "timing" / "balance_strategy.py":
-            "from spirecomm.ai.intent_utils import monster_intends_attack",
+            "monster_intends_attack",
     }
 
-    for path, import_line in expectations.items():
+    for path, imported_name in expectations.items():
         text = path.read_text(encoding="utf-8")
-        assert import_line in text
+        assert _imports_from_intent_utils(path, imported_name)
         assert "def _is_attack_intent" not in text
         assert "def _is_attacking_intent" not in text

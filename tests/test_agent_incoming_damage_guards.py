@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from spirecomm.ai.agent import OptimizedAgent, SimpleAgent
+from spirecomm.spire.character import Intent
 
 
 def _agent_with_monsters(monsters):
@@ -46,6 +47,19 @@ def test_simple_agent_incoming_damage_ignores_non_attack_intents():
     )
 
     assert _agent_with_monsters([monster]).get_incoming_damage() == 0
+
+
+def test_simple_agent_incoming_damage_estimates_unknown_intent_by_act():
+    monster = SimpleNamespace(
+        current_hp=20,
+        is_gone=False,
+        half_dead=False,
+        intent=Intent.UNKNOWN,
+        move_adjusted_damage=None,
+        move_hits=1,
+    )
+
+    assert _agent_with_monsters([monster]).get_incoming_damage() == 5
 
 
 def test_optimized_agent_combat_danger_ignores_zero_hp_stale_monsters():

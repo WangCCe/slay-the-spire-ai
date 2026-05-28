@@ -10,9 +10,13 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
 from spirecomm.spire.game import Game
 from spirecomm.spire.card import Card
-from spirecomm.spire.character import Monster, Intent
+from spirecomm.spire.character import Monster
 from spirecomm.communication.action import Action
-from spirecomm.ai.intent_utils import intent_is_attack, monster_intends_attack
+from spirecomm.ai.intent_utils import (
+    intent_is_attack,
+    intent_is_unknown,
+    monster_intends_attack,
+)
 from spirecomm.data.loader import game_data_loader
 
 
@@ -170,19 +174,6 @@ class DecisionContext:
         except (TypeError, ValueError):
             return 0
 
-    @staticmethod
-    def _is_unknown_intent(intent) -> bool:
-        if intent is None:
-            return False
-        if intent in (Intent.NONE, Intent.UNKNOWN):
-            return True
-        return str(intent).upper() in (
-            'NONE',
-            'INTENT.NONE',
-            'UNKNOWN',
-            'INTENT.UNKNOWN',
-        )
-
     @classmethod
     def _should_count_immediate_damage(cls, monster) -> bool:
         return monster_intends_attack(monster)
@@ -205,7 +196,7 @@ class DecisionContext:
             ):
                 intent = getattr(monster, 'intent', None)
 
-                if self._is_unknown_intent(intent):
+                if intent_is_unknown(intent):
                     total += 5 * self.act
                     continue
 

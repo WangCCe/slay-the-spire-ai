@@ -13,7 +13,7 @@ from typing import List, Dict, Tuple, Optional, Any
 from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster, Intent
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
-from spirecomm.ai.intent_utils import monster_intends_attack
+from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.card_costs import (
@@ -3922,7 +3922,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                         f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "
                         f"adjusted={monster.move_adjusted_damage} hits={monster.move_hits}"
                     )
-                elif monster.intent == Intent.NONE:
+                elif intent_is_unknown(getattr(monster, 'intent', None)):
                     incoming += 5 * context.act
                     debug_entries.append(
                         f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "

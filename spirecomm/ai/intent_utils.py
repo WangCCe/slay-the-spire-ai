@@ -1,3 +1,20 @@
+from spirecomm.spire.character import Intent
+
+
+def intent_is_unknown(intent) -> bool:
+    if intent is None:
+        return False
+    if intent in (Intent.NONE, Intent.UNKNOWN):
+        return True
+
+    return str(intent).upper() in (
+        "NONE",
+        "INTENT.NONE",
+        "UNKNOWN",
+        "INTENT.UNKNOWN",
+    )
+
+
 def intent_is_attack(intent) -> bool:
     if intent is None:
         return False

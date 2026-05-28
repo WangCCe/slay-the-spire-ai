@@ -1,6 +1,10 @@
 from types import SimpleNamespace
 
-from spirecomm.ai.intent_utils import intent_is_attack, monster_intends_attack
+from spirecomm.ai.intent_utils import (
+    intent_is_attack,
+    intent_is_unknown,
+    monster_intends_attack,
+)
 from spirecomm.spire.character import Intent
 
 
@@ -23,6 +27,19 @@ def test_intent_is_attack_rejects_none_and_non_attack_intents():
     assert not intent_is_attack(Intent.DEBUFF)
     assert not intent_is_attack("Intent.BUFF")
     assert not intent_is_attack(_CustomIntent(False))
+
+
+def test_intent_is_unknown_accepts_intent_none_and_unknown_representations():
+    assert intent_is_unknown(Intent.NONE)
+    assert intent_is_unknown(Intent.UNKNOWN)
+    assert intent_is_unknown("Intent.NONE")
+    assert intent_is_unknown("UNKNOWN")
+
+
+def test_intent_is_unknown_rejects_missing_and_concrete_intents():
+    assert not intent_is_unknown(None)
+    assert not intent_is_unknown(Intent.ATTACK)
+    assert not intent_is_unknown("Intent.DEBUFF")
 
 
 def test_monster_intends_attack_can_treat_missing_intent_as_known_or_unknown():
