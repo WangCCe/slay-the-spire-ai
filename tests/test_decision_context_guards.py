@@ -120,6 +120,40 @@ def test_incoming_damage_estimates_unknown_intent_by_act():
     assert context._calculate_incoming_damage() == 10
 
 
+def test_incoming_damage_ignores_known_no_damage_unknown_moves():
+    monsters = [
+        SimpleNamespace(
+            name="Slime Boss",
+            monster_id="Slime_Boss",
+            is_gone=False,
+            half_dead=False,
+            current_hp=99,
+            max_hp=140,
+            intent=Intent.UNKNOWN,
+            move_id=1,
+            move_adjusted_damage=0,
+            move_hits=1,
+        ),
+        SimpleNamespace(
+            name="Acid Slime (L)",
+            monster_id="Acid_Slime_L",
+            is_gone=False,
+            half_dead=False,
+            current_hp=15,
+            max_hp=65,
+            intent=Intent.UNKNOWN,
+            move_id=3,
+            move_adjusted_damage=0,
+            move_hits=1,
+        ),
+    ]
+    context = DecisionContext.__new__(DecisionContext)
+    context.game = SimpleNamespace(monsters=monsters)
+    context.act = 2
+
+    assert context._calculate_incoming_damage() == 0
+
+
 def test_incoming_damage_ignores_missing_intent_without_damage():
     monster = SimpleNamespace(
         is_gone=False,

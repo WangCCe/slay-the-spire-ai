@@ -64,6 +64,37 @@ def test_simple_agent_incoming_damage_estimates_unknown_intent_by_act():
     assert _agent_with_monsters([monster]).get_incoming_damage() == 5
 
 
+def test_simple_agent_incoming_damage_ignores_known_no_damage_unknown_moves():
+    monsters = [
+        SimpleNamespace(
+            name="Slime Boss",
+            monster_id="Slime_Boss",
+            current_hp=99,
+            max_hp=140,
+            is_gone=False,
+            half_dead=False,
+            intent=Intent.UNKNOWN,
+            move_id=1,
+            move_adjusted_damage=0,
+            move_hits=1,
+        ),
+        SimpleNamespace(
+            name="Acid Slime (L)",
+            monster_id="Acid_Slime_L",
+            current_hp=15,
+            max_hp=65,
+            is_gone=False,
+            half_dead=False,
+            intent=Intent.UNKNOWN,
+            move_id=3,
+            move_adjusted_damage=0,
+            move_hits=1,
+        ),
+    ]
+
+    assert _agent_with_monsters(monsters).get_incoming_damage() == 0
+
+
 def test_optimized_agent_combat_danger_ignores_zero_hp_stale_monsters():
     monster = SimpleNamespace(
         current_hp=0,
