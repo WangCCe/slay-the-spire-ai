@@ -954,6 +954,10 @@ class TurnTimingClassifier:
 
                     if prediction:
                         move = prediction.get('move', {})
+                        intent = move.get('intent', '').upper()
+                        if 'ATTACK' not in intent:
+                            continue
+
                         damage = self._resolve_move_damage(
                             monster.name, move, context, target_turn=target_turn)
                         damage = self._apply_ascension_damage_modifiers(
