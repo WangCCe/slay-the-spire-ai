@@ -3559,6 +3559,10 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         # === Adaptive max_depth by hand size and energy ===
         playable_count = len(context.playable_cards)
+        potions = []
+        if hasattr(context.game, 'get_real_potions'):
+            potions = context.game.get_real_potions() or []
+        has_usable_potion = any(getattr(potion, 'can_use', False) for potion in potions)
 
         # Count zero-cost cards (they enable deeper chains)
         extra_zero_cost = sum(1 for c in context.playable_cards
@@ -3575,8 +3579,9 @@ class HeuristicCombatPlanner(CombatPlanner):
         # More cards, zero-cost cards, or extra energy → deeper search
         adaptive_depth = 3 + extra_energy + (extra_zero_cost // 2)
 
-        # Cap at playable card count (can't play more than you have)
-        adaptive_depth = min(adaptive_depth, playable_count)
+        # Cap at available actions. Potions are only explored at depth 0.
+        action_depth_cap = playable_count + (1 if has_usable_potion else 0)
+        adaptive_depth = min(adaptive_depth, action_depth_cap)
 
         # Hard cap at MAX_DEPTH_CAP to avoid excessive search (timeout protection)
         self.max_depth = min(adaptive_depth, MAX_DEPTH_CAP)
@@ -3587,13 +3592,13 @@ class HeuristicCombatPlanner(CombatPlanner):
         logger.debug(f"Zero-cost cards: {extra_zero_cost}")
         logger.debug(f"Extra energy: {extra_energy}")
 
-        if not context.playable_cards:
+        if not context.playable_cards and not has_usable_potion:
             decision_time = (time.time() - decision_start) * 1000
             logger.debug(f"No playable cards. Decision time: {decision_time:.1f}ms")
             return []  # No playable cards, end turn
 
-        # If only 1-2 cards, simple evaluation is sufficient
-        if len(context.playable_cards) <= 2:
+        # If only 1-2 cards and no potions, simple evaluation is sufficient
+        if len(context.playable_cards) <= 2 and not has_usable_potion:
             result = self._simple_plan(context)
             decision_time = (time.time() - decision_start) * 1000
             logger.debug(f"Simple plan ({len(result)} actions). Decision time: {decision_time:.1f}ms")
