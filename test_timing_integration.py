@@ -9,6 +9,7 @@ This script creates a mock combat scenario and checks if:
 
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -19,14 +20,75 @@ from spirecomm.ai.heuristics.timing import (
     TurnTiming
 )
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
-from spirecomm.ai.decision.base import DecisionContext
-from spirecomm.spire.card import Card, CardType
-from spirecomm.spire.character import Monster, Player, Intent
-from spirecomm.spire.relic import Relic
+from spirecomm.spire.card import CardType
+from spirecomm.spire.character import Player
 
 
-def create_mock_context_cultist_turn1():
-    """Create mock context for Cultist turn 1 (Ritual - BUFF intent)."""
+def _card(card_id, name, cost, card_type):
+    return SimpleNamespace(
+        card_id=card_id,
+        name=name,
+        cost=cost,
+        type=card_type,
+        card_type=card_type,
+        uuid=f"{card_id.lower()}_1",
+        upgrades=0,
+        is_playable=True,
+    )
+
+
+def _monster(name, current_hp, max_hp, intent, move_adjusted_damage=0, move_hits=1):
+    return SimpleNamespace(
+        name=name,
+        current_hp=current_hp,
+        max_hp=max_hp,
+        block=0,
+        intent=intent,
+        half_dead=False,
+        is_gone=False,
+        powers=[],
+        strength=0,
+        move_adjusted_damage=move_adjusted_damage,
+        move_hits=move_hits,
+    )
+
+
+def _mock_context(player, monsters, hand, turn, floor=1, act=1):
+    game = SimpleNamespace(
+        current_hp=player.current_hp,
+        max_hp=player.max_hp,
+        player=player,
+        monsters=monsters,
+        hand=hand,
+        ascension_level=0,
+    )
+    return SimpleNamespace(
+        game=game,
+        player=player,
+        monsters_alive=monsters,
+        hand=hand,
+        playable_cards=hand,
+        draw_pile=[],
+        discard_pile=[],
+        energy_available=player.energy,
+        turn=turn,
+        floor=floor,
+        act=act,
+        player_hp=player.current_hp,
+        player_hp_pct=player.current_hp / max(player.max_hp, 1),
+        incoming_damage=sum(
+            max(0, getattr(monster, "move_adjusted_damage", 0))
+            * max(1, getattr(monster, "move_hits", 1))
+            for monster in monsters
+            if "ATTACK" in str(getattr(monster, "intent", "")).upper()
+        ),
+        vulnerable_stacks={i: 0 for i, _ in enumerate(monsters)},
+        weak_stacks={i: 0 for i, _ in enumerate(monsters)},
+        frail_stacks={i: 0 for i, _ in enumerate(monsters)},
+        thorns_stacks={i: 0 for i, _ in enumerate(monsters)},
+    )
+def create_mock_context_buff_turn():
+    """Create mock context for a generic turn-1 BUFF intent."""
     # Mock player
     player = Player(
         current_hp=80,
@@ -35,68 +97,26 @@ def create_mock_context_cultist_turn1():
         energy=3
     )
 
-    # Mock Cultist with BUFF intent (Ritual)
-    cultist = Monster(
-        name="Cultist",
-        current_hp=50,
-        max_hp=50,
-        intent=Intent.BUFF,
-        move_name="Ritual",
-        powers=[]
-    )
-    cultist.index = 0
+    # Jaw Worm has prediction data but no forced timing override, so this tests
+    # the base BUFF classification path through the real data loader.
+    monster = _monster("Jaw Worm", current_hp=50, max_hp=50, intent="BUFF")
+    monster.index = 0
 
     # Mock cards
-    strike = Card(
-        card_id="Strike_R",
-        name="Strike",
-        cost=1,
-        card_type=CardType.ATTACK
-    )
-    strike.uuid = "strike_1"
-    strike.upgrades = 0
+    strike = _card("Strike_R", "Strike", cost=1, card_type=CardType.ATTACK)
+    defend = _card("Defend_R", "Defend", cost=1, card_type=CardType.SKILL)
+    bash = _card("Bash", "Bash", cost=2, card_type=CardType.ATTACK)
 
-    defend = Card(
-        card_id="Defend_R",
-        name="Defend",
-        cost=1,
-        card_type=CardType.SKILL
-    )
-    defend.uuid = "defend_1"
-    defend.upgrades = 0
-
-    bash = Card(
-        card_id="Bash",
-        name="Bash",
-        cost=2,
-        card_type=CardType.ATTACK
-    )
-    bash.uuid = "bash_1"
-    bash.upgrades = 0
-
-    # Mock context
-    context = DecisionContext(
-        player=player,
-        monsters=[cultist],
-        hand=[strike, defend, bash],
-        draw_pile=[],
-        discard_pile=[],
-        energy_available=3,
-        turn=1,
-        floor=1,
-        act=1
-    )
-
-    return context
+    return _mock_context(player, [monster], [strike, defend, bash], turn=1)
 
 
 def test_timing_classification():
-    """Test 1: Timing classification for Cultist turn 1."""
+    """Test 1: Timing classification for a generic turn-1 BUFF intent."""
     print("=" * 60)
-    print("TEST 1: Timing Classification - Cultist Turn 1 (Ritual)")
+    print("TEST 1: Timing Classification - Generic Buff Turn")
     print("=" * 60)
 
-    context = create_mock_context_cultist_turn1()
+    context = create_mock_context_buff_turn()
     classifier = TurnTimingClassifier()
 
     timing_ctx = classifier.classify_turn(context)
@@ -107,11 +127,8 @@ def test_timing_classification():
         print(f"✓ Future damage curve: {[f'{d:.1f}' for d in timing_ctx.future_damage_curve]}")
     print(f"✓ Safe windows detected: {len(timing_ctx.safe_windows)}")
 
-    # Cultist turn 1 should be SAFE (buffing with Ritual)
-    if timing_ctx.turn_timing == TurnTiming.SAFE:
-        print("✅ PASS: Cultist turn 1 correctly classified as SAFE")
-    else:
-        print(f"❌ FAIL: Expected SAFE, got {timing_ctx.turn_timing.value}")
+    assert timing_ctx.turn_timing == TurnTiming.SAFE
+    print("✅ PASS: Generic buff turn correctly classified as SAFE")
 
     print()
 
@@ -122,7 +139,7 @@ def test_balance_weights():
     print("TEST 2: Balance Weights - SAFE Timing")
     print("=" * 60)
 
-    context = create_mock_context_cultist_turn1()
+    context = create_mock_context_buff_turn()
     classifier = TurnTimingClassifier()
     strategy = CombatBalanceStrategy()
 
@@ -134,11 +151,8 @@ def test_balance_weights():
     print(f"✓ Kill bonus: {weights.kill_bonus:.1f}")
     print(f"✓ Lethal detection: {weights.lethal_detection}")
 
-    # SAFE timing should have high damage weight, low block weight
-    if weights.damage_weight > weights.block_weight:
-        print("✅ PASS: SAFE timing has aggressive weights (damage > block)")
-    else:
-        print("❌ FAIL: SAFE timing should have damage_weight > block_weight")
+    assert weights.damage_weight > weights.block_weight
+    print("✅ PASS: SAFE timing has aggressive weights (damage > block)")
 
     print()
 
@@ -149,7 +163,7 @@ def test_ironclad_planner_integration():
     print("TEST 3: IroncladCombatPlanner Integration")
     print("=" * 60)
 
-    context = create_mock_context_cultist_turn1()
+    context = create_mock_context_buff_turn()
 
     # Create planner with timing awareness
     planner = IroncladCombatPlanner()
@@ -161,10 +175,8 @@ def test_ironclad_planner_integration():
     print(f"✓ Has timing_classifier: {has_classifier}")
     print(f"✓ Has balance_strategy: {has_strategy}")
 
-    if has_classifier and has_strategy:
-        print("✅ PASS: IroncladCombatPlanner initialized with timing awareness")
-    else:
-        print("❌ FAIL: Timing components not initialized")
+    assert has_classifier and has_strategy
+    print("✅ PASS: IroncladCombatPlanner initialized with timing awareness")
 
     # Test timing classification through planner
     timing_ctx = planner.timing_classifier.classify_turn(context)
@@ -178,9 +190,9 @@ def test_ironclad_planner_integration():
 
 
 def test_threat_spike_scenario():
-    """Test 4: Threat spike scenario (Cultist turn 2+ with ATTACK intent)."""
+    """Test 4: Threat spike scenario with a generic ATTACK intent."""
     print("=" * 60)
-    print("TEST 4: Threat Spike Classification - Cultist Turn 2")
+    print("TEST 4: Threat Spike Classification - Generic Attack Turn")
     print("=" * 60)
 
     # Create mock context for Cultist turn 2 (ATTACK intent)
@@ -191,37 +203,20 @@ def test_threat_spike_scenario():
         energy=3
     )
 
-    # Cultist with ATTACK intent (after Ritual)
-    cultist = Monster(
-        name="Cultist",
+    # Jaw Worm has prediction data but no forced timing override, so this tests
+    # the base high-damage attack classification path through the real data loader.
+    monster = _monster(
+        "Jaw Worm",
         current_hp=40,
         max_hp=50,
-        intent=Intent.ATTACK,
-        move_name="Attack",
-        powers=[]
+        intent="ATTACK",
+        move_adjusted_damage=20,
     )
-    cultist.index = 0
-
+    monster.index = 0
     # Mock cards
-    strike = Card(card_id="Strike_R", name="Strike", cost=1, card_type=CardType.ATTACK)
-    strike.uuid = "strike_1"
-    strike.upgrades = 0
-
-    defend = Card(card_id="Defend_R", name="Defend", cost=1, card_type=CardType.SKILL)
-    defend.uuid = "defend_1"
-    defend.upgrades = 0
-
-    context = DecisionContext(
-        player=player,
-        monsters=[cultist],
-        hand=[strike, defend],
-        draw_pile=[],
-        discard_pile=[],
-        energy_available=3,
-        turn=2,
-        floor=1,
-        act=1
-    )
+    strike = _card("Strike_R", "Strike", cost=1, card_type=CardType.ATTACK)
+    defend = _card("Defend_R", "Defend", cost=1, card_type=CardType.SKILL)
+    context = _mock_context(player, [monster], [strike, defend], turn=2)
 
     classifier = TurnTimingClassifier()
     strategy = CombatBalanceStrategy()
@@ -234,11 +229,8 @@ def test_threat_spike_scenario():
     print(f"✓ Damage weight: {weights.damage_weight:.2f}")
     print(f"✓ Block weight: {weights.block_weight:.2f}")
 
-    # Threat spike should have high block weight
-    if weights.block_weight > weights.damage_weight:
-        print("✅ PASS: THREAT_SPIKE timing has defensive weights (block > damage)")
-    else:
-        print("❌ FAIL: THREAT_SPIKE timing should have block_weight > damage_weight")
+    assert weights.block_weight > weights.damage_weight
+    print("✅ PASS: THREAT_SPIKE timing has defensive weights (block > damage)")
 
     print()
 

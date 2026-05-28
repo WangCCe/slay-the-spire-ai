@@ -33,7 +33,7 @@ def test_wiki_parser():
     else:
         print("✗ Wiki data not loaded (file may not exist)")
         print("  This is expected if wiki-card-data.txt is missing")
-        return False
+    assert loader._wiki_data
 
     # Test 2: Sample cards with upgrade values
     print("\n[Test 2] Testing damage extraction from wiki data...")
@@ -49,8 +49,10 @@ def test_wiki_parser():
     for card_name, expected_base, expected_upgraded, is_upgrade in test_cards:
         card_data = {'name': card_name}
         damage = loader._parse_card_damage(card_data)
-        status = "✓" if damage == (expected_upgraded if is_upgrade else expected_base) else "✗"
-        print(f"{status} {card_name}: {damage} (expected {expected_upgraded if is_upgrade else expected_base})")
+        expected = expected_upgraded if is_upgrade else expected_base
+        status = "✓" if damage == expected else "✗"
+        print(f"{status} {card_name}: {damage} (expected {expected})")
+        assert damage == expected
 
     # Test 3: Block extraction
     print("\n[Test 3] Testing block extraction from wiki data...")
@@ -64,8 +66,10 @@ def test_wiki_parser():
     for card_name, expected_base, expected_upgraded, is_upgrade in test_block_cards:
         card_data = {'name': card_name}
         block = loader._parse_card_block(card_data)
-        status = "✓" if block == (expected_upgraded if is_upgrade else expected_base) else "✗"
-        print(f"{status} {card_name}: {block} (expected {expected_upgraded if is_upgrade else expected_base})")
+        expected = expected_upgraded if is_upgrade else expected_base
+        status = "✓" if block == expected else "✗"
+        print(f"{status} {card_name}: {block} (expected {expected})")
+        assert block == expected
 
     # Test 4: X-card detection
     print("\n[Test 4] Testing X-card detection...")
@@ -85,6 +89,7 @@ def test_wiki_parser():
         status = "✓" if is_correct else "✗"
         x_status = "X-card" if is_x_card else "Normal"
         print(f"{status} {card_name}: {damage} ({x_status})")
+        assert is_correct
 
     # Test X-block cards
     print("\n  [Test 4b] Testing X-block card detection...")
@@ -100,6 +105,7 @@ def test_wiki_parser():
         status = "✓" if is_correct else "✗"
         x_status = "X-block" if is_x_card else "Normal"
         print(f"{status} {card_name}: {block} ({x_status})")
+        assert is_correct
 
     # Test 5: AOE detection
     print("\n[Test 5] Testing AOE detection...")
@@ -117,6 +123,7 @@ def test_wiki_parser():
         is_aoe = loader._is_card_aoe(card_data)
         status = "✓" if is_aoe == expected_aoe else "✗"
         print(f"{status} {card_name}: {'AOE' if is_aoe else 'Single-target'} (expected {'AOE' if expected_aoe else 'Single-target'})")
+        assert is_aoe == expected_aoe
 
     # Test 6: CARD_METADATA reduction
     print("\n[Test 6] Verifying CARD_METADATA reduction...")
@@ -134,8 +141,7 @@ def test_wiki_parser():
     print("Wiki parser integration appears to be working correctly!")
     print(f"Loaded {len(loader._wiki_data) if loader._wiki_data else 0} cards from wiki data")
     print(f"CARD_METADATA reduced to {card_count} entries (dynamic cards only)")
-
-    return True
+    assert has_reason
 
 if __name__ == '__main__':
     try:
