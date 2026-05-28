@@ -2070,7 +2070,10 @@ class FastCombatSimulator:
             return True
 
         block_per_card = 7 if getattr(card, 'upgrades', 0) > 0 else 5
-        block_gain = self._apply_frail_block(block_per_card * exhausted_count, state.player_frail)
+        block_gain = (
+            self._apply_card_block_modifiers(block_per_card, state)
+            * exhausted_count
+        )
         state.player_block += block_gain
         state.exhaust_events += exhausted_count
         self._mark_cards_unavailable(state, exhausted_cards)

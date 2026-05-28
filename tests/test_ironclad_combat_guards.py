@@ -2351,6 +2351,44 @@ def test_second_wind_gains_block_for_each_non_attack_card_exhausted():
     assert result.exhaust_events == 2
 
 
+def test_second_wind_applies_card_block_modifiers_per_exhausted_card():
+    second_wind = _card(
+        "Second Wind",
+        "Second Wind",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    power_through = _card(
+        "Power Through",
+        "Power Through",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    context = _combat_context(
+        [second_wind, defend, power_through],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.game.player.powers = [
+        SimpleNamespace(power_name="Dexterity", amount=2),
+        SimpleNamespace(power_name="Frail", amount=1),
+    ]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        second_wind,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 10
+    assert result.exhaust_events == 2
+
+
 def test_second_wind_marks_exhausted_cards_unavailable_for_later_search():
     second_wind = _card(
         "Second Wind",
