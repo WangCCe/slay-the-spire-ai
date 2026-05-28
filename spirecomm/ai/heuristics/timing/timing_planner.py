@@ -11,7 +11,11 @@ from typing import List, Optional
 from .models import TimingContext, TurnTiming, BalanceWeights
 from .turn_classifier import TurnTimingClassifier
 from .balance_strategy import CombatBalanceStrategy
+from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
+from spirecomm.ai.heuristics.simulation import BLOCK_UPGRADE_BONUS, _known_damage_upgrade_bonus
+from spirecomm.data.loader import game_data_loader
+from spirecomm.spire.card import CardType
 
 logger = logging.getLogger(__name__)
 
@@ -148,21 +152,16 @@ class TimingAwareCombatPlanner:
 
             for card in playable_cards:
                 # Simple estimate: use card's base damage
-                if hasattr(card, 'damage_for'):
-                    try:
-                        # Get damage for this turn
-                        strength = getattr(context, 'strength', 0)
-                        card_damage = card.damage_for(getattr(context, 'turn', 1), strength)
-                        total_damage += card_damage
+                card_damage = self._estimate_card_damage(card, context)
+                if card_damage > 0:
+                    total_damage += card_damage
 
-                        # Check energy cost
-                        cost = effective_card_cost(card, energy)
-                        energy -= cost
+                    # Check energy cost
+                    cost = effective_card_cost(card, energy)
+                    energy -= cost
 
-                        if energy < 0:
-                            break  # Can't afford more cards
-                    except:
-                        pass
+                    if energy < 0:
+                        break  # Can't afford more cards
 
             # Check if damage is enough to kill all monsters
             total_hp = sum(
@@ -206,13 +205,9 @@ class TimingAwareCombatPlanner:
             # Sort cards by damage (highest first)
             attack_cards = []
             for card in playable_cards:
-                if hasattr(card, 'damage_for'):
-                    try:
-                        strength = getattr(context, 'strength', 0)
-                        damage = card.damage_for(getattr(context, 'turn', 1), strength)
-                        attack_cards.append((card, damage))
-                    except:
-                        pass
+                damage = self._estimate_card_damage(card, context)
+                if damage > 0:
+                    attack_cards.append((card, damage))
 
             # Sort by damage descending
             attack_cards.sort(key=lambda x: x[1], reverse=True)
@@ -268,21 +263,12 @@ class TimingAwareCombatPlanner:
                 score = 0
 
                 # Check if card deals damage
-                if hasattr(card, 'damage_for'):
-                    try:
-                        strength = getattr(context, 'strength', 0)
-                        damage = card.damage_for(getattr(context, 'turn', 1), strength)
-                        score += damage * weights.damage_weight
-                    except:
-                        pass
+                damage = self._estimate_card_damage(card, context)
+                score += damage * weights.damage_weight
 
                 # Check if card provides block
-                if hasattr(card, 'block_for'):
-                    try:
-                        block = card.block_for()
-                        score += block * weights.block_weight
-                    except:
-                        pass
+                block = self._estimate_card_block(card)
+                score += block * weights.block_weight
 
                 if score > best_score:
                     best_score = score
@@ -300,3 +286,56 @@ class TimingAwareCombatPlanner:
         except Exception as e:
             logger.warning(f"[FALLBACK_PLAN] Failed: {e}")
             return []
+
+    def _estimate_card_damage(self, card, context) -> int:
+        """Estimate card damage for timing decisions from methods or parsed data."""
+        if getattr(card, 'type', None) not in (None, CardType.ATTACK):
+            return 0
+
+        if hasattr(card, 'damage_for'):
+            try:
+                strength = getattr(context, 'strength', 0)
+                return max(0, int(card.damage_for(getattr(context, 'turn', 1), strength)))
+            except Exception:
+                pass
+
+        base_damage = getattr(card, 'damage', 0) or 0
+        if base_damage <= 0:
+            try:
+                card_name = canonical_card_name(card)
+                card_data = game_data_loader.get_card_data(card_name)
+                if card_data:
+                    parsed_damage = game_data_loader._parse_card_damage(card_data)
+                    if parsed_damage is not None:
+                        base_damage = parsed_damage + _known_damage_upgrade_bonus(card, card_name)
+            except Exception:
+                base_damage = 0
+
+        if base_damage <= 0:
+            return 0
+
+        return max(0, int(base_damage + getattr(context, 'strength', 0)))
+
+    def _estimate_card_block(self, card) -> int:
+        """Estimate card block for timing decisions from methods or parsed data."""
+        if hasattr(card, 'block_for'):
+            try:
+                return max(0, int(card.block_for()))
+            except Exception:
+                pass
+
+        block = getattr(card, 'block', 0) or 0
+        if block <= 0:
+            try:
+                card_name = canonical_card_name(card)
+                card_data = game_data_loader.get_card_data(card_name)
+                if card_data:
+                    parsed_block = game_data_loader._parse_card_block(card_data)
+                    if parsed_block is not None:
+                        block = parsed_block
+                        if getattr(card, 'upgrades', 0) > 0:
+                            block += BLOCK_UPGRADE_BONUS.get(card_name, 0)
+            except Exception:
+                block = 0
+
+        return max(0, int(block))
