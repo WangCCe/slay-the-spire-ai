@@ -169,6 +169,7 @@ DAMAGE_UPGRADE_BONUS = {
     'Thunderclap': 3,
     'Headbutt': 3,
     'Cleave': 3,
+    'Bane': 3,
 
     # +4 damage
     'Clash': 4,
