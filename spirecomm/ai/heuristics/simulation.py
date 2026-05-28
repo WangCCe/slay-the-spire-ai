@@ -2753,9 +2753,13 @@ class FastCombatSimulator:
             if ascension_level < threshold:
                 continue
             modifier = ascension_modifiers.get(f"{threshold}+", {})
-            if isinstance(modifier, dict) and key in modifier:
-                value = self._numeric_damage_value(modifier.get(key))
-                return value if value is not None else base_value
+            if isinstance(modifier, dict):
+                if key in modifier:
+                    value = self._numeric_damage_value(modifier.get(key))
+                    return value if value is not None else base_value
+                if key == 'damage' and 'damage_bonus' in modifier:
+                    bonus = self._numeric_damage_value(modifier.get('damage_bonus'))
+                    return base_value + bonus if bonus is not None else base_value
             break
 
         return base_value
