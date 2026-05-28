@@ -219,15 +219,35 @@ class TimingAwareCombatPlanner:
             # Generate actions (play highest damage cards until out of energy)
             actions = []
             energy = getattr(context, 'energy_available', 3)
-            target = monsters[0]  # Default target
+            remaining_hp = [
+                max(0, getattr(monster, 'current_hp', 0) + getattr(monster, 'block', 0))
+                for monster in monsters
+            ]
 
             for card, damage in attack_cards:
                 cost = effective_card_cost(card, energy)
 
                 if energy >= cost:
                     action_target = None
-                    if getattr(card, 'has_target', False) and not self._is_card_aoe(card):
-                        action_target = target
+                    if self._is_card_aoe(card):
+                        remaining_hp = [
+                            max(0, hp - damage)
+                            for hp in remaining_hp
+                        ]
+                    elif getattr(card, 'has_target', False):
+                        live_targets = [
+                            (hp, idx)
+                            for idx, hp in enumerate(remaining_hp)
+                            if hp > 0
+                        ]
+                        if not live_targets:
+                            break
+                        _hp, target_idx = max(
+                            live_targets,
+                            key=lambda item: (item[0], -item[1]),
+                        )
+                        action_target = monsters[target_idx]
+                        remaining_hp[target_idx] = max(0, remaining_hp[target_idx] - damage)
                     actions.append(PlayCardAction(card=card, target_monster=action_target))
                     energy -= cost
 

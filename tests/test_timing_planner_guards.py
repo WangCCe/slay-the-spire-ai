@@ -177,6 +177,33 @@ def test_timing_lethal_sequence_does_not_target_aoe_cards(monkeypatch):
     assert actions[0].target_monster is None
 
 
+def test_timing_lethal_sequence_targets_multiple_single_target_monsters(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    strike_a = _card("Strike_R", "Strike")
+    strike_a.uuid = "strike-a"
+    strike_b = _card("Strike_R", "Strike")
+    strike_b.uuid = "strike-b"
+    first_monster = SimpleNamespace(current_hp=6, block=0, monster_index=0)
+    second_monster = SimpleNamespace(current_hp=6, block=0, monster_index=1)
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=2,
+        playable_cards=[strike_a, strike_b],
+        monsters_alive=[first_monster, second_monster],
+    )
+
+    actions = TimingAwareCombatPlanner()._generate_lethal_sequence(context)
+
+    assert [action.card for action in actions] == [strike_a, strike_b]
+    assert [action.target_monster for action in actions] == [first_monster, second_monster]
+
+
 def test_timing_fallback_scores_parsed_damage_and_block_for_plain_cards(monkeypatch):
     monkeypatch.setattr(
         timing_planner,
