@@ -2525,20 +2525,11 @@ class FastCombatSimulator:
                 )
                 continue
 
-            # Import Intent enum if available
-            try:
-                from spirecomm.spire.character import Intent
-                # Check if intent is an Intent enum or string
-                if isinstance(intent, str):
-                    intent_str = intent
-                else:
-                    intent_str = str(intent).split('.')[-1] if hasattr(intent, 'name') else str(intent)
-            except:
-                intent_str = str(intent)
+            intent_str = self._intent_name(intent)
 
             # Estimate damage based on intent
             intent_present = True
-            if 'ATTACK' in intent_str.upper() or 'ATTACK_BUFF' in intent_str.upper() or 'ATTACK_DEBUFF' in intent_str.upper() or 'ATTACK_DEFEND' in intent_str.upper():
+            if intent_is_attack(intent):
                 attack_intent_present = True
                 # Use actual monster damage data from game state
                 has_adjusted_damage = 'move_adjusted_damage' in monster

@@ -1795,6 +1795,27 @@ def test_incoming_damage_estimate_clamps_negative_live_move_damage_to_zero():
     assert incoming == 0
 
 
+def test_incoming_damage_estimate_ignores_negated_attack_intent_string():
+    incoming = FastCombatSimulator(SynergyCardEvaluator())._estimate_incoming_damage(
+        [
+            {
+                "name": "Cultist",
+                "monster_id": "Cultist",
+                "move_id": 1,
+                "current_hp": 48,
+                "is_gone": False,
+                "intent": "NOT_ATTACK",
+                "move_adjusted_damage": 12,
+                "move_hits": 1,
+                "strength": 0,
+                "weak": 0,
+            }
+        ]
+    )
+
+    assert incoming == 0
+
+
 def test_incoming_damage_estimate_keeps_explicit_zero_adjusted_damage():
     simulator = FastCombatSimulator(SynergyCardEvaluator())
 
