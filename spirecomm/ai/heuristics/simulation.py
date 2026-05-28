@@ -2047,7 +2047,7 @@ class FastCombatSimulator:
             return
 
         monster = state.monsters[target_index]
-        if monster['is_gone']:
+        if not self._is_live_monster_state(monster):
             return
 
         if self._consume_monster_artifact(monster):
