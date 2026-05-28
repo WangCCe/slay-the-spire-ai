@@ -1899,19 +1899,38 @@ class IroncladCombatPlanner(CombatPlanner):
         for action in sequence:
             if isinstance(action, PlayCardAction):
                 card = action.card
-                if hasattr(card, 'damage') and card.damage > 0:
-                    # Try to get target monster
-                    target = None
-                    if hasattr(action, 'target_monster') and action.target_monster:
-                        target = action.target_monster
-                    elif hasattr(card, 'has_target') and card.has_target and context.monsters_alive:
-                        # Default to first monster if we can't determine target
-                        target = context.monsters_alive[0]
+                # Try to get target monster
+                target = getattr(action, 'target_monster', None)
+                target_idx = getattr(action, 'target_index', None)
+                if target_idx is None and target is not None:
+                    for idx, monster in enumerate(context.monsters_alive):
+                        if monster is target:
+                            target_idx = idx
+                            break
+                elif target is None and target_idx is not None and target_idx < len(context.monsters_alive):
+                    target = context.monsters_alive[target_idx]
+                elif target is None and hasattr(card, 'has_target') and card.has_target and context.monsters_alive:
+                    # Default to first monster if we can't determine target
+                    target = context.monsters_alive[0]
+                    target_idx = 0
 
-                    if target:
-                        # Use monster id or index as key
-                        target_key = id(target)
-                        damage_by_target[target_key] = damage_by_target.get(target_key, 0) + card.damage
+                if target:
+                    damage = (
+                        self._estimate_attack_damage_to_target(
+                            card,
+                            context,
+                            SimulationState(context),
+                            target_idx,
+                        )
+                        if target_idx is not None
+                        else self._estimate_attack_damage_without_simulation(card, context)
+                    )
+                    if damage <= 0:
+                        continue
+
+                    # Use monster id or index as key
+                    target_key = id(target)
+                    damage_by_target[target_key] = damage_by_target.get(target_key, 0) + damage
 
         if damage_by_target:
             return {

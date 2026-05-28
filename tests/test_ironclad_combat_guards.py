@@ -1557,6 +1557,34 @@ def test_slime_boss_strategy_uses_parsed_aoe_damage_without_damage_field(monkeyp
     assert score == 12.0
 
 
+def test_sentries_damage_distribution_uses_parsed_damage_without_damage_field(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_louse(current_hp=40), _louse(current_hp=40), _louse(current_hp=40)],
+    )
+
+    distribution = IroncladCombatPlanner()._calculate_damage_distribution(
+        [PlayCardAction(card=strike, target_monster=context.monsters_alive[1])],
+        context,
+    )
+
+    assert distribution["highest_damage"] == 6
+    assert distribution["total_damage"] == 6
+    assert distribution["target_count"] == 1
+
+
 def test_end_turn_projection_materializes_due_slime_boss_split():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_slime_boss(current_hp=56)])
