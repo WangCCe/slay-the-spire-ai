@@ -2724,6 +2724,27 @@ def test_safe_intent_detection_rejects_attack_buff_even_when_hint_matches_buff()
     assert classifier._is_safe_intent("Intent.ATTACK_BUFF", "Intent.BUFF", hints) is False
 
 
+def test_monster_timing_hints_do_not_mark_attack_buff_as_safe():
+    hints = MonsterTimingHints(safe_turn_indicators=["BUFF"])
+
+    assert hints.is_safe_turn("Intent.ATTACK_BUFF") is False
+    assert hints.is_safe_turn("Intent.BUFF") is True
+
+
+def test_monster_timing_hints_do_not_mark_negated_attack_as_spike():
+    hints = MonsterTimingHints(spike_turn_indicators=["ATTACK"])
+
+    assert hints.is_spike_turn("NOT_ATTACK") is False
+    assert hints.is_spike_turn("Intent.ATTACK_DEBUFF") is True
+
+
+def test_monster_timing_hints_do_not_mark_negated_composite_attack_as_spike():
+    hints = MonsterTimingHints(spike_turn_indicators=["ATTACK_DEBUFF"])
+
+    assert hints.is_spike_turn("NOT_ATTACK_DEBUFF") is False
+    assert hints.is_spike_turn("Intent.ATTACK_DEBUFF") is True
+
+
 def test_heuristic_incoming_damage_clamps_negative_live_move_damage_to_zero():
     monster = SimpleNamespace(
         name="Spike Slime (M)",

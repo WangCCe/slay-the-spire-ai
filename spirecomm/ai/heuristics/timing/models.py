@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Dict, Any, Optional
 
+from spirecomm.ai.intent_utils import intent_is_attack
+
 
 class TurnTiming(Enum):
     """
@@ -164,11 +166,16 @@ class MonsterTimingHints:
 
     def is_safe_turn(self, move_intent: str) -> bool:
         """Check if a move intent indicates a safe turn."""
+        if intent_is_attack(move_intent):
+            return False
         intent_upper = move_intent.upper()
         return any(indicator in intent_upper for indicator in self.safe_turn_indicators)
 
     def is_spike_turn(self, move_intent: str) -> bool:
         """Check if a move intent indicates a threat spike."""
+        if any(intent_is_attack(indicator) for indicator in self.spike_turn_indicators):
+            if not intent_is_attack(move_intent):
+                return False
         intent_upper = move_intent.upper()
         return any(indicator in intent_upper for indicator in self.spike_turn_indicators)
 
