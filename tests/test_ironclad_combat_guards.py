@@ -2087,6 +2087,62 @@ def test_v2_single_target_selection_ignores_zero_hp_stale_simulated_monsters():
     assert target_idx == 1
 
 
+def test_v2_split_targeting_uses_parsed_damage_for_plain_cards(monkeypatch):
+    class FakeMonsterLoader:
+        def is_monster_summoner(self, _monster_name):
+            return False
+
+        def get_monster_minions(self, _monster_name):
+            return []
+
+        def is_monster_hibernating(self, _monster_name, _turn):
+            return False
+
+        def does_monster_have_death_split(self, monster_name):
+            return monster_name == "Acid Slime (L)"
+
+        def get_enhanced_monster_data(self, monster_name):
+            if monster_name == "Acid Slime (L)":
+                return {
+                    "special_mechanics": {
+                        "split_conditions": {"hp_threshold": 50}
+                    }
+                }
+            return None
+
+        def does_monster_have_phase_change(self, _monster_name):
+            return False
+
+        def is_monster_duo_boss(self, _monster_name):
+            return False
+
+    card_loader = GameDataLoader(auto_load=False)
+    card_loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", FakeMonsterLoader())
+    monkeypatch.setattr(simulation, "game_data_loader", card_loader)
+
+    strike = _card("Strike_R", "Strike", cost=1)
+    high_threat = _louse(current_hp=40)
+    splitting = _acid_slime_l(current_hp=6, max_hp=65)
+    context = _combat_context([strike], energy=1, monsters=[high_threat, splitting])
+    context.compute_threat_v2 = lambda monster: 100 if monster is high_threat else 1
+    state = SimulationState(context)
+
+    target, target_idx = IroncladCombatPlanner()._choose_target_for_card_v2(
+        strike,
+        context,
+        state,
+    )
+
+    assert target is splitting
+    assert target_idx == 1
+
+
 def test_aoe_decision_ignores_zero_hp_stale_simulated_monsters():
     stale = _louse(current_hp=40)
     first_live = _louse(current_hp=40)

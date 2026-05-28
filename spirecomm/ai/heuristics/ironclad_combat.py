@@ -630,7 +630,19 @@ class IroncladCombatPlanner(CombatPlanner):
                 if game_data_loader.does_monster_have_death_split(real_monster.name):
                     # Check if we're near split threshold
                     if hasattr(real_monster, 'current_hp') and hasattr(real_monster, 'max_hp'):
-                        hp_percent = real_monster.current_hp / max(real_monster.max_hp, 1)
+                        current_hp = monster_state.get(
+                            'hp',
+                            getattr(real_monster, 'current_hp', 0),
+                        )
+                        max_hp = monster_state.get(
+                            'max_hp',
+                            getattr(real_monster, 'max_hp', 1),
+                        )
+                        block = monster_state.get(
+                            'block',
+                            getattr(real_monster, 'block', 0),
+                        )
+                        hp_percent = current_hp / max(max_hp, 1)
 
                         # Get split threshold
                         monster_data = game_data_loader.get_enhanced_monster_data(real_monster.name)
@@ -639,16 +651,15 @@ class IroncladCombatPlanner(CombatPlanner):
 
                             # If below threshold and not using AOE, prioritize this monster to finish it
                             if hp_percent < split_threshold:
-                                # Check if card can lethal
-                                if hasattr(card, 'damage_for') or 'damage' in card_id.lower():
-                                    # Calculate damage
-                                    try:
-                                        damage = card.damage_for(context.turn, context.strength)
-                                        if damage >= real_monster.current_hp:
-                                            # Can kill before split - prioritize
-                                            return real_monster, i
-                                    except:
-                                        pass
+                                damage = self._estimate_attack_damage_to_target(
+                                    card,
+                                    context,
+                                    state,
+                                    i,
+                                )
+                                if damage >= current_hp + block:
+                                    # Can kill before split - prioritize
+                                    return real_monster, i
 
         # 4. Phase change handling - prioritize during burst windows
         for i, monster, monster_state in alive_monsters:
