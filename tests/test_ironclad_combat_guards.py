@@ -976,6 +976,20 @@ def test_combust_projects_end_turn_damage_without_immediate_attack_damage(monkey
     assert projected.monsters_killed == 2
 
 
+def test_end_turn_aoe_ignores_zero_hp_stale_simulated_monsters():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=5), _louse(current_hp=5)])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+    state.end_turn_aoe_damage = 5
+
+    projected = FastCombatSimulator(SynergyCardEvaluator()).project_end_turn_effects(state)
+
+    assert projected.total_damage_dealt == 5
+    assert projected.monsters_killed == 1
+    assert projected.monsters[1]["is_gone"] is True
+
+
 def test_combust_end_turn_hp_loss_triggers_rupture(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

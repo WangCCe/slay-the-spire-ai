@@ -1612,6 +1612,9 @@ class FastCombatSimulator:
         trigger_thorns: bool = True,
     ):
         """Deal damage to monster, accounting for block and thorns."""
+        if not self._is_live_monster_state(monster):
+            return
+
         # Damage block first
         block_damage = min(damage, monster['block'])
         monster['block'] -= block_damage
