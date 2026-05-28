@@ -19,6 +19,7 @@ from .network import (
     align_state_dict_input,
     detect_network_type_from_checkpoint,
 )
+from .checkpoint_io import load_torch_checkpoint
 from spirecomm.spire.game import Game
 from spirecomm.communication.action import Action
 from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
@@ -494,7 +495,7 @@ class RLAgent:
 
     def load_model(self, model_path: str) -> None:
         """Load model from checkpoint file."""
-        checkpoint = torch.load(model_path, map_location=self.device)
+        checkpoint = load_torch_checkpoint(model_path, map_location=self.device)
         detected_type = detect_network_type_from_checkpoint(checkpoint)
         if detected_type != self.network_type:
             logger.warning(
@@ -531,7 +532,7 @@ class RLAgent:
 
     def _infer_network_type(self, model_path: str) -> str:
         try:
-            checkpoint = torch.load(model_path, map_location="cpu")
+            checkpoint = load_torch_checkpoint(model_path, map_location="cpu")
             return detect_network_type_from_checkpoint(checkpoint)
         except Exception as e:
             logger.warning("Failed to infer network type, defaulting to dueling: %s", e)
@@ -742,7 +743,7 @@ class MapRLAgent:
             torch.save(checkpoint, model_path)
 
     def load_model(self, model_path: str) -> None:
-        checkpoint = torch.load(model_path, map_location=self.device)
+        checkpoint = load_torch_checkpoint(model_path, map_location=self.device)
         detected_type = detect_network_type_from_checkpoint(checkpoint)
         if detected_type != self.network_type:
             self.network_type = detected_type
@@ -764,7 +765,7 @@ class MapRLAgent:
 
     def _infer_network_type(self, model_path: str) -> str:
         try:
-            checkpoint = torch.load(model_path, map_location="cpu")
+            checkpoint = load_torch_checkpoint(model_path, map_location="cpu")
             return detect_network_type_from_checkpoint(checkpoint)
         except Exception:
             return "dueling"

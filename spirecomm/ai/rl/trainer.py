@@ -16,6 +16,7 @@ from .network import (
     align_state_dict_input,
     detect_network_type_from_checkpoint,
 )
+from .checkpoint_io import load_torch_checkpoint
 from .replay_buffer import ReplayBuffer
 from .reward import RewardCalculator
 
@@ -316,7 +317,7 @@ class DQNTrainer:
         Returns:
             Checkpoint dictionary with metadata
         """
-        checkpoint = torch.load(filepath, map_location=self.device)
+        checkpoint = load_torch_checkpoint(filepath, map_location=self.device)
         detected_type = detect_network_type_from_checkpoint(checkpoint)
         if detected_type != self.network_type:
             logger.warning(

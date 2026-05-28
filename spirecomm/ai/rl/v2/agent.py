@@ -15,6 +15,7 @@ from spirecomm.spire.character import PlayerClass
 from spirecomm.spire.game import Game
 
 from spirecomm.ai.rl.reward import RewardCalculator
+from spirecomm.ai.rl.checkpoint_io import load_torch_checkpoint
 
 from .action_encoder import ActionEncoderV2
 from .action_space import ACTION_DIM, PLAY_CARD_COUNT
@@ -434,7 +435,7 @@ class RLAgentV2:
         return StateAction()
 
     def load_model(self, model_path: str) -> None:
-        checkpoint = torch.load(model_path, map_location=self.device)
+        checkpoint = load_torch_checkpoint(model_path, map_location=self.device)
         metadata = self._extract_checkpoint_metadata(checkpoint)
         self._validate_checkpoint(metadata, model_path)
 
