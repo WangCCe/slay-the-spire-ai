@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from spirecomm.ai.agent import OptimizedAgent, SimpleAgent
+from spirecomm.communication.action import PotionAction
 from spirecomm.spire.character import Intent
 
 
@@ -118,3 +119,36 @@ def test_optimized_agent_potion_logic_ignores_stale_monsters_for_multi_monster_t
     )
 
     assert agent.use_next_potion() is None
+
+
+def test_defensive_potion_uses_player_block_not_monster_block():
+    monster = SimpleNamespace(
+        current_hp=40,
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=30,
+        move_hits=1,
+        block=999,
+    )
+    potion = SimpleNamespace(
+        name="Block Potion",
+        can_use=True,
+        requires_target=False,
+    )
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.game_tracker = None
+    agent.game = SimpleNamespace(
+        monsters=[monster],
+        player=SimpleNamespace(block=0),
+        current_hp=20,
+        max_hp=80,
+        act=1,
+        room_type="Monster",
+        get_real_potions=lambda: [potion],
+    )
+
+    action = agent.use_next_potion()
+
+    assert isinstance(action, PotionAction)
+    assert action.potion is potion

@@ -2469,11 +2469,7 @@ class OptimizedAgent(SimpleAgent):
                 or "barrier" in potion.name.lower()
             ):
                 # Use defensive potions when incoming damage exceeds current HP or block
-                current_block = sum(
-                    monster.block
-                    for monster in alive_monsters
-                    if hasattr(monster, "block")
-                )
+                current_block = getattr(getattr(self.game, "player", None), "block", 0)
                 if incoming_damage > current_block + self.game.current_hp * 0.5:
                     use_potion = True
                     potions_to_use.append((1, potion))
