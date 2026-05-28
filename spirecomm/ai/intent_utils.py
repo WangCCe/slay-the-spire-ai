@@ -1,4 +1,20 @@
+import re
+
 from spirecomm.spire.character import Intent
+
+
+def intent_tokens(intent) -> set:
+    if intent is None:
+        return set()
+    if hasattr(intent, "name"):
+        intent_name = str(intent.name)
+    else:
+        intent_name = str(intent or "").rsplit(".", 1)[-1]
+    return {
+        token
+        for token in re.split(r"[^A-Z0-9]+", intent_name.upper())
+        if token
+    }
 
 
 def intent_is_unknown(intent) -> bool:

@@ -13,6 +13,7 @@ from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster
 from spirecomm.communication.action import Action
 from spirecomm.ai.intent_utils import (
+    intent_tokens,
     intent_is_attack,
     intent_is_unknown,
     monster_intends_attack,
@@ -179,13 +180,6 @@ class DecisionContext:
     def _should_count_immediate_damage(cls, monster) -> bool:
         return monster_intends_attack(monster)
 
-    @staticmethod
-    def _intent_tokens(intent) -> set:
-        if not intent:
-            return set()
-        intent_name = str(intent).upper().split('.')[-1]
-        return {token for token in intent_name.split('_') if token}
-
     def _calculate_incoming_damage(self) -> int:
         """Calculate total incoming damage from all monsters.
 
@@ -277,13 +271,13 @@ class DecisionContext:
 
         # 2. Debuff threat (Weak/Vulnerable are dangerous)
         if intent_type:
-            intent_tokens = self._intent_tokens(intent_type)
+            current_intent_tokens = intent_tokens(intent_type)
 
             # Check if monster applies debuffs
             if (
-                'DEBUFF' in intent_tokens
-                or 'WEAK' in intent_tokens
-                or 'VULNERABLE' in intent_tokens
+                'DEBUFF' in current_intent_tokens
+                or 'WEAK' in current_intent_tokens
+                or 'VULNERABLE' in current_intent_tokens
             ):
                 threat += 10  # Debuff application is high threat
 
@@ -307,7 +301,7 @@ class DecisionContext:
 
         # 4. AOE threat (buffs other monsters)
         if intent_type:
-            if 'BUFF' in self._intent_tokens(intent_type):
+            if 'BUFF' in intent_tokens(intent_type):
                 threat += 8  # Buffing allies is threatening
 
         # 5. High HP threat (more HP = more dangerous if left alive)
@@ -351,11 +345,11 @@ class DecisionContext:
 
         # ===== Component 1: Immediate threat (current intent) =====
         threat += self._compute_base_immediate_threat(monster)
-        intent_tokens = self._intent_tokens(getattr(monster, 'intent', None))
+        current_intent_tokens = intent_tokens(getattr(monster, 'intent', None))
         if (
-            'DEBUFF' in intent_tokens
-            or 'WEAK' in intent_tokens
-            or 'VULNERABLE' in intent_tokens
+            'DEBUFF' in current_intent_tokens
+            or 'WEAK' in current_intent_tokens
+            or 'VULNERABLE' in current_intent_tokens
         ):
             threat += 10
 
@@ -471,7 +465,7 @@ class DecisionContext:
 
         # ===== Component 5: Composition threat (party buffs) =====
         # Check if monster buffs other monsters
-        if 'BUFF' in intent_tokens and len(self.monsters_alive) > 1:
+        if 'BUFF' in current_intent_tokens and len(self.monsters_alive) > 1:
             # Party-wide buff is more threatening with more monsters
             threat += len(self.monsters_alive) * 5
 

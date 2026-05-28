@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from spirecomm.ai.intent_utils import (
+    intent_tokens,
     intent_is_attack,
     intent_is_unknown,
     monster_intends_attack,
@@ -14,6 +15,17 @@ class _CustomIntent:
 
     def is_attack(self):
         return self.attacking
+
+
+def test_intent_tokens_normalizes_enum_dotted_and_slash_separated_intents():
+    assert intent_tokens(Intent.ATTACK_DEBUFF) == {"ATTACK", "DEBUFF"}
+    assert intent_tokens("Intent.DEFEND_BUFF") == {"DEFEND", "BUFF"}
+    assert intent_tokens("Attack/Debuff") == {"ATTACK", "DEBUFF"}
+
+
+def test_intent_tokens_does_not_conflate_buff_and_debuff():
+    assert "BUFF" not in intent_tokens(Intent.DEBUFF)
+    assert "DEBUFF" not in intent_tokens(Intent.BUFF)
 
 
 def test_intent_is_attack_accepts_enum_string_and_protocol_objects():

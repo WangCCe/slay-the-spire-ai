@@ -14,7 +14,7 @@ from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster, Intent
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.incoming_damage import known_unknown_move_has_no_immediate_damage
-from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
+from spirecomm.ai.intent_utils import intent_is_unknown, intent_tokens, monster_intends_attack
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.card_costs import (
@@ -3048,13 +3048,9 @@ class FastCombatSimulator:
         text = str(intent or '')
         return text.rsplit('.', 1)[-1]
 
-    def _intent_tokens(self, intent: Any) -> set:
-        intent_name = self._intent_name(intent).upper()
-        return {token for token in re.split(r'[^A-Z0-9]+', intent_name) if token}
-
     def _move_intent_matches_live(self, move: Dict[str, Any], live_intent: str) -> bool:
-        move_tokens = self._intent_tokens(move.get('intent', ''))
-        live_tokens = self._intent_tokens(live_intent)
+        move_tokens = intent_tokens(move.get('intent', ''))
+        live_tokens = intent_tokens(live_intent)
         if not move_tokens or not live_tokens:
             return False
         if move_tokens == live_tokens:
