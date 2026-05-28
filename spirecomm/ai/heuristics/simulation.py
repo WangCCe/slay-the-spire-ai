@@ -1947,6 +1947,7 @@ class FastCombatSimulator:
         self._apply_strength_skill(state, card, target_index)
         self._apply_energy_gain_skill(state, card)
         self._apply_enemy_strength_skill(state, card, target_index)
+        self._apply_catalyst_skill(state, card, target_index)
 
         # Apply enemy debuffs from skill cards (e.g., Shockwave).
         try:
@@ -2144,6 +2145,29 @@ class FastCombatSimulator:
 
         state.player_energy += energy_gain
         state.energy_gained += energy_gain
+
+    def _apply_catalyst_skill(
+        self,
+        state: SimulationState,
+        card: Card,
+        target_index: Optional[int],
+    ):
+        card_id = _canonical_card_name(card)
+        if card_id != 'Catalyst':
+            return
+        if target_index is None or not (0 <= target_index < len(state.monsters)):
+            return
+
+        monster = state.monsters[target_index]
+        if not self._is_live_monster_state(monster):
+            return
+
+        current_poison = monster.get('poison', 0)
+        if current_poison <= 0:
+            return
+
+        multiplier = 3 if getattr(card, 'upgrades', 0) > 0 else 2
+        self._apply_monster_poison(monster, current_poison * (multiplier - 1))
 
     def _apply_second_wind(
         self,
