@@ -89,3 +89,27 @@ def test_combo_detection_uses_base_names_for_upgraded_cards():
     )
 
     assert evaluator._detect_combo_potential(demon_form, context, None) >= 25
+
+
+def test_combo_detection_rewards_second_combo_piece_when_first_is_in_deck():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    demon_form = Card(
+        "Demon Form",
+        "Demon Form",
+        CardType.POWER,
+        CardRarity.RARE,
+        cost=3,
+    )
+    limit_break = Card(
+        "Limit Break",
+        "Limit Break",
+        CardType.SKILL,
+        CardRarity.RARE,
+        cost=1,
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(deck=[demon_form]),
+        deck_archetype="strength",
+    )
+
+    assert evaluator._detect_combo_potential(limit_break, context, None) >= 25

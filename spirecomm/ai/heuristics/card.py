@@ -289,6 +289,8 @@ class SynergyCardEvaluator(CardEvaluator):
                     combo_score += unupgraded * bonus / 10
                 elif card2 in deck_card_names:
                     combo_score += bonus
+            elif card2 != 'unupgraded' and card_name == card2 and card1 in deck_card_names:
+                combo_score += bonus
 
         # Additional archetype-specific combo detection
         if context.deck_archetype == 'poison':
