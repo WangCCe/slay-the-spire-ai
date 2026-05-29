@@ -10,6 +10,7 @@ This module provides a database of monster characteristics, including:
 """
 
 from spirecomm.ai.intent_utils import monster_intends_attack
+from spirecomm.ai.monster_names import normalize_monster_id
 
 # Monster database mapping monster IDs to their characteristics
 MONSTER_DATABASE = {
@@ -215,12 +216,8 @@ MONSTER_DATABASE = {
 }
 
 
-def _normalize_monster_id(monster_id):
-    return ''.join(ch for ch in str(monster_id).lower() if ch.isalnum())
-
-
 NORMALIZED_MONSTER_IDS = {
-    _normalize_monster_id(monster_id): monster_id
+    normalize_monster_id(monster_id): monster_id
     for monster_id in MONSTER_DATABASE
 }
 
@@ -235,7 +232,7 @@ MONSTER_ID_ALIASES = {
 
 
 def _canonical_monster_id(monster_id):
-    normalized_id = _normalize_monster_id(monster_id)
+    normalized_id = normalize_monster_id(monster_id)
     return MONSTER_ID_ALIASES.get(
         normalized_id,
         NORMALIZED_MONSTER_IDS.get(normalized_id, monster_id),

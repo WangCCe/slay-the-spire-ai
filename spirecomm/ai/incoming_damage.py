@@ -2,43 +2,15 @@
 Shared helpers for live monster incoming-damage estimates.
 """
 
-import re
 from typing import Any
 
 from spirecomm.ai.intent_utils import intent_is_attack, intent_is_unknown
+from spirecomm.ai.monster_names import canonical_live_monster_name, monster_field
 from spirecomm.data.loader import game_data_loader
 
 
-LIVE_MONSTER_ID_TO_WIKI_NAME = {
-    'slaverred': 'Red Slaver',
-    'redslaver': 'Red Slaver',
-    'slaverblue': 'Blue Slaver',
-    'blueslaver': 'Blue Slaver',
-    'fuzzylousenormal': 'Red Louse',
-    'fuzzylousedefensive': 'Green Louse',
-    'jawworm': 'Jaw Worm',
-    'gremlinnob': 'Gremlin Nob',
-    'slimeboss': 'Slime Boss',
-    'sphericguardian': 'Spheric Guardian',
-}
-
-
 def _monster_field(monster: Any, field_name: str, default: Any = None) -> Any:
-    if isinstance(monster, dict):
-        return monster.get(field_name, default)
-    return getattr(monster, field_name, default)
-
-
-def _normalize_monster_id(monster_id: str) -> str:
-    return re.sub(r'[^a-z0-9]', '', str(monster_id).lower())
-
-
-def canonical_live_monster_name(monster: Any) -> str:
-    monster_id = _monster_field(monster, 'monster_id', '') or ''
-    mapped_name = LIVE_MONSTER_ID_TO_WIKI_NAME.get(_normalize_monster_id(monster_id))
-    if mapped_name:
-        return mapped_name
-    return str(_monster_field(monster, 'name', '') or '')
+    return monster_field(monster, field_name, default)
 
 
 def numeric_damage_value(value: Any) -> int:

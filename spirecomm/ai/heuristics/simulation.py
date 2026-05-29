@@ -15,6 +15,7 @@ from spirecomm.spire.character import Monster, Intent
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.incoming_damage import known_unknown_move_has_no_immediate_damage
 from spirecomm.ai.intent_utils import intent_is_attack, intent_is_unknown, intent_tokens, monster_intends_attack
+from spirecomm.ai.monster_names import canonical_live_monster_name, monster_field
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.card_costs import (
@@ -84,19 +85,6 @@ LOOKAHEAD_FRAIL_RISK_PER_STACK = 0.07
 LOOKAHEAD_DEBUFF_RISK_CAP = 0.2
 LOOKAHEAD_DAMAGE_DISCOUNT = 0.8
 
-LIVE_MONSTER_ID_TO_WIKI_NAME = {
-    'slaverred': 'Red Slaver',
-    'redslaver': 'Red Slaver',
-    'slaverblue': 'Blue Slaver',
-    'blueslaver': 'Blue Slaver',
-    'fuzzylousenormal': 'Red Louse',
-    'fuzzylousedefensive': 'Green Louse',
-    'jawworm': 'Jaw Worm',
-    'gremlinnob': 'Gremlin Nob',
-    'slimeboss': 'Slime Boss',
-    'sphericguardian': 'Spheric Guardian',
-}
-
 # Adaptive search parameters
 BEAM_WIDTH_ACT1 = 20  # Beam width for Act 1 (simple enemies) - increased from 12 (+67%)
 BEAM_WIDTH_ACT2 = 30  # Beam width for Act 2 (moderate complexity) - increased from 18 (+67%)
@@ -117,21 +105,10 @@ M_VALUES = [20, 18, 15, 12, 10]  # Number of actions to full-simulate at each de
 
 
 def _monster_field(monster: Any, field_name: str, default: Any = None) -> Any:
-    if isinstance(monster, dict):
-        return monster.get(field_name, default)
-    return getattr(monster, field_name, default)
+    return monster_field(monster, field_name, default)
 
 
-def _normalize_monster_id(monster_id: str) -> str:
-    return re.sub(r'[^a-z0-9]', '', str(monster_id).lower())
-
-
-def _canonical_live_monster_name(monster: Any) -> str:
-    monster_id = _monster_field(monster, 'monster_id', '') or ''
-    mapped_name = LIVE_MONSTER_ID_TO_WIKI_NAME.get(_normalize_monster_id(monster_id))
-    if mapped_name:
-        return mapped_name
-    return str(_monster_field(monster, 'name', '') or '')
+_canonical_live_monster_name = canonical_live_monster_name
 
 
 def _canonical_card_name(card: Any) -> str:
