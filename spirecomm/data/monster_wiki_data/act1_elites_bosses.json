@@ -472,64 +472,6 @@
       "scaling_threat": 2.0
     }
   },
-  "Gremlin Giant": {
-    "monster_id": "Gremlin_Giant",
-    "name": "Gremlin Giant",
-    "monster_type": "elite",
-    "hp_ranges": {
-      "normal": {"min": 82, "max": 90},
-      "ascension_7+": {"min": 86, "max": 94}
-    },
-    "moves": [
-      {
-        "move_id": 0,
-        "name": "Smash",
-        "intent": "ATTACK",
-        "damage": 16,
-        "effect": "Deals 16 damage.",
-        "ascension_modifiers": {
-          "2+": {"damage": 18}
-        }
-      },
-      {
-        "move_id": 1,
-        "name": "Rush",
-        "intent": "ATTACK",
-        "damage": 30,
-        "effect": "Charges for 1 turn (becomes Stunned), then deals 30 damage.",
-        "ascension_modifiers": {
-          "2+": {"damage": 32}
-        }
-      },
-      {
-        "move_id": 2,
-        "name": "Garbage",
-        "intent": "DEFEND",
-        "damage": null,
-        "effect": "Gains 5 Block.",
-        "block_gain": 5,
-        "ascension_modifiers": {
-          "2+": {"block_gain": 8}
-        }
-      }
-    ],
-    "pattern": {
-      "description": "Alternates between attacking and defending/charging. Uses Rush to charge up for big damage next turn.",
-      "move_cycle": ["Smash", "Garbage", "Rush", "Smash"]
-    },
-    "special_mechanics": {
-      "type": "charge_attack",
-      "charge_move": "Rush",
-      "charge_turns": 1,
-      "charged_damage_multiplier": 1.875,
-      "strategy": "Defend heavily during Rush charge turn"
-    },
-    "threat_profile": {
-      "base_threat": 17,
-      "charge_threat": 25,
-      "scaling_threat": 2.0
-    }
-  },
   "Guardian": {
     "monster_id": "TheGuardian",
     "name": "The Guardian",

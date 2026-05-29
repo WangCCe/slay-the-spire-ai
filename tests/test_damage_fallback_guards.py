@@ -2679,6 +2679,19 @@ def test_enhanced_monster_database_loads_gremlin_nob_live_moves():
     }
 
 
+def test_enhanced_monster_database_rejects_fictional_gremlin_giant():
+    database = EnhancedMonsterDatabase()
+
+    assert database.get_monster_data("Gremlin Giant") is None
+    assert database.get_monster_data("Gremlin_Giant") is None
+    assert database.get_moves("Gremlin Giant") == []
+    assert database.predict_next_moves(
+        "Gremlin Giant",
+        current_turn=1,
+        monster_hp_percent=1.0,
+    ) == []
+
+
 def test_enhanced_monster_database_loads_jaw_worm_opening_and_moves():
     database = EnhancedMonsterDatabase()
 
