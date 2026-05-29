@@ -581,6 +581,9 @@ class CombatEndingDetector:
             damage_data['name'] = display_name
             base_damage = game_data_loader._parse_card_damage(damage_data) or 0
 
+        if card_name == 'Body Slam':
+            base_damage = self._get_player_block(context)
+
         if card_name == 'Whirlwind':
             energy = x_effect_energy(card, context.energy_available, context)
             return whirlwind_damage(card, energy, getattr(context, 'strength', 0))
@@ -670,6 +673,17 @@ class CombatEndingDetector:
                 amount = getattr(power, 'amount', None)
                 return amount if amount is not None else 1
         return 0
+
+    def _get_player_block(self, context: DecisionContext) -> int:
+        block = getattr(context, 'player_block', None)
+        if block is None:
+            player = getattr(getattr(context, 'game', None), 'player', None)
+            block = getattr(player, 'block', 0)
+
+        try:
+            return max(0, int(block or 0))
+        except (TypeError, ValueError):
+            return 0
 
     def _all_alive_targets_poisoned(self, context: DecisionContext) -> bool:
         monsters = getattr(context, 'monsters_alive', []) or []
