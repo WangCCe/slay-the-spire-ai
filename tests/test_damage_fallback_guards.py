@@ -2651,6 +2651,34 @@ def test_enhanced_monster_database_rejects_ambiguous_partial_names():
     assert database.get_monster_data("Champ")["name"] == "The Champ"
 
 
+def test_enhanced_monster_database_loads_gremlin_nob_live_moves():
+    database = EnhancedMonsterDatabase()
+
+    gremlin_nob = database.get_monster_data("Gremlin Nob")
+    predictions = database.predict_next_moves(
+        "GremlinNob",
+        current_turn=1,
+        monster_hp_percent=1.0,
+    )
+
+    assert gremlin_nob is not None
+    assert [move["name"] for move in gremlin_nob["moves"]] == [
+        "Bull Rush",
+        "Skull Bash",
+        "Bellow",
+    ]
+    bellow = database.get_move_by_id("GremlinNob", 3)
+    assert database.get_move_by_id("GremlinNob", 2)["name"] == "Skull Bash"
+    assert bellow["name"] == "Bellow"
+    assert "strength_gain" not in bellow
+    assert bellow["skill_strength_gain"] == 2
+    assert predictions[0]["move"]["name"] == "Bellow"
+    assert {prediction["move"]["name"] for prediction in predictions[1:]} == {
+        "Bull Rush",
+        "Skull Bash",
+    }
+
+
 def test_enhanced_monster_database_loads_jaw_worm_opening_and_moves():
     database = EnhancedMonsterDatabase()
 

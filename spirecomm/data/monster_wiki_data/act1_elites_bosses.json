@@ -87,6 +87,85 @@
       "scaling_threat": 2.5
     }
   },
+  "Gremlin Nob": {
+    "monster_id": "GremlinNob",
+    "name": "Gremlin Nob",
+    "aliases": ["GremlinNob"],
+    "monster_type": "elite",
+    "hp_ranges": {
+      "normal": {"min": 82, "max": 86},
+      "ascension_8+": {"min": 85, "max": 90}
+    },
+    "moves": [
+      {
+        "move_id": 1,
+        "name": "Bull Rush",
+        "intent": "ATTACK",
+        "damage": 14,
+        "hits": 1,
+        "effect": "Deals 14 damage.",
+        "ascension_modifiers": {
+          "3+": {"damage": 16}
+        }
+      },
+      {
+        "move_id": 2,
+        "name": "Skull Bash",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 6,
+        "hits": 1,
+        "vulnerable": 2,
+        "effect": "Deals 6 damage and applies 2 Vulnerable.",
+        "ascension_modifiers": {
+          "3+": {"damage": 8}
+        }
+      },
+      {
+        "move_id": 3,
+        "name": "Bellow",
+        "intent": "BUFF",
+        "damage": null,
+        "skill_strength_gain": 2,
+        "effect": "Gains Anger, causing Skill cards to grant Gremlin Nob 2 Strength.",
+        "ascension_modifiers": {
+          "18+": {"skill_strength_gain": 3}
+        }
+      }
+    ],
+    "pattern": {
+      "description": "Always opens with Bellow. Afterwards, Bull Rush is the primary attack and Skull Bash is the secondary attack/debuff.",
+      "initial_move": "Bellow",
+      "probabilities": {
+        "Bull Rush": 0.67,
+        "Skull Bash": 0.33
+      },
+      "constraints": [
+        "opens_with_bellow",
+        "skull_bash_not_repeated_on_ascension_18_plus",
+        "bull_rush_not_used_three_times_in_a_row"
+      ],
+      "prediction_limit": 2
+    },
+    "special_mechanics": {
+      "type": "skill_reactive_strength",
+      "power": "Anger",
+      "skill_strength_gain": 2,
+      "ascension_modifiers": {
+        "18+": {"skill_strength_gain": 3}
+      },
+      "recommended_strategy": {
+        "primary": "race_with_attacks",
+        "secondary": "avoid_unnecessary_skills_after_bellow",
+        "note": "Gremlin Nob's Bellow applies Anger; each Skill then increases future attack damage."
+      }
+    },
+    "threat_profile": {
+      "base_threat": 30,
+      "scaling_threat": 4.0,
+      "debuff_threat": 4,
+      "notes": "High Act 1 elite threat due to fast attacks and Skill-reactive Strength scaling."
+    }
+  },
   "Hexaghost": {
     "monster_id": "Hexaghost",
     "name": "Hexaghost",
