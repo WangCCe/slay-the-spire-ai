@@ -7,6 +7,8 @@ from typing import Any
 
 
 LIVE_MONSTER_ID_TO_WIKI_NAME = {
+    'awakenedone': 'Awakened One',
+    'fungibeast': 'Fungi Beast',
     'slaverred': 'Red Slaver',
     'redslaver': 'Red Slaver',
     'slaverblue': 'Blue Slaver',
@@ -17,6 +19,7 @@ LIVE_MONSTER_ID_TO_WIKI_NAME = {
     'gremlinnob': 'Gremlin Nob',
     'slimeboss': 'Slime Boss',
     'sphericguardian': 'Spheric Guardian',
+    'theguardian': 'The Guardian',
 }
 
 
