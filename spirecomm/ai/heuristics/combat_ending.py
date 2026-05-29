@@ -133,6 +133,10 @@ class CombatEndingDetector:
                 context,
                 attack_cards,
             )
+            random_targeting_uncertain = self._has_uncertain_random_target_attack(
+                context,
+                attack_cards,
+            )
 
             # Final decision
             lethal_detected = (
@@ -140,6 +144,7 @@ class CombatEndingDetector:
                 or proven_targeted_sequence
                 or (
                     not exact_sequence_search_applicable
+                    and not random_targeting_uncertain
                     and has_damage_potential
                     and targeting_feasible
                 )
@@ -155,6 +160,8 @@ class CombatEndingDetector:
                     reasons.append("Targeting constraints prevent lethal")
                 if exact_sequence_search_applicable and not proven_targeted_sequence:
                     reasons.append("No exact lethal sequence found")
+                if random_targeting_uncertain:
+                    reasons.append("Random-target attacks cannot prove multi-target lethal")
                 logger.info(f"[LETHAL_DETECTION] No lethal. Reason: {'; '.join(reasons)}")
 
             return lethal_detected
@@ -348,6 +355,20 @@ class CombatEndingDetector:
             and len(sequence_cards) == len(attack_cards)
             and len(sequence_cards) <= TARGETED_LETHAL_MAX_CARDS
             and len(monsters) <= TARGETED_LETHAL_MAX_MONSTERS
+        )
+
+    def _has_uncertain_random_target_attack(
+        self,
+        context: DecisionContext,
+        attack_cards: List[Card],
+    ) -> bool:
+        monsters = getattr(context, 'monsters_alive', []) or []
+        if len(monsters) <= 1:
+            return False
+
+        return any(
+            not self._is_aoe_attack(card) and not getattr(card, 'has_target', False)
+            for card in attack_cards
         )
 
     def _card_damage_against_monster(
@@ -814,7 +835,7 @@ class CombatEndingDetector:
                 attack_cards.append(card)
                 if self._is_aoe_attack(card):
                     aoe_cards.append(card)
-                else:
+                elif getattr(card, 'has_target', False):
                     single_target_count += 1
 
         for card in aoe_cards:

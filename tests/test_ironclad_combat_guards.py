@@ -5683,6 +5683,32 @@ def test_lethal_detector_rejects_single_target_distribution_false_positive(monke
     assert detector.find_lethal_sequence(context) == []
 
 
+def test_lethal_detector_rejects_random_target_attack_false_positive(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "sword boomerang": {
+            "name": "Sword Boomerang",
+            "description": "Deal 3 damage to a random enemy 3 times.",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    first_boomerang = _card("Sword Boomerang", "Sword Boomerang", cost=1, has_target=False)
+    first_boomerang.uuid = "boomerang-1"
+    second_boomerang = _card("Sword Boomerang", "Sword Boomerang", cost=1, has_target=False)
+    second_boomerang.uuid = "boomerang-2"
+    context = _combat_context(
+        [first_boomerang, second_boomerang],
+        energy=2,
+        monsters=[_louse(current_hp=16), _louse(current_hp=11)],
+    )
+    context.strength = 2
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 30
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
+
+
 def test_lethal_detector_uses_aoe_damage_before_single_target_cleanup(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
