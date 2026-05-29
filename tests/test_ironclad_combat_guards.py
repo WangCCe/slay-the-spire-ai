@@ -2444,6 +2444,47 @@ def test_simulation_summoner_handler_uses_live_monster_id(monkeypatch):
     assert monster_loader.minion_names == ["Bronze Automaton"]
 
 
+def test_simulation_phase_change_handler_uses_live_monster_id(monkeypatch):
+    class CanonicalOnlyPhaseLoader:
+        def __init__(self):
+            self.phase_names = []
+            self.data_names = []
+
+        def does_monster_have_phase_change(self, monster_name):
+            self.phase_names.append(monster_name)
+            return monster_name == "The Guardian"
+
+        def get_enhanced_monster_data(self, monster_name):
+            self.data_names.append(monster_name)
+            if monster_name == "The Guardian":
+                return {
+                    "special_mechanics": {
+                        "phases": [
+                            {
+                                "threshold_percent": 50,
+                                "name": "Defensive Mode",
+                                "burst_window": True,
+                            }
+                        ]
+                    }
+                }
+            return None
+
+    monster_loader = CanonicalOnlyPhaseLoader()
+    monkeypatch.setattr(data_loader_module, "game_data_loader", monster_loader)
+    guardian = _guardian(current_hp=100)
+    guardian.name = "Guardian"
+    context = _combat_context([], energy=0, monsters=[guardian])
+    state = SimulationState(context)
+
+    FastCombatSimulator(SynergyCardEvaluator())._handle_phase_change(state, state.monsters[0])
+
+    assert state.monsters[0]["current_phase"] == "Defensive Mode"
+    assert state.monsters[0]["phase_burst_window"] is True
+    assert monster_loader.phase_names == ["The Guardian"]
+    assert monster_loader.data_names == ["The Guardian"]
+
+
 def test_aoe_decision_matches_live_bronze_orb_minions_by_id(monkeypatch):
     class FakeMonsterLoader:
         def __init__(self):
