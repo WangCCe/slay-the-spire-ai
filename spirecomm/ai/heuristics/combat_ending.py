@@ -11,6 +11,7 @@ from typing import List, Tuple, Optional
 from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster
 from spirecomm.communication.action import PlayCardAction
+from spirecomm.ai.intent_utils import intent_is_attack
 from spirecomm.data.loader import game_data_loader
 from ..decision.base import DecisionContext
 from .card_names import canonical_card_name
@@ -582,14 +583,32 @@ class CombatEndingDetector:
     def _is_lethal_strength_skill(self, card: Card) -> bool:
         if getattr(card, 'type', None) != CardType.SKILL:
             return False
-        return self._base_card_name(card) in {'Flex', 'Limit Break'}
+        return self._base_card_name(card) in {'Flex', 'Limit Break', 'Spot Weakness'}
 
     def _strength_after_lethal_skill(self, card: Card, strength: int) -> int:
         if self._base_card_name(card) == 'Flex':
             return strength + (4 if getattr(card, 'upgrades', 0) > 0 else 2)
         if self._base_card_name(card) == 'Limit Break':
             return strength * 2
+        if self._base_card_name(card) == 'Spot Weakness':
+            return strength + (4 if getattr(card, 'upgrades', 0) > 0 else 3)
         return strength
+
+    def _lethal_strength_skill_targets(
+        self,
+        card: Card,
+        context: DecisionContext,
+        hp_state: Tuple[int, ...],
+    ) -> Tuple[Optional[int], ...]:
+        if self._base_card_name(card) != 'Spot Weakness':
+            return (None,)
+
+        return tuple(
+            monster_idx
+            for monster_idx, hp in enumerate(hp_state)
+            if hp > 0
+            and intent_is_attack(getattr(context.monsters_alive[monster_idx], 'intent', None))
+        )
 
     def _find_targeted_lethal_sequence(
         self,
@@ -667,23 +686,28 @@ class CombatEndingDetector:
                     if next_strength <= strength_state:
                         continue
 
-                    candidates.append(
-                        (
+                    for target_idx in self._lethal_strength_skill_targets(
+                        card,
+                        context,
+                        hp_state,
+                    ):
+                        candidates.append(
                             (
-                                0,
-                                0,
-                                next_strength - strength_state,
-                                -cost,
-                            ),
-                            card_pos,
-                            None,
-                            cost,
-                            hp_state,
-                            vulnerable_state,
-                            artifact_state,
-                            next_strength,
+                                (
+                                    0,
+                                    0,
+                                    next_strength - strength_state,
+                                    -cost,
+                                ),
+                                card_pos,
+                                target_idx,
+                                cost,
+                                hp_state,
+                                vulnerable_state,
+                                artifact_state,
+                                next_strength,
+                            )
                         )
-                    )
                     continue
 
                 if self._is_aoe_attack(card):

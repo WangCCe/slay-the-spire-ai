@@ -6348,6 +6348,59 @@ def test_lethal_detector_uses_limit_break_strength_before_followup(monkeypatch):
     ]
 
 
+def test_lethal_detector_uses_spot_weakness_strength_before_followup(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    spot_weakness = _card(
+        "Spot Weakness",
+        "Spot Weakness",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=True,
+    )
+    spot_weakness.uuid = "spot-weakness"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    target = _louse(current_hp=9)
+    target.intent = Intent.ATTACK
+    context = _combat_context([spot_weakness, strike], energy=2, monsters=[target])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    sequence = detector.find_lethal_sequence(context)
+    assert [action.card.uuid for action in sequence] == [
+        "spot-weakness",
+        "strike",
+    ]
+    assert sequence[0].target_monster is target
+
+
+def test_lethal_detector_requires_attacking_target_for_spot_weakness(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    spot_weakness = _card(
+        "Spot Weakness",
+        "Spot Weakness",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=True,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    target = _louse(current_hp=9)
+    target.intent = Intent.DEBUFF
+    context = _combat_context([spot_weakness, strike], energy=2, monsters=[target])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
+
+
 def test_lethal_detector_counts_heavy_blade_strength_multiplier(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
