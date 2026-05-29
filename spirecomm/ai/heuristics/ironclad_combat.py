@@ -1045,9 +1045,12 @@ class IroncladCombatPlanner(CombatPlanner):
     @staticmethod
     def _get_attack_hit_count(card: Card) -> int:
         card_name = canonical_card_name(card)
+        upgrades = getattr(card, 'upgrades', 0)
 
         if card_name == 'Twin Strike':
             return 2
+        if card_name == 'Pummel':
+            return 5 if upgrades > 0 else 4
 
         return 1
 

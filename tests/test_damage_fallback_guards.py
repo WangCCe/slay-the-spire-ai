@@ -2086,6 +2086,55 @@ def test_ironclad_fallback_damage_counts_twin_strike_hits(monkeypatch):
     assert damage == 12
 
 
+def test_ironclad_fallback_damage_counts_pummel_hits(monkeypatch):
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"description": "Deal 2 damage 4 times."} if card_name == "Pummel" else None,
+    )
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: 2,
+    )
+    pummel = Card(
+        card_id="Pummel",
+        name="Pummel",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.UNCOMMON,
+        has_target=True,
+        cost=1,
+        upgrades=0,
+    )
+    pummel.damage = None
+    context = SimpleNamespace(strength=1)
+
+    damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(
+        pummel,
+        context,
+    )
+
+    assert damage == 12
+
+    pummel_plus = Card(
+        card_id="Pummel",
+        name="Pummel+",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.UNCOMMON,
+        has_target=True,
+        cost=1,
+        upgrades=1,
+    )
+    pummel_plus.damage = None
+
+    upgraded_damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(
+        pummel_plus,
+        context,
+    )
+
+    assert upgraded_damage == 15
+
+
 def test_damage_curve_handles_hexaghost_divider_formula_without_warning(caplog):
     classifier = TurnTimingClassifier()
     context = SimpleNamespace(
