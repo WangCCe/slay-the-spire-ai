@@ -6616,6 +6616,71 @@ def test_lethal_detector_treats_active_corruption_seeing_red_as_zero_cost(monkey
     ]
 
 
+def test_lethal_detector_uses_played_corruption_for_followup_skill_costs(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "shockwave": {
+            "name": "Shockwave",
+            "description": "Apply 3 Weak, Vulnerable, and Strength Down to ALL enemies. Exhaust.",
+        },
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    loader._wiki_data = {
+        "shockwave": {
+            "name": "Shockwave",
+            "text": "Apply [3|5] #Weak, #Vulnerable, and #Strength Down to ALL enemies.\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    corruption = _card(
+        "Corruption",
+        "Corruption",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    corruption.uuid = "corruption"
+    seeing_red = _card(
+        "Seeing Red",
+        "Seeing Red",
+        card_type=CardType.SKILL,
+        cost=1,
+        cost_for_turn=3,
+        has_target=False,
+    )
+    seeing_red.uuid = "seeing-red"
+    shockwave = _card(
+        "Shockwave",
+        "Shockwave",
+        card_type=CardType.SKILL,
+        cost=2,
+        has_target=False,
+    )
+    shockwave.uuid = "shockwave"
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_1.uuid = "strike-1"
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    strike_2.uuid = "strike-2"
+    context = _combat_context(
+        [corruption, seeing_red, shockwave, strike_1, strike_2],
+        energy=3,
+        monsters=[_louse(current_hp=18)],
+    )
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    sequence = detector.find_lethal_sequence(context)
+    assert [action.card.uuid for action in sequence] == [
+        "corruption",
+        "shockwave",
+        "seeing-red",
+        "strike-1",
+        "strike-2",
+    ]
+    assert sequence[1].target_monster is None
+
+
 def test_lethal_detector_uses_bloodletting_energy_before_followup(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}

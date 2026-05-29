@@ -660,18 +660,29 @@ class CombatEndingDetector:
         except (TypeError, ValueError):
             return 0
 
+    def _context_corruption_active(self, context: DecisionContext) -> bool:
+        return self._get_player_debuff_stacks(context, 'Corruption') > 0
+
     def _lethal_card_cost(
         self,
         card: Card,
         context: DecisionContext,
         available_energy: int,
+        corruption_active: Optional[bool] = None,
     ) -> int:
+        if corruption_active is None:
+            corruption_active = self._context_corruption_active(context)
         if (
             getattr(card, 'type', None) == CardType.SKILL
-            and self._get_player_debuff_stacks(context, 'Corruption') > 0
+            and corruption_active
         ):
             return 0
         return effective_card_cost(card, available_energy)
+
+    def _is_lethal_corruption_support_card(self, card: Card) -> bool:
+        if getattr(card, 'type', None) != CardType.POWER:
+            return False
+        return self._base_card_name(card) == 'Corruption'
 
     def _is_lethal_vulnerable_support_card(self, card: Card) -> bool:
         if getattr(card, 'type', None) != CardType.SKILL:
@@ -696,6 +707,7 @@ class CombatEndingDetector:
             if (
                 self._is_lethal_strength_support_card(card)
                 or self._is_lethal_energy_support_card(card)
+                or self._is_lethal_corruption_support_card(card)
                 or self._is_lethal_vulnerable_support_card(card)
             )
         ]
@@ -723,6 +735,7 @@ class CombatEndingDetector:
         )
         starting_strength = getattr(context, 'strength', 0)
         starting_player_hp = self._context_player_hp(context)
+        starting_corruption_active = self._context_corruption_active(context)
         seen = set()
 
         def search(
@@ -732,6 +745,7 @@ class CombatEndingDetector:
             artifact_state,
             strength_state,
             player_hp_state,
+            corruption_active_state,
             remaining_energy,
         ):
             if all(hp <= 0 for hp in hp_state):
@@ -744,6 +758,7 @@ class CombatEndingDetector:
                 artifact_state,
                 strength_state,
                 player_hp_state,
+                corruption_active_state,
                 remaining_energy,
             )
             if state_key in seen:
@@ -753,7 +768,12 @@ class CombatEndingDetector:
             candidates = []
             for card_pos, card in enumerate(remaining_cards):
                 if self._is_lethal_strength_support_card(card):
-                    cost = self._lethal_card_cost(card, context, remaining_energy)
+                    cost = self._lethal_card_cost(
+                        card,
+                        context,
+                        remaining_energy,
+                        corruption_active_state,
+                    )
                     if cost > remaining_energy:
                         continue
 
@@ -782,12 +802,18 @@ class CombatEndingDetector:
                                 artifact_state,
                                 next_strength,
                                 player_hp_state,
+                                corruption_active_state,
                             )
                         )
                     continue
 
                 if self._is_lethal_energy_support_card(card):
-                    cost = self._lethal_card_cost(card, context, remaining_energy)
+                    cost = self._lethal_card_cost(
+                        card,
+                        context,
+                        remaining_energy,
+                        corruption_active_state,
+                    )
                     if cost > remaining_energy:
                         continue
 
@@ -817,12 +843,47 @@ class CombatEndingDetector:
                             artifact_state,
                             strength_state,
                             next_player_hp,
+                            corruption_active_state,
+                        )
+                    )
+                    continue
+
+                if self._is_lethal_corruption_support_card(card):
+                    if corruption_active_state:
+                        continue
+
+                    cost = effective_card_cost(card, remaining_energy)
+                    if cost > remaining_energy:
+                        continue
+
+                    candidates.append(
+                        (
+                            (
+                                0,
+                                0,
+                                0,
+                                -cost,
+                            ),
+                            card_pos,
+                            None,
+                            cost,
+                            hp_state,
+                            vulnerable_state,
+                            artifact_state,
+                            strength_state,
+                            player_hp_state,
+                            True,
                         )
                     )
                     continue
 
                 if self._is_lethal_vulnerable_support_card(card):
-                    cost = self._lethal_card_cost(card, context, remaining_energy)
+                    cost = self._lethal_card_cost(
+                        card,
+                        context,
+                        remaining_energy,
+                        corruption_active_state,
+                    )
                     if cost > remaining_energy:
                         continue
 
@@ -855,6 +916,7 @@ class CombatEndingDetector:
                             next_artifact,
                             strength_state,
                             player_hp_state,
+                            corruption_active_state,
                         )
                     )
                     continue
@@ -916,6 +978,7 @@ class CombatEndingDetector:
                             next_artifact,
                             strength_state,
                             player_hp_state,
+                            corruption_active_state,
                         )
                     )
                     continue
@@ -989,6 +1052,7 @@ class CombatEndingDetector:
                             next_artifact,
                             strength_state,
                             player_hp_state,
+                            corruption_active_state,
                         )
                     )
 
@@ -1004,6 +1068,7 @@ class CombatEndingDetector:
                 next_artifact,
                 next_strength,
                 next_player_hp,
+                next_corruption_active,
             ) in candidates:
                 card = remaining_cards[card_pos]
                 if self._base_card_name(card) == 'Fiend Fire':
@@ -1017,6 +1082,7 @@ class CombatEndingDetector:
                     next_artifact,
                     next_strength,
                     next_player_hp,
+                    next_corruption_active,
                     remaining_energy - cost,
                 )
                 if tail is not None:
@@ -1041,6 +1107,7 @@ class CombatEndingDetector:
             starting_artifact,
             starting_strength,
             starting_player_hp,
+            starting_corruption_active,
             available_energy,
         )
         return sequence or []
