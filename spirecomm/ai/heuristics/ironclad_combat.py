@@ -1005,6 +1005,9 @@ class IroncladCombatPlanner(CombatPlanner):
             base_damage = 6
 
         strength = getattr(context, 'strength', 0)
+        if card_name == 'Heavy Blade':
+            multiplier = 5 if getattr(card, 'upgrades', 0) > 0 else 3
+            return max(0, base_damage + strength * multiplier)
         if card_name == 'Perfected Strike':
             per_strike_bonus = 3 if getattr(card, 'upgrades', 0) > 0 else 2
             return max(0, base_damage + self._count_strike_cards(context) * per_strike_bonus + strength)

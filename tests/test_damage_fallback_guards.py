@@ -2003,6 +2003,58 @@ def test_ironclad_fallback_damage_counts_whirlwind_x_energy(monkeypatch):
     assert damage == 15
 
 
+def test_ironclad_fallback_damage_applies_heavy_blade_strength_multiplier(monkeypatch):
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"description": "Deal 14 damage. Strength affects Heavy Blade 3 times."}
+        if card_name == "Heavy Blade"
+        else None,
+    )
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: 14,
+    )
+
+    heavy_blade = Card(
+        card_id="Heavy Blade",
+        name="Heavy Blade",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.COMMON,
+        has_target=True,
+        cost=2,
+        upgrades=0,
+    )
+    heavy_blade.damage = None
+    context = SimpleNamespace(strength=3)
+
+    damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(
+        heavy_blade,
+        context,
+    )
+
+    assert damage == 23
+
+    heavy_blade_plus = Card(
+        card_id="Heavy Blade",
+        name="Heavy Blade+",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.COMMON,
+        has_target=True,
+        cost=2,
+        upgrades=1,
+    )
+    heavy_blade_plus.damage = None
+
+    upgraded_damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(
+        heavy_blade_plus,
+        context,
+    )
+
+    assert upgraded_damage == 29
+
+
 def test_damage_curve_handles_hexaghost_divider_formula_without_warning(caplog):
     classifier = TurnTimingClassifier()
     context = SimpleNamespace(
