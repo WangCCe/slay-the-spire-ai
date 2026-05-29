@@ -633,12 +633,32 @@ class CombatEndingDetector:
     def _is_lethal_energy_support_card(self, card: Card) -> bool:
         if getattr(card, 'type', None) != CardType.SKILL:
             return False
-        return self._base_card_name(card) == 'Seeing Red'
+        return self._base_card_name(card) in {'Bloodletting', 'Offering', 'Seeing Red'}
 
     def _lethal_energy_gain(self, card: Card) -> int:
-        if self._base_card_name(card) == 'Seeing Red':
+        card_name = self._base_card_name(card)
+        if card_name == 'Bloodletting':
+            return 3 if getattr(card, 'upgrades', 0) > 0 else 2
+        if card_name in {'Offering', 'Seeing Red'}:
             return 2
         return 0
+
+    def _lethal_energy_hp_loss(self, card: Card) -> int:
+        card_name = self._base_card_name(card)
+        if card_name == 'Bloodletting':
+            return 3
+        if card_name == 'Offering':
+            return 6
+        return 0
+
+    def _context_player_hp(self, context: DecisionContext) -> int:
+        hp = getattr(context, 'player_hp', None)
+        if hp is None:
+            hp = getattr(getattr(context, 'game', None), 'current_hp', 0)
+        try:
+            return int(hp)
+        except (TypeError, ValueError):
+            return 0
 
     def _is_lethal_vulnerable_support_card(self, card: Card) -> bool:
         if getattr(card, 'type', None) != CardType.SKILL:
@@ -689,6 +709,7 @@ class CombatEndingDetector:
             for monster in context.monsters_alive
         )
         starting_strength = getattr(context, 'strength', 0)
+        starting_player_hp = self._context_player_hp(context)
         seen = set()
 
         def search(
@@ -697,6 +718,7 @@ class CombatEndingDetector:
             vulnerable_state,
             artifact_state,
             strength_state,
+            player_hp_state,
             remaining_energy,
         ):
             if all(hp <= 0 for hp in hp_state):
@@ -708,6 +730,7 @@ class CombatEndingDetector:
                 vulnerable_state,
                 artifact_state,
                 strength_state,
+                player_hp_state,
                 remaining_energy,
             )
             if state_key in seen:
@@ -745,6 +768,7 @@ class CombatEndingDetector:
                                 vulnerable_state,
                                 artifact_state,
                                 next_strength,
+                                player_hp_state,
                             )
                         )
                     continue
@@ -755,9 +779,14 @@ class CombatEndingDetector:
                         continue
 
                     energy_gain = self._lethal_energy_gain(card)
+                    hp_loss = self._lethal_energy_hp_loss(card)
+                    if player_hp_state <= hp_loss:
+                        continue
+
                     net_cost = cost - energy_gain
                     if net_cost >= 0:
                         continue
+                    next_player_hp = player_hp_state - hp_loss
 
                     candidates.append(
                         (
@@ -774,6 +803,7 @@ class CombatEndingDetector:
                             vulnerable_state,
                             artifact_state,
                             strength_state,
+                            next_player_hp,
                         )
                     )
                     continue
@@ -811,6 +841,7 @@ class CombatEndingDetector:
                             next_vulnerable,
                             next_artifact,
                             strength_state,
+                            player_hp_state,
                         )
                     )
                     continue
@@ -871,6 +902,7 @@ class CombatEndingDetector:
                             next_vulnerable,
                             next_artifact,
                             strength_state,
+                            player_hp_state,
                         )
                     )
                     continue
@@ -943,6 +975,7 @@ class CombatEndingDetector:
                             next_vulnerable,
                             next_artifact,
                             strength_state,
+                            player_hp_state,
                         )
                     )
 
@@ -957,6 +990,7 @@ class CombatEndingDetector:
                 next_vulnerable,
                 next_artifact,
                 next_strength,
+                next_player_hp,
             ) in candidates:
                 card = remaining_cards[card_pos]
                 if self._base_card_name(card) == 'Fiend Fire':
@@ -969,6 +1003,7 @@ class CombatEndingDetector:
                     next_vulnerable,
                     next_artifact,
                     next_strength,
+                    next_player_hp,
                     remaining_energy - cost,
                 )
                 if tail is not None:
@@ -992,6 +1027,7 @@ class CombatEndingDetector:
             starting_vulnerable,
             starting_artifact,
             starting_strength,
+            starting_player_hp,
             available_energy,
         )
         return sequence or []

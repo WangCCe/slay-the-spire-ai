@@ -6544,6 +6544,104 @@ def test_lethal_detector_uses_seeing_red_energy_before_followup(monkeypatch):
     ]
 
 
+def test_lethal_detector_uses_bloodletting_energy_before_followup(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    bloodletting = _card(
+        "Bloodletting",
+        "Bloodletting",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    bloodletting.uuid = "bloodletting"
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_1.uuid = "strike-1"
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    strike_2.uuid = "strike-2"
+    context = _combat_context(
+        [bloodletting, strike_1, strike_2],
+        energy=0,
+        monsters=[_louse(current_hp=12)],
+    )
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "bloodletting",
+        "strike-1",
+        "strike-2",
+    ]
+
+
+def test_lethal_detector_rejects_bloodletting_energy_when_hp_would_hit_zero(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    bloodletting = _card(
+        "Bloodletting",
+        "Bloodletting",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [bloodletting, strike_1, strike_2],
+        energy=0,
+        monsters=[_louse(current_hp=12)],
+    )
+    context.game.current_hp = 3
+    context.player_hp = 3
+    context.player_hp_pct = 3 / 80
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
+
+
+def test_lethal_detector_uses_offering_energy_before_followup_when_hp_safe(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    offering = _card(
+        "Offering",
+        "Offering",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    offering.uuid = "offering"
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_1.uuid = "strike-1"
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    strike_2.uuid = "strike-2"
+    context = _combat_context(
+        [offering, strike_1, strike_2],
+        energy=0,
+        monsters=[_louse(current_hp=12)],
+    )
+    context.game.current_hp = 7
+    context.player_hp = 7
+    context.player_hp_pct = 7 / 80
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "offering",
+        "strike-1",
+        "strike-2",
+    ]
+
+
 def test_lethal_detector_requires_attacking_target_for_spot_weakness(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
