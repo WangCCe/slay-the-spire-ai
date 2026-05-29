@@ -5464,6 +5464,46 @@ def test_lethal_aoe_cleanup_uses_dropkick_energy_refund(monkeypatch):
     assert sequence[2].target_monster is surviving_monster
 
 
+def test_lethal_aoe_cleanup_tries_refund_line_before_greedy_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "cleave": {
+            "name": "Cleave",
+            "description": "Deal 8 damage to ALL enemies.",
+        },
+        "dropkick": {
+            "name": "Dropkick",
+            "description": "Deal 5 damage. If the enemy has Vulnerable, gain [R] and draw 1 card.",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    cleave.uuid = "cleave"
+    dropkick = _card("Dropkick", "Dropkick", cost=1)
+    dropkick.uuid = "dropkick"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    surviving_monster = _louse(current_hp=28)
+    context = _combat_context(
+        [cleave, dropkick, strike],
+        energy=2,
+        monsters=[surviving_monster, _louse(current_hp=8)],
+    )
+    context.vulnerable_stacks[0] = 1
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+
+    sequence = detector.find_lethal_sequence(context)
+
+    assert [action.card.uuid for action in sequence] == ["cleave", "dropkick", "strike"]
+
+
 def test_lethal_sequence_uses_multiple_attacks_on_one_monster():
     strike_1 = _card("Strike_R", "Strike", cost=1)
     strike_1.uuid = "strike-1"

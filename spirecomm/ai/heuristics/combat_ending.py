@@ -329,6 +329,9 @@ class CombatEndingDetector:
         monster_idx: int,
         available_energy: int,
     ) -> int:
+        upfront_cost = effective_card_cost(card, available_energy)
+        if upfront_cost > available_energy:
+            return upfront_cost
         return effective_card_cost_after_refund(
             card,
             available_energy,
@@ -408,6 +411,7 @@ class CombatEndingDetector:
                     best_card = None
                     best_cost = 0
                     best_damage = 0
+                    best_priority = None
 
                     for card in attack_cards:
                         card_key = self._card_play_key(card)
@@ -429,10 +433,22 @@ class CombatEndingDetector:
                             monster_idx,
                             remaining_energy,
                         )
-                        if damage > best_damage:
+                        refunds_energy = self._card_refunds_energy_against_monster(
+                            card,
+                            context,
+                            monster_idx,
+                        )
+                        priority = (
+                            1 if damage >= damage_needed else 0,
+                            1 if refunds_energy else 0,
+                            damage,
+                            -cost,
+                        )
+                        if best_priority is None or priority > best_priority:
                             best_card = card
                             best_cost = cost
                             best_damage = damage
+                            best_priority = priority
 
                     if best_card is None or best_damage <= 0:
                         sequence = []
