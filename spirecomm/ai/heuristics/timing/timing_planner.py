@@ -25,6 +25,9 @@ from spirecomm.spire.card import CardType
 
 logger = logging.getLogger(__name__)
 
+TARGETED_LETHAL_MAX_CARDS = 8
+TARGETED_LETHAL_MAX_MONSTERS = 4
+
 
 class TimingAwareCombatPlanner:
     """
@@ -152,6 +155,15 @@ class TimingAwareCombatPlanner:
             if not playable_cards:
                 return False
 
+            targeted_sequence = self._find_targeted_lethal_sequence(
+                context,
+                playable_cards,
+                monsters,
+                getattr(context, 'energy_available', 3),
+            )
+            if targeted_sequence:
+                return True
+
             # Calculate damage options, then choose a lethal affordable subset.
             damage_options = []
             energy = getattr(context, 'energy_available', 3)
@@ -220,6 +232,15 @@ class TimingAwareCombatPlanner:
 
             if not playable_cards or not monsters:
                 return []
+
+            targeted_sequence = self._find_targeted_lethal_sequence(
+                context,
+                playable_cards,
+                monsters,
+                getattr(context, 'energy_available', 3),
+            )
+            if targeted_sequence:
+                return targeted_sequence
 
             attack_options = []
             for card in playable_cards:
@@ -521,6 +542,180 @@ class TimingAwareCombatPlanner:
 
         return search(0, starting_energy, ())
 
+    def _find_targeted_lethal_sequence(
+        self,
+        context,
+        playable_cards,
+        monsters,
+        available_energy: int,
+    ) -> List:
+        """Prove a single-target lethal line with target-specific status effects."""
+        from spirecomm.communication.action import PlayCardAction
+
+        target_cards = [
+            card
+            for card in playable_cards
+            if getattr(card, 'has_target', False)
+            and not self._is_card_aoe(card)
+            and self._estimate_card_damage(card, context) > 0
+        ]
+        if not target_cards or not monsters:
+            return []
+        if (
+            len(target_cards) > TARGETED_LETHAL_MAX_CARDS
+            or len(monsters) > TARGETED_LETHAL_MAX_MONSTERS
+        ):
+            return []
+
+        starting_hp = tuple(
+            max(0, getattr(monster, 'current_hp', 0) + getattr(monster, 'block', 0))
+            for monster in monsters
+        )
+        seen = set()
+
+        def search(remaining_cards, hp_state, remaining_energy):
+            if all(hp <= 0 for hp in hp_state):
+                return []
+
+            state_key = (
+                tuple(self._card_play_key(card) for card in remaining_cards),
+                hp_state,
+                remaining_energy,
+            )
+            if state_key in seen:
+                return None
+            seen.add(state_key)
+
+            candidates = []
+            for card_pos, card in enumerate(remaining_cards):
+                for monster_idx, hp in enumerate(hp_state):
+                    if hp <= 0:
+                        continue
+
+                    cost = self._card_energy_cost_against_monster(
+                        card,
+                        context,
+                        monsters,
+                        monster_idx,
+                        remaining_energy,
+                    )
+                    if cost > remaining_energy:
+                        continue
+
+                    damage = self._card_damage_against_monster(
+                        card,
+                        context,
+                        monsters,
+                        monster_idx,
+                        remaining_energy,
+                    )
+                    if damage <= 0:
+                        continue
+
+                    next_hp = list(hp_state)
+                    next_hp[monster_idx] = max(0, hp - damage)
+                    refunds_energy = self._card_energy_refund_against_monster(
+                        card,
+                        context,
+                        monsters,
+                        monster_idx,
+                    ) > 0
+                    priority = (
+                        1 if damage >= hp else 0,
+                        1 if refunds_energy else 0,
+                        damage,
+                        -cost,
+                    )
+                    candidates.append((
+                        priority,
+                        card_pos,
+                        monster_idx,
+                        cost,
+                        tuple(next_hp),
+                    ))
+
+            candidates.sort(key=lambda item: item[0], reverse=True)
+
+            for _priority, card_pos, monster_idx, cost, next_hp in candidates:
+                card = remaining_cards[card_pos]
+                next_cards = remaining_cards[:card_pos] + remaining_cards[card_pos + 1:]
+                tail = search(next_cards, next_hp, remaining_energy - cost)
+                if tail is not None:
+                    return [
+                        PlayCardAction(
+                            card=card,
+                            target_monster=monsters[monster_idx],
+                        )
+                    ] + tail
+
+            return None
+
+        sequence = search(tuple(target_cards), starting_hp, max(0, int(available_energy)))
+        return sequence or []
+
+    @staticmethod
+    def _card_play_key(card):
+        return getattr(card, 'uuid', None) or id(card)
+
+    def _card_damage_against_monster(
+        self,
+        card,
+        context,
+        monsters,
+        monster_idx: int,
+        available_energy: int,
+    ) -> int:
+        damage = self._estimate_card_damage(card, context)
+        if self._get_player_debuff_stacks(context, 'Weak') > 0:
+            damage = self._apply_per_hit_damage_multiplier(
+                card,
+                context,
+                damage,
+                available_energy,
+                0.75,
+            )
+
+        if self._monster_vulnerable_stacks(context, monsters, monster_idx) > 0:
+            damage = self._apply_per_hit_damage_multiplier(
+                card,
+                context,
+                damage,
+                available_energy,
+                1.5,
+            )
+
+        return max(0, int(damage))
+
+    def _card_energy_cost_against_monster(
+        self,
+        card,
+        context,
+        monsters,
+        monster_idx: int,
+        available_energy: int,
+    ) -> int:
+        return playable_card_cost_after_refund(
+            card,
+            available_energy,
+            self._card_energy_refund_against_monster(card, context, monsters, monster_idx),
+        )
+
+    def _card_energy_refund_against_monster(
+        self,
+        card,
+        context,
+        monsters,
+        monster_idx: int,
+    ) -> int:
+        return energy_refund_for_card(
+            card,
+            target_vulnerable=self._monster_vulnerable_stacks(
+                context,
+                monsters,
+                monster_idx,
+            ) > 0,
+        )
+
     def _single_target_damage_can_kill_all(self, damage_instances, monster_hp) -> bool:
         """Check whether single-target damage instances can cover each monster HP pool."""
         effects = [('single', damage) for damage in damage_instances]
@@ -658,7 +853,6 @@ class TimingAwareCombatPlanner:
         )
 
     def _all_alive_targets_vulnerable(self, context, monsters) -> bool:
-        vulnerable_stacks = getattr(context, 'vulnerable_stacks', {}) or {}
         alive_targets = [
             index for index, monster in enumerate(monsters)
             if getattr(monster, 'current_hp', 0) > 0
@@ -666,7 +860,21 @@ class TimingAwareCombatPlanner:
         if not alive_targets:
             return False
 
-        return all(vulnerable_stacks.get(index, 0) > 0 for index in alive_targets)
+        return all(
+            self._monster_vulnerable_stacks(context, monsters, index) > 0
+            for index in alive_targets
+        )
+
+    def _monster_vulnerable_stacks(self, context, monsters, monster_idx: int) -> int:
+        vulnerable_stacks = getattr(context, 'vulnerable_stacks', {}) or {}
+        stacks = vulnerable_stacks.get(monster_idx, 0)
+        if stacks:
+            return stacks
+
+        if 0 <= monster_idx < len(monsters):
+            return self._get_monster_power_amount(monsters[monster_idx], 'Vulnerable')
+
+        return 0
 
     def _all_alive_targets_poisoned(self, context) -> bool:
         """Return True only when every live target is known to have Poison."""
