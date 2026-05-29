@@ -616,6 +616,16 @@ class CombatEndingDetector:
             and intent_is_attack(getattr(context.monsters_alive[monster_idx], 'intent', None))
         )
 
+    def _is_lethal_energy_support_card(self, card: Card) -> bool:
+        if getattr(card, 'type', None) != CardType.SKILL:
+            return False
+        return self._base_card_name(card) == 'Seeing Red'
+
+    def _lethal_energy_gain(self, card: Card) -> int:
+        if self._base_card_name(card) == 'Seeing Red':
+            return 2
+        return 0
+
     def _find_targeted_lethal_sequence(
         self,
         context: DecisionContext,
@@ -631,7 +641,10 @@ class CombatEndingDetector:
         support_cards = [
             card
             for card in getattr(context, 'playable_cards', []) or []
-            if self._is_lethal_strength_support_card(card)
+            if (
+                self._is_lethal_strength_support_card(card)
+                or self._is_lethal_energy_support_card(card)
+            )
         ]
         sequence_cards = support_cards + sequence_cards
         if not sequence_cards or not getattr(context, 'monsters_alive', None):
@@ -714,6 +727,35 @@ class CombatEndingDetector:
                                 next_strength,
                             )
                         )
+                    continue
+
+                if self._is_lethal_energy_support_card(card):
+                    cost = effective_card_cost(card, remaining_energy)
+                    if cost > remaining_energy:
+                        continue
+
+                    energy_gain = self._lethal_energy_gain(card)
+                    net_cost = cost - energy_gain
+                    if net_cost >= 0:
+                        continue
+
+                    candidates.append(
+                        (
+                            (
+                                0,
+                                0,
+                                energy_gain - cost,
+                                -cost,
+                            ),
+                            card_pos,
+                            None,
+                            net_cost,
+                            hp_state,
+                            vulnerable_state,
+                            artifact_state,
+                            strength_state,
+                        )
+                    )
                     continue
 
                 if self._is_aoe_attack(card):

@@ -6425,6 +6425,39 @@ def test_lethal_detector_does_not_use_demon_form_as_immediate_strength(monkeypat
     assert detector.find_lethal_sequence(context) == []
 
 
+def test_lethal_detector_uses_seeing_red_energy_before_followup(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    seeing_red = _card(
+        "Seeing Red",
+        "Seeing Red",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    seeing_red.uuid = "seeing-red"
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_1.uuid = "strike-1"
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    strike_2.uuid = "strike-2"
+    context = _combat_context(
+        [seeing_red, strike_1, strike_2],
+        energy=1,
+        monsters=[_louse(current_hp=12)],
+    )
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "seeing-red",
+        "strike-1",
+        "strike-2",
+    ]
+
+
 def test_lethal_detector_requires_attacking_target_for_spot_weakness(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
