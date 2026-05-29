@@ -5227,6 +5227,37 @@ def test_beam_search_does_not_play_more_cards_after_x_cost_whirlwind_spends_all_
     assert card_ids[-1] == "Whirlwind"
 
 
+def test_beam_search_uses_energy_gained_by_bloodletting_for_followup_cards(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bloodletting": {
+            "name": "Bloodletting",
+            "description": "Lose 3 HP.\nGain 2 Energy.",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    bloodletting = _card("Bloodletting", "Bloodletting", card_type=CardType.SKILL, cost=0, has_target=False)
+    strike = _card("Strike_R", "Strike", cost=1)
+    bloodletting.uuid = "bloodletting"
+    strike.uuid = "strike"
+    context = _combat_context([bloodletting, strike], energy=0, monsters=[_louse(current_hp=100)])
+    planner = IroncladCombatPlanner()
+
+    def prefer_long_sequences(sequence, _initial_state, _final_state, _context):
+        return len(sequence)
+
+    planner._score_sequence = prefer_long_sequences
+
+    sequence = planner._beam_search_turn(context, [bloodletting, strike], 10, 4)
+
+    assert [action.card.card_id for action in sequence] == ["Bloodletting", "Strike_R"]
+
+
 def test_beam_search_skips_zero_energy_whirlwind():
     whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
     context = _combat_context([whirlwind], energy=0, monsters=[_louse(current_hp=50)])

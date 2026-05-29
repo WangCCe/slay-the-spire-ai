@@ -255,10 +255,10 @@ class IroncladCombatPlanner(CombatPlanner):
                         continue
 
                     # Check energy
-                    cost = effective_card_cost(card, state.player_energy)
+                    cost = self._card_cost_for_state(card, state)
                     if self._is_zero_effect_x_attack(card, cost, context):
                         continue
-                    if energy_spent + cost > context.energy_available:
+                    if cost > state.player_energy:
                         continue
 
                     # === NEW: Target exploration ===
@@ -397,6 +397,16 @@ class IroncladCombatPlanner(CombatPlanner):
                 )
 
         return best_sequence
+
+    @staticmethod
+    def _card_cost_for_state(card: Card, state: SimulationState) -> int:
+        cost = effective_card_cost(card, getattr(state, 'player_energy', 0))
+        if (
+            getattr(card, 'type', None) == CardType.SKILL
+            and getattr(state, 'corruption_active', False)
+        ):
+            return 0
+        return cost
 
     @staticmethod
     def _is_zero_effect_x_attack(card: Card, cost: int, context: DecisionContext) -> bool:
