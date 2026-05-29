@@ -2441,6 +2441,72 @@ def test_safe_window_detection_counts_scripted_strength_gain_before_attack(monke
     ]
 
 
+def test_future_strength_prediction_uses_live_id_for_louse_grow(monkeypatch):
+    class CanonicalOnlyLoader:
+        def get_enhanced_monster_data(self, monster_name):
+            if monster_name != "Red Louse":
+                return None
+            return {
+                "moves": [
+                    {
+                        "name": "Grow",
+                        "strength_gain": 3,
+                        "ascension_modifiers": {"17+": {"strength_gain": 4}},
+                    }
+                ],
+                "special_mechanics": {"type": "curl_up"},
+            }
+
+    monkeypatch.setattr(data_loader, "game_data_loader", CanonicalOnlyLoader())
+    classifier = TurnTimingClassifier()
+    live_louse = SimpleNamespace(name="Louse", monster_id="FuzzyLouseNormal", strength=0)
+
+    predicted_strength = classifier._predict_future_strength(
+        live_louse,
+        current_turn=1,
+        target_turn=2,
+        current_strength=0,
+        ascension_level=17,
+    )
+
+    assert predicted_strength == 4
+
+
+def test_future_strength_prediction_counts_grow_on_non_scaler_special_mechanics(monkeypatch):
+    class FungiLoader:
+        def get_enhanced_monster_data(self, monster_name):
+            if monster_name != "Fungi Beast":
+                return None
+            return {
+                "moves": [
+                    {
+                        "name": "Bite",
+                        "damage": 6,
+                    },
+                    {
+                        "name": "Grow",
+                        "strength_gain": 3,
+                        "ascension_modifiers": {"17+": {"strength_gain": 5}},
+                    },
+                ],
+                "special_mechanics": {"type": "death_effect"},
+            }
+
+    monkeypatch.setattr(data_loader, "game_data_loader", FungiLoader())
+    classifier = TurnTimingClassifier()
+    fungi_beast = SimpleNamespace(name="Fungi Beast", monster_id="FungiBeast", strength=0)
+
+    predicted_strength = classifier._predict_future_strength(
+        fungi_beast,
+        current_turn=1,
+        target_turn=2,
+        current_strength=0,
+        ascension_level=17,
+    )
+
+    assert predicted_strength == 5
+
+
 def test_safe_window_detection_uses_target_turn_for_damage_and_hits_formulas(monkeypatch):
     monkeypatch.setattr(
         data_loader.game_data_loader,

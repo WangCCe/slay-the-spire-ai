@@ -9,6 +9,7 @@ import logging
 from typing import List, Dict, Any, Optional, Tuple
 
 from spirecomm.ai.intent_utils import intent_is_attack
+from spirecomm.ai.monster_names import canonical_live_monster_name
 
 from .models import (
     TurnTiming,
@@ -747,7 +748,8 @@ class TurnTimingClassifier:
             from spirecomm.data.loader import game_data_loader
 
             # Get monster's special mechanics
-            monster_data = game_data_loader.get_enhanced_monster_data(monster.name)
+            monster_name = canonical_live_monster_name(monster)
+            monster_data = game_data_loader.get_enhanced_monster_data(monster_name)
             if not monster_data:
                 return current_strength
 
@@ -784,7 +786,7 @@ class TurnTimingClassifier:
 
                 predicted_strength = current_strength + (ritual_triggers * ritual_value)
 
-                logger.debug(f"[RITUAL_PREDICTION] {monster.name}: "
+                logger.debug(f"[RITUAL_PREDICTION] {monster_name}: "
                            f"ascension={ascension_level}, ritual_value={ritual_value}, "
                            f"current_str={current_strength}, triggers={ritual_triggers}, "
                            f"predicted_str={predicted_strength}")
@@ -793,40 +795,24 @@ class TurnTimingClassifier:
 
             # Handle one-time Strength gains (Louse Grow, Fungi Beast Grow)
             # These need ascension-aware prediction too
-            if 'strength_scaler' in mech_type or 'curl_up' in mech_type:
-                # Check moves for Grow abilities with ascension modifiers
-                moves_data = monster_data.get('moves', [])
-                strength_per_trigger = 0
+            moves_data = monster_data.get('moves', [])
+            strength_per_trigger = 0
 
-                for move in moves_data:
-                    if move.get('name', '').lower() in ['grow', 'growth']:
-                        base_str_gain = move.get('strength_gain', 0)
-                        if base_str_gain > 0:
-                            # Check for ascension modifiers
-                            if 'ascension_modifiers' in move:
-                                asc_mods = move['ascension_modifiers']
-                                # Apply highest applicable ascension modifier
-                                if ascension_level >= 17 and '17+' in asc_mods:
-                                    strength_per_trigger = asc_mods['17+'].get('strength_gain', base_str_gain)
-                                elif ascension_level >= 2 and '2+' in asc_mods:
-                                    strength_per_trigger = asc_mods['2+'].get('strength_gain', base_str_gain)
-                                else:
-                                    strength_per_trigger = base_str_gain
-                            else:
-                                strength_per_trigger = base_str_gain
-                            break
+            for move in moves_data:
+                if move.get('name', '').lower() in ['grow', 'growth']:
+                    strength_per_trigger = self._resolve_move_strength_gain(move, ascension_level)
+                    break
 
-                # For one-time gains, we assume monster has already used Grow by turn 2+
-                # This is a simplification - in reality, need to track if Grow was used
-                if target_turn > current_turn:
-                    # Assume Grow was used on turn 1 or 2
-                    predicted_strength = current_strength + strength_per_trigger
-                    logger.debug(f"[GROW_PREDICTION] {monster.name}: ascension={ascension_level}, "
-                               f"strength_gain={strength_per_trigger}, predicted_str={predicted_strength}")
-                    return predicted_strength
+            # For one-time gains, we assume monster has already used Grow by turn 2+
+            # This is a simplification - in reality, need to track if Grow was used
+            if strength_per_trigger > 0 and target_turn > current_turn:
+                predicted_strength = current_strength + strength_per_trigger
+                logger.debug(f"[GROW_PREDICTION] {monster_name}: ascension={ascension_level}, "
+                           f"strength_gain={strength_per_trigger}, predicted_str={predicted_strength}")
+                return predicted_strength
 
             # Handle other strength scaling mechanics
-            elif mech_type == 'strength_scaler':
+            if mech_type in ('strength_scaler', 'strength_scaling'):
                 strength_per_turn = special_mechanics.get('strength_per_turn', 0)
                 if strength_per_turn > 0:
                     turns_passed = target_turn - current_turn
