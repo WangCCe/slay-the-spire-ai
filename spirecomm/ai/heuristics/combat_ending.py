@@ -54,6 +54,9 @@ class _TargetedLethalState:
             self.energy,
         )
 
+    def after_spending(self, cost: int, **changes) -> "_TargetedLethalState":
+        return replace(self, energy=self.energy - cost, **changes)
+
 
 @dataclass(frozen=True)
 class _TargetedLethalCandidate:
@@ -840,10 +843,9 @@ class CombatEndingDetector:
                                 priority=(0, 0, next_strength - state.strength, -cost),
                                 card_pos=card_pos,
                                 monster_idx=target_idx,
-                                next_state=replace(
-                                    state,
+                                next_state=state.after_spending(
+                                    cost,
                                     strength=next_strength,
-                                    energy=state.energy - cost,
                                 ),
                             )
                         )
@@ -874,10 +876,9 @@ class CombatEndingDetector:
                             priority=(0, 0, energy_gain - cost, -cost),
                             card_pos=card_pos,
                             monster_idx=None,
-                            next_state=replace(
-                                state,
+                            next_state=state.after_spending(
+                                net_cost,
                                 player_hp=next_player_hp,
-                                energy=state.energy - net_cost,
                             ),
                         )
                     )
@@ -896,10 +897,9 @@ class CombatEndingDetector:
                             priority=(0, 0, 0, -cost),
                             card_pos=card_pos,
                             monster_idx=None,
-                            next_state=replace(
-                                state,
+                            next_state=state.after_spending(
+                                cost,
                                 corruption_active=True,
-                                energy=state.energy - cost,
                             ),
                         )
                     )
@@ -923,10 +923,9 @@ class CombatEndingDetector:
                             priority=(0, 0, next_double_tap_charges, -cost),
                             card_pos=card_pos,
                             monster_idx=None,
-                            next_state=replace(
-                                state,
+                            next_state=state.after_spending(
+                                cost,
                                 double_tap_charges=next_double_tap_charges,
-                                energy=state.energy - cost,
                             ),
                         )
                     )
@@ -960,11 +959,10 @@ class CombatEndingDetector:
                             priority=(0, 0, vulnerable_gain + artifact_reduced, -cost),
                             card_pos=card_pos,
                             monster_idx=None,
-                            next_state=replace(
-                                state,
+                            next_state=state.after_spending(
+                                cost,
                                 vulnerable=next_vulnerable,
                                 artifact=next_artifact,
-                                energy=state.energy - cost,
                             ),
                         )
                     )
@@ -1040,13 +1038,12 @@ class CombatEndingDetector:
                             priority=priority,
                             card_pos=card_pos,
                             monster_idx=None,
-                            next_state=replace(
-                                state,
+                            next_state=state.after_spending(
+                                cost,
                                 hp=next_hp,
                                 vulnerable=next_vulnerable,
                                 artifact=next_artifact,
                                 double_tap_charges=next_double_tap_charges,
-                                energy=state.energy - cost,
                             ),
                         )
                     )
@@ -1132,13 +1129,12 @@ class CombatEndingDetector:
                             priority=priority,
                             card_pos=card_pos,
                             monster_idx=monster_idx,
-                            next_state=replace(
-                                state,
+                            next_state=state.after_spending(
+                                cost,
                                 hp=next_hp,
                                 vulnerable=next_vulnerable,
                                 artifact=next_artifact,
                                 double_tap_charges=next_double_tap_charges,
-                                energy=state.energy - cost,
                             ),
                         )
                     )
