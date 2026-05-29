@@ -181,38 +181,56 @@ class CombatEndingDetector:
 
         for monster, monster_idx in zip(remaining_monsters, remaining_monster_indices):
             damage_needed = monster.current_hp + monster.block
-            for card in attack_cards:
-                card_uuid = getattr(card, 'uuid', None) or id(card)
-                if card_uuid in played_cards:
-                    continue
+            while damage_needed > 0:
+                best_card = None
+                best_card_uuid = None
+                best_cost = 0
+                best_damage = 0
+                best_priority = None
 
-                cost = effective_card_cost(card, remaining_energy)
-                if cost > remaining_energy:
-                    continue
+                for card in attack_cards:
+                    card_uuid = getattr(card, 'uuid', None) or id(card)
+                    if card_uuid in played_cards:
+                        continue
 
-                # Check vulnerable status
-                vulnerable = context.vulnerable_stacks.get(monster_idx, 0)
-                damage = self._get_card_damage(card, context)
-                damage = self._apply_player_weak_to_card_damage(
-                    card,
-                    context,
-                    damage,
-                    remaining_energy,
-                )
-                if vulnerable > 0:
-                    damage = self._apply_vulnerable_to_card_damage(
+                    cost = self._card_energy_cost_against_monster(
                         card,
                         context,
-                        damage,
+                        monster_idx,
                         remaining_energy,
                     )
+                    if cost > remaining_energy:
+                        continue
 
-                sequence.append(PlayCardAction(card=card, target_monster=monster))
-                played_cards.add(card_uuid)
-                remaining_energy -= cost
-                damage_needed -= damage
-                if damage_needed <= 0:
+                    damage = self._card_damage_against_monster(
+                        card,
+                        context,
+                        monster_idx,
+                        remaining_energy,
+                    )
+                    if damage <= 0:
+                        continue
+
+                    refunds_energy = self._card_refunds_energy_against_monster(
+                        card,
+                        context,
+                        monster_idx,
+                    )
+                    priority = (1 if refunds_energy else 0, damage, -cost)
+                    if best_priority is None or priority > best_priority:
+                        best_card = card
+                        best_card_uuid = card_uuid
+                        best_cost = cost
+                        best_damage = damage
+                        best_priority = priority
+
+                if best_card is None:
                     break
+
+                sequence.append(PlayCardAction(card=best_card, target_monster=monster))
+                played_cards.add(best_card_uuid)
+                remaining_energy -= best_cost
+                damage_needed -= best_damage
 
             if damage_needed > 0:
                 logger.warning(
@@ -287,6 +305,40 @@ class CombatEndingDetector:
                 available_energy,
             )
         return max(0, damage)
+
+    def _card_energy_cost_against_monster(
+        self,
+        card: Card,
+        context: DecisionContext,
+        monster_idx: int,
+        available_energy: int,
+    ) -> int:
+        cost = effective_card_cost(card, available_energy)
+        if self._card_refunds_energy_against_monster(card, context, monster_idx):
+            return max(0, cost - 1)
+        return cost
+
+    def _card_refunds_energy_against_monster(
+        self,
+        card: Card,
+        context: DecisionContext,
+        monster_idx: int,
+    ) -> bool:
+        return (
+            self._base_card_name(card) == 'Dropkick'
+            and self._monster_vulnerable_stacks(context, monster_idx) > 0
+        )
+
+    def _monster_vulnerable_stacks(self, context: DecisionContext, monster_idx: int) -> int:
+        vulnerable_stacks = getattr(context, 'vulnerable_stacks', {}) or {}
+        stacks = vulnerable_stacks.get(monster_idx, 0)
+        if stacks:
+            return stacks
+
+        monsters = getattr(context, 'monsters_alive', []) or []
+        if 0 <= monster_idx < len(monsters):
+            return self._get_monster_power_amount(monsters[monster_idx], 'Vulnerable')
+        return 0
 
     def _find_aoe_cleanup_sequence(
         self,
@@ -408,7 +460,15 @@ class CombatEndingDetector:
         for card in context.playable_cards:
             # FIX: Compare CardType enum directly, not string
             if hasattr(card, 'type') and card.type == CardType.ATTACK:
-                cost = effective_card_cost(card, context.energy_available)
+                if len(context.monsters_alive) == 1:
+                    cost = self._card_energy_cost_against_monster(
+                        card,
+                        context,
+                        0,
+                        context.energy_available,
+                    )
+                else:
+                    cost = effective_card_cost(card, context.energy_available)
                 damage = self._get_card_damage(card, context)
                 damage = self._apply_player_weak_to_card_damage(
                     card,

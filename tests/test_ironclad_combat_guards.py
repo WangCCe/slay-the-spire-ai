@@ -5337,6 +5337,36 @@ def test_lethal_detector_counts_body_slam_current_block(monkeypatch):
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["body-slam"]
 
 
+def test_lethal_detector_uses_dropkick_energy_refund_for_sequence(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "dropkick": {
+            "name": "Dropkick",
+            "description": "Deal 5 damage. If the enemy has Vulnerable, gain [R] and draw 1 card.",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    dropkick = _card("Dropkick", "Dropkick", cost=1)
+    dropkick.uuid = "dropkick"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = _combat_context([dropkick, strike], energy=1, monsters=[_louse(current_hp=16)])
+    context.vulnerable_stacks[0] = 1
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 16
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "dropkick",
+        "strike",
+    ]
+
+
 def test_lethal_sequence_uses_multiple_attacks_on_one_monster():
     strike_1 = _card("Strike_R", "Strike", cost=1)
     strike_1.uuid = "strike-1"
