@@ -1969,6 +1969,40 @@ def test_ironclad_fallback_damage_uses_canonical_name_for_counted_upgrades(monke
     assert damage == 11
 
 
+def test_ironclad_fallback_damage_counts_whirlwind_x_energy(monkeypatch):
+    card = Card(
+        card_id="Whirlwind",
+        name="Whirlwind",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.UNCOMMON,
+        has_target=False,
+        cost=-1,
+        cost_for_turn=-1,
+        upgrades=0,
+    )
+    card.damage = None
+
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"description": "Deal 5 damage to ALL enemies."} if card_name == "Whirlwind" else None,
+    )
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: 5,
+    )
+    context = SimpleNamespace(
+        strength=0,
+        energy_available=3,
+        game=SimpleNamespace(relics=[]),
+    )
+
+    damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(card, context)
+
+    assert damage == 15
+
+
 def test_damage_curve_handles_hexaghost_divider_formula_without_warning(caplog):
     classifier = TurnTimingClassifier()
     context = SimpleNamespace(

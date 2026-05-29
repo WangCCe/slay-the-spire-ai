@@ -24,7 +24,7 @@ from .simulation import (
     W_DEATHRISK,
     _known_damage_upgrade_bonus,
 )
-from .card_costs import effective_card_cost, is_x_cost_card, x_effect_energy
+from .card_costs import effective_card_cost, is_x_cost_card, whirlwind_damage, x_effect_energy
 from .card_names import canonical_card_name
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
@@ -984,6 +984,9 @@ class IroncladCombatPlanner(CombatPlanner):
         if card_name == 'Body Slam':
             strength = getattr(context, 'strength', 0)
             return max(0, self._get_player_block(context) + strength)
+        if card_name == 'Whirlwind':
+            energy = x_effect_energy(card, getattr(context, 'energy_available', 0), context)
+            return whirlwind_damage(card, energy, getattr(context, 'strength', 0))
 
         base_damage = getattr(card, 'damage', 0)
         if base_damage is None:
