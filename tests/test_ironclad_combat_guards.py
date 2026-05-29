@@ -6064,6 +6064,50 @@ def test_lethal_detector_rejects_fiend_fire_exhausted_hand_false_positive(monkey
     assert detector.find_lethal_sequence(context) == []
 
 
+def test_lethal_aoe_cleanup_rejects_fiend_fire_exhausted_hand_false_positive(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "cleave": {
+            "name": "Cleave",
+            "description": "Deal 8 damage to ALL enemies.",
+        },
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "description": "Deal 7 damage. Exhaust your hand.",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "text": "Deal [7|10] damage. Exhaust your hand.",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    cleave.uuid = "cleave"
+    fiend_fire = _card("Fiend Fire", "Fiend Fire", cost=2)
+    fiend_fire.uuid = "fiend-fire"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1)
+    defend.uuid = "defend"
+    cards = [cleave, fiend_fire, strike, defend]
+    context = _combat_context(
+        cards,
+        energy=3,
+        monsters=[_louse(current_hp=29), _louse(current_hp=8)],
+    )
+    context.game.hand = cards
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
+
+
 def test_lethal_detector_counts_upgraded_static_attack_damage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

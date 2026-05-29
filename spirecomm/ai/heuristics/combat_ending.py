@@ -672,6 +672,7 @@ class CombatEndingDetector:
 
         aoe_cards = [card for card in attack_cards if self._is_aoe_attack(card)]
         aoe_cards.sort(key=lambda card: self._get_card_damage(card, context), reverse=True)
+        sequence_card_keys = {self._card_play_key(card) for card in attack_cards}
 
         for aoe_card in aoe_cards:
             aoe_cost = effective_card_cost(aoe_card, available_energy)
@@ -719,11 +720,23 @@ class CombatEndingDetector:
                         if cost > remaining_energy:
                             continue
 
+                        remaining_cards = tuple(
+                            remaining_card
+                            for remaining_card in attack_cards
+                            if self._card_play_key(remaining_card) not in played_cards
+                        )
+                        fiend_fire_exhaust_count = self._fiend_fire_exhaust_count_for_remaining_cards(
+                            card,
+                            context,
+                            remaining_cards,
+                            sequence_card_keys,
+                        )
                         damage = self._card_damage_against_monster(
                             card,
                             context,
                             monster_idx,
                             remaining_energy,
+                            fiend_fire_exhaust_count,
                         )
                         refunds_energy = self._card_refunds_energy_against_monster(
                             card,
@@ -747,7 +760,10 @@ class CombatEndingDetector:
                         break
 
                     sequence.append(PlayCardAction(card=best_card, target_monster=monster))
-                    played_cards.add(self._card_play_key(best_card))
+                    if self._base_card_name(best_card) == 'Fiend Fire':
+                        played_cards.update(sequence_card_keys)
+                    else:
+                        played_cards.add(self._card_play_key(best_card))
                     remaining_energy -= best_cost
                     damage_needed -= best_damage
 
