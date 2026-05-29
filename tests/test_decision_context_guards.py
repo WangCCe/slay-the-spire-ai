@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 import spirecomm.ai.decision.base as decision_base
-from spirecomm.ai.decision.base import DecisionContext
+from spirecomm.ai.decision.base import DecisionContext, EnemyThreatProfiler, ThreatCategory
 from spirecomm.spire.card import Card, CardRarity, CardType
 from spirecomm.spire.character import Intent
 
@@ -352,3 +352,12 @@ def test_compute_threat_v2_uses_live_monster_id_for_enhanced_data(monkeypatch):
     assert data_loader.predicted_names == ["Red Slaver"]
     assert data_loader.profile_names == ["Red Slaver"]
     assert data_loader.special_names == ["Red Slaver"]
+
+
+def test_enemy_threat_profiler_uses_live_monster_id_for_automaton():
+    live_automaton = SimpleNamespace(
+        name="Automaton",
+        monster_id="BronzeAutomaton",
+    )
+
+    assert EnemyThreatProfiler().analyze_threat([live_automaton]) == ThreatCategory.ELITE

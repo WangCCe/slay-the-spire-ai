@@ -880,7 +880,7 @@ class EnemyThreatProfiler:
         'Reptomancer',
         'The Collector',
         'The Champ',
-        'The Automatron',
+        'Bronze Automaton',
         'The Ascender',
         'The Shield',
         'The Spire'
@@ -939,10 +939,9 @@ class EnemyThreatProfiler:
 
     def _is_elite_by_name(self, monster: Monster) -> bool:
         """Check if monster is an elite based on name."""
-        if not hasattr(monster, 'name'):
+        name = canonical_live_monster_name(monster).lower()
+        if not name:
             return False
-
-        name = monster.name.lower()
 
         for elite_name in self.ELITE_NAMES:
             if elite_name.lower() in name:
