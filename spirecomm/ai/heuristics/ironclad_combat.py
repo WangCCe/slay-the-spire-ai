@@ -980,13 +980,17 @@ class IroncladCombatPlanner(CombatPlanner):
         card: Card,
         context: DecisionContext,
     ) -> int:
+        card_name = canonical_card_name(card)
+        if card_name == 'Body Slam':
+            strength = getattr(context, 'strength', 0)
+            return max(0, self._get_player_block(context) + strength)
+
         base_damage = getattr(card, 'damage', 0)
         if base_damage is None:
             base_damage = 0
 
         if base_damage == 0 or not hasattr(card, 'damage'):
             try:
-                card_name = canonical_card_name(card)
                 card_data = game_data_loader.get_card_data(card_name)
                 if card_data:
                     parsed_damage = game_data_loader._parse_card_damage(card_data)
@@ -999,6 +1003,18 @@ class IroncladCombatPlanner(CombatPlanner):
 
         strength = getattr(context, 'strength', 0)
         return base_damage + strength
+
+    @staticmethod
+    def _get_player_block(context: DecisionContext) -> int:
+        block = getattr(context, 'player_block', None)
+        if block is None:
+            player = getattr(getattr(context, 'game', None), 'player', None)
+            block = getattr(player, 'block', 0)
+
+        try:
+            return max(0, int(block or 0))
+        except (TypeError, ValueError):
+            return 0
 
     def _known_attack_damage_for_bonus(self, card: Card) -> int:
         """Return known attack damage for strategic bonuses without generic fallback."""

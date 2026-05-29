@@ -6179,6 +6179,28 @@ def test_ironclad_fallback_priority_values_bash_before_parsed_big_attacks(monkey
     assert IroncladCombatPlanner()._get_card_priority(bash, context) == 850
 
 
+def test_ironclad_fallback_priority_values_bash_before_body_slam_with_current_block(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "body slam": {
+            "name": "Body Slam",
+            "description": "Deal damage equal to your current Block.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+
+    bash = _card("Bash", "Bash", cost=2)
+    body_slam = _card("Body Slam", "Body Slam", cost=1)
+    context = _combat_context(
+        [bash, body_slam],
+        energy=3,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.game.player.block = 18
+
+    assert IroncladCombatPlanner()._get_card_priority(bash, context) == 850
+
+
 def test_awakened_one_penalizes_slow_power_setup_in_beam_score():
     demon_form = _card(
         "Demon Form",
