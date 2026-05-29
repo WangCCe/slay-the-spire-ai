@@ -5905,6 +5905,45 @@ def test_lethal_detector_counts_bane_second_hit_against_poisoned_target(monkeypa
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["bane"]
 
 
+def test_lethal_detector_counts_bane_second_hit_only_for_poisoned_target(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bane": {
+            "name": "Bane",
+            "description": "Deal 7 damage. If the enemy has Poison, deal 7 damage again.",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    bane = _card("Bane", "Bane", cost=1)
+    bane.uuid = "bane"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    poisoned_target = _louse(current_hp=14)
+    poisoned_target.powers = [SimpleNamespace(power_name="Poison", amount=1)]
+    other_target = _louse(current_hp=6)
+    context = _combat_context(
+        [bane, strike],
+        energy=2,
+        monsters=[poisoned_target, other_target],
+    )
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+
+    sequence = detector.find_lethal_sequence(context)
+
+    assert [action.card.uuid for action in sequence] == ["bane", "strike"]
+    assert [action.target_monster for action in sequence] == [
+        poisoned_target,
+        other_target,
+    ]
+
+
 def test_lethal_detector_counts_skewer_x_energy_hits(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

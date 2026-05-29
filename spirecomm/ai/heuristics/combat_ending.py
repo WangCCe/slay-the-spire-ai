@@ -378,19 +378,21 @@ class CombatEndingDetector:
         monster_idx: int,
         available_energy: int,
     ) -> int:
-        damage = self._get_card_damage(card, context)
+        damage = self._get_card_damage(card, context, monster_idx)
         damage = self._apply_player_weak_to_card_damage(
             card,
             context,
             damage,
             available_energy,
+            monster_idx,
         )
-        if context.vulnerable_stacks.get(monster_idx, 0) > 0:
+        if self._monster_vulnerable_stacks(context, monster_idx) > 0:
             damage = self._apply_vulnerable_to_card_damage(
                 card,
                 context,
                 damage,
                 available_energy,
+                monster_idx,
             )
         return max(0, damage)
 
@@ -435,6 +437,12 @@ class CombatEndingDetector:
         monsters = getattr(context, 'monsters_alive', []) or []
         if 0 <= monster_idx < len(monsters):
             return self._get_monster_power_amount(monsters[monster_idx], 'Vulnerable')
+        return 0
+
+    def _monster_poison_stacks(self, context: DecisionContext, monster_idx: int) -> int:
+        monsters = getattr(context, 'monsters_alive', []) or []
+        if 0 <= monster_idx < len(monsters):
+            return self._get_monster_power_amount(monsters[monster_idx], 'Poison')
         return 0
 
     def _find_targeted_lethal_sequence(
@@ -890,7 +898,12 @@ class CombatEndingDetector:
 
         return total_damage
 
-    def _get_card_damage(self, card: Card, context: DecisionContext) -> int:
+    def _get_card_damage(
+        self,
+        card: Card,
+        context: DecisionContext,
+        monster_idx: Optional[int] = None,
+    ) -> int:
         """
         Get actual damage of card accounting for modifiers.
 
@@ -935,7 +948,7 @@ class CombatEndingDetector:
             else:
                 base_damage += strength
 
-            base_damage *= self._get_attack_hit_count(card, context)
+            base_damage *= self._get_attack_hit_count(card, context, monster_idx)
 
         return max(0, base_damage)
 
@@ -945,6 +958,7 @@ class CombatEndingDetector:
         context: DecisionContext,
         total_damage: int,
         available_energy: int,
+        monster_idx: Optional[int] = None,
     ) -> int:
         """Apply player Weak using the game's per-hit rounding."""
         if self._get_player_debuff_stacks(context, 'Weak') <= 0:
@@ -954,6 +968,7 @@ class CombatEndingDetector:
             card,
             context,
             available_energy,
+            monster_idx,
         )
         if hit_count <= 1:
             return int(total_damage * 0.75)
@@ -970,12 +985,14 @@ class CombatEndingDetector:
         context: DecisionContext,
         total_damage: int,
         available_energy: int,
+        monster_idx: Optional[int] = None,
     ) -> int:
         """Apply Vulnerable using the game's per-hit rounding."""
         hit_count = self._get_vulnerable_damage_instance_count(
             card,
             context,
             available_energy,
+            monster_idx,
         )
         if hit_count <= 1:
             return int(total_damage * 1.5)
@@ -991,13 +1008,14 @@ class CombatEndingDetector:
         card: Card,
         context: DecisionContext,
         available_energy: int,
+        monster_idx: Optional[int] = None,
     ) -> int:
         card_name = self._base_card_name(card)
 
         if card_name == 'Whirlwind':
             return max(1, x_effect_energy(card, available_energy, context))
 
-        return self._get_attack_hit_count(card, context)
+        return self._get_attack_hit_count(card, context, monster_idx)
 
     def _get_player_debuff_stacks(self, context: DecisionContext, power_name: str) -> int:
         player = getattr(getattr(context, 'game', None), 'player', None)
@@ -1057,7 +1075,12 @@ class CombatEndingDetector:
             or getattr(power, 'power_id', None)
         )
 
-    def _get_attack_hit_count(self, card: Card, context: DecisionContext) -> int:
+    def _get_attack_hit_count(
+        self,
+        card: Card,
+        context: DecisionContext,
+        monster_idx: Optional[int] = None,
+    ) -> int:
         """Return known hit counts for repeated-hit attacks."""
         card_name = self._base_card_name(card)
         upgrades = getattr(card, 'upgrades', 0)
@@ -1065,6 +1088,8 @@ class CombatEndingDetector:
         if card_name == 'Twin Strike':
             return 2
         if card_name == 'Bane' and context is not None:
+            if monster_idx is not None:
+                return 2 if self._monster_poison_stacks(context, monster_idx) > 0 else 1
             return 2 if self._all_alive_targets_poisoned(context) else 1
         if card_name == 'Skewer':
             return x_effect_energy(card, getattr(context, 'energy_available', 0), context)
