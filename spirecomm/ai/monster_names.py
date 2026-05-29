@@ -20,6 +20,7 @@ LIVE_MONSTER_ID_TO_WIKI_NAME = {
     'slimeboss': 'Slime Boss',
     'sphericguardian': 'Spheric Guardian',
     'theguardian': 'The Guardian',
+    'bronzeorb': 'Bronze Orb',
 }
 
 
