@@ -535,7 +535,7 @@ class TimingAwareCombatPlanner:
             return 0
 
         scaled_damage = self._apply_attack_damage_scaling(card, base_damage, strength, context)
-        hit_count = self._get_attack_hit_count(card)
+        hit_count = self._get_attack_hit_count(card, context)
         return max(0, int(scaled_damage * hit_count))
 
     def _apply_attack_status_modifiers(
@@ -591,7 +591,7 @@ class TimingAwareCombatPlanner:
         if card_name == 'Whirlwind':
             return max(1, x_effect_energy(card, available_energy, context))
 
-        return max(1, self._get_attack_hit_count(card))
+        return max(1, self._get_attack_hit_count(card, context))
 
     def _get_player_debuff_stacks(self, context, power_name: str) -> int:
         player = getattr(getattr(context, 'game', None), 'player', None)
@@ -669,7 +669,7 @@ class TimingAwareCombatPlanner:
         except (TypeError, ValueError):
             return 0
 
-    def _get_attack_hit_count(self, card) -> int:
+    def _get_attack_hit_count(self, card, context=None) -> int:
         """Return known deterministic hit counts for attack damage estimates."""
         card_name = canonical_card_name(card)
         upgrades = getattr(card, 'upgrades', 0)
@@ -680,8 +680,27 @@ class TimingAwareCombatPlanner:
             return 4 if upgrades > 0 else 3
         if card_name == 'Pummel':
             return 5 if upgrades > 0 else 4
+        if card_name == 'Fiend Fire' and context is not None:
+            return self._count_fiend_fire_exhausted_cards(card, context)
 
         return 1
+
+    def _count_fiend_fire_exhausted_cards(self, card, context) -> int:
+        """Count cards Fiend Fire will exhaust after the played card leaves hand."""
+        hand_cards = getattr(getattr(context, 'game', None), 'hand', None)
+        if not hand_cards:
+            hand_cards = getattr(context, 'playable_cards', []) or []
+
+        played_uuid = getattr(card, 'uuid', None)
+        count = 0
+        for hand_card in hand_cards:
+            if hand_card is card:
+                continue
+            if played_uuid and getattr(hand_card, 'uuid', None) == played_uuid:
+                continue
+            count += 1
+
+        return max(0, count)
 
     def _estimate_card_block(self, card, context=None) -> int:
         """Estimate card block for timing decisions from methods or parsed data."""

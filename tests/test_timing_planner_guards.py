@@ -62,6 +62,10 @@ def _loader_with_basic_ironclad_cards():
             "name": "Body Slam",
             "description": "Deal damage equal to your current Block.",
         },
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "description": "Exhaust your hand. Deal 7 damage for each card Exhausted. Exhaust.",
+        },
     }
     return loader
 
@@ -365,6 +369,38 @@ def test_timing_lethal_check_counts_body_slam_current_block(monkeypatch):
         playable_cards=[body_slam],
         monsters_alive=[SimpleNamespace(current_hp=24, block=0)],
         game=SimpleNamespace(player=SimpleNamespace(block=24)),
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
+def test_timing_lethal_check_counts_fiend_fire_hand_damage(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    fiend_fire = _card("Fiend Fire", "Fiend Fire", cost=2)
+    fiend_fire.uuid = "fiend-fire"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    defend.uuid = "defend"
+    dazed = _card("Dazed", "Dazed", card_type=CardType.STATUS, cost=-2, has_target=False)
+    dazed.uuid = "dazed"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=2,
+        playable_cards=[fiend_fire],
+        monsters_alive=[SimpleNamespace(current_hp=21, block=0)],
+        game=SimpleNamespace(hand=[fiend_fire, strike, defend, dazed]),
     )
     timing_ctx = TimingContext(
         turn_timing=TurnTiming.SAFE,
