@@ -580,21 +580,27 @@ class CombatEndingDetector:
 
         return ''
 
-    def _is_lethal_strength_skill(self, card: Card) -> bool:
-        if getattr(card, 'type', None) != CardType.SKILL:
-            return False
-        return self._base_card_name(card) in {'Flex', 'Limit Break', 'Spot Weakness'}
+    def _is_lethal_strength_support_card(self, card: Card) -> bool:
+        card_name = self._base_card_name(card)
+        card_type = getattr(card, 'type', None)
+        if card_type == CardType.SKILL:
+            return card_name in {'Flex', 'Limit Break', 'Spot Weakness'}
+        if card_type == CardType.POWER:
+            return card_name == 'Inflame'
+        return False
 
-    def _strength_after_lethal_skill(self, card: Card, strength: int) -> int:
+    def _strength_after_lethal_support_card(self, card: Card, strength: int) -> int:
         if self._base_card_name(card) == 'Flex':
             return strength + (4 if getattr(card, 'upgrades', 0) > 0 else 2)
         if self._base_card_name(card) == 'Limit Break':
             return strength * 2
         if self._base_card_name(card) == 'Spot Weakness':
             return strength + (4 if getattr(card, 'upgrades', 0) > 0 else 3)
+        if self._base_card_name(card) == 'Inflame':
+            return strength + (3 if getattr(card, 'upgrades', 0) > 0 else 2)
         return strength
 
-    def _lethal_strength_skill_targets(
+    def _lethal_strength_support_targets(
         self,
         card: Card,
         context: DecisionContext,
@@ -625,7 +631,7 @@ class CombatEndingDetector:
         support_cards = [
             card
             for card in getattr(context, 'playable_cards', []) or []
-            if self._is_lethal_strength_skill(card)
+            if self._is_lethal_strength_support_card(card)
         ]
         sequence_cards = support_cards + sequence_cards
         if not sequence_cards or not getattr(context, 'monsters_alive', None):
@@ -677,16 +683,16 @@ class CombatEndingDetector:
 
             candidates = []
             for card_pos, card in enumerate(remaining_cards):
-                if self._is_lethal_strength_skill(card):
+                if self._is_lethal_strength_support_card(card):
                     cost = effective_card_cost(card, remaining_energy)
                     if cost > remaining_energy:
                         continue
 
-                    next_strength = self._strength_after_lethal_skill(card, strength_state)
+                    next_strength = self._strength_after_lethal_support_card(card, strength_state)
                     if next_strength <= strength_state:
                         continue
 
-                    for target_idx in self._lethal_strength_skill_targets(
+                    for target_idx in self._lethal_strength_support_targets(
                         card,
                         context,
                         hp_state,

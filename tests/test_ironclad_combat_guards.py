@@ -6378,6 +6378,53 @@ def test_lethal_detector_uses_spot_weakness_strength_before_followup(monkeypatch
     assert sequence[0].target_monster is target
 
 
+def test_lethal_detector_uses_inflame_strength_before_followup(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    inflame = _card(
+        "Inflame",
+        "Inflame",
+        card_type=CardType.POWER,
+        cost=1,
+        has_target=False,
+    )
+    inflame.uuid = "inflame"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = _combat_context([inflame, strike], energy=2, monsters=[_louse(current_hp=8)])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "inflame",
+        "strike",
+    ]
+
+
+def test_lethal_detector_does_not_use_demon_form_as_immediate_strength(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([demon_form, strike], energy=4, monsters=[_louse(current_hp=8)])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
+
+
 def test_lethal_detector_requires_attacking_target_for_spot_weakness(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
