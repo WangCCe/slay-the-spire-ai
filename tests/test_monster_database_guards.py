@@ -41,6 +41,11 @@ def test_monster_database_info_accepts_named_live_aliases():
     assert get_monster_info("AwakenedOne")["threat_level"] == 5
 
 
+def test_monster_database_info_accepts_canonical_slaver_names():
+    assert get_monster_info("Red Slaver")["recommended_strategy"] == "priority_target"
+    assert get_monster_info("Blue Slaver")["recommended_strategy"] == "priority_target"
+
+
 def test_monster_database_threat_recognizes_live_red_slaver_id():
     monster = SimpleNamespace(
         name="Slaver",

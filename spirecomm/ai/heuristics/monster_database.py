@@ -87,13 +87,13 @@ MONSTER_DATABASE = {
         "recommended_strategy": "kill_quickly"  # 速战速决，烧伤不会自然消除，自身带力量加成
     },
     # Act 1 Elite monsters
-    "Slaver Blue": {
+    "Blue Slaver": {
         "threat_level": 4,
         "attacks": ["single_target", "buff"],
         "special_abilities": ["buff_allies"],
         "recommended_strategy": "priority_target"
     },
-    "Slaver Red": {
+    "Red Slaver": {
         "threat_level": 4,
         "attacks": ["single_target", "heavy_damage"],
         "special_abilities": ["none"],
@@ -229,6 +229,8 @@ MONSTER_ID_ALIASES = {
     "awakenedone": "The Awakened One",
     "fuzzylousedefensive": "Louse",
     "fuzzylousenormal": "Louse",
+    "slaverblue": "Blue Slaver",
+    "slaverred": "Red Slaver",
 }
 
 
