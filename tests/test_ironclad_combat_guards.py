@@ -6741,6 +6741,54 @@ def test_lethal_detector_uses_upgraded_double_tap_for_two_attacks(monkeypatch):
     ]
 
 
+def test_lethal_detector_uses_double_tapped_dropkick_net_energy(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "dropkick": {
+            "name": "Dropkick",
+            "description": "Deal 5 damage. If the enemy has Vulnerable, gain [R] and draw 1 card.",
+        },
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    loader._wiki_data = {
+        "dropkick": {
+            "name": "Dropkick",
+            "text": "Deal [5|8] damage.\nIf the enemy has #Vulnerable,\ngain [R] and\ndraw 1 card.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    double_tap = _card(
+        "Double Tap",
+        "Double Tap",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    double_tap.uuid = "double-tap"
+    dropkick = _card("Dropkick", "Dropkick", cost=1)
+    dropkick.uuid = "dropkick"
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_1.uuid = "strike-1"
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    strike_2.uuid = "strike-2"
+    context = _combat_context(
+        [double_tap, dropkick, strike_1, strike_2],
+        energy=2,
+        monsters=[_louse(current_hp=32)],
+    )
+    context.vulnerable_stacks[0] = 1
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "double-tap",
+        "dropkick",
+        "strike-1",
+        "strike-2",
+    ]
+
+
 def test_lethal_detector_uses_bloodletting_energy_before_followup(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
