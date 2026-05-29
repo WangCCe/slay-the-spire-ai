@@ -85,6 +85,9 @@ class EnhancedMonsterDatabase:
         Returns:
             Dictionary with monster data, or None if not found
         """
+        if not str(monster_name or "").strip():
+            return None
+
         # Try exact match first
         if monster_name in self._data:
             return self._data[monster_name]

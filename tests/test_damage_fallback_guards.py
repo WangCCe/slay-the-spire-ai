@@ -2634,6 +2634,14 @@ def test_enhanced_monster_database_loads_act2_normal_monsters():
     }
 
 
+def test_enhanced_monster_database_rejects_blank_monster_names():
+    database = EnhancedMonsterDatabase()
+
+    assert database.get_monster_data("") is None
+    assert database.get_moves("") == []
+    assert database.predict_next_moves("", current_turn=1, monster_hp_percent=1.0) == []
+
+
 def test_enhanced_monster_database_loads_jaw_worm_opening_and_moves():
     database = EnhancedMonsterDatabase()
 
