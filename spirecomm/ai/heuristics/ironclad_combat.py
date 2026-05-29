@@ -1002,6 +1002,10 @@ class IroncladCombatPlanner(CombatPlanner):
             base_damage = 6
 
         strength = getattr(context, 'strength', 0)
+        if card_name == 'Perfected Strike':
+            per_strike_bonus = 3 if getattr(card, 'upgrades', 0) > 0 else 2
+            return max(0, base_damage + self._count_strike_cards(context) * per_strike_bonus + strength)
+
         return base_damage + strength
 
     @staticmethod
@@ -1015,6 +1019,21 @@ class IroncladCombatPlanner(CombatPlanner):
             return max(0, int(block or 0))
         except (TypeError, ValueError):
             return 0
+
+    @staticmethod
+    def _count_strike_cards(context: DecisionContext) -> int:
+        deck = getattr(getattr(context, 'game', None), 'deck', None)
+        if not deck:
+            return 0
+
+        count = 0
+        for deck_card in deck:
+            card_name = getattr(deck_card, 'name', '') or ''
+            card_id = getattr(deck_card, 'card_id', '') or ''
+            if 'strike' in card_name.lower() or 'strike' in card_id.lower():
+                count += 1
+
+        return max(0, count)
 
     def _known_attack_damage_for_bonus(self, card: Card) -> int:
         """Return known attack damage for strategic bonuses without generic fallback."""

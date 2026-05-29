@@ -6201,6 +6201,33 @@ def test_ironclad_fallback_priority_values_bash_before_body_slam_with_current_bl
     assert IroncladCombatPlanner()._get_card_priority(bash, context) == 850
 
 
+def test_ironclad_fallback_priority_values_bash_before_perfected_strike_with_strike_deck(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "perfected strike": {
+            "name": "Perfected Strike",
+            "description": "Deal 6 damage. Deals 2 additional damage for ALL your cards containing \"Strike\".",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+
+    bash = _card("Bash", "Bash", cost=2)
+    perfected_strike = _card("Perfected Strike", "Perfected Strike", cost=2)
+    context = _combat_context(
+        [bash, perfected_strike],
+        energy=3,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.game.deck = [
+        _card("Strike_R", "Strike"),
+        _card("Strike_R", "Strike"),
+        _card("Twin Strike", "Twin Strike"),
+        _card("Perfected Strike", "Perfected Strike"),
+    ]
+
+    assert IroncladCombatPlanner()._get_card_priority(bash, context) == 850
+
+
 def test_awakened_one_penalizes_slow_power_setup_in_beam_score():
     demon_form = _card(
         "Demon Form",
