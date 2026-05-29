@@ -101,6 +101,15 @@ class IroncladCombatPlanner(CombatPlanner):
     def _is_aoe_attack(card: Card) -> bool:
         return canonical_card_name(card) in AOE_ATTACK_CARDS
 
+    @staticmethod
+    def _context_ascension_level(context: DecisionContext) -> int:
+        game = getattr(context, 'game', None)
+        if game is not None and hasattr(game, 'ascension_level'):
+            return int(getattr(game, 'ascension_level') or 0)
+        if hasattr(context, 'ascension_level'):
+            return int(getattr(context, 'ascension_level') or 0)
+        return int(getattr(context, 'ascension', 0) or 0)
+
     def _is_single_target_attack(self, card: Card, target_idx: Optional[int]) -> bool:
         if target_idx is None:
             return False
@@ -1909,7 +1918,7 @@ class IroncladCombatPlanner(CombatPlanner):
             score = self._apply_slime_boss_strategy(sequence, context, score)
 
         # A20 Early Aggression (applies to ALL elites at ascension >= 20)
-        if elite_type != EliteType.UNKNOWN and hasattr(context, 'ascension') and context.ascension >= 20:
+        if elite_type != EliteType.UNKNOWN and self._context_ascension_level(context) >= 20:
             score = self._apply_a20_early_aggression(sequence, initial_state, final_state, context, score)
 
         return score

@@ -1505,6 +1505,27 @@ def test_ironclad_detects_slime_boss_without_elite_marker():
     assert IroncladCombatPlanner()._detect_elite_type(context) == ironclad_combat.EliteType.SLIME_BOSS
 
 
+def test_a20_elite_aggression_uses_context_ascension_level():
+    context = _combat_context([], energy=0, monsters=[_gremlin_nob()])
+    context.turn = 1
+    context.ascension_level = 20
+    context.game.ascension_level = 20
+    initial_state = SimulationState(context)
+    final_state = initial_state.clone()
+    planner = IroncladCombatPlanner()
+
+    score = planner._apply_elite_strategy_override(
+        ironclad_combat.EliteType.GREMLIN_NOB,
+        [],
+        initial_state,
+        final_state,
+        context,
+        0.0,
+    )
+
+    assert score == -50.0
+
+
 def test_slime_boss_strategy_treats_counted_upgraded_cleave_as_aoe():
     cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
     cleave.damage = 8
