@@ -1505,6 +1505,14 @@ def test_ironclad_detects_slime_boss_without_elite_marker():
     assert IroncladCombatPlanner()._detect_elite_type(context) == ironclad_combat.EliteType.SLIME_BOSS
 
 
+def test_gremlin_nob_detection_accepts_live_monster_id():
+    context = _combat_context([], energy=0, monsters=[_gremlin_nob()])
+    planner = IroncladCombatPlanner()
+
+    assert planner._has_gremlin_nob(context)
+    assert planner._detect_elite_type(context) == ironclad_combat.EliteType.GREMLIN_NOB
+
+
 def test_a20_elite_aggression_uses_context_ascension_level():
     context = _combat_context([], energy=0, monsters=[_gremlin_nob()])
     context.turn = 1

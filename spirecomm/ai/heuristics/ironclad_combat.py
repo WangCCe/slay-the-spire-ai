@@ -123,6 +123,17 @@ class IroncladCombatPlanner(CombatPlanner):
             damage_so_far += max(0, int(max_hp) - max(0, int(current_hp)))
         return damage_so_far
 
+    @staticmethod
+    def _is_gremlin_nob(monster) -> bool:
+        identifiers = (
+            getattr(monster, 'monster_id', ''),
+            getattr(monster, 'name', ''),
+        )
+        return any(
+            ''.join(ch for ch in str(identifier).lower() if ch.isalnum()) == 'gremlinnob'
+            for identifier in identifiers
+        )
+
     def _is_single_target_attack(self, card: Card, target_idx: Optional[int]) -> bool:
         if target_idx is None:
             return False
@@ -1775,7 +1786,7 @@ class IroncladCombatPlanner(CombatPlanner):
         Returns:
             True if any Gremlin Nob is alive
         """
-        return any(monster.monster_id == "Gremlin Nob" for monster in context.monsters_alive)
+        return any(self._is_gremlin_nob(monster) for monster in context.monsters_alive)
 
     def _has_awakened_one(self, context: DecisionContext) -> bool:
         """Return True if Awakened One is alive in the current combat."""
@@ -1857,8 +1868,8 @@ class IroncladCombatPlanner(CombatPlanner):
         logger.info(f"[ELITE_DEBUG] monster_ids: {monster_ids}")
         logger.info(f"[ELITE_DEBUG] monster_names: {monster_names}")
 
-        # Gremlin Nob: Easy detection by monster_id
-        if "Gremlin Nob" in monster_ids:
+        # Gremlin Nob: live ids may be "GremlinNob" while display names include a space.
+        if any(self._is_gremlin_nob(monster) for monster in context.monsters_alive):
             logger.info("[ELITE_DETECTION] Gremlin Nob detected - SKILL penalty active")
             return EliteType.GREMLIN_NOB
 
