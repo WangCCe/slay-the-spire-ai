@@ -110,10 +110,15 @@ class EnhancedMonsterDatabase:
                     if str(alias).lower() == monster_name.lower():
                         return value
 
-        # Try partial match (for names like "The Champ" vs "Champ")
-        for key, value in self._data.items():
-            if monster_name.lower() in key.lower() or key.lower() in monster_name.lower():
-                return value
+        # Try unambiguous partial match (for names like "The Champ" vs "Champ").
+        normalized_name = monster_name.lower()
+        partial_matches = [
+            value
+            for key, value in self._data.items()
+            if normalized_name in key.lower() or key.lower() in normalized_name
+        ]
+        if len(partial_matches) == 1:
+            return partial_matches[0]
 
         return None
 

@@ -2642,6 +2642,15 @@ def test_enhanced_monster_database_rejects_blank_monster_names():
     assert database.predict_next_moves("", current_turn=1, monster_hp_percent=1.0) == []
 
 
+def test_enhanced_monster_database_rejects_ambiguous_partial_names():
+    database = EnhancedMonsterDatabase()
+
+    assert database.get_monster_data("Slaver") is None
+    assert database.get_moves("Slaver") == []
+    assert database.get_monster_data("Louse") is None
+    assert database.get_monster_data("Champ")["name"] == "The Champ"
+
+
 def test_enhanced_monster_database_loads_jaw_worm_opening_and_moves():
     database = EnhancedMonsterDatabase()
 
