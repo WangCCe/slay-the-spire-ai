@@ -1526,6 +1526,31 @@ def test_a20_elite_aggression_uses_context_ascension_level():
     assert score == -50.0
 
 
+def test_a20_elite_aggression_counts_killed_sentry_progress():
+    killed_sentry = _sentry(current_hp=39)
+    killed_sentry.current_hp = 0
+    killed_sentry.is_gone = True
+    alive_sentries = [_sentry(current_hp=39), _sentry(current_hp=39)]
+    context = _combat_context([], energy=0, monsters=alive_sentries)
+    context.turn = 3
+    context.ascension_level = 20
+    context.game.ascension_level = 20
+    context.game.monsters = [killed_sentry] + alive_sentries
+    initial_state = SimulationState(context)
+    final_state = initial_state.clone()
+    planner = IroncladCombatPlanner()
+
+    score = planner._apply_a20_early_aggression(
+        [],
+        initial_state,
+        final_state,
+        context,
+        0.0,
+    )
+
+    assert score == 0.0
+
+
 def test_slime_boss_strategy_treats_counted_upgraded_cleave_as_aoe():
     cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
     cleave.damage = 8

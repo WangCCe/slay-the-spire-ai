@@ -110,6 +110,19 @@ class IroncladCombatPlanner(CombatPlanner):
             return int(getattr(context, 'ascension_level') or 0)
         return int(getattr(context, 'ascension', 0) or 0)
 
+    @staticmethod
+    def _combat_hp_damage_so_far(context: DecisionContext) -> int:
+        game = getattr(context, 'game', None)
+        monsters = getattr(game, 'monsters', None) or getattr(context, 'monsters_alive', [])
+        damage_so_far = 0
+        for monster in monsters:
+            max_hp = getattr(monster, 'max_hp', None)
+            current_hp = getattr(monster, 'current_hp', None)
+            if max_hp is None or current_hp is None:
+                continue
+            damage_so_far += max(0, int(max_hp) - max(0, int(current_hp)))
+        return damage_so_far
+
     def _is_single_target_attack(self, card: Card, target_idx: Optional[int]) -> bool:
         if target_idx is None:
             return False
@@ -2224,11 +2237,8 @@ class IroncladCombatPlanner(CombatPlanner):
             # Calculate expected damage (12 HP per turn average)
             expected_damage = turn * 12
 
-            # Calculate actual damage dealt so far (from initial monster HP)
-            total_monster_hp = sum(m.current_hp for m in context.monsters_alive)
-            # We need to track initial max HP, but use approximation
-            initial_max_hp = sum(m.max_hp for m in context.monsters_alive)
-            damage_so_far = initial_max_hp - total_monster_hp
+            # Include killed monsters so finished Sentries still count as progress.
+            damage_so_far = self._combat_hp_damage_so_far(context)
 
             if damage_so_far < expected_damage:
                 penalty = 150
