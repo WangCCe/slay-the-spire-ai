@@ -38,6 +38,10 @@ def _loader_with_basic_ironclad_cards():
             "name": "Bash",
             "description": "Deal 8 damage. Apply 2 Vulnerable.",
         },
+        "bane": {
+            "name": "Bane",
+            "description": "Deal 7 damage. If the enemy has Poison, deal 7 damage again.",
+        },
         "whirlwind": {
             "name": "Whirlwind",
             "description": "Deal 5 damage to ALL enemies X times.",
@@ -258,6 +262,36 @@ def test_timing_lethal_check_counts_skewer_x_energy_hits(monkeypatch):
         energy_available=3,
         playable_cards=[skewer],
         monsters_alive=[SimpleNamespace(current_hp=21, block=0)],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
+def test_timing_lethal_check_counts_bane_second_hit_against_poisoned_target(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    bane = _card("Bane", "Bane", cost=1)
+    bane.uuid = "bane"
+    poisoned_monster = SimpleNamespace(
+        current_hp=14,
+        block=0,
+        powers=[SimpleNamespace(power_name="Poison", amount=1)],
+    )
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[bane],
+        monsters_alive=[poisoned_monster],
     )
     timing_ctx = TimingContext(
         turn_timing=TurnTiming.SAFE,
