@@ -6301,6 +6301,26 @@ def test_lethal_detector_artifact_blocks_bash_vulnerable_followup(monkeypatch):
     assert detector.find_lethal_sequence(context) == []
 
 
+def test_lethal_detector_uses_flex_strength_before_followup(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    flex = _card("Flex", "Flex", card_type=CardType.SKILL, cost=0, has_target=False)
+    flex.uuid = "flex"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = _combat_context([flex, strike], energy=1, monsters=[_louse(current_hp=8)])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "flex",
+        "strike",
+    ]
+
+
 def test_lethal_detector_counts_heavy_blade_strength_multiplier(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

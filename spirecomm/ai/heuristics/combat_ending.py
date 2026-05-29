@@ -384,6 +384,7 @@ class CombatEndingDetector:
         available_energy: int,
         fiend_fire_exhaust_count: Optional[int] = None,
         target_vulnerable_stacks: Optional[int] = None,
+        strength: Optional[int] = None,
     ) -> int:
         damage = self._get_card_damage(
             card,
@@ -391,6 +392,7 @@ class CombatEndingDetector:
             monster_idx,
             available_energy,
             fiend_fire_exhaust_count,
+            strength,
         )
         damage = self._apply_player_weak_to_card_damage(
             card,
@@ -577,6 +579,16 @@ class CombatEndingDetector:
 
         return ''
 
+    def _is_lethal_strength_skill(self, card: Card) -> bool:
+        if getattr(card, 'type', None) != CardType.SKILL:
+            return False
+        return self._base_card_name(card) == 'Flex'
+
+    def _strength_after_lethal_skill(self, card: Card, strength: int) -> int:
+        if self._base_card_name(card) == 'Flex':
+            return strength + (4 if getattr(card, 'upgrades', 0) > 0 else 2)
+        return strength
+
     def _find_targeted_lethal_sequence(
         self,
         context: DecisionContext,
@@ -589,6 +601,12 @@ class CombatEndingDetector:
             for card in attack_cards
             if self._is_aoe_attack(card) or getattr(card, 'has_target', False)
         ]
+        support_cards = [
+            card
+            for card in getattr(context, 'playable_cards', []) or []
+            if self._is_lethal_strength_skill(card)
+        ]
+        sequence_cards = support_cards + sequence_cards
         if not sequence_cards or not getattr(context, 'monsters_alive', None):
             return []
         if (
@@ -610,9 +628,17 @@ class CombatEndingDetector:
             self._get_monster_power_amount(monster, 'Artifact')
             for monster in context.monsters_alive
         )
+        starting_strength = getattr(context, 'strength', 0)
         seen = set()
 
-        def search(remaining_cards, hp_state, vulnerable_state, artifact_state, remaining_energy):
+        def search(
+            remaining_cards,
+            hp_state,
+            vulnerable_state,
+            artifact_state,
+            strength_state,
+            remaining_energy,
+        ):
             if all(hp <= 0 for hp in hp_state):
                 return []
 
@@ -621,6 +647,7 @@ class CombatEndingDetector:
                 hp_state,
                 vulnerable_state,
                 artifact_state,
+                strength_state,
                 remaining_energy,
             )
             if state_key in seen:
@@ -629,6 +656,34 @@ class CombatEndingDetector:
 
             candidates = []
             for card_pos, card in enumerate(remaining_cards):
+                if self._is_lethal_strength_skill(card):
+                    cost = effective_card_cost(card, remaining_energy)
+                    if cost > remaining_energy:
+                        continue
+
+                    next_strength = self._strength_after_lethal_skill(card, strength_state)
+                    if next_strength <= strength_state:
+                        continue
+
+                    candidates.append(
+                        (
+                            (
+                                0,
+                                0,
+                                next_strength - strength_state,
+                                -cost,
+                            ),
+                            card_pos,
+                            None,
+                            cost,
+                            hp_state,
+                            vulnerable_state,
+                            artifact_state,
+                            next_strength,
+                        )
+                    )
+                    continue
+
                 if self._is_aoe_attack(card):
                     cost = effective_card_cost(card, remaining_energy)
                     if cost > remaining_energy:
@@ -647,6 +702,7 @@ class CombatEndingDetector:
                             monster_idx,
                             remaining_energy,
                             target_vulnerable_stacks=vulnerable_state[monster_idx],
+                            strength=strength_state,
                         )
                         if damage <= 0:
                             continue
@@ -683,6 +739,7 @@ class CombatEndingDetector:
                             next_hp,
                             next_vulnerable,
                             next_artifact,
+                            strength_state,
                         )
                     )
                     continue
@@ -717,6 +774,7 @@ class CombatEndingDetector:
                         remaining_energy,
                         fiend_fire_exhaust_count,
                         vulnerable_state[monster_idx],
+                        strength_state,
                     )
                     if damage <= 0:
                         continue
@@ -753,6 +811,7 @@ class CombatEndingDetector:
                             next_hp,
                             next_vulnerable,
                             next_artifact,
+                            strength_state,
                         )
                     )
 
@@ -766,6 +825,7 @@ class CombatEndingDetector:
                 next_hp,
                 next_vulnerable,
                 next_artifact,
+                next_strength,
             ) in candidates:
                 card = remaining_cards[card_pos]
                 if self._base_card_name(card) == 'Fiend Fire':
@@ -777,6 +837,7 @@ class CombatEndingDetector:
                     next_hp,
                     next_vulnerable,
                     next_artifact,
+                    next_strength,
                     remaining_energy - cost,
                 )
                 if tail is not None:
@@ -799,6 +860,7 @@ class CombatEndingDetector:
             starting_hp,
             starting_vulnerable,
             starting_artifact,
+            starting_strength,
             available_energy,
         )
         return sequence or []
@@ -1177,6 +1239,7 @@ class CombatEndingDetector:
         monster_idx: Optional[int] = None,
         available_energy: Optional[int] = None,
         fiend_fire_exhaust_count: Optional[int] = None,
+        strength_override: Optional[int] = None,
     ) -> int:
         """
         Get actual damage of card accounting for modifiers.
@@ -1211,10 +1274,11 @@ class CombatEndingDetector:
                 context.energy_available if available_energy is None else available_energy,
                 context,
             )
-            return whirlwind_damage(card, energy, getattr(context, 'strength', 0))
+            strength = getattr(context, 'strength', 0) if strength_override is None else strength_override
+            return whirlwind_damage(card, energy, strength)
 
         if hasattr(card, 'type') and card.type == CardType.ATTACK:
-            strength = getattr(context, 'strength', 0)
+            strength = getattr(context, 'strength', 0) if strength_override is None else strength_override
             upgrades = getattr(card, 'upgrades', 0)
 
             if card_name == 'Heavy Blade':
