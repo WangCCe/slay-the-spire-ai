@@ -249,7 +249,7 @@ class IroncladCombatPlanner(CombatPlanner):
             for sequence, state, energy_spent, score in beam:
                 # Try each remaining card
                 for card in playable_cards:
-                    card_uuid = card.uuid if hasattr(card, 'uuid') else id(card)
+                    card_uuid = self._card_identity(card)
 
                     if card_uuid in state.played_card_uuids:
                         continue
@@ -397,6 +397,10 @@ class IroncladCombatPlanner(CombatPlanner):
                 )
 
         return best_sequence
+
+    @staticmethod
+    def _card_identity(card: Card):
+        return getattr(card, 'uuid', None) or id(card)
 
     @staticmethod
     def _card_cost_for_state(card: Card, state: SimulationState) -> int:

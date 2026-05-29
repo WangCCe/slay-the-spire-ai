@@ -5258,6 +5258,24 @@ def test_beam_search_uses_energy_gained_by_bloodletting_for_followup_cards(monke
     assert [action.card.card_id for action in sequence] == ["Bloodletting", "Strike_R"]
 
 
+def test_beam_search_keeps_distinct_cards_when_uuid_is_missing():
+    bash = _card("Bash", "Bash", cost=2)
+    strike = _card("Strike_R", "Strike", cost=1)
+    bash.uuid = None
+    strike.uuid = None
+    context = _combat_context([bash, strike], energy=3, monsters=[_louse(current_hp=100)])
+    planner = IroncladCombatPlanner()
+
+    def prefer_long_sequences(sequence, _initial_state, _final_state, _context):
+        return len(sequence)
+
+    planner._score_sequence = prefer_long_sequences
+
+    sequence = planner._beam_search_turn(context, [bash, strike], 10, 4)
+
+    assert [action.card.card_id for action in sequence] == ["Bash", "Strike_R"]
+
+
 def test_beam_search_skips_zero_energy_whirlwind():
     whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
     context = _combat_context([whirlwind], energy=0, monsters=[_louse(current_hp=50)])
