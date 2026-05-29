@@ -28,6 +28,37 @@ class _FakeEnhancedMonsterDataLoader:
         return None
 
 
+class _CanonicalOnlyMonsterDataLoader:
+    def __init__(self):
+        self.enhanced_names = []
+        self.predicted_names = []
+        self.profile_names = []
+        self.special_names = []
+
+    def get_enhanced_monster_data(self, monster_name):
+        self.enhanced_names.append(monster_name)
+        if monster_name == "Red Slaver":
+            return {"name": "Red Slaver"}
+        return None
+
+    def predict_monster_moves(self, monster_name, turn, monster_hp_percent):
+        self.predicted_names.append(monster_name)
+        return [
+            {
+                "move": {"name": "Stab", "damage": 10},
+                "confidence": 1.0,
+            }
+        ]
+
+    def get_monster_threat_profile(self, monster_name):
+        self.profile_names.append(monster_name)
+        return {"scaling_threat": 10}
+
+    def get_monster_special_mechanics(self, monster_name):
+        self.special_names.append(monster_name)
+        return None
+
+
 def _context_for_deck(deck):
     context = DecisionContext.__new__(DecisionContext)
     context.game = SimpleNamespace(deck=deck)
@@ -281,3 +312,27 @@ def test_compute_threat_v2_does_not_count_debuff_intent_as_party_buff(monkeypatc
     context.monsters_alive = [monster, first_ally, second_ally]
 
     assert context.compute_threat_v2(monster) == 10
+
+
+def test_compute_threat_v2_uses_live_monster_id_for_enhanced_data(monkeypatch):
+    data_loader = _CanonicalOnlyMonsterDataLoader()
+    monkeypatch.setattr(decision_base, "game_data_loader", data_loader)
+    monster = SimpleNamespace(
+        name="Slaver",
+        monster_id="SlaverRed",
+        intent=Intent.NONE,
+        move_adjusted_damage=0,
+        move_hits=1,
+        strength=0,
+        current_hp=30,
+        max_hp=60,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.turn = 1
+    context.monsters_alive = [monster]
+
+    assert context.compute_threat_v2(monster) > context.compute_threat(monster)
+    assert data_loader.enhanced_names == ["Red Slaver"]
+    assert data_loader.predicted_names == ["Red Slaver"]
+    assert data_loader.profile_names == ["Red Slaver"]
+    assert data_loader.special_names == ["Red Slaver"]

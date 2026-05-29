@@ -19,6 +19,7 @@ from spirecomm.ai.intent_utils import (
     monster_intends_attack,
 )
 from spirecomm.ai.incoming_damage import known_unknown_move_has_no_immediate_damage
+from spirecomm.ai.monster_names import canonical_live_monster_name
 from spirecomm.data.loader import game_data_loader
 
 
@@ -329,11 +330,11 @@ class DecisionContext:
         Returns:
             Enhanced threat score (higher = more threatening)
         """
-        # Fallback to original method if monster name unavailable
-        if not hasattr(monster, 'name'):
+        # Fallback to original method if monster identity is unavailable
+        monster_name = canonical_live_monster_name(monster)
+        if not monster_name:
             return self.compute_threat(monster)
 
-        monster_name = monster.name
         threat = 0
 
         # Get enhanced monster data from Wiki
