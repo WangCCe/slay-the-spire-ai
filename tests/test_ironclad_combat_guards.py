@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import spirecomm.ai.heuristics.simulation as simulation
 import spirecomm.ai.heuristics.combat_ending as combat_ending
 import spirecomm.ai.heuristics.ironclad_combat as ironclad_combat
+import spirecomm.data.loader as data_loader_module
 from spirecomm.ai.heuristics.enhanced_monster_database import EnhancedMonsterDatabase
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
@@ -2412,6 +2413,35 @@ def test_v2_summoner_targeting_matches_live_bronze_orbs_by_id(monkeypatch):
     assert target is first_orb
     assert target_idx == 1
     assert "Bronze Automaton" in monster_loader.summoner_names
+
+
+def test_simulation_summoner_handler_uses_live_monster_id(monkeypatch):
+    class CanonicalOnlySummonerLoader:
+        def __init__(self):
+            self.summoner_names = []
+            self.minion_names = []
+
+        def is_monster_summoner(self, monster_name):
+            self.summoner_names.append(monster_name)
+            return monster_name == "Bronze Automaton"
+
+        def get_monster_minions(self, monster_name):
+            self.minion_names.append(monster_name)
+            if monster_name == "Bronze Automaton":
+                return ["Bronze Orb"]
+            return []
+
+    monster_loader = CanonicalOnlySummonerLoader()
+    monkeypatch.setattr(data_loader_module, "game_data_loader", monster_loader)
+    context = _combat_context([], energy=0, monsters=[_bronze_automaton()])
+    state = SimulationState(context)
+
+    FastCombatSimulator(SynergyCardEvaluator())._handle_summoner(state, state.monsters[0])
+
+    assert state.monsters[0]["is_summoner"] is True
+    assert state.monsters[0]["minions"] == ["Bronze Orb"]
+    assert monster_loader.summoner_names == ["Bronze Automaton"]
+    assert monster_loader.minion_names == ["Bronze Automaton"]
 
 
 def test_aoe_decision_matches_live_bronze_orb_minions_by_id(monkeypatch):
