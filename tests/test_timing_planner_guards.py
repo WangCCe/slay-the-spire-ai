@@ -246,6 +246,39 @@ def test_timing_lethal_check_counts_whirlwind_x_energy_damage(monkeypatch):
     assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_lethal_check_uses_remaining_energy_for_x_cost_aoe(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, has_target=False)
+    whirlwind.cost_for_turn = -1
+    whirlwind.uuid = "whirlwind"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=3,
+        playable_cards=[strike, whirlwind],
+        monsters_alive=[
+            SimpleNamespace(current_hp=15, block=0),
+            SimpleNamespace(current_hp=21, block=0),
+        ],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    planner = TimingAwareCombatPlanner()
+
+    assert not planner._can_kill_all_this_turn(context, timing_ctx)
+
+
 def test_timing_lethal_check_counts_skewer_x_energy_hits(monkeypatch):
     monkeypatch.setattr(
         timing_planner,

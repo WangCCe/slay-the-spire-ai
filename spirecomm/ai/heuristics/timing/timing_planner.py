@@ -555,7 +555,7 @@ class TimingAwareCombatPlanner:
         attack_cards = [
             card
             for card in playable_cards
-            if self._estimate_card_damage(card, context) > 0
+            if self._estimate_card_damage(card, context, available_energy) > 0
         ]
         if not attack_cards or not monsters:
             return []
@@ -716,7 +716,7 @@ class TimingAwareCombatPlanner:
         monster_idx: int,
         available_energy: int,
     ) -> int:
-        damage = self._estimate_card_damage(card, context)
+        damage = self._estimate_card_damage(card, context, available_energy)
         if self._get_player_debuff_stacks(context, 'Weak') > 0:
             damage = self._apply_per_hit_damage_multiplier(
                 card,
@@ -784,7 +784,7 @@ class TimingAwareCombatPlanner:
 
         return False
 
-    def _estimate_card_damage(self, card, context) -> int:
+    def _estimate_card_damage(self, card, context, available_energy=None) -> int:
         """Estimate card damage for timing decisions from methods or parsed data."""
         if getattr(card, 'type', None) not in (None, CardType.ATTACK):
             return 0
@@ -798,9 +798,14 @@ class TimingAwareCombatPlanner:
 
         card_name = canonical_card_name(card)
         strength = getattr(context, 'strength', 0)
+        energy_for_x = (
+            getattr(context, 'energy_available', 0)
+            if available_energy is None
+            else available_energy
+        )
 
         if card_name == 'Whirlwind':
-            energy = x_effect_energy(card, getattr(context, 'energy_available', 0), context)
+            energy = x_effect_energy(card, energy_for_x, context)
             return whirlwind_damage(card, energy, strength)
         if card_name == 'Body Slam':
             return max(0, self._get_player_block(context) + strength)
@@ -820,7 +825,7 @@ class TimingAwareCombatPlanner:
             return 0
 
         scaled_damage = self._apply_attack_damage_scaling(card, base_damage, strength, context)
-        hit_count = self._get_attack_hit_count(card, context)
+        hit_count = self._get_attack_hit_count(card, context, energy_for_x)
         return max(0, int(scaled_damage * hit_count))
 
     def _apply_attack_status_modifiers(
@@ -999,7 +1004,7 @@ class TimingAwareCombatPlanner:
         except (TypeError, ValueError):
             return 0
 
-    def _get_attack_hit_count(self, card, context=None) -> int:
+    def _get_attack_hit_count(self, card, context=None, available_energy=None) -> int:
         """Return known deterministic hit counts for attack damage estimates."""
         card_name = canonical_card_name(card)
         upgrades = getattr(card, 'upgrades', 0)
@@ -1009,7 +1014,12 @@ class TimingAwareCombatPlanner:
         if card_name == 'Bane' and context is not None:
             return 2 if self._all_alive_targets_poisoned(context) else 1
         if card_name == 'Skewer':
-            return x_effect_energy(card, getattr(context, 'energy_available', 0), context)
+            energy = (
+                getattr(context, 'energy_available', 0)
+                if available_energy is None
+                else available_energy
+            )
+            return x_effect_energy(card, energy, context)
         if card_name == 'Sword Boomerang':
             return 4 if upgrades > 0 else 3
         if card_name == 'Pummel':
