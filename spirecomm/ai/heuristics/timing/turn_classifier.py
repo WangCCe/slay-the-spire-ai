@@ -275,14 +275,15 @@ class TurnTimingClassifier:
                     else:
                         hp_percent = 1.0
 
+                    monster_name = canonical_live_monster_name(monster)
                     anchored_predictions = game_data_loader.predict_monster_moves(
-                        monster.name,
+                        monster_name,
                         current_turn,
                         hp_percent,
                     )
                     prediction = self._select_prediction_for_turn(
                         anchored_predictions,
-                        monster.name,
+                        monster_name,
                         target_turn,
                         hp_percent,
                     )
@@ -293,13 +294,13 @@ class TurnTimingClassifier:
                         # Check if attack
                         if intent_is_attack(move.get('intent', '')):
                             damage = self._resolve_move_damage(
-                                monster.name,
+                                monster_name,
                                 move,
                                 context,
                                 target_turn=target_turn,
                             )
                             damage = self._apply_ascension_damage_modifiers(
-                                monster.name,
+                                monster_name,
                                 move,
                                 damage,
                                 context,
@@ -315,7 +316,7 @@ class TurnTimingClassifier:
                             total_damage += (damage + predicted_strength) * hits
                         else:
                             # Non-attack move = safe
-                            monsters_safe.append(monster.name)
+                            monsters_safe.append(monster_name)
 
                 turn_damages[target_turn] = total_damage
 
@@ -373,14 +374,15 @@ class TurnTimingClassifier:
                     else:
                         hp_percent = 1.0
 
+                    monster_name = canonical_live_monster_name(monster)
                     anchored_predictions = game_data_loader.predict_monster_moves(
-                        monster.name,
+                        monster_name,
                         current_turn,
                         hp_percent,
                     )
                     prediction = self._select_prediction_for_turn(
                         anchored_predictions,
-                        monster.name,
+                        monster_name,
                         target_turn,
                         hp_percent,
                     )
@@ -390,12 +392,12 @@ class TurnTimingClassifier:
 
                         if intent_is_attack(move.get('intent', '')):
                             damage = self._resolve_move_damage(
-                                monster.name, move, context, target_turn=target_turn)
+                                monster_name, move, context, target_turn=target_turn)
                             hits = self._resolve_move_hits(move, context, target_turn=target_turn)
 
                             # Apply ascension modifiers to damage
                             damage = self._apply_ascension_damage_modifiers(
-                                monster.name, move, damage, context
+                                monster_name, move, damage, context
                             )
 
                             predicted_strength = self._predict_attack_strength(

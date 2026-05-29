@@ -2441,6 +2441,94 @@ def test_safe_window_detection_counts_scripted_strength_gain_before_attack(monke
     ]
 
 
+def test_damage_curve_uses_live_monster_id_for_predicted_moves(monkeypatch):
+    class CanonicalOnlyPredictionLoader:
+        def __init__(self):
+            self.names = []
+
+        def predict_monster_moves(self, monster_name, _current_turn, _hp_percent):
+            self.names.append(monster_name)
+            if monster_name != "Red Slaver":
+                return []
+            return [
+                {
+                    "turn": 2,
+                    "move": {
+                        "name": "Stab",
+                        "intent": "ATTACK",
+                        "damage": 10,
+                        "hits": 1,
+                    },
+                }
+            ]
+
+    prediction_loader = CanonicalOnlyPredictionLoader()
+    monkeypatch.setattr(data_loader, "game_data_loader", prediction_loader)
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0))
+    live_slaver = SimpleNamespace(
+        name="Slaver",
+        monster_id="SlaverRed",
+        current_hp=30,
+        max_hp=60,
+        strength=0,
+    )
+
+    damage_curve = classifier._calculate_damage_curve(
+        context,
+        [live_slaver],
+        current_turn=1,
+        look_ahead=1,
+    )
+
+    assert damage_curve == [10]
+    assert prediction_loader.names == ["Red Slaver"]
+
+
+def test_safe_window_detection_uses_live_monster_id_for_predicted_damage(monkeypatch):
+    class CanonicalOnlyPredictionLoader:
+        def __init__(self):
+            self.names = []
+
+        def predict_monster_moves(self, monster_name, _current_turn, _hp_percent):
+            self.names.append(monster_name)
+            if monster_name != "Red Slaver":
+                return []
+            return [
+                {
+                    "turn": 1,
+                    "move": {
+                        "name": "Stab",
+                        "intent": "ATTACK",
+                        "damage": 12,
+                        "hits": 1,
+                    },
+                }
+            ]
+
+    prediction_loader = CanonicalOnlyPredictionLoader()
+    monkeypatch.setattr(data_loader, "game_data_loader", prediction_loader)
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0))
+    live_slaver = SimpleNamespace(
+        name="Slaver",
+        monster_id="SlaverRed",
+        current_hp=30,
+        max_hp=60,
+        strength=0,
+    )
+
+    windows = classifier._detect_safe_windows(
+        context,
+        [live_slaver],
+        current_turn=1,
+        look_ahead=1,
+    )
+
+    assert windows == []
+    assert prediction_loader.names == ["Red Slaver"]
+
+
 def test_future_strength_prediction_uses_live_id_for_louse_grow(monkeypatch):
     class CanonicalOnlyLoader:
         def get_enhanced_monster_data(self, monster_name):
