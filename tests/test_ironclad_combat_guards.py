@@ -6321,6 +6321,33 @@ def test_lethal_detector_uses_flex_strength_before_followup(monkeypatch):
     ]
 
 
+def test_lethal_detector_uses_limit_break_strength_before_followup(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    limit_break = _card(
+        "Limit Break",
+        "Limit Break",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    limit_break.uuid = "limit-break"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = _combat_context([limit_break, strike], energy=2, monsters=[_louse(current_hp=12)])
+    context.strength = 3
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "limit-break",
+        "strike",
+    ]
+
+
 def test_lethal_detector_counts_heavy_blade_strength_multiplier(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

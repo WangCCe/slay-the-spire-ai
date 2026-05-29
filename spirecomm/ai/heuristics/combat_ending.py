@@ -582,11 +582,13 @@ class CombatEndingDetector:
     def _is_lethal_strength_skill(self, card: Card) -> bool:
         if getattr(card, 'type', None) != CardType.SKILL:
             return False
-        return self._base_card_name(card) == 'Flex'
+        return self._base_card_name(card) in {'Flex', 'Limit Break'}
 
     def _strength_after_lethal_skill(self, card: Card, strength: int) -> int:
         if self._base_card_name(card) == 'Flex':
             return strength + (4 if getattr(card, 'upgrades', 0) > 0 else 2)
+        if self._base_card_name(card) == 'Limit Break':
+            return strength * 2
         return strength
 
     def _find_targeted_lethal_sequence(
