@@ -5655,6 +5655,34 @@ def test_lethal_detector_rejects_aoe_overkill_false_positive(monkeypatch):
     assert detector.find_lethal_sequence(context) == []
 
 
+def test_lethal_detector_rejects_single_target_distribution_false_positive(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 5 damage.",
+        },
+        "carnage": {
+            "name": "Carnage",
+            "description": "Deal 15 damage.",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    carnage = _card("Carnage", "Carnage", cost=1)
+    carnage.uuid = "carnage"
+    context = _combat_context(
+        [strike, carnage],
+        energy=2,
+        monsters=[_louse(current_hp=10), _louse(current_hp=10)],
+    )
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
+
+
 def test_lethal_detector_uses_aoe_damage_before_single_target_cleanup(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

@@ -129,12 +129,20 @@ class CombatEndingDetector:
                 attack_cards,
                 context.energy_available,
             ))
+            exact_sequence_search_applicable = self._can_use_exact_lethal_sequence(
+                context,
+                attack_cards,
+            )
 
             # Final decision
             lethal_detected = (
                 proven_aoe_cleanup
                 or proven_targeted_sequence
-                or (has_damage_potential and targeting_feasible)
+                or (
+                    not exact_sequence_search_applicable
+                    and has_damage_potential
+                    and targeting_feasible
+                )
             )
 
             if lethal_detected:
@@ -145,6 +153,8 @@ class CombatEndingDetector:
                     reasons.append(f"Insufficient damage ({affordable_damage} < {int(total_monster_hp * margin_multiplier)} with 10% margin)")
                 if not targeting_feasible:
                     reasons.append("Targeting constraints prevent lethal")
+                if exact_sequence_search_applicable and not proven_targeted_sequence:
+                    reasons.append("No exact lethal sequence found")
                 logger.info(f"[LETHAL_DETECTION] No lethal. Reason: {'; '.join(reasons)}")
 
             return lethal_detected
@@ -318,6 +328,27 @@ class CombatEndingDetector:
     @staticmethod
     def _card_play_key(card: Card):
         return getattr(card, 'uuid', None) or id(card)
+
+    def _can_use_exact_lethal_sequence(
+        self,
+        context: DecisionContext,
+        attack_cards: List[Card],
+    ) -> bool:
+        monsters = getattr(context, 'monsters_alive', []) or []
+        if not monsters:
+            return False
+
+        sequence_cards = [
+            card
+            for card in attack_cards
+            if self._is_aoe_attack(card) or getattr(card, 'has_target', False)
+        ]
+        return (
+            bool(sequence_cards)
+            and len(sequence_cards) == len(attack_cards)
+            and len(sequence_cards) <= TARGETED_LETHAL_MAX_CARDS
+            and len(monsters) <= TARGETED_LETHAL_MAX_MONSTERS
+        )
 
     def _card_damage_against_monster(
         self,
