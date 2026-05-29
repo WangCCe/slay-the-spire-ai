@@ -1396,7 +1396,9 @@ class IroncladCombatPlanner(CombatPlanner):
                 # Armaments: value upgrades proportional to available targets
                 if card_id == 'Armaments':
                     upgradeable = self._count_upgradeable_cards(
-                        context, exclude_uuid=getattr(card, 'uuid', None)
+                        context,
+                        exclude_uuid=getattr(card, 'uuid', None),
+                        exclude_card=card,
                     )
                     if upgradeable > 0:
                         upgrades = getattr(card, 'upgrades', 0)
@@ -1538,13 +1540,15 @@ class IroncladCombatPlanner(CombatPlanner):
         card_lower = canonical_card_name(card).lower().replace('_', ' ')
         return any(kw in card_lower for kw in draw_keywords)
 
-    def _count_upgradeable_cards(self, context: DecisionContext, exclude_uuid=None) -> int:
+    def _count_upgradeable_cards(self, context: DecisionContext, exclude_uuid=None, exclude_card=None) -> int:
         """Count upgradeable cards in hand (excluding the Armaments card itself)."""
         hand = getattr(context, 'hand', None)
         if not hand:
             hand = getattr(context, 'playable_cards', [])
         count = 0
         for card in hand:
+            if exclude_card is not None and card is exclude_card:
+                continue
             if exclude_uuid is not None and getattr(card, 'uuid', None) == exclude_uuid:
                 continue
             if getattr(card, 'upgrades', 0) == 0:

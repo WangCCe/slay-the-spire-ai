@@ -5985,6 +5985,62 @@ def test_ironclad_sequence_strategic_bonus_treats_counted_upgraded_whirlwind_as_
     assert counted_score == canonical_score
 
 
+def test_armaments_bonus_does_not_count_itself_when_uuid_is_missing():
+    armaments_with_uuid = _card(
+        "Armaments",
+        "Armaments",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    strike_with_uuid = _card("Strike_R", "Strike", cost=1)
+    armaments_with_uuid.uuid = "armaments"
+    strike_with_uuid.uuid = "strike"
+
+    armaments_without_uuid = _card(
+        "Armaments",
+        "Armaments",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    strike_without_uuid = _card("Strike_R", "Strike", cost=1)
+    armaments_without_uuid.uuid = None
+    strike_without_uuid.uuid = None
+
+    context_with_uuid = _combat_context(
+        [armaments_with_uuid, strike_with_uuid],
+        energy=2,
+        monsters=[_louse(current_hp=100)],
+    )
+    context_without_uuid = _combat_context(
+        [armaments_without_uuid, strike_without_uuid],
+        energy=2,
+        monsters=[_louse(current_hp=100)],
+    )
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+
+    initial_with_uuid = SimulationState(context_with_uuid)
+    initial_without_uuid = SimulationState(context_without_uuid)
+
+    score_with_uuid = planner._score_sequence(
+        [PlayCardAction(card=armaments_with_uuid)],
+        initial_with_uuid,
+        initial_with_uuid.clone(),
+        context_with_uuid,
+    )
+    score_without_uuid = planner._score_sequence(
+        [PlayCardAction(card=armaments_without_uuid)],
+        initial_without_uuid,
+        initial_without_uuid.clone(),
+        context_without_uuid,
+    )
+
+    assert score_without_uuid == score_with_uuid
+
+
 def test_ironclad_sequence_bash_followup_bonus_ignores_upgraded_bash_as_big_attack():
     bash = _card("Bash", "Bash", cost=2)
     bash.uuid = "bash"
