@@ -172,6 +172,8 @@ class TimingAwareCombatPlanner:
                 # Simple estimate: use card's base damage
                 card_damage = self._estimate_card_damage(card, context)
                 if card_damage > 0:
+                    if not self._can_use_scalar_damage_option(card, monsters):
+                        continue
                     cost = self._card_energy_cost_for_targets(
                         card,
                         context,
@@ -246,6 +248,8 @@ class TimingAwareCombatPlanner:
             for card in playable_cards:
                 damage = self._estimate_card_damage(card, context)
                 if damage > 0:
+                    if not self._can_use_scalar_damage_option(card, monsters):
+                        continue
                     energy_available = getattr(context, 'energy_available', 3)
                     cost = self._card_energy_cost_for_targets(
                         card,
@@ -507,6 +511,11 @@ class TimingAwareCombatPlanner:
             card,
             target_vulnerable=self._all_alive_targets_vulnerable(context, monsters),
         )
+
+    def _can_use_scalar_damage_option(self, card, monsters) -> bool:
+        if len(monsters) <= 1:
+            return True
+        return self._is_card_aoe(card) or getattr(card, 'has_target', False)
 
     def _affordable_damage_effects_can_kill_all(self, damage_options, monster_hp, energy) -> bool:
         """Check whether any affordable subset of damage effects can kill all monsters."""

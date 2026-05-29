@@ -390,6 +390,48 @@ def test_timing_lethal_check_counts_random_hit_attack_damage_against_single_mons
     assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_lethal_check_rejects_random_hit_attack_against_multiple_monsters(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    first_boomerang = _card(
+        "Sword Boomerang",
+        "Sword Boomerang",
+        cost=1,
+        has_target=False,
+    )
+    first_boomerang.uuid = "boomerang-1"
+    second_boomerang = _card(
+        "Sword Boomerang",
+        "Sword Boomerang",
+        cost=1,
+        has_target=False,
+    )
+    second_boomerang.uuid = "boomerang-2"
+    context = SimpleNamespace(
+        turn=1,
+        strength=2,
+        energy_available=2,
+        playable_cards=[first_boomerang, second_boomerang],
+        monsters_alive=[
+            SimpleNamespace(current_hp=15, block=0, monster_index=0),
+            SimpleNamespace(current_hp=15, block=0, monster_index=1),
+        ],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+    planner = TimingAwareCombatPlanner()
+
+    assert not planner._can_kill_all_this_turn(context, timing_ctx)
+    assert planner._generate_lethal_sequence(context) == []
+
+
 def test_timing_lethal_check_applies_heavy_blade_strength_multiplier(monkeypatch):
     monkeypatch.setattr(
         timing_planner,
