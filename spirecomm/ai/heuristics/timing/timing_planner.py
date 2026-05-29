@@ -508,19 +508,37 @@ class TimingAwareCombatPlanner:
         if base_damage <= 0:
             return 0
 
-        scaled_damage = self._apply_strength_scaling(card, base_damage, strength)
+        scaled_damage = self._apply_attack_damage_scaling(card, base_damage, strength, context)
         hit_count = self._get_attack_hit_count(card)
         return max(0, int(scaled_damage * hit_count))
 
-    def _apply_strength_scaling(self, card, base_damage: int, strength: int) -> int:
-        """Apply non-standard Strength scaling for attack damage estimates."""
+    def _apply_attack_damage_scaling(self, card, base_damage: int, strength: int, context) -> int:
+        """Apply non-standard attack damage scaling for timing estimates."""
         card_name = canonical_card_name(card)
 
         if card_name == 'Heavy Blade':
             multiplier = 5 if getattr(card, 'upgrades', 0) > 0 else 3
             return base_damage + strength * multiplier
+        if card_name == 'Perfected Strike':
+            per_strike_bonus = 3 if getattr(card, 'upgrades', 0) > 0 else 2
+            return base_damage + self._count_strike_cards(context) * per_strike_bonus + strength
 
         return base_damage + strength
+
+    def _count_strike_cards(self, context) -> int:
+        """Count deck cards whose displayed name or id contains Strike."""
+        deck = getattr(getattr(context, 'game', None), 'deck', None)
+        if not deck:
+            return 0
+
+        count = 0
+        for deck_card in deck:
+            card_name = getattr(deck_card, 'name', '') or ''
+            card_id = getattr(deck_card, 'card_id', '') or ''
+            if 'strike' in card_name.lower() or 'strike' in card_id.lower():
+                count += 1
+
+        return max(0, count)
 
     def _get_attack_hit_count(self, card) -> int:
         """Return known deterministic hit counts for attack damage estimates."""

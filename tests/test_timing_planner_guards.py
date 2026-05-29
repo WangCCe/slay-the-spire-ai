@@ -54,6 +54,10 @@ def _loader_with_basic_ironclad_cards():
             "name": "Heavy Blade",
             "description": "Deal 14 damage. Strength affects Heavy Blade 3 times.",
         },
+        "perfected strike": {
+            "name": "Perfected Strike",
+            "description": "Deal 6 damage. Deals 2 additional damage for ALL your cards containing \"Strike\".",
+        },
     }
     return loader
 
@@ -297,6 +301,40 @@ def test_timing_lethal_check_applies_heavy_blade_strength_multiplier(monkeypatch
         energy_available=2,
         playable_cards=[heavy_blade],
         monsters_alive=[SimpleNamespace(current_hp=29, block=0)],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
+def test_timing_lethal_check_counts_perfected_strike_deck_scaling(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    perfected_strike = _card("Perfected Strike", "Perfected Strike+", cost=2)
+    perfected_strike.upgrades = 1
+    perfected_strike.uuid = "perfected-strike"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=2,
+        playable_cards=[perfected_strike],
+        monsters_alive=[SimpleNamespace(current_hp=18, block=0)],
+        game=SimpleNamespace(
+            deck=[
+                _card("Strike_R", "Strike"),
+                _card("Strike_R", "Strike"),
+                _card("Twin Strike", "Twin Strike"),
+                _card("Perfected Strike", "Perfected Strike"),
+            ],
+        ),
     )
     timing_ctx = TimingContext(
         turn_timing=TurnTiming.SAFE,
