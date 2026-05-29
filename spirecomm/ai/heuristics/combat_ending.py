@@ -855,20 +855,41 @@ class CombatEndingDetector:
                     efficiency = float('inf')  # Zero-cost cards are infinitely efficient
                 attack_cards.append((card, cost, damage, efficiency))
 
+        def greedy_total(candidates):
+            selected_damage = 0
+            selected_energy = 0
+            selected_cards = []
+            for card, cost, damage, _ in candidates:
+                if selected_energy + cost <= context.energy_available:
+                    selected_damage += damage
+                    selected_energy += cost
+                    selected_cards.append(card.name)
+                elif cost == 0:
+                    selected_damage += damage
+                    selected_cards.append(card.name)
+            return selected_damage, selected_energy, selected_cards
+
         # Sort by efficiency (highest first), then by damage (highest first)
         attack_cards.sort(key=lambda x: (x[3], x[2]), reverse=True)
 
-        # Greedily select cards until energy runs out
-        selected = []
-        for card, cost, damage, _ in attack_cards:
-            if energy_used + cost <= context.energy_available:
-                total_damage += damage
-                energy_used += cost
-                selected.append(card.name)
-            elif cost == 0:
-                # Zero-cost cards can always be played
-                total_damage += damage
-                selected.append(card.name)
+        fiend_fire_cards = [
+            item for item in attack_cards if self._base_card_name(item[0]) == 'Fiend Fire'
+        ]
+        if fiend_fire_cards:
+            regular_damage, regular_energy, regular_selected = greedy_total(
+                [item for item in attack_cards if self._base_card_name(item[0]) != 'Fiend Fire']
+            )
+            fiend_damage, fiend_energy, fiend_selected = greedy_total(fiend_fire_cards)
+            if fiend_damage > regular_damage:
+                total_damage = fiend_damage
+                energy_used = fiend_energy
+                selected = fiend_selected
+            else:
+                total_damage = regular_damage
+                energy_used = regular_energy
+                selected = regular_selected
+        else:
+            total_damage, energy_used, selected = greedy_total(attack_cards)
 
         logger.info(f"[LETHAL_CALC] Selected: {selected}, total_damage={total_damage}, energy_used={energy_used}/{context.energy_available}")
         return total_damage
