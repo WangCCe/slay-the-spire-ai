@@ -491,63 +491,71 @@ class CombatEndingDetector:
         card: Card,
         context: DecisionContext,
         vulnerable_state: Tuple[int, ...],
+        artifact_state: Tuple[int, ...],
         hp_state: Tuple[int, ...],
         monster_idx: Optional[int],
-    ) -> Tuple[int, ...]:
-        stacks = self._card_vulnerable_stacks_applied(card)
-        if stacks <= 0:
-            return vulnerable_state
+    ) -> Tuple[Tuple[int, ...], Tuple[int, ...]]:
+        debuff_effects = self._card_debuff_effects_applied(card)
+        if not debuff_effects:
+            return vulnerable_state, artifact_state
 
         if self._is_aoe_attack(card):
             target_indices = range(len(vulnerable_state))
         elif monster_idx is not None:
             target_indices = (monster_idx,)
         else:
-            return vulnerable_state
+            return vulnerable_state, artifact_state
 
-        next_state = list(vulnerable_state)
+        next_vulnerable = list(vulnerable_state)
+        next_artifact = list(artifact_state)
         for target_idx in target_indices:
-            if target_idx >= len(next_state) or hp_state[target_idx] <= 0:
+            if target_idx >= len(next_vulnerable) or hp_state[target_idx] <= 0:
                 continue
-            if self._monster_blocks_new_debuff(context, target_idx):
-                continue
-            next_state[target_idx] = max(0, next_state[target_idx]) + stacks
-        return tuple(next_state)
+            artifact = max(0, next_artifact[target_idx])
+            for debuff, stacks in debuff_effects:
+                if stacks <= 0:
+                    continue
+                if artifact > 0:
+                    artifact -= 1
+                    continue
+                if debuff == 'vulnerable':
+                    next_vulnerable[target_idx] = max(0, next_vulnerable[target_idx]) + stacks
+            next_artifact[target_idx] = artifact
+        return tuple(next_vulnerable), tuple(next_artifact)
 
-    def _monster_blocks_new_debuff(
-        self,
-        context: DecisionContext,
-        monster_idx: int,
-    ) -> bool:
-        monsters = getattr(context, 'monsters_alive', []) or []
-        if not 0 <= monster_idx < len(monsters):
-            return False
-        return self._get_monster_power_amount(monsters[monster_idx], 'Artifact') > 0
-
-    def _card_vulnerable_stacks_applied(self, card: Card) -> int:
+    def _card_debuff_effects_applied(self, card: Card) -> List[Tuple[str, int]]:
         text = self._card_effect_text(card)
         if not text:
-            return 0
+            return []
 
         upgraded = getattr(card, 'upgrades', 0) > 0
+        effects = []
         effect_text = text.replace('\\n', '\n').replace('#', '').lower()
         for clause in re.split(r'[\n.;]', effect_text):
-            if 'vulnerable' not in clause or 'apply' not in clause:
+            if 'apply' not in clause:
                 continue
 
-            upgraded_match = re.search(r'\[(\d+)\|(\d+)\]\s+vulnerable\b', clause)
-            if upgraded_match:
-                return int(upgraded_match.group(2) if upgraded else upgraded_match.group(1))
+            for debuff in ('weak', 'vulnerable'):
+                if debuff not in clause:
+                    continue
 
-            stack_match = re.search(r'\bapply\s+(\d+)\s+vulnerable\b', clause)
-            if stack_match:
-                return int(stack_match.group(1))
+                upgraded_match = re.search(
+                    rf'\[(\d+)\|(\d+)\]\s+{debuff}\b',
+                    clause,
+                )
+                if upgraded_match:
+                    stacks = int(upgraded_match.group(2) if upgraded else upgraded_match.group(1))
+                    effects.append((debuff, stacks))
+                    continue
 
-        return 0
+                stack_match = re.search(rf'\bapply\s+(\d+)\s+{debuff}\b', clause)
+                if stack_match:
+                    effects.append((debuff, int(stack_match.group(1))))
+
+        return effects
 
     def _card_effect_text(self, card: Card) -> str:
         card_name = self._base_card_name(card)
-        texts = []
 
         try:
             wiki_data = getattr(game_data_loader, '_wiki_data', None)
@@ -557,7 +565,7 @@ class CombatEndingDetector:
             if wiki_data:
                 wiki_entry = wiki_data.get(card_name.lower())
                 if wiki_entry and wiki_entry.get('text'):
-                    texts.append(wiki_entry['text'])
+                    return str(wiki_entry['text'])
         except Exception:
             pass
 
@@ -565,9 +573,9 @@ class CombatEndingDetector:
         for key in ('description', 'text'):
             value = card_data.get(key)
             if value:
-                texts.append(str(value))
+                return str(value)
 
-        return '\n'.join(dict.fromkeys(texts))
+        return ''
 
     def _find_targeted_lethal_sequence(
         self,
@@ -598,9 +606,13 @@ class CombatEndingDetector:
             self._monster_vulnerable_stacks(context, monster_idx)
             for monster_idx, _monster in enumerate(context.monsters_alive)
         )
+        starting_artifact = tuple(
+            self._get_monster_power_amount(monster, 'Artifact')
+            for monster in context.monsters_alive
+        )
         seen = set()
 
-        def search(remaining_cards, hp_state, vulnerable_state, remaining_energy):
+        def search(remaining_cards, hp_state, vulnerable_state, artifact_state, remaining_energy):
             if all(hp <= 0 for hp in hp_state):
                 return []
 
@@ -608,6 +620,7 @@ class CombatEndingDetector:
                 tuple(self._card_play_key(card) for card in remaining_cards),
                 hp_state,
                 vulnerable_state,
+                artifact_state,
                 remaining_energy,
             )
             if state_key in seen:
@@ -647,10 +660,11 @@ class CombatEndingDetector:
                         continue
 
                     next_hp = tuple(next_hp)
-                    next_vulnerable = self._vulnerable_state_after_card(
+                    next_vulnerable, next_artifact = self._vulnerable_state_after_card(
                         card,
                         context,
                         vulnerable_state,
+                        artifact_state,
                         next_hp,
                         None,
                     )
@@ -668,6 +682,7 @@ class CombatEndingDetector:
                             cost,
                             next_hp,
                             next_vulnerable,
+                            next_artifact,
                         )
                     )
                     continue
@@ -709,10 +724,11 @@ class CombatEndingDetector:
                     next_hp = list(hp_state)
                     next_hp[monster_idx] = max(0, hp - damage)
                     next_hp = tuple(next_hp)
-                    next_vulnerable = self._vulnerable_state_after_card(
+                    next_vulnerable, next_artifact = self._vulnerable_state_after_card(
                         card,
                         context,
                         vulnerable_state,
+                        artifact_state,
                         next_hp,
                         monster_idx,
                     )
@@ -736,18 +752,33 @@ class CombatEndingDetector:
                             cost,
                             next_hp,
                             next_vulnerable,
+                            next_artifact,
                         )
                     )
 
             candidates.sort(key=lambda item: item[0], reverse=True)
 
-            for _priority, card_pos, monster_idx, cost, next_hp, next_vulnerable in candidates:
+            for (
+                _priority,
+                card_pos,
+                monster_idx,
+                cost,
+                next_hp,
+                next_vulnerable,
+                next_artifact,
+            ) in candidates:
                 card = remaining_cards[card_pos]
                 if self._base_card_name(card) == 'Fiend Fire':
                     next_cards = ()
                 else:
                     next_cards = remaining_cards[:card_pos] + remaining_cards[card_pos + 1:]
-                tail = search(next_cards, next_hp, next_vulnerable, remaining_energy - cost)
+                tail = search(
+                    next_cards,
+                    next_hp,
+                    next_vulnerable,
+                    next_artifact,
+                    remaining_energy - cost,
+                )
                 if tail is not None:
                     target_monster = (
                         None
@@ -767,6 +798,7 @@ class CombatEndingDetector:
             tuple(sequence_cards),
             starting_hp,
             starting_vulnerable,
+            starting_artifact,
             available_energy,
         )
         return sequence or []

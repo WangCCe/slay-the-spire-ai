@@ -6238,6 +6238,69 @@ def test_lethal_detector_uses_new_bash_vulnerable_for_dropkick_refund(monkeypatc
     ]
 
 
+def test_lethal_detector_consumes_artifact_before_uppercut_vulnerable(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "uppercut": {
+            "name": "Uppercut",
+            "description": "Deal 13 damage.\nApply 1 Weak.\nApply 1 Vulnerable.",
+        },
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    loader._wiki_data = {
+        "uppercut": {
+            "name": "Uppercut",
+            "text": "Deal 13 damage.\nApply [1|2] Weak.\nApply [1|2] Vulnerable.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    uppercut = _card("Uppercut", "Uppercut", cost=2)
+    uppercut.uuid = "uppercut"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    target = _louse(current_hp=22)
+    target.powers = [SimpleNamespace(power_name="Artifact", amount=1)]
+    context = _combat_context([uppercut, strike], energy=3, monsters=[target])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "uppercut",
+        "strike",
+    ]
+
+
+def test_lethal_detector_artifact_blocks_bash_vulnerable_followup(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bash": {
+            "name": "Bash",
+            "description": "Deal 8 damage. Apply 2 Vulnerable.",
+        },
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    loader._wiki_data = {
+        "bash": {
+            "name": "Bash",
+            "text": "Deal [8|10] damage.\nApply [2|3] Vulnerable.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    bash = _card("Bash", "Bash", cost=2)
+    bash.uuid = "bash"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    target = _louse(current_hp=17)
+    target.powers = [SimpleNamespace(power_name="Artifact", amount=1)]
+    context = _combat_context([bash, strike], energy=3, monsters=[target])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
+
+
 def test_lethal_detector_counts_heavy_blade_strength_multiplier(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
