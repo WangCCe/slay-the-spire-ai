@@ -2186,6 +2186,61 @@ def test_ironclad_fallback_damage_counts_sword_boomerang_hits(monkeypatch):
     assert upgraded_damage == 16
 
 
+def test_ironclad_fallback_damage_counts_fiend_fire_exhausted_cards(monkeypatch):
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"description": "Exhaust your hand. Deal 7 damage for each card Exhausted. Exhaust."}
+        if card_name == "Fiend Fire"
+        else None,
+    )
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: 7,
+    )
+    fiend_fire = Card(
+        card_id="Fiend Fire",
+        name="Fiend Fire",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.RARE,
+        has_target=True,
+        cost=2,
+        uuid="fiend-fire",
+    )
+    fiend_fire.damage = None
+    strike = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        has_target=True,
+        cost=1,
+        uuid="strike",
+    )
+    dazed = Card(
+        card_id="Dazed",
+        name="Dazed",
+        card_type=CardType.STATUS,
+        rarity=CardRarity.SPECIAL,
+        has_target=False,
+        cost=-2,
+        uuid="dazed",
+    )
+    context = SimpleNamespace(
+        strength=1,
+        game=SimpleNamespace(hand=[fiend_fire, strike, dazed]),
+        playable_cards=[fiend_fire, strike],
+    )
+
+    damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(
+        fiend_fire,
+        context,
+    )
+
+    assert damage == 16
+
+
 def test_damage_curve_handles_hexaghost_divider_formula_without_warning(caplog):
     classifier = TurnTimingClassifier()
     context = SimpleNamespace(

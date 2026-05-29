@@ -1012,7 +1012,7 @@ class IroncladCombatPlanner(CombatPlanner):
             per_strike_bonus = 3 if getattr(card, 'upgrades', 0) > 0 else 2
             return max(0, base_damage + self._count_strike_cards(context) * per_strike_bonus + strength)
 
-        hit_count = self._get_attack_hit_count(card)
+        hit_count = self._get_attack_hit_count(card, context)
         return (base_damage + strength) * hit_count
 
     @staticmethod
@@ -1043,7 +1043,7 @@ class IroncladCombatPlanner(CombatPlanner):
         return max(0, count)
 
     @staticmethod
-    def _get_attack_hit_count(card: Card) -> int:
+    def _get_attack_hit_count(card: Card, context: Optional[DecisionContext] = None) -> int:
         card_name = canonical_card_name(card)
         upgrades = getattr(card, 'upgrades', 0)
 
@@ -1053,8 +1053,26 @@ class IroncladCombatPlanner(CombatPlanner):
             return 4 if upgrades > 0 else 3
         if card_name == 'Pummel':
             return 5 if upgrades > 0 else 4
+        if card_name == 'Fiend Fire' and context is not None:
+            return IroncladCombatPlanner._count_fiend_fire_exhausted_cards(card, context)
 
         return 1
+
+    @staticmethod
+    def _count_fiend_fire_exhausted_cards(card: Card, context: DecisionContext) -> int:
+        hand_cards = getattr(getattr(context, 'game', None), 'hand', None)
+        if not hand_cards:
+            hand_cards = getattr(context, 'playable_cards', []) or []
+
+        played_uuid = getattr(card, 'uuid', None)
+        count = 0
+        for hand_card in hand_cards:
+            if hand_card is card:
+                continue
+            if played_uuid and getattr(hand_card, 'uuid', None) == played_uuid:
+                continue
+            count += 1
+        return max(0, count)
 
     def _known_attack_damage_for_bonus(self, card: Card) -> int:
         """Return known attack damage for strategic bonuses without generic fallback."""
