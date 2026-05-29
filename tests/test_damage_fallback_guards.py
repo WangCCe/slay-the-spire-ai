@@ -2055,6 +2055,37 @@ def test_ironclad_fallback_damage_applies_heavy_blade_strength_multiplier(monkey
     assert upgraded_damage == 29
 
 
+def test_ironclad_fallback_damage_counts_twin_strike_hits(monkeypatch):
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"description": "Deal 5 damage twice."} if card_name == "Twin Strike" else None,
+    )
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: 5,
+    )
+    twin_strike = Card(
+        card_id="Twin Strike",
+        name="Twin Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.COMMON,
+        has_target=True,
+        cost=1,
+        upgrades=0,
+    )
+    twin_strike.damage = None
+    context = SimpleNamespace(strength=1)
+
+    damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(
+        twin_strike,
+        context,
+    )
+
+    assert damage == 12
+
+
 def test_damage_curve_handles_hexaghost_divider_formula_without_warning(caplog):
     classifier = TurnTimingClassifier()
     context = SimpleNamespace(
