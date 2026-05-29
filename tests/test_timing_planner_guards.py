@@ -42,6 +42,10 @@ def _loader_with_basic_ironclad_cards():
             "name": "Whirlwind",
             "description": "Deal 5 damage to ALL enemies X times.",
         },
+        "skewer": {
+            "name": "Skewer",
+            "description": "Deal 7 damage X times.",
+        },
         "twin strike": {
             "name": "Twin Strike",
             "description": "Deal 5 damage 2 times.",
@@ -228,6 +232,32 @@ def test_timing_lethal_check_counts_whirlwind_x_energy_damage(monkeypatch):
             SimpleNamespace(current_hp=15, block=0),
             SimpleNamespace(current_hp=15, block=0),
         ],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
+def test_timing_lethal_check_counts_skewer_x_energy_hits(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    skewer = _card("Skewer", "Skewer", cost=-1)
+    skewer.cost_for_turn = -1
+    skewer.uuid = "skewer"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=3,
+        playable_cards=[skewer],
+        monsters_alive=[SimpleNamespace(current_hp=21, block=0)],
     )
     timing_ctx = TimingContext(
         turn_timing=TurnTiming.SAFE,

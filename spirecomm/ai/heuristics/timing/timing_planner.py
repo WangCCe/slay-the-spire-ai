@@ -588,7 +588,7 @@ class TimingAwareCombatPlanner:
 
     def _get_damage_instance_count(self, card, context, available_energy: int) -> int:
         card_name = canonical_card_name(card)
-        if card_name == 'Whirlwind':
+        if card_name in {'Skewer', 'Whirlwind'}:
             return max(1, x_effect_energy(card, available_energy, context))
 
         return max(1, self._get_attack_hit_count(card, context))
@@ -676,6 +676,8 @@ class TimingAwareCombatPlanner:
 
         if card_name == 'Twin Strike':
             return 2
+        if card_name == 'Skewer':
+            return x_effect_energy(card, getattr(context, 'energy_available', 0), context)
         if card_name == 'Sword Boomerang':
             return 4 if upgrades > 0 else 3
         if card_name == 'Pummel':
