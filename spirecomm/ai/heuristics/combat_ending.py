@@ -84,7 +84,14 @@ class CombatEndingDetector:
 
             # Step 3: Check with reduced margin (10% instead of 20%)
             margin_multiplier = 1.1
-            has_damage_potential = affordable_damage >= total_monster_hp * margin_multiplier
+            exact_single_target_kill = (
+                len(context.monsters_alive) == 1
+                and affordable_damage >= total_monster_hp
+            )
+            has_damage_potential = (
+                exact_single_target_kill
+                or affordable_damage >= total_monster_hp * margin_multiplier
+            )
 
             # Step 4: Validate targeting (single-target vs AOE constraints)
             targeting_feasible = self._can_target_all_monsters(context, affordable_damage)
