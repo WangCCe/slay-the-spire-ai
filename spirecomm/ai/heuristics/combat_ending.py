@@ -718,6 +718,8 @@ class CombatEndingDetector:
             return 2
         if card_name == 'Bane' and context is not None:
             return 2 if self._all_alive_targets_poisoned(context) else 1
+        if card_name == 'Skewer':
+            return x_effect_energy(card, getattr(context, 'energy_available', 0), context)
         if card_name == 'Sword Boomerang':
             return 4 if upgrades > 0 else 3
         if card_name == 'Pummel':
