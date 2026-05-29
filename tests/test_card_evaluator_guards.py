@@ -65,6 +65,31 @@ def test_baseline_score_uses_base_name_for_upgraded_cards():
     )
 
 
+def test_baseline_score_counts_repeated_hit_damage_for_efficiency():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    pummel = Card(
+        "Pummel",
+        "Pummel",
+        CardType.ATTACK,
+        CardRarity.UNCOMMON,
+        cost=1,
+    )
+    base_score = evaluator._calculate_baseline_score(pummel, None)
+
+    scored = evaluator._calculate_baseline_score(
+        pummel,
+        {
+            "name": "Pummel",
+            "type": "ATTACK",
+            "rarity": "UNCOMMON",
+            "cost": "1",
+            "description": "Deal 2 damage 4 times. Exhaust.",
+        },
+    )
+
+    assert scored >= base_score + 20
+
+
 def test_combo_detection_uses_base_names_for_upgraded_cards():
     evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
     demon_form = Card(

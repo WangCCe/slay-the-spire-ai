@@ -162,6 +162,12 @@ class SynergyCardEvaluator(CardEvaluator):
                     damage_match = re.search(r'deal (\d+) damage', description)
                     if damage_match:
                         damage = int(damage_match.group(1))
+                        if re.search(r'\btwice\b', description):
+                            damage *= 2
+                        else:
+                            hits_match = re.search(r'damage(?:\s+to [^.]+?)?\s+(\d+)\s+times', description)
+                            if hits_match:
+                                damage *= int(hits_match.group(1))
                         if cost_value > 0:
                             efficiency = damage / cost_value
                             if efficiency > 5:  # More than 5 damage per energy is good
