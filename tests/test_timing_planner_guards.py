@@ -617,6 +617,70 @@ def test_timing_fallback_applies_frail_to_block_scores(monkeypatch):
     assert actions[0].card is strike
 
 
+def test_timing_fallback_reduces_attack_scores_while_player_is_weak(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, has_target=False)
+    defend.uuid = "defend"
+    strike = _card("Strike_R", "Strike")
+    strike.uuid = "strike"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[strike, defend],
+        monsters_alive=[SimpleNamespace(current_hp=30, block=0)],
+        game=SimpleNamespace(
+            player=SimpleNamespace(powers=[SimpleNamespace(power_name="Weak", amount=1)]),
+        ),
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.BALANCED,
+        current_damage=0,
+        balance_weights=BalanceWeights(damage_weight=1.0, block_weight=1.0),
+    )
+
+    actions = TimingAwareCombatPlanner()._fallback_plan(context, timing_ctx)
+
+    assert len(actions) == 1
+    assert actions[0].card is defend
+
+
+def test_timing_fallback_boosts_attack_scores_against_vulnerable_targets(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, has_target=False)
+    defend.uuid = "defend"
+    strike = _card("Strike_R", "Strike")
+    strike.uuid = "strike"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[defend, strike],
+        monsters_alive=[SimpleNamespace(current_hp=30, block=0)],
+        vulnerable_stacks={0: 1},
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.BURST_WINDOW,
+        current_damage=0,
+        balance_weights=BalanceWeights(damage_weight=0.6, block_weight=1.0),
+    )
+
+    actions = TimingAwareCombatPlanner()._fallback_plan(context, timing_ctx)
+
+    assert len(actions) == 1
+    assert actions[0].card is strike
+
+
 def test_timing_fallback_does_not_target_no_target_cards(monkeypatch):
     monkeypatch.setattr(
         timing_planner,

@@ -312,12 +312,22 @@ class TimingAwareCombatPlanner:
             weights = timing_ctx.balance_weights
             best_card = None
             best_score = float('-inf')
+            energy = getattr(context, 'energy_available', 3)
+            monsters = getattr(context, 'monsters_alive', [])
 
             for card in playable_cards:
                 score = 0
 
                 # Check if card deals damage
                 damage = self._estimate_card_damage(card, context)
+                if damage > 0:
+                    damage = self._apply_attack_status_modifiers(
+                        card,
+                        context,
+                        damage,
+                        energy,
+                        monsters,
+                    )
                 score += damage * weights.damage_weight
 
                 # Check if card provides block
@@ -330,7 +340,6 @@ class TimingAwareCombatPlanner:
 
             if best_card:
                 # Find target if needed
-                monsters = getattr(context, 'monsters_alive', [])
                 target = None
                 if getattr(best_card, 'has_target', False) and not self._is_card_aoe(best_card):
                     target = monsters[0] if monsters else None
