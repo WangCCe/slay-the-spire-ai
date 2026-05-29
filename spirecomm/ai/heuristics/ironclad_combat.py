@@ -991,11 +991,13 @@ class IroncladCombatPlanner(CombatPlanner):
         base_damage = getattr(card, 'damage', 0)
         if base_damage is None:
             base_damage = 0
+        parsed_card_data_name = None
 
         if base_damage == 0 or not hasattr(card, 'damage'):
             try:
                 card_data = game_data_loader.get_card_data(card_name)
                 if card_data:
+                    parsed_card_data_name = card_data.get('name', '')
                     parsed_damage = game_data_loader._parse_card_damage(card_data)
                     base_damage = parsed_damage if parsed_damage is not None else 0
             except Exception:
@@ -1003,6 +1005,14 @@ class IroncladCombatPlanner(CombatPlanner):
 
         if base_damage == 0:
             base_damage = 6
+
+        if (
+            card_name == 'Searing Blow'
+            and getattr(card, 'upgrades', 0) > 0
+            and parsed_card_data_name is not None
+            and '+' not in str(parsed_card_data_name or '')
+        ):
+            base_damage += _known_damage_upgrade_bonus(card, card_name)
 
         strength = getattr(context, 'strength', 0)
         if card_name == 'Heavy Blade':

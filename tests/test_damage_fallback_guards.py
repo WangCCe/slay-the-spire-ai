@@ -1969,6 +1969,37 @@ def test_ironclad_fallback_damage_uses_canonical_name_for_counted_upgrades(monke
     assert damage == 11
 
 
+def test_ironclad_fallback_damage_applies_all_searing_blow_upgrades(monkeypatch):
+    card = Card(
+        card_id="Searing Blow",
+        name="Searing Blow+2",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.UNCOMMON,
+        has_target=True,
+        cost=2,
+        upgrades=2,
+    )
+    card.damage = None
+
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"description": "Deal 12 damage. Can be Upgraded any number of times."}
+        if card_name == "Searing Blow"
+        else None,
+    )
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: 12,
+    )
+    context = SimpleNamespace(strength=0)
+
+    damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(card, context)
+
+    assert damage == 21
+
+
 def test_ironclad_fallback_damage_counts_whirlwind_x_energy(monkeypatch):
     card = Card(
         card_id="Whirlwind",
