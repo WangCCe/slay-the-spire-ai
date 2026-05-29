@@ -9,6 +9,7 @@ import logging
 from typing import Optional
 
 from spirecomm.ai.intent_utils import monster_intends_attack
+from spirecomm.ai.monster_names import canonical_live_monster_name
 
 from .models import (
     TurnTiming,
@@ -186,7 +187,7 @@ class CombatBalanceStrategy:
                 return False
 
             for monster in monsters:
-                name = getattr(monster, 'name', None)
+                name = canonical_live_monster_name(monster)
                 if not name:
                     return False
 
