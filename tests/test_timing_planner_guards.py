@@ -50,6 +50,10 @@ def _loader_with_basic_ironclad_cards():
             "name": "Sword Boomerang",
             "description": "Deal 3 damage to a random enemy 3 times.",
         },
+        "heavy blade": {
+            "name": "Heavy Blade",
+            "description": "Deal 14 damage. Strength affects Heavy Blade 3 times.",
+        },
     }
     return loader
 
@@ -267,6 +271,32 @@ def test_timing_lethal_check_counts_random_hit_attack_damage_against_single_mons
         energy_available=1,
         playable_cards=[sword_boomerang],
         monsters_alive=[SimpleNamespace(current_hp=9, block=0)],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
+def test_timing_lethal_check_applies_heavy_blade_strength_multiplier(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    heavy_blade = _card("Heavy Blade", "Heavy Blade+", cost=2)
+    heavy_blade.upgrades = 1
+    heavy_blade.uuid = "heavy-blade"
+    context = SimpleNamespace(
+        turn=1,
+        strength=3,
+        energy_available=2,
+        playable_cards=[heavy_blade],
+        monsters_alive=[SimpleNamespace(current_hp=29, block=0)],
     )
     timing_ctx = TimingContext(
         turn_timing=TurnTiming.SAFE,

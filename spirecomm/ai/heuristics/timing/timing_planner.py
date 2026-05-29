@@ -508,8 +508,19 @@ class TimingAwareCombatPlanner:
         if base_damage <= 0:
             return 0
 
+        scaled_damage = self._apply_strength_scaling(card, base_damage, strength)
         hit_count = self._get_attack_hit_count(card)
-        return max(0, int((base_damage + strength) * hit_count))
+        return max(0, int(scaled_damage * hit_count))
+
+    def _apply_strength_scaling(self, card, base_damage: int, strength: int) -> int:
+        """Apply non-standard Strength scaling for attack damage estimates."""
+        card_name = canonical_card_name(card)
+
+        if card_name == 'Heavy Blade':
+            multiplier = 5 if getattr(card, 'upgrades', 0) > 0 else 3
+            return base_damage + strength * multiplier
+
+        return base_damage + strength
 
     def _get_attack_hit_count(self, card) -> int:
         """Return known deterministic hit counts for attack damage estimates."""
