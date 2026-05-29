@@ -13,7 +13,13 @@ from spirecomm.communication.action import PlayCardAction
 from spirecomm.data.loader import game_data_loader
 from ..decision.base import DecisionContext
 from .card_names import canonical_card_name
-from .card_costs import effective_card_cost, whirlwind_damage, x_effect_energy
+from .card_costs import (
+    effective_card_cost,
+    effective_card_cost_after_refund,
+    energy_refund_for_card,
+    whirlwind_damage,
+    x_effect_energy,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -313,10 +319,22 @@ class CombatEndingDetector:
         monster_idx: int,
         available_energy: int,
     ) -> int:
-        cost = effective_card_cost(card, available_energy)
-        if self._card_refunds_energy_against_monster(card, context, monster_idx):
-            return max(0, cost - 1)
-        return cost
+        return effective_card_cost_after_refund(
+            card,
+            available_energy,
+            self._card_energy_refund_against_monster(card, context, monster_idx),
+        )
+
+    def _card_energy_refund_against_monster(
+        self,
+        card: Card,
+        context: DecisionContext,
+        monster_idx: int,
+    ) -> int:
+        return energy_refund_for_card(
+            card,
+            target_vulnerable=self._monster_vulnerable_stacks(context, monster_idx) > 0,
+        )
 
     def _card_refunds_energy_against_monster(
         self,
@@ -324,10 +342,7 @@ class CombatEndingDetector:
         context: DecisionContext,
         monster_idx: int,
     ) -> bool:
-        return (
-            self._base_card_name(card) == 'Dropkick'
-            and self._monster_vulnerable_stacks(context, monster_idx) > 0
-        )
+        return self._card_energy_refund_against_monster(card, context, monster_idx) > 0
 
     def _monster_vulnerable_stacks(self, context: DecisionContext, monster_idx: int) -> int:
         vulnerable_stacks = getattr(context, 'vulnerable_stacks', {}) or {}

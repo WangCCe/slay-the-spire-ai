@@ -3,6 +3,8 @@
 import re
 from typing import Any, Optional
 
+from .card_names import canonical_card_name
+
 
 def raw_card_cost(card) -> int:
     """Return the raw game cost, preserving -1 for X-cost cards."""
@@ -37,6 +39,24 @@ def effective_card_cost(card, available_energy: Optional[int] = None) -> int:
         except (TypeError, ValueError):
             return 0
     return max(0, cost)
+
+
+def energy_refund_for_card(card, target_vulnerable: bool = False) -> int:
+    if canonical_card_name(card) == "Dropkick" and target_vulnerable:
+        return 1
+    return 0
+
+
+def effective_card_cost_after_refund(
+    card,
+    available_energy: Optional[int] = None,
+    energy_refund: int = 0,
+) -> int:
+    try:
+        refund = max(0, int(energy_refund))
+    except (TypeError, ValueError):
+        refund = 0
+    return max(0, effective_card_cost(card, available_energy) - refund)
 
 
 def _normalized_game_id(value: Any) -> str:

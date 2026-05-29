@@ -14,6 +14,8 @@ from .balance_strategy import CombatBalanceStrategy
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_costs import (
     effective_card_cost,
+    effective_card_cost_after_refund,
+    energy_refund_for_card,
     whirlwind_damage,
     x_effect_energy,
 )
@@ -158,7 +160,12 @@ class TimingAwareCombatPlanner:
                 # Simple estimate: use card's base damage
                 card_damage = self._estimate_card_damage(card, context)
                 if card_damage > 0:
-                    cost = effective_card_cost(card, energy)
+                    cost = self._card_energy_cost_for_targets(
+                        card,
+                        context,
+                        monsters,
+                        energy,
+                    )
                     if cost > energy:
                         continue
 
@@ -219,7 +226,12 @@ class TimingAwareCombatPlanner:
                 damage = self._estimate_card_damage(card, context)
                 if damage > 0:
                     energy_available = getattr(context, 'energy_available', 3)
-                    cost = effective_card_cost(card, energy_available)
+                    cost = self._card_energy_cost_for_targets(
+                        card,
+                        context,
+                        monsters,
+                        energy_available,
+                    )
                     effect_type = 'aoe' if self._is_card_aoe(card) else 'single'
                     damage = self._apply_attack_status_modifiers(
                         card,
@@ -252,7 +264,12 @@ class TimingAwareCombatPlanner:
             remaining_hp = list(monster_hp)
 
             for card, _effect_type, damage, _planned_cost in selected_options:
-                cost = effective_card_cost(card, energy)
+                cost = self._card_energy_cost_for_targets(
+                    card,
+                    context,
+                    monsters,
+                    energy,
+                )
 
                 if energy >= cost:
                     action_target = None
@@ -447,6 +464,19 @@ class TimingAwareCombatPlanner:
             return search(option_index + 1, remaining_energy, selected_options)
 
         return search(0, starting_energy, ())
+
+    def _card_energy_cost_for_targets(self, card, context, monsters, available_energy: int) -> int:
+        return effective_card_cost_after_refund(
+            card,
+            available_energy,
+            self._card_energy_refund_for_targets(card, context, monsters),
+        )
+
+    def _card_energy_refund_for_targets(self, card, context, monsters) -> int:
+        return energy_refund_for_card(
+            card,
+            target_vulnerable=self._all_alive_targets_vulnerable(context, monsters),
+        )
 
     def _affordable_damage_effects_can_kill_all(self, damage_options, monster_hp, energy) -> bool:
         """Check whether any affordable subset of damage effects can kill all monsters."""

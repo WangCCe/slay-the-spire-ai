@@ -529,6 +529,40 @@ def test_timing_lethal_check_applies_single_target_vulnerable(monkeypatch):
     assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_lethal_check_uses_dropkick_energy_refund(monkeypatch):
+    loader = _loader_with_basic_ironclad_cards()
+    loader._cards["dropkick"] = {
+        "name": "Dropkick",
+        "description": "Deal 5 damage. If the enemy has Vulnerable, gain [R] and draw 1 card.",
+    }
+    monkeypatch.setattr(timing_planner, "game_data_loader", loader, raising=False)
+    dropkick = _card("Dropkick", "Dropkick", cost=1)
+    dropkick.uuid = "dropkick"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    monster = SimpleNamespace(current_hp=16, block=0)
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[dropkick, strike],
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 1},
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+    planner = TimingAwareCombatPlanner()
+
+    assert planner._can_kill_all_this_turn(context, timing_ctx)
+    assert [action.card.uuid for action in planner._generate_lethal_sequence(context)] == [
+        "dropkick",
+        "strike",
+    ]
+
+
 def test_timing_lethal_sequence_does_not_target_aoe_cards(monkeypatch):
     monkeypatch.setattr(
         timing_planner,
