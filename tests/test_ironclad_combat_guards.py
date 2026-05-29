@@ -1532,6 +1532,36 @@ def test_slime_boss_split_materializes_large_slimes_with_inherited_hp():
     assert [monster["max_hp"] for monster in alive] == [56, 56]
 
 
+def test_simulation_death_split_handler_uses_live_monster_id(monkeypatch):
+    class CanonicalOnlySplitLoader:
+        def __init__(self):
+            self.data_names = []
+
+        def get_enhanced_monster_data(self, monster_name):
+            self.data_names.append(monster_name)
+            if monster_name == "Slime Boss":
+                return {
+                    "special_mechanics": {
+                        "type": "death_split",
+                        "split_conditions": {"hp_threshold": 50},
+                        "splits_into": ["Acid Slime (L)", "Spike Slime (L)"],
+                    }
+                }
+            return None
+
+    monster_loader = CanonicalOnlySplitLoader()
+    monkeypatch.setattr(simulation, "game_data_loader", monster_loader)
+    slime_boss = _slime_boss(current_hp=56)
+    slime_boss.name = "SlimeBoss"
+    context = _combat_context([], energy=0, monsters=[slime_boss])
+    state = SimulationState(context)
+
+    FastCombatSimulator(SynergyCardEvaluator())._handle_death_split(state, state.monsters[0], 0)
+
+    assert state.monsters[0]["split_pending"] is True
+    assert monster_loader.data_names[0] == "Slime Boss"
+
+
 def test_ironclad_detects_slime_boss_without_elite_marker():
     context = _combat_context([], energy=0, monsters=[_slime_boss(current_hp=80)])
 

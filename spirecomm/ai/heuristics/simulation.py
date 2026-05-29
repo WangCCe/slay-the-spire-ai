@@ -3206,7 +3206,7 @@ class FastCombatSimulator:
         return state
 
     def _get_death_split_info(self, monster: dict) -> Optional[Tuple[float, List[str]]]:
-        monster_name = monster.get('name', '')
+        monster_name = _canonical_live_monster_name(monster)
         if not monster_name:
             return None
 
