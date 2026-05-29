@@ -391,12 +391,16 @@ class CombatEndingDetector:
         attack_cards: List[Card],
         available_energy: int,
     ) -> List[PlayCardAction]:
-        """Prove a lethal line across targeted attacks without relying on monster order."""
-        target_cards = [card for card in attack_cards if not self._is_aoe_attack(card)]
-        if not target_cards or not getattr(context, 'monsters_alive', None):
+        """Prove a lethal line across attacks without relying on monster order."""
+        sequence_cards = [
+            card
+            for card in attack_cards
+            if self._is_aoe_attack(card) or getattr(card, 'has_target', False)
+        ]
+        if not sequence_cards or not getattr(context, 'monsters_alive', None):
             return []
         if (
-            len(target_cards) > TARGETED_LETHAL_MAX_CARDS
+            len(sequence_cards) > TARGETED_LETHAL_MAX_CARDS
             or len(context.monsters_alive) > TARGETED_LETHAL_MAX_MONSTERS
         ):
             return []
@@ -422,6 +426,55 @@ class CombatEndingDetector:
 
             candidates = []
             for card_pos, card in enumerate(remaining_cards):
+                if self._is_aoe_attack(card):
+                    cost = effective_card_cost(card, remaining_energy)
+                    if cost > remaining_energy:
+                        continue
+
+                    next_hp = list(hp_state)
+                    total_damage = 0
+                    kill_count = 0
+                    for monster_idx, hp in enumerate(hp_state):
+                        if hp <= 0:
+                            continue
+
+                        damage = self._card_damage_against_monster(
+                            card,
+                            context,
+                            monster_idx,
+                            remaining_energy,
+                        )
+                        if damage <= 0:
+                            continue
+
+                        total_damage += min(hp, damage)
+                        if damage >= hp:
+                            kill_count += 1
+                        next_hp[monster_idx] = max(0, hp - damage)
+
+                    if total_damage <= 0:
+                        continue
+
+                    priority = (
+                        kill_count,
+                        0,
+                        total_damage,
+                        -cost,
+                    )
+                    candidates.append(
+                        (
+                            priority,
+                            card_pos,
+                            None,
+                            cost,
+                            tuple(next_hp),
+                        )
+                    )
+                    continue
+
+                if not getattr(card, 'has_target', False):
+                    continue
+
                 for monster_idx, hp in enumerate(hp_state):
                     if hp <= 0:
                         continue
@@ -474,16 +527,21 @@ class CombatEndingDetector:
                 next_cards = remaining_cards[:card_pos] + remaining_cards[card_pos + 1:]
                 tail = search(next_cards, next_hp, remaining_energy - cost)
                 if tail is not None:
+                    target_monster = (
+                        None
+                        if monster_idx is None
+                        else context.monsters_alive[monster_idx]
+                    )
                     return [
                         PlayCardAction(
                             card=card,
-                            target_monster=context.monsters_alive[monster_idx],
+                            target_monster=target_monster,
                         )
                     ] + tail
 
             return None
 
-        sequence = search(tuple(target_cards), starting_hp, available_energy)
+        sequence = search(tuple(sequence_cards), starting_hp, available_energy)
         return sequence or []
 
     def _find_aoe_cleanup_sequence(
