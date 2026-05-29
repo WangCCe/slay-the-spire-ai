@@ -283,8 +283,8 @@ class DecisionContext:
                 threat += 10  # Debuff application is high threat
 
         # 3. Scaling threat (elite/boss monsters that grow stronger)
-        if hasattr(monster, 'name'):
-            name = monster.name.lower()
+        name = canonical_live_monster_name(monster).lower()
+        if name:
             # Known scaling monsters
             scaling_monsters = [
                 'gremlin nob', 'gremlin thief', 'gremlin face',

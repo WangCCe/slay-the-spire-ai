@@ -268,6 +268,22 @@ def test_compute_threat_counts_actual_debuff_intent_as_debuff_threat():
     assert context.compute_threat(monster) == 10
 
 
+def test_compute_threat_uses_live_monster_id_for_legacy_scaling_names():
+    monster = SimpleNamespace(
+        name="Automaton",
+        monster_id="BronzeAutomaton",
+        intent=Intent.NONE,
+        move_adjusted_damage=0,
+        move_hits=1,
+        strength=0,
+        current_hp=30,
+        max_hp=300,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+
+    assert context.compute_threat(monster) == 15
+
+
 def test_compute_threat_v2_counts_actual_debuff_intent_as_debuff_threat(monkeypatch):
     monkeypatch.setattr(
         decision_base,
