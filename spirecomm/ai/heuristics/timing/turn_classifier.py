@@ -132,7 +132,7 @@ class TurnTimingClassifier:
             total_confidence = 0.0
 
             for monster in monsters:
-                monster_name = monster.name
+                monster_name = canonical_live_monster_name(monster)
 
                 # Get current intent
                 current_intent = self._intent_name(getattr(monster, 'intent', 'UNKNOWN'))
@@ -938,9 +938,10 @@ class TurnTimingClassifier:
                 else:
                     hp_percent = 1.0
 
+                monster_name = canonical_live_monster_name(monster)
                 # Check next 2 turns
                 anchored_predictions = game_data_loader.predict_monster_moves(
-                    monster.name,
+                    monster_name,
                     current_turn,
                     hp_percent,
                 )
@@ -948,7 +949,7 @@ class TurnTimingClassifier:
                     target_turn = current_turn + turn_offset
                     prediction = self._select_prediction_for_turn(
                         anchored_predictions,
-                        monster.name,
+                        monster_name,
                         target_turn,
                         hp_percent,
                     )
@@ -959,9 +960,9 @@ class TurnTimingClassifier:
                             continue
 
                         damage = self._resolve_move_damage(
-                            monster.name, move, context, target_turn=target_turn)
+                            monster_name, move, context, target_turn=target_turn)
                         damage = self._apply_ascension_damage_modifiers(
-                            monster.name,
+                            monster_name,
                             move,
                             damage,
                             context,

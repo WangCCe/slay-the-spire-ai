@@ -8,7 +8,7 @@ import spirecomm.ai.heuristics.simulation as simulation
 import spirecomm.data.loader as data_loader
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
 from spirecomm.ai.heuristics.simulation import FastCombatSimulator, HeuristicCombatPlanner
-from spirecomm.ai.heuristics.timing.models import MonsterTimingHints
+from spirecomm.ai.heuristics.timing.models import MonsterTimingHints, TurnTiming
 from spirecomm.ai.heuristics.timing.turn_classifier import TurnTimingClassifier
 from spirecomm.communication.action import PlayCardAction, PotionAction
 from spirecomm.ai.heuristics.enhanced_monster_database import EnhancedMonsterDatabase
@@ -2526,6 +2526,78 @@ def test_safe_window_detection_uses_live_monster_id_for_predicted_damage(monkeyp
     )
 
     assert windows == []
+    assert prediction_loader.names == ["Red Slaver"]
+
+
+def test_classify_turn_uses_live_monster_id_for_timing_hints(monkeypatch):
+    class CanonicalOnlyTimingLoader:
+        def __init__(self):
+            self.hint_names = []
+
+        def get_monster_timing_hints(self, monster_name):
+            self.hint_names.append(monster_name)
+            if monster_name == "Red Slaver":
+                return {"always_classify_as": "SAFE"}
+            return None
+
+        def predict_monster_moves(self, _monster_name, _current_turn, _hp_percent):
+            return []
+
+    timing_loader = CanonicalOnlyTimingLoader()
+    monkeypatch.setattr(data_loader, "game_data_loader", timing_loader)
+    classifier = TurnTimingClassifier()
+    live_slaver = SimpleNamespace(
+        name="Slaver",
+        monster_id="SlaverRed",
+        intent="ATTACK",
+        move_adjusted_damage=0,
+        move_hits=1,
+        current_hp=30,
+        max_hp=60,
+        strength=0,
+    )
+    context = SimpleNamespace(turn=1, monsters_alive=[live_slaver])
+
+    timing_context = classifier.classify_turn(context)
+
+    assert timing_context.turn_timing == TurnTiming.SAFE
+    assert timing_loader.hint_names == ["Red Slaver"]
+
+
+def test_spike_imminent_uses_live_monster_id_for_predicted_moves(monkeypatch):
+    class CanonicalOnlyPredictionLoader:
+        def __init__(self):
+            self.names = []
+
+        def predict_monster_moves(self, monster_name, _current_turn, _hp_percent):
+            self.names.append(monster_name)
+            if monster_name != "Red Slaver":
+                return []
+            return [
+                {
+                    "turn": 2,
+                    "move": {
+                        "name": "Heavy Stab",
+                        "intent": "ATTACK",
+                        "damage": 20,
+                        "hits": 1,
+                    },
+                }
+            ]
+
+    prediction_loader = CanonicalOnlyPredictionLoader()
+    monkeypatch.setattr(data_loader, "game_data_loader", prediction_loader)
+    classifier = TurnTimingClassifier()
+    live_slaver = SimpleNamespace(
+        name="Slaver",
+        monster_id="SlaverRed",
+        current_hp=30,
+        max_hp=60,
+        strength=0,
+    )
+    context = SimpleNamespace(turn=1, monsters_alive=[live_slaver], game=SimpleNamespace(ascension_level=0))
+
+    assert classifier._spike_imminent(context) is True
     assert prediction_loader.names == ["Red Slaver"]
 
 
