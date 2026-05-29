@@ -381,12 +381,14 @@ class CombatEndingDetector:
         context: DecisionContext,
         monster_idx: int,
         available_energy: int,
+        fiend_fire_exhaust_count: Optional[int] = None,
     ) -> int:
         damage = self._get_card_damage(
             card,
             context,
             monster_idx,
             available_energy,
+            fiend_fire_exhaust_count,
         )
         damage = self._apply_player_weak_to_card_damage(
             card,
@@ -394,6 +396,7 @@ class CombatEndingDetector:
             damage,
             available_energy,
             monster_idx,
+            fiend_fire_exhaust_count,
         )
         if self._monster_vulnerable_stacks(context, monster_idx) > 0:
             damage = self._apply_vulnerable_to_card_damage(
@@ -402,6 +405,7 @@ class CombatEndingDetector:
                 damage,
                 available_energy,
                 monster_idx,
+                fiend_fire_exhaust_count,
             )
         return max(0, damage)
 
@@ -474,6 +478,7 @@ class CombatEndingDetector:
         ):
             return []
 
+        sequence_card_keys = {self._card_play_key(card) for card in sequence_cards}
         starting_hp = tuple(
             max(0, monster.current_hp + monster.block)
             for monster in context.monsters_alive
@@ -557,11 +562,18 @@ class CombatEndingDetector:
                     if cost > remaining_energy:
                         continue
 
+                    fiend_fire_exhaust_count = self._fiend_fire_exhaust_count_for_remaining_cards(
+                        card,
+                        context,
+                        remaining_cards,
+                        sequence_card_keys,
+                    )
                     damage = self._card_damage_against_monster(
                         card,
                         context,
                         monster_idx,
                         remaining_energy,
+                        fiend_fire_exhaust_count,
                     )
                     if damage <= 0:
                         continue
@@ -593,7 +605,10 @@ class CombatEndingDetector:
 
             for _priority, card_pos, monster_idx, cost, next_hp in candidates:
                 card = remaining_cards[card_pos]
-                next_cards = remaining_cards[:card_pos] + remaining_cards[card_pos + 1:]
+                if self._base_card_name(card) == 'Fiend Fire':
+                    next_cards = ()
+                else:
+                    next_cards = remaining_cards[:card_pos] + remaining_cards[card_pos + 1:]
                 tail = search(next_cards, next_hp, remaining_energy - cost)
                 if tail is not None:
                     target_monster = (
@@ -612,6 +627,38 @@ class CombatEndingDetector:
 
         sequence = search(tuple(sequence_cards), starting_hp, available_energy)
         return sequence or []
+
+    def _fiend_fire_exhaust_count_for_remaining_cards(
+        self,
+        card: Card,
+        context: DecisionContext,
+        remaining_cards: Tuple[Card, ...],
+        sequence_card_keys,
+    ) -> Optional[int]:
+        if self._base_card_name(card) != 'Fiend Fire':
+            return None
+
+        hand_cards = getattr(getattr(context, 'game', None), 'hand', None)
+        if not hand_cards:
+            hand_cards = getattr(context, 'playable_cards', []) or []
+
+        remaining_card_keys = {
+            self._card_play_key(remaining_card)
+            for remaining_card in remaining_cards
+        }
+        played_card_key = self._card_play_key(card)
+        count = 0
+        for hand_card in hand_cards:
+            hand_card_key = self._card_play_key(hand_card)
+            if hand_card is card or hand_card_key == played_card_key:
+                continue
+            if (
+                hand_card_key in sequence_card_keys
+                and hand_card_key not in remaining_card_keys
+            ):
+                continue
+            count += 1
+        return max(0, count)
 
     def _find_aoe_cleanup_sequence(
         self,
@@ -917,6 +964,7 @@ class CombatEndingDetector:
         context: DecisionContext,
         monster_idx: Optional[int] = None,
         available_energy: Optional[int] = None,
+        fiend_fire_exhaust_count: Optional[int] = None,
     ) -> int:
         """
         Get actual damage of card accounting for modifiers.
@@ -971,6 +1019,7 @@ class CombatEndingDetector:
                 context,
                 monster_idx,
                 available_energy,
+                fiend_fire_exhaust_count,
             )
 
         return max(0, base_damage)
@@ -982,6 +1031,7 @@ class CombatEndingDetector:
         total_damage: int,
         available_energy: int,
         monster_idx: Optional[int] = None,
+        fiend_fire_exhaust_count: Optional[int] = None,
     ) -> int:
         """Apply player Weak using the game's per-hit rounding."""
         if self._get_player_debuff_stacks(context, 'Weak') <= 0:
@@ -992,6 +1042,7 @@ class CombatEndingDetector:
             context,
             available_energy,
             monster_idx,
+            fiend_fire_exhaust_count,
         )
         if hit_count <= 1:
             return int(total_damage * 0.75)
@@ -1009,6 +1060,7 @@ class CombatEndingDetector:
         total_damage: int,
         available_energy: int,
         monster_idx: Optional[int] = None,
+        fiend_fire_exhaust_count: Optional[int] = None,
     ) -> int:
         """Apply Vulnerable using the game's per-hit rounding."""
         hit_count = self._get_vulnerable_damage_instance_count(
@@ -1016,6 +1068,7 @@ class CombatEndingDetector:
             context,
             available_energy,
             monster_idx,
+            fiend_fire_exhaust_count,
         )
         if hit_count <= 1:
             return int(total_damage * 1.5)
@@ -1032,6 +1085,7 @@ class CombatEndingDetector:
         context: DecisionContext,
         available_energy: int,
         monster_idx: Optional[int] = None,
+        fiend_fire_exhaust_count: Optional[int] = None,
     ) -> int:
         card_name = self._base_card_name(card)
 
@@ -1043,6 +1097,7 @@ class CombatEndingDetector:
             context,
             monster_idx,
             available_energy,
+            fiend_fire_exhaust_count,
         )
 
     def _get_player_debuff_stacks(self, context: DecisionContext, power_name: str) -> int:
@@ -1109,6 +1164,7 @@ class CombatEndingDetector:
         context: DecisionContext,
         monster_idx: Optional[int] = None,
         available_energy: Optional[int] = None,
+        fiend_fire_exhaust_count: Optional[int] = None,
     ) -> int:
         """Return known hit counts for repeated-hit attacks."""
         card_name = self._base_card_name(card)
@@ -1132,6 +1188,8 @@ class CombatEndingDetector:
         if card_name == 'Pummel':
             return 5 if upgrades > 0 else 4
         if card_name == 'Fiend Fire':
+            if fiend_fire_exhaust_count is not None:
+                return fiend_fire_exhaust_count
             return self._count_fiend_fire_exhausted_cards(card, context)
 
         return 1
