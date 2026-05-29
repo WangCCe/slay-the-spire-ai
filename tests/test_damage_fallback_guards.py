@@ -2135,6 +2135,57 @@ def test_ironclad_fallback_damage_counts_pummel_hits(monkeypatch):
     assert upgraded_damage == 15
 
 
+def test_ironclad_fallback_damage_counts_sword_boomerang_hits(monkeypatch):
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"description": "Deal 3 damage to a random enemy 3 times."}
+        if card_name == "Sword Boomerang"
+        else None,
+    )
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: 3,
+    )
+    sword_boomerang = Card(
+        card_id="Sword Boomerang",
+        name="Sword Boomerang",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.COMMON,
+        has_target=False,
+        cost=1,
+        upgrades=0,
+    )
+    sword_boomerang.damage = None
+    context = SimpleNamespace(strength=1)
+
+    damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(
+        sword_boomerang,
+        context,
+    )
+
+    assert damage == 12
+
+    sword_boomerang_plus = Card(
+        card_id="Sword Boomerang",
+        name="Sword Boomerang+",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.COMMON,
+        has_target=False,
+        cost=1,
+        upgrades=1,
+    )
+    sword_boomerang_plus.damage = None
+
+    upgraded_damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(
+        sword_boomerang_plus,
+        context,
+    )
+
+    assert upgraded_damage == 16
+
+
 def test_damage_curve_handles_hexaghost_divider_formula_without_warning(caplog):
     classifier = TurnTimingClassifier()
     context = SimpleNamespace(
