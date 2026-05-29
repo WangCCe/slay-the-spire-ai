@@ -6236,6 +6236,44 @@ def test_lethal_detector_uses_shockwave_vulnerable_before_followup(monkeypatch):
     assert sequence[0].target_monster is None
 
 
+def test_lethal_detector_treats_active_corruption_shockwave_as_zero_cost(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "shockwave": {
+            "name": "Shockwave",
+            "description": "Apply 3 Weak, Vulnerable, and Strength Down to ALL enemies. Exhaust.",
+        },
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    loader._wiki_data = {
+        "shockwave": {
+            "name": "Shockwave",
+            "text": "Apply [3|5] #Weak, #Vulnerable, and #Strength Down to ALL enemies.\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    shockwave = _card(
+        "Shockwave",
+        "Shockwave",
+        card_type=CardType.SKILL,
+        cost=2,
+        has_target=False,
+    )
+    shockwave.uuid = "shockwave"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = _combat_context([shockwave, strike], energy=1, monsters=[_louse(current_hp=9)])
+    context.game.player.powers = [SimpleNamespace(power_name="Corruption", amount=1)]
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "shockwave",
+        "strike",
+    ]
+
+
 def test_lethal_detector_counts_shockwave_strength_down_artifact_consumption(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -6533,6 +6571,40 @@ def test_lethal_detector_uses_seeing_red_energy_before_followup(monkeypatch):
         energy=1,
         monsters=[_louse(current_hp=12)],
     )
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "seeing-red",
+        "strike-1",
+        "strike-2",
+    ]
+
+
+def test_lethal_detector_treats_active_corruption_seeing_red_as_zero_cost(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    seeing_red = _card(
+        "Seeing Red",
+        "Seeing Red",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    seeing_red.uuid = "seeing-red"
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_1.uuid = "strike-1"
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    strike_2.uuid = "strike-2"
+    context = _combat_context(
+        [seeing_red, strike_1, strike_2],
+        energy=0,
+        monsters=[_louse(current_hp=12)],
+    )
+    context.game.player.powers = [SimpleNamespace(power_name="Corruption", amount=1)]
 
     detector = CombatEndingDetector()
 

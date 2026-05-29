@@ -660,6 +660,19 @@ class CombatEndingDetector:
         except (TypeError, ValueError):
             return 0
 
+    def _lethal_card_cost(
+        self,
+        card: Card,
+        context: DecisionContext,
+        available_energy: int,
+    ) -> int:
+        if (
+            getattr(card, 'type', None) == CardType.SKILL
+            and self._get_player_debuff_stacks(context, 'Corruption') > 0
+        ):
+            return 0
+        return effective_card_cost(card, available_energy)
+
     def _is_lethal_vulnerable_support_card(self, card: Card) -> bool:
         if getattr(card, 'type', None) != CardType.SKILL:
             return False
@@ -740,7 +753,7 @@ class CombatEndingDetector:
             candidates = []
             for card_pos, card in enumerate(remaining_cards):
                 if self._is_lethal_strength_support_card(card):
-                    cost = effective_card_cost(card, remaining_energy)
+                    cost = self._lethal_card_cost(card, context, remaining_energy)
                     if cost > remaining_energy:
                         continue
 
@@ -774,7 +787,7 @@ class CombatEndingDetector:
                     continue
 
                 if self._is_lethal_energy_support_card(card):
-                    cost = effective_card_cost(card, remaining_energy)
+                    cost = self._lethal_card_cost(card, context, remaining_energy)
                     if cost > remaining_energy:
                         continue
 
@@ -809,7 +822,7 @@ class CombatEndingDetector:
                     continue
 
                 if self._is_lethal_vulnerable_support_card(card):
-                    cost = effective_card_cost(card, remaining_energy)
+                    cost = self._lethal_card_cost(card, context, remaining_energy)
                     if cost > remaining_energy:
                         continue
 
