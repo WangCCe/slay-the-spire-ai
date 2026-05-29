@@ -429,12 +429,21 @@ class TimingAwareCombatPlanner:
 
     def _find_affordable_lethal_card_options(self, card_options, monster_hp, energy):
         """Return an affordable card subset whose damage effects kill all monsters."""
-        options = tuple(
-            (card, effect_type, int(damage), max(0, int(cost)))
-            for card, effect_type, damage, cost in card_options
-            if damage > 0
-        )
         starting_energy = max(0, int(energy))
+        def option_sort_key(option):
+            card, _effect_type, damage, cost = option
+            upfront_cost = effective_card_cost(card, starting_energy)
+            refunds_energy = cost < upfront_cost
+            return (0 if refunds_energy else 1, cost, -damage)
+
+        options = tuple(sorted(
+            (
+                (card, effect_type, int(damage), max(0, int(cost)))
+                for card, effect_type, damage, cost in card_options
+                if damage > 0
+            ),
+            key=option_sort_key,
+        ))
         seen = set()
 
         def selected_effects(selected_options):
@@ -466,6 +475,9 @@ class TimingAwareCombatPlanner:
         return search(0, starting_energy, ())
 
     def _card_energy_cost_for_targets(self, card, context, monsters, available_energy: int) -> int:
+        upfront_cost = effective_card_cost(card, available_energy)
+        if upfront_cost > available_energy:
+            return upfront_cost
         return effective_card_cost_after_refund(
             card,
             available_energy,
