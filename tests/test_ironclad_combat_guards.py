@@ -1545,6 +1545,54 @@ def test_gremlin_nob_detection_accepts_live_monster_id():
     assert planner._detect_elite_type(context) == ironclad_combat.EliteType.GREMLIN_NOB
 
 
+def test_ironclad_low_scaling_check_uses_live_monster_id_for_summoners(monkeypatch):
+    class CanonicalOnlyMonsterLoader:
+        def __init__(self):
+            self.summoner_names = []
+
+        def is_monster_summoner(self, monster_name):
+            self.summoner_names.append(monster_name)
+            return monster_name == "Bronze Automaton"
+
+        def does_monster_have_phase_change(self, _monster_name):
+            return False
+
+        def get_monster_threat_profile(self, _monster_name):
+            return {"scaling_threat": 0}
+
+    monster_loader = CanonicalOnlyMonsterLoader()
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", monster_loader)
+    context = _combat_context([], energy=0, monsters=[_bronze_automaton()])
+
+    assert IroncladCombatPlanner()._is_low_scaling_encounter(context) is False
+    assert monster_loader.summoner_names == ["Bronze Automaton"]
+
+
+def test_ironclad_low_scaling_check_uses_live_monster_id_for_threat_profile(monkeypatch):
+    class CanonicalOnlyMonsterLoader:
+        def __init__(self):
+            self.profile_names = []
+
+        def is_monster_summoner(self, _monster_name):
+            return False
+
+        def does_monster_have_phase_change(self, _monster_name):
+            return False
+
+        def get_monster_threat_profile(self, monster_name):
+            self.profile_names.append(monster_name)
+            if monster_name == "Red Slaver":
+                return {"scaling_threat": 5}
+            return {"scaling_threat": 0}
+
+    monster_loader = CanonicalOnlyMonsterLoader()
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", monster_loader)
+    context = _combat_context([], energy=0, monsters=[_red_slaver()])
+
+    assert IroncladCombatPlanner()._is_low_scaling_encounter(context) is False
+    assert monster_loader.profile_names == ["Red Slaver"]
+
+
 def test_a20_elite_aggression_uses_context_ascension_level():
     context = _combat_context([], energy=0, monsters=[_gremlin_nob()])
     context.turn = 1

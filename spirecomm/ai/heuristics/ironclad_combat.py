@@ -1569,7 +1569,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 return False
 
             for monster in monsters:
-                name = getattr(monster, 'name', None)
+                name = canonical_live_monster_name(monster)
                 if not name:
                     return False
 
