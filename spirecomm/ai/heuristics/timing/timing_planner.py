@@ -549,20 +549,18 @@ class TimingAwareCombatPlanner:
         monsters,
         available_energy: int,
     ) -> List:
-        """Prove a single-target lethal line with target-specific status effects."""
+        """Prove a lethal line with target-specific status effects."""
         from spirecomm.communication.action import PlayCardAction
 
-        target_cards = [
+        attack_cards = [
             card
             for card in playable_cards
-            if getattr(card, 'has_target', False)
-            and not self._is_card_aoe(card)
-            and self._estimate_card_damage(card, context) > 0
+            if self._estimate_card_damage(card, context) > 0
         ]
-        if not target_cards or not monsters:
+        if not attack_cards or not monsters:
             return []
         if (
-            len(target_cards) > TARGETED_LETHAL_MAX_CARDS
+            len(attack_cards) > TARGETED_LETHAL_MAX_CARDS
             or len(monsters) > TARGETED_LETHAL_MAX_MONSTERS
         ):
             return []
@@ -588,6 +586,54 @@ class TimingAwareCombatPlanner:
 
             candidates = []
             for card_pos, card in enumerate(remaining_cards):
+                if self._is_card_aoe(card):
+                    cost = effective_card_cost(card, remaining_energy)
+                    if cost > remaining_energy:
+                        continue
+
+                    next_hp = list(hp_state)
+                    total_damage = 0
+                    kill_count = 0
+                    for monster_idx, hp in enumerate(hp_state):
+                        if hp <= 0:
+                            continue
+
+                        damage = self._card_damage_against_monster(
+                            card,
+                            context,
+                            monsters,
+                            monster_idx,
+                            remaining_energy,
+                        )
+                        if damage <= 0:
+                            continue
+
+                        total_damage += min(hp, damage)
+                        if damage >= hp:
+                            kill_count += 1
+                        next_hp[monster_idx] = max(0, hp - damage)
+
+                    if total_damage <= 0:
+                        continue
+
+                    priority = (
+                        kill_count,
+                        0,
+                        total_damage,
+                        -cost,
+                    )
+                    candidates.append((
+                        priority,
+                        card_pos,
+                        None,
+                        cost,
+                        tuple(next_hp),
+                    ))
+                    continue
+
+                if not getattr(card, 'has_target', False):
+                    continue
+
                 for monster_idx, hp in enumerate(hp_state):
                     if hp <= 0:
                         continue
@@ -641,16 +687,21 @@ class TimingAwareCombatPlanner:
                 next_cards = remaining_cards[:card_pos] + remaining_cards[card_pos + 1:]
                 tail = search(next_cards, next_hp, remaining_energy - cost)
                 if tail is not None:
+                    target_monster = (
+                        None
+                        if monster_idx is None
+                        else monsters[monster_idx]
+                    )
                     return [
                         PlayCardAction(
                             card=card,
-                            target_monster=monsters[monster_idx],
+                            target_monster=target_monster,
                         )
                     ] + tail
 
             return None
 
-        sequence = search(tuple(target_cards), starting_hp, max(0, int(available_energy)))
+        sequence = search(tuple(attack_cards), starting_hp, max(0, int(available_energy)))
         return sequence or []
 
     @staticmethod

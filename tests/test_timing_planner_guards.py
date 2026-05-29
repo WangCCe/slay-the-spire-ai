@@ -636,6 +636,48 @@ def test_timing_lethal_sequence_uses_dropkick_refund_on_one_vulnerable_target(mo
     ]
 
 
+def test_timing_lethal_sequence_combines_aoe_with_dropkick_refund(monkeypatch):
+    loader = _loader_with_basic_ironclad_cards()
+    loader._cards["dropkick"] = {
+        "name": "Dropkick",
+        "description": "Deal 5 damage. If the enemy has Vulnerable, gain [R] and draw 1 card.",
+    }
+    monkeypatch.setattr(timing_planner, "game_data_loader", loader, raising=False)
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    cleave.uuid = "cleave"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    dropkick = _card("Dropkick", "Dropkick", cost=1)
+    dropkick.uuid = "dropkick"
+    vulnerable_target = SimpleNamespace(current_hp=15, block=0, monster_index=0)
+    other_target = SimpleNamespace(current_hp=14, block=0, monster_index=1)
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=2,
+        playable_cards=[strike, cleave, dropkick],
+        monsters_alive=[vulnerable_target, other_target],
+        vulnerable_stacks={0: 1, 1: 0},
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+    planner = TimingAwareCombatPlanner()
+
+    assert planner._can_kill_all_this_turn(context, timing_ctx)
+
+    actions = planner._generate_lethal_sequence(context)
+
+    assert [action.card.uuid for action in actions] == ["dropkick", "cleave", "strike"]
+    assert [action.target_monster for action in actions] == [
+        vulnerable_target,
+        None,
+        other_target,
+    ]
+
+
 def test_timing_lethal_check_requires_upfront_energy_for_dropkick_refund(monkeypatch):
     loader = _loader_with_basic_ironclad_cards()
     loader._cards["dropkick"] = {
