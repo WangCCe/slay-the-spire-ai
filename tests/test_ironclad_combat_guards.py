@@ -283,6 +283,38 @@ def _hexaghost(current_hp=250):
     )
 
 
+def _bronze_automaton(current_hp=260):
+    return Monster(
+        name="Automaton",
+        monster_id="BronzeAutomaton",
+        max_hp=300,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=14,
+        move_hits=1,
+    )
+
+
+def _bronze_orb(current_hp=52, intent=Intent.DEBUFF, move_id=0, move_adjusted_damage=0):
+    return Monster(
+        name="Orb",
+        monster_id="BronzeOrb",
+        max_hp=52,
+        current_hp=current_hp,
+        block=0,
+        intent=intent,
+        half_dead=False,
+        is_gone=False,
+        move_id=move_id,
+        move_adjusted_damage=move_adjusted_damage,
+        move_hits=1,
+    )
+
+
 def _guardian(current_hp=240, mode_shift=0, thorns=0):
     monster = Monster(
         name="The Guardian",
@@ -2280,6 +2312,90 @@ def test_v2_split_targeting_uses_parsed_damage_for_plain_cards(monkeypatch):
 
     assert target is splitting
     assert target_idx == 1
+
+
+def test_v2_summoner_targeting_matches_live_bronze_orbs_by_id(monkeypatch):
+    class FakeMonsterLoader:
+        def __init__(self):
+            self.summoner_names = []
+
+        def is_monster_summoner(self, monster_name):
+            self.summoner_names.append(monster_name)
+            return monster_name == "Bronze Automaton"
+
+        def get_monster_minions(self, monster_name):
+            if monster_name == "Bronze Automaton":
+                return ["Bronze Orb"]
+            return []
+
+        def get_monster_recommended_strategy(self, monster_name):
+            if monster_name == "Bronze Automaton":
+                return {"primary": "kill_minions_first"}
+            return None
+
+        def is_monster_hibernating(self, _monster_name, _turn):
+            return False
+
+        def does_monster_have_death_split(self, _monster_name):
+            return False
+
+        def does_monster_have_phase_change(self, _monster_name):
+            return False
+
+        def is_monster_duo_boss(self, _monster_name):
+            return False
+
+    automaton = _bronze_automaton()
+    first_orb = _bronze_orb()
+    second_orb = _bronze_orb(current_hp=40, intent=Intent.ATTACK, move_id=1, move_adjusted_damage=8)
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[automaton, first_orb, second_orb])
+    context.compute_threat_v2 = lambda monster: 100 if monster is automaton else 1
+    state = SimulationState(context)
+    monster_loader = FakeMonsterLoader()
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", monster_loader)
+
+    target, target_idx = IroncladCombatPlanner()._choose_target_for_card_v2(
+        strike,
+        context,
+        state,
+    )
+
+    assert target is first_orb
+    assert target_idx == 1
+    assert "Bronze Automaton" in monster_loader.summoner_names
+
+
+def test_aoe_decision_matches_live_bronze_orb_minions_by_id(monkeypatch):
+    class FakeMonsterLoader:
+        def __init__(self):
+            self.summoner_names = []
+
+        def is_monster_summoner(self, monster_name):
+            self.summoner_names.append(monster_name)
+            return monster_name == "Bronze Automaton"
+
+        def get_monster_minions(self, monster_name):
+            if monster_name == "Bronze Automaton":
+                return ["Bronze Orb"]
+            return []
+
+        def does_monster_have_death_split(self, _monster_name):
+            return False
+
+        def is_monster_duo_boss(self, _monster_name):
+            return False
+
+    automaton = _bronze_automaton()
+    first_orb = _bronze_orb()
+    second_orb = _bronze_orb(current_hp=40, intent=Intent.ATTACK, move_id=1, move_adjusted_damage=8)
+    context = _combat_context([], monsters=[automaton, first_orb, second_orb])
+    state = SimulationState(context)
+    monster_loader = FakeMonsterLoader()
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", monster_loader)
+
+    assert IroncladCombatPlanner()._should_use_aoe("Cleave", context, state)
+    assert "Bronze Automaton" in monster_loader.summoner_names
 
 
 def test_aoe_decision_ignores_zero_hp_stale_simulated_monsters():

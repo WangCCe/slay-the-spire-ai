@@ -2301,6 +2301,12 @@ def test_nested_monster_probability_tables_predict_moves_without_dict_sort_error
     assert all(isinstance(prediction["confidence"], (int, float)) for prediction in predictions)
 
 
+def test_bronze_automaton_summoner_burst_counts_as_summoner():
+    database = EnhancedMonsterDatabase()
+
+    assert database.is_summoner("Bronze Automaton") is True
+
+
 def test_safe_window_detection_handles_null_attack_damage_without_warning(monkeypatch, caplog):
     monkeypatch.setattr(
         data_loader.game_data_loader,

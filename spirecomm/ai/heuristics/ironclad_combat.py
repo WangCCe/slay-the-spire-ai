@@ -29,6 +29,7 @@ from .card_names import canonical_card_name
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
+from spirecomm.ai.monster_names import canonical_live_monster_name
 from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster
 from spirecomm.communication.action import Action, PlayCardAction
@@ -45,6 +46,20 @@ POWER_BONUS_MID = 12
 POWER_BONUS_LATE = 6
 AWAKENED_ONE_POWER_PENALTY = 90
 AOE_ATTACK_CARDS = {'Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper'}
+
+
+def _monster_matches_any_name(monster, candidate_names) -> bool:
+    raw_name = str(getattr(monster, 'name', '') or '').lower()
+    canonical_name = canonical_live_monster_name(monster).lower()
+    for candidate in candidate_names:
+        candidate_name = str(candidate or '').lower()
+        if not candidate_name:
+            continue
+        if raw_name and (candidate_name in raw_name or raw_name in candidate_name):
+            return True
+        if canonical_name and (candidate_name in canonical_name or canonical_name in candidate_name):
+            return True
+    return False
 
 
 def _format_card_for_log(card: Card) -> str:
@@ -628,24 +643,24 @@ class IroncladCombatPlanner(CombatPlanner):
         summoner_targets = []
         for i, monster, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
-                if game_data_loader.is_monster_summoner(monster.name):
+                monster_name = canonical_live_monster_name(monster)
+                if game_data_loader.is_monster_summoner(monster_name):
                     # Get minions count
-                    minions = game_data_loader.get_monster_minions(monster.name)
+                    minions = game_data_loader.get_monster_minions(monster_name)
                     if minions:
-                        summoner_targets.append((i, monster, monster_state))
+                        summoner_targets.append((i, monster, monster_state, monster_name, minions))
 
         if summoner_targets:
             # Strategy depends on summoner type
-            for i, monster, monster_state in summoner_targets:
-                strategy = game_data_loader.get_monster_recommended_strategy(monster.name)
+            for i, monster, monster_state, monster_name, minions in summoner_targets:
+                strategy = game_data_loader.get_monster_recommended_strategy(monster_name)
                 if strategy:
                     primary = strategy.get('primary', '')
                     # If strategy says "kill_minions_first", check if we have minions to target
                     if 'kill_minions_first' in primary or 'minion' in primary.lower():
                         # Target minions instead of summoner
                         minion_indices = [j for j, m in enumerate(context.monsters_alive)
-                                        if any(minion_name.lower() in m.name.lower()
-                                              for minion_name in game_data_loader.get_monster_minions(monster.name))]
+                                        if _monster_matches_any_name(m, minions)]
                         if minion_indices and card_id not in ['Bash']:  # Bash on summoner
                             # Target highest HP minion to clear them efficiently
                             minion_idx = max(minion_indices,
@@ -662,7 +677,8 @@ class IroncladCombatPlanner(CombatPlanner):
         awake_monsters = []
         for i, monster, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
-                if game_data_loader.is_monster_hibernating(monster.name, context.turn):
+                monster_name = canonical_live_monster_name(monster)
+                if game_data_loader.is_monster_hibernating(monster_name, context.turn):
                     hibernating_monsters.append((i, monster, monster_state))
                 else:
                     awake_monsters.append((i, monster, monster_state))
@@ -676,7 +692,8 @@ class IroncladCombatPlanner(CombatPlanner):
         for i, monster, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
                 real_monster = context.monsters_alive[i]
-                if game_data_loader.does_monster_have_death_split(real_monster.name):
+                real_monster_name = canonical_live_monster_name(real_monster)
+                if game_data_loader.does_monster_have_death_split(real_monster_name):
                     # Check if we're near split threshold
                     if hasattr(real_monster, 'current_hp') and hasattr(real_monster, 'max_hp'):
                         current_hp = monster_state.get(
@@ -694,7 +711,7 @@ class IroncladCombatPlanner(CombatPlanner):
                         hp_percent = current_hp / max(max_hp, 1)
 
                         # Get split threshold
-                        monster_data = game_data_loader.get_enhanced_monster_data(real_monster.name)
+                        monster_data = game_data_loader.get_enhanced_monster_data(real_monster_name)
                         if monster_data and 'special_mechanics' in monster_data:
                             split_threshold = monster_data['special_mechanics'].get('split_conditions', {}).get('hp_threshold', 50) / 100.0
 
@@ -714,8 +731,9 @@ class IroncladCombatPlanner(CombatPlanner):
         for i, monster, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
                 real_monster = context.monsters_alive[i]
-                if game_data_loader.does_monster_have_phase_change(real_monster.name):
-                    strategy = game_data_loader.get_monster_recommended_strategy(real_monster.name)
+                real_monster_name = canonical_live_monster_name(real_monster)
+                if game_data_loader.does_monster_have_phase_change(real_monster_name):
+                    strategy = game_data_loader.get_monster_recommended_strategy(real_monster_name)
                     if strategy:
                         primary = strategy.get('primary', '')
                         # Check for burst windows
@@ -731,7 +749,8 @@ class IroncladCombatPlanner(CombatPlanner):
         for i, monster, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
                 real_monster = context.monsters_alive[i]
-                if game_data_loader.is_monster_duo_boss(real_monster.name):
+                real_monster_name = canonical_live_monster_name(real_monster)
+                if game_data_loader.is_monster_duo_boss(real_monster_name):
                     duo_bosses.append((i, real_monster, monster_state))
 
         if duo_bosses and len(duo_bosses) >= 2:
@@ -831,7 +850,8 @@ class IroncladCombatPlanner(CombatPlanner):
         for i, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
                 monster = context.monsters_alive[i]
-                if game_data_loader.does_monster_have_death_split(monster.name):
+                monster_name = canonical_live_monster_name(monster)
+                if game_data_loader.does_monster_have_death_split(monster_name):
                     # AOE is very effective against split monsters
                     return True
 
@@ -840,10 +860,11 @@ class IroncladCombatPlanner(CombatPlanner):
         for i, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
                 monster = context.monsters_alive[i]
-                if game_data_loader.is_monster_summoner(monster.name):
-                    minions = game_data_loader.get_monster_minions(monster.name)
+                monster_name = canonical_live_monster_name(monster)
+                if game_data_loader.is_monster_summoner(monster_name):
+                    minions = game_data_loader.get_monster_minions(monster_name)
                     minion_count = len([m for m in context.monsters_alive
-                                      if any(minion.lower() in m.name.lower() for minion in minions)])
+                                      if _monster_matches_any_name(m, minions)])
                     if minion_count >= 2:
                         summoner_with_minions = True
                         break
@@ -865,7 +886,8 @@ class IroncladCombatPlanner(CombatPlanner):
         for i, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
                 monster = context.monsters_alive[i]
-                if game_data_loader.is_monster_duo_boss(monster.name):
+                monster_name = canonical_live_monster_name(monster)
+                if game_data_loader.is_monster_duo_boss(monster_name):
                     duo_count += 1
 
         if duo_count >= 2:

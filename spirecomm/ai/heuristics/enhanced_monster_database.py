@@ -811,7 +811,7 @@ class EnhancedMonsterDatabase:
         """Check if monster is a summoner type."""
         mechanics = self.get_special_mechanics(monster_name)
         if mechanics:
-            return mechanics.get("type") == "summoner"
+            return "summoner" in str(mechanics.get("type", "")).lower()
         return False
 
     def is_hibernating(self, monster_name: str, current_turn: int) -> bool:
