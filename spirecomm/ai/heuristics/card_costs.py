@@ -59,6 +59,29 @@ def effective_card_cost_after_refund(
     return max(0, effective_card_cost(card, available_energy) - refund)
 
 
+def playable_card_cost_after_refund(
+    card,
+    available_energy: Optional[int] = None,
+    energy_refund: int = 0,
+) -> int:
+    """Return net cost after refund only when the card can be paid upfront.
+
+    Refund cards such as Dropkick still require paying their normal cost before
+    the refund resolves. Returning the upfront cost when it is unaffordable keeps
+    existing ``cost > available_energy`` checks conservative and explicit.
+    """
+    upfront_cost = effective_card_cost(card, available_energy)
+    if available_energy is not None:
+        try:
+            energy = max(0, int(available_energy))
+        except (TypeError, ValueError):
+            energy = 0
+        if upfront_cost > energy:
+            return upfront_cost
+
+    return effective_card_cost_after_refund(card, available_energy, energy_refund)
+
+
 def _normalized_game_id(value: Any) -> str:
     return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
 

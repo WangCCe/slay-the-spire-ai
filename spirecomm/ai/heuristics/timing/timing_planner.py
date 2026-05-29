@@ -14,8 +14,8 @@ from .balance_strategy import CombatBalanceStrategy
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_costs import (
     effective_card_cost,
-    effective_card_cost_after_refund,
     energy_refund_for_card,
+    playable_card_cost_after_refund,
     whirlwind_damage,
     x_effect_energy,
 )
@@ -475,10 +475,7 @@ class TimingAwareCombatPlanner:
         return search(0, starting_energy, ())
 
     def _card_energy_cost_for_targets(self, card, context, monsters, available_energy: int) -> int:
-        upfront_cost = effective_card_cost(card, available_energy)
-        if upfront_cost > available_energy:
-            return upfront_cost
-        return effective_card_cost_after_refund(
+        return playable_card_cost_after_refund(
             card,
             available_energy,
             self._card_energy_refund_for_targets(card, context, monsters),

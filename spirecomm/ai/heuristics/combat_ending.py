@@ -15,8 +15,8 @@ from ..decision.base import DecisionContext
 from .card_names import canonical_card_name
 from .card_costs import (
     effective_card_cost,
-    effective_card_cost_after_refund,
     energy_refund_for_card,
+    playable_card_cost_after_refund,
     whirlwind_damage,
     x_effect_energy,
 )
@@ -329,10 +329,7 @@ class CombatEndingDetector:
         monster_idx: int,
         available_energy: int,
     ) -> int:
-        upfront_cost = effective_card_cost(card, available_energy)
-        if upfront_cost > available_energy:
-            return upfront_cost
-        return effective_card_cost_after_refund(
+        return playable_card_cost_after_refund(
             card,
             available_energy,
             self._card_energy_refund_against_monster(card, context, monster_idx),
