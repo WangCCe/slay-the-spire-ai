@@ -215,13 +215,29 @@ MONSTER_DATABASE = {
 }
 
 
+def _normalize_monster_id(monster_id):
+    return ''.join(ch for ch in str(monster_id).lower() if ch.isalnum())
+
+
+NORMALIZED_MONSTER_IDS = {
+    _normalize_monster_id(monster_id): monster_id
+    for monster_id in MONSTER_DATABASE
+}
+
+
 MONSTER_ID_ALIASES = {
-    "GremlinNob": "Gremlin Nob",
+    "awakenedone": "The Awakened One",
+    "fuzzylousedefensive": "Louse",
+    "fuzzylousenormal": "Louse",
 }
 
 
 def _canonical_monster_id(monster_id):
-    return MONSTER_ID_ALIASES.get(monster_id, monster_id)
+    normalized_id = _normalize_monster_id(monster_id)
+    return MONSTER_ID_ALIASES.get(
+        normalized_id,
+        NORMALIZED_MONSTER_IDS.get(normalized_id, monster_id),
+    )
 
 
 def get_monster_info(monster_id):
