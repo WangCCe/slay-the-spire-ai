@@ -85,6 +85,12 @@ class CombatEndingDetector:
     def _base_card_name(card: Card) -> str:
         return canonical_card_name(card)
 
+    @staticmethod
+    def _play_card_action(card: Card, target_monster: Optional[Monster] = None) -> PlayCardAction:
+        if not getattr(card, 'has_target', False):
+            target_monster = None
+        return PlayCardAction(card=card, target_monster=target_monster)
+
     def can_kill_all(self, context: DecisionContext) -> bool:
         """
         Check if all monsters can be killed this turn.
@@ -319,7 +325,7 @@ class CombatEndingDetector:
                 if best_card is None:
                     break
 
-                sequence.append(PlayCardAction(card=best_card, target_monster=monster))
+                sequence.append(self._play_card_action(best_card, monster))
                 played_cards.add(best_card_uuid)
                 remaining_energy -= best_cost
                 damage_needed -= best_damage
@@ -1306,7 +1312,7 @@ class CombatEndingDetector:
                         sequence = []
                         break
 
-                    sequence.append(PlayCardAction(card=best_card, target_monster=monster))
+                    sequence.append(self._play_card_action(best_card, monster))
                     if self._base_card_name(best_card) == 'Fiend Fire':
                         played_cards.update(sequence_card_keys)
                     else:

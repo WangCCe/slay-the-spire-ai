@@ -5709,6 +5709,30 @@ def test_lethal_detector_rejects_random_target_attack_false_positive(monkeypatch
     assert detector.find_lethal_sequence(context) == []
 
 
+def test_lethal_sequence_does_not_target_single_monster_random_attack(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "sword boomerang": {
+            "name": "Sword Boomerang",
+            "description": "Deal 3 damage to a random enemy 3 times.",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    sword_boomerang = _card("Sword Boomerang", "Sword Boomerang", cost=1, has_target=False)
+    sword_boomerang.uuid = "sword-boomerang"
+    context = _combat_context(
+        [sword_boomerang],
+        energy=1,
+        monsters=[_louse(current_hp=9)],
+    )
+    detector = CombatEndingDetector()
+
+    sequence = detector.find_lethal_sequence(context)
+
+    assert [action.card.uuid for action in sequence] == ["sword-boomerang"]
+    assert sequence[0].target_monster is None
+
+
 def test_lethal_detector_uses_aoe_damage_before_single_target_cleanup(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -5740,6 +5764,35 @@ def test_lethal_detector_uses_aoe_damage_before_single_target_cleanup(monkeypatc
     assert [action.card.card_id for action in sequence] == ["Cleave", "Strike_R"]
     assert sequence[0].target_monster is None
     assert sequence[1].target_monster is surviving_monster
+
+
+def test_lethal_sequence_does_not_target_random_attack_after_aoe_cleanup(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "cleave": {
+            "name": "Cleave",
+            "description": "Deal 8 damage to ALL enemies.",
+        },
+        "sword boomerang": {
+            "name": "Sword Boomerang",
+            "description": "Deal 3 damage to a random enemy 3 times.",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    sword_boomerang = _card("Sword Boomerang", "Sword Boomerang", cost=1, has_target=False)
+    context = _combat_context(
+        [cleave, sword_boomerang],
+        energy=2,
+        monsters=[_louse(current_hp=5), _louse(current_hp=15)],
+    )
+    detector = CombatEndingDetector()
+
+    sequence = detector.find_lethal_sequence(context)
+
+    assert [action.card.card_id for action in sequence] == ["Cleave", "Sword Boomerang"]
+    assert sequence[0].target_monster is None
+    assert sequence[1].target_monster is None
 
 
 def test_lethal_detector_counts_vulnerable_damage_on_single_target():
