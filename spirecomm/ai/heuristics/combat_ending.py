@@ -684,6 +684,51 @@ class CombatEndingDetector:
             return False
         return self._base_card_name(card) == 'Corruption'
 
+    def _context_double_tap_charges(self, context: DecisionContext) -> int:
+        try:
+            return max(0, int(self._get_player_debuff_stacks(context, 'Double Tap') or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    def _is_lethal_double_tap_support_card(self, card: Card) -> bool:
+        if getattr(card, 'type', None) != CardType.SKILL:
+            return False
+        return self._base_card_name(card) == 'Double Tap'
+
+    def _lethal_double_tap_charges(self, card: Card) -> int:
+        return 2 if getattr(card, 'upgrades', 0) > 0 else 1
+
+    def _lethal_attack_repeats(self, card: Card, double_tap_charges: int) -> int:
+        if double_tap_charges <= 0:
+            return 1
+        if self._base_card_name(card) == 'Fiend Fire':
+            return 1
+        return 2
+
+    def _double_tap_charges_after_attack(self, double_tap_charges: int) -> int:
+        return max(0, double_tap_charges - 1)
+
+    def _repeated_card_energy_cost_against_monster(
+        self,
+        card: Card,
+        context: DecisionContext,
+        monster_idx: int,
+        available_energy: int,
+        target_vulnerable_stacks: Optional[int],
+        repeat_count: int,
+    ) -> int:
+        upfront_cost = effective_card_cost(card, available_energy)
+        if upfront_cost > available_energy:
+            return upfront_cost
+
+        refund = self._card_energy_refund_against_monster(
+            card,
+            context,
+            monster_idx,
+            target_vulnerable_stacks,
+        )
+        return max(0, upfront_cost - refund * max(1, repeat_count))
+
     def _is_lethal_vulnerable_support_card(self, card: Card) -> bool:
         if getattr(card, 'type', None) != CardType.SKILL:
             return False
@@ -708,6 +753,7 @@ class CombatEndingDetector:
                 self._is_lethal_strength_support_card(card)
                 or self._is_lethal_energy_support_card(card)
                 or self._is_lethal_corruption_support_card(card)
+                or self._is_lethal_double_tap_support_card(card)
                 or self._is_lethal_vulnerable_support_card(card)
             )
         ]
@@ -736,6 +782,7 @@ class CombatEndingDetector:
         starting_strength = getattr(context, 'strength', 0)
         starting_player_hp = self._context_player_hp(context)
         starting_corruption_active = self._context_corruption_active(context)
+        starting_double_tap_charges = self._context_double_tap_charges(context)
         seen = set()
 
         def search(
@@ -746,6 +793,7 @@ class CombatEndingDetector:
             strength_state,
             player_hp_state,
             corruption_active_state,
+            double_tap_charges_state,
             remaining_energy,
         ):
             if all(hp <= 0 for hp in hp_state):
@@ -759,6 +807,7 @@ class CombatEndingDetector:
                 strength_state,
                 player_hp_state,
                 corruption_active_state,
+                double_tap_charges_state,
                 remaining_energy,
             )
             if state_key in seen:
@@ -803,6 +852,7 @@ class CombatEndingDetector:
                                 next_strength,
                                 player_hp_state,
                                 corruption_active_state,
+                                double_tap_charges_state,
                             )
                         )
                     continue
@@ -844,6 +894,7 @@ class CombatEndingDetector:
                             strength_state,
                             next_player_hp,
                             corruption_active_state,
+                            double_tap_charges_state,
                         )
                     )
                     continue
@@ -873,6 +924,42 @@ class CombatEndingDetector:
                             strength_state,
                             player_hp_state,
                             True,
+                            double_tap_charges_state,
+                        )
+                    )
+                    continue
+
+                if self._is_lethal_double_tap_support_card(card):
+                    cost = self._lethal_card_cost(
+                        card,
+                        context,
+                        remaining_energy,
+                        corruption_active_state,
+                    )
+                    if cost > remaining_energy:
+                        continue
+
+                    next_double_tap_charges = (
+                        double_tap_charges_state + self._lethal_double_tap_charges(card)
+                    )
+                    candidates.append(
+                        (
+                            (
+                                0,
+                                0,
+                                next_double_tap_charges,
+                                -cost,
+                            ),
+                            card_pos,
+                            None,
+                            cost,
+                            hp_state,
+                            vulnerable_state,
+                            artifact_state,
+                            strength_state,
+                            player_hp_state,
+                            corruption_active_state,
+                            next_double_tap_charges,
                         )
                     )
                     continue
@@ -917,6 +1004,7 @@ class CombatEndingDetector:
                             strength_state,
                             player_hp_state,
                             corruption_active_state,
+                            double_tap_charges_state,
                         )
                     )
                     continue
@@ -926,40 +1014,59 @@ class CombatEndingDetector:
                     if cost > remaining_energy:
                         continue
 
-                    next_hp = list(hp_state)
+                    attack_repeats = self._lethal_attack_repeats(
+                        card,
+                        double_tap_charges_state,
+                    )
+                    next_double_tap_charges = self._double_tap_charges_after_attack(
+                        double_tap_charges_state
+                    )
+                    next_hp = tuple(hp_state)
+                    next_vulnerable = vulnerable_state
+                    next_artifact = artifact_state
                     total_damage = 0
-                    kill_count = 0
-                    for monster_idx, hp in enumerate(hp_state):
-                        if hp <= 0:
-                            continue
+                    for _repeat_idx in range(attack_repeats):
+                        repeat_hp = list(next_hp)
+                        repeat_damage = 0
+                        for monster_idx, hp in enumerate(next_hp):
+                            if hp <= 0:
+                                continue
 
-                        damage = self._card_damage_against_monster(
+                            damage = self._card_damage_against_monster(
+                                card,
+                                context,
+                                monster_idx,
+                                remaining_energy,
+                                target_vulnerable_stacks=next_vulnerable[monster_idx],
+                                strength=strength_state,
+                            )
+                            if damage <= 0:
+                                continue
+
+                            repeat_damage += min(hp, damage)
+                            repeat_hp[monster_idx] = max(0, hp - damage)
+
+                        if repeat_damage <= 0:
+                            break
+
+                        total_damage += repeat_damage
+                        next_hp = tuple(repeat_hp)
+                        next_vulnerable, next_artifact = self._vulnerable_state_after_card(
                             card,
                             context,
-                            monster_idx,
-                            remaining_energy,
-                            target_vulnerable_stacks=vulnerable_state[monster_idx],
-                            strength=strength_state,
+                            next_vulnerable,
+                            next_artifact,
+                            next_hp,
+                            None,
                         )
-                        if damage <= 0:
-                            continue
-
-                        total_damage += min(hp, damage)
-                        if damage >= hp:
-                            kill_count += 1
-                        next_hp[monster_idx] = max(0, hp - damage)
 
                     if total_damage <= 0:
                         continue
 
-                    next_hp = tuple(next_hp)
-                    next_vulnerable, next_artifact = self._vulnerable_state_after_card(
-                        card,
-                        context,
-                        vulnerable_state,
-                        artifact_state,
-                        next_hp,
-                        None,
+                    kill_count = sum(
+                        1
+                        for before_hp, after_hp in zip(hp_state, next_hp)
+                        if before_hp > 0 and after_hp <= 0
                     )
                     priority = (
                         kill_count,
@@ -979,6 +1086,7 @@ class CombatEndingDetector:
                             strength_state,
                             player_hp_state,
                             corruption_active_state,
+                            next_double_tap_charges,
                         )
                     )
                     continue
@@ -990,12 +1098,20 @@ class CombatEndingDetector:
                     if hp <= 0:
                         continue
 
-                    cost = self._card_energy_cost_against_monster(
+                    attack_repeats = self._lethal_attack_repeats(
+                        card,
+                        double_tap_charges_state,
+                    )
+                    next_double_tap_charges = self._double_tap_charges_after_attack(
+                        double_tap_charges_state
+                    )
+                    cost = self._repeated_card_energy_cost_against_monster(
                         card,
                         context,
                         monster_idx,
                         remaining_energy,
                         vulnerable_state[monster_idx],
+                        attack_repeats,
                     )
                     if cost > remaining_energy:
                         continue
@@ -1006,29 +1122,42 @@ class CombatEndingDetector:
                         remaining_cards,
                         sequence_card_keys,
                     )
-                    damage = self._card_damage_against_monster(
-                        card,
-                        context,
-                        monster_idx,
-                        remaining_energy,
-                        fiend_fire_exhaust_count,
-                        vulnerable_state[monster_idx],
-                        strength_state,
-                    )
-                    if damage <= 0:
+                    next_hp = list(hp_state)
+                    next_vulnerable = vulnerable_state
+                    next_artifact = artifact_state
+                    total_damage = 0
+                    for _repeat_idx in range(attack_repeats):
+                        current_hp = next_hp[monster_idx]
+                        if current_hp <= 0:
+                            break
+
+                        damage = self._card_damage_against_monster(
+                            card,
+                            context,
+                            monster_idx,
+                            remaining_energy,
+                            fiend_fire_exhaust_count,
+                            next_vulnerable[monster_idx],
+                            strength_state,
+                        )
+                        if damage <= 0:
+                            continue
+
+                        total_damage += min(current_hp, damage)
+                        next_hp[monster_idx] = max(0, current_hp - damage)
+                        next_vulnerable, next_artifact = self._vulnerable_state_after_card(
+                            card,
+                            context,
+                            next_vulnerable,
+                            next_artifact,
+                            tuple(next_hp),
+                            monster_idx,
+                        )
+
+                    if total_damage <= 0:
                         continue
 
-                    next_hp = list(hp_state)
-                    next_hp[monster_idx] = max(0, hp - damage)
                     next_hp = tuple(next_hp)
-                    next_vulnerable, next_artifact = self._vulnerable_state_after_card(
-                        card,
-                        context,
-                        vulnerable_state,
-                        artifact_state,
-                        next_hp,
-                        monster_idx,
-                    )
                     refunds_energy = self._card_refunds_energy_against_monster(
                         card,
                         context,
@@ -1036,9 +1165,9 @@ class CombatEndingDetector:
                         vulnerable_state[monster_idx],
                     )
                     priority = (
-                        1 if damage >= hp else 0,
+                        1 if next_hp[monster_idx] <= 0 else 0,
                         1 if refunds_energy else 0,
-                        damage,
+                        total_damage,
                         -cost,
                     )
                     candidates.append(
@@ -1053,6 +1182,7 @@ class CombatEndingDetector:
                             strength_state,
                             player_hp_state,
                             corruption_active_state,
+                            next_double_tap_charges,
                         )
                     )
 
@@ -1069,6 +1199,7 @@ class CombatEndingDetector:
                 next_strength,
                 next_player_hp,
                 next_corruption_active,
+                next_double_tap_charges,
             ) in candidates:
                 card = remaining_cards[card_pos]
                 if self._base_card_name(card) == 'Fiend Fire':
@@ -1083,6 +1214,7 @@ class CombatEndingDetector:
                     next_strength,
                     next_player_hp,
                     next_corruption_active,
+                    next_double_tap_charges,
                     remaining_energy - cost,
                 )
                 if tail is not None:
@@ -1108,6 +1240,7 @@ class CombatEndingDetector:
             starting_strength,
             starting_player_hp,
             starting_corruption_active,
+            starting_double_tap_charges,
             available_energy,
         )
         return sequence or []

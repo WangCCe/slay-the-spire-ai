@@ -6681,6 +6681,66 @@ def test_lethal_detector_uses_played_corruption_for_followup_skill_costs(monkeyp
     assert sequence[1].target_monster is None
 
 
+def test_lethal_detector_uses_double_tap_for_next_attack(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    double_tap = _card(
+        "Double Tap",
+        "Double Tap",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    double_tap.uuid = "double-tap"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = _combat_context([double_tap, strike], energy=2, monsters=[_louse(current_hp=12)])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "double-tap",
+        "strike",
+    ]
+
+
+def test_lethal_detector_uses_upgraded_double_tap_for_two_attacks(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    double_tap = _card(
+        "Double Tap",
+        "Double Tap+",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    double_tap.uuid = "double-tap-plus"
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_1.uuid = "strike-1"
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    strike_2.uuid = "strike-2"
+    context = _combat_context(
+        [double_tap, strike_1, strike_2],
+        energy=3,
+        monsters=[_louse(current_hp=24)],
+    )
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "double-tap-plus",
+        "strike-1",
+        "strike-2",
+    ]
+
+
 def test_lethal_detector_uses_bloodletting_energy_before_followup(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
