@@ -6172,6 +6172,72 @@ def test_lethal_detector_counts_upgraded_static_attack_damage(monkeypatch):
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["bash-plus", "strike"]
 
 
+def test_lethal_detector_applies_bash_vulnerable_before_followup(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bash": {
+            "name": "Bash",
+            "description": "Deal 8 damage. Apply 2 Vulnerable.",
+        },
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    loader._wiki_data = {
+        "bash": {
+            "name": "Bash",
+            "text": "Deal [8|10] damage.\nApply [2|3] Vulnerable.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    bash = _card("Bash", "Bash", cost=2)
+    bash.uuid = "bash"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = _combat_context([bash, strike], energy=3, monsters=[_louse(current_hp=17)])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["bash", "strike"]
+
+
+def test_lethal_detector_uses_new_bash_vulnerable_for_dropkick_refund(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bash": {
+            "name": "Bash",
+            "description": "Deal 8 damage. Apply 2 Vulnerable.",
+        },
+        "dropkick": {
+            "name": "Dropkick",
+            "description": "Deal 5 damage. If the enemy has Vulnerable, gain [R] and draw 1 card.",
+        },
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    loader._wiki_data = {
+        "bash": {
+            "name": "Bash",
+            "text": "Deal [8|10] damage.\nApply [2|3] Vulnerable.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    bash = _card("Bash", "Bash", cost=2)
+    bash.uuid = "bash"
+    dropkick = _card("Dropkick", "Dropkick", cost=1)
+    dropkick.uuid = "dropkick"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = _combat_context([bash, dropkick, strike], energy=3, monsters=[_louse(current_hp=24)])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "bash",
+        "dropkick",
+        "strike",
+    ]
+
+
 def test_lethal_detector_counts_heavy_blade_strength_multiplier(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
