@@ -23,6 +23,9 @@ from .card_costs import (
 
 logger = logging.getLogger(__name__)
 
+TARGETED_LETHAL_MAX_CARDS = 8
+TARGETED_LETHAL_MAX_MONSTERS = 4
+
 
 class CombatEndingDetector:
     """
@@ -121,9 +124,18 @@ class CombatEndingDetector:
                 attack_cards,
                 context.energy_available,
             ))
+            proven_targeted_sequence = bool(self._find_targeted_lethal_sequence(
+                context,
+                attack_cards,
+                context.energy_available,
+            ))
 
             # Final decision
-            lethal_detected = proven_aoe_cleanup or (has_damage_potential and targeting_feasible)
+            lethal_detected = (
+                proven_aoe_cleanup
+                or proven_targeted_sequence
+                or (has_damage_potential and targeting_feasible)
+            )
 
             if lethal_detected:
                 logger.info(f"[LETHAL_DETECTION] LETHAL DETECTED! All checks passed")
@@ -194,6 +206,14 @@ class CombatEndingDetector:
         )
         if aoe_cleanup_sequence:
             return aoe_cleanup_sequence
+
+        targeted_sequence = self._find_targeted_lethal_sequence(
+            context,
+            attack_cards,
+            remaining_energy,
+        )
+        if targeted_sequence:
+            return targeted_sequence
 
         for monster, monster_idx in zip(remaining_monsters, remaining_monster_indices):
             damage_needed = monster.current_hp + monster.block
@@ -364,6 +384,107 @@ class CombatEndingDetector:
         if 0 <= monster_idx < len(monsters):
             return self._get_monster_power_amount(monsters[monster_idx], 'Vulnerable')
         return 0
+
+    def _find_targeted_lethal_sequence(
+        self,
+        context: DecisionContext,
+        attack_cards: List[Card],
+        available_energy: int,
+    ) -> List[PlayCardAction]:
+        """Prove a lethal line across targeted attacks without relying on monster order."""
+        target_cards = [card for card in attack_cards if not self._is_aoe_attack(card)]
+        if not target_cards or not getattr(context, 'monsters_alive', None):
+            return []
+        if (
+            len(target_cards) > TARGETED_LETHAL_MAX_CARDS
+            or len(context.monsters_alive) > TARGETED_LETHAL_MAX_MONSTERS
+        ):
+            return []
+
+        starting_hp = tuple(
+            max(0, monster.current_hp + monster.block)
+            for monster in context.monsters_alive
+        )
+        seen = set()
+
+        def search(remaining_cards, hp_state, remaining_energy):
+            if all(hp <= 0 for hp in hp_state):
+                return []
+
+            state_key = (
+                tuple(self._card_play_key(card) for card in remaining_cards),
+                hp_state,
+                remaining_energy,
+            )
+            if state_key in seen:
+                return None
+            seen.add(state_key)
+
+            candidates = []
+            for card_pos, card in enumerate(remaining_cards):
+                for monster_idx, hp in enumerate(hp_state):
+                    if hp <= 0:
+                        continue
+
+                    cost = self._card_energy_cost_against_monster(
+                        card,
+                        context,
+                        monster_idx,
+                        remaining_energy,
+                    )
+                    if cost > remaining_energy:
+                        continue
+
+                    damage = self._card_damage_against_monster(
+                        card,
+                        context,
+                        monster_idx,
+                        remaining_energy,
+                    )
+                    if damage <= 0:
+                        continue
+
+                    next_hp = list(hp_state)
+                    next_hp[monster_idx] = max(0, hp - damage)
+                    refunds_energy = self._card_refunds_energy_against_monster(
+                        card,
+                        context,
+                        monster_idx,
+                    )
+                    priority = (
+                        1 if damage >= hp else 0,
+                        1 if refunds_energy else 0,
+                        damage,
+                        -cost,
+                    )
+                    candidates.append(
+                        (
+                            priority,
+                            card_pos,
+                            monster_idx,
+                            cost,
+                            tuple(next_hp),
+                        )
+                    )
+
+            candidates.sort(key=lambda item: item[0], reverse=True)
+
+            for _priority, card_pos, monster_idx, cost, next_hp in candidates:
+                card = remaining_cards[card_pos]
+                next_cards = remaining_cards[:card_pos] + remaining_cards[card_pos + 1:]
+                tail = search(next_cards, next_hp, remaining_energy - cost)
+                if tail is not None:
+                    return [
+                        PlayCardAction(
+                            card=card,
+                            target_monster=context.monsters_alive[monster_idx],
+                        )
+                    ] + tail
+
+            return None
+
+        sequence = search(tuple(target_cards), starting_hp, available_energy)
+        return sequence or []
 
     def _find_aoe_cleanup_sequence(
         self,

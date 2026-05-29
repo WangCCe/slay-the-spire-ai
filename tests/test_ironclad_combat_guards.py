@@ -5416,6 +5416,43 @@ def test_lethal_detector_uses_dropkick_energy_refund_for_sequence(monkeypatch):
     ]
 
 
+def test_lethal_detector_uses_dropkick_refund_before_other_target(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "dropkick": {
+            "name": "Dropkick",
+            "description": "Deal 5 damage. If the enemy has Vulnerable, gain [R] and draw 1 card.",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    dropkick = _card("Dropkick", "Dropkick", cost=1)
+    dropkick.uuid = "dropkick"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    vulnerable_target = _louse(current_hp=7)
+    other_target = _louse(current_hp=6)
+    context = _combat_context(
+        [strike, dropkick],
+        energy=1,
+        monsters=[vulnerable_target, other_target],
+    )
+    context.vulnerable_stacks[0] = 1
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+
+    sequence = detector.find_lethal_sequence(context)
+
+    assert [action.card.uuid for action in sequence] == ["dropkick", "strike"]
+    assert sequence[0].target_monster is vulnerable_target
+    assert sequence[1].target_monster is other_target
+
+
 def test_lethal_aoe_cleanup_uses_dropkick_energy_refund(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
