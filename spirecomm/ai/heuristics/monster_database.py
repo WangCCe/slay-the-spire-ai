@@ -215,6 +215,15 @@ MONSTER_DATABASE = {
 }
 
 
+MONSTER_ID_ALIASES = {
+    "GremlinNob": "Gremlin Nob",
+}
+
+
+def _canonical_monster_id(monster_id):
+    return MONSTER_ID_ALIASES.get(monster_id, monster_id)
+
+
 def get_monster_info(monster_id):
     """
     Get monster information from the database.
@@ -225,7 +234,7 @@ def get_monster_info(monster_id):
     Returns:
         Dictionary of monster characteristics, or default if not found
     """
-    return MONSTER_DATABASE.get(monster_id, {
+    return MONSTER_DATABASE.get(_canonical_monster_id(monster_id), {
         "threat_level": 2,
         "attacks": ["unknown"],
         "special_abilities": ["none"],
@@ -244,7 +253,8 @@ def evaluate_monster_threat(monster, context):
     Returns:
         Numeric threat score where higher is more dangerous
     """
-    monster_info = get_monster_info(monster.monster_id)
+    monster_id = _canonical_monster_id(monster.monster_id)
+    monster_info = get_monster_info(monster_id)
     
     # Start with base threat level
     threat = monster_info["threat_level"]
@@ -276,17 +286,17 @@ def evaluate_monster_threat(monster, context):
     
     # Cultist: threat increases with turn number
     # because Cultist's damage scales with Strength (gained from Ritual)
-    if monster.monster_id == "Cultist" and hasattr(context, 'turn'):
+    if monster_id == "Cultist" and hasattr(context, 'turn'):
         threat += context.turn
     
     # Gremlin Nob: threat increases with turn number
     # because Gremlin Nob gains Strength when using Bash
-    if monster.monster_id == "Gremlin Nob" and hasattr(context, 'turn'):
+    if monster_id == "Gremlin Nob" and hasattr(context, 'turn'):
         threat += context.turn * 1.5
     
     # Lagavulin: threat increases with turn number
     # because after hibernation it deals massive damage (18-22)
-    if monster.monster_id == "Lagavulin" and hasattr(context, 'turn'):
+    if monster_id == "Lagavulin" and hasattr(context, 'turn'):
         threat += context.turn * 2
     
     return threat

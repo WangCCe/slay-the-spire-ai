@@ -13,3 +13,15 @@ def test_monster_database_threat_ignores_non_attack_stale_damage():
     context = SimpleNamespace(player_hp_pct=1.0)
 
     assert evaluate_monster_threat(monster, context) == 1
+
+
+def test_monster_database_threat_scales_live_gremlin_nob_id():
+    monster = SimpleNamespace(
+        name="Gremlin Nob",
+        monster_id="GremlinNob",
+        intent=Intent.ATTACK,
+        move_adjusted_damage=14,
+    )
+    context = SimpleNamespace(player_hp_pct=1.0, turn=4)
+
+    assert evaluate_monster_threat(monster, context) == 11
