@@ -312,7 +312,11 @@ class CombatEndingDetector:
         context: DecisionContext,
         available_energy: int,
     ) -> bool:
-        base_damage = self._get_card_damage(card, context)
+        base_damage = self._get_card_damage(
+            card,
+            context,
+            available_energy=available_energy,
+        )
         base_damage = self._apply_player_weak_to_card_damage(
             card,
             context,
@@ -378,7 +382,12 @@ class CombatEndingDetector:
         monster_idx: int,
         available_energy: int,
     ) -> int:
-        damage = self._get_card_damage(card, context, monster_idx)
+        damage = self._get_card_damage(
+            card,
+            context,
+            monster_idx,
+            available_energy,
+        )
         damage = self._apply_player_weak_to_card_damage(
             card,
             context,
@@ -751,7 +760,11 @@ class CombatEndingDetector:
                     )
                 else:
                     cost = effective_card_cost(card, context.energy_available)
-                damage = self._get_card_damage(card, context)
+                damage = self._get_card_damage(
+                    card,
+                    context,
+                    available_energy=context.energy_available,
+                )
                 damage = self._apply_player_weak_to_card_damage(
                     card,
                     context,
@@ -903,6 +916,7 @@ class CombatEndingDetector:
         card: Card,
         context: DecisionContext,
         monster_idx: Optional[int] = None,
+        available_energy: Optional[int] = None,
     ) -> int:
         """
         Get actual damage of card accounting for modifiers.
@@ -932,7 +946,11 @@ class CombatEndingDetector:
             base_damage = self._get_player_block(context)
 
         if card_name == 'Whirlwind':
-            energy = x_effect_energy(card, context.energy_available, context)
+            energy = x_effect_energy(
+                card,
+                context.energy_available if available_energy is None else available_energy,
+                context,
+            )
             return whirlwind_damage(card, energy, getattr(context, 'strength', 0))
 
         if hasattr(card, 'type') and card.type == CardType.ATTACK:
@@ -948,7 +966,12 @@ class CombatEndingDetector:
             else:
                 base_damage += strength
 
-            base_damage *= self._get_attack_hit_count(card, context, monster_idx)
+            base_damage *= self._get_attack_hit_count(
+                card,
+                context,
+                monster_idx,
+                available_energy,
+            )
 
         return max(0, base_damage)
 
@@ -1015,7 +1038,12 @@ class CombatEndingDetector:
         if card_name == 'Whirlwind':
             return max(1, x_effect_energy(card, available_energy, context))
 
-        return self._get_attack_hit_count(card, context, monster_idx)
+        return self._get_attack_hit_count(
+            card,
+            context,
+            monster_idx,
+            available_energy,
+        )
 
     def _get_player_debuff_stacks(self, context: DecisionContext, power_name: str) -> int:
         player = getattr(getattr(context, 'game', None), 'player', None)
@@ -1080,6 +1108,7 @@ class CombatEndingDetector:
         card: Card,
         context: DecisionContext,
         monster_idx: Optional[int] = None,
+        available_energy: Optional[int] = None,
     ) -> int:
         """Return known hit counts for repeated-hit attacks."""
         card_name = self._base_card_name(card)
@@ -1092,7 +1121,12 @@ class CombatEndingDetector:
                 return 2 if self._monster_poison_stacks(context, monster_idx) > 0 else 1
             return 2 if self._all_alive_targets_poisoned(context) else 1
         if card_name == 'Skewer':
-            return x_effect_energy(card, getattr(context, 'energy_available', 0), context)
+            energy = (
+                getattr(context, 'energy_available', 0)
+                if available_energy is None
+                else available_energy
+            )
+            return x_effect_energy(card, energy, context)
         if card_name == 'Sword Boomerang':
             return 4 if upgrades > 0 else 3
         if card_name == 'Pummel':

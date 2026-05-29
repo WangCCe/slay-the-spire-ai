@@ -5965,6 +5965,36 @@ def test_lethal_detector_counts_skewer_x_energy_hits(monkeypatch):
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["skewer"]
 
 
+def test_lethal_detector_uses_remaining_energy_for_skewer_sequence(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "skewer": {
+            "name": "Skewer",
+            "description": "Deal 7 damage X times.",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    skewer = _card("Skewer", "Skewer", cost=-1, cost_for_turn=-1)
+    skewer.uuid = "skewer"
+    context = _combat_context(
+        [strike, skewer],
+        energy=3,
+        monsters=[_louse(current_hp=27)],
+    )
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
+
+
 def test_lethal_detector_counts_fiend_fire_exhausted_hand_damage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
