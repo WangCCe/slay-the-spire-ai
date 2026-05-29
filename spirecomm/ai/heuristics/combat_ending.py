@@ -112,8 +112,18 @@ class CombatEndingDetector:
                        f"targeting_ok={targeting_feasible}, low_hp={low_hp}, "
                        f"player_hp={context.player_hp}, player_hp_pct={context.player_hp_pct:.2f}")
 
+            attack_cards = [
+                card for card in context.playable_cards
+                if hasattr(card, 'type') and card.type == CardType.ATTACK
+            ]
+            proven_aoe_cleanup = bool(self._find_aoe_cleanup_sequence(
+                context,
+                attack_cards,
+                context.energy_available,
+            ))
+
             # Final decision
-            lethal_detected = has_damage_potential and targeting_feasible
+            lethal_detected = proven_aoe_cleanup or (has_damage_potential and targeting_feasible)
 
             if lethal_detected:
                 logger.info(f"[LETHAL_DETECTION] LETHAL DETECTED! All checks passed")
@@ -404,7 +414,12 @@ class CombatEndingDetector:
                         if card_key in played_cards or self._is_aoe_attack(card):
                             continue
 
-                        cost = effective_card_cost(card, remaining_energy)
+                        cost = self._card_energy_cost_against_monster(
+                            card,
+                            context,
+                            monster_idx,
+                            remaining_energy,
+                        )
                         if cost > remaining_energy:
                             continue
 
