@@ -321,7 +321,7 @@ class TimingAwareCombatPlanner:
                 score += damage * weights.damage_weight
 
                 # Check if card provides block
-                block = self._estimate_card_block(card)
+                block = self._estimate_card_block(card, context)
                 score += block * weights.block_weight
 
                 if score > best_score:
@@ -588,15 +588,26 @@ class TimingAwareCombatPlanner:
         player = getattr(getattr(context, 'game', None), 'player', None)
         powers = getattr(player, 'powers', []) if player is not None else []
         for power in powers:
-            current_name = (
-                getattr(power, 'name', None)
-                or getattr(power, 'power_name', None)
-                or getattr(power, 'power_id', None)
-            )
-            if current_name == power_name:
+            if self._power_name(power) == power_name:
                 amount = getattr(power, 'amount', None)
                 return amount if amount is not None else 1
         return 0
+
+    def _get_player_power_amount(self, context, power_name: str) -> int:
+        player = getattr(getattr(context, 'game', None), 'player', None)
+        powers = getattr(player, 'powers', []) if player is not None else []
+        for power in powers:
+            if self._power_name(power) == power_name:
+                amount = getattr(power, 'amount', None)
+                return amount if amount is not None else 0
+        return 0
+
+    def _power_name(self, power):
+        return (
+            getattr(power, 'name', None)
+            or getattr(power, 'power_name', None)
+            or getattr(power, 'power_id', None)
+        )
 
     def _all_alive_targets_vulnerable(self, context, monsters) -> bool:
         vulnerable_stacks = getattr(context, 'vulnerable_stacks', {}) or {}
@@ -663,11 +674,12 @@ class TimingAwareCombatPlanner:
 
         return 1
 
-    def _estimate_card_block(self, card) -> int:
+    def _estimate_card_block(self, card, context=None) -> int:
         """Estimate card block for timing decisions from methods or parsed data."""
         if hasattr(card, 'block_for'):
             try:
-                return max(0, int(card.block_for()))
+                block = max(0, int(card.block_for()))
+                return self._apply_block_status_modifiers(block, context)
             except Exception:
                 pass
 
@@ -684,5 +696,18 @@ class TimingAwareCombatPlanner:
                             block += BLOCK_UPGRADE_BONUS.get(card_name, 0)
             except Exception:
                 block = 0
+
+        return self._apply_block_status_modifiers(block, context)
+
+    def _apply_block_status_modifiers(self, block: int, context=None) -> int:
+        block = max(0, int(block))
+        if block <= 0:
+            return 0
+        if context is None:
+            return block
+
+        block = max(0, block + self._get_player_power_amount(context, 'Dexterity'))
+        if self._get_player_debuff_stacks(context, 'Frail') > 0:
+            block = int(block * 0.75)
 
         return max(0, int(block))
