@@ -493,6 +493,8 @@ class TimingAwareCombatPlanner:
         if card_name == 'Whirlwind':
             energy = x_effect_energy(card, getattr(context, 'energy_available', 0), context)
             return whirlwind_damage(card, energy, strength)
+        if card_name == 'Body Slam':
+            return max(0, self._get_player_block(context) + strength)
 
         base_damage = getattr(card, 'damage', 0) or 0
         if base_damage <= 0:
@@ -539,6 +541,18 @@ class TimingAwareCombatPlanner:
                 count += 1
 
         return max(0, count)
+
+    def _get_player_block(self, context) -> int:
+        """Return current player block from common decision-context shapes."""
+        block = getattr(context, 'player_block', None)
+        if block is None:
+            player = getattr(getattr(context, 'game', None), 'player', None)
+            block = getattr(player, 'block', 0)
+
+        try:
+            return max(0, int(block or 0))
+        except (TypeError, ValueError):
+            return 0
 
     def _get_attack_hit_count(self, card) -> int:
         """Return known deterministic hit counts for attack damage estimates."""

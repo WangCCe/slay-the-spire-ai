@@ -58,6 +58,10 @@ def _loader_with_basic_ironclad_cards():
             "name": "Perfected Strike",
             "description": "Deal 6 damage. Deals 2 additional damage for ALL your cards containing \"Strike\".",
         },
+        "body slam": {
+            "name": "Body Slam",
+            "description": "Deal damage equal to your current Block.",
+        },
     }
     return loader
 
@@ -335,6 +339,32 @@ def test_timing_lethal_check_counts_perfected_strike_deck_scaling(monkeypatch):
                 _card("Perfected Strike", "Perfected Strike"),
             ],
         ),
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
+def test_timing_lethal_check_counts_body_slam_current_block(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    body_slam = _card("Body Slam", "Body Slam", cost=1)
+    body_slam.uuid = "body-slam"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[body_slam],
+        monsters_alive=[SimpleNamespace(current_hp=24, block=0)],
+        game=SimpleNamespace(player=SimpleNamespace(block=24)),
     )
     timing_ctx = TimingContext(
         turn_timing=TurnTiming.SAFE,
