@@ -659,15 +659,48 @@ class CombatEndingDetector:
         player = getattr(getattr(context, 'game', None), 'player', None)
         powers = getattr(player, 'powers', []) if player is not None else []
         for power in powers:
-            current_name = (
-                getattr(power, 'name', None)
-                or getattr(power, 'power_name', None)
-                or getattr(power, 'power_id', None)
-            )
-            if current_name == power_name:
+            if self._power_name(power) == power_name:
                 amount = getattr(power, 'amount', None)
                 return amount if amount is not None else 1
         return 0
+
+    def _all_alive_targets_poisoned(self, context: DecisionContext) -> bool:
+        monsters = getattr(context, 'monsters_alive', []) or []
+        alive_monsters = [
+            monster for monster in monsters
+            if getattr(monster, 'current_hp', 0) > 0
+        ]
+        if not alive_monsters:
+            return False
+
+        return all(
+            self._get_monster_power_amount(monster, 'Poison') > 0
+            for monster in alive_monsters
+        )
+
+    def _get_monster_power_amount(self, monster, power_name: str) -> int:
+        direct_attr = power_name.lower()
+        direct_amount = getattr(monster, direct_attr, None)
+        if direct_amount is not None:
+            try:
+                return max(0, int(direct_amount))
+            except (TypeError, ValueError):
+                return 0
+
+        powers = getattr(monster, 'powers', []) or []
+        for power in powers:
+            if self._power_name(power) == power_name:
+                amount = getattr(power, 'amount', None)
+                return amount if amount is not None else 1
+
+        return 0
+
+    def _power_name(self, power):
+        return (
+            getattr(power, 'name', None)
+            or getattr(power, 'power_name', None)
+            or getattr(power, 'power_id', None)
+        )
 
     def _get_attack_hit_count(self, card: Card, context: DecisionContext) -> int:
         """Return known hit counts for repeated-hit attacks."""
@@ -676,6 +709,8 @@ class CombatEndingDetector:
 
         if card_name == 'Twin Strike':
             return 2
+        if card_name == 'Bane' and context is not None:
+            return 2 if self._all_alive_targets_poisoned(context) else 1
         if card_name == 'Sword Boomerang':
             return 4 if upgrades > 0 else 3
         if card_name == 'Pummel':

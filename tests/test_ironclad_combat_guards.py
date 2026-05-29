@@ -5546,6 +5546,29 @@ def test_lethal_detector_counts_multi_hit_attack_damage(monkeypatch):
     assert CombatEndingDetector()._calculate_affordable_damage(context) == 19
 
 
+def test_lethal_detector_counts_bane_second_hit_against_poisoned_target(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bane": {
+            "name": "Bane",
+            "description": "Deal 7 damage. If the enemy has Poison, deal 7 damage again.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    bane = _card("Bane", "Bane", cost=1)
+    bane.uuid = "bane"
+    monster = _louse(current_hp=12)
+    monster.powers = [SimpleNamespace(power_name="Poison", amount=1)]
+    context = _combat_context([bane], energy=1, monsters=[monster])
+
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 14
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["bane"]
+
+
 def test_lethal_detector_counts_fiend_fire_exhausted_hand_damage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
