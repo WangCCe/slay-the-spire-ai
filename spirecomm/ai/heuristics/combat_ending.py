@@ -308,6 +308,9 @@ class CombatEndingDetector:
         card_id = self._base_card_name(card)
         return card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
 
+    def _is_all_enemy_debuff_card(self, card: Card) -> bool:
+        return self._base_card_name(card) == 'Shockwave'
+
     def _aoe_card_kills_all(
         self,
         card: Card,
@@ -502,7 +505,7 @@ class CombatEndingDetector:
         if not debuff_effects:
             return vulnerable_state, artifact_state
 
-        if self._is_aoe_attack(card):
+        if self._is_aoe_attack(card) or self._is_all_enemy_debuff_card(card):
             target_indices = range(len(vulnerable_state))
         elif monster_idx is not None:
             target_indices = (monster_idx,)
@@ -554,6 +557,17 @@ class CombatEndingDetector:
                 stack_match = re.search(rf'\bapply\s+(\d+)\s+{debuff}\b', clause)
                 if stack_match:
                     effects.append((debuff, int(stack_match.group(1))))
+
+        if self._base_card_name(card) == 'Shockwave':
+            stacks = 5 if upgraded else 3
+            parsed_debuffs = {debuff for debuff, _stacks in effects}
+            for debuff, marker in (
+                ('weak', 'weak'),
+                ('vulnerable', 'vulnerable'),
+                ('strength_down', 'strength down'),
+            ):
+                if marker in effect_text and debuff not in parsed_debuffs:
+                    effects.append((debuff, stacks))
 
         return effects
 
@@ -626,6 +640,11 @@ class CombatEndingDetector:
             return 2
         return 0
 
+    def _is_lethal_vulnerable_support_card(self, card: Card) -> bool:
+        if getattr(card, 'type', None) != CardType.SKILL:
+            return False
+        return self._is_all_enemy_debuff_card(card)
+
     def _find_targeted_lethal_sequence(
         self,
         context: DecisionContext,
@@ -644,6 +663,7 @@ class CombatEndingDetector:
             if (
                 self._is_lethal_strength_support_card(card)
                 or self._is_lethal_energy_support_card(card)
+                or self._is_lethal_vulnerable_support_card(card)
             )
         ]
         sequence_cards = support_cards + sequence_cards
@@ -753,6 +773,43 @@ class CombatEndingDetector:
                             hp_state,
                             vulnerable_state,
                             artifact_state,
+                            strength_state,
+                        )
+                    )
+                    continue
+
+                if self._is_lethal_vulnerable_support_card(card):
+                    cost = effective_card_cost(card, remaining_energy)
+                    if cost > remaining_energy:
+                        continue
+
+                    next_vulnerable, next_artifact = self._vulnerable_state_after_card(
+                        card,
+                        context,
+                        vulnerable_state,
+                        artifact_state,
+                        hp_state,
+                        None,
+                    )
+                    if next_vulnerable == vulnerable_state and next_artifact == artifact_state:
+                        continue
+
+                    vulnerable_gain = sum(next_vulnerable) - sum(vulnerable_state)
+                    artifact_reduced = sum(artifact_state) - sum(next_artifact)
+                    candidates.append(
+                        (
+                            (
+                                0,
+                                0,
+                                vulnerable_gain + artifact_reduced,
+                                -cost,
+                            ),
+                            card_pos,
+                            None,
+                            cost,
+                            hp_state,
+                            next_vulnerable,
+                            next_artifact,
                             strength_state,
                         )
                     )

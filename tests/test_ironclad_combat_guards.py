@@ -6200,6 +6200,92 @@ def test_lethal_detector_applies_bash_vulnerable_before_followup(monkeypatch):
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["bash", "strike"]
 
 
+def test_lethal_detector_uses_shockwave_vulnerable_before_followup(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "shockwave": {
+            "name": "Shockwave",
+            "description": "Apply 3 Weak, Vulnerable, and Strength Down to ALL enemies. Exhaust.",
+        },
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    loader._wiki_data = {
+        "shockwave": {
+            "name": "Shockwave",
+            "text": "Apply [3|5] #Weak, #Vulnerable, and #Strength Down to ALL enemies.\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    shockwave = _card(
+        "Shockwave",
+        "Shockwave",
+        card_type=CardType.SKILL,
+        cost=2,
+        has_target=False,
+    )
+    shockwave.uuid = "shockwave"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = _combat_context([shockwave, strike], energy=3, monsters=[_louse(current_hp=9)])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    sequence = detector.find_lethal_sequence(context)
+    assert [action.card.uuid for action in sequence] == ["shockwave", "strike"]
+    assert sequence[0].target_monster is None
+
+
+def test_lethal_detector_counts_shockwave_strength_down_artifact_consumption(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "shockwave": {
+            "name": "Shockwave",
+            "description": "Apply 3 Weak, Vulnerable, and Strength Down to ALL enemies. Exhaust.",
+        },
+        "bash": {
+            "name": "Bash",
+            "description": "Deal 8 damage. Apply 2 Vulnerable.",
+        },
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    loader._wiki_data = {
+        "shockwave": {
+            "name": "Shockwave",
+            "text": "Apply [3|5] #Weak, #Vulnerable, and #Strength Down to ALL enemies.\n#Exhaust.",
+        },
+        "bash": {
+            "name": "Bash",
+            "text": "Deal [8|10] damage.\nApply [2|3] Vulnerable.",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    shockwave = _card(
+        "Shockwave",
+        "Shockwave",
+        card_type=CardType.SKILL,
+        cost=2,
+        has_target=False,
+    )
+    shockwave.uuid = "shockwave"
+    bash = _card("Bash", "Bash", cost=2)
+    bash.uuid = "bash"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    target = _louse(current_hp=17)
+    target.powers = [SimpleNamespace(power_name="Artifact", amount=3)]
+    context = _combat_context([shockwave, bash, strike], energy=5, monsters=[target])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "shockwave",
+        "bash",
+        "strike",
+    ]
+
+
 def test_lethal_detector_uses_new_bash_vulnerable_for_dropkick_refund(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
