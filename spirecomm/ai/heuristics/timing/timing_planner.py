@@ -163,6 +163,13 @@ class TimingAwareCombatPlanner:
                         continue
 
                     effect_type = 'aoe' if self._is_card_aoe(card) else 'single'
+                    card_damage = self._apply_attack_status_modifiers(
+                        card,
+                        context,
+                        card_damage,
+                        energy,
+                        monsters,
+                    )
                     damage_options.append((effect_type, card_damage, cost))
 
             monster_hp = [
@@ -211,8 +218,16 @@ class TimingAwareCombatPlanner:
             for card in playable_cards:
                 damage = self._estimate_card_damage(card, context)
                 if damage > 0:
-                    cost = effective_card_cost(card, getattr(context, 'energy_available', 3))
+                    energy_available = getattr(context, 'energy_available', 3)
+                    cost = effective_card_cost(card, energy_available)
                     effect_type = 'aoe' if self._is_card_aoe(card) else 'single'
+                    damage = self._apply_attack_status_modifiers(
+                        card,
+                        context,
+                        damage,
+                        energy_available,
+                        monsters,
+                    )
                     attack_options.append((card, effect_type, damage, cost))
 
             monster_hp = [
@@ -513,6 +528,86 @@ class TimingAwareCombatPlanner:
         scaled_damage = self._apply_attack_damage_scaling(card, base_damage, strength, context)
         hit_count = self._get_attack_hit_count(card)
         return max(0, int(scaled_damage * hit_count))
+
+    def _apply_attack_status_modifiers(
+        self,
+        card,
+        context,
+        total_damage: int,
+        available_energy: int,
+        monsters,
+    ) -> int:
+        """Apply combat status modifiers that are safe for scalar damage estimates."""
+        damage = max(0, int(total_damage))
+        if self._get_player_debuff_stacks(context, 'Weak') > 0:
+            damage = self._apply_per_hit_damage_multiplier(
+                card,
+                context,
+                damage,
+                available_energy,
+                0.75,
+            )
+
+        if self._all_alive_targets_vulnerable(context, monsters):
+            damage = self._apply_per_hit_damage_multiplier(
+                card,
+                context,
+                damage,
+                available_energy,
+                1.5,
+            )
+
+        return max(0, int(damage))
+
+    def _apply_per_hit_damage_multiplier(
+        self,
+        card,
+        context,
+        total_damage: int,
+        available_energy: int,
+        multiplier: float,
+    ) -> int:
+        hit_count = self._get_damage_instance_count(card, context, available_energy)
+        if hit_count <= 1:
+            return int(total_damage * multiplier)
+
+        per_hit_damage, remainder = divmod(total_damage, hit_count)
+        if remainder != 0:
+            return int(total_damage * multiplier)
+
+        return int(per_hit_damage * multiplier) * hit_count
+
+    def _get_damage_instance_count(self, card, context, available_energy: int) -> int:
+        card_name = canonical_card_name(card)
+        if card_name == 'Whirlwind':
+            return max(1, x_effect_energy(card, available_energy, context))
+
+        return max(1, self._get_attack_hit_count(card))
+
+    def _get_player_debuff_stacks(self, context, power_name: str) -> int:
+        player = getattr(getattr(context, 'game', None), 'player', None)
+        powers = getattr(player, 'powers', []) if player is not None else []
+        for power in powers:
+            current_name = (
+                getattr(power, 'name', None)
+                or getattr(power, 'power_name', None)
+                or getattr(power, 'power_id', None)
+            )
+            if current_name == power_name:
+                amount = getattr(power, 'amount', None)
+                return amount if amount is not None else 1
+        return 0
+
+    def _all_alive_targets_vulnerable(self, context, monsters) -> bool:
+        vulnerable_stacks = getattr(context, 'vulnerable_stacks', {}) or {}
+        alive_targets = [
+            index for index, monster in enumerate(monsters)
+            if getattr(monster, 'current_hp', 0) > 0
+        ]
+        if not alive_targets:
+            return False
+
+        return all(vulnerable_stacks.get(index, 0) > 0 for index in alive_targets)
 
     def _apply_attack_damage_scaling(self, card, base_damage: int, strength: int, context) -> int:
         """Apply non-standard attack damage scaling for timing estimates."""

@@ -375,6 +375,60 @@ def test_timing_lethal_check_counts_body_slam_current_block(monkeypatch):
     assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_lethal_check_reduces_damage_while_player_is_weak(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    strike = _card("Strike_R", "Strike")
+    strike.uuid = "weak-strike"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[strike],
+        monsters_alive=[SimpleNamespace(current_hp=6, block=0)],
+        game=SimpleNamespace(
+            player=SimpleNamespace(powers=[SimpleNamespace(power_name="Weak", amount=1)]),
+        ),
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert not TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
+def test_timing_lethal_check_applies_single_target_vulnerable(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    strike = _card("Strike_R", "Strike")
+    strike.uuid = "vulnerable-strike"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[strike],
+        monsters_alive=[SimpleNamespace(current_hp=9, block=0)],
+        vulnerable_stacks={0: 1},
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
 def test_timing_lethal_sequence_does_not_target_aoe_cards(monkeypatch):
     monkeypatch.setattr(
         timing_planner,
