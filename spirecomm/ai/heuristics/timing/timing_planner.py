@@ -277,11 +277,7 @@ class TimingAwareCombatPlanner:
                 getattr(context, 'energy_available', 3),
             )
             if not selected_options:
-                selected_options = sorted(
-                    attack_options,
-                    key=lambda option: option[2],
-                    reverse=True,
-                )
+                return []
 
             # Generate actions from the proven lethal subset when one exists.
             actions = []

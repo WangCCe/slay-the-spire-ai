@@ -872,6 +872,26 @@ def test_timing_lethal_sequence_uses_lethal_subset_not_highest_damage_greedy(mon
     assert [action.target_monster for action in actions] == [monster, monster]
 
 
+def test_timing_lethal_sequence_returns_empty_when_no_lethal_subset(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[strike],
+        monsters_alive=[SimpleNamespace(current_hp=20, block=0, monster_index=0)],
+    )
+
+    assert TimingAwareCombatPlanner()._generate_lethal_sequence(context) == []
+
+
 def test_timing_fallback_scores_parsed_damage_and_block_for_plain_cards(monkeypatch):
     monkeypatch.setattr(
         timing_planner,
