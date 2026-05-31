@@ -332,6 +332,32 @@ def test_gremlin_leader_predicts_from_enemy_count_probabilities():
     assert ambiguous_one_minion == []
 
 
+def test_shield_gremlin_predicts_from_enemy_count_modes():
+    database = EnhancedMonsterDatabase()
+
+    with_allies = database.predict_next_moves(
+        "Shield Gremlin",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        other_enemy_count=2,
+    )
+    alone = database.predict_next_moves(
+        "Shield Gremlin",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        other_enemy_count=0,
+    )
+
+    assert [
+        prediction["move"]["name"]
+        for prediction in with_allies
+    ] == ["Protect"]
+    assert [
+        prediction["move"]["name"]
+        for prediction in alone
+    ] == ["Shield Bash"]
+
+
 def test_game_data_loader_forwards_other_enemy_count_to_monster_predictions():
     loader = GameDataLoader(auto_load=False)
 

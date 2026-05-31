@@ -681,7 +681,11 @@
       }
     ],
     "pattern": {
-      "description": "If other enemies exist, always uses Protect on one of them. If no other enemies, uses Shield Bash unless it intends to Protect itself."
+      "description": "If other enemies exist, always uses Protect on one of them. If no other enemies, uses Shield Bash unless it intends to Protect itself.",
+      "enemy_count_moves": {
+        "has_other_enemies": "Protect",
+        "alone": "Shield Bash"
+      }
     },
     "special_mechanics": {
       "type": "none"

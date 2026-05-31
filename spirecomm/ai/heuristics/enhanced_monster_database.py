@@ -413,6 +413,21 @@ class EnhancedMonsterDatabase:
                 limit=pattern.get("prediction_limit", 2),
             )
 
+        # Check for deterministic moves chosen by whether other enemies are alive.
+        elif "enemy_count_moves" in pattern:
+            move_name = self._select_move_by_enemy_count(
+                pattern.get("enemy_count_moves", {}),
+                other_enemy_count,
+            )
+            if move_name:
+                self._append_named_move_prediction(
+                    predictions,
+                    monster_name,
+                    move_name,
+                    current_turn,
+                    confidence=1.0,
+                )
+
         # Check for Collector probabilities that depend on whether Torch Heads are alive.
         elif (
             other_enemy_names is not None
@@ -1039,6 +1054,18 @@ class EnhancedMonsterDatabase:
             if minimum <= other_enemy_count <= maximum:
                 return table
         return {}
+
+    def _select_move_by_enemy_count(
+        self,
+        moves_by_enemy_count: Dict[str, Any],
+        other_enemy_count: Optional[int],
+    ) -> Optional[str]:
+        if not isinstance(moves_by_enemy_count, dict) or other_enemy_count is None:
+            return None
+
+        key = "has_other_enemies" if other_enemy_count > 0 else "alone"
+        move_name = moves_by_enemy_count.get(key)
+        return move_name if isinstance(move_name, str) else None
 
     def _select_probability_table(
         self,
