@@ -5091,6 +5091,87 @@ def test_beam_search_preserves_candidate_shape_across_depths():
     assert len(sequence) >= 1
 
 
+def test_beam_search_keeps_depth_local_candidates_for_future_payoffs():
+    monster = SimpleNamespace(
+        name="Lagavulin",
+        monster_id="Lagavulin",
+        max_hp=100,
+        current_hp=100,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=18,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    cards = [
+        SimpleNamespace(
+            card_id=card_id,
+            name=card_id,
+            cost=1,
+            cost_for_turn=1,
+            has_target=False,
+        )
+        for card_id in ("BaitA", "SetupB", "ComboC", "PayoffD")
+    ]
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+            room_type="Monster",
+            get_real_potions=lambda: [],
+        ),
+        turn=1,
+        floor=5,
+        energy_available=3,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=cards,
+    )
+    planner = HeuristicCombatPlanner(beam_width=2)
+    planner.fast_score_action = lambda _card, _state, _context: 1
+    planner.card_evaluator.evaluate_card = lambda _card, _context: 0
+
+    def simulate_card_play(state, card, _target, context=None):
+        new_state = state.clone()
+        new_state.player_energy -= card.cost_for_turn
+        return new_state
+
+    def score(_initial_state, _final_state, _act, _weights, _context, sequence):
+        ids = tuple(action.card.card_id for action in sequence)
+        if ids == ("BaitA",):
+            return 100
+        if ids == ("SetupB",):
+            return 90
+        if len(ids) == 2 and ids[0] == "BaitA":
+            return 85
+        if ids == ("SetupB", "ComboC"):
+            return 89
+        if ids == ("SetupB", "ComboC", "PayoffD"):
+            return 200
+        return 1
+
+    planner.simulator.simulate_card_play = simulate_card_play
+    planner.simulator.calculate_outcome_score = score
+
+    sequence = planner.plan_turn(context)
+
+    assert [action.card.card_id for action in sequence] == [
+        "SetupB",
+        "ComboC",
+        "PayoffD",
+    ]
+
+
 def test_beam_search_can_spend_energy_gained_from_potion():
     potion = Potion(
         potion_id="EnergyPotion",

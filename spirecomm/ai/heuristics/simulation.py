@@ -4225,7 +4225,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             return [PlayCardAction(card=best_card)]
 
     def _beam_search_plan(self, context: DecisionContext) -> List[Action]:
-        """Use beam search to find optimal action sequence with transposition table."""
+        """Use beam search to find optimal action sequence with state deduplication."""
         initial_state = SimulationState(context)
 
         # === Timeout protection: Track start time ===
@@ -4237,9 +4237,6 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         best_sequence = []
         best_score = float('-inf')
-
-        # Transposition table: maps state_key → (sequence, state, energy_spent, score)
-        seen_states = {}
 
         for depth in range(self.max_depth):
             # === Timeout check: Return best found so far ===
@@ -4412,22 +4409,22 @@ class HeuristicCombatPlanner(CombatPlanner):
             if not new_candidates:
                 break  # No more valid plays
 
-            # === Transposition table: Deduplicate identical states ===
-            # Keep only the best-scoring path to each unique state
+            # Deduplicate identical states within this depth.
+            # Older depths must not re-enter the beam or they can crowd out
+            # lower-scoring partial sequences that need another play to pay off.
+            depth_states = {}
             for candidate in new_candidates:
                 seq, st, energy, score = candidate
                 key = st.state_key(context.playable_cards)
 
-                if key in seen_states:
-                    # State seen before - keep best scoring path
-                    existing_score = seen_states[key][3]
+                if key in depth_states:
+                    existing_score = depth_states[key][3]
                     if score > existing_score:
-                        seen_states[key] = candidate  # Replace with better path
+                        depth_states[key] = candidate
                 else:
-                    seen_states[key] = candidate  # First time seeing this state
+                    depth_states[key] = candidate
 
-            # Convert transposition table back to beam
-            deduplicated_candidates = list(seen_states.values())
+            deduplicated_candidates = list(depth_states.values())
 
             # Log transposition table stats
             if len(new_candidates) > len(deduplicated_candidates):
