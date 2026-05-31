@@ -726,6 +726,13 @@ class SimulationState:
                     m.get('move_adjusted_damage', None) is None,
                     m.get('move_adjusted_damage', 0) or 0,
                 ),
+                (
+                    m.get('_simulated_move_adjusted_source', None) is None,
+                    m.get('_simulated_move_adjusted_source', 0) or 0,
+                ),
+                m.get('_simulated_strength_delta', 0),
+                m.get('_simulated_temporary_strength_delta', 0),
+                bool(m.get('_simulated_weak_applied_to_attack', False)),
                 m.get('move_hits', 1) or 1,
                 str(m['intent']) if m['intent'] else None,  # Convert intent to string
                 sortable_value(m.get('move_id', None)),

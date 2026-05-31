@@ -970,6 +970,30 @@ def test_state_key_distinguishes_monster_strength_changes():
     )
 
 
+def test_state_key_distinguishes_internal_monster_damage_refresh_state():
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([defend], energy=1, monsters=[_gremlin_nob()])
+    base_state = SimulationState(context)
+    refreshed_state = base_state.clone()
+
+    refreshed_state.monsters[0]["_simulated_move_adjusted_source"] = 18
+    refreshed_state.monsters[0]["_simulated_strength_delta"] = -4
+    refreshed_state.monsters[0]["_simulated_temporary_strength_delta"] = -4
+
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    base_projected = base_state.clone()
+    refreshed_projected = refreshed_state.clone()
+    simulator._decrement_monster_turn_debuffs(base_projected)
+    simulator._decrement_monster_turn_debuffs(refreshed_projected)
+
+    assert base_projected.monsters[0]["move_adjusted_damage"] == 14
+    assert refreshed_projected.monsters[0]["move_adjusted_damage"] == 18
+
+    assert base_state.state_key(context.playable_cards) != refreshed_state.state_key(
+        context.playable_cards
+    )
+
+
 def test_enemy_lookahead_applies_strength_gain_to_future_attacks(monkeypatch):
     class FakeLoader:
         def get_enhanced_monster_data(self, _monster_name):
