@@ -8014,3 +8014,25 @@ def test_live_buff_intent_does_not_resolve_to_debuff_move(monkeypatch):
     move = simulator._current_monster_move(monster)
 
     assert move["name"] == "Actual Buff"
+
+
+def test_potion_target_state_index_prefers_live_monster_id_over_same_name():
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "name": "Slaver",
+                "monster_id": "SlaverBlue",
+                "hp": 30,
+                "is_gone": False,
+            },
+            {
+                "name": "Slaver",
+                "monster_id": "SlaverRed",
+                "hp": 30,
+                "is_gone": False,
+            },
+        ]
+    )
+    target = SimpleNamespace(name="Slaver", monster_id="SlaverRed", current_hp=30)
+
+    assert HeuristicCombatPlanner._state_monster_index_for_potion_target(state, target) == 1

@@ -4423,22 +4423,25 @@ class HeuristicCombatPlanner(CombatPlanner):
     @staticmethod
     def _state_monster_index_for_potion_target(state, target):
         if target:
+            target_id = getattr(target, 'monster_id', None)
             target_name = getattr(target, 'name', None)
-            candidates = []
+            id_candidates = []
+            name_candidates = []
             for i, monster in enumerate(state.monsters):
-                if (
-                    monster.get('hp', 0) > 0
-                    and not monster.get('is_gone')
-                    and monster.get('name') == target_name
-                ):
-                    hp_delta = abs(
-                        monster.get('hp', 0)
-                        - getattr(target, 'current_hp', monster.get('hp', 0))
-                    )
-                    candidates.append((hp_delta, i))
-            if candidates:
-                candidates.sort(key=lambda x: x[0])
-                return candidates[0][1]
+                if monster.get('hp', 0) <= 0 or monster.get('is_gone'):
+                    continue
+                hp_delta = abs(
+                    monster.get('hp', 0)
+                    - getattr(target, 'current_hp', monster.get('hp', 0))
+                )
+                if target_id and monster.get('monster_id') == target_id:
+                    id_candidates.append((hp_delta, i))
+                elif monster.get('name') == target_name:
+                    name_candidates.append((hp_delta, i))
+            for candidates in (id_candidates, name_candidates):
+                if candidates:
+                    candidates.sort(key=lambda x: x[0])
+                    return candidates[0][1]
 
         for i, monster in enumerate(state.monsters):
             if monster.get('hp', 0) > 0 and not monster.get('is_gone'):
