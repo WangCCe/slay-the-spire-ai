@@ -2242,7 +2242,6 @@ class FastCombatSimulator:
         elif card_id == 'Berserk':
             vulnerable = 1 if card.upgrades > 0 else 2
             self._apply_player_vulnerable_debuff(state, vulnerable)
-            state.energy_gained += 1
 
         # Inflame - adds strength
         elif card_id == 'Inflame':

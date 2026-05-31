@@ -4893,7 +4893,7 @@ def test_berserk_applies_self_vulnerable_without_immediate_energy_gain():
     assert result.player_vulnerable == 2
     assert result.player_vulnerable_added == 2
     assert result.player_energy == 1
-    assert result.energy_gained == 1
+    assert result.energy_gained == 0
 
     counted_berserk = _card(
         "Berserk+1",
@@ -4916,7 +4916,7 @@ def test_berserk_applies_self_vulnerable_without_immediate_energy_gain():
     assert result.player_vulnerable == 1
     assert result.player_vulnerable_added == 1
     assert result.player_energy == 1
-    assert result.energy_gained == 1
+    assert result.energy_gained == 0
 
 
 def test_berserk_self_vulnerable_consumes_player_artifact():
@@ -4943,7 +4943,7 @@ def test_berserk_self_vulnerable_consumes_player_artifact():
     assert result.player_vulnerable_added == 0
     assert result.player_artifact == 0
     assert result.player_energy == 1
-    assert result.energy_gained == 1
+    assert result.energy_gained == 0
 
 
 def test_strength_skill_cards_affect_followup_attacks():
