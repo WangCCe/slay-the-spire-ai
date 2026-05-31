@@ -4050,13 +4050,22 @@ class FastCombatSimulator:
                     current_turn,
                     hp_percent,
                     ascension_level=ascension_level,
+                    other_enemy_count=self._context_other_enemy_count(context, monster_name),
                 )
             except TypeError:
-                return game_data_loader.predict_monster_moves(
-                    monster_name,
-                    current_turn,
-                    hp_percent,
-                )
+                try:
+                    return game_data_loader.predict_monster_moves(
+                        monster_name,
+                        current_turn,
+                        hp_percent,
+                        ascension_level=ascension_level,
+                    )
+                except TypeError:
+                    return game_data_loader.predict_monster_moves(
+                        monster_name,
+                        current_turn,
+                        hp_percent,
+                    )
         except AttributeError:
             return []
 
@@ -4269,6 +4278,44 @@ class FastCombatSimulator:
         if hasattr(context, 'game') and hasattr(context.game, 'ascension_level'):
             return int(context.game.ascension_level or 0)
         return int(getattr(context, 'ascension_level', 0) or 0)
+
+    def _context_other_enemy_count(
+        self,
+        context: Optional[DecisionContext],
+        monster_name: str,
+    ) -> Optional[int]:
+        if context is None:
+            return None
+
+        game = getattr(context, 'game', None)
+        monsters = getattr(game, 'monsters', None) if game is not None else None
+        if monsters is None:
+            monsters = getattr(context, 'monsters_alive', None)
+        if not monsters:
+            return None
+
+        target_name = str(monster_name or '').lower()
+        other_count = 0
+        for monster in monsters:
+            if not self._is_live_context_monster(monster):
+                continue
+            candidate_name = str(_canonical_live_monster_name(monster) or '').lower()
+            if candidate_name and candidate_name != target_name:
+                other_count += 1
+        return other_count
+
+    @staticmethod
+    def _is_live_context_monster(monster: Any) -> bool:
+        hp = monster_field(
+            monster,
+            'current_hp',
+            monster_field(monster, 'hp', 1),
+        )
+        return (
+            not monster_field(monster, 'is_gone', False)
+            and not monster_field(monster, 'half_dead', False)
+            and hp > 0
+        )
 
     def _move_hit_count(self, move: Dict[str, Any], target_turn: Optional[int] = None) -> int:
         move_name = str(move.get('name', ''))

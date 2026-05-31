@@ -300,6 +300,7 @@ class EnhancedMonsterDatabase:
         current_turn: int,
         monster_hp_percent: float,
         ascension_level: int = 0,
+        other_enemy_count: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         Predict next moves for a monster based on its pattern.
@@ -309,6 +310,7 @@ class EnhancedMonsterDatabase:
             current_turn: Current combat turn (1-indexed)
             monster_hp_percent: Current HP as percentage (0.0 to 1.0)
             ascension_level: Current ascension level (default 0)
+            other_enemy_count: Number of other live enemies, if known
 
         Returns:
             List of predicted moves for next 3 turns
@@ -391,6 +393,20 @@ class EnhancedMonsterDatabase:
                     target_turn,
                     limit=threshold.get("prediction_limit", pattern.get("prediction_limit", 2)),
                 )
+
+        # Check for enemy-count-dependent probability tables (e.g., Gremlin Leader)
+        elif "probability_by_enemy_count" in pattern:
+            probabilities = self._select_probability_by_enemy_count(
+                pattern.get("probability_by_enemy_count", {}),
+                other_enemy_count,
+            )
+            self._append_probability_predictions(
+                predictions,
+                moves,
+                probabilities,
+                current_turn,
+                limit=pattern.get("prediction_limit", 2),
+            )
 
         # Check for phase-based patterns
         elif "phases" in pattern:
@@ -902,7 +918,32 @@ class EnhancedMonsterDatabase:
                     break
 
     def _normalize_move_name(self, move_name: str) -> str:
-        return move_name.lower().replace(" ", "_")
+        return re.sub(r"[^a-z0-9]+", "_", move_name.lower()).strip("_")
+
+    def _select_probability_by_enemy_count(
+        self,
+        probability_tables: Dict[str, Any],
+        other_enemy_count: Optional[int],
+    ) -> Dict[str, Any]:
+        if not isinstance(probability_tables, dict) or other_enemy_count is None:
+            return {}
+
+        for key, table in probability_tables.items():
+            if not isinstance(key, str) or not isinstance(table, dict):
+                continue
+
+            exact_match = re.match(r"^(\d+)_enemies$", key)
+            if exact_match and other_enemy_count == int(exact_match.group(1)):
+                return table
+
+            range_match = re.match(r"^(\d+)-(\d+)_enemies$", key)
+            if not range_match:
+                continue
+            minimum = int(range_match.group(1))
+            maximum = int(range_match.group(2))
+            if minimum <= other_enemy_count <= maximum:
+                return table
+        return {}
 
     def _select_probability_table(
         self,
@@ -1286,6 +1327,7 @@ def predict_monster_moves(
     current_turn: int,
     monster_hp_percent: float,
     ascension_level: int = 0,
+    other_enemy_count: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """Predict monster moves (convenience function)."""
     return get_enhanced_monster_db().predict_next_moves(
@@ -1293,6 +1335,7 @@ def predict_monster_moves(
         current_turn,
         monster_hp_percent,
         ascension_level=ascension_level,
+        other_enemy_count=other_enemy_count,
     )
 
 

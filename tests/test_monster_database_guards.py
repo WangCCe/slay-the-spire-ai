@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+from spirecomm.data.loader import GameDataLoader
 from spirecomm.ai.heuristics.enhanced_monster_database import EnhancedMonsterDatabase
 from spirecomm.ai.heuristics.monster_database import (
     evaluate_monster_threat,
@@ -280,3 +281,52 @@ def test_enhanced_database_accepts_live_slaver_ids():
         prediction["move"]["name"]
         for prediction in database.predict_next_moves("SlaverBlue", 1, 1.0)
     } == {"Stab", "Rake"}
+
+
+def test_gremlin_leader_predicts_from_enemy_count_probabilities():
+    database = EnhancedMonsterDatabase()
+
+    no_minions = database.predict_next_moves(
+        "Gremlin Leader",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        other_enemy_count=0,
+    )
+    full_minions = database.predict_next_moves(
+        "Gremlin Leader",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        other_enemy_count=2,
+    )
+    ambiguous_one_minion = database.predict_next_moves(
+        "Gremlin Leader",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        other_enemy_count=1,
+    )
+
+    assert [
+        (prediction["move"]["name"], prediction["confidence"])
+        for prediction in no_minions
+    ] == [("Rally!", 0.75), ("Stab", 0.25)]
+    assert [
+        (prediction["move"]["name"], prediction["confidence"])
+        for prediction in full_minions
+    ] == [("Encourage", 0.66), ("Stab", 0.34)]
+    assert ambiguous_one_minion == []
+
+
+def test_game_data_loader_forwards_other_enemy_count_to_monster_predictions():
+    loader = GameDataLoader(auto_load=False)
+
+    predictions = loader.predict_monster_moves(
+        "Gremlin Leader",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        other_enemy_count=0,
+    )
+
+    assert [
+        prediction["move"]["name"]
+        for prediction in predictions
+    ] == ["Rally!", "Stab"]

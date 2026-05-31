@@ -964,6 +964,7 @@ class GameDataLoader:
         current_turn: int,
         monster_hp_percent: float,
         ascension_level: int = 0,
+        other_enemy_count: int | None = None,
     ) -> List[Dict[str, Any]]:
         """
         Predict next moves for a monster based on its Wiki pattern.
@@ -973,6 +974,7 @@ class GameDataLoader:
             current_turn: Current combat turn (1-indexed)
             monster_hp_percent: Current HP as percentage (0.0 to 1.0)
             ascension_level: Current ascension level (default 0)
+            other_enemy_count: Number of other live enemies, if known
 
         Returns:
             List of predicted moves for next 3 turns with confidence scores
@@ -984,6 +986,7 @@ class GameDataLoader:
                 current_turn,
                 monster_hp_percent,
                 ascension_level=ascension_level,
+                other_enemy_count=other_enemy_count,
             )
         return []
 
