@@ -1500,9 +1500,13 @@ class FastCombatSimulator:
 
         raw_base_damage = monster.get('move_base_damage', 0)
         if isinstance(raw_base_damage, (int, float)) and raw_base_damage > 0:
+            effective_strength = (
+                monster.get('strength', 0)
+                + monster.get('_simulated_temporary_strength_delta', 0)
+            )
             damage = self._apply_monster_strength_to_per_hit_damage(
                 raw_base_damage,
-                monster.get('strength', 0),
+                effective_strength,
             )
             monster['move_adjusted_damage'] = self._apply_monster_weak_to_per_hit_damage(
                 damage,
@@ -1687,6 +1691,9 @@ class FastCombatSimulator:
         self._remember_monster_adjusted_damage_source(monster)
         monster['_simulated_strength_delta'] = (
             monster.get('_simulated_strength_delta', 0) - stacks
+        )
+        monster['_simulated_temporary_strength_delta'] = (
+            monster.get('_simulated_temporary_strength_delta', 0) - stacks
         )
         self._refresh_monster_adjusted_damage_from_debuffs(monster)
 
