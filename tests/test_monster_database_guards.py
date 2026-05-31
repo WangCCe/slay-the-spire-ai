@@ -392,6 +392,34 @@ def test_gremlin_wizard_predicts_charge_and_blast_sequence():
     ] == ["Ultimate Blast", "Ultimate Blast", "Ultimate Blast"]
 
 
+def test_champ_phase_one_predicts_probabilities_and_taunt_turns():
+    database = EnhancedMonsterDatabase()
+
+    phase_one = database.predict_next_moves(
+        "The Champ",
+        current_turn=1,
+        monster_hp_percent=1.0,
+    )
+    taunt_window = database.predict_next_moves(
+        "The Champ",
+        current_turn=3,
+        monster_hp_percent=1.0,
+    )
+
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in phase_one[:2]
+    ] == [
+        (1, "Heavy Slash", 0.45),
+        (1, "Face Slap", 0.25),
+    ]
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in taunt_window
+        if prediction["turn"] == 4
+    ] == [(4, "Taunt", 1.0)]
+
+
 def test_game_data_loader_forwards_other_enemy_count_to_monster_predictions():
     loader = GameDataLoader(auto_load=False)
 

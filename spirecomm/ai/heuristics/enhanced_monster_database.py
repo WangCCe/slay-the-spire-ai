@@ -487,6 +487,10 @@ class EnhancedMonsterDatabase:
                 pattern["phases"],
                 monster_hp_percent,
             )
+            active_phase = current_phase or self._get_pre_threshold_phase(
+                pattern["phases"],
+                monster_hp_percent,
+            )
 
             if transition_phase:
                 transition_move = transition_phase.get("transition_move")
@@ -520,8 +524,30 @@ class EnhancedMonsterDatabase:
                                     "turn": current_turn + i,
                                     "move": move,
                                     "confidence": 0.9
-                })
+                                })
                                 break
+
+            elif active_phase and "probabilities" in active_phase:
+                for i in range(3):
+                    target_turn = current_turn + i
+                    forced_move = self._phase_forced_move(active_phase, target_turn)
+                    if forced_move:
+                        self._append_named_move_prediction(
+                            predictions,
+                            monster_name,
+                            forced_move,
+                            target_turn,
+                            confidence=1.0,
+                        )
+                        continue
+
+                    self._append_probability_predictions(
+                        predictions,
+                        moves,
+                        active_phase.get("probabilities", {}),
+                        target_turn,
+                        limit=pattern.get("prediction_limit", 2),
+                    )
 
         # Check for simple one-move monsters (e.g., Spike Slime (S))
         elif "only_move" in pattern:
@@ -813,6 +839,17 @@ class EnhancedMonsterDatabase:
                 return phase
         return None
 
+    def _get_pre_threshold_phase(
+        self,
+        phases: List[Dict[str, Any]],
+        monster_hp_percent: float,
+    ) -> Optional[Dict[str, Any]]:
+        for phase in phases:
+            threshold = phase.get("hp_threshold")
+            if isinstance(threshold, (int, float)) and monster_hp_percent >= threshold / 100.0:
+                return phase
+        return None
+
     def _get_transition_phase_after_threshold(
         self,
         phases: List[Dict[str, Any]],
@@ -826,6 +863,16 @@ class EnhancedMonsterDatabase:
             for next_phase in phases[idx + 1:]:
                 if next_phase.get("transition_move"):
                     return next_phase
+        return None
+
+    def _phase_forced_move(self, phase: Dict[str, Any], target_turn: int) -> Optional[str]:
+        constraints = phase.get("constraints", [])
+        if not isinstance(constraints, list):
+            return None
+
+        normalized_constraints = {str(constraint).lower() for constraint in constraints}
+        if "taunt_every_4_turns" in normalized_constraints and target_turn % 4 == 0:
+            return "Taunt"
         return None
 
     def _append_named_move_prediction(
