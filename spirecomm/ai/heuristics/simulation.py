@@ -1766,7 +1766,7 @@ class FastCombatSimulator:
         state.cards_drawn += count
 
     def _apply_frail_block(self, block: int, player_frail: int) -> int:
-        """Apply frail multiplier (0.75x). Binary: any frail stacks = 0.75x block gained."""
+        """Apply Frail to card block values before a card gains block."""
         if player_frail > 0:
             return int(block * 0.75)
         return block
@@ -2411,12 +2411,8 @@ class FastCombatSimulator:
         if exhaust_delta <= 0 or state.feel_no_pain_block_per_exhaust <= 0:
             return
 
-        block_gain = self._apply_frail_block(
-            state.feel_no_pain_block_per_exhaust,
-            state.player_frail,
-        )
         for _ in range(exhaust_delta):
-            self._add_player_block(state, block_gain)
+            self._add_player_block(state, state.feel_no_pain_block_per_exhaust)
 
     def _apply_dark_embrace_draw(self, state: SimulationState, starting_exhaust_events: int):
         exhaust_delta = state.exhaust_events - starting_exhaust_events
@@ -2588,8 +2584,7 @@ class FastCombatSimulator:
         """Apply Rage block trigger after playing an attack."""
         if state.rage_block_per_attack <= 0:
             return
-        block_gain = self._apply_frail_block(state.rage_block_per_attack, state.player_frail)
-        self._add_player_block(state, block_gain)
+        self._add_player_block(state, state.rage_block_per_attack)
 
     def _apply_self_damage(self, state: SimulationState, card: Card):
         """Apply HP costs for cards that damage the player to fuel effects."""

@@ -488,6 +488,25 @@ def test_simulation_reads_power_name_field_from_player_powers():
     assert result.player_block == 3
 
 
+def test_rage_power_block_is_not_reduced_by_frail():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [
+        SimpleNamespace(power_name="Rage", amount=3),
+        SimpleNamespace(power_name="Frail", amount=1),
+    ]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.player_block == 3
+
+
 def test_gremlin_nob_skill_reaction_ignores_zero_hp_stale_simulated_monsters():
     defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1)
     context = _combat_context([defend], energy=1, monsters=[_gremlin_nob(current_hp=20)])
@@ -5613,6 +5632,40 @@ def test_wiki_escaped_newline_exhaust_triggers_feel_no_pain(monkeypatch):
     seeing_red = _card("Seeing Red", "Seeing Red", card_type=CardType.SKILL, cost=1, has_target=False)
     context = _combat_context([seeing_red], energy=1, monsters=[_louse(current_hp=100)])
     context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        seeing_red,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.exhaust_events == 1
+    assert result.player_block == 3
+
+
+def test_feel_no_pain_block_is_not_reduced_by_frail(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "seeing red": {
+            "name": "Seeing Red",
+            "description": "Gain [R] [R].\nExhaust.",
+        }
+    }
+    loader._wiki_data = {
+        "seeing red": {
+            "name": "Seeing Red",
+            "text": "Gain <R> <R>.\\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    seeing_red = _card("Seeing Red", "Seeing Red", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([seeing_red], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [
+        SimpleNamespace(power_name="Feel No Pain", amount=3),
+        SimpleNamespace(power_name="Frail", amount=1),
+    ]
 
     result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
         SimulationState(context),
