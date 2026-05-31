@@ -551,6 +551,12 @@ class SimulationState:
                     'Flying',
                     'FlightPower',
                 ),
+                'intangible': self._get_monster_power_amount_any(
+                    monster,
+                    'Intangible',
+                    'IntangiblePower',
+                    'IntangibleMonster',
+                ),
             }
             self.monsters.append(monster_state)
 
@@ -786,6 +792,7 @@ class SimulationState:
                 m.get('malleable_block', 0),
                 m.get('hit_strength_gain', 0),
                 m.get('flight_stacks', 0),
+                m.get('intangible', 0),
                 m.get('move_base_damage', 0),
                 (
                     m.get('move_adjusted_damage', None) is None,
@@ -2237,6 +2244,10 @@ class FastCombatSimulator:
             if damage <= 0:
                 return
 
+        damage = self._apply_monster_intangible_damage_cap(monster, damage)
+        if damage <= 0:
+            return
+
         # Damage block first
         block_damage = min(damage, monster['block'])
         monster['block'] -= block_damage
@@ -2282,6 +2293,14 @@ class FastCombatSimulator:
         if int(monster.get('flight_stacks', 0) or 0) <= 0:
             return damage
         return max(0, int(damage * 0.5))
+
+    def _apply_monster_intangible_damage_cap(self, monster: dict, damage: int) -> int:
+        """Apply monster Intangible's per-hit damage cap."""
+        if int(monster.get('intangible', 0) or 0) <= 0:
+            return damage
+        if damage <= 0:
+            return 0
+        return 1
 
     def _apply_flight_hit(self, monster: dict):
         """Count down Byrd Flight and stun the monster when it is knocked down."""

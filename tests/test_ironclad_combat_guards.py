@@ -230,6 +230,26 @@ def _byrd(current_hp=30, flight=3):
     return monster
 
 
+def _nemesis(current_hp=185, intangible=0):
+    monster = Monster(
+        name="Nemesis",
+        monster_id="Nemesis",
+        max_hp=185,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=2,
+        move_adjusted_damage=45,
+        move_hits=1,
+    )
+    monster.powers = []
+    if intangible:
+        monster.powers.append(SimpleNamespace(power_name="Intangible", amount=intangible))
+    return monster
+
+
 def _lagavulin(
     current_hp=82,
     intent=Intent.ATTACK,
@@ -900,6 +920,33 @@ def test_byrd_flight_knockdown_stuns_current_attack():
     assert state.monsters[0]["flight_stacks"] == 0
     assert state.monsters[0]["intent"] == Intent.STUN
     assert simulator._estimate_incoming_damage(state.monsters) == 0
+
+
+def test_monster_intangible_caps_attack_damage_to_one():
+    context = _combat_context([], energy=0, monsters=[_nemesis(intangible=1)])
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    simulator._deal_damage_to_monster(state, state.monsters[0], 40)
+
+    assert state.monsters[0]["hp"] == 184
+    assert state.total_damage_dealt == 1
+
+
+def test_monster_intangible_caps_non_attack_damage_to_one():
+    context = _combat_context([], energy=0, monsters=[_nemesis(intangible=1)])
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    simulator._deal_damage_to_monster(
+        state,
+        state.monsters[0],
+        40,
+        trigger_thorns=False,
+    )
+
+    assert state.monsters[0]["hp"] == 184
+    assert state.total_damage_dealt == 1
 
 
 def test_fungi_beast_death_vulnerable_can_make_same_turn_attack_lethal():
