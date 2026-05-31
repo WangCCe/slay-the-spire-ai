@@ -1403,13 +1403,16 @@ class FastCombatSimulator:
 
         if card_name == 'Heavy Blade':
             multiplier = 5 if getattr(card, 'upgrades', 0) > 0 else 3
-            return base_damage + state.player_strength * multiplier
+            return max(0, base_damage + state.player_strength * multiplier)
 
         if card_name == 'Perfected Strike':
             per_strike_bonus = 3 if getattr(card, 'upgrades', 0) > 0 else 2
-            return base_damage + self._count_strike_cards(context) * per_strike_bonus + state.player_strength
+            return max(
+                0,
+                base_damage + self._count_strike_cards(context) * per_strike_bonus + state.player_strength,
+            )
 
-        return base_damage + state.player_strength
+        return max(0, base_damage + state.player_strength)
 
     def _count_strike_cards(self, context: Optional[DecisionContext]) -> int:
         """Count deck cards whose displayed name or id contains Strike."""
@@ -2003,7 +2006,7 @@ class FastCombatSimulator:
             if per_hit:
                 return per_hit_damage
             strength = getattr(state, 'player_strength', 0)
-            return (per_hit_damage + strength) * energy
+            return max(0, per_hit_damage + strength) * energy
 
         # Fallback: not an X-damage card
         return 0
@@ -2053,6 +2056,12 @@ class FastCombatSimulator:
     ):
         """Deal damage to monster, accounting for block and thorns."""
         if not self._is_live_monster_state(monster):
+            return
+        try:
+            damage = max(0, int(damage or 0))
+        except (TypeError, ValueError):
+            damage = 0
+        if damage <= 0:
             return
 
         # Damage block first

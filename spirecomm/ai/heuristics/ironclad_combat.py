@@ -1092,7 +1092,7 @@ class IroncladCombatPlanner(CombatPlanner):
             return max(0, base_damage + self._count_strike_cards(context) * per_strike_bonus + strength)
 
         hit_count = self._get_attack_hit_count(card, context)
-        return (base_damage + strength) * hit_count
+        return max(0, base_damage + strength) * hit_count
 
     @staticmethod
     def _get_player_block(context: DecisionContext) -> int:

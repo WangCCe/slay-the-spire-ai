@@ -4273,6 +4273,42 @@ def test_random_target_attack_ignores_zero_hp_stale_simulated_monsters(monkeypat
     assert result.monsters[1]["hp"] == 11
 
 
+def test_attack_damage_clamps_negative_player_strength_before_block():
+    strike = _card("Strike_R", "Strike", cost=1)
+    monster = _louse(current_hp=20)
+    monster.block = 5
+    context = _combat_context([strike], energy=1, monsters=[monster])
+    context.strength = -10
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["block"] == 5
+    assert result.monsters[0]["hp"] == 20
+    assert result.total_damage_dealt == 0
+
+
+def test_deal_damage_to_monster_ignores_negative_damage():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=20)])
+    state = SimulationState(context)
+    state.monsters[0]["block"] = 5
+
+    FastCombatSimulator(SynergyCardEvaluator())._deal_damage_to_monster(
+        state,
+        state.monsters[0],
+        -4,
+    )
+
+    assert state.monsters[0]["block"] == 5
+    assert state.monsters[0]["hp"] == 20
+    assert state.total_damage_dealt == 0
+
+
 def test_upgraded_single_hit_attacks_use_exported_damage_bonus(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
