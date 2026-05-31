@@ -76,7 +76,7 @@ DANGER_PENALTY = 50.0  # Extra penalty when below danger threshold
 EXHAULT_SYNERGY_VALUE = 3.0  # Points per exhaust event (Feel No Pain)
 DRAW_SYNERGY_VALUE = 3.0  # Points per card drawn
 ENERGY_SYNERGY_VALUE = 4.0  # Points per energy gained/saved (Corruption, Bloodletting)
-STATUS_CARD_PENALTY = 12.0  # Cost of adding Dazed/Burn/Wound-style deck pollution
+STATUS_CARD_PENALTY = 12.0  # Cost of adding Dazed/Burn/Wound/Void-style deck pollution
 ENEMY_STATUS_LOOKAHEAD_WEIGHT = 0.5  # Enemy status predictions are useful but uncertain
 
 # Debuff application bonuses
@@ -2334,6 +2334,7 @@ class FastCombatSimulator:
         burn = _get_count('burn', 'burn_count', 'burn_added')
         slimed = _get_count('slimed', 'slimed_count', 'slimed_added')
         wound = _get_count('wound', 'wounds', 'wound_count', 'wound_added')
+        void = _get_count('void', 'void_count', 'void_added', 'void_cards_added')
         if dazed == 0:
             dazed = _parse_effect_count('Dazed')
         if burn == 0:
@@ -2342,6 +2343,8 @@ class FastCombatSimulator:
             slimed = _parse_effect_count('Slimed')
         if wound == 0:
             wound = _parse_effect_count('Wound')
+        if void == 0:
+            void = _parse_effect_count('Void')
         if context is not None:
             dazed = self._apply_ascension_move_value(move, context, 'dazed', dazed)
             burn = self._apply_ascension_move_value(move, context, 'burn_count', burn)
@@ -2350,13 +2353,17 @@ class FastCombatSimulator:
             slimed = self._apply_ascension_move_value(move, context, 'slimed_added', slimed)
             wound = self._apply_ascension_move_value(move, context, 'wound_count', wound)
             wound = self._apply_ascension_move_value(move, context, 'wound_added', wound)
-        total = dazed + burn + slimed + wound
+            void = self._apply_ascension_move_value(move, context, 'void_count', void)
+            void = self._apply_ascension_move_value(move, context, 'void_added', void)
+            void = self._apply_ascension_move_value(move, context, 'void_cards_added', void)
+        total = dazed + burn + slimed + wound + void
         return {
             'total': total,
             'dazed': dazed,
             'burn': burn,
             'slimed': slimed,
             'wound': wound,
+            'void': void,
         }
 
     def _calculate_x_damage(
@@ -3686,7 +3693,14 @@ class FastCombatSimulator:
         look_ahead: int = 2,
     ) -> Dict[str, int]:
         """Estimate status-card pollution from current and near-future monster moves."""
-        totals = {'total': 0, 'dazed': 0, 'burn': 0, 'slimed': 0, 'wound': 0}
+        totals = {
+            'total': 0,
+            'dazed': 0,
+            'burn': 0,
+            'slimed': 0,
+            'wound': 0,
+            'void': 0,
+        }
         try:
             current_turn = getattr(context, 'turn', 1)
             for step in range(look_ahead):
@@ -3717,12 +3731,13 @@ class FastCombatSimulator:
 
             if totals['total'] > 0:
                 logger.info(
-                    "[STATUS_LOOKAHEAD] predicted=%s dazed=%s burn=%s slimed=%s wound=%s",
+                    "[STATUS_LOOKAHEAD] predicted=%s dazed=%s burn=%s slimed=%s wound=%s void=%s",
                     totals['total'],
                     totals['dazed'],
                     totals['burn'],
                     totals['slimed'],
                     totals['wound'],
+                    totals['void'],
                 )
             return totals
         except Exception as e:

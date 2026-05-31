@@ -2140,6 +2140,23 @@ def test_slime_boss_goop_spray_counts_slimed_status_from_effect_text():
     assert status["total"] == 3
 
 
+def test_enemy_status_lookahead_counts_void_cards():
+    awakened_one = _awakened_one()
+    awakened_one.intent = Intent.ATTACK_DEBUFF
+    awakened_one.move_id = 5
+    awakened_one.move_adjusted_damage = 18
+    context = _combat_context([], energy=0, monsters=[awakened_one])
+
+    status = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_status_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert status["void"] == 1
+    assert status["total"] == 1
+
+
 def test_feel_no_pain_grants_block_for_exhaust_events(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
