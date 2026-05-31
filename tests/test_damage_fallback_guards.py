@@ -3554,6 +3554,51 @@ def test_poison_potion_score_does_not_treat_poison_as_immediate_lethal():
     assert HeuristicCombatPlanner()._score_potion(potion, context, state) == 0
 
 
+def _potion_projection_context(potion, *, player_powers=None, cards=None, energy=0):
+    cards = cards or []
+    monster = SimpleNamespace(
+        name="Lagavulin",
+        monster_id="Lagavulin",
+        max_hp=100,
+        current_hp=100,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=18,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    return SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=player_powers or []),
+            hand=cards,
+            monsters=[monster],
+            room_type="Monster",
+            get_real_potions=lambda: [potion],
+        ),
+        act=1,
+        turn=1,
+        floor=5,
+        energy_available=energy,
+        strength=0,
+        player_hp_pct=0.5,
+        incoming_damage=18,
+        card_synergies={},
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=cards,
+        compute_threat=lambda monster: 18,
+    )
+
+
 def test_beam_search_can_use_potion_when_no_cards_are_playable():
     potion = Potion(
         potion_id="FirePotion",
@@ -3605,6 +3650,90 @@ def test_beam_search_can_use_potion_when_no_cards_are_playable():
     assert len(sequence) == 1
     assert isinstance(sequence[0], PotionAction)
     assert sequence[0].potion is potion
+
+
+def test_beam_search_flex_potion_strength_expires_at_end_of_turn_projection():
+    potion = Potion(
+        potion_id="FlexPotion",
+        name="Flex Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    context = _potion_projection_context(potion)
+    planner = HeuristicCombatPlanner()
+    observed = []
+
+    def score(_initial_state, final_state, _act, _weights, _context, sequence):
+        if sequence and isinstance(sequence[-1], PotionAction):
+            projected = planner.simulator.project_end_turn_effects(final_state)
+            observed.append((final_state.player_strength, projected.player_strength))
+        return 0
+
+    planner.simulator.calculate_outcome_score = score
+
+    planner.plan_turn(context)
+
+    assert observed == [(5, 0)]
+
+
+def test_beam_search_flex_potion_artifact_blocks_strength_loss():
+    potion = Potion(
+        potion_id="FlexPotion",
+        name="Flex Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    context = _potion_projection_context(
+        potion,
+        player_powers=[SimpleNamespace(power_name="Artifact", amount=1)],
+    )
+    planner = HeuristicCombatPlanner()
+    observed = []
+
+    def score(_initial_state, final_state, _act, _weights, _context, sequence):
+        if sequence and isinstance(sequence[-1], PotionAction):
+            projected = planner.simulator.project_end_turn_effects(final_state)
+            observed.append(
+                (
+                    final_state.player_strength,
+                    final_state.player_artifact,
+                    projected.player_strength,
+                )
+            )
+        return 0
+
+    planner.simulator.calculate_outcome_score = score
+
+    planner.plan_turn(context)
+
+    assert observed == [(5, 0, 5)]
+
+
+def test_beam_search_speed_potion_dexterity_expires_at_end_of_turn_projection():
+    potion = Potion(
+        potion_id="SpeedPotion",
+        name="Speed Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    context = _potion_projection_context(potion)
+    planner = HeuristicCombatPlanner()
+    observed = []
+
+    def score(_initial_state, final_state, _act, _weights, _context, sequence):
+        if sequence and isinstance(sequence[-1], PotionAction):
+            projected = planner.simulator.project_end_turn_effects(final_state)
+            observed.append((final_state.player_dexterity, projected.player_dexterity))
+        return 0
+
+    planner.simulator.calculate_outcome_score = score
+
+    planner.plan_turn(context)
+
+    assert observed == [(5, 0)]
 
 
 def test_beam_search_damage_potion_updates_damage_events():

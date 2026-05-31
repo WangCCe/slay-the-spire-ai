@@ -451,6 +451,7 @@ class SimulationState:
         self.player_strength = context.strength
         self.player_temp_strength = 0
         self.player_dexterity = self._get_player_power_amount(context, 'Dexterity')
+        self.player_temp_dexterity = 0
         self.player_thorns = self._get_player_power_amount(context, 'Thorns')
         self.player_intangible = max(
             self._get_player_power_amount(context, 'Intangible'),
@@ -613,6 +614,7 @@ class SimulationState:
         new_state.player_strength = self.player_strength
         new_state.player_temp_strength = self.player_temp_strength
         new_state.player_dexterity = self.player_dexterity
+        new_state.player_temp_dexterity = self.player_temp_dexterity
         new_state.player_thorns = self.player_thorns
         new_state.player_intangible = self.player_intangible
         new_state.player_artifact = self.player_artifact
@@ -670,6 +672,7 @@ class SimulationState:
             self.player_strength,
             self.player_temp_strength,
             self.player_dexterity,
+            self.player_temp_dexterity,
             self.player_thorns,
             self.player_intangible,
             self.player_artifact,
@@ -2048,6 +2051,10 @@ class FastCombatSimulator:
         if temp_strength:
             projected.player_strength -= temp_strength
             projected.player_temp_strength = 0
+        temp_dexterity = getattr(projected, 'player_temp_dexterity', 0)
+        if temp_dexterity:
+            projected.player_dexterity -= temp_dexterity
+            projected.player_temp_dexterity = 0
         projected = self._materialize_pending_death_splits(projected)
         return projected
 
@@ -4132,10 +4139,22 @@ class HeuristicCombatPlanner(CombatPlanner):
                         elif potion.effect_type == 'max_hp':
                             new_state.player_max_hp += potion.effect_value
                             new_state.player_hp += potion.effect_value
-                        elif potion.effect_type in ['buff_strength', 'temp_strength']:
+                        elif potion.effect_type == 'buff_strength':
                             new_state.player_strength += potion.effect_value
-                        elif potion.effect_type in ['buff_dexterity', 'temp_dexterity']:
+                        elif potion.effect_type == 'temp_strength':
+                            new_state.player_strength += potion.effect_value
+                            if new_state.player_artifact > 0:
+                                new_state.player_artifact -= 1
+                            else:
+                                new_state.player_temp_strength += potion.effect_value
+                        elif potion.effect_type == 'buff_dexterity':
                             new_state.player_dexterity += potion.effect_value
+                        elif potion.effect_type == 'temp_dexterity':
+                            new_state.player_dexterity += potion.effect_value
+                            if new_state.player_artifact > 0:
+                                new_state.player_artifact -= 1
+                            else:
+                                new_state.player_temp_dexterity += potion.effect_value
                         elif potion.effect_type == 'thorns':
                             new_state.player_thorns += potion.effect_value
                         elif potion.effect_type == 'intangible':
