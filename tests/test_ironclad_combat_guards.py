@@ -792,6 +792,54 @@ def test_fungi_beast_death_vulnerable_applies_to_same_turn_incoming_damage():
     ) == 15
 
 
+def test_curl_up_gains_block_after_first_nonlethal_attack_damage():
+    louse = _louse(current_hp=20)
+    louse.powers = [SimpleNamespace(power_name="Curl Up", amount=5)]
+    context = _combat_context([], energy=0, monsters=[louse])
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    simulator._deal_damage_to_monster(state, state.monsters[0], 6)
+    assert state.monsters[0]["hp"] == 14
+    assert state.monsters[0]["block"] == 5
+
+    simulator._deal_damage_to_monster(state, state.monsters[0], 6)
+
+    assert state.monsters[0]["hp"] == 13
+    assert state.monsters[0]["block"] == 0
+
+
+def test_malleable_gains_increasing_block_after_each_nonlethal_attack_damage():
+    snake_plant = Monster(
+        name="Snake Plant",
+        monster_id="SnakePlant",
+        max_hp=50,
+        current_hp=50,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=21,
+        move_hits=3,
+    )
+    snake_plant.powers = [SimpleNamespace(power_name="Malleable", amount=3)]
+    context = _combat_context([], energy=0, monsters=[snake_plant])
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    simulator._deal_damage_to_monster(state, state.monsters[0], 6)
+    assert state.monsters[0]["hp"] == 44
+    assert state.monsters[0]["block"] == 3
+    assert state.monsters[0]["malleable_block"] == 4
+
+    simulator._deal_damage_to_monster(state, state.monsters[0], 6)
+
+    assert state.monsters[0]["hp"] == 41
+    assert state.monsters[0]["block"] == 4
+    assert state.monsters[0]["malleable_block"] == 5
+
+
 def test_fungi_beast_death_vulnerable_can_make_same_turn_attack_lethal():
     strike = _card("Strike_R", "Strike", cost=1)
     remaining_attacker = _louse(current_hp=50)

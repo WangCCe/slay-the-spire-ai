@@ -528,6 +528,18 @@ class SimulationState:
                 'skill_strength_gain': self._get_monster_skill_strength_gain(monster),
                 'power_strength_gain': self._get_monster_power_strength_gain(monster),
                 'mode_shift': mode_shift,
+                'curl_up_block': self._get_monster_power_amount_any(
+                    monster,
+                    'Curl Up',
+                    'CurlUp',
+                    'CurlUpPower',
+                ),
+                'curl_up_used': False,
+                'malleable_block': self._get_monster_power_amount_any(
+                    monster,
+                    'Malleable',
+                    'MalleablePower',
+                ),
             }
             self.monsters.append(monster_state)
 
@@ -596,6 +608,32 @@ class SimulationState:
             if self._power_name(power) == power_name:
                 amount = getattr(power, 'amount', None)
                 return amount if amount is not None else 1
+        return 0
+
+    def _get_monster_power_amount_any(self, monster: Any, *power_names: str) -> int:
+        """Get a monster power amount while accepting display-name/id variants."""
+        if not hasattr(monster, 'powers'):
+            return 0
+
+        normalized_names = {
+            re.sub(r'[^a-z0-9]', '', name.lower())
+            for name in power_names
+        }
+        for power in monster.powers:
+            power_name = self._power_name(power)
+            normalized_power_name = re.sub(
+                r'[^a-z0-9]',
+                '',
+                str(power_name or '').lower(),
+            )
+            if normalized_power_name in normalized_names:
+                amount = getattr(power, 'amount', None)
+                if amount is None:
+                    return 1
+                try:
+                    return max(0, int(amount))
+                except (TypeError, ValueError):
+                    return 0
         return 0
 
     def _get_monster_skill_strength_gain(self, monster: Any) -> int:
@@ -732,6 +770,9 @@ class SimulationState:
                 m.get('strength', 0),
                 m.get('skill_strength_gain', 0),
                 m.get('power_strength_gain', 0),
+                m.get('curl_up_block', 0),
+                bool(m.get('curl_up_used', False)),
+                m.get('malleable_block', 0),
                 m.get('move_base_damage', 0),
                 (
                     m.get('move_adjusted_damage', None) is None,
@@ -2194,6 +2235,7 @@ class FastCombatSimulator:
                 state.player_hp = max(0, state.player_hp - thorns)
 
         if trigger_thorns and hp_damage > 0 and monster['hp'] > 0:
+            self._apply_reactive_monster_block(monster)
             self._apply_guardian_mode_shift(monster, hp_damage)
 
         # Check if killed
@@ -2201,6 +2243,19 @@ class FastCombatSimulator:
             self._apply_monster_death_effects(state, monster)
             monster['is_gone'] = True
             state.monsters_killed += 1
+
+    def _apply_reactive_monster_block(self, monster: dict):
+        """Apply non-lethal attack-damage reactions such as Curl Up and Malleable."""
+        curl_up_block = int(monster.get('curl_up_block', 0) or 0)
+        if curl_up_block > 0 and not monster.get('curl_up_used', False):
+            monster['block'] += curl_up_block
+            monster['curl_up_used'] = True
+            monster['curl_up_block'] = 0
+
+        malleable_block = int(monster.get('malleable_block', 0) or 0)
+        if malleable_block > 0:
+            monster['block'] += malleable_block
+            monster['malleable_block'] = malleable_block + 1
 
     def _apply_guardian_mode_shift(self, monster: dict, hp_damage: int):
         """Apply The Guardian's Mode Shift transition after attack HP damage."""
