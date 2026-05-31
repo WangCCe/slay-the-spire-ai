@@ -1497,6 +1497,61 @@ def test_enemy_lookahead_applies_strength_gain_to_future_attacks(monkeypatch):
     assert future_damage == int(9 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
 
 
+def test_enemy_lookahead_applies_all_enemies_strength_gain_to_future_attacks():
+    leader = Monster(
+        name="Gremlin Leader",
+        monster_id="Gremlin_Leader",
+        max_hp=145,
+        current_hp=145,
+        block=0,
+        intent=Intent.BUFF,
+        half_dead=False,
+        is_gone=False,
+        move_id=0,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+    minion = Monster(
+        name="Mad Gremlin",
+        monster_id="GremlinFat",
+        max_hp=25,
+        current_hp=25,
+        block=0,
+        intent=Intent.UNKNOWN,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+    context = _combat_context([], energy=0, monsters=[leader, minion])
+    context.turn = 1
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._current_monster_move = lambda monster: (
+        {
+            "name": "Encourage",
+            "intent": "BUFF",
+            "strength_gain": 3,
+            "effect": "All enemies gain 3 Strength. All minions gain 6 Block.",
+        }
+        if monster["name"] == "Gremlin Leader"
+        else None
+    )
+    simulator._predicted_monster_move_for_step = lambda monster_name, _turn, step, _hp: (
+        {"name": "Scratch", "intent": "ATTACK", "damage": 6, "hits": 1}
+        if monster_name == "Mad Gremlin" and step == 1
+        else None
+    )
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=2,
+    )
+
+    assert future_damage == int(9 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
+
+
 def test_enemy_lookahead_ignores_negated_attack_intent(monkeypatch):
     class FakeLoader:
         def get_enhanced_monster_data(self, _monster_name):

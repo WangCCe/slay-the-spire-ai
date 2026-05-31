@@ -2193,6 +2193,44 @@ class FastCombatSimulator:
             strength_gain,
         ))
 
+    def _extract_move_all_enemies_strength_gain(
+        self,
+        move: Dict[str, Any],
+        context: Optional[DecisionContext] = None,
+    ) -> int:
+        """Extract Strength gained by every monster from a predicted move."""
+        value = move.get('all_enemies_strength_gain')
+        modifier_key = 'all_enemies_strength_gain'
+        if value is None:
+            effect = str(move.get('effect') or move.get('description') or '')
+            if not re.search(r'\ball\s+enemies\s+gain\b.*\bstrength\b', effect, re.IGNORECASE):
+                return 0
+            value = move.get('strength_gain', 0)
+            modifier_key = 'strength_gain'
+
+        strength_gain = self._positive_numeric_move_value(value)
+        if context is None:
+            return strength_gain
+        return max(0, self._apply_ascension_move_value(
+            move,
+            context,
+            modifier_key,
+            strength_gain,
+        ))
+
+    def _positive_numeric_move_value(self, value: Any) -> int:
+        if isinstance(value, bool):
+            return 0
+        if isinstance(value, (int, float)):
+            return max(0, int(value))
+        if isinstance(value, dict):
+            numeric_values = [
+                int(v) for v in value.values()
+                if isinstance(v, (int, float)) and not isinstance(v, bool)
+            ]
+            return max(numeric_values, default=0)
+        return 0
+
     def _extract_move_status_cards(
         self,
         move: Dict[str, Any],
@@ -3416,9 +3454,21 @@ class FastCombatSimulator:
                             move_debuffs,
                             player_artifact,
                         )
-                        strength_gain = self._extract_move_strength_gain(move, context)
-                        if strength_gain > 0:
-                            monster['strength'] = monster.get('strength', 0) + strength_gain
+                        all_enemies_strength_gain = (
+                            self._extract_move_all_enemies_strength_gain(move, context)
+                        )
+                        if all_enemies_strength_gain > 0:
+                            self._apply_all_live_monsters_strength_gain(
+                                lookahead_state,
+                                all_enemies_strength_gain,
+                            )
+                        else:
+                            strength_gain = self._extract_move_strength_gain(move, context)
+                            if strength_gain > 0:
+                                self._apply_predicted_monster_strength_gain(
+                                    monster,
+                                    strength_gain,
+                                )
                     else:
                         has_adjusted_damage = 'move_adjusted_damage' in monster
                         adjusted_damage = monster.get('move_adjusted_damage', None)
@@ -3495,6 +3545,26 @@ class FastCombatSimulator:
                 monster.get('_simulated_strength_delta', 0) + strength_gain
             )
             self._refresh_monster_adjusted_damage_from_debuffs(monster)
+
+    def _apply_all_live_monsters_strength_gain(
+        self,
+        state: SimulationState,
+        strength_gain: int,
+    ):
+        for monster in state.monsters:
+            if not self._is_live_monster_state(monster):
+                continue
+            self._apply_predicted_monster_strength_gain(monster, strength_gain)
+
+    def _apply_predicted_monster_strength_gain(self, monster: dict, strength_gain: int):
+        if strength_gain <= 0:
+            return
+        self._remember_monster_adjusted_damage_source(monster)
+        monster['strength'] = monster.get('strength', 0) + strength_gain
+        monster['_simulated_strength_delta'] = (
+            monster.get('_simulated_strength_delta', 0) + strength_gain
+        )
+        self._refresh_monster_adjusted_damage_from_debuffs(monster)
 
     def simulate_enemy_status_lookahead(
         self,
