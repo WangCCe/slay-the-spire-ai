@@ -2391,6 +2391,29 @@ def test_enemy_lookahead_fallback_does_not_reapply_weak_to_adjusted_damage():
     assert future_damage == 7
 
 
+def test_enemy_lookahead_fallback_refreshes_damage_when_weak_expires():
+    strike = _card("Strike_R", "Strike", cost=1)
+    monster = _louse(current_hp=50)
+    monster.move_base_damage = 10
+    monster.move_adjusted_damage = 7
+    context = _combat_context([strike], energy=1, monsters=[monster])
+    context.turn = 1
+    state = SimulationState(context)
+    state.monsters[0]["weak"] = 1
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    current_move = {"name": "Bite", "intent": "ATTACK", "damage": 10, "hits": 1}
+    simulator._current_monster_move = lambda *_args, **_kwargs: current_move
+    simulator._predicted_monster_move_for_step = lambda *_args, **_kwargs: None
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        state,
+        context,
+        look_ahead=2,
+    )
+
+    assert future_damage == 15
+
+
 def test_enemy_lookahead_decrements_monster_weak_between_turns():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])

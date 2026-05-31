@@ -1884,9 +1884,13 @@ class FastCombatSimulator:
         for monster in state.monsters:
             if monster.get('is_gone'):
                 continue
+            weak_expired = False
             for debuff in ('weak', 'vulnerable', 'frail'):
                 if monster.get(debuff, 0) > 0:
-                    monster[debuff] = max(0, monster[debuff] - 1)
+                    previous_stacks = monster[debuff]
+                    monster[debuff] = max(0, previous_stacks - 1)
+                    if debuff == 'weak' and monster[debuff] == 0:
+                        weak_expired = True
             temporary_strength_delta = monster.pop(
                 '_simulated_temporary_strength_delta',
                 0,
@@ -1898,6 +1902,9 @@ class FastCombatSimulator:
                 )
                 if monster.get('_simulated_strength_delta') == 0:
                     monster.pop('_simulated_strength_delta', None)
+                self._refresh_monster_adjusted_damage_from_debuffs(monster)
+            if weak_expired:
+                monster.pop('_simulated_weak_applied_to_attack', None)
                 self._refresh_monster_adjusted_damage_from_debuffs(monster)
 
     def _extract_move_debuffs(
