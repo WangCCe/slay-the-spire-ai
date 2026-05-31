@@ -540,6 +540,11 @@ class SimulationState:
                     'Malleable',
                     'MalleablePower',
                 ),
+                'hit_strength_gain': self._get_monster_power_amount_any(
+                    monster,
+                    'Angry',
+                    'AngryPower',
+                ),
             }
             self.monsters.append(monster_state)
 
@@ -640,7 +645,7 @@ class SimulationState:
         """Return Strength a monster gains whenever the player plays a Skill."""
         for power in getattr(monster, 'powers', []) or []:
             power_name = str(self._power_name(power) or '').lower()
-            if power_name in {'anger', 'angry', 'enrage'}:
+            if power_name in {'anger', 'enrage'}:
                 amount = getattr(power, 'amount', None)
                 return max(0, int(amount)) if amount is not None else 2
 
@@ -773,6 +778,7 @@ class SimulationState:
                 m.get('curl_up_block', 0),
                 bool(m.get('curl_up_used', False)),
                 m.get('malleable_block', 0),
+                m.get('hit_strength_gain', 0),
                 m.get('move_base_damage', 0),
                 (
                     m.get('move_adjusted_damage', None) is None,
@@ -2236,6 +2242,7 @@ class FastCombatSimulator:
 
         if trigger_thorns and hp_damage > 0 and monster['hp'] > 0:
             self._apply_reactive_monster_block(monster)
+            self._apply_reactive_monster_strength(monster)
             self._apply_guardian_mode_shift(monster, hp_damage)
 
         # Check if killed
@@ -2256,6 +2263,19 @@ class FastCombatSimulator:
         if malleable_block > 0:
             monster['block'] += malleable_block
             monster['malleable_block'] = malleable_block + 1
+
+    def _apply_reactive_monster_strength(self, monster: dict):
+        """Apply non-lethal attack-damage Strength reactions such as Angry."""
+        strength_gain = int(monster.get('hit_strength_gain', 0) or 0)
+        if strength_gain <= 0:
+            return
+
+        self._remember_monster_adjusted_damage_source(monster)
+        monster['strength'] = monster.get('strength', 0) + strength_gain
+        monster['_simulated_strength_delta'] = (
+            monster.get('_simulated_strength_delta', 0) + strength_gain
+        )
+        self._refresh_monster_adjusted_damage_from_debuffs(monster)
 
     def _apply_guardian_mode_shift(self, monster: dict, hp_damage: int):
         """Apply The Guardian's Mode Shift transition after attack HP damage."""

@@ -193,6 +193,25 @@ def _gremlin_nob(current_hp=82, move_adjusted_damage=14):
     return monster
 
 
+def _mad_gremlin(current_hp=22, move_adjusted_damage=4):
+    monster = Monster(
+        name="Mad Gremlin",
+        monster_id="GremlinWarrior",
+        max_hp=22,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=0,
+        move_base_damage=4,
+        move_adjusted_damage=move_adjusted_damage,
+        move_hits=1,
+    )
+    monster.powers = [SimpleNamespace(name="Angry", amount=1)]
+    return monster
+
+
 def _lagavulin(
     current_hp=82,
     intent=Intent.ATTACK,
@@ -968,6 +987,33 @@ def test_gremlin_nob_gains_strength_when_skill_is_simulated():
 
     assert result.monsters[0]["strength"] == 2
     assert simulator._estimate_incoming_damage(result.monsters) == 16
+
+
+def test_mad_gremlin_angry_does_not_trigger_on_skill_cards():
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([defend], energy=1, monsters=[_mad_gremlin()])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        defend,
+        context=context,
+    )
+
+    assert result.monsters[0]["strength"] == 0
+    assert simulator._estimate_incoming_damage(result.monsters) == 4
+
+
+def test_mad_gremlin_angry_gains_strength_after_nonlethal_attack_damage():
+    context = _combat_context([], energy=0, monsters=[_mad_gremlin()])
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    simulator._deal_damage_to_monster(state, state.monsters[0], 6)
+
+    assert state.monsters[0]["hp"] == 16
+    assert state.monsters[0]["strength"] == 1
+    assert state.monsters[0]["move_adjusted_damage"] == 5
 
 
 def test_gremlin_nob_skill_strength_updates_current_attack_after_disarm():
