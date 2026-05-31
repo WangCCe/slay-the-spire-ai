@@ -432,6 +432,7 @@ class CombatEndingDetector:
         fiend_fire_exhaust_count: Optional[int] = None,
         target_vulnerable_stacks: Optional[int] = None,
         strength: Optional[int] = None,
+        base_damage_bonus: int = 0,
     ) -> int:
         damage = self._get_card_damage(
             card,
@@ -440,6 +441,7 @@ class CombatEndingDetector:
             available_energy,
             fiend_fire_exhaust_count,
             strength,
+            base_damage_bonus,
         )
         damage = self._apply_player_weak_to_card_damage(
             card,
@@ -751,6 +753,11 @@ class CombatEndingDetector:
     def _double_tap_charges_after_attack(self, double_tap_charges: int) -> int:
         return max(0, double_tap_charges - 1)
 
+    def _rampage_scaling_per_play(self, card: Card) -> int:
+        if self._base_card_name(card) != 'Rampage':
+            return 0
+        return 8 if getattr(card, 'upgrades', 0) > 0 else 5
+
     def _is_lethal_vulnerable_support_card(self, card: Card) -> bool:
         if getattr(card, 'type', None) != CardType.SKILL:
             return False
@@ -990,6 +997,7 @@ class CombatEndingDetector:
                     next_vulnerable = state.vulnerable
                     next_artifact = state.artifact
                     total_damage = 0
+                    rampage_bonus = 0
                     for _repeat_idx in range(attack_repeats):
                         repeat_hp = list(next_hp)
                         repeat_damage = 0
@@ -1004,6 +1012,7 @@ class CombatEndingDetector:
                                 state.energy,
                                 target_vulnerable_stacks=next_vulnerable[monster_idx],
                                 strength=state.strength,
+                                base_damage_bonus=rampage_bonus,
                             )
                             if damage <= 0:
                                 continue
@@ -1024,6 +1033,7 @@ class CombatEndingDetector:
                             next_hp,
                             None,
                         )
+                        rampage_bonus += self._rampage_scaling_per_play(card)
 
                     if total_damage <= 0:
                         continue
@@ -1084,6 +1094,7 @@ class CombatEndingDetector:
                     next_artifact = state.artifact
                     total_damage = 0
                     total_energy_refund = 0
+                    rampage_bonus = 0
                     for _repeat_idx in range(attack_repeats):
                         current_hp = next_hp[monster_idx]
                         if current_hp <= 0:
@@ -1103,6 +1114,7 @@ class CombatEndingDetector:
                             fiend_fire_exhaust_count,
                             next_vulnerable[monster_idx],
                             state.strength,
+                            base_damage_bonus=rampage_bonus,
                         )
                         if damage <= 0:
                             continue
@@ -1117,6 +1129,7 @@ class CombatEndingDetector:
                             tuple(next_hp),
                             monster_idx,
                         )
+                        rampage_bonus += self._rampage_scaling_per_play(card)
 
                     if total_damage <= 0:
                         continue
@@ -1556,6 +1569,7 @@ class CombatEndingDetector:
         available_energy: Optional[int] = None,
         fiend_fire_exhaust_count: Optional[int] = None,
         strength_override: Optional[int] = None,
+        base_damage_bonus: int = 0,
     ) -> int:
         """
         Get actual damage of card accounting for modifiers.
@@ -1605,6 +1619,7 @@ class CombatEndingDetector:
                 base_damage += self._count_strike_cards(context) * per_strike_bonus + strength
             else:
                 base_damage += strength
+            base_damage += base_damage_bonus
 
             base_damage *= self._get_attack_hit_count(
                 card,

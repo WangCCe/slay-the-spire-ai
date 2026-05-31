@@ -548,6 +548,7 @@ class SimulationState:
         self.status_cards_added = 0  # Future draw-pile/discard pollution
         self.dazed_cards_added = 0  # Chosen Hex / Sentries / Reckless Charge-style pollution
         self.hex_non_attack_triggers = 0
+        self.rampage_damage_bonus_by_card = {}
 
     def _get_player_debuff_stacks(self, context: DecisionContext, power_name: str) -> int:
         """Get debuff stacks on the player from powers."""
@@ -622,6 +623,8 @@ class SimulationState:
                 value = [monster.copy() for monster in value]
             elif name == 'played_card_uuids':
                 value = value.copy()
+            elif name == 'rampage_damage_bonus_by_card':
+                value = value.copy()
             setattr(new_state, name, value)
         return new_state
 
@@ -690,6 +693,12 @@ class SimulationState:
             self.status_cards_added,
             self.dazed_cards_added,
             self.hex_non_attack_triggers,
+            tuple(
+                sorted(
+                    (sortable_text(card_key), bonus)
+                    for card_key, bonus in self.rampage_damage_bonus_by_card.items()
+                )
+            ),
         )
 
         # Monster states (sorted for consistent hashing)
@@ -1023,6 +1032,8 @@ class FastCombatSimulator:
             if base_damage == 0 and not dynamic_damage_card:
                 base_damage = 6  # Fallback estimate for truly unknown cards
 
+        base_damage += self._rampage_damage_bonus(state, card)
+
         # Handle AOE attacks
         card_data = game_data_loader.get_card_data(card_name)
         is_aoe = False
@@ -1116,6 +1127,22 @@ class FastCombatSimulator:
         self._apply_attack_block_effects(state, card, card_data)
         self._apply_attack_exhaust_effects(state, card, context, card_data)
         self._apply_card_status_pollution(state, card, card_data)
+        self._apply_rampage_scaling(state, card)
+
+    def _rampage_damage_bonus(self, state: SimulationState, card: Card) -> int:
+        if _canonical_card_name(card) != 'Rampage':
+            return 0
+        card_key = self._card_identity(card)
+        return state.rampage_damage_bonus_by_card.get(card_key, 0)
+
+    def _apply_rampage_scaling(self, state: SimulationState, card: Card):
+        if _canonical_card_name(card) != 'Rampage':
+            return
+        card_key = self._card_identity(card)
+        state.rampage_damage_bonus_by_card[card_key] = (
+            state.rampage_damage_bonus_by_card.get(card_key, 0)
+            + (8 if getattr(card, 'upgrades', 0) > 0 else 5)
+        )
 
     def _get_attack_hit_count(
         self,

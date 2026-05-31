@@ -5607,6 +5607,51 @@ def test_double_tap_repeats_next_attack_once_or_twice():
     assert result.attacks_played == 4
 
 
+def test_double_tapped_rampage_uses_first_play_scaling(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "rampage": {
+            "name": "Rampage",
+            "description": "Deal 8 damage.\nIncrease this card's damage by 5 this combat.",
+        }
+    }
+    loader._wiki_data = {
+        "rampage": {
+            "name": "Rampage",
+            "text": "Deal 8 damage.\nIncrease this card's damage by [5|8] this combat.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    double_tap = _card(
+        "Double Tap",
+        "Double Tap",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    rampage = _card("Rampage", "Rampage", cost=1)
+    context = _combat_context([double_tap, rampage], energy=2, monsters=[_louse(current_hp=100)])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        double_tap,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        rampage,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 21
+    assert result.attacks_played == 2
+
+
 def test_corruption_makes_followup_skills_cost_zero(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -7359,6 +7404,37 @@ def test_lethal_detector_uses_double_tap_for_next_attack(monkeypatch):
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
         "double-tap",
         "strike",
+    ]
+
+
+def test_lethal_detector_uses_rampage_scaling_between_double_tap_repeats(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "rampage": {
+            "name": "Rampage",
+            "description": "Deal 8 damage.\nIncrease this card's damage by 5 this combat.",
+        }
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    double_tap = _card(
+        "Double Tap",
+        "Double Tap",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    double_tap.uuid = "double-tap"
+    rampage = _card("Rampage", "Rampage", cost=1)
+    rampage.uuid = "rampage"
+    context = _combat_context([double_tap, rampage], energy=2, monsters=[_louse(current_hp=21)])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "double-tap",
+        "rampage",
     ]
 
 
