@@ -2554,7 +2554,7 @@ class FastCombatSimulator:
         if card_id != 'Entrench':
             return False
 
-        state.player_block *= 2
+        self._add_player_block(state, state.player_block)
         return True
 
     def _apply_enemy_strength_skill(

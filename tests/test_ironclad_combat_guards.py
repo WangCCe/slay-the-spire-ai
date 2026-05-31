@@ -3426,6 +3426,33 @@ def test_entrench_doubles_current_block():
     assert result.player_block == 24
 
 
+def test_entrench_triggers_juggernaut_for_doubled_block():
+    entrench = _card(
+        "Entrench",
+        "Entrench",
+        card_type=CardType.SKILL,
+        cost=2,
+        has_target=False,
+    )
+    context = _combat_context([entrench], energy=2, monsters=[_louse(current_hp=20)])
+    context.game.player.powers = [SimpleNamespace(power_name="Juggernaut", amount=5)]
+    initial_state = SimulationState(context)
+    initial_state.player_block = 6
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        initial_state,
+        entrench,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 12
+    assert result.total_damage_dealt == 5
+    assert result.damage_instances == 1
+    assert result.monsters[0]["hp"] == 15
+
+
 def test_counted_upgraded_block_skill_uses_upgrade_block_value(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
