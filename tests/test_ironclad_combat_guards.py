@@ -3619,6 +3619,45 @@ def test_second_wind_applies_card_block_modifiers_per_exhausted_card():
     assert result.exhaust_events == 2
 
 
+def test_second_wind_block_triggers_juggernaut_per_exhausted_card():
+    second_wind = _card(
+        "Second Wind",
+        "Second Wind",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    power_through = _card(
+        "Power Through",
+        "Power Through",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [second_wind, defend, power_through, strike],
+        energy=1,
+        monsters=[_louse(current_hp=30)],
+    )
+    context.game.player.powers = [SimpleNamespace(power_name="Juggernaut", amount=5)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        second_wind,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 10
+    assert result.exhaust_events == 2
+    assert result.total_damage_dealt == 10
+    assert result.damage_instances == 2
+    assert result.monsters[0]["hp"] == 20
+
+
 def test_second_wind_marks_exhausted_cards_unavailable_for_later_search():
     second_wind = _card(
         "Second Wind",

@@ -2533,11 +2533,9 @@ class FastCombatSimulator:
             return True
 
         block_per_card = 7 if getattr(card, 'upgrades', 0) > 0 else 5
-        block_gain = (
-            self._apply_card_block_modifiers(block_per_card, state)
-            * exhausted_count
-        )
-        self._add_player_block(state, block_gain)
+        block_gain = self._apply_card_block_modifiers(block_per_card, state)
+        for _ in range(exhausted_count):
+            self._add_player_block(state, block_gain)
         state.exhaust_events += exhausted_count
         self._mark_cards_unavailable(state, exhausted_cards)
         self._apply_sentinel_exhaust_energy(state, exhausted_cards)
