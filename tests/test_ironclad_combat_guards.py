@@ -398,6 +398,22 @@ def _transient_attack(current_hp=999, move_adjusted_damage=50):
     return monster
 
 
+def _spire_growth_constrict(current_hp=180):
+    return Monster(
+        name="Spire Growth",
+        monster_id="SpireGrowth",
+        max_hp=180,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK_DEBUFF,
+        half_dead=False,
+        is_gone=False,
+        move_id=2,
+        move_adjusted_damage=10,
+        move_hits=1,
+    )
+
+
 def _acid_slime_l(current_hp=30, max_hp=65):
     return Monster(
         name="Acid Slime (L)",
@@ -1624,6 +1640,31 @@ def test_enemy_lookahead_counts_predicted_unknown_damage_move():
     )
 
     assert future_damage == 30
+
+
+def test_enemy_lookahead_counts_constrict_move_future_constricted_loss():
+    context = _combat_context([], energy=0, monsters=[_spire_growth_constrict()])
+    context.turn = 1
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._current_monster_move = lambda *_args, **_kwargs: {
+        "name": "Constrict",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 10,
+        "constricted": 10,
+    }
+    simulator._predicted_monster_move_for_step = lambda *_args, **_kwargs: {
+        "name": "No Damage Followup",
+        "intent": "BUFF",
+        "damage": 0,
+    }
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=2,
+    )
+
+    assert future_damage == 10 + int(10 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
 
 
 def test_transient_shifting_reduces_current_attack_after_attack_damage():

@@ -2226,6 +2226,29 @@ class FastCombatSimulator:
             strength_gain,
         ))
 
+    def _extract_move_constricted(
+        self,
+        move: Dict[str, Any],
+        context: Optional[DecisionContext] = None,
+    ) -> int:
+        """Extract Constricted stacks applied to the player from a monster move."""
+        constricted = 0
+        for key in ('constricted', 'constricted_applied', 'constricted_amount'):
+            constricted = self._positive_numeric_move_value(move.get(key))
+            if constricted > 0:
+                break
+        if constricted <= 0 or context is None:
+            return constricted
+
+        for key in ('constricted', 'constricted_applied', 'constricted_amount'):
+            constricted = self._apply_ascension_move_value(
+                move,
+                context,
+                key,
+                constricted,
+            )
+        return max(0, constricted)
+
     def _positive_numeric_move_value(self, value: Any) -> int:
         if isinstance(value, bool):
             return 0
@@ -3381,13 +3404,19 @@ class FastCombatSimulator:
             player_vulnerable = lookahead_state.player_vulnerable
             player_weak = lookahead_state.player_weak
             player_frail = lookahead_state.player_frail
+            player_constricted = max(0, getattr(lookahead_state, 'player_constricted', 0))
             player_artifact = max(0, getattr(lookahead_state, 'player_artifact', 0))
 
             for step in range(look_ahead):
                 turn_damage = 0
                 pending_debuffs = {'weak': 0, 'frail': 0, 'vulnerable': 0}
+                pending_constricted = 0
                 any_predictions = False
                 split_due_this_turn = False
+
+                if step > 0 and player_constricted > 0:
+                    discount = LOOKAHEAD_DAMAGE_DISCOUNT ** step
+                    turn_damage += int(player_constricted * discount)
 
                 for idx, monster in enumerate(lookahead_state.monsters):
                     if not self._is_live_monster_state(monster):
@@ -3466,6 +3495,12 @@ class FastCombatSimulator:
                             move_debuffs,
                             player_artifact,
                         )
+                        constricted = self._extract_move_constricted(move, context)
+                        if constricted > 0:
+                            if player_artifact > 0:
+                                player_artifact -= 1
+                            else:
+                                pending_constricted += constricted
                         all_enemies_strength_gain = (
                             self._extract_move_all_enemies_strength_gain(move, context)
                         )
@@ -3520,12 +3555,14 @@ class FastCombatSimulator:
                 player_vulnerable = max(0, player_vulnerable + pending_debuffs['vulnerable'] - 1)
                 player_weak = max(0, player_weak + pending_debuffs['weak'] - 1)
                 player_frail = max(0, player_frail + pending_debuffs['frail'] - 1)
+                player_constricted = max(0, player_constricted + pending_constricted)
+                lookahead_state.player_constricted = player_constricted
                 self._decrement_monster_turn_debuffs(lookahead_state)
                 self._apply_monster_end_turn_strength_gains(lookahead_state)
 
                 logger.debug(
                     f"[LOOKAHEAD_TURN] step={step + 1} damage={turn_damage} "
-                    f"debuffs=V{player_vulnerable}/W{player_weak}/F{player_frail}"
+                    f"debuffs=V{player_vulnerable}/W{player_weak}/F{player_frail}/C{player_constricted}"
                 )
 
                 if split_due_this_turn:
