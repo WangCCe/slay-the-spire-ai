@@ -689,6 +689,41 @@ def test_fungi_beast_death_applies_vulnerable_to_player():
     assert result.player_vulnerable_added == 2
 
 
+def test_fungi_beast_death_effect_uses_live_monster_id(monkeypatch):
+    class CanonicalOnlyDeathEffectLoader:
+        def __init__(self):
+            self.data_names = []
+
+        def get_enhanced_monster_data(self, monster_name):
+            self.data_names.append(monster_name)
+            if monster_name == "Fungi Beast":
+                return {
+                    "special_mechanics": {
+                        "death_effect": {
+                            "type": "apply_vulnerable",
+                            "amount": 2,
+                        }
+                    }
+                }
+            return None
+
+    monster_loader = CanonicalOnlyDeathEffectLoader()
+    monkeypatch.setattr(simulation, "game_data_loader", monster_loader)
+    fungi_beast = _fungi_beast(current_hp=6)
+    fungi_beast.name = "FungiBeast"
+    context = _combat_context([], energy=0, monsters=[fungi_beast])
+    state = SimulationState(context)
+
+    FastCombatSimulator(SynergyCardEvaluator())._apply_monster_death_effects(
+        state,
+        state.monsters[0],
+    )
+
+    assert state.player_vulnerable == 2
+    assert state.player_vulnerable_added == 2
+    assert monster_loader.data_names == ["Fungi Beast"]
+
+
 def test_fungi_beast_death_vulnerable_consumes_player_artifact():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context(

@@ -1961,7 +1961,7 @@ class FastCombatSimulator:
             return
         monster['death_effect_applied'] = True
 
-        monster_name = monster.get('name', '')
+        monster_name = _canonical_live_monster_name(monster)
         if not monster_name:
             return
 
