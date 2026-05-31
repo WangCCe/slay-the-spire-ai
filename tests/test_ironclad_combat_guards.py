@@ -1404,6 +1404,112 @@ def test_dark_embrace_draws_for_exhaust_events(monkeypatch):
     assert result.cards_drawn == 1
 
 
+def test_played_feel_no_pain_stacks_with_existing_power(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "seeing red": {
+            "name": "Seeing Red",
+            "description": "Gain [R] [R].\nExhaust.",
+        }
+    }
+    loader._wiki_data = {
+        "seeing red": {
+            "name": "Seeing Red",
+            "text": "Gain <R> <R>.\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    feel_no_pain = _card(
+        "Feel No Pain",
+        "Feel No Pain",
+        card_type=CardType.POWER,
+        cost=1,
+        has_target=False,
+    )
+    seeing_red = _card(
+        "Seeing Red",
+        "Seeing Red",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    context = _combat_context([feel_no_pain, seeing_red], energy=2, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        feel_no_pain,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        seeing_red,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert state.feel_no_pain_block_per_exhaust == 6
+    assert result.exhaust_events == 1
+    assert result.player_block == 6
+
+
+def test_played_dark_embrace_stacks_with_existing_power(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "seeing red": {
+            "name": "Seeing Red",
+            "description": "Gain [R] [R].\nExhaust.",
+        }
+    }
+    loader._wiki_data = {
+        "seeing red": {
+            "name": "Seeing Red",
+            "text": "Gain <R> <R>.\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    dark_embrace = _card(
+        "Dark Embrace",
+        "Dark Embrace",
+        card_type=CardType.POWER,
+        cost=2,
+        has_target=False,
+    )
+    seeing_red = _card(
+        "Seeing Red",
+        "Seeing Red",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    context = _combat_context([dark_embrace, seeing_red], energy=3, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Dark Embrace", amount=1)]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        dark_embrace,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        seeing_red,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert state.dark_embrace_draw_per_exhaust == 2
+    assert result.exhaust_events == 1
+    assert result.cards_drawn == 2
+
+
 def test_metallicize_tracks_end_turn_block_without_body_slam_block(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

@@ -2328,11 +2328,11 @@ class FastCombatSimulator:
 
         # Feel No Pain - gain block when cards exhaust
         elif card_id == 'Feel No Pain':
-            state.feel_no_pain_block_per_exhaust = 4 if card.upgrades > 0 else 3
+            state.feel_no_pain_block_per_exhaust += 4 if card.upgrades > 0 else 3
 
         # Dark Embrace - draw when cards exhaust
         elif card_id == 'Dark Embrace':
-            state.dark_embrace_draw_per_exhaust = 1
+            state.dark_embrace_draw_per_exhaust += 1
 
         # Metallicize - end-turn block applies before enemies attack, but not immediately.
         elif card_id == 'Metallicize':
