@@ -623,6 +623,29 @@ class EnhancedMonsterDatabase:
                         })
                     continue
 
+                pre_entangle_sequence = self._pre_entangle_sequence(pattern, ascension_level)
+                if pre_entangle_sequence and target_turn > opening_length:
+                    sequence_index = (target_turn - opening_length - 1) % len(pre_entangle_sequence)
+                    entangle_chance = pattern.get("entangle_trigger_chance", 0)
+                    if not isinstance(entangle_chance, (int, float)):
+                        entangle_chance = 0
+                    self._append_named_move_prediction(
+                        predictions,
+                        monster_name,
+                        pre_entangle_sequence[sequence_index],
+                        target_turn,
+                        confidence=max(0.0, 1.0 - entangle_chance),
+                    )
+                    if entangle_chance > 0:
+                        self._append_named_move_prediction(
+                            predictions,
+                            monster_name,
+                            "Entangle",
+                            target_turn,
+                            confidence=entangle_chance,
+                        )
+                    continue
+
                 turn_options = pattern.get(f"turn_{target_turn}_options", [])
                 if isinstance(turn_options, list) and turn_options:
                     confidence = 1.0 / len(turn_options)
@@ -822,6 +845,25 @@ class EnhancedMonsterDatabase:
             return [value]
         if isinstance(value, list):
             return [move for move in value if isinstance(move, str)]
+        return []
+
+    def _pre_entangle_sequence(
+        self,
+        pattern: Dict[str, Any],
+        ascension_level: int,
+    ) -> List[str]:
+        pre_entangle = pattern.get("pre_entangle_pattern")
+        if not isinstance(pre_entangle, dict):
+            return []
+
+        if ascension_level >= 17:
+            sequence = pre_entangle.get("ascension_17+")
+            if isinstance(sequence, list):
+                return self._move_sequence_from_value(sequence)
+
+        sequence = pre_entangle.get("below_A17")
+        if isinstance(sequence, list):
+            return self._move_sequence_from_value(sequence)
         return []
 
     def _append_probability_predictions(

@@ -231,3 +231,37 @@ def test_initial_move_is_not_duplicated_when_opening_already_predicts_it():
         (2, "Fireball"),
         (3, "Buff"),
     ]
+
+
+def test_red_slaver_predicts_pre_entangle_sequence_after_opening():
+    database = EnhancedMonsterDatabase()
+
+    below_a17 = database.predict_next_moves(
+        "Red Slaver",
+        current_turn=2,
+        monster_hp_percent=1.0,
+        ascension_level=0,
+    )
+    asc17 = database.predict_next_moves(
+        "Red Slaver",
+        current_turn=2,
+        monster_hp_percent=1.0,
+        ascension_level=17,
+    )
+
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in below_a17
+    ] == [
+        (2, "Scrape", 0.75),
+        (2, "Entangle", 0.25),
+        (3, "Scrape", 0.75),
+    ]
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in asc17
+    ] == [
+        (2, "Scrape", 0.75),
+        (2, "Entangle", 0.25),
+        (3, "Stab", 0.75),
+    ]
