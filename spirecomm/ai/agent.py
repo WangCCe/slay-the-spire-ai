@@ -1220,11 +1220,21 @@ class TurnPlanSignature:
 
     @staticmethod
     def _card_signature(card):
+        card_identity = None
         for attr in ("uuid", "card_id", "name"):
             value = getattr(card, attr, None)
             if value:
-                return value
-        return id(card)
+                card_identity = value
+                break
+        if card_identity is None:
+            card_identity = id(card)
+        return (
+            card_identity,
+            getattr(card, "upgrades", 0),
+            getattr(card, "cost", None),
+            getattr(card, "cost_for_turn", getattr(card, "cost", None)),
+            getattr(card, "is_playable", None),
+        )
 
     @staticmethod
     def _powers_signature(powers):

@@ -4,8 +4,16 @@ from spirecomm.ai.agent import OptimizedAgent, TurnPlanSignature
 from spirecomm.spire.character import Intent
 
 
-def _card(card_id, name, uuid=None):
-    return SimpleNamespace(card_id=card_id, name=name, uuid=uuid)
+def _card(card_id, name, uuid=None, cost=1, cost_for_turn=None, upgrades=0, is_playable=True):
+    return SimpleNamespace(
+        card_id=card_id,
+        name=name,
+        uuid=uuid,
+        cost=cost,
+        cost_for_turn=cost if cost_for_turn is None else cost_for_turn,
+        upgrades=upgrades,
+        is_playable=is_playable,
+    )
 
 
 def _power(power_id, amount):
@@ -137,3 +145,29 @@ def test_turn_plan_signature_distinguishes_monster_power_changes():
     )
 
     assert normal_signature != weak_signature
+
+
+def test_turn_plan_signature_distinguishes_hand_card_cost_and_upgrade_changes():
+    base_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike", uuid="strike-1", cost=1, cost_for_turn=1)])
+    )
+    discounted_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike", uuid="strike-1", cost=1, cost_for_turn=0)])
+    )
+    upgraded_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike", uuid="strike-1", cost=1, cost_for_turn=1, upgrades=1)])
+    )
+
+    assert base_signature != discounted_signature
+    assert base_signature != upgraded_signature
+
+
+def test_turn_plan_signature_distinguishes_hand_card_playability_changes():
+    playable_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike", uuid="strike-1", is_playable=True)])
+    )
+    unplayable_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike", uuid="strike-1", is_playable=False)])
+    )
+
+    assert playable_signature != unplayable_signature
