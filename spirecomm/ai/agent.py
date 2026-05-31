@@ -1626,9 +1626,7 @@ class OptimizedAgent(SimpleAgent):
 
         Returns True if any of the following conditions are met:
         - No previous signature (first time planning this turn)
-        - Hand cards changed (card draws, exhausts, generation)
-        - Energy changed (Bloodletting, potions, etc.)
-        - Monster states changed (deaths, intent changes)
+        - Any signed combat state changed (hand, player state, energy, monsters)
         - Random effects occurred (shuffle, random targeting)
 
         Args:
@@ -1641,20 +1639,9 @@ class OptimizedAgent(SimpleAgent):
         if self.current_plan_signature is None:
             return True
 
-        # Check for basic state mismatches
-        if self.current_plan_signature.hand_cards != current_signature.hand_cards:
-            # Cards drawn, exhausted, or generated
-            return True
-
-        if self.current_plan_signature.energy != current_signature.energy:
-            # Energy changed (Bloodletting, Energy potion, etc.)
-            return True
-
-        if (
-            self.current_plan_signature.monster_signature
-            != current_signature.monster_signature
-        ):
-            # Monster state changed (death, block, intent)
+        # Check for any signed state mismatch. Keep this centralized so adding
+        # fields to TurnPlanSignature automatically invalidates stale plans.
+        if self.current_plan_signature != current_signature:
             return True
 
         # Check for random events

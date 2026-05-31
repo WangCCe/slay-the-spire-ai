@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from spirecomm.ai.agent import TurnPlanSignature
+from spirecomm.ai.agent import OptimizedAgent, TurnPlanSignature
 from spirecomm.spire.character import Intent
 
 
@@ -84,3 +84,20 @@ def test_turn_plan_signature_distinguishes_player_hp_and_block_changes():
 
     assert healthy_signature != wounded_signature
     assert healthy_signature != blocked_signature
+
+
+def test_should_replan_when_player_hp_or_block_changes():
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.current_plan_signature = TurnPlanSignature(
+        _game([_card("Defend_R", "Defend")], current_hp=70, block=0)
+    )
+
+    wounded_signature = TurnPlanSignature(
+        _game([_card("Defend_R", "Defend")], current_hp=12, block=0)
+    )
+    blocked_signature = TurnPlanSignature(
+        _game([_card("Defend_R", "Defend")], current_hp=70, block=18)
+    )
+
+    assert agent.should_replan(wounded_signature)
+    assert agent.should_replan(blocked_signature)
