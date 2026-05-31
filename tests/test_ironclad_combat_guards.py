@@ -3219,6 +3219,8 @@ def test_counted_upgraded_block_skill_uses_upgrade_block_value(monkeypatch):
     )
 
     assert result.player_block == 20
+    assert result.status_cards_added == 2
+    assert result.dazed_cards_added == 0
 
 
 def test_block_skill_ignores_stale_zero_block_attribute(monkeypatch):
@@ -3928,6 +3930,31 @@ def test_upgraded_single_hit_attacks_use_exported_damage_bonus(monkeypatch):
 
         assert result.total_damage_dealt == expected_damage
         assert result.damage_instances == 1
+
+
+def test_reckless_charge_tracks_dazed_pollution(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "reckless charge": {
+            "name": "Reckless Charge",
+            "description": "Deal 7 damage.\nShuffle a Dazed into your draw pile.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    reckless_charge = _card("Reckless Charge", "Reckless Charge", cost=1)
+    context = _combat_context([reckless_charge], energy=1, monsters=[_louse(current_hp=100)])
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        reckless_charge,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.status_cards_added == 1
+    assert result.dazed_cards_added == 1
 
 
 def test_heavy_blade_uses_strength_multiplier_and_static_base_damage(monkeypatch):

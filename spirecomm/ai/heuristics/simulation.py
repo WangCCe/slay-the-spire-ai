@@ -1115,6 +1115,7 @@ class FastCombatSimulator:
         self._apply_attack_draw_effects(state, card, card_data)
         self._apply_attack_block_effects(state, card, card_data)
         self._apply_attack_exhaust_effects(state, card, context, card_data)
+        self._apply_card_status_pollution(state, card, card_data)
 
     def _get_attack_hit_count(
         self,
@@ -1651,6 +1652,51 @@ class FastCombatSimulator:
             pass
 
         return card_data.get('description', '').lower()
+
+    def _extract_card_status_pollution(self, description: str, upgraded: bool = False) -> Dict[str, int]:
+        text = self._effect_text_for_upgrade(description, upgraded).lower()
+        text = text.replace('#', '').replace('*', '')
+        status_patterns = {
+            'dazed': r'dazed',
+            'burn': r'burns?',
+            'slimed': r'slimed',
+            'wound': r'wounds?',
+        }
+        counts = {}
+        for status, pattern in status_patterns.items():
+            total = 0
+            for match in re.finditer(
+                rf'\b(?:add|shuffle)\s+(?:(\d+)|a|an)\s+{pattern}\b',
+                text,
+                re.IGNORECASE,
+            ):
+                total += int(match.group(1) or 1)
+            counts[status] = total
+        counts['total'] = sum(counts.values())
+        return counts
+
+    def _apply_card_status_pollution(
+        self,
+        state: SimulationState,
+        card: Card,
+        card_data: Optional[Dict[str, Any]] = None,
+    ):
+        card_name = _canonical_card_name(card)
+        if card_data is None:
+            card_data = game_data_loader.get_card_data(card_name)
+        if not card_data:
+            return
+
+        description = self._get_card_effect_text(card_name, card_data)
+        counts = self._extract_card_status_pollution(
+            description,
+            getattr(card, 'upgrades', 0) > 0,
+        )
+        if counts['total'] <= 0:
+            return
+
+        state.status_cards_added += counts['total']
+        state.dazed_cards_added += counts['dazed']
 
     def _extract_debuff_stacks(self, description: str, keyword: str, upgraded: bool) -> Optional[int]:
         """Extract debuff stacks from card description for a keyword."""
@@ -2226,6 +2272,8 @@ class FastCombatSimulator:
                     )
         except:
             pass
+
+        self._apply_card_status_pollution(state, card)
 
         if _canonical_card_name(card) == 'Battle Trance':
             state.draw_blocked = True
