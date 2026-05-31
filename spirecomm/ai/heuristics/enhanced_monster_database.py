@@ -827,7 +827,7 @@ class EnhancedMonsterDatabase:
                         })
                         break
 
-        return predictions[:3]  # Return at most 3 predictions
+        return self._limit_predictions_with_boundary_ties(predictions)
 
     def _get_threshold_phase(
         self,
@@ -874,6 +874,22 @@ class EnhancedMonsterDatabase:
         if "taunt_every_4_turns" in normalized_constraints and target_turn % 4 == 0:
             return "Taunt"
         return None
+
+    def _limit_predictions_with_boundary_ties(
+        self,
+        predictions: List[Dict[str, Any]],
+        limit: int = 3,
+    ) -> List[Dict[str, Any]]:
+        if len(predictions) <= limit:
+            return predictions
+
+        limited = predictions[:limit]
+        boundary_turn = limited[-1].get("turn")
+        for prediction in predictions[limit:]:
+            if prediction.get("turn") != boundary_turn:
+                break
+            limited.append(prediction)
+        return limited
 
     def _append_named_move_prediction(
         self,

@@ -196,6 +196,32 @@ def test_looter_and_mugger_predict_turn_three_options():
     ] == ["Lunge", "Smoke Bomb"]
 
 
+def test_looter_and_mugger_keep_turn_three_options_in_opening_window():
+    database = EnhancedMonsterDatabase()
+
+    looter_opening = database.predict_next_moves(
+        "Looter",
+        current_turn=1,
+        monster_hp_percent=1.0,
+    )
+    mugger_opening = database.predict_next_moves(
+        "Mugger",
+        current_turn=1,
+        monster_hp_percent=1.0,
+    )
+
+    assert [
+        prediction["move"]["name"]
+        for prediction in looter_opening
+        if prediction["turn"] == 3
+    ] == ["Lunge", "Smoke Bomb"]
+    assert [
+        prediction["move"]["name"]
+        for prediction in mugger_opening
+        if prediction["turn"] == 3
+    ] == ["Lunge", "Smoke Bomb"]
+
+
 def test_initial_move_probabilities_start_after_opening_turn():
     database = EnhancedMonsterDatabase()
 
@@ -257,6 +283,7 @@ def test_red_slaver_predicts_pre_entangle_sequence_after_opening():
         (2, "Scrape", 0.75),
         (2, "Entangle", 0.25),
         (3, "Scrape", 0.75),
+        (3, "Entangle", 0.25),
     ]
     assert [
         (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
@@ -265,6 +292,7 @@ def test_red_slaver_predicts_pre_entangle_sequence_after_opening():
         (2, "Scrape", 0.75),
         (2, "Entangle", 0.25),
         (3, "Stab", 0.75),
+        (3, "Entangle", 0.25),
     ]
 
 
