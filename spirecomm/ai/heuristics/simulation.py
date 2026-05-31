@@ -3556,6 +3556,8 @@ class FastCombatSimulator:
                                     monster,
                                     strength_gain,
                                 )
+                        if self._move_clears_monster_debuffs(move):
+                            self._clear_monster_debuffs(monster)
                     else:
                         has_adjusted_damage = 'move_adjusted_damage' in monster
                         adjusted_damage = monster.get('move_adjusted_damage', None)
@@ -3654,6 +3656,22 @@ class FastCombatSimulator:
             monster.get('_simulated_strength_delta', 0) + strength_gain
         )
         self._refresh_monster_adjusted_damage_from_debuffs(monster)
+
+    def _move_clears_monster_debuffs(self, move: Dict[str, Any]) -> bool:
+        if move.get('clears_debuffs') or move.get('removes_debuffs'):
+            return True
+        effect = str(move.get('effect') or move.get('description') or '')
+        return bool(re.search(r'\b(?:removes?|clears?)\s+all\s+debuffs\b', effect, re.IGNORECASE))
+
+    def _clear_monster_debuffs(self, monster: dict):
+        changed = False
+        for debuff in ('weak', 'vulnerable', 'frail'):
+            if monster.get(debuff, 0) > 0:
+                monster[debuff] = 0
+                changed = True
+        if changed:
+            monster.pop('_simulated_weak_applied_to_attack', None)
+            self._refresh_monster_adjusted_damage_from_debuffs(monster)
 
     def simulate_enemy_status_lookahead(
         self,

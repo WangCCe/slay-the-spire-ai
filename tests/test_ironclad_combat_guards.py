@@ -1929,6 +1929,27 @@ def test_live_champ_transition_buff_resolves_to_anger_despite_live_move_id():
     assert move["strength_gain"] == 6
 
 
+def test_champ_anger_clears_weak_before_future_execute_damage():
+    context = _combat_context([], energy=0, monsters=[_champ_transition()])
+    context.turn = 8
+    context.weak_stacks[0] = 2
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._predicted_monster_move_for_step = lambda *_args, **_kwargs: {
+        "name": "Execute",
+        "intent": "ATTACK",
+        "damage": 10,
+        "hits": 2,
+    }
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=2,
+    )
+
+    assert future_damage == int(32 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
+
+
 def test_live_move_resolution_ignores_damage_matching_for_negated_attack_intent():
     simulator = FastCombatSimulator(SynergyCardEvaluator())
 
