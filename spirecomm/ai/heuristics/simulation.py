@@ -2374,6 +2374,9 @@ class FastCombatSimulator:
         monster['hp'] -= hp_damage
         state.total_damage_dealt += hp_damage
 
+        if trigger_thorns and hp_damage > 0 and monster['hp'] > 0:
+            self._apply_shifting_strength_loss(monster, hp_damage)
+
         if trigger_thorns and damage > 0:
             # Apply thorns/Sharp Hide as fixed damage per attack hit.
             thorns = monster.get('thorns', 0)
@@ -2390,6 +2393,35 @@ class FastCombatSimulator:
         if monster['hp'] <= 0:
             self._apply_monster_death_effects(state, monster)
             self._mark_monster_defeated(state, monster)
+
+    def _apply_shifting_strength_loss(self, monster: dict, hp_damage: int):
+        if hp_damage <= 0 or not self._has_shifting_strength_loss(monster):
+            return
+
+        self._remember_monster_adjusted_damage_source(monster)
+        monster['_simulated_strength_delta'] = (
+            monster.get('_simulated_strength_delta', 0) - hp_damage
+        )
+        monster['_simulated_temporary_strength_delta'] = (
+            monster.get('_simulated_temporary_strength_delta', 0) - hp_damage
+        )
+        self._refresh_monster_adjusted_damage_from_debuffs(monster)
+
+    def _has_shifting_strength_loss(self, monster: dict) -> bool:
+        monster_name = _canonical_live_monster_name(monster)
+        if not monster_name:
+            return False
+
+        try:
+            monster_data = game_data_loader.get_enhanced_monster_data(monster_name)
+        except Exception:
+            monster_data = None
+
+        mechanics = (monster_data or {}).get('special_mechanics', {}) or {}
+        return (
+            mechanics.get('type') == 'fading_shifting'
+            and bool(mechanics.get('shifting'))
+        ) or monster_name == 'Transient'
 
     def _mark_monster_defeated(self, state: SimulationState, monster: dict):
         if self._has_life_link(monster):

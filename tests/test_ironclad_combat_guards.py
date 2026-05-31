@@ -380,6 +380,24 @@ def _exploder_explode(current_hp=30):
     )
 
 
+def _transient_attack(current_hp=999, move_adjusted_damage=50):
+    monster = Monster(
+        name="Transient",
+        monster_id="Transient",
+        max_hp=999,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=0,
+        move_adjusted_damage=move_adjusted_damage,
+        move_hits=1,
+    )
+    monster.move_base_damage = move_adjusted_damage
+    return monster
+
+
 def _acid_slime_l(current_hp=30, max_hp=65):
     return Monster(
         name="Acid Slime (L)",
@@ -1537,6 +1555,26 @@ def test_enemy_lookahead_counts_predicted_unknown_damage_move():
     )
 
     assert future_damage == 30
+
+
+def test_transient_shifting_reduces_current_attack_after_attack_damage():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_transient_attack()])
+    context.turn = 3
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 6
+    assert result.monsters[0]["move_adjusted_damage"] == 44
+    assert simulator._estimate_incoming_damage(result.monsters) == 44
+    assert simulator.simulate_enemy_lookahead(result, context, look_ahead=1) == 44
 
 
 def test_enemy_lookahead_applies_ascension_ritual_gain_to_future_attacks():
