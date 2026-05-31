@@ -1549,6 +1549,70 @@ def test_metallicize_tracks_end_turn_block_without_body_slam_block(monkeypatch):
     assert result.total_damage_dealt == 0
 
 
+def test_existing_juggernaut_deals_damage_when_skill_gains_block():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend.block = 5
+    context = _combat_context([defend], energy=1, monsters=[_louse(current_hp=20)])
+    context.game.player.powers = [SimpleNamespace(power_name="Juggernaut", amount=5)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        defend,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 5
+    assert result.total_damage_dealt == 5
+    assert result.monsters[0]["hp"] == 15
+
+
+def test_played_juggernaut_deals_damage_on_followup_block():
+    juggernaut = _card(
+        "Juggernaut",
+        "Juggernaut",
+        card_type=CardType.POWER,
+        cost=2,
+        has_target=False,
+    )
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend.block = 5
+    context = _combat_context([juggernaut, defend], energy=3, monsters=[_louse(current_hp=20)])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        juggernaut,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        defend,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 5
+    assert result.total_damage_dealt == 5
+    assert result.monsters[0]["hp"] == 15
+
+
 def test_rupture_gains_strength_once_when_card_loses_hp(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

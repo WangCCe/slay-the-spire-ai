@@ -487,6 +487,9 @@ class SimulationState:
         self.corruption_active = self._has_player_power(context, 'Corruption')
         self.feel_no_pain_block_per_exhaust = self._get_player_power_amount(context, 'Feel No Pain')
         self.dark_embrace_draw_per_exhaust = self._get_player_power_amount(context, 'Dark Embrace')
+        self.juggernaut_damage_on_block = self._get_player_power_amount(context, 'Juggernaut')
+        if self.juggernaut_damage_on_block <= 0 and self._has_player_power(context, 'Juggernaut'):
+            self.juggernaut_damage_on_block = 5
         self.rupture_strength_per_hp_loss = self._get_player_power_amount(context, 'Rupture')
         if self.rupture_strength_per_hp_loss <= 0 and self._has_player_power(context, 'Rupture'):
             self.rupture_strength_per_hp_loss = 1
@@ -683,6 +686,7 @@ class SimulationState:
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
             self.dark_embrace_draw_per_exhaust,
+            self.juggernaut_damage_on_block,
             self.rupture_strength_per_hp_loss,
             self.end_turn_aoe_damage,
             self.end_turn_hp_loss,
@@ -1258,7 +1262,10 @@ class FastCombatSimulator:
         if upgrades > 0:
             block_gain += BLOCK_UPGRADE_BONUS.get(card_name, 2)
 
-        state.player_block += self._apply_card_block_modifiers(block_gain, state)
+        self._add_player_block(
+            state,
+            self._apply_card_block_modifiers(block_gain, state),
+        )
 
     def _apply_attack_exhaust_effects(
         self,
@@ -1764,6 +1771,29 @@ class FastCombatSimulator:
             return int(block * 0.75)
         return block
 
+    def _add_player_block(self, state: SimulationState, block_gain: int):
+        if block_gain <= 0:
+            return
+        state.player_block += block_gain
+        self._apply_juggernaut_block_damage(state)
+
+    def _apply_juggernaut_block_damage(self, state: SimulationState):
+        damage = max(0, getattr(state, 'juggernaut_damage_on_block', 0))
+        if damage <= 0:
+            return
+
+        alive_monsters = [
+            monster
+            for monster in state.monsters
+            if self._is_live_monster_state(monster)
+        ]
+        if not alive_monsters:
+            return
+
+        monster = min(alive_monsters, key=lambda m: m.get('hp', 0))
+        self._deal_damage_to_monster(state, monster, damage, trigger_thorns=False)
+        state.damage_instances += 1
+
     def _apply_card_block_modifiers(self, block: int, state: SimulationState) -> int:
         """Apply player modifiers for block gained by a card."""
         block_with_dexterity = max(0, block + getattr(state, 'player_dexterity', 0))
@@ -2169,7 +2199,7 @@ class FastCombatSimulator:
             block_gain = card.block
             logger.debug(f"[BLOCK_SKILL] Using card.block attribute: {block_gain} for {card.card_id}")
             block_gain = self._apply_card_block_modifiers(block_gain, state)
-            state.player_block += block_gain
+            self._add_player_block(state, block_gain)
         else:
             # Check for X-block cards first
             if context is not None:
@@ -2183,7 +2213,7 @@ class FastCombatSimulator:
                     logger.debug(f"[BLOCK_X] X-block calculated: {block_gain} for {card.card_id}")
                     # Apply frail multiplier
                     block_gain = self._apply_card_block_modifiers(block_gain, state)
-                    state.player_block += block_gain
+                    self._add_player_block(state, block_gain)
                 else:
                     # Not an X-block card - try to get block from game data
                     # (needed because Card objects don't have block attribute set)
@@ -2215,7 +2245,7 @@ class FastCombatSimulator:
                                 logger.debug(f"[BLOCK_BASE] {card.card_id} (upgrades={upgrades}): {base_block} block")
 
                             block_gain = self._apply_card_block_modifiers(base_block, state)
-                            state.player_block += block_gain
+                            self._add_player_block(state, block_gain)
                         else:
                             logger.debug(f"[BLOCK_NONE] No block found for {card.card_id}")
                     else:
@@ -2334,6 +2364,10 @@ class FastCombatSimulator:
         elif card_id == 'Dark Embrace':
             state.dark_embrace_draw_per_exhaust += 1
 
+        # Juggernaut - damage a random enemy whenever block is gained.
+        elif card_id == 'Juggernaut':
+            state.juggernaut_damage_on_block += 7 if card.upgrades > 0 else 5
+
         # Metallicize - end-turn block applies before enemies attack, but not immediately.
         elif card_id == 'Metallicize':
             state.end_turn_block += 4 if card.upgrades > 0 else 3
@@ -2373,7 +2407,10 @@ class FastCombatSimulator:
             return
 
         block_gain = exhaust_delta * state.feel_no_pain_block_per_exhaust
-        state.player_block += self._apply_frail_block(block_gain, state.player_frail)
+        self._add_player_block(
+            state,
+            self._apply_frail_block(block_gain, state.player_frail),
+        )
 
     def _apply_dark_embrace_draw(self, state: SimulationState, starting_exhaust_events: int):
         exhaust_delta = state.exhaust_events - starting_exhaust_events
@@ -2494,7 +2531,7 @@ class FastCombatSimulator:
             self._apply_card_block_modifiers(block_per_card, state)
             * exhausted_count
         )
-        state.player_block += block_gain
+        self._add_player_block(state, block_gain)
         state.exhaust_events += exhausted_count
         self._mark_cards_unavailable(state, exhausted_cards)
         self._apply_sentinel_exhaust_energy(state, exhausted_cards)
@@ -2548,7 +2585,7 @@ class FastCombatSimulator:
         if state.rage_block_per_attack <= 0:
             return
         block_gain = self._apply_frail_block(state.rage_block_per_attack, state.player_frail)
-        state.player_block += block_gain
+        self._add_player_block(state, block_gain)
 
     def _apply_self_damage(self, state: SimulationState, card: Card):
         """Apply HP costs for cards that damage the player to fuel effects."""
@@ -4487,7 +4524,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                     potion.effect_value,
                 )
         elif potion.effect_type == 'block':
-            state.player_block += potion.effect_value
+            self.simulator._add_player_block(state, potion.effect_value)
         elif potion.effect_type in ['plated_armor', 'metallicize']:
             state.end_turn_block += potion.effect_value
         elif potion.effect_type == 'heal':
