@@ -1286,6 +1286,38 @@ def test_lagavulin_negated_attack_intent_does_not_wake_hibernation(monkeypatch):
     assert not state.monsters[0].get("is_awakened", False)
 
 
+def test_lagavulin_hibernation_handler_uses_live_monster_id(monkeypatch):
+    class CanonicalOnlyHibernationLoader:
+        def __init__(self):
+            self.data_names = []
+            self.hibernation_names = []
+
+        def get_enhanced_monster_data(self, monster_name):
+            self.data_names.append(monster_name)
+            if monster_name == "Lagavulin":
+                return {"special_mechanics": {"type": "hibernation"}}
+            return None
+
+        def is_monster_hibernating(self, monster_name, _turn):
+            self.hibernation_names.append(monster_name)
+            return monster_name == "Lagavulin"
+
+    monster_loader = CanonicalOnlyHibernationLoader()
+    monkeypatch.setattr(data_loader_module, "game_data_loader", monster_loader)
+    lagavulin = _lagavulin(intent="NOT_ATTACK", move_adjusted_damage=0)
+    lagavulin.name = ""
+    context = _combat_context([], energy=0, monsters=[lagavulin])
+    context.turn = 1
+    state = SimulationState(context)
+
+    FastCombatSimulator(SynergyCardEvaluator())._handle_hibernation(state, state.monsters[0])
+
+    assert state.monsters[0].get("is_hibernating", False)
+    assert not state.monsters[0].get("is_awakened", False)
+    assert monster_loader.data_names == ["Lagavulin"]
+    assert monster_loader.hibernation_names == ["Lagavulin"]
+
+
 def test_slime_boss_goop_spray_counts_slimed_status_from_effect_text():
     context = _combat_context(
         [],

@@ -17,6 +17,7 @@ LIVE_MONSTER_ID_TO_WIKI_NAME = {
     'fuzzylousedefensive': 'Green Louse',
     'jawworm': 'Jaw Worm',
     'gremlinnob': 'Gremlin Nob',
+    'lagavulin': 'Lagavulin',
     'slimeboss': 'Slime Boss',
     'sphericguardian': 'Spheric Guardian',
     'theguardian': 'The Guardian',

@@ -3422,7 +3422,7 @@ class FastCombatSimulator:
         try:
             from spirecomm.data.loader import game_data_loader
 
-            monster_name = monster.get('name', '')
+            monster_name = _canonical_live_monster_name(monster)
             if not monster_name:
                 return
 

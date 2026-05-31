@@ -24,6 +24,9 @@ def test_live_monster_name_normalization_covers_ids_when_display_name_missing():
     assert monster_names.canonical_live_monster_name(
         SimpleNamespace(name="", monster_id="AwakenedOne")
     ) == "Awakened One"
+    assert monster_names.canonical_live_monster_name(
+        SimpleNamespace(name="", monster_id="Lagavulin")
+    ) == "Lagavulin"
 
 
 def test_live_bronze_orb_id_reaches_enhanced_monster_data():
