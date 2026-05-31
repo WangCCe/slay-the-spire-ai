@@ -902,6 +902,9 @@ class FastCombatSimulator:
                 continue
 
             monster['strength'] = monster.get('strength', 0) + strength_gain
+            raw_damage = monster.get('move_adjusted_damage')
+            if self._monster_intends_attack(monster) and isinstance(raw_damage, (int, float)):
+                monster['move_adjusted_damage'] = max(0, raw_damage + strength_gain)
             logger.debug(
                 "[SKILL_REACTION] %s gained %s Strength from Skill",
                 monster.get('name', 'Unknown'),
@@ -2704,15 +2707,15 @@ class FastCombatSimulator:
                         damage_source = "fallback_normal"
                         logger.warning(f"[DAMAGE_FALLBACK] Monster '{monster_name}' using NORMAL fallback damage={damage} (no damage data available)")
 
-                # Adjust per-hit damage for monster Strength, including Strength Down.
-                strength = monster.get('strength', 0)
-                adjusted_damage = self._apply_monster_strength_to_per_hit_damage(damage, strength)
-                if adjusted_damage != damage:
-                    logger.debug(
-                        f"[DAMAGE_FALLBACK] Monster '{monster.get('name', 'Unknown')}' has Strength {strength}, "
-                        f"damage: {damage} -> {adjusted_damage}"
-                    )
-                    damage = adjusted_damage
+                if should_use_damage_fallback:
+                    strength = monster.get('strength', 0)
+                    adjusted_damage = self._apply_monster_strength_to_per_hit_damage(damage, strength)
+                    if adjusted_damage != damage:
+                        logger.debug(
+                            f"[DAMAGE_FALLBACK] Monster '{monster.get('name', 'Unknown')}' has Strength {strength}, "
+                            f"damage: {damage} -> {adjusted_damage}"
+                        )
+                        damage = adjusted_damage
                 damage = self._apply_monster_weak_to_per_hit_damage(
                     damage,
                     monster.get('weak', 0),
