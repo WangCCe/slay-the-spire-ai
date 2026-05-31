@@ -1173,7 +1173,7 @@ class TurnPlanSignature:
     Signature of turn state for cache validation and replan triggering.
 
     Tracks the game state when a plan was created to detect if the plan
-    becomes invalid due to card draws, monster deaths, energy changes, etc.
+    becomes invalid due to card draws, monster deaths, player damage, etc.
     """
 
     def __init__(self, game):
@@ -1184,8 +1184,14 @@ class TurnPlanSignature:
             for c in game.hand
         )
 
+        player = getattr(game, "player", None)
+
+        # Track player state that can change whether the cached plan is safe.
+        self.player_hp = getattr(game, "current_hp", getattr(player, "current_hp", None))
+        self.player_block = getattr(player, "block", getattr(game, "block", 0))
+
         # Track available energy
-        self.energy = game.player.energy if hasattr(game.player, "energy") else 3
+        self.energy = getattr(player, "energy", getattr(game, "energy", 3))
 
         # Track monster states
         if hasattr(game, "monsters") and game.monsters:
@@ -1224,6 +1230,8 @@ class TurnPlanSignature:
             return False
         return (
             self.hand_cards == other.hand_cards
+            and self.player_hp == other.player_hp
+            and self.player_block == other.player_block
             and self.energy == other.energy
             and self.monster_signature == other.monster_signature
             and self.has_drawn_cards == other.has_drawn_cards
@@ -1235,6 +1243,8 @@ class TurnPlanSignature:
         return hash(
             (
                 self.hand_cards,
+                self.player_hp,
+                self.player_block,
                 self.energy,
                 self.monster_signature,
                 self.has_drawn_cards,

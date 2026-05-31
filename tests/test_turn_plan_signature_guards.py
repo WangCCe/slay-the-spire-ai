@@ -22,10 +22,11 @@ def _monster(name="Cultist", monster_id="Cultist", move_adjusted_damage=12, move
     )
 
 
-def _game(hand, monster=None):
+def _game(hand, monster=None, current_hp=70, block=0):
     return SimpleNamespace(
         hand=hand,
-        player=SimpleNamespace(energy=3),
+        current_hp=current_hp,
+        player=SimpleNamespace(energy=3, block=block),
         monsters=[monster or _monster()],
     )
 
@@ -68,3 +69,18 @@ def test_turn_plan_signature_distinguishes_live_monster_identity_changes():
 
     assert cultist_signature.monster_signature != louse_signature.monster_signature
     assert cultist_signature != louse_signature
+
+
+def test_turn_plan_signature_distinguishes_player_hp_and_block_changes():
+    healthy_signature = TurnPlanSignature(
+        _game([_card("Defend_R", "Defend")], current_hp=70, block=0)
+    )
+    wounded_signature = TurnPlanSignature(
+        _game([_card("Defend_R", "Defend")], current_hp=12, block=0)
+    )
+    blocked_signature = TurnPlanSignature(
+        _game([_card("Defend_R", "Defend")], current_hp=70, block=18)
+    )
+
+    assert healthy_signature != wounded_signature
+    assert healthy_signature != blocked_signature
