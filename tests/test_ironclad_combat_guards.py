@@ -1261,6 +1261,26 @@ def test_enemy_status_lookahead_counts_sentry_bolt_dazed_cards():
     assert status["total"] == 4
 
 
+def test_enemy_status_card_extraction_uses_count_and_added_aliases_without_effect_text():
+    counts = FastCombatSimulator(SynergyCardEvaluator())._extract_move_status_cards(
+        {
+            "dazed_count": 1,
+            "burn_added": 2,
+            "slimed_count": 3,
+            "wound_added": 4,
+            "void_cards_added": 5,
+            "effect": "",
+        }
+    )
+
+    assert counts["dazed"] == 1
+    assert counts["burn"] == 2
+    assert counts["slimed"] == 3
+    assert counts["wound"] == 4
+    assert counts["void"] == 5
+    assert counts["total"] == 15
+
+
 def test_enemy_status_lookahead_applies_ascension_status_card_modifiers():
     context = _combat_context([], energy=0, monsters=[_sentry(move_id=1)])
     context.ascension_level = 18

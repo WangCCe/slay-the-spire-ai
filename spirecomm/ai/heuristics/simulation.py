@@ -2386,11 +2386,17 @@ class FastCombatSimulator:
         """Extract status cards added by a monster move from wiki data fields."""
         def _get_count(*keys: str) -> int:
             for key in keys:
+                if key not in move:
+                    continue
                 value = move.get(key, 0)
                 if isinstance(value, bool):
-                    return 1 if value else 0
+                    if value:
+                        return 1
+                    continue
                 if isinstance(value, (int, float)):
-                    return int(value)
+                    count = int(value)
+                    if count > 0:
+                        return count
             return 0
 
         def _parse_effect_count(card_name: str) -> int:
