@@ -709,10 +709,16 @@ class SimulationState:
             if not m['is_gone']  # Only include alive monsters
         ))
 
-        # Hand cards (multi-set - sorted list of card IDs)
+        # Hand cards (multi-set - sorted list of play-relevant card facts)
         # This represents what cards are available to play
         hand_key = tuple(sorted(
-            c.card_id for c in playable_cards
+            (
+                getattr(c, 'card_id', getattr(c, 'name', '')),
+                getattr(c, 'upgrades', 0),
+                getattr(c, 'cost', 0),
+                getattr(c, 'cost_for_turn', getattr(c, 'cost', 0)),
+            )
+            for c in playable_cards
             if id(c) not in self.played_card_uuids
             and (not getattr(c, 'uuid', None) or c.uuid not in self.played_card_uuids)
         ))

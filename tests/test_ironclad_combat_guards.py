@@ -3430,7 +3430,7 @@ def test_state_key_treats_uuid_marked_cards_as_unavailable():
 
     played_key = state.state_key(context.playable_cards)
     assert played_key != baseline_key
-    assert played_key[2] == ("Defend_R",)
+    assert [card_key[0] for card_key in played_key[2]] == ["Defend_R"]
 
 
 def test_second_wind_exhausting_sentinel_grants_energy():

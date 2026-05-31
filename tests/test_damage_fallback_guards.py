@@ -3832,6 +3832,57 @@ def test_state_key_distinguishes_engine_events_used_for_scoring():
     assert base_state.state_key([]) != event_state.state_key([])
 
 
+def test_state_key_distinguishes_remaining_duplicate_card_costs():
+    potion = Potion(
+        potion_id="FirePotion",
+        name="Fire Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=True,
+    )
+    cheap_strike = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        cost=1,
+        cost_for_turn=0,
+        uuid="cheap-strike",
+    )
+    expensive_strike = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        cost=1,
+        cost_for_turn=2,
+        uuid="expensive-strike",
+    )
+    context = _potion_projection_context(
+        potion,
+        cards=[cheap_strike, expensive_strike],
+        energy=1,
+    )
+    cheap_played_state = simulation.SimulationState(context)
+    expensive_played_state = cheap_played_state.clone()
+
+    cheap_played_state.played_card_uuids.add(id(cheap_strike))
+    expensive_played_state.played_card_uuids.add(id(expensive_strike))
+
+    def remaining_costs(state):
+        return [
+            HeuristicCombatPlanner._card_cost_for_state(card, state)
+            for card in context.playable_cards
+            if id(card) not in state.played_card_uuids
+        ]
+
+    assert remaining_costs(cheap_played_state) == [2]
+    assert remaining_costs(expensive_played_state) == [0]
+    assert cheap_played_state.state_key(context.playable_cards) != (
+        expensive_played_state.state_key(context.playable_cards)
+    )
+
+
 def test_simulation_state_includes_existing_plated_armor_end_turn_block():
     potion = Potion(
         potion_id="FirePotion",
