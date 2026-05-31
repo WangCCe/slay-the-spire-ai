@@ -8,8 +8,10 @@ def _card(card_id, name, uuid=None):
     return SimpleNamespace(card_id=card_id, name=name, uuid=uuid)
 
 
-def _monster(move_adjusted_damage=12, move_hits=1):
+def _monster(name="Cultist", monster_id="Cultist", move_adjusted_damage=12, move_hits=1):
     return SimpleNamespace(
+        name=name,
+        monster_id=monster_id,
         current_hp=40,
         block=0,
         intent=Intent.ATTACK,
@@ -51,3 +53,18 @@ def test_turn_plan_signature_distinguishes_live_monster_damage_changes():
     assert weaker_signature.monster_signature != multi_hit_signature.monster_signature
     assert weaker_signature != stronger_signature
     assert weaker_signature != multi_hit_signature
+
+
+def test_turn_plan_signature_distinguishes_live_monster_identity_changes():
+    cultist_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike")], monster=_monster(name="Cultist", monster_id="Cultist"))
+    )
+    louse_signature = TurnPlanSignature(
+        _game(
+            [_card("Strike_R", "Strike")],
+            monster=_monster(name="Louse", monster_id="FuzzyLouseNormal"),
+        )
+    )
+
+    assert cultist_signature.monster_signature != louse_signature.monster_signature
+    assert cultist_signature != louse_signature

@@ -1191,6 +1191,8 @@ class TurnPlanSignature:
         if hasattr(game, "monsters") and game.monsters:
             self.monster_signature = tuple(
                 (
+                    getattr(m, "monster_id", None),
+                    getattr(m, "name", None),
                     m.current_hp,
                     m.block if hasattr(m, "block") else 0,
                     str(m.intent) if hasattr(m, "intent") else None,
