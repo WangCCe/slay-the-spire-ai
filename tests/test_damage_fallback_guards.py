@@ -3854,6 +3854,50 @@ def test_state_key_handles_missing_or_numeric_monster_identity_fields():
     assert len(state.state_key([])[1]) == 3
 
 
+def test_state_key_handles_mixed_type_hand_card_key_fields():
+    potion = Potion(
+        potion_id="FirePotion",
+        name="Fire Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=True,
+    )
+    context = _potion_projection_context(potion)
+    state = simulation.SimulationState(context)
+    playable_cards = [
+        SimpleNamespace(
+            card_id=None,
+            name="Flex",
+            upgrades=0,
+            cost=0,
+            cost_for_turn=0,
+        ),
+        SimpleNamespace(
+            card_id=7,
+            name="Strike",
+            upgrades=0,
+            cost=1,
+            cost_for_turn=1,
+        ),
+        SimpleNamespace(
+            card_id="SameCard",
+            name="Same Card",
+            upgrades=None,
+            cost=None,
+            cost_for_turn=None,
+        ),
+        SimpleNamespace(
+            card_id="SameCard",
+            name="Same Card",
+            upgrades=1,
+            cost="1",
+            cost_for_turn="1",
+        ),
+    ]
+
+    assert len(state.state_key(playable_cards)[2]) == 4
+
+
 def test_state_key_distinguishes_engine_events_used_for_scoring():
     potion = Potion(
         potion_id="SwiftPotion",

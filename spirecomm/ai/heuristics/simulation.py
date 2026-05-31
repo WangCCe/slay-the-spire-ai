@@ -638,6 +638,21 @@ class SimulationState:
         Returns:
             Tuple containing (player_key, monster_key, hand_key)
         """
+        def sortable_value(value):
+            return (
+                value is None,
+                '' if value is None else str(value),
+            )
+
+        def sortable_text(value):
+            return '' if value is None else str(value)
+
+        def card_identity_for_key(card):
+            card_id = getattr(card, 'card_id', None)
+            if card_id is None:
+                card_id = getattr(card, 'name', '')
+            return sortable_text(card_id)
+
         # Player state (what matters for future decisions)
         player_key = (
             self.player_hp,
@@ -700,19 +715,10 @@ class SimulationState:
                 ),
                 m.get('move_hits', 1) or 1,
                 str(m['intent']) if m['intent'] else None,  # Convert intent to string
-                (
-                    m.get('move_id', None) is None,
-                    '' if m.get('move_id', None) is None else str(m.get('move_id', None)),
-                ),
+                sortable_value(m.get('move_id', None)),
                 m['is_gone'],
-                (
-                    m.get('monster_id', None) is None,
-                    '' if m.get('monster_id', None) is None else str(m.get('monster_id', None)),
-                ),
-                (
-                    m.get('name', None) is None,
-                    '' if m.get('name', None) is None else str(m.get('name', None)),
-                ),  # Include name for elite/boss identification
+                sortable_value(m.get('monster_id', None)),
+                sortable_value(m.get('name', None)),  # Include name for elite/boss identification
             )
             for m in self.monsters
             if not m['is_gone']  # Only include alive monsters
@@ -722,10 +728,10 @@ class SimulationState:
         # This represents what cards are available to play
         hand_key = tuple(sorted(
             (
-                getattr(c, 'card_id', getattr(c, 'name', '')),
-                getattr(c, 'upgrades', 0),
-                getattr(c, 'cost', 0),
-                getattr(c, 'cost_for_turn', getattr(c, 'cost', 0)),
+                card_identity_for_key(c),
+                sortable_text(getattr(c, 'upgrades', 0)),
+                sortable_text(getattr(c, 'cost', 0)),
+                sortable_text(getattr(c, 'cost_for_turn', getattr(c, 'cost', 0))),
             )
             for c in playable_cards
             if id(c) not in self.played_card_uuids
