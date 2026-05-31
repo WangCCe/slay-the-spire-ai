@@ -1,5 +1,8 @@
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
+from spirecomm.ai.heuristics.enhanced_monster_database import EnhancedMonsterDatabase
 from spirecomm.ai.heuristics.monster_database import (
     evaluate_monster_threat,
     get_monster_info,
@@ -57,3 +60,27 @@ def test_monster_database_threat_recognizes_live_red_slaver_id():
 
     assert get_monster_info("SlaverRed")["recommended_strategy"] == "priority_target"
     assert evaluate_monster_threat(monster, context) == 6
+
+
+def test_act3_elites_bosses_source_contains_only_act3_elites_and_bosses():
+    path = Path("spirecomm/data/monster_wiki_data/act3_elites_bosses.json")
+    data = json.loads(path.read_text(encoding="utf-8"))
+
+    assert set(data) == {
+        "Awakened One",
+        "Giant Head",
+        "Nemesis",
+        "Reptomancer",
+        "Time Eater",
+        "Donu & Deca",
+    }
+
+
+def test_enhanced_database_keeps_native_chosen_and_sentry_records():
+    database = EnhancedMonsterDatabase()
+
+    assert database.get_monster_data("Chosen")["monster_type"] == "normal"
+    assert database.get_monster_data("Sentry")["hp_ranges"]["normal"] == {
+        "min": 38,
+        "max": 42,
+    }
