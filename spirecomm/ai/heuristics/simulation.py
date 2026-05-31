@@ -3639,9 +3639,12 @@ class FastCombatSimulator:
             Total predicted damage over next N turns (discounted for uncertainty)
         """
         previous_prediction_context = getattr(self, "_prediction_context", None)
+        previous_prediction_monsters = getattr(self, "_prediction_monsters", None)
+        previous_prediction_monster = getattr(self, "_prediction_monster", None)
         self._prediction_context = context
         try:
             lookahead_state = state.clone()
+            self._prediction_monsters = lookahead_state.monsters
             logger.info(
                 "[LOOKAHEAD_ENTRY] turns=%s monsters=%s hp=%s/%s",
                 look_ahead,
@@ -3687,12 +3690,16 @@ class FastCombatSimulator:
                     hp_percent = monster['hp'] / max_hp if max_hp > 0 else 1.0
                     move = self._current_monster_move(monster) if step == 0 else None
                     if move is None:
-                        move = self._predicted_monster_move_for_step(
-                            monster_name,
-                            current_turn,
-                            step,
-                            hp_percent,
-                        )
+                        self._prediction_monster = monster
+                        try:
+                            move = self._predicted_monster_move_for_step(
+                                monster_name,
+                                current_turn,
+                                step,
+                                hp_percent,
+                            )
+                        finally:
+                            self._prediction_monster = previous_prediction_monster
                     if move:
                         any_predictions = True
 
@@ -3842,6 +3849,14 @@ class FastCombatSimulator:
                 self.__dict__.pop("_prediction_context", None)
             else:
                 self._prediction_context = previous_prediction_context
+            if previous_prediction_monsters is None:
+                self.__dict__.pop("_prediction_monsters", None)
+            else:
+                self._prediction_monsters = previous_prediction_monsters
+            if previous_prediction_monster is None:
+                self.__dict__.pop("_prediction_monster", None)
+            else:
+                self._prediction_monster = previous_prediction_monster
 
     def _apply_monster_end_turn_strength_gains(self, state: SimulationState):
         for monster in state.monsters:
@@ -3915,7 +3930,10 @@ class FastCombatSimulator:
             'draw_reduction': 0,
         }
         previous_prediction_context = getattr(self, "_prediction_context", None)
+        previous_prediction_monsters = getattr(self, "_prediction_monsters", None)
+        previous_prediction_monster = getattr(self, "_prediction_monster", None)
         self._prediction_context = context
+        self._prediction_monsters = state.monsters
         try:
             current_turn = getattr(context, 'turn', 1)
             player_artifact = max(0, getattr(state, 'player_artifact', 0))
@@ -3931,12 +3949,16 @@ class FastCombatSimulator:
                             continue
                         max_hp = monster.get('max_hp', monster['hp'])
                         hp_percent = monster['hp'] / max_hp if max_hp > 0 else 1.0
-                        move = self._predicted_monster_move_for_step(
-                            monster_name,
-                            current_turn,
-                            step,
-                            hp_percent,
-                        )
+                        self._prediction_monster = monster
+                        try:
+                            move = self._predicted_monster_move_for_step(
+                                monster_name,
+                                current_turn,
+                                step,
+                                hp_percent,
+                            )
+                        finally:
+                            self._prediction_monster = previous_prediction_monster
 
                     if not move:
                         continue
@@ -3998,6 +4020,14 @@ class FastCombatSimulator:
                 self.__dict__.pop("_prediction_context", None)
             else:
                 self._prediction_context = previous_prediction_context
+            if previous_prediction_monsters is None:
+                self.__dict__.pop("_prediction_monsters", None)
+            else:
+                self._prediction_monsters = previous_prediction_monsters
+            if previous_prediction_monster is None:
+                self.__dict__.pop("_prediction_monster", None)
+            else:
+                self._prediction_monster = previous_prediction_monster
 
     def _predicted_monster_move_for_step(
         self,
@@ -4046,6 +4076,7 @@ class FastCombatSimulator:
             )
             other_enemy_names = self._context_other_enemy_names(context, monster_name)
             other_enemy_count = len(other_enemy_names) if other_enemy_names is not None else None
+            same_monster_index = self._context_same_monster_index(context, monster_name)
             try:
                 return game_data_loader.predict_monster_moves(
                     monster_name,
@@ -4054,8 +4085,20 @@ class FastCombatSimulator:
                     ascension_level=ascension_level,
                     other_enemy_count=other_enemy_count,
                     other_enemy_names=other_enemy_names,
+                    same_monster_index=same_monster_index,
                 )
             except TypeError:
+                try:
+                    return game_data_loader.predict_monster_moves(
+                        monster_name,
+                        current_turn,
+                        hp_percent,
+                        ascension_level=ascension_level,
+                        other_enemy_count=other_enemy_count,
+                        other_enemy_names=other_enemy_names,
+                    )
+                except TypeError:
+                    pass
                 try:
                     return game_data_loader.predict_monster_moves(
                         monster_name,
@@ -4305,13 +4348,7 @@ class FastCombatSimulator:
         context: Optional[DecisionContext],
         monster_name: str,
     ) -> Optional[List[str]]:
-        if context is None:
-            return None
-
-        game = getattr(context, 'game', None)
-        monsters = getattr(game, 'monsters', None) if game is not None else None
-        if monsters is None:
-            monsters = getattr(context, 'monsters_alive', None)
+        monsters = self._context_prediction_monsters(context)
         if not monsters:
             return None
 
@@ -4324,6 +4361,45 @@ class FastCombatSimulator:
             if candidate_name and candidate_name != target_name:
                 other_names.append(_canonical_live_monster_name(monster))
         return other_names
+
+    def _context_same_monster_index(
+        self,
+        context: Optional[DecisionContext],
+        monster_name: str,
+    ) -> Optional[int]:
+        target_monster = getattr(self, "_prediction_monster", None)
+        if target_monster is None:
+            return None
+
+        monsters = self._context_prediction_monsters(context)
+        if not monsters:
+            return None
+
+        target_name = str(monster_name or '').lower()
+        same_name_index = 0
+        for monster in monsters:
+            if not self._is_live_context_monster(monster):
+                continue
+            candidate_name = str(_canonical_live_monster_name(monster) or '').lower()
+            if candidate_name != target_name:
+                continue
+            if monster is target_monster:
+                return same_name_index
+            same_name_index += 1
+        return None
+
+    def _context_prediction_monsters(self, context: Optional[DecisionContext]) -> Optional[List[Any]]:
+        prediction_monsters = getattr(self, "_prediction_monsters", None)
+        if prediction_monsters is not None:
+            return prediction_monsters
+        if context is None:
+            return None
+
+        game = getattr(context, 'game', None)
+        monsters = getattr(game, 'monsters', None) if game is not None else None
+        if monsters is None:
+            monsters = getattr(context, 'monsters_alive', None)
+        return monsters
 
     @staticmethod
     def _is_live_context_monster(monster: Any) -> bool:

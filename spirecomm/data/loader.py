@@ -966,6 +966,7 @@ class GameDataLoader:
         ascension_level: int = 0,
         other_enemy_count: int | None = None,
         other_enemy_names: list[str] | None = None,
+        same_monster_index: int | None = None,
     ) -> List[Dict[str, Any]]:
         """
         Predict next moves for a monster based on its Wiki pattern.
@@ -977,6 +978,7 @@ class GameDataLoader:
             ascension_level: Current ascension level (default 0)
             other_enemy_count: Number of other live enemies, if known
             other_enemy_names: Names of other live enemies, if known
+            same_monster_index: Zero-based position among live monsters with the same name
 
         Returns:
             List of predicted moves for next 3 turns with confidence scores
@@ -990,6 +992,7 @@ class GameDataLoader:
                 ascension_level=ascension_level,
                 other_enemy_count=other_enemy_count,
                 other_enemy_names=other_enemy_names,
+                same_monster_index=same_monster_index,
             )
         return []
 

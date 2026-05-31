@@ -1996,6 +1996,53 @@ def test_enemy_prediction_passes_other_enemy_names_to_loader(monkeypatch):
     ]
 
 
+def test_enemy_prediction_passes_same_monster_index_to_loader(monkeypatch):
+    class FakeLoader:
+        def __init__(self):
+            self.calls = []
+
+        def predict_monster_moves(
+            self,
+            monster_name,
+            current_turn,
+            hp_percent,
+            ascension_level=0,
+            other_enemy_count=None,
+            other_enemy_names=None,
+            same_monster_index=None,
+        ):
+            self.calls.append(
+                {
+                    "monster_name": monster_name,
+                    "current_turn": current_turn,
+                    "same_monster_index": same_monster_index,
+                }
+            )
+            return []
+
+    loader = FakeLoader()
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_sentry(current_hp=40), _sentry(current_hp=40)],
+    )
+    context.turn = 1
+
+    FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_status_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=2,
+    )
+
+    assert sorted({
+        call["same_monster_index"]
+        for call in loader.calls
+        if call["monster_name"] == "Sentry" and call["current_turn"] == 1
+        and call["same_monster_index"] is not None
+    }) == [0, 1]
+
+
 def test_enemy_lookahead_ignores_negated_attack_intent(monkeypatch):
     class FakeLoader:
         def get_enhanced_monster_data(self, _monster_name):

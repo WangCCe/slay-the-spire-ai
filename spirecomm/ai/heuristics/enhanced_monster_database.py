@@ -302,6 +302,7 @@ class EnhancedMonsterDatabase:
         ascension_level: int = 0,
         other_enemy_count: Optional[int] = None,
         other_enemy_names: Optional[List[str]] = None,
+        same_monster_index: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         Predict next moves for a monster based on its pattern.
@@ -313,6 +314,7 @@ class EnhancedMonsterDatabase:
             ascension_level: Current ascension level (default 0)
             other_enemy_count: Number of other live enemies, if known
             other_enemy_names: Names of other live enemies, if known
+            same_monster_index: Zero-based position among live monsters with the same name
 
         Returns:
             List of predicted moves for next 3 turns
@@ -443,8 +445,24 @@ class EnhancedMonsterDatabase:
                     moves,
                     probabilities,
                     current_turn,
-                    limit=len(probabilities),
-                )
+                limit=len(probabilities),
+            )
+
+        # Check for Sentry alternating pattern, whose opener depends on encounter position.
+        elif pattern.get("move_pattern") == "alternating":
+            sequence = self._alternating_move_sequence(
+                monster_name,
+                moves,
+                pattern,
+                other_enemy_names,
+                same_monster_index,
+            )
+            self._append_sequence_predictions(
+                predictions,
+                monster_name,
+                sequence,
+                current_turn,
+            )
 
         # Check for phase-based patterns
         elif "phases" in pattern:
@@ -965,6 +983,37 @@ class EnhancedMonsterDatabase:
             if self._normalize_move_name(str(name or "")) in {"torch_head", "torchhead"}
         )
 
+    def _alternating_move_sequence(
+        self,
+        monster_name: str,
+        moves: List[Dict[str, Any]],
+        pattern: Dict[str, Any],
+        other_enemy_names: Optional[List[str]],
+        same_monster_index: Optional[int],
+    ) -> List[str]:
+        if self._normalize_move_name(monster_name) != "sentry":
+            return []
+
+        move_names = [move.get("name") for move in moves if isinstance(move.get("name"), str)]
+        if set(move_names) != {"Beam", "Bolt"}:
+            return []
+
+        normalized_other_names = {
+            self._normalize_move_name(str(name or ""))
+            for name in (other_enemy_names or [])
+        }
+        if "spheric_guardian" in normalized_other_names:
+            start_move = "Bolt"
+        elif same_monster_index is None:
+            return []
+        elif same_monster_index % 2 == 1:
+            start_move = "Beam"
+        else:
+            start_move = "Bolt"
+
+        other_move = "Beam" if start_move == "Bolt" else "Bolt"
+        return [start_move, other_move]
+
     def _select_probability_by_enemy_count(
         self,
         probability_tables: Dict[str, Any],
@@ -1374,6 +1423,7 @@ def predict_monster_moves(
     ascension_level: int = 0,
     other_enemy_count: Optional[int] = None,
     other_enemy_names: Optional[List[str]] = None,
+    same_monster_index: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """Predict monster moves (convenience function)."""
     return get_enhanced_monster_db().predict_next_moves(
@@ -1383,6 +1433,7 @@ def predict_monster_moves(
         ascension_level=ascension_level,
         other_enemy_count=other_enemy_count,
         other_enemy_names=other_enemy_names,
+        same_monster_index=same_monster_index,
     )
 
 

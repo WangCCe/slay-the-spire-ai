@@ -348,6 +348,22 @@ def test_game_data_loader_forwards_other_enemy_names_to_monster_predictions():
     ] == ["Fireball", "Buff"]
 
 
+def test_game_data_loader_forwards_same_monster_index_to_monster_predictions():
+    loader = GameDataLoader(auto_load=False)
+
+    predictions = loader.predict_monster_moves(
+        "Sentry",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        same_monster_index=1,
+    )
+
+    assert [
+        prediction["move"]["name"]
+        for prediction in predictions
+    ] == ["Beam", "Bolt", "Beam"]
+
+
 def test_collector_uses_torch_head_state_for_probabilities():
     database = EnhancedMonsterDatabase()
 
@@ -382,3 +398,39 @@ def test_collector_uses_torch_head_state_for_probabilities():
         (prediction["turn"], prediction["move"]["name"])
         for prediction in turn_four
     ] == [(4, "Mega Debuff")]
+
+
+def test_sentry_predicts_position_dependent_alternating_pattern():
+    database = EnhancedMonsterDatabase()
+
+    first_sentry = database.predict_next_moves(
+        "Sentry",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        same_monster_index=0,
+    )
+    middle_sentry = database.predict_next_moves(
+        "Sentry",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        same_monster_index=1,
+    )
+    spheric_event_sentry = database.predict_next_moves(
+        "Sentry",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        other_enemy_names=["Spheric Guardian"],
+    )
+
+    assert [
+        prediction["move"]["name"]
+        for prediction in first_sentry
+    ] == ["Bolt", "Beam", "Bolt"]
+    assert [
+        prediction["move"]["name"]
+        for prediction in middle_sentry
+    ] == ["Beam", "Bolt", "Beam"]
+    assert [
+        prediction["move"]["name"]
+        for prediction in spheric_event_sentry
+    ] == ["Bolt", "Beam", "Bolt"]
