@@ -211,6 +211,22 @@ def _time_eater_head_slam(current_hp=456, damage=26):
     )
 
 
+def _time_eater_haste(current_hp=200, max_hp=456):
+    return Monster(
+        name="Time Eater",
+        monster_id="TimeEater",
+        max_hp=max_hp,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.BUFF,
+        half_dead=False,
+        is_gone=False,
+        move_id=3,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+
+
 def _sentry(current_hp=39, move_id=1, intent=Intent.DEBUFF):
     return Monster(
         name="Sentry",
@@ -2277,6 +2293,28 @@ def test_champ_transition_buff_uses_multi_turn_lookahead():
 
     assert depth == 2
     assert future_damage >= int(32 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
+
+
+def test_time_eater_haste_uses_multi_turn_lookahead():
+    cards = [
+        _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False),
+        _card("Shrug It Off", "Shrug It Off", card_type=CardType.SKILL, cost=1, has_target=False),
+        _card("Second Wind", "Second Wind", card_type=CardType.SKILL, cost=1, has_target=False),
+    ]
+    context = _combat_context(cards, energy=1, monsters=[_time_eater_haste()])
+    context.turn = 5
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    depth = simulator._get_enemy_lookahead_depth(state, context)
+    future_damage = simulator.simulate_enemy_lookahead(
+        state,
+        context,
+        look_ahead=depth,
+    )
+
+    assert depth == 2
+    assert future_damage >= int(21 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
 
 
 def test_enemy_lookahead_depth_ignores_negated_future_attack_intent():

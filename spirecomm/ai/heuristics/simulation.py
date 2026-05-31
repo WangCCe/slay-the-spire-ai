@@ -3603,6 +3603,14 @@ class FastCombatSimulator:
             if not predicted_moves:
                 continue
 
+            if current_move and not self._move_can_deal_immediate_damage(current_move):
+                future_attack_after_current_move = any(
+                    self._move_can_deal_immediate_damage(prediction.get('move', {}))
+                    for prediction in predicted_moves
+                )
+                if future_attack_after_current_move:
+                    return True
+
             first_move = predicted_moves[0].get('move', {})
             later_attack = any(
                 self._move_can_deal_immediate_damage(prediction.get('move', {}))
