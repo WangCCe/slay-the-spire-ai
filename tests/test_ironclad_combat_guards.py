@@ -2283,6 +2283,47 @@ def test_simulator_resolves_distinct_target_object_by_live_monster_index(monkeyp
     assert result.monsters[1]["hp"] == 34
 
 
+def test_simulator_prefers_target_monster_over_stale_target_index(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike_r": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        }
+    }
+    loader._wiki_data = {
+        "strike": {
+            "name": "Strike",
+            "text": "Deal [6|9] damage.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_sentry(current_hp=40), _sentry(current_hp=40)],
+    )
+    context.vulnerable_stacks[1] = 1
+    target = SimpleNamespace(
+        name="Sentry",
+        monster_id="Sentry",
+        current_hp=40,
+        monster_index=1,
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["hp"] == 40
+    assert result.monsters[1]["hp"] == 31
+
+
 def test_incoming_damage_estimate_multiplies_monster_hits():
     monster = _louse(current_hp=40)
     monster.move_adjusted_damage = 6

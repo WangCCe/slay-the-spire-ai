@@ -898,10 +898,8 @@ class FastCombatSimulator:
         context: Optional[DecisionContext],
     ) -> Optional[int]:
         """Resolve a target object back to its live-monster index."""
-        if target_index is not None:
-            return target_index
         if target is None or context is None:
-            return None
+            return target_index
 
         monsters = getattr(context, 'monsters_alive', []) or []
         for idx, monster in enumerate(monsters):
@@ -943,7 +941,7 @@ class FastCombatSimulator:
                 candidates.sort(key=lambda x: x[0])
                 return candidates[0][1]
 
-        return None
+        return target_index
 
     def _apply_attack(
         self,
