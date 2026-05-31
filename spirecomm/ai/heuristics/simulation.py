@@ -545,6 +545,12 @@ class SimulationState:
                     'Angry',
                     'AngryPower',
                 ),
+                'flight_stacks': self._get_monster_power_amount_any(
+                    monster,
+                    'Flight',
+                    'Flying',
+                    'FlightPower',
+                ),
             }
             self.monsters.append(monster_state)
 
@@ -779,6 +785,7 @@ class SimulationState:
                 bool(m.get('curl_up_used', False)),
                 m.get('malleable_block', 0),
                 m.get('hit_strength_gain', 0),
+                m.get('flight_stacks', 0),
                 m.get('move_base_damage', 0),
                 (
                     m.get('move_adjusted_damage', None) is None,
@@ -2225,6 +2232,11 @@ class FastCombatSimulator:
         if damage <= 0:
             return
 
+        if trigger_thorns:
+            damage = self._apply_flight_damage_reduction(monster, damage)
+            if damage <= 0:
+                return
+
         # Damage block first
         block_damage = min(damage, monster['block'])
         monster['block'] -= block_damage
@@ -2241,6 +2253,7 @@ class FastCombatSimulator:
                 state.player_hp = max(0, state.player_hp - thorns)
 
         if trigger_thorns and hp_damage > 0 and monster['hp'] > 0:
+            self._apply_flight_hit(monster)
             self._apply_reactive_monster_block(monster)
             self._apply_reactive_monster_strength(monster)
             self._apply_guardian_mode_shift(monster, hp_damage)
@@ -2263,6 +2276,28 @@ class FastCombatSimulator:
         if malleable_block > 0:
             monster['block'] += malleable_block
             monster['malleable_block'] = malleable_block + 1
+
+    def _apply_flight_damage_reduction(self, monster: dict, damage: int) -> int:
+        """Apply Byrd Flight's attack damage reduction."""
+        if int(monster.get('flight_stacks', 0) or 0) <= 0:
+            return damage
+        return max(0, int(damage * 0.5))
+
+    def _apply_flight_hit(self, monster: dict):
+        """Count down Byrd Flight and stun the monster when it is knocked down."""
+        flight_stacks = int(monster.get('flight_stacks', 0) or 0)
+        if flight_stacks <= 0:
+            return
+
+        flight_stacks = max(0, flight_stacks - 1)
+        monster['flight_stacks'] = flight_stacks
+        if flight_stacks > 0:
+            return
+
+        monster['intent'] = Intent.STUN
+        monster['move_base_damage'] = 0
+        monster['move_adjusted_damage'] = 0
+        monster['move_hits'] = 0
 
     def _apply_reactive_monster_strength(self, monster: dict):
         """Apply non-lethal attack-damage Strength reactions such as Angry."""

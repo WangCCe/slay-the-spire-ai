@@ -212,6 +212,24 @@ def _mad_gremlin(current_hp=22, move_adjusted_damage=4):
     return monster
 
 
+def _byrd(current_hp=30, flight=3):
+    monster = Monster(
+        name="Byrd",
+        monster_id="Byrd",
+        max_hp=30,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=12,
+        move_hits=1,
+    )
+    monster.powers = [SimpleNamespace(power_name="Flight", amount=flight)]
+    return monster
+
+
 def _lagavulin(
     current_hp=82,
     intent=Intent.ATTACK,
@@ -857,6 +875,31 @@ def test_malleable_gains_increasing_block_after_each_nonlethal_attack_damage():
     assert state.monsters[0]["hp"] == 41
     assert state.monsters[0]["block"] == 4
     assert state.monsters[0]["malleable_block"] == 5
+
+
+def test_byrd_flight_halves_attack_damage_and_counts_down():
+    context = _combat_context([], energy=0, monsters=[_byrd(flight=3)])
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    simulator._deal_damage_to_monster(state, state.monsters[0], 7)
+
+    assert state.monsters[0]["hp"] == 27
+    assert state.monsters[0]["flight_stacks"] == 2
+    assert simulator._estimate_incoming_damage(state.monsters) == 12
+
+
+def test_byrd_flight_knockdown_stuns_current_attack():
+    context = _combat_context([], energy=0, monsters=[_byrd(flight=1)])
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    simulator._deal_damage_to_monster(state, state.monsters[0], 8)
+
+    assert state.monsters[0]["hp"] == 26
+    assert state.monsters[0]["flight_stacks"] == 0
+    assert state.monsters[0]["intent"] == Intent.STUN
+    assert simulator._estimate_incoming_damage(state.monsters) == 0
 
 
 def test_fungi_beast_death_vulnerable_can_make_same_turn_attack_lethal():
