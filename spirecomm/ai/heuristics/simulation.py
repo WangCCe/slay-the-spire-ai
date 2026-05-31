@@ -527,6 +527,10 @@ class SimulationState:
                 'strength': monster.strength if hasattr(monster, 'strength') else 0,
                 'skill_strength_gain': self._get_monster_skill_strength_gain(monster),
                 'power_strength_gain': self._get_monster_power_strength_gain(monster),
+                'end_turn_strength_gain': self._get_monster_end_turn_strength_gain(
+                    monster,
+                    context,
+                ),
                 'mode_shift': mode_shift,
                 'curl_up_block': self._get_monster_power_amount_any(
                     monster,
@@ -702,6 +706,56 @@ class SimulationState:
                 return max(0, int(amount)) if amount is not None else 1
         return 0
 
+    def _get_monster_end_turn_strength_gain(
+        self,
+        monster: Any,
+        context: DecisionContext,
+    ) -> int:
+        """Return deterministic Strength gained after the monster's own turn."""
+        monster_name = _canonical_live_monster_name(monster)
+        if not monster_name:
+            return 0
+        if monster_name != 'Orb Walker':
+            return 0
+
+        try:
+            monster_data = game_data_loader.get_enhanced_monster_data(monster_name)
+        except Exception:
+            monster_data = None
+        mechanics = (monster_data or {}).get('special_mechanics', {}) or {}
+        if mechanics.get('type') != 'strength_up':
+            return 0
+
+        gain = mechanics.get('strength_gain', 0)
+        return self._resolve_ascension_value(gain, context)
+
+    def _resolve_ascension_value(self, value: Any, context: DecisionContext) -> int:
+        if isinstance(value, (int, float)):
+            return max(0, int(value))
+        if not isinstance(value, dict):
+            return 0
+
+        resolved = value.get('normal', 0)
+        ascension_level = self._context_ascension_level(context)
+        thresholds = []
+        for key in value:
+            match = re.match(r'ascension_(\d+)\+$', str(key))
+            if match:
+                thresholds.append((int(match.group(1)), key))
+        for threshold, key in sorted(thresholds):
+            if ascension_level >= threshold:
+                resolved = value[key]
+
+        if isinstance(resolved, (int, float)):
+            return max(0, int(resolved))
+        return 0
+
+    @staticmethod
+    def _context_ascension_level(context: DecisionContext) -> int:
+        if hasattr(context, 'game') and hasattr(context.game, 'ascension_level'):
+            return int(context.game.ascension_level or 0)
+        return int(getattr(context, 'ascension_level', 0) or 0)
+
     def _power_name(self, power: Any) -> Optional[str]:
         return (
             getattr(power, 'name', None)
@@ -813,6 +867,7 @@ class SimulationState:
                 m.get('strength', 0),
                 m.get('skill_strength_gain', 0),
                 m.get('power_strength_gain', 0),
+                m.get('end_turn_strength_gain', 0),
                 m.get('curl_up_block', 0),
                 bool(m.get('curl_up_used', False)),
                 m.get('malleable_block', 0),
@@ -3340,6 +3395,7 @@ class FastCombatSimulator:
                 player_weak = max(0, player_weak + pending_debuffs['weak'] - 1)
                 player_frail = max(0, player_frail + pending_debuffs['frail'] - 1)
                 self._decrement_monster_turn_debuffs(lookahead_state)
+                self._apply_monster_end_turn_strength_gains(lookahead_state)
 
                 logger.debug(
                     f"[LOOKAHEAD_TURN] step={step + 1} damage={turn_damage} "
@@ -3359,6 +3415,22 @@ class FastCombatSimulator:
         except Exception as e:
             logger.warning(f"[LOOKAHEAD] Failed to simulate enemy lookahead: {e}")
             return 0
+
+    def _apply_monster_end_turn_strength_gains(self, state: SimulationState):
+        for monster in state.monsters:
+            if not self._is_live_monster_state(monster):
+                continue
+
+            strength_gain = int(monster.get('end_turn_strength_gain', 0) or 0)
+            if strength_gain <= 0:
+                continue
+
+            self._remember_monster_adjusted_damage_source(monster)
+            monster['strength'] = monster.get('strength', 0) + strength_gain
+            monster['_simulated_strength_delta'] = (
+                monster.get('_simulated_strength_delta', 0) + strength_gain
+            )
+            self._refresh_monster_adjusted_damage_from_debuffs(monster)
 
     def simulate_enemy_status_lookahead(
         self,

@@ -284,6 +284,23 @@ def _darkling(current_hp=48):
     )
 
 
+def _orb_walker(current_hp=96, move_id=0, move_adjusted_damage=10):
+    return Monster(
+        name="Orb Walker",
+        monster_id="OrbWalker",
+        max_hp=96,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=move_id,
+        move_base_damage=move_adjusted_damage,
+        move_adjusted_damage=move_adjusted_damage,
+        move_hits=1,
+    )
+
+
 def _lagavulin(
     current_hp=82,
     intent=Intent.ATTACK,
@@ -1314,6 +1331,38 @@ def test_state_key_distinguishes_monster_strength_changes():
     assert initial_state.state_key(context.playable_cards) != stronger_state.state_key(
         context.playable_cards
     )
+
+
+def test_simulation_state_tracks_orb_walker_end_turn_strength_gain():
+    context = _combat_context([], energy=0, monsters=[_orb_walker()])
+    normal_state = SimulationState(context)
+
+    context.ascension_level = 17
+    context.game.ascension_level = 17
+    asc17_state = SimulationState(context)
+
+    assert normal_state.monsters[0]["end_turn_strength_gain"] == 3
+    assert asc17_state.monsters[0]["end_turn_strength_gain"] == 5
+
+
+def test_enemy_lookahead_applies_orb_walker_strength_up_to_future_attacks():
+    context = _combat_context([], energy=0, monsters=[_orb_walker()])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    def predicted_attack(_monster_name, _current_turn, step, _hp_percent):
+        if step == 1:
+            return {"intent": "ATTACK", "damage": 15, "hits": 1}
+        return None
+
+    simulator._predicted_monster_move_for_step = predicted_attack
+
+    damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=2,
+    )
+
+    assert damage == 24
 
 
 def test_state_key_distinguishes_internal_monster_damage_refresh_state():
