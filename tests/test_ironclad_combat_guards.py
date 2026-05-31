@@ -163,6 +163,22 @@ def _cultist_ritual(current_hp=50, ritual=0, intent=Intent.BUFF, move_id=0):
     return monster
 
 
+def _chosen_hex(current_hp=99):
+    return Monster(
+        name="Chosen",
+        monster_id="Chosen",
+        max_hp=current_hp,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.DEBUFF,
+        half_dead=False,
+        is_gone=False,
+        move_id=4,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+
+
 def _sentry(current_hp=39, move_id=1, intent=Intent.DEBUFF):
     return Monster(
         name="Sentry",
@@ -1259,6 +1275,35 @@ def test_enemy_status_lookahead_applies_ascension_status_card_modifiers():
 
     assert status["dazed"] == 3
     assert status["total"] == 3
+
+
+def test_enemy_status_lookahead_counts_chosen_hex_as_future_dazed_risk():
+    context = _combat_context([], energy=0, monsters=[_chosen_hex()])
+
+    status = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_status_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert status["hex"] == 1
+    assert status["dazed"] == 1
+    assert status["total"] == 1
+
+
+def test_enemy_status_lookahead_player_artifact_blocks_predicted_hex():
+    context = _combat_context([], energy=0, monsters=[_chosen_hex()])
+    context.game.player.powers = [SimpleNamespace(power_name="Artifact", amount=1)]
+
+    status = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_status_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert status["hex"] == 0
+    assert status["dazed"] == 0
+    assert status["total"] == 0
 
 
 def test_enemy_status_lookahead_ignores_zero_hp_stale_simulated_monsters():

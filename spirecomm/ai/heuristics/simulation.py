@@ -2289,6 +2289,43 @@ class FastCombatSimulator:
             )
         return max(0, constricted)
 
+    def _extract_move_hex(
+        self,
+        move: Dict[str, Any],
+        context: Optional[DecisionContext] = None,
+    ) -> int:
+        """Extract Hex stacks applied to the player from a monster move."""
+        hex_stacks = 0
+        for key in ('hex', 'hex_applied', 'hex_amount'):
+            value = move.get(key)
+            if isinstance(value, bool):
+                hex_stacks = 1 if value else 0
+            else:
+                hex_stacks = self._positive_numeric_move_value(value)
+            if hex_stacks > 0:
+                break
+
+        if hex_stacks <= 0:
+            effect = str(move.get('effect') or move.get('description') or '')
+            if re.search(
+                r'\b(?:apply|applies|applied|applying)\s+hex\b',
+                effect,
+                re.IGNORECASE,
+            ):
+                hex_stacks = 1
+
+        if hex_stacks <= 0 or context is None:
+            return hex_stacks
+
+        for key in ('hex', 'hex_applied', 'hex_amount'):
+            hex_stacks = self._apply_ascension_move_value(
+                move,
+                context,
+                key,
+                hex_stacks,
+            )
+        return max(0, hex_stacks)
+
     def _positive_numeric_move_value(self, value: Any) -> int:
         if isinstance(value, bool):
             return 0
@@ -3700,9 +3737,11 @@ class FastCombatSimulator:
             'slimed': 0,
             'wound': 0,
             'void': 0,
+            'hex': 0,
         }
         try:
             current_turn = getattr(context, 'turn', 1)
+            player_artifact = max(0, getattr(state, 'player_artifact', 0))
             for step in range(look_ahead):
                 for monster in state.monsters:
                     if not self._is_live_monster_state(monster):
@@ -3728,16 +3767,26 @@ class FastCombatSimulator:
                     counts = self._extract_move_status_cards(move, context)
                     for key in totals:
                         totals[key] += counts.get(key, 0)
+                    hex_stacks = self._extract_move_hex(move, context)
+                    if hex_stacks > 0:
+                        if player_artifact > 0:
+                            player_artifact -= 1
+                        else:
+                            dazed_risk = max(1, hex_stacks)
+                            totals['hex'] += hex_stacks
+                            totals['dazed'] += dazed_risk
+                            totals['total'] += dazed_risk
 
             if totals['total'] > 0:
                 logger.info(
-                    "[STATUS_LOOKAHEAD] predicted=%s dazed=%s burn=%s slimed=%s wound=%s void=%s",
+                    "[STATUS_LOOKAHEAD] predicted=%s dazed=%s burn=%s slimed=%s wound=%s void=%s hex=%s",
                     totals['total'],
                     totals['dazed'],
                     totals['burn'],
                     totals['slimed'],
                     totals['wound'],
                     totals['void'],
+                    totals['hex'],
                 )
             return totals
         except Exception as e:
