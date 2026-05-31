@@ -641,6 +641,7 @@ class SimulationState:
         # Player state (what matters for future decisions)
         player_key = (
             self.player_hp,
+            self.player_max_hp,
             self.player_block,
             self.end_turn_block,
             self.player_energy,

@@ -3749,6 +3749,23 @@ def test_state_key_and_clone_preserve_player_regen():
     assert base_state.state_key([]) != regen_state.state_key([])
 
 
+def test_state_key_distinguishes_player_max_hp_for_future_healing():
+    potion = Potion(
+        potion_id="RegenPotion",
+        name="Regen Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    context = _potion_projection_context(potion)
+    base_state = simulation.SimulationState(context)
+    larger_max_hp_state = base_state.clone()
+    larger_max_hp_state.player_max_hp += 5
+
+    assert larger_max_hp_state.player_hp == base_state.player_hp
+    assert base_state.state_key([]) != larger_max_hp_state.state_key([])
+
+
 def test_simulation_state_includes_existing_plated_armor_end_turn_block():
     potion = Potion(
         potion_id="FirePotion",
