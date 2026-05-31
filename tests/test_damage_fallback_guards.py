@@ -3786,6 +3786,28 @@ def test_state_key_distinguishes_monster_max_hp_for_phase_thresholds():
     assert base_state.state_key([]) != lower_percent_state.state_key([])
 
 
+def test_state_key_distinguishes_live_monster_move_threat():
+    potion = Potion(
+        potion_id="FirePotion",
+        name="Fire Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=True,
+    )
+    context = _potion_projection_context(potion)
+    base_state = simulation.SimulationState(context)
+    stronger_move_state = base_state.clone()
+    multi_hit_state = base_state.clone()
+
+    stronger_move_state.monsters[0]["move_adjusted_damage"] = (
+        base_state.monsters[0]["move_adjusted_damage"] + 6
+    )
+    multi_hit_state.monsters[0]["move_hits"] = base_state.monsters[0]["move_hits"] + 1
+
+    assert base_state.state_key([]) != stronger_move_state.state_key([])
+    assert base_state.state_key([]) != multi_hit_state.state_key([])
+
+
 def test_simulation_state_includes_existing_plated_armor_end_turn_block():
     potion = Potion(
         potion_id="FirePotion",

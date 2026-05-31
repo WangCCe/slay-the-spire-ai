@@ -689,6 +689,12 @@ class SimulationState:
                 m.get('artifact', 0),
                 m.get('strength', 0),
                 m.get('skill_strength_gain', 0),
+                m.get('move_base_damage', 0),
+                (
+                    m.get('move_adjusted_damage', None) is None,
+                    m.get('move_adjusted_damage', 0) or 0,
+                ),
+                m.get('move_hits', 1) or 1,
                 str(m['intent']) if m['intent'] else None,  # Convert intent to string
                 m.get('move_id', None),
                 m['is_gone'],
