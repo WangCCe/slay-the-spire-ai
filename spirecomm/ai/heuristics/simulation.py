@@ -450,6 +450,7 @@ class SimulationState:
         self.player_energy = context.energy_available
         self.player_strength = context.strength
         self.player_temp_strength = 0
+        self.player_ritual = self._get_player_power_amount(context, 'Ritual')
         self.player_dexterity = self._get_player_power_amount(context, 'Dexterity')
         self.player_temp_dexterity = 0
         self.player_thorns = self._get_player_power_amount(context, 'Thorns')
@@ -613,6 +614,7 @@ class SimulationState:
         new_state.player_energy = self.player_energy
         new_state.player_strength = self.player_strength
         new_state.player_temp_strength = self.player_temp_strength
+        new_state.player_ritual = self.player_ritual
         new_state.player_dexterity = self.player_dexterity
         new_state.player_temp_dexterity = self.player_temp_dexterity
         new_state.player_thorns = self.player_thorns
@@ -671,6 +673,7 @@ class SimulationState:
             self.player_energy,
             self.player_strength,
             self.player_temp_strength,
+            self.player_ritual,
             self.player_dexterity,
             self.player_temp_dexterity,
             self.player_thorns,
@@ -2051,6 +2054,9 @@ class FastCombatSimulator:
         if temp_strength:
             projected.player_strength -= temp_strength
             projected.player_temp_strength = 0
+        ritual_strength = max(0, getattr(projected, 'player_ritual', 0))
+        if ritual_strength:
+            projected.player_strength += ritual_strength
         temp_dexterity = getattr(projected, 'player_temp_dexterity', 0)
         if temp_dexterity:
             projected.player_dexterity -= temp_dexterity
@@ -4409,6 +4415,8 @@ class HeuristicCombatPlanner(CombatPlanner):
             state.player_hp += potion.effect_value
         elif potion.effect_type == 'buff_strength':
             state.player_strength += potion.effect_value
+        elif potion.effect_type == 'ritual':
+            state.player_ritual = getattr(state, 'player_ritual', 0) + potion.effect_value
         elif potion.effect_type == 'temp_strength':
             state.player_strength += potion.effect_value
             if state.player_artifact > 0:

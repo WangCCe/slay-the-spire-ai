@@ -3652,6 +3652,54 @@ def test_beam_search_can_use_potion_when_no_cards_are_playable():
     assert sequence[0].potion is potion
 
 
+def test_beam_search_cultist_potion_applies_ritual_at_end_of_turn_projection():
+    potion = Potion(
+        potion_id="CultistPotion",
+        name="Cultist Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    context = _potion_projection_context(potion)
+    planner = HeuristicCombatPlanner()
+    observed = []
+
+    def score(_initial_state, final_state, _act, _weights, _context, sequence):
+        if sequence and isinstance(sequence[-1], PotionAction):
+            projected = planner.simulator.project_end_turn_effects(final_state)
+            observed.append(
+                (
+                    getattr(final_state, "player_ritual", 0),
+                    final_state.player_strength,
+                    projected.player_strength,
+                )
+            )
+        return 0
+
+    planner.simulator.calculate_outcome_score = score
+
+    planner.plan_turn(context)
+
+    assert observed == [(1, 0, 1)]
+
+
+def test_state_key_and_clone_preserve_player_ritual():
+    potion = Potion(
+        potion_id="CultistPotion",
+        name="Cultist Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    context = _potion_projection_context(potion)
+    base_state = simulation.SimulationState(context)
+    ritual_state = base_state.clone()
+    ritual_state.player_ritual = 1
+
+    assert ritual_state.clone().player_ritual == 1
+    assert base_state.state_key([]) != ritual_state.state_key([])
+
+
 def test_beam_search_flex_potion_strength_expires_at_end_of_turn_projection():
     potion = Potion(
         potion_id="FlexPotion",
