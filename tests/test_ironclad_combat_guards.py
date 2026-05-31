@@ -5992,6 +5992,35 @@ def test_disarm_reduces_enemy_strength_and_current_attack_damage():
     assert result.monsters[0]["move_adjusted_damage"] == 9
 
 
+def test_disarm_recomputes_weak_adjusted_attack_damage_from_base():
+    disarm = _card(
+        "Disarm",
+        "Disarm",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=True,
+    )
+    monster = _louse(current_hp=100)
+    monster.move_base_damage = 10
+    monster.move_adjusted_damage = 7
+    context = _combat_context([disarm], energy=1, monsters=[monster])
+    context.weak_stacks[0] = 1
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        disarm,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["strength"] == -2
+    assert result.monsters[0]["move_adjusted_damage"] == 6
+    assert FastCombatSimulator(SynergyCardEvaluator())._estimate_incoming_damage(
+        result.monsters
+    ) == 6
+
+
 def test_disarm_ignores_zero_hp_stale_simulated_target():
     disarm = _card(
         "Disarm",

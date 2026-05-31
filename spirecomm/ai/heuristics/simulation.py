@@ -2630,12 +2630,12 @@ class FastCombatSimulator:
             return
 
         strength_loss = 3 if getattr(card, 'upgrades', 0) > 0 else 2
+        self._remember_monster_adjusted_damage_source(monster)
         monster['strength'] = monster.get('strength', 0) - strength_loss
-        if self._monster_intends_attack(monster):
-            monster['move_adjusted_damage'] = max(
-                0,
-                monster.get('move_adjusted_damage', 0) - strength_loss,
-            )
+        monster['_simulated_strength_delta'] = (
+            monster.get('_simulated_strength_delta', 0) - strength_loss
+        )
+        self._refresh_monster_adjusted_damage_from_debuffs(monster)
 
     def _apply_rage_block(self, state: SimulationState):
         """Apply Rage block trigger after playing an attack."""
