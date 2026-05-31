@@ -8068,3 +8068,30 @@ def test_potion_target_state_index_prefers_live_monster_id_over_same_name():
     target = SimpleNamespace(name="Slaver", monster_id="SlaverRed", current_hp=30)
 
     assert HeuristicCombatPlanner._state_monster_index_for_potion_target(state, target) == 1
+
+
+def test_potion_target_state_index_prefers_live_monster_index_for_identical_targets():
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "name": "Fungi Beast",
+                "monster_id": "FungiBeast",
+                "hp": 30,
+                "is_gone": False,
+            },
+            {
+                "name": "Fungi Beast",
+                "monster_id": "FungiBeast",
+                "hp": 30,
+                "is_gone": False,
+            },
+        ]
+    )
+    target = SimpleNamespace(
+        name="Fungi Beast",
+        monster_id="FungiBeast",
+        current_hp=30,
+        monster_index=1,
+    )
+
+    assert HeuristicCombatPlanner._state_monster_index_for_potion_target(state, target) == 1

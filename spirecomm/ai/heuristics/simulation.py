@@ -4435,6 +4435,15 @@ class HeuristicCombatPlanner(CombatPlanner):
     @staticmethod
     def _state_monster_index_for_potion_target(state, target):
         if target:
+            target_index = getattr(target, 'monster_index', None)
+            if (
+                isinstance(target_index, int)
+                and 0 <= target_index < len(state.monsters)
+            ):
+                monster = state.monsters[target_index]
+                if monster.get('hp', 0) > 0 and not monster.get('is_gone'):
+                    return target_index
+
             target_id = getattr(target, 'monster_id', None)
             target_name = getattr(target, 'name', None)
             id_candidates = []
