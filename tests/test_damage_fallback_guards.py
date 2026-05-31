@@ -212,6 +212,74 @@ def test_damage_curve_fallback_prediction_keeps_live_enemy_context(monkeypatch):
     }
 
 
+def test_spike_imminent_fallback_prediction_keeps_live_enemy_context(monkeypatch):
+    class FakeLoader:
+        def predict_monster_moves(
+            self,
+            _monster_name,
+            current_turn,
+            _hp_percent,
+            ascension_level=0,
+            other_enemy_count=None,
+            other_enemy_names=None,
+            same_monster_index=None,
+        ):
+            if current_turn == 2 and other_enemy_count == 2:
+                return [
+                    {
+                        "turn": 2,
+                        "move": {
+                            "name": "Contextual Slam",
+                            "intent": "ATTACK",
+                            "damage": 20,
+                            "hits": 1,
+                        },
+                        "confidence": 1.0,
+                    }
+                ]
+            return [
+                {
+                    "turn": current_turn,
+                    "move": {"name": "Wait", "intent": "BUFF"},
+                    "confidence": 1.0,
+                }
+            ]
+
+    monkeypatch.setattr(data_loader, "game_data_loader", FakeLoader())
+    leader = SimpleNamespace(
+        name="Gremlin Leader",
+        current_hp=145,
+        max_hp=145,
+        intent="BUFF",
+        move_adjusted_damage=0,
+        strength=0,
+    )
+    minion_a = SimpleNamespace(
+        name="Mad Gremlin",
+        current_hp=20,
+        max_hp=20,
+        intent="BUFF",
+        move_adjusted_damage=0,
+        strength=0,
+    )
+    minion_b = SimpleNamespace(
+        name="Fat Gremlin",
+        current_hp=20,
+        max_hp=20,
+        intent="BUFF",
+        move_adjusted_damage=0,
+        strength=0,
+    )
+    context = SimpleNamespace(
+        turn=1,
+        monsters_alive=[leader, minion_a, minion_b],
+        game=SimpleNamespace(monsters=[leader, minion_a, minion_b], ascension_level=0),
+        ascension_level=0,
+    )
+
+    assert TurnTimingClassifier()._spike_imminent(context) is True
+
+
 def _unknown_attack():
     card = Card(
         card_id="UnknownAttack",

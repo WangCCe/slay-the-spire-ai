@@ -1131,6 +1131,7 @@ class TurnTimingClassifier:
                     current_turn,
                     hp_percent,
                     context,
+                    monster=monster,
                 )
                 for turn_offset in range(1, 3):
                     target_turn = current_turn + turn_offset
@@ -1140,6 +1141,8 @@ class TurnTimingClassifier:
                         target_turn,
                         hp_percent,
                         ascension_level=self._context_ascension_level(context),
+                        context=context,
+                        monster=monster,
                     )
 
                     if prediction:
