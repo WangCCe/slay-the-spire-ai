@@ -6339,6 +6339,31 @@ def test_demon_form_does_not_add_strength_on_the_turn_it_is_played():
     assert result.total_damage_dealt == 6
 
 
+def test_awakened_one_curiosity_gains_strength_when_power_is_played():
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    awakened_one = _awakened_one()
+    awakened_one.powers = [SimpleNamespace(power_name="Curiosity", amount=1)]
+    context = _combat_context([demon_form], energy=3, monsters=[awakened_one])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        demon_form,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.monsters[0]["strength"] == 1
+    assert result.monsters[0]["move_adjusted_damage"] == 19
+
+
 def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

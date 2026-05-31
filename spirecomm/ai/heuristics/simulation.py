@@ -526,6 +526,7 @@ class SimulationState:
                 'move_hits': monster.move_hits if hasattr(monster, 'move_hits') else 1,
                 'strength': monster.strength if hasattr(monster, 'strength') else 0,
                 'skill_strength_gain': self._get_monster_skill_strength_gain(monster),
+                'power_strength_gain': self._get_monster_power_strength_gain(monster),
                 'mode_shift': mode_shift,
             }
             self.monsters.append(monster_state)
@@ -609,6 +610,15 @@ class SimulationState:
         monster_name = str(getattr(monster, 'name', ''))
         if monster_id in {'GremlinNob', 'Gremlin Nob'} or monster_name == 'Gremlin Nob':
             return 2
+        return 0
+
+    def _get_monster_power_strength_gain(self, monster: Any) -> int:
+        """Return Strength a monster gains whenever the player plays a Power."""
+        for power in getattr(monster, 'powers', []) or []:
+            power_name = str(self._power_name(power) or '').lower()
+            if 'curiosity' in power_name:
+                amount = getattr(power, 'amount', None)
+                return max(0, int(amount)) if amount is not None else 1
         return 0
 
     def _power_name(self, power: Any) -> Optional[str]:
@@ -721,6 +731,7 @@ class SimulationState:
                 m.get('artifact', 0),
                 m.get('strength', 0),
                 m.get('skill_strength_gain', 0),
+                m.get('power_strength_gain', 0),
                 m.get('move_base_damage', 0),
                 (
                     m.get('move_adjusted_damage', None) is None,
@@ -887,6 +898,7 @@ class FastCombatSimulator:
                 new_state.exhaust_events += 1
         elif card_type == CardType.POWER:
             self._apply_power(new_state, card)
+            self._apply_power_reactive_monster_powers(new_state)
 
         self._apply_hex_card_pollution(new_state, card_type)
 
@@ -916,6 +928,28 @@ class FastCombatSimulator:
             self._refresh_monster_adjusted_damage_from_debuffs(monster)
             logger.debug(
                 "[SKILL_REACTION] %s gained %s Strength from Skill",
+                monster.get('name', 'Unknown'),
+                strength_gain,
+            )
+
+    def _apply_power_reactive_monster_powers(self, state: SimulationState):
+        """Apply monster reactions such as Awakened One's Curiosity after Powers."""
+        for monster in state.monsters:
+            if not self._is_live_monster_state(monster):
+                continue
+
+            strength_gain = int(monster.get('power_strength_gain', 0) or 0)
+            if strength_gain <= 0:
+                continue
+
+            self._remember_monster_adjusted_damage_source(monster)
+            monster['strength'] = monster.get('strength', 0) + strength_gain
+            monster['_simulated_strength_delta'] = (
+                monster.get('_simulated_strength_delta', 0) + strength_gain
+            )
+            self._refresh_monster_adjusted_damage_from_debuffs(monster)
+            logger.debug(
+                "[POWER_REACTION] %s gained %s Strength from Power",
                 monster.get('name', 'Unknown'),
                 strength_gain,
             )
