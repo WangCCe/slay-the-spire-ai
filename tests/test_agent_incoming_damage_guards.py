@@ -72,6 +72,24 @@ def test_simple_agent_incoming_damage_estimates_unknown_intent_by_act():
     assert _agent_with_monsters([monster]).get_incoming_damage() == 5
 
 
+def test_simple_agent_incoming_damage_counts_known_unknown_damage_move():
+    monster = SimpleNamespace(
+        name="Exploder",
+        monster_id="Exploder",
+        current_hp=30,
+        is_gone=False,
+        half_dead=False,
+        intent=Intent.UNKNOWN,
+        move_id=1,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+    agent = _agent_with_monsters([monster])
+    agent.game.act = 3
+
+    assert agent.get_incoming_damage() == 30
+
+
 def test_simple_agent_incoming_damage_ignores_known_no_damage_unknown_moves():
     monsters = [
         SimpleNamespace(

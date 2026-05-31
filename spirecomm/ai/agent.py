@@ -9,7 +9,10 @@ from spirecomm.spire.character import Intent, PlayerClass
 import spirecomm.spire.card
 from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
-from spirecomm.ai.incoming_damage import known_unknown_move_has_no_immediate_damage
+from spirecomm.ai.incoming_damage import (
+    known_unknown_move_has_no_immediate_damage,
+    known_unknown_move_immediate_damage,
+)
 from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
 from spirecomm.ai.priorities import *
 from spirecomm.ai.heuristics.simulation import (
@@ -458,6 +461,10 @@ class SimpleAgent:
                 ):
                     incoming_damage += self._move_damage_contribution(monster)
                 elif intent_is_unknown(getattr(monster, "intent", None)):
+                    known_damage = known_unknown_move_immediate_damage(monster)
+                    if known_damage > 0:
+                        incoming_damage += known_damage
+                        continue
                     if known_unknown_move_has_no_immediate_damage(monster):
                         continue
                     incoming_damage += 5 * self.game.act

@@ -137,6 +137,20 @@ def test_rl_incoming_damage_estimates_unknown_intent_by_act():
     assert CombatRLAgent._incoming_damage(game) == 10
 
 
+def test_rl_incoming_damage_counts_known_unknown_damage_move():
+    monster = _monster(
+        hp=30,
+        damage=0,
+        name="Exploder",
+        monster_id="Exploder",
+    )
+    monster.intent = Intent.UNKNOWN
+    monster.move_id = 1
+    game = _game(monsters=[monster], act=3)
+
+    assert CombatRLAgent._incoming_damage(game) == 30
+
+
 def test_rl_incoming_damage_ignores_known_no_damage_unknown_moves():
     preparing = _monster(
         hp=99,

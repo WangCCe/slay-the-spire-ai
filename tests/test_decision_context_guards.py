@@ -165,6 +165,25 @@ def test_incoming_damage_estimates_unknown_intent_by_act():
     assert context._calculate_incoming_damage() == 10
 
 
+def test_incoming_damage_counts_known_unknown_damage_move():
+    monster = SimpleNamespace(
+        name="Exploder",
+        monster_id="Exploder",
+        is_gone=False,
+        half_dead=False,
+        current_hp=30,
+        intent=Intent.UNKNOWN,
+        move_id=1,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.game = SimpleNamespace(monsters=[monster])
+    context.act = 3
+
+    assert context._calculate_incoming_damage() == 30
+
+
 def test_incoming_damage_ignores_known_no_damage_unknown_moves():
     monsters = [
         SimpleNamespace(

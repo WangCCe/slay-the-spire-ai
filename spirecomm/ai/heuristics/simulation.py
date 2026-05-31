@@ -13,7 +13,11 @@ from typing import List, Dict, Tuple, Optional, Any
 from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster, Intent
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
-from spirecomm.ai.incoming_damage import known_unknown_move_has_no_immediate_damage
+from spirecomm.ai.incoming_damage import (
+    known_unknown_move_has_no_immediate_damage,
+    known_unknown_move_immediate_damage,
+    move_data_immediate_unknown_damage,
+)
 from spirecomm.ai.intent_utils import intent_is_attack, intent_is_unknown, intent_tokens, monster_intends_attack
 from spirecomm.ai.monster_names import canonical_live_monster_name, monster_field
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
@@ -3170,6 +3174,18 @@ class FastCombatSimulator:
                 )
                 total_damage += total
             else:
+                known_unknown_damage = known_unknown_move_immediate_damage(monster)
+                if known_unknown_damage > 0:
+                    total = known_unknown_damage
+                    if player_intangible > 0:
+                        total = 1
+                    debug_entries.append(
+                        f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"
+                        f"intent={intent_str} damage={known_unknown_damage} source=known_unknown"
+                    )
+                    total_damage += total
+                    continue
+
                 debug_entries.append(
                     f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"
                     f"skip=intent={intent_str}"
@@ -3248,10 +3264,10 @@ class FastCombatSimulator:
 
             first_move = predicted_moves[0].get('move', {})
             later_attack = any(
-                intent_is_attack(prediction.get('move', {}).get('intent', ''))
+                self._move_can_deal_immediate_damage(prediction.get('move', {}))
                 for prediction in predicted_moves[1:]
             )
-            if later_attack and not intent_is_attack(first_move.get('intent', '')):
+            if later_attack and not self._move_can_deal_immediate_damage(first_move):
                 return True
 
         return False
@@ -3335,22 +3351,30 @@ class FastCombatSimulator:
                             move_hits,
                         )
 
-                        if intent_is_attack(move.get('intent', '')) and move_damage > 0:
-                            per_hit_damage = self._apply_monster_strength_to_per_hit_damage(
-                                move_damage,
-                                self._effective_monster_attack_strength(monster),
-                            )
-                            per_hit_damage = self._apply_monster_weak_to_per_hit_damage(
-                                per_hit_damage,
-                                monster.get('weak', 0),
-                            )
-                            damage = per_hit_damage * move_hits
-                            damage = self._apply_player_vulnerable_damage(
-                                damage,
-                                player_vulnerable,
-                                move_hits,
-                            )
-                            damage = self._apply_debuff_risk_multiplier(damage, player_weak, player_frail)
+                        move_is_attack = intent_is_attack(move.get('intent', ''))
+                        move_is_known_unknown_damage = (
+                            not move_is_attack
+                            and self._move_has_known_unknown_immediate_damage(move)
+                        )
+                        if (move_is_attack or move_is_known_unknown_damage) and move_damage > 0:
+                            if move_is_attack:
+                                per_hit_damage = self._apply_monster_strength_to_per_hit_damage(
+                                    move_damage,
+                                    self._effective_monster_attack_strength(monster),
+                                )
+                                per_hit_damage = self._apply_monster_weak_to_per_hit_damage(
+                                    per_hit_damage,
+                                    monster.get('weak', 0),
+                                )
+                                damage = per_hit_damage * move_hits
+                                damage = self._apply_player_vulnerable_damage(
+                                    damage,
+                                    player_vulnerable,
+                                    move_hits,
+                                )
+                                damage = self._apply_debuff_risk_multiplier(damage, player_weak, player_frail)
+                            else:
+                                damage = move_damage * move_hits
                             discount = LOOKAHEAD_DAMAGE_DISCOUNT ** step
                             turn_damage += int(damage * discount)
 
@@ -3670,6 +3694,17 @@ class FastCombatSimulator:
         if 'DEFEND' in live_tokens and ('DEFEND' in move_tokens or 'BLOCK' in move_tokens):
             return True
         return False
+
+    def _move_has_known_unknown_immediate_damage(self, move: Dict[str, Any]) -> bool:
+        return move_data_immediate_unknown_damage(move) > 0
+
+    def _move_can_deal_immediate_damage(self, move: Dict[str, Any]) -> bool:
+        if not move:
+            return False
+        return (
+            intent_is_attack(move.get('intent', ''))
+            or self._move_has_known_unknown_immediate_damage(move)
+        )
 
     def calculate_future_monster_damage(self, state: SimulationState, context: DecisionContext, look_ahead: int = 2) -> int:
         """Compatibility wrapper for future damage prediction."""
@@ -4880,6 +4915,14 @@ class HeuristicCombatPlanner(CombatPlanner):
                         f"adjusted={monster.move_adjusted_damage} hits={monster.move_hits}"
                     )
                 elif intent_is_unknown(getattr(monster, 'intent', None)):
+                    known_damage = known_unknown_move_immediate_damage(monster)
+                    if known_damage > 0:
+                        incoming += known_damage
+                        debug_entries.append(
+                            f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "
+                            f"known_unknown_damage={known_damage}"
+                        )
+                        continue
                     if known_unknown_move_has_no_immediate_damage(monster):
                         debug_entries.append(
                             f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "

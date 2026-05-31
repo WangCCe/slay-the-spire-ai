@@ -22,7 +22,10 @@ from .network import (
 from .checkpoint_io import load_torch_checkpoint
 from spirecomm.spire.game import Game
 from spirecomm.communication.action import Action
-from spirecomm.ai.incoming_damage import known_unknown_move_has_no_immediate_damage
+from spirecomm.ai.incoming_damage import (
+    known_unknown_move_has_no_immediate_damage,
+    known_unknown_move_immediate_damage,
+)
 from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
 from spirecomm.spire.character import PlayerClass
 
@@ -1480,6 +1483,10 @@ class CombatRLAgent:
         total = 0
         for monster in CombatRLAgent._alive_monsters(game):
             if intent_is_unknown(getattr(monster, "intent", None)):
+                known_damage = known_unknown_move_immediate_damage(monster)
+                if known_damage > 0:
+                    total += known_damage
+                    continue
                 if known_unknown_move_has_no_immediate_damage(monster):
                     continue
                 total += 5 * getattr(game, "act", 1)

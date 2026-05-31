@@ -364,6 +364,22 @@ def _slime_boss(
     )
 
 
+def _exploder_explode(current_hp=30):
+    return Monster(
+        name="Exploder",
+        monster_id="Exploder",
+        max_hp=30,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.UNKNOWN,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+
+
 def _acid_slime_l(current_hp=30, max_hp=65):
     return Monster(
         name="Acid Slime (L)",
@@ -1488,6 +1504,41 @@ def test_enemy_lookahead_ignores_negated_attack_intent(monkeypatch):
     assert future_damage == 0
 
 
+def test_enemy_lookahead_counts_live_unknown_damage_move():
+    context = _combat_context([], energy=0, monsters=[_exploder_explode()])
+    context.turn = 3
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 30
+
+
+def test_enemy_lookahead_counts_predicted_unknown_damage_move():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=50)])
+    context.turn = 3
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._current_monster_move = lambda *_args, **_kwargs: None
+    simulator._predicted_monster_move_for_step = lambda *_args, **_kwargs: {
+        "name": "Explode",
+        "intent": "UNKNOWN",
+        "damage": 30,
+        "hits": 1,
+    }
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 30
+
+
 def test_enemy_lookahead_applies_ascension_ritual_gain_to_future_attacks():
     context = _combat_context([], energy=0, monsters=[_cultist_ritual()])
     context.turn = 1
@@ -1768,6 +1819,20 @@ def test_enemy_lookahead_depth_ignores_negated_future_attack_intent():
     ]
 
     assert simulator._needs_multi_turn_enemy_lookahead(state, context) is False
+
+
+def test_enemy_lookahead_depth_counts_future_unknown_damage_move():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=50)])
+    context.turn = 1
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._current_monster_move = lambda *_args, **_kwargs: None
+    simulator._predict_monster_moves = lambda *_args, **_kwargs: [
+        {"move": {"intent": "BUFF"}},
+        {"move": {"name": "Explode", "intent": "UNKNOWN", "damage": 30, "hits": 1}},
+    ]
+
+    assert simulator._needs_multi_turn_enemy_lookahead(state, context) is True
 
 
 def test_awakened_lagavulin_attack_is_not_marked_hibernating():

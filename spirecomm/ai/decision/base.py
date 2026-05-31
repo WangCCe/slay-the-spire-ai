@@ -18,7 +18,10 @@ from spirecomm.ai.intent_utils import (
     intent_is_unknown,
     monster_intends_attack,
 )
-from spirecomm.ai.incoming_damage import known_unknown_move_has_no_immediate_damage
+from spirecomm.ai.incoming_damage import (
+    known_unknown_move_has_no_immediate_damage,
+    known_unknown_move_immediate_damage,
+)
 from spirecomm.ai.monster_names import canonical_live_monster_name
 from spirecomm.data.loader import game_data_loader
 
@@ -200,6 +203,10 @@ class DecisionContext:
                 intent = getattr(monster, 'intent', None)
 
                 if intent_is_unknown(intent):
+                    known_damage = known_unknown_move_immediate_damage(monster)
+                    if known_damage > 0:
+                        total += known_damage
+                        continue
                     if known_unknown_move_has_no_immediate_damage(monster):
                         continue
                     total += 5 * self.act
