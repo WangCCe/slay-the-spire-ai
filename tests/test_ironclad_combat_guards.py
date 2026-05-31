@@ -8298,3 +8298,26 @@ def test_draw_potions_respect_no_draw_power():
         result = planner._simulate_potion_use(state, potion, target=None)
 
         assert result.cards_drawn == 0
+
+
+def test_draw_power_respects_no_draw_power():
+    draw_power = _card(
+        "Draw",
+        "Draw",
+        card_type=CardType.POWER,
+        cost=1,
+        has_target=False,
+    )
+    context = _combat_context([draw_power], energy=1, monsters=[_louse(current_hp=100)])
+    state = SimulationState(context)
+    state.draw_blocked = True
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        draw_power,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.cards_drawn == 0

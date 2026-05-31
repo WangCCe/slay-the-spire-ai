@@ -2322,7 +2322,7 @@ class FastCombatSimulator:
 
         # Draw power
         elif card_id == 'Draw':
-            state.cards_drawn += 1 if card.upgrades == 0 else 2
+            self._add_card_draw(state, 1 if card.upgrades == 0 else 2)
 
         # Energy gain (Bloodletting, etc.)
         elif 'energy' in card_id.lower() or card_id in ['Demon Form', 'Combust']:
