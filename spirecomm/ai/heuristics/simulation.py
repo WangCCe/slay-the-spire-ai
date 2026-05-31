@@ -2158,6 +2158,11 @@ class FastCombatSimulator:
                     trigger_thorns=False,
                 )
 
+        end_turn_block = max(0, getattr(projected, 'end_turn_block', 0))
+        if end_turn_block > 0:
+            projected.end_turn_block = 0
+            self._add_player_block(projected, end_turn_block)
+
         projected.end_turn_aoe_damage = 0
         projected.end_turn_hp_loss = 0
         temp_strength = getattr(projected, 'player_temp_strength', 0)

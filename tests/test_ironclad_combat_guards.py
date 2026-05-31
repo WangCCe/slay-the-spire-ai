@@ -1549,6 +1549,39 @@ def test_metallicize_tracks_end_turn_block_without_body_slam_block(monkeypatch):
     assert result.total_damage_dealt == 0
 
 
+def test_metallicize_end_turn_block_triggers_juggernaut(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "metallicize": {
+            "name": "Metallicize",
+            "description": "At the end of your turn, gain 3 Block.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    metallicize = _card("Metallicize", "Metallicize", card_type=CardType.POWER, cost=1, has_target=False)
+    context = _combat_context([metallicize], energy=1, monsters=[_louse(current_hp=20)])
+    context.game.player.powers = [SimpleNamespace(power_name="Juggernaut", amount=5)]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        metallicize,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    projected = simulator.project_end_turn_effects(state)
+
+    assert state.player_block == 0
+    assert state.end_turn_block == 3
+    assert state.total_damage_dealt == 0
+    assert projected.player_block == 3
+    assert projected.end_turn_block == 0
+    assert projected.total_damage_dealt == 5
+    assert projected.monsters[0]["hp"] == 15
+
+
 def test_existing_juggernaut_deals_damage_when_skill_gains_block():
     defend = _card(
         "Defend_R",
