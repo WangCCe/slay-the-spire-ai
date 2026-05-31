@@ -1180,9 +1180,8 @@ class TurnPlanSignature:
         """Create signature from current game state."""
         # Track hand cards by UUID to detect draws/exhausts
         self.hand_cards = tuple(
-            getattr(c, "uuid", id(c))
+            self._card_signature(c)
             for c in game.hand
-            if hasattr(c, "uuid") or hasattr(c, "card_id")
         )
 
         # Track available energy
@@ -1206,6 +1205,14 @@ class TurnPlanSignature:
         # Flags for random events that invalidate plan
         self.has_drawn_cards = False  # Set to True if draw events occur
         self.has_random_effects = False  # Set for random targeting/shuffle
+
+    @staticmethod
+    def _card_signature(card):
+        for attr in ("uuid", "card_id", "name"):
+            value = getattr(card, attr, None)
+            if value:
+                return value
+        return id(card)
 
     def __eq__(self, other):
         """Check if two signatures are equal."""
