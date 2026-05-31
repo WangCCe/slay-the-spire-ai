@@ -2383,6 +2383,29 @@ def test_safe_window_detection_counts_monster_strength(monkeypatch):
     assert windows == []
 
 
+def test_safe_window_detection_clamps_negative_monster_strength_per_hit(monkeypatch):
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        lambda *_args, **_kwargs: [
+            {"move": {"name": "Clipped Bite", "intent": "ATTACK", "damage": 3, "hits": 2}}
+        ],
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0))
+    monster = SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength=-5)
+
+    windows = classifier._detect_safe_windows(
+        context,
+        [monster],
+        current_turn=1,
+        look_ahead=1,
+    )
+
+    assert len(windows) == 1
+    assert windows[0].expected_damage == 0
+
+
 def test_safe_window_detection_treats_negated_attack_intent_as_safe(monkeypatch):
     monkeypatch.setattr(
         data_loader.game_data_loader,
@@ -3196,6 +3219,38 @@ def test_damage_curve_keeps_lower_ascension_damage_when_higher_modifier_changes_
     )
 
     assert damage_curve == [8]
+
+
+def test_damage_curve_clamps_negative_monster_strength_per_hit(monkeypatch):
+    def fake_predict_monster_moves(_monster_name, _current_turn, _hp_percent):
+        return [
+            {
+                "move": {
+                    "name": "Clipped Bite",
+                    "intent": "ATTACK",
+                    "damage": 3,
+                    "hits": 2,
+                }
+            }
+        ]
+
+    monkeypatch.setattr(
+        data_loader.game_data_loader,
+        "predict_monster_moves",
+        fake_predict_monster_moves,
+    )
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(game=SimpleNamespace(current_hp=80, ascension_level=0))
+    monster = SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength=-5)
+
+    damage_curve = classifier._calculate_damage_curve(
+        context,
+        [monster],
+        current_turn=1,
+        look_ahead=1,
+    )
+
+    assert damage_curve == [0]
 
 
 def test_opening_then_alternating_patterns_predict_full_sequence():

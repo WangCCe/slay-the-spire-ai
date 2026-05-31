@@ -313,7 +313,11 @@ class TurnTimingClassifier:
                                 target_turn,
                                 context,
                             )
-                            total_damage += (damage + predicted_strength) * hits
+                            per_hit_damage = self._apply_strength_to_per_hit_damage(
+                                damage,
+                                predicted_strength,
+                            )
+                            total_damage += per_hit_damage * hits
                         else:
                             # Non-attack move = safe
                             monsters_safe.append(monster_name)
@@ -408,7 +412,11 @@ class TurnTimingClassifier:
                                 context,
                             )
 
-                            total_damage += (damage + predicted_strength) * hits
+                            per_hit_damage = self._apply_strength_to_per_hit_damage(
+                                damage,
+                                predicted_strength,
+                            )
+                            total_damage += per_hit_damage * hits
 
                 damage_curve.append(total_damage)
 
@@ -440,6 +448,10 @@ class TurnTimingClassifier:
             return fallback_predictions[0] if fallback_predictions else None
         except Exception:
             return None
+
+    @staticmethod
+    def _apply_strength_to_per_hit_damage(damage: int, strength: int) -> int:
+        return max(0, damage + strength)
 
     def _predict_attack_strength(
         self,
@@ -976,7 +988,11 @@ class TurnTimingClassifier:
                             context,
                         )
 
-                        if (damage + predicted_strength) * hits >= 20:
+                        per_hit_damage = self._apply_strength_to_per_hit_damage(
+                            damage,
+                            predicted_strength,
+                        )
+                        if per_hit_damage * hits >= 20:
                             # Big attack imminent
                             return True
 
