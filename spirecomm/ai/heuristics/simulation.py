@@ -700,7 +700,10 @@ class SimulationState:
                 ),
                 m.get('move_hits', 1) or 1,
                 str(m['intent']) if m['intent'] else None,  # Convert intent to string
-                m.get('move_id', None),
+                (
+                    m.get('move_id', None) is None,
+                    '' if m.get('move_id', None) is None else str(m.get('move_id', None)),
+                ),
                 m['is_gone'],
                 m.get('monster_id', ''),
                 m['name']  # Include name for elite/boss identification

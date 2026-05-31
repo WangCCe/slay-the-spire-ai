@@ -3808,6 +3808,25 @@ def test_state_key_distinguishes_live_monster_move_threat():
     assert base_state.state_key([]) != multi_hit_state.state_key([])
 
 
+def test_state_key_handles_mixed_type_monster_move_ids():
+    potion = Potion(
+        potion_id="FirePotion",
+        name="Fire Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=True,
+    )
+    context = _potion_projection_context(potion)
+    state = simulation.SimulationState(context)
+    second_monster = state.monsters[0].copy()
+
+    state.monsters[0]["move_id"] = 1
+    second_monster["move_id"] = "2"
+    state.monsters.append(second_monster)
+
+    assert len(state.state_key([])[1]) == 2
+
+
 def test_state_key_distinguishes_engine_events_used_for_scoring():
     potion = Potion(
         potion_id="SwiftPotion",
