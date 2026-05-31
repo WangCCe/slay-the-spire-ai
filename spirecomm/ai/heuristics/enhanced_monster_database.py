@@ -301,6 +301,7 @@ class EnhancedMonsterDatabase:
         monster_hp_percent: float,
         ascension_level: int = 0,
         other_enemy_count: Optional[int] = None,
+        other_enemy_names: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Predict next moves for a monster based on its pattern.
@@ -311,6 +312,7 @@ class EnhancedMonsterDatabase:
             monster_hp_percent: Current HP as percentage (0.0 to 1.0)
             ascension_level: Current ascension level (default 0)
             other_enemy_count: Number of other live enemies, if known
+            other_enemy_names: Names of other live enemies, if known
 
         Returns:
             List of predicted moves for next 3 turns
@@ -407,6 +409,42 @@ class EnhancedMonsterDatabase:
                 current_turn,
                 limit=pattern.get("prediction_limit", 2),
             )
+
+        # Check for Collector probabilities that depend on whether Torch Heads are alive.
+        elif (
+            other_enemy_names is not None
+            and "probabilities_with_torch_heads" in pattern
+            and "probabilities_with_dead_torch_head" in pattern
+        ):
+            if current_turn == 1 and pattern.get("initial_move"):
+                self._append_named_move_prediction(
+                    predictions,
+                    monster_name,
+                    pattern["initial_move"],
+                    current_turn,
+                    confidence=1.0,
+                )
+            elif current_turn == 4:
+                self._append_named_move_prediction(
+                    predictions,
+                    monster_name,
+                    "Mega Debuff",
+                    current_turn,
+                    confidence=1.0,
+                )
+            else:
+                probabilities = (
+                    pattern["probabilities_with_torch_heads"]
+                    if self._torch_head_count(other_enemy_names) >= 2
+                    else pattern["probabilities_with_dead_torch_head"]
+                )
+                self._append_probability_predictions(
+                    predictions,
+                    moves,
+                    probabilities,
+                    current_turn,
+                    limit=len(probabilities),
+                )
 
         # Check for phase-based patterns
         elif "phases" in pattern:
@@ -920,6 +958,13 @@ class EnhancedMonsterDatabase:
     def _normalize_move_name(self, move_name: str) -> str:
         return re.sub(r"[^a-z0-9]+", "_", move_name.lower()).strip("_")
 
+    def _torch_head_count(self, monster_names: List[str]) -> int:
+        return sum(
+            1
+            for name in monster_names
+            if self._normalize_move_name(str(name or "")) in {"torch_head", "torchhead"}
+        )
+
     def _select_probability_by_enemy_count(
         self,
         probability_tables: Dict[str, Any],
@@ -1328,6 +1373,7 @@ def predict_monster_moves(
     monster_hp_percent: float,
     ascension_level: int = 0,
     other_enemy_count: Optional[int] = None,
+    other_enemy_names: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """Predict monster moves (convenience function)."""
     return get_enhanced_monster_db().predict_next_moves(
@@ -1336,6 +1382,7 @@ def predict_monster_moves(
         monster_hp_percent,
         ascension_level=ascension_level,
         other_enemy_count=other_enemy_count,
+        other_enemy_names=other_enemy_names,
     )
 
 

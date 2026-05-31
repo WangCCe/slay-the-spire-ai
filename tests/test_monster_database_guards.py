@@ -330,3 +330,55 @@ def test_game_data_loader_forwards_other_enemy_count_to_monster_predictions():
         prediction["move"]["name"]
         for prediction in predictions
     ] == ["Rally!", "Stab"]
+
+
+def test_game_data_loader_forwards_other_enemy_names_to_monster_predictions():
+    loader = GameDataLoader(auto_load=False)
+
+    predictions = loader.predict_monster_moves(
+        "The Collector",
+        current_turn=2,
+        monster_hp_percent=1.0,
+        other_enemy_names=["Torch Head", "Torch Head"],
+    )
+
+    assert [
+        prediction["move"]["name"]
+        for prediction in predictions
+    ] == ["Fireball", "Buff"]
+
+
+def test_collector_uses_torch_head_state_for_probabilities():
+    database = EnhancedMonsterDatabase()
+
+    both_alive = database.predict_next_moves(
+        "The Collector",
+        current_turn=2,
+        monster_hp_percent=1.0,
+        other_enemy_names=["Torch Head", "Torch Head"],
+    )
+    one_dead = database.predict_next_moves(
+        "The Collector",
+        current_turn=2,
+        monster_hp_percent=1.0,
+        other_enemy_names=["Torch Head"],
+    )
+    turn_four = database.predict_next_moves(
+        "The Collector",
+        current_turn=4,
+        monster_hp_percent=1.0,
+        other_enemy_names=["Torch Head", "Torch Head"],
+    )
+
+    assert [
+        (prediction["move"]["name"], prediction["confidence"])
+        for prediction in both_alive
+    ] == [("Fireball", 0.7), ("Buff", 0.3)]
+    assert [
+        (prediction["move"]["name"], prediction["confidence"])
+        for prediction in one_dead
+    ] == [("Fireball", 0.45), ("Buff", 0.3), ("Spawn", 0.25)]
+    assert [
+        (prediction["turn"], prediction["move"]["name"])
+        for prediction in turn_four
+    ] == [(4, "Mega Debuff")]

@@ -1920,6 +1920,82 @@ def test_enemy_prediction_passes_other_enemy_count_to_loader(monkeypatch):
     ]
 
 
+def test_enemy_prediction_passes_other_enemy_names_to_loader(monkeypatch):
+    class FakeLoader:
+        def __init__(self):
+            self.calls = []
+
+        def predict_monster_moves(
+            self,
+            monster_name,
+            current_turn,
+            hp_percent,
+            ascension_level=0,
+            other_enemy_count=None,
+            other_enemy_names=None,
+        ):
+            self.calls.append(
+                {
+                    "monster_name": monster_name,
+                    "current_turn": current_turn,
+                    "hp_percent": hp_percent,
+                    "ascension_level": ascension_level,
+                    "other_enemy_count": other_enemy_count,
+                    "other_enemy_names": other_enemy_names,
+                }
+            )
+            return []
+
+    loader = FakeLoader()
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    collector = Monster(
+        name="The Collector",
+        monster_id="TheCollector",
+        max_hp=282,
+        current_hp=282,
+        block=0,
+        intent=Intent.UNKNOWN,
+        half_dead=False,
+        is_gone=False,
+        move_id=0,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+    torch_head = Monster(
+        name="Torch Head",
+        monster_id="TorchHead",
+        max_hp=40,
+        current_hp=40,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=0,
+        move_adjusted_damage=7,
+        move_hits=1,
+    )
+    context = _combat_context([], energy=0, monsters=[collector, torch_head])
+    context.game.monsters = [collector, torch_head]
+
+    FastCombatSimulator(SynergyCardEvaluator())._predict_monster_moves(
+        "The Collector",
+        current_turn=2,
+        hp_percent=1.0,
+        context=context,
+    )
+
+    assert loader.calls == [
+        {
+            "monster_name": "The Collector",
+            "current_turn": 2,
+            "hp_percent": 1.0,
+            "ascension_level": 0,
+            "other_enemy_count": 1,
+            "other_enemy_names": ["Torch Head"],
+        }
+    ]
+
+
 def test_enemy_lookahead_ignores_negated_attack_intent(monkeypatch):
     class FakeLoader:
         def get_enhanced_monster_data(self, _monster_name):

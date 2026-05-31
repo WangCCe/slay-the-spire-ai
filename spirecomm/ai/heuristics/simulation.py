@@ -4044,15 +4044,28 @@ class FastCombatSimulator:
                 if context is not None
                 else 0
             )
+            other_enemy_names = self._context_other_enemy_names(context, monster_name)
+            other_enemy_count = len(other_enemy_names) if other_enemy_names is not None else None
             try:
                 return game_data_loader.predict_monster_moves(
                     monster_name,
                     current_turn,
                     hp_percent,
                     ascension_level=ascension_level,
-                    other_enemy_count=self._context_other_enemy_count(context, monster_name),
+                    other_enemy_count=other_enemy_count,
+                    other_enemy_names=other_enemy_names,
                 )
             except TypeError:
+                try:
+                    return game_data_loader.predict_monster_moves(
+                        monster_name,
+                        current_turn,
+                        hp_percent,
+                        ascension_level=ascension_level,
+                        other_enemy_count=other_enemy_count,
+                    )
+                except TypeError:
+                    pass
                 try:
                     return game_data_loader.predict_monster_moves(
                         monster_name,
@@ -4284,6 +4297,14 @@ class FastCombatSimulator:
         context: Optional[DecisionContext],
         monster_name: str,
     ) -> Optional[int]:
+        other_enemy_names = self._context_other_enemy_names(context, monster_name)
+        return len(other_enemy_names) if other_enemy_names is not None else None
+
+    def _context_other_enemy_names(
+        self,
+        context: Optional[DecisionContext],
+        monster_name: str,
+    ) -> Optional[List[str]]:
         if context is None:
             return None
 
@@ -4295,14 +4316,14 @@ class FastCombatSimulator:
             return None
 
         target_name = str(monster_name or '').lower()
-        other_count = 0
+        other_names = []
         for monster in monsters:
             if not self._is_live_context_monster(monster):
                 continue
             candidate_name = str(_canonical_live_monster_name(monster) or '').lower()
             if candidate_name and candidate_name != target_name:
-                other_count += 1
-        return other_count
+                other_names.append(_canonical_live_monster_name(monster))
+        return other_names
 
     @staticmethod
     def _is_live_context_monster(monster: Any) -> bool:
