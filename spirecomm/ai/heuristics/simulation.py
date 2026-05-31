@@ -4075,97 +4075,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                         from spirecomm.communication.action import PotionAction
                         _, potion, target = card_idx
 
-                        # Simulate potion use (simplified simulation for now)
-                        new_state = copy.deepcopy(state)
-                        # Apply potion effect to state
-                        if potion.effect_type == 'damage':
-                            if potion.target_type == 'all_monsters':
-                                for monster in new_state.monsters:
-                                    if self.simulator._is_live_monster_state(monster):
-                                        self.simulator._deal_damage_to_monster(
-                                            new_state,
-                                            monster,
-                                            potion.effect_value,
-                                            trigger_thorns=False,
-                                        )
-                                        new_state.damage_instances += 1
-                            else:
-                                target_index = self._state_monster_index_for_potion_target(
-                                    new_state, target
-                                )
-                                if target_index is not None:
-                                    monster = new_state.monsters[target_index]
-                                    if self.simulator._is_live_monster_state(monster):
-                                        self.simulator._deal_damage_to_monster(
-                                            new_state,
-                                            monster,
-                                            potion.effect_value,
-                                            trigger_thorns=False,
-                                        )
-                                        new_state.damage_instances += 1
-                        elif potion.effect_type == 'poison':
-                            target_index = self._state_monster_index_for_potion_target(
-                                new_state, target
-                            )
-                            if target_index is not None:
-                                self.simulator._apply_monster_poison(
-                                    new_state.monsters[target_index],
-                                    potion.effect_value,
-                                )
-                        elif potion.effect_type in ['debuff_weak', 'debuff_vulnerable']:
-                            target_index = self._state_monster_index_for_potion_target(
-                                new_state, target
-                            )
-                            if target_index is not None:
-                                debuff = (
-                                    'weak'
-                                    if potion.effect_type == 'debuff_weak'
-                                    else 'vulnerable'
-                                )
-                                self.simulator._apply_monster_debuff(
-                                    new_state.monsters[target_index],
-                                    debuff,
-                                    potion.effect_value,
-                                )
-                        elif potion.effect_type == 'block':
-                            new_state.player_block += potion.effect_value
-                        elif potion.effect_type in ['plated_armor', 'metallicize']:
-                            new_state.end_turn_block += potion.effect_value
-                        elif potion.effect_type in ['heal', 'regen']:
-                            new_state.player_hp = min(new_state.player_max_hp, new_state.player_hp + potion.effect_value)
-                        elif potion.effect_type == 'heal_percent':
-                            heal_amount = int(new_state.player_max_hp * potion.effect_value)
-                            new_state.player_hp = min(new_state.player_max_hp, new_state.player_hp + heal_amount)
-                        elif potion.effect_type == 'max_hp':
-                            new_state.player_max_hp += potion.effect_value
-                            new_state.player_hp += potion.effect_value
-                        elif potion.effect_type == 'buff_strength':
-                            new_state.player_strength += potion.effect_value
-                        elif potion.effect_type == 'temp_strength':
-                            new_state.player_strength += potion.effect_value
-                            if new_state.player_artifact > 0:
-                                new_state.player_artifact -= 1
-                            else:
-                                new_state.player_temp_strength += potion.effect_value
-                        elif potion.effect_type == 'buff_dexterity':
-                            new_state.player_dexterity += potion.effect_value
-                        elif potion.effect_type == 'temp_dexterity':
-                            new_state.player_dexterity += potion.effect_value
-                            if new_state.player_artifact > 0:
-                                new_state.player_artifact -= 1
-                            else:
-                                new_state.player_temp_dexterity += potion.effect_value
-                        elif potion.effect_type == 'thorns':
-                            new_state.player_thorns += potion.effect_value
-                        elif potion.effect_type == 'intangible':
-                            new_state.player_intangible += potion.effect_value
-                        elif potion.effect_type == 'artifact':
-                            new_state.player_artifact += potion.effect_value
-                        elif potion.effect_type == 'energy':
-                            new_state.player_energy += potion.effect_value
-                            new_state.energy_gained += potion.effect_value
-                        elif potion.effect_type in ['draw', 'draw_randomize_cost']:
-                            new_state.cards_drawn += potion.effect_value
+                        new_state = self._simulate_potion_use(state, potion, target)
 
                         # Create potion action
                         if target:
@@ -4438,6 +4348,92 @@ class HeuristicCombatPlanner(CombatPlanner):
                 score += 20
 
         return score
+
+    def _simulate_potion_use(self, state: SimulationState, potion, target) -> SimulationState:
+        new_state = copy.deepcopy(state)
+        self._apply_potion_effect(new_state, potion, target)
+        return new_state
+
+    def _apply_potion_effect(self, state: SimulationState, potion, target):
+        if potion.effect_type == 'damage':
+            if potion.target_type == 'all_monsters':
+                for monster in state.monsters:
+                    if self.simulator._is_live_monster_state(monster):
+                        self.simulator._deal_damage_to_monster(
+                            state,
+                            monster,
+                            potion.effect_value,
+                            trigger_thorns=False,
+                        )
+                        state.damage_instances += 1
+                return
+
+            target_index = self._state_monster_index_for_potion_target(state, target)
+            if target_index is not None:
+                monster = state.monsters[target_index]
+                if self.simulator._is_live_monster_state(monster):
+                    self.simulator._deal_damage_to_monster(
+                        state,
+                        monster,
+                        potion.effect_value,
+                        trigger_thorns=False,
+                    )
+                    state.damage_instances += 1
+        elif potion.effect_type == 'poison':
+            target_index = self._state_monster_index_for_potion_target(state, target)
+            if target_index is not None:
+                self.simulator._apply_monster_poison(
+                    state.monsters[target_index],
+                    potion.effect_value,
+                )
+        elif potion.effect_type in ['debuff_weak', 'debuff_vulnerable']:
+            target_index = self._state_monster_index_for_potion_target(state, target)
+            if target_index is not None:
+                debuff = 'weak' if potion.effect_type == 'debuff_weak' else 'vulnerable'
+                self.simulator._apply_monster_debuff(
+                    state.monsters[target_index],
+                    debuff,
+                    potion.effect_value,
+                )
+        elif potion.effect_type == 'block':
+            state.player_block += potion.effect_value
+        elif potion.effect_type in ['plated_armor', 'metallicize']:
+            state.end_turn_block += potion.effect_value
+        elif potion.effect_type in ['heal', 'regen']:
+            state.player_hp = min(state.player_max_hp, state.player_hp + potion.effect_value)
+        elif potion.effect_type == 'heal_percent':
+            heal_amount = int(state.player_max_hp * potion.effect_value)
+            state.player_hp = min(state.player_max_hp, state.player_hp + heal_amount)
+        elif potion.effect_type == 'max_hp':
+            state.player_max_hp += potion.effect_value
+            state.player_hp += potion.effect_value
+        elif potion.effect_type == 'buff_strength':
+            state.player_strength += potion.effect_value
+        elif potion.effect_type == 'temp_strength':
+            state.player_strength += potion.effect_value
+            if state.player_artifact > 0:
+                state.player_artifact -= 1
+            else:
+                state.player_temp_strength += potion.effect_value
+        elif potion.effect_type == 'buff_dexterity':
+            state.player_dexterity += potion.effect_value
+        elif potion.effect_type == 'temp_dexterity':
+            state.player_dexterity += potion.effect_value
+            if state.player_artifact > 0:
+                state.player_artifact -= 1
+            else:
+                state.player_temp_dexterity += potion.effect_value
+        elif potion.effect_type == 'thorns':
+            state.player_thorns += potion.effect_value
+        elif potion.effect_type == 'intangible':
+            state.player_intangible += potion.effect_value
+        elif potion.effect_type == 'artifact':
+            state.player_artifact += potion.effect_value
+        elif potion.effect_type == 'energy':
+            state.player_energy += potion.effect_value
+            state.energy_gained += potion.effect_value
+        elif potion.effect_type in ['draw', 'draw_randomize_cost']:
+            state.cards_drawn += potion.effect_value
 
     def _find_best_potion_target(self, potion, context: DecisionContext) -> Monster:
         """
