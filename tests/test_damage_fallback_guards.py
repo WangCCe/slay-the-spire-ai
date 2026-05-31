@@ -305,6 +305,75 @@ def test_temporary_strength_loss_reduces_base_damage_intent(monkeypatch):
     assert state.monsters[0]["strength"] == 0
 
 
+def test_enemy_lookahead_expires_temporary_strength_loss_after_current_turn(monkeypatch):
+    card = Card(
+        card_id="Dark Shackles",
+        name="Dark Shackles",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.UNCOMMON,
+        has_target=True,
+        cost=0,
+    )
+    card_data = {
+        "name": "Dark Shackles",
+        "description": "Enemy loses 9 Strength this turn.\nExhaust.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Dark Shackles" else None,
+    )
+    monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        max_hp=50,
+        current_hp=50,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_base_damage=12,
+        move_adjusted_damage=12,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+            relics=[],
+        ),
+        act=1,
+        turn=1,
+        energy_available=0,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[card],
+        incoming_damage=12,
+        player_hp=80,
+        player_hp_pct=1.0,
+    )
+    simulator = FastCombatSimulator(None)
+    state = simulation.SimulationState(context)
+    result = simulator.simulate_card_play(state, card, context=context, target_index=0)
+    move = {"name": "Slash", "intent": "ATTACK", "damage": 12, "hits": 1}
+    simulator._current_monster_move = lambda _monster: move
+    simulator._predicted_monster_move_for_step = lambda *_args, **_kwargs: move
+
+    future_damage = simulator.simulate_enemy_lookahead(result, context, look_ahead=2)
+
+    assert result.monsters[0]["move_adjusted_damage"] == 3
+    assert future_damage == 12
+
+
 def test_skill_simulation_applies_temporary_aoe_strength_loss(monkeypatch):
     card = Card(
         card_id="Piercing Wail",

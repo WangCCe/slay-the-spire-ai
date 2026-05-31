@@ -1494,19 +1494,21 @@ class FastCombatSimulator:
         if isinstance(raw_damage, (int, float)):
             monster['_simulated_move_adjusted_source'] = max(0, raw_damage)
 
+    def _effective_monster_attack_strength(self, monster: dict) -> int:
+        return (
+            monster.get('strength', 0)
+            + monster.get('_simulated_temporary_strength_delta', 0)
+        )
+
     def _refresh_monster_adjusted_damage_from_debuffs(self, monster: dict):
         if not self._monster_intends_attack(monster):
             return
 
         raw_base_damage = monster.get('move_base_damage', 0)
         if isinstance(raw_base_damage, (int, float)) and raw_base_damage > 0:
-            effective_strength = (
-                monster.get('strength', 0)
-                + monster.get('_simulated_temporary_strength_delta', 0)
-            )
             damage = self._apply_monster_strength_to_per_hit_damage(
                 raw_base_damage,
-                effective_strength,
+                self._effective_monster_attack_strength(monster),
             )
             monster['move_adjusted_damage'] = self._apply_monster_weak_to_per_hit_damage(
                 damage,
@@ -1885,6 +1887,18 @@ class FastCombatSimulator:
             for debuff in ('weak', 'vulnerable', 'frail'):
                 if monster.get(debuff, 0) > 0:
                     monster[debuff] = max(0, monster[debuff] - 1)
+            temporary_strength_delta = monster.pop(
+                '_simulated_temporary_strength_delta',
+                0,
+            )
+            if temporary_strength_delta:
+                monster['_simulated_strength_delta'] = (
+                    monster.get('_simulated_strength_delta', 0)
+                    - temporary_strength_delta
+                )
+                if monster.get('_simulated_strength_delta') == 0:
+                    monster.pop('_simulated_strength_delta', None)
+                self._refresh_monster_adjusted_damage_from_debuffs(monster)
 
     def _extract_move_debuffs(
         self,
@@ -2964,10 +2978,9 @@ class FastCombatSimulator:
                         )
 
                         if intent_is_attack(move.get('intent', '')) and move_damage > 0:
-                            current_strength = monster.get('strength', 0)
                             per_hit_damage = self._apply_monster_strength_to_per_hit_damage(
                                 move_damage,
-                                current_strength,
+                                self._effective_monster_attack_strength(monster),
                             )
                             per_hit_damage = self._apply_monster_weak_to_per_hit_damage(
                                 per_hit_damage,
@@ -3008,10 +3021,9 @@ class FastCombatSimulator:
                             move_hits = monster.get('move_hits', 1)
                             per_hit_damage = fallback_damage
                             if should_use_damage_fallback:
-                                current_strength = monster.get('strength', 0)
                                 per_hit_damage = self._apply_monster_strength_to_per_hit_damage(
                                     per_hit_damage,
-                                    current_strength,
+                                    self._effective_monster_attack_strength(monster),
                                 )
                                 per_hit_damage = self._apply_monster_weak_to_per_hit_damage(
                                     per_hit_damage,
