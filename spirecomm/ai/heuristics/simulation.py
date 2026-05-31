@@ -678,6 +678,7 @@ class SimulationState:
         monster_key = tuple(sorted(
             (
                 m['hp'],
+                m.get('max_hp', m['hp']),
                 m['block'],
                 m['vulnerable'],
                 m['weak'],

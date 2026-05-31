@@ -3766,6 +3766,26 @@ def test_state_key_distinguishes_player_max_hp_for_future_healing():
     assert base_state.state_key([]) != larger_max_hp_state.state_key([])
 
 
+def test_state_key_distinguishes_monster_max_hp_for_phase_thresholds():
+    potion = Potion(
+        potion_id="FirePotion",
+        name="Fire Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=True,
+    )
+    context = _potion_projection_context(potion)
+    base_state = simulation.SimulationState(context)
+    lower_percent_state = base_state.clone()
+
+    base_state.monsters[0]["hp"] = 40
+    lower_percent_state.monsters[0]["hp"] = 40
+    lower_percent_state.monsters[0]["max_hp"] = 80
+
+    assert base_state.monsters[0]["hp"] == lower_percent_state.monsters[0]["hp"]
+    assert base_state.state_key([]) != lower_percent_state.state_key([])
+
+
 def test_simulation_state_includes_existing_plated_armor_end_turn_block():
     potion = Potion(
         potion_id="FirePotion",
