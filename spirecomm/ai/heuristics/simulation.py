@@ -481,6 +481,7 @@ class SimulationState:
         self.player_weak = self._get_player_debuff_stacks(context, 'Weak')
         self.player_frail = self._get_player_debuff_stacks(context, 'Frail')
         self.player_hex = self._get_player_hex_stacks(context)
+        self.player_constricted = self._get_player_constricted_stacks(context)
         # Rage power: block gained per attack played.
         self.rage_block_per_attack = self._get_player_power_amount(context, 'Rage')
         self.draw_blocked = (
@@ -630,6 +631,12 @@ class SimulationState:
         if self._has_player_power(context, 'Hex') and hex_stacks <= 0:
             return 1
         return max(0, hex_stacks)
+
+    def _get_player_constricted_stacks(self, context: DecisionContext) -> int:
+        return max(
+            self._get_player_debuff_stacks(context, 'Constricted'),
+            self._get_player_debuff_stacks(context, 'ConstrictedPower'),
+        )
 
     def _get_monster_power_amount(self, monster: Any, power_name: str) -> int:
         if not hasattr(monster, 'powers'):
@@ -837,6 +844,7 @@ class SimulationState:
             self.player_weak,
             self.player_frail,
             self.player_hex,
+            self.player_constricted,
             self.rage_block_per_attack,
             self.draw_blocked,
             self.double_tap_charges,
@@ -2645,6 +2653,10 @@ class FastCombatSimulator:
             projected.player_hp = max(0, projected.player_hp - hp_loss)
             if projected.rupture_strength_per_hp_loss > 0:
                 projected.player_strength += projected.rupture_strength_per_hp_loss
+
+        constricted_loss = max(0, getattr(projected, 'player_constricted', 0))
+        if constricted_loss > 0:
+            projected.player_hp = max(0, projected.player_hp - constricted_loss)
 
         aoe_damage = max(0, getattr(projected, 'end_turn_aoe_damage', 0))
         if aoe_damage > 0:

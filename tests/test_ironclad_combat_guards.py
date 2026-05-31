@@ -713,6 +713,20 @@ def test_simulation_tracks_chosen_hex_power_from_player_powers():
     assert state.player_hex == 1
 
 
+def test_simulation_tracks_player_constricted_power():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Constricted", amount=7)]
+
+    state = SimulationState(context)
+    unconstricted_state = state.clone()
+    unconstricted_state.player_constricted = 0
+
+    assert state.player_constricted == 7
+    assert state.state_key(context.playable_cards) != unconstricted_state.state_key(
+        context.playable_cards
+    )
+
+
 def test_hex_adds_dazed_pollution_for_non_attack_cards(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -2473,6 +2487,36 @@ def test_combust_end_turn_hp_loss_triggers_rupture(monkeypatch):
 
     assert projected.player_hp == context.game.current_hp - 1
     assert projected.player_strength == 1
+
+
+def test_constricted_end_turn_hp_loss_does_not_trigger_rupture():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=20)])
+    context.game.player.powers = [
+        SimpleNamespace(power_name="Constricted", amount=6),
+        SimpleNamespace(power_name="Rupture", amount=1),
+    ]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    projected = simulator.project_end_turn_effects(SimulationState(context))
+
+    assert projected.player_hp == context.game.current_hp - 6
+    assert projected.player_strength == 0
+    assert projected.player_constricted == 6
+
+
+def test_outcome_score_counts_constricted_end_turn_death():
+    context = _combat_context([], energy=0, monsters=[_green_louse_debuff(current_hp=20)])
+    context.game.current_hp = 5
+    context.player_hp = 5
+    context.player_hp_pct = 5 / context.game.max_hp
+    context.game.player.powers = [SimpleNamespace(power_name="Constricted", amount=6)]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    initial_state = SimulationState(context)
+    final_state = initial_state.clone()
+
+    score = simulator.calculate_outcome_score(initial_state, final_state, context=context)
+
+    assert score == float("-inf")
 
 
 def test_outcome_score_counts_combust_end_turn_lethal(monkeypatch):
