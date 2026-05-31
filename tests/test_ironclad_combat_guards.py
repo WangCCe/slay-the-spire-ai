@@ -2287,6 +2287,27 @@ def test_enemy_lookahead_applies_negative_monster_strength():
     assert future_damage == 5
 
 
+def test_enemy_lookahead_fallback_does_not_reapply_strength_to_adjusted_damage():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])
+    context.turn = 1
+    state = SimulationState(context)
+    state.monsters[0]["move_adjusted_damage"] = 9
+    state.monsters[0]["move_base_damage"] = 7
+    state.monsters[0]["strength"] = 2
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._current_monster_move = lambda *_args, **_kwargs: None
+    simulator._predicted_monster_move_for_step = lambda *_args, **_kwargs: None
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        state,
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 9
+
+
 def test_enemy_weak_reduces_current_incoming_damage_per_hit():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])

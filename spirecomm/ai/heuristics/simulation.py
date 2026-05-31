@@ -2932,15 +2932,26 @@ class FastCombatSimulator:
                         if strength_gain > 0:
                             monster['strength'] = monster.get('strength', 0) + strength_gain
                     else:
-                        fallback_damage = monster.get('move_adjusted_damage', 0) or monster.get('move_base_damage', 0)
+                        has_adjusted_damage = 'move_adjusted_damage' in monster
+                        adjusted_damage = monster.get('move_adjusted_damage', None)
+                        should_use_damage_fallback = (
+                            not has_adjusted_damage or adjusted_damage is None
+                        )
+                        fallback_damage = (
+                            monster.get('move_base_damage', 0)
+                            if should_use_damage_fallback
+                            else adjusted_damage
+                        )
                         fallback_damage = self._numeric_damage_value(fallback_damage)
                         if fallback_damage > 0:
                             move_hits = monster.get('move_hits', 1)
-                            current_strength = monster.get('strength', 0)
-                            per_hit_damage = self._apply_monster_strength_to_per_hit_damage(
-                                fallback_damage,
-                                current_strength,
-                            )
+                            per_hit_damage = fallback_damage
+                            if should_use_damage_fallback:
+                                current_strength = monster.get('strength', 0)
+                                per_hit_damage = self._apply_monster_strength_to_per_hit_damage(
+                                    per_hit_damage,
+                                    current_strength,
+                                )
                             per_hit_damage = self._apply_monster_weak_to_per_hit_damage(
                                 per_hit_damage,
                                 monster.get('weak', 0),
