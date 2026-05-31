@@ -705,8 +705,14 @@ class SimulationState:
                     '' if m.get('move_id', None) is None else str(m.get('move_id', None)),
                 ),
                 m['is_gone'],
-                m.get('monster_id', ''),
-                m['name']  # Include name for elite/boss identification
+                (
+                    m.get('monster_id', None) is None,
+                    '' if m.get('monster_id', None) is None else str(m.get('monster_id', None)),
+                ),
+                (
+                    m.get('name', None) is None,
+                    '' if m.get('name', None) is None else str(m.get('name', None)),
+                ),  # Include name for elite/boss identification
             )
             for m in self.monsters
             if not m['is_gone']  # Only include alive monsters

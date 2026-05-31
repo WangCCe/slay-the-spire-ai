@@ -3827,6 +3827,33 @@ def test_state_key_handles_mixed_type_monster_move_ids():
     assert len(state.state_key([])[1]) == 2
 
 
+def test_state_key_handles_missing_or_numeric_monster_identity_fields():
+    potion = Potion(
+        potion_id="FirePotion",
+        name="Fire Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=True,
+    )
+    context = _potion_projection_context(potion)
+    state = simulation.SimulationState(context)
+    second_monster = state.monsters[0].copy()
+    third_monster = state.monsters[0].copy()
+
+    state.monsters[0]["move_id"] = 1
+    second_monster["move_id"] = 1
+    third_monster["move_id"] = 1
+    state.monsters[0]["monster_id"] = None
+    second_monster["monster_id"] = 7
+    third_monster["monster_id"] = "Lagavulin"
+    state.monsters[0]["name"] = None
+    second_monster["name"] = 7
+    third_monster["name"] = "Lagavulin"
+    state.monsters.extend([second_monster, third_monster])
+
+    assert len(state.state_key([])[1]) == 3
+
+
 def test_state_key_distinguishes_engine_events_used_for_scoring():
     potion = Potion(
         potion_id="SwiftPotion",
