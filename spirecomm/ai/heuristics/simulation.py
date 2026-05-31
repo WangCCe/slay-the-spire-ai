@@ -446,7 +446,14 @@ class SimulationState:
         self.player_hp = context.game.current_hp
         self.player_max_hp = context.game.max_hp
         self.player_block = context.game.player.block if hasattr(context.game.player, 'block') else 0
-        self.end_turn_block = self._get_player_power_amount(context, 'Metallicize')
+        plated_armor = max(
+            self._get_player_power_amount(context, 'Plated Armor'),
+            self._get_player_power_amount(context, 'PlatedArmor'),
+        )
+        self.end_turn_block = (
+            self._get_player_power_amount(context, 'Metallicize')
+            + plated_armor
+        )
         self.player_energy = context.energy_available
         self.player_strength = context.strength
         self.player_temp_strength = 0

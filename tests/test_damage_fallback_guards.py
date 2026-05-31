@@ -3749,6 +3749,28 @@ def test_state_key_and_clone_preserve_player_regen():
     assert base_state.state_key([]) != regen_state.state_key([])
 
 
+def test_simulation_state_includes_existing_plated_armor_end_turn_block():
+    potion = Potion(
+        potion_id="FirePotion",
+        name="Fire Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=True,
+    )
+    context = _potion_projection_context(
+        potion,
+        player_powers=[
+            SimpleNamespace(power_name="Metallicize", amount=3),
+            SimpleNamespace(power_name="Plated Armor", amount=4),
+        ],
+    )
+
+    state = simulation.SimulationState(context)
+
+    assert state.end_turn_block == 7
+    assert state.turn_block() == 7
+
+
 def test_simulation_state_clone_preserves_future_state_fields():
     potion = Potion(
         potion_id="CultistPotion",
