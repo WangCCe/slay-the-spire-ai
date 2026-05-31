@@ -1194,6 +1194,9 @@ class TurnPlanSignature:
         # Track available energy
         self.energy = getattr(player, "energy", getattr(game, "energy", 3))
 
+        # Track potion slots because cached plans can contain PotionAction objects.
+        self.potion_signature = self._potion_signature(getattr(game, "potions", None))
+
         # Track monster states
         if hasattr(game, "monsters") and game.monsters:
             self.monster_signature = tuple(
@@ -1248,6 +1251,30 @@ class TurnPlanSignature:
             power_signatures.append((power_id, getattr(power, "amount", None)))
         return tuple(sorted(power_signatures))
 
+    @staticmethod
+    def _potion_signature(potions):
+        potion_signatures = []
+        for index, potion in enumerate(potions or []):
+            potion_identity = (
+                getattr(potion, "potion_id", None)
+                or getattr(potion, "id", None)
+                or getattr(potion, "name", None)
+            )
+            potion_signatures.append(
+                (
+                    index,
+                    potion_identity,
+                    getattr(potion, "name", None),
+                    getattr(potion, "can_use", None),
+                    getattr(potion, "can_discard", None),
+                    getattr(potion, "requires_target", None),
+                    getattr(potion, "effect_type", None),
+                    getattr(potion, "effect_value", None),
+                    getattr(potion, "target_type", None),
+                )
+            )
+        return tuple(potion_signatures)
+
     def __eq__(self, other):
         """Check if two signatures are equal."""
         if not isinstance(other, TurnPlanSignature):
@@ -1258,6 +1285,7 @@ class TurnPlanSignature:
             and self.player_block == other.player_block
             and self.player_powers == other.player_powers
             and self.energy == other.energy
+            and self.potion_signature == other.potion_signature
             and self.monster_signature == other.monster_signature
             and self.has_drawn_cards == other.has_drawn_cards
             and self.has_random_effects == other.has_random_effects
@@ -1272,6 +1300,7 @@ class TurnPlanSignature:
                 self.player_block,
                 self.player_powers,
                 self.energy,
+                self.potion_signature,
                 self.monster_signature,
                 self.has_drawn_cards,
                 self.has_random_effects,
@@ -1652,7 +1681,7 @@ class OptimizedAgent(SimpleAgent):
 
         Returns True if any of the following conditions are met:
         - No previous signature (first time planning this turn)
-        - Any signed combat state changed (hand, player state, energy, monsters)
+        - Any signed combat state changed (hand, player state, energy, potions, monsters)
         - Random effects occurred (shuffle, random targeting)
 
         Args:

@@ -20,6 +20,28 @@ def _power(power_id, amount):
     return SimpleNamespace(power_id=power_id, power_name=power_id, name=power_id, amount=amount)
 
 
+def _potion(
+    potion_id="Strength Potion",
+    name="Strength Potion",
+    can_use=True,
+    can_discard=True,
+    requires_target=False,
+    effect_type="buff_strength",
+    effect_value=2,
+    target_type="self",
+):
+    return SimpleNamespace(
+        potion_id=potion_id,
+        name=name,
+        can_use=can_use,
+        can_discard=can_discard,
+        requires_target=requires_target,
+        effect_type=effect_type,
+        effect_value=effect_value,
+        target_type=target_type,
+    )
+
+
 def _monster(
     name="Cultist",
     monster_id="Cultist",
@@ -41,12 +63,13 @@ def _monster(
     )
 
 
-def _game(hand, monster=None, current_hp=70, block=0, powers=None):
+def _game(hand, monster=None, current_hp=70, block=0, powers=None, potions=None):
     return SimpleNamespace(
         hand=hand,
         current_hp=current_hp,
         player=SimpleNamespace(energy=3, block=block, powers=powers or []),
         monsters=[monster or _monster()],
+        potions=potions or [],
     )
 
 
@@ -171,3 +194,41 @@ def test_turn_plan_signature_distinguishes_hand_card_playability_changes():
     )
 
     assert playable_signature != unplayable_signature
+
+
+def test_turn_plan_signature_distinguishes_potion_inventory_changes():
+    available_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike")], potions=[_potion()])
+    )
+    empty_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike")], potions=[])
+    )
+    spent_signature = TurnPlanSignature(
+        _game(
+            [_card("Strike_R", "Strike")],
+            potions=[_potion(potion_id="Potion Slot", name="Potion Slot", can_use=False)],
+        )
+    )
+
+    assert available_signature != empty_signature
+    assert available_signature != spent_signature
+
+
+def test_should_replan_when_potion_inventory_changes():
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.current_plan_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike")], potions=[_potion()])
+    )
+
+    empty_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike")], potions=[])
+    )
+    spent_signature = TurnPlanSignature(
+        _game(
+            [_card("Strike_R", "Strike")],
+            potions=[_potion(potion_id="Potion Slot", name="Potion Slot", can_use=False)],
+        )
+    )
+
+    assert agent.should_replan(empty_signature)
+    assert agent.should_replan(spent_signature)
