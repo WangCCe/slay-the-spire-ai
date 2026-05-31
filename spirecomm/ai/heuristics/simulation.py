@@ -2402,6 +2402,46 @@ class FastCombatSimulator:
             )
         return max(0, entangled)
 
+    def _extract_move_confused(
+        self,
+        move: Dict[str, Any],
+        context: Optional[DecisionContext] = None,
+    ) -> int:
+        """Extract Confused applications to the player from a monster move."""
+        confused = 0
+        for key in ('confused', 'confused_applied', 'confused_amount'):
+            value = move.get(key)
+            if isinstance(value, bool):
+                confused = 1 if value else 0
+            else:
+                confused = self._positive_numeric_move_value(value)
+            if confused > 0:
+                break
+
+        if confused <= 0:
+            effect = str(move.get('effect') or move.get('description') or '')
+            if re.search(
+                (
+                    r'\b(?:inflict|inflicts|inflicted|apply|applies|applied|applying)'
+                    r'\s+\d*\s*confused\b'
+                ),
+                effect,
+                re.IGNORECASE,
+            ):
+                confused = 1
+
+        if confused <= 0 or context is None:
+            return confused
+
+        for key in ('confused', 'confused_applied', 'confused_amount'):
+            confused = self._apply_ascension_move_value(
+                move,
+                context,
+                key,
+                confused,
+            )
+        return max(0, confused)
+
     def _positive_numeric_move_value(self, value: Any) -> int:
         if isinstance(value, bool):
             return 0
@@ -3821,6 +3861,7 @@ class FastCombatSimulator:
             'void': 0,
             'hex': 0,
             'entangled': 0,
+            'confused': 0,
         }
         try:
             current_turn = getattr(context, 'turn', 1)
@@ -3866,10 +3907,17 @@ class FastCombatSimulator:
                         else:
                             totals['entangled'] += entangled
                             totals['total'] += entangled
+                    confused = self._extract_move_confused(move, context)
+                    if confused > 0:
+                        if player_artifact > 0:
+                            player_artifact -= 1
+                        else:
+                            totals['confused'] += confused
+                            totals['total'] += confused
 
             if totals['total'] > 0:
                 logger.info(
-                    "[STATUS_LOOKAHEAD] predicted=%s dazed=%s burn=%s slimed=%s wound=%s void=%s hex=%s entangled=%s",
+                    "[STATUS_LOOKAHEAD] predicted=%s dazed=%s burn=%s slimed=%s wound=%s void=%s hex=%s entangled=%s confused=%s",
                     totals['total'],
                     totals['dazed'],
                     totals['burn'],
@@ -3878,6 +3926,7 @@ class FastCombatSimulator:
                     totals['void'],
                     totals['hex'],
                     totals['entangled'],
+                    totals['confused'],
                 )
             return totals
         except Exception as e:

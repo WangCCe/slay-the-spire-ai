@@ -179,6 +179,22 @@ def _chosen_hex(current_hp=99):
     )
 
 
+def _snecko_confused(current_hp=120):
+    return Monster(
+        name="Snecko",
+        monster_id="Snecko",
+        max_hp=current_hp,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.DEBUFF,
+        half_dead=False,
+        is_gone=False,
+        move_id=0,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+
+
 def _sentry(current_hp=39, move_id=1, intent=Intent.DEBUFF):
     return Monster(
         name="Sentry",
@@ -1358,6 +1374,41 @@ def test_enemy_status_lookahead_player_artifact_blocks_predicted_entangled():
     )
 
     assert status["entangled"] == 0
+    assert status["total"] == 0
+
+
+def test_enemy_status_lookahead_counts_confused_as_future_control_risk():
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_snecko_confused()],
+    )
+
+    status = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_status_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert status["confused"] == 1
+    assert status["total"] == 1
+
+
+def test_enemy_status_lookahead_player_artifact_blocks_predicted_confused():
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_snecko_confused()],
+    )
+    context.game.player.powers = [SimpleNamespace(power_name="Artifact", amount=1)]
+
+    status = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_status_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert status["confused"] == 0
     assert status["total"] == 0
 
 
