@@ -10,6 +10,7 @@ param(
     [switch]$NoSuperFastMode,
     [switch]$DiagnosticSpeed,
     [switch]$DryRun,
+    [switch]$SkipProcessScan,
     [switch]$SkipLaunch,
     [switch]$FreshRun,
     [switch]$UseLauncher
@@ -281,15 +282,20 @@ if ($DiagnosticSpeed) {
 }
 
 $targets = @()
-try {
-    $targets = @(Get-RestartTargetProcesses $normalizedProjectRoot $normalizedGameDir)
+if ($SkipProcessScan) {
+    Write-Host "[restart-sts] process scan skipped."
 }
-catch {
-    if (-not $DryRun) {
-        throw
+else {
+    try {
+        $targets = @(Get-RestartTargetProcesses $normalizedProjectRoot $normalizedGameDir)
     }
+    catch {
+        if (-not $DryRun) {
+            throw
+        }
 
-    Write-Warning "[restart-sts] process scan unavailable during dry run: $($_.Exception.Message)"
+        Write-Warning "[restart-sts] process scan unavailable during dry run: $($_.Exception.Message)"
+    }
 }
 
 if ($targets.Count -eq 0) {

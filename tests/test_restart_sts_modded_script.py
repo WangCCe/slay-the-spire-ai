@@ -42,6 +42,7 @@ def test_restart_script_dry_run_does_not_launch_or_stop_processes():
             "-File",
             str(SCRIPT),
             "-DryRun",
+            "-SkipProcessScan",
             "-SkipLaunch",
         ],
         capture_output=True,
@@ -52,6 +53,7 @@ def test_restart_script_dry_run_does_not_launch_or_stop_processes():
     output = result.stdout + result.stderr
     assert result.returncode == 0, output
     assert "[restart-sts] dry run: no processes will be stopped and no launcher will be started." in output
+    assert "[restart-sts] process scan skipped." in output
     assert "[restart-sts] launch skipped." in output
 
 
@@ -68,6 +70,7 @@ def test_restart_script_direct_launches_modthespire_without_launcher_by_default(
             "-File",
             str(SCRIPT),
             "-DryRun",
+            "-SkipProcessScan",
         ],
         capture_output=True,
         text=True,
@@ -97,6 +100,7 @@ def test_restart_script_can_disable_superfastmode_for_diagnostics():
             "-File",
             str(SCRIPT),
             "-DryRun",
+            "-SkipProcessScan",
             "-NoSuperFastMode",
         ],
         capture_output=True,
@@ -123,6 +127,7 @@ def test_restart_script_diagnostic_speed_alias_disables_superfastmode():
             "-File",
             str(SCRIPT),
             "-DryRun",
+            "-SkipProcessScan",
             "-DiagnosticSpeed",
         ],
         capture_output=True,
@@ -160,6 +165,7 @@ def test_restart_script_fresh_run_dry_run_reports_autosave_backup(tmp_path):
             str(tmp_path),
             "-FreshRun",
             "-DryRun",
+            "-SkipProcessScan",
             "-SkipLaunch",
         ],
         capture_output=True,

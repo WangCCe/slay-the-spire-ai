@@ -7,28 +7,67 @@ import shutil
 import time
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
+from importlib.util import find_spec
 
 from spirecomm.communication.coordinator import Coordinator
 from spirecomm.ai.agent import SimpleAgent, OptimizedAgent, OPTIMIZED_AI_AVAILABLE
 from spirecomm.spire.character import PlayerClass
 
-# Import RL agent (optional)
-try:
-    from spirecomm.ai.rl import (
-        RLAgent,
-        RLAgentV2,
-        create_agent as create_rl_agent,
-        CombatRLAgent,
-        RL_AVAILABLE,
-        RL_V2_AVAILABLE,
-    )
-except ImportError:
-    RL_AVAILABLE = False
-    RL_V2_AVAILABLE = False
-    RLAgent = None
-    RLAgentV2 = None
-    create_rl_agent = None
-    CombatRLAgent = None
+def _optional_dependency_available(name):
+    return find_spec(name) is not None
+
+
+RL_AVAILABLE = (
+    _optional_dependency_available("numpy")
+    and _optional_dependency_available("torch")
+)
+RL_V2_AVAILABLE = RL_AVAILABLE
+RLAgent = None
+RLAgentV2 = None
+create_rl_agent = None
+CombatRLAgent = None
+_RL_COMPONENTS_LOADED = False
+
+
+def _load_rl_components():
+    global RL_AVAILABLE
+    global RL_V2_AVAILABLE
+    global RLAgent
+    global RLAgentV2
+    global create_rl_agent
+    global CombatRLAgent
+    global _RL_COMPONENTS_LOADED
+
+    if _RL_COMPONENTS_LOADED:
+        return
+
+    try:
+        from spirecomm.ai.rl import (
+            RLAgent as loaded_rl_agent,
+            RLAgentV2 as loaded_rl_agent_v2,
+            create_agent as loaded_create_rl_agent,
+            CombatRLAgent as loaded_combat_rl_agent,
+        )
+    except ImportError:
+        RL_AVAILABLE = False
+        RL_V2_AVAILABLE = False
+        RLAgent = None
+        RLAgentV2 = None
+        create_rl_agent = None
+        CombatRLAgent = None
+    else:
+        RLAgent = loaded_rl_agent
+        RLAgentV2 = loaded_rl_agent_v2
+        create_rl_agent = loaded_create_rl_agent
+        CombatRLAgent = loaded_combat_rl_agent
+        RL_AVAILABLE = (
+            RLAgent is not None
+            and create_rl_agent is not None
+            and CombatRLAgent is not None
+        )
+        RL_V2_AVAILABLE = RLAgentV2 is not None
+    finally:
+        _RL_COMPONENTS_LOADED = True
 
 # Setup logging to file with rotation (all logs go to ai_debug.log)
 # Note: We don't use StreamHandler because Communication Mod uses stdout for commands
@@ -317,6 +356,7 @@ def create_agent(
 
     # Create combat RL agent (RL for combat, OptimizedAgent for everything else)
     if agent_type == "combat_rl":
+        _load_rl_components()
         if str(rl_version).lower() == "v2":
             rl_ready = RL_V2_AVAILABLE
         else:
@@ -375,6 +415,7 @@ def create_agent(
 
     # Create RL agent
     if agent_type == "rl":
+        _load_rl_components()
         if str(rl_version).lower() == "v2":
             rl_ready = RL_V2_AVAILABLE
         else:
