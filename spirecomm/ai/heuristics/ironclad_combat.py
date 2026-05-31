@@ -2110,13 +2110,12 @@ class IroncladCombatPlanner(CombatPlanner):
                 card = action.card
                 # Try to get target monster
                 target = getattr(action, 'target_monster', None)
-                target_idx = getattr(action, 'target_index', None)
-                if target_idx is None and target is not None:
-                    for idx, monster in enumerate(context.monsters_alive):
-                        if monster is target:
-                            target_idx = idx
-                            break
-                elif target is None and target_idx is not None and target_idx < len(context.monsters_alive):
+                target_idx = self.simulator._resolve_target_index(
+                    target,
+                    getattr(action, 'target_index', None),
+                    context,
+                )
+                if target_idx is not None and 0 <= target_idx < len(context.monsters_alive):
                     target = context.monsters_alive[target_idx]
                 elif target is None and hasattr(card, 'has_target') and card.has_target and context.monsters_alive:
                     # Default to first monster if we can't determine target

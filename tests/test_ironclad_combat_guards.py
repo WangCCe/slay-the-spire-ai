@@ -1817,6 +1817,42 @@ def test_sentries_damage_distribution_uses_parsed_damage_without_damage_field(mo
     assert distribution["target_count"] == 1
 
 
+def test_sentries_damage_distribution_uses_live_index_for_distinct_target_object(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_sentry(current_hp=40), _sentry(current_hp=40), _sentry(current_hp=40)],
+    )
+    context.vulnerable_stacks[1] = 1
+    target = SimpleNamespace(
+        name="Sentry",
+        monster_id="Sentry",
+        current_hp=40,
+        block=0,
+        monster_index=1,
+    )
+
+    distribution = IroncladCombatPlanner()._calculate_damage_distribution(
+        [PlayCardAction(card=strike, target_monster=target)],
+        context,
+    )
+
+    assert distribution["highest_damage"] == 9
+    assert distribution["total_damage"] == 9
+    assert distribution["target_count"] == 1
+
+
 def test_end_turn_projection_materializes_due_slime_boss_split():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_slime_boss(current_hp=56)])
