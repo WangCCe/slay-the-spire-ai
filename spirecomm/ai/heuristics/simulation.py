@@ -911,13 +911,25 @@ class FastCombatSimulator:
         target_id = getattr(target, 'monster_id', None)
         target_name = getattr(target, 'name', None)
         target_hp = getattr(target, 'current_hp', None)
+        id_candidates = []
+        name_candidates = []
         for idx, monster in enumerate(monsters):
-            if (
-                getattr(monster, 'monster_id', None) == target_id
-                and getattr(monster, 'name', None) == target_name
-                and getattr(monster, 'current_hp', None) == target_hp
+            monster_hp = getattr(monster, 'current_hp', None)
+            hp_delta = 0
+            if target_hp is not None and monster_hp is not None:
+                hp_delta = abs(monster_hp - target_hp)
+
+            if target_id and getattr(monster, 'monster_id', None) == target_id:
+                id_candidates.append((hp_delta, idx))
+            elif getattr(monster, 'name', None) == target_name and (
+                target_hp is None or monster_hp == target_hp
             ):
-                return idx
+                name_candidates.append((hp_delta, idx))
+
+        for candidates in (id_candidates, name_candidates):
+            if candidates:
+                candidates.sort(key=lambda x: x[0])
+                return candidates[0][1]
 
         return None
 
