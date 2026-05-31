@@ -180,3 +180,16 @@ def test_monster_predictions_use_ascension_opening_overrides():
     assert normal_chosen[0]["move"]["name"] == "Poke"
     assert asc17_chosen[0]["move"]["name"] == "Hex"
     assert asc17_acid_slime[0]["move"]["name"] == "Lick"
+
+
+def test_looter_and_mugger_predict_turn_three_options():
+    database = EnhancedMonsterDatabase()
+
+    assert [
+        prediction["move"]["name"]
+        for prediction in database.predict_next_moves("Looter", current_turn=3, monster_hp_percent=1.0)
+    ] == ["Lunge", "Smoke Bomb"]
+    assert [
+        prediction["move"]["name"]
+        for prediction in database.predict_next_moves("Mugger", current_turn=3, monster_hp_percent=1.0)
+    ] == ["Lunge", "Smoke Bomb"]

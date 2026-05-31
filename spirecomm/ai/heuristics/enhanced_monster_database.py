@@ -600,6 +600,21 @@ class EnhancedMonsterDatabase:
                         })
                     continue
 
+                turn_options = pattern.get(f"turn_{target_turn}_options", [])
+                if isinstance(turn_options, list) and turn_options:
+                    confidence = 1.0 / len(turn_options)
+                    for move_name in turn_options:
+                        if not isinstance(move_name, str):
+                            continue
+                        self._append_named_move_prediction(
+                            predictions,
+                            monster_name,
+                            move_name,
+                            target_turn,
+                            confidence=confidence,
+                        )
+                    continue
+
                 phase_key = self._phase_probability_key(pattern, target_turn, opening_length)
                 if phase_key:
                     self._append_probability_predictions(
