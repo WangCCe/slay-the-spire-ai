@@ -606,50 +606,12 @@ class SimulationState:
     def clone(self) -> 'SimulationState':
         """Create a deep copy of this state."""
         new_state = SimulationState.__new__(SimulationState)
-        new_state.turn = self.turn
-        new_state.player_hp = self.player_hp
-        new_state.player_max_hp = self.player_max_hp
-        new_state.player_block = self.player_block
-        new_state.end_turn_block = self.end_turn_block
-        new_state.player_energy = self.player_energy
-        new_state.player_strength = self.player_strength
-        new_state.player_temp_strength = self.player_temp_strength
-        new_state.player_ritual = self.player_ritual
-        new_state.player_dexterity = self.player_dexterity
-        new_state.player_temp_dexterity = self.player_temp_dexterity
-        new_state.player_thorns = self.player_thorns
-        new_state.player_intangible = self.player_intangible
-        new_state.player_artifact = self.player_artifact
-        new_state.player_vulnerable = self.player_vulnerable
-        new_state.player_vulnerable_added = self.player_vulnerable_added
-        new_state.player_weak = self.player_weak
-        new_state.player_frail = self.player_frail
-        new_state.player_hex = self.player_hex
-        new_state.rage_block_per_attack = self.rage_block_per_attack
-        new_state.draw_blocked = self.draw_blocked
-        new_state.double_tap_charges = self.double_tap_charges
-        new_state.corruption_active = self.corruption_active
-        new_state.feel_no_pain_block_per_exhaust = self.feel_no_pain_block_per_exhaust
-        new_state.dark_embrace_draw_per_exhaust = self.dark_embrace_draw_per_exhaust
-        new_state.rupture_strength_per_hp_loss = self.rupture_strength_per_hp_loss
-        new_state.end_turn_aoe_damage = self.end_turn_aoe_damage
-        new_state.end_turn_hp_loss = self.end_turn_hp_loss
-        new_state.monsters = [m.copy() for m in self.monsters]
-        new_state.played_card_uuids = self.played_card_uuids.copy()
-        new_state.energy_spent = self.energy_spent
-        new_state.total_damage_dealt = self.total_damage_dealt
-        new_state.monsters_killed = self.monsters_killed
-        new_state.primary_target = self.primary_target
-        new_state.exhaust_events = self.exhaust_events
-        new_state.cards_drawn = self.cards_drawn
-        new_state.skills_played = self.skills_played
-        new_state.attacks_played = self.attacks_played
-        new_state.damage_instances = self.damage_instances
-        new_state.energy_gained = self.energy_gained
-        new_state.energy_saved = self.energy_saved
-        new_state.status_cards_added = self.status_cards_added
-        new_state.dazed_cards_added = self.dazed_cards_added
-        new_state.hex_non_attack_triggers = self.hex_non_attack_triggers
+        for name, value in self.__dict__.items():
+            if name == 'monsters':
+                value = [monster.copy() for monster in value]
+            elif name == 'played_card_uuids':
+                value = value.copy()
+            setattr(new_state, name, value)
         return new_state
 
     def state_key(self, playable_cards):

@@ -3700,6 +3700,29 @@ def test_state_key_and_clone_preserve_player_ritual():
     assert base_state.state_key([]) != ritual_state.state_key([])
 
 
+def test_simulation_state_clone_preserves_future_state_fields():
+    potion = Potion(
+        potion_id="CultistPotion",
+        name="Cultist Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    context = _potion_projection_context(potion)
+    state = simulation.SimulationState(context)
+    state.future_state_counter = 7
+
+    cloned = state.clone()
+
+    assert cloned.future_state_counter == 7
+
+    cloned.monsters[0]["hp"] = 1
+    assert state.monsters[0]["hp"] == 100
+
+    cloned.played_card_uuids.add("generated")
+    assert "generated" not in state.played_card_uuids
+
+
 def test_beam_search_flex_potion_strength_expires_at_end_of_turn_projection():
     potion = Potion(
         potion_id="FlexPotion",
