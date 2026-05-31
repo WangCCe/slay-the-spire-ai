@@ -19,6 +19,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
 
 from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
+from spirecomm.ai.monster_names import LIVE_MONSTER_ID_TO_WIKI_NAME, normalize_monster_id
 
 
 class EnhancedMonsterDatabase:
@@ -92,6 +93,10 @@ class EnhancedMonsterDatabase:
         # Try exact match first
         if monster_name in self._data:
             return self._data[monster_name]
+
+        mapped_name = LIVE_MONSTER_ID_TO_WIKI_NAME.get(normalize_monster_id(monster_name))
+        if mapped_name in self._data:
+            return self._data[mapped_name]
 
         # Some mechanics records refer to spawned monsters by monster_id.
         for value in self._data.values():

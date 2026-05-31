@@ -265,3 +265,18 @@ def test_red_slaver_predicts_pre_entangle_sequence_after_opening():
         (2, "Entangle", 0.25),
         (3, "Stab", 0.75),
     ]
+
+
+def test_enhanced_database_accepts_live_slaver_ids():
+    database = EnhancedMonsterDatabase()
+
+    assert database.get_monster_data("SlaverRed")["name"] == "Red Slaver"
+    assert database.get_monster_data("SlaverBlue")["name"] == "Blue Slaver"
+    assert [
+        prediction["move"]["name"]
+        for prediction in database.predict_next_moves("SlaverRed", 2, 1.0)
+    ][:2] == ["Scrape", "Entangle"]
+    assert {
+        prediction["move"]["name"]
+        for prediction in database.predict_next_moves("SlaverBlue", 1, 1.0)
+    } == {"Stab", "Rake"}
