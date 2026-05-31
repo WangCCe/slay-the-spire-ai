@@ -1474,7 +1474,50 @@ class FastCombatSimulator:
             return
         if self._consume_monster_artifact(monster):
             return
-        monster[debuff] = monster.get(debuff, 0) + stacks
+        previous_stacks = monster.get(debuff, 0)
+        monster[debuff] = previous_stacks + stacks
+        if (
+            debuff == 'weak'
+            and previous_stacks <= 0
+            and self._monster_intends_attack(monster)
+        ):
+            self._remember_monster_adjusted_damage_source(monster)
+            monster['_simulated_weak_applied_to_attack'] = True
+            self._refresh_monster_adjusted_damage_from_debuffs(monster)
+
+    def _remember_monster_adjusted_damage_source(self, monster: dict):
+        if '_simulated_move_adjusted_source' in monster:
+            return
+        raw_damage = monster.get('move_adjusted_damage', None)
+        if isinstance(raw_damage, (int, float)):
+            monster['_simulated_move_adjusted_source'] = max(0, raw_damage)
+
+    def _refresh_monster_adjusted_damage_from_debuffs(self, monster: dict):
+        if not self._monster_intends_attack(monster):
+            return
+
+        raw_base_damage = monster.get('move_base_damage', 0)
+        if isinstance(raw_base_damage, (int, float)) and raw_base_damage > 0:
+            damage = self._apply_monster_strength_to_per_hit_damage(
+                raw_base_damage,
+                monster.get('strength', 0),
+            )
+            monster['move_adjusted_damage'] = self._apply_monster_weak_to_per_hit_damage(
+                damage,
+                monster.get('weak', 0),
+            )
+            return
+
+        source_damage = monster.get('_simulated_move_adjusted_source', None)
+        if not isinstance(source_damage, (int, float)):
+            return
+        damage = max(
+            0,
+            source_damage + monster.get('_simulated_strength_delta', 0),
+        )
+        if monster.get('_simulated_weak_applied_to_attack', False):
+            damage = self._apply_monster_weak_to_per_hit_damage(damage, 1)
+        monster['move_adjusted_damage'] = damage
 
     def _apply_monster_poison(self, monster: dict, stacks: int):
         if stacks <= 0:
@@ -1627,23 +1670,23 @@ class FastCombatSimulator:
         if self._consume_monster_artifact(monster):
             return
 
+        self._remember_monster_adjusted_damage_source(monster)
         monster['strength'] = monster.get('strength', 0) - stacks
-        if self._monster_intends_attack(monster):
-            monster['move_adjusted_damage'] = max(
-                0,
-                monster.get('move_adjusted_damage', 0) - stacks,
-            )
+        monster['_simulated_strength_delta'] = (
+            monster.get('_simulated_strength_delta', 0) - stacks
+        )
+        self._refresh_monster_adjusted_damage_from_debuffs(monster)
 
     def _apply_monster_temporary_strength_down(self, monster: dict, stacks: int):
         if stacks <= 0:
             return
         if self._consume_monster_artifact(monster):
             return
-        if self._monster_intends_attack(monster):
-            monster['move_adjusted_damage'] = max(
-                0,
-                monster.get('move_adjusted_damage', 0) - stacks,
-            )
+        self._remember_monster_adjusted_damage_source(monster)
+        monster['_simulated_strength_delta'] = (
+            monster.get('_simulated_strength_delta', 0) - stacks
+        )
+        self._refresh_monster_adjusted_damage_from_debuffs(monster)
 
     def _apply_monster_debuffs(self, monster: dict, effects: List[Tuple[int, str, int]]):
         for _, debuff, stacks in effects:
@@ -2725,10 +2768,10 @@ class FastCombatSimulator:
                             f"damage: {damage} -> {adjusted_damage}"
                         )
                         damage = adjusted_damage
-                damage = self._apply_monster_weak_to_per_hit_damage(
-                    damage,
-                    monster.get('weak', 0),
-                )
+                    damage = self._apply_monster_weak_to_per_hit_damage(
+                        damage,
+                        monster.get('weak', 0),
+                    )
 
                 total = damage * hits
                 if player_vulnerable_added > 0:
@@ -2961,10 +3004,10 @@ class FastCombatSimulator:
                                     per_hit_damage,
                                     current_strength,
                                 )
-                            per_hit_damage = self._apply_monster_weak_to_per_hit_damage(
-                                per_hit_damage,
-                                monster.get('weak', 0),
-                            )
+                                per_hit_damage = self._apply_monster_weak_to_per_hit_damage(
+                                    per_hit_damage,
+                                    monster.get('weak', 0),
+                                )
                             damage = per_hit_damage * move_hits
                             damage = self._apply_player_vulnerable_damage(
                                 damage,

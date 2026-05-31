@@ -2308,10 +2308,25 @@ def test_enemy_lookahead_fallback_does_not_reapply_strength_to_adjusted_damage()
     assert future_damage == 9
 
 
-def test_enemy_weak_reduces_current_incoming_damage_per_hit():
+def test_incoming_damage_estimate_does_not_reapply_weak_to_adjusted_damage():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])
     state = SimulationState(context)
+    state.monsters[0]["weak"] = 1
+
+    incoming_damage = FastCombatSimulator(SynergyCardEvaluator())._estimate_incoming_damage(
+        state.monsters
+    )
+
+    assert incoming_damage == 7
+
+
+def test_incoming_damage_estimate_applies_weak_to_base_damage_fallback():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])
+    state = SimulationState(context)
+    state.monsters[0]["move_adjusted_damage"] = None
+    state.monsters[0]["move_base_damage"] = 7
     state.monsters[0]["weak"] = 1
 
     incoming_damage = FastCombatSimulator(SynergyCardEvaluator())._estimate_incoming_damage(
@@ -2335,6 +2350,25 @@ def test_enemy_lookahead_applies_monster_weak_per_hit():
     )
 
     assert future_damage == 5
+
+
+def test_enemy_lookahead_fallback_does_not_reapply_weak_to_adjusted_damage():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])
+    context.turn = 1
+    state = SimulationState(context)
+    state.monsters[0]["weak"] = 1
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._current_monster_move = lambda *_args, **_kwargs: None
+    simulator._predicted_monster_move_for_step = lambda *_args, **_kwargs: None
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        state,
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 7
 
 
 def test_enemy_lookahead_decrements_monster_weak_between_turns():
@@ -4746,6 +4780,25 @@ def test_uppercut_applies_weak_and_vulnerable_with_upgrade_stacks(monkeypatch):
 
     assert result.monsters[0]["weak"] == 1
     assert result.monsters[0]["vulnerable"] == 1
+    assert result.monsters[0]["move_adjusted_damage"] == 5
+
+    already_weak_context = _combat_context(
+        [uppercut],
+        energy=2,
+        monsters=[_louse(current_hp=100)],
+    )
+    already_weak_context.weak_stacks[0] = 1
+    already_weak_context.monsters_alive[0].move_adjusted_damage = 5
+    result = simulator.simulate_card_play(
+        SimulationState(already_weak_context),
+        uppercut,
+        target=already_weak_context.monsters_alive[0],
+        target_index=0,
+        context=already_weak_context,
+    )
+
+    assert result.monsters[0]["weak"] == 2
+    assert result.monsters[0]["move_adjusted_damage"] == 5
 
     uppercut_plus = _card("Uppercut", "Uppercut+", cost=2, upgrades=1)
     context = _combat_context([uppercut_plus], energy=2, monsters=[_louse(current_hp=100)])
@@ -4944,7 +4997,7 @@ def test_shockwave_plus_uses_upgraded_stacks_for_all_debuffs(monkeypatch):
     assert [monster["weak"] for monster in result.monsters] == [5, 5]
     assert [monster["vulnerable"] for monster in result.monsters] == [5, 5]
     assert [monster["strength"] for monster in result.monsters] == [-5, -5]
-    assert [monster["move_adjusted_damage"] for monster in result.monsters] == [2, 2]
+    assert [monster["move_adjusted_damage"] for monster in result.monsters] == [1, 1]
 
     counted_shockwave = _card(
         "Shockwave+1",
@@ -4971,7 +5024,7 @@ def test_shockwave_plus_uses_upgraded_stacks_for_all_debuffs(monkeypatch):
     assert [monster["weak"] for monster in result.monsters] == [5, 5]
     assert [monster["vulnerable"] for monster in result.monsters] == [5, 5]
     assert [monster["strength"] for monster in result.monsters] == [-5, -5]
-    assert [monster["move_adjusted_damage"] for monster in result.monsters] == [2, 2]
+    assert [monster["move_adjusted_damage"] for monster in result.monsters] == [1, 1]
 
 
 def test_shockwave_ignores_zero_hp_stale_simulated_monsters(monkeypatch):

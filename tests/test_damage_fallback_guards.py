@@ -637,7 +637,7 @@ def test_simulate_card_play_spends_x_energy_on_malaise_debuffs(monkeypatch):
 
         assert result.monsters[0]["strength"] == -expected_debuff
         assert result.monsters[0]["weak"] == expected_debuff
-        assert result.monsters[0]["move_adjusted_damage"] == 12 - expected_debuff
+        assert result.monsters[0]["move_adjusted_damage"] == int((12 - expected_debuff) * 0.75)
         assert result.player_energy == 0
 
 
