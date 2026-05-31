@@ -8,7 +8,17 @@ def _card(card_id, name, uuid=None):
     return SimpleNamespace(card_id=card_id, name=name, uuid=uuid)
 
 
-def _monster(name="Cultist", monster_id="Cultist", move_adjusted_damage=12, move_hits=1):
+def _power(power_id, amount):
+    return SimpleNamespace(power_id=power_id, power_name=power_id, name=power_id, amount=amount)
+
+
+def _monster(
+    name="Cultist",
+    monster_id="Cultist",
+    move_adjusted_damage=12,
+    move_hits=1,
+    powers=None,
+):
     return SimpleNamespace(
         name=name,
         monster_id=monster_id,
@@ -19,14 +29,15 @@ def _monster(name="Cultist", monster_id="Cultist", move_adjusted_damage=12, move
         move_hits=move_hits,
         is_gone=False,
         half_dead=False,
+        powers=powers or [],
     )
 
 
-def _game(hand, monster=None, current_hp=70, block=0):
+def _game(hand, monster=None, current_hp=70, block=0, powers=None):
     return SimpleNamespace(
         hand=hand,
         current_hp=current_hp,
-        player=SimpleNamespace(energy=3, block=block),
+        player=SimpleNamespace(energy=3, block=block, powers=powers or []),
         monsters=[monster or _monster()],
     )
 
@@ -101,3 +112,28 @@ def test_should_replan_when_player_hp_or_block_changes():
 
     assert agent.should_replan(wounded_signature)
     assert agent.should_replan(blocked_signature)
+
+
+def test_turn_plan_signature_distinguishes_player_power_changes():
+    no_strength_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike")], powers=[])
+    )
+    strength_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike")], powers=[_power("Strength", 2)])
+    )
+
+    assert no_strength_signature != strength_signature
+
+
+def test_turn_plan_signature_distinguishes_monster_power_changes():
+    normal_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike")], monster=_monster(powers=[]))
+    )
+    weak_signature = TurnPlanSignature(
+        _game(
+            [_card("Strike_R", "Strike")],
+            monster=_monster(powers=[_power("Weak", 2)]),
+        )
+    )
+
+    assert normal_signature != weak_signature

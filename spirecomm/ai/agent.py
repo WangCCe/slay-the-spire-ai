@@ -1189,6 +1189,7 @@ class TurnPlanSignature:
         # Track player state that can change whether the cached plan is safe.
         self.player_hp = getattr(game, "current_hp", getattr(player, "current_hp", None))
         self.player_block = getattr(player, "block", getattr(game, "block", 0))
+        self.player_powers = self._powers_signature(getattr(player, "powers", None))
 
         # Track available energy
         self.energy = getattr(player, "energy", getattr(game, "energy", 3))
@@ -1204,6 +1205,7 @@ class TurnPlanSignature:
                     str(m.intent) if hasattr(m, "intent") else None,
                     getattr(m, "move_adjusted_damage", None),
                     getattr(m, "move_hits", None),
+                    self._powers_signature(getattr(m, "powers", None)),
                     m.is_gone if hasattr(m, "is_gone") else True,
                     m.half_dead if hasattr(m, "half_dead") else False,
                 )
@@ -1224,6 +1226,18 @@ class TurnPlanSignature:
                 return value
         return id(card)
 
+    @staticmethod
+    def _powers_signature(powers):
+        power_signatures = []
+        for power in powers or []:
+            power_id = (
+                getattr(power, "power_id", None)
+                or getattr(power, "power_name", None)
+                or getattr(power, "name", None)
+            )
+            power_signatures.append((power_id, getattr(power, "amount", None)))
+        return tuple(sorted(power_signatures))
+
     def __eq__(self, other):
         """Check if two signatures are equal."""
         if not isinstance(other, TurnPlanSignature):
@@ -1232,6 +1246,7 @@ class TurnPlanSignature:
             self.hand_cards == other.hand_cards
             and self.player_hp == other.player_hp
             and self.player_block == other.player_block
+            and self.player_powers == other.player_powers
             and self.energy == other.energy
             and self.monster_signature == other.monster_signature
             and self.has_drawn_cards == other.has_drawn_cards
@@ -1245,6 +1260,7 @@ class TurnPlanSignature:
                 self.hand_cards,
                 self.player_hp,
                 self.player_block,
+                self.player_powers,
                 self.energy,
                 self.monster_signature,
                 self.has_drawn_cards,
