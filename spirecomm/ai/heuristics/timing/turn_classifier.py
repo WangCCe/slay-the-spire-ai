@@ -293,6 +293,8 @@ class TurnTimingClassifier:
                         target_turn,
                         hp_percent,
                         ascension_level=self._context_ascension_level(context),
+                        context=context,
+                        monster=monster,
                     )
 
                     if prediction:
@@ -391,6 +393,7 @@ class TurnTimingClassifier:
                         current_turn,
                         hp_percent,
                         context,
+                        monster=monster,
                     )
                     prediction = self._select_prediction_for_turn(
                         anchored_predictions,
@@ -398,6 +401,8 @@ class TurnTimingClassifier:
                         target_turn,
                         hp_percent,
                         ascension_level=self._context_ascension_level(context),
+                        context=context,
+                        monster=monster,
                     )
 
                     if prediction:
@@ -442,6 +447,8 @@ class TurnTimingClassifier:
         target_turn: int,
         hp_percent: float,
         ascension_level: int = 0,
+        context=None,
+        monster: Optional[Any] = None,
     ) -> Optional[Dict[str, Any]]:
         for prediction in anchored_predictions:
             if prediction.get('turn') == target_turn:
@@ -450,19 +457,18 @@ class TurnTimingClassifier:
         try:
             from spirecomm.data.loader import game_data_loader
 
-            try:
-                fallback_predictions = game_data_loader.predict_monster_moves(
+            fallback_predictions = self._call_predict_monster_moves(
+                game_data_loader,
+                monster_name,
+                target_turn,
+                hp_percent,
+                self._prediction_call_variants(
+                    context,
                     monster_name,
-                    target_turn,
-                    hp_percent,
+                    monster,
                     ascension_level=ascension_level,
-                )
-            except TypeError:
-                fallback_predictions = game_data_loader.predict_monster_moves(
-                    monster_name,
-                    target_turn,
-                    hp_percent,
-                )
+                ),
+            )
             return fallback_predictions[0] if fallback_predictions else None
         except Exception:
             return None
@@ -478,44 +484,72 @@ class TurnTimingClassifier:
         try:
             from spirecomm.data.loader import game_data_loader
 
-            ascension_level = self._context_ascension_level(context)
-            other_enemy_names = self._context_other_enemy_names(context, monster_name, monster)
-            other_enemy_count = len(other_enemy_names) if other_enemy_names is not None else None
-            same_monster_index = self._context_same_monster_index(context, monster_name, monster)
-            call_variants = [
-                {
-                    "ascension_level": ascension_level,
-                    "other_enemy_count": other_enemy_count,
-                    "other_enemy_names": other_enemy_names,
-                    "same_monster_index": same_monster_index,
-                },
-                {
-                    "ascension_level": ascension_level,
-                    "other_enemy_count": other_enemy_count,
-                    "other_enemy_names": other_enemy_names,
-                },
-                {
-                    "ascension_level": ascension_level,
-                    "other_enemy_count": other_enemy_count,
-                },
-                {
-                    "ascension_level": ascension_level,
-                },
-                {},
-            ]
-            for kwargs in call_variants:
-                try:
-                    return game_data_loader.predict_monster_moves(
-                        monster_name,
-                        current_turn,
-                        hp_percent,
-                        **kwargs,
-                    )
-                except TypeError:
-                    continue
-            return []
+            return self._call_predict_monster_moves(
+                game_data_loader,
+                monster_name,
+                current_turn,
+                hp_percent,
+                self._prediction_call_variants(context, monster_name, monster),
+            )
         except Exception:
             return []
+
+    def _prediction_call_variants(
+        self,
+        context,
+        monster_name: str,
+        monster: Optional[Any],
+        ascension_level: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        resolved_ascension = (
+            self._context_ascension_level(context)
+            if ascension_level is None
+            else ascension_level
+        )
+        other_enemy_names = self._context_other_enemy_names(context, monster_name, monster)
+        other_enemy_count = len(other_enemy_names) if other_enemy_names is not None else None
+        same_monster_index = self._context_same_monster_index(context, monster_name, monster)
+        return [
+            {
+                "ascension_level": resolved_ascension,
+                "other_enemy_count": other_enemy_count,
+                "other_enemy_names": other_enemy_names,
+                "same_monster_index": same_monster_index,
+            },
+            {
+                "ascension_level": resolved_ascension,
+                "other_enemy_count": other_enemy_count,
+                "other_enemy_names": other_enemy_names,
+            },
+            {
+                "ascension_level": resolved_ascension,
+                "other_enemy_count": other_enemy_count,
+            },
+            {
+                "ascension_level": resolved_ascension,
+            },
+            {},
+        ]
+
+    def _call_predict_monster_moves(
+        self,
+        loader,
+        monster_name: str,
+        current_turn: int,
+        hp_percent: float,
+        call_variants: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        for kwargs in call_variants:
+            try:
+                return loader.predict_monster_moves(
+                    monster_name,
+                    current_turn,
+                    hp_percent,
+                    **kwargs,
+                )
+            except TypeError:
+                continue
+        return []
 
     def _context_other_enemy_names(
         self,

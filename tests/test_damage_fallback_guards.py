@@ -124,6 +124,94 @@ def test_timing_classifier_prediction_passes_live_enemy_context(monkeypatch):
     }
 
 
+def test_damage_curve_fallback_prediction_keeps_live_enemy_context(monkeypatch):
+    class FakeLoader:
+        def __init__(self):
+            self.calls = []
+
+        def predict_monster_moves(
+            self,
+            monster_name,
+            current_turn,
+            hp_percent,
+            ascension_level=0,
+            other_enemy_count=None,
+            other_enemy_names=None,
+            same_monster_index=None,
+        ):
+            self.calls.append(
+                {
+                    "monster_name": monster_name,
+                    "current_turn": current_turn,
+                    "hp_percent": hp_percent,
+                    "ascension_level": ascension_level,
+                    "other_enemy_count": other_enemy_count,
+                    "other_enemy_names": other_enemy_names,
+                    "same_monster_index": same_monster_index,
+                }
+            )
+            return [
+                {
+                    "turn": current_turn,
+                    "move": {"name": "Wait", "intent": "BUFF"},
+                    "confidence": 1.0,
+                }
+            ]
+
+    loader = FakeLoader()
+    monkeypatch.setattr(data_loader, "game_data_loader", loader)
+    leader = SimpleNamespace(
+        name="Gremlin Leader",
+        current_hp=145,
+        max_hp=145,
+        intent="BUFF",
+        move_adjusted_damage=0,
+        strength=0,
+    )
+    minion_a = SimpleNamespace(
+        name="Mad Gremlin",
+        current_hp=20,
+        max_hp=20,
+        intent="ATTACK",
+        move_adjusted_damage=4,
+        strength=0,
+    )
+    minion_b = SimpleNamespace(
+        name="Fat Gremlin",
+        current_hp=20,
+        max_hp=20,
+        intent="ATTACK",
+        move_adjusted_damage=4,
+        strength=0,
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(monsters=[leader, minion_a, minion_b], ascension_level=18),
+        ascension_level=18,
+    )
+
+    TurnTimingClassifier()._calculate_damage_curve(
+        context,
+        [leader, minion_a, minion_b],
+        current_turn=1,
+        look_ahead=1,
+    )
+
+    assert next(
+        call
+        for call in loader.calls
+        if call["monster_name"] == "Gremlin Leader"
+        and call["current_turn"] == 2
+    ) == {
+        "monster_name": "Gremlin Leader",
+        "current_turn": 2,
+        "hp_percent": 1.0,
+        "ascension_level": 18,
+        "other_enemy_count": 2,
+        "other_enemy_names": ["Mad Gremlin", "Fat Gremlin"],
+        "same_monster_index": 0,
+    }
+
+
 def _unknown_attack():
     card = Card(
         card_id="UnknownAttack",
