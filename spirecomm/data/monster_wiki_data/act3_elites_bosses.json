@@ -574,140 +574,88 @@
     "name": "Time Eater",
     "monster_type": "boss",
     "hp_ranges": {
-      "normal": {"min": 250, "max": 260},
-      "ascension_9+": {"min": 260, "max": 270}
+      "normal": {"min": 456, "max": 456},
+      "ascension_9+": {"min": 480, "max": 480}
     },
     "moves": [
       {
         "move_id": 0,
-        "name": "Ravage",
+        "name": "Reverberate",
         "intent": "ATTACK",
-        "damage": 6,
+        "damage": 7,
         "hits": 3,
-        "effect": "Deals 6 damage 3 times.",
+        "effect": "Deals 7 damage 3 times.",
         "ascension_modifiers": {
-          "4+": {"damage": 7}
+          "4+": {"damage": 8}
         }
       },
       {
         "move_id": 1,
-        "name": "Haste",
-        "intent": "BUFF",
-        "damage": null,
-        "effect": "Gains 1 Energy and 2 Focus. Cannot use more than once per combat.",
-        "energy_gain": 1,
-        "focus_gain": 2,
-        "constraint": "once_per_combat"
+        "name": "Head Slam",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 26,
+        "draw_reduction": 1,
+        "effect": "Deals 26 damage and applies 1 Draw Reduction.",
+        "ascension_modifiers": {
+          "4+": {"damage": 32},
+          "19+": {"damage": 32, "slimed_added": 2}
+        }
       },
       {
         "move_id": 2,
-        "name": "Blink",
+        "name": "Ripple",
         "intent": "DEBUFF",
         "damage": null,
-        "effect": "Shuffles 3 Cards into your discard pile. At the start of your next turn, if the card is still in your discard pile, draw 2 fewer cards.",
-        "cards_shuffled": 3,
-        "draw_reduction": 2
+        "block_gain": 20,
+        "weak_applied": 1,
+        "vulnerable_applied": 1,
+        "effect": "Gains 20 Block and applies 1 Vulnerable and 1 Weak.",
+        "ascension_modifiers": {
+          "19+": {"frail_applied": 1}
+        }
       },
       {
         "move_id": 3,
-        "name": "Slam",
-        "intent": "ATTACK",
-        "damage": 32,
-        "effect": "Deals 32 damage.",
+        "name": "Haste",
+        "intent": "BUFF",
+        "damage": null,
+        "effect": "Removes all debuffs and heals to 50% HP.",
+        "heal_to_hp_percent": 0.5,
+        "clears_debuffs": true,
         "ascension_modifiers": {
-          "4+": {"damage": 36}
-        }
-      },
-      {
-        "move_id": 4,
-        "name": "Fear",
-        "intent": "DEBUFF",
-        "damage": null,
-        "effect": "Applies 1 Vulnerable. Cannot use more than twice per combat.",
-        "vulnerable_applied": 1,
-        "constraint": "max_2_per_combat"
-      },
-      {
-        "move_id": 5,
-        "name": "Stasis",
-        "intent": "DEBUFF",
-        "damage": null,
-        "effect": "Puts the top card of your draw pile into Stasis. On your turn, play that card for free, then return it to your hand.",
-        "note": "Forces free card play next turn"
-      },
-      {
-        "move_id": 6,
-        "name": "Rewind",
-        "intent": "DEFEND",
-        "damage": null,
-        "effect": "Gains 18 Block. Cannot use more than once per combat.",
-        "block_gain": 18,
+          "19+": {"block_gain": 32}
+        },
         "constraint": "once_per_combat"
-      },
-      {
-        "move_id": 7,
-        "name": "Tick",
-        "intent": "UNKNOWN",
-        "damage": null,
-        "effect": "Gain 1 Time. At 6 Time, uses Echoing Doom."
-      },
-      {
-        "move_id": 8,
-        "name": "Echoing Doom",
-        "intent": "ATTACK",
-        "damage": 40,
-        "effect": "Deals 40 damage and applies 1 Vulnerable. Consumes all Time.",
-        "vulnerable_applied": 1
       }
     ],
     "pattern": {
-      "description": "Uses Tick every turn to build Time. At 6 Time, uses Echoing Doom and resets Time. Other moves: 25% Ravage, 20% Slam, 15% Haste/Blink/Fear/Stasis/Rewind (randomly chosen). Cannot use same move twice in a row except Tick.",
-      "time_mechanic": {
-        "type": "charge_based",
-        "max_charges": 6,
-        "ultimate_move": "Echoing Doom",
-        "charge_frequency": "every_turn"
-      },
+      "description": "Uses Reverberate, Head Slam, or Ripple each turn; uses Haste once after dropping below 50% HP.",
       "probabilities": {
-        "ravage": 0.25,
-        "slam": 0.20,
-        "haste": 0.15,
-        "blink": 0.15,
-        "fear": 0.15,
-        "stasis": 0.15,
-        "rewind": 0.15
+        "reverberate": 0.45,
+        "head_slam": 0.35,
+        "ripple": 0.20
       },
-      "constraints": ["cannot_use_same_move_twice_in_a_row", "tick_used_every_turn"]
+      "constraints": [
+        "haste_once_below_50_percent_hp",
+        "reverberate_not_three_times_in_a_row",
+        "head_slam_not_twice_in_a_row",
+        "ripple_not_twice_in_a_row"
+      ]
     },
     "special_mechanics": {
       "type": "time_pressure",
-      "phases": [
-        {
-          "trigger": "time_count",
-          "threshold": 6,
-          "effect": "Use Echoing Doom (40 damage + Vulnerable) and reset Time"
-        }
-      ],
-      "unique_debuffs": [
-        {
-          "name": "Blink",
-          "effect": "Reduces draw by 2 next turn for each Blink card still in discard"
-        },
-        {
-          "name": "Stasis",
-          "effect": "Forces free play of top card next turn"
-        }
-      ],
+      "time_warp_cards": 12,
+      "haste_trigger_hp_percent": 0.5,
       "recommended_strategy": {
-        "primary": "kill_quickly",
-        "secondary": "block_heavy_before_echoing_doom",
-        "note": "Echoing Doom at 6 Time deals massive damage. Cycle out Blink cards quickly to avoid draw reduction."
+        "primary": "pace_card_plays",
+        "secondary": "burst_below_50_percent_hp",
+        "note": "Time Warp ends the turn every 12 cards. Head Slam applies Draw Reduction, and Haste heals Time Eater back to 50% once per combat."
       }
     },
     "threat_profile": {
       "base_threat": 26,
-      "time_pressure_threat": 4.0,
-      "echoing_doom_threat": 40,
+      "time_warp_threat": 8,
+      "draw_reduction_threat": 6,
       "scaling_threat": 3.0
     }
   },

@@ -195,6 +195,22 @@ def _snecko_confused(current_hp=120):
     )
 
 
+def _time_eater_head_slam(current_hp=456, damage=26):
+    return Monster(
+        name="Time Eater",
+        monster_id="TimeEater",
+        max_hp=current_hp,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK_DEBUFF,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=damage,
+        move_hits=1,
+    )
+
+
 def _sentry(current_hp=39, move_id=1, intent=Intent.DEBUFF):
     return Monster(
         name="Sentry",
@@ -1410,6 +1426,67 @@ def test_enemy_status_lookahead_player_artifact_blocks_predicted_confused():
 
     assert status["confused"] == 0
     assert status["total"] == 0
+
+
+def test_time_eater_wiki_data_matches_vanilla_moves():
+    database = EnhancedMonsterDatabase()
+
+    time_eater = database.get_monster_data("Time Eater")
+    moves_by_name = {move["name"]: move for move in time_eater["moves"]}
+
+    assert time_eater["hp_ranges"]["normal"] == {"min": 456, "max": 456}
+    assert time_eater["hp_ranges"]["ascension_9+"] == {"min": 480, "max": 480}
+    assert set(moves_by_name) == {"Reverberate", "Head Slam", "Ripple", "Haste"}
+
+    head_slam = moves_by_name["Head Slam"]
+    assert head_slam["intent"] == "ATTACK_DEBUFF"
+    assert head_slam["damage"] == 26
+    assert head_slam["draw_reduction"] == 1
+    assert head_slam["ascension_modifiers"]["4+"]["damage"] == 32
+    assert head_slam["ascension_modifiers"]["19+"]["slimed_added"] == 2
+
+    ripple = moves_by_name["Ripple"]
+    assert ripple["block_gain"] == 20
+    assert ripple["weak_applied"] == 1
+    assert ripple["vulnerable_applied"] == 1
+    assert ripple["ascension_modifiers"]["19+"]["frail_applied"] == 1
+
+
+def test_enemy_status_lookahead_counts_time_eater_draw_reduction():
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_time_eater_head_slam()],
+    )
+
+    status = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_status_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert status["draw_reduction"] == 1
+    assert status["total"] == 1
+
+
+def test_enemy_status_lookahead_counts_time_eater_a19_slimed():
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_time_eater_head_slam(current_hp=480, damage=32)],
+    )
+    context.ascension_level = 19
+    context.game.ascension_level = 19
+
+    status = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_status_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert status["draw_reduction"] == 1
+    assert status["slimed"] == 2
+    assert status["total"] == 3
 
 
 def test_enemy_status_lookahead_ignores_zero_hp_stale_simulated_monsters():

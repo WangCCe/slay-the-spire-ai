@@ -2442,6 +2442,36 @@ class FastCombatSimulator:
             )
         return max(0, confused)
 
+    def _extract_move_draw_reduction(
+        self,
+        move: Dict[str, Any],
+        context: Optional[DecisionContext] = None,
+    ) -> int:
+        """Extract Draw Reduction applications to the player from a monster move."""
+        draw_reduction = 0
+        for key in ('draw_reduction', 'draw_reduction_applied', 'draw_reduction_amount'):
+            draw_reduction = self._positive_numeric_move_value(move.get(key))
+            if draw_reduction > 0:
+                break
+
+        if draw_reduction <= 0:
+            effect = str(move.get('effect') or move.get('description') or '')
+            match = re.search(r'\bappl(?:y|ies)\s+(\d+)\s+draw reduction\b', effect, re.IGNORECASE)
+            if match:
+                draw_reduction = int(match.group(1))
+
+        if draw_reduction <= 0 or context is None:
+            return draw_reduction
+
+        for key in ('draw_reduction', 'draw_reduction_applied', 'draw_reduction_amount'):
+            draw_reduction = self._apply_ascension_move_value(
+                move,
+                context,
+                key,
+                draw_reduction,
+            )
+        return max(0, draw_reduction)
+
     def _positive_numeric_move_value(self, value: Any) -> int:
         if isinstance(value, bool):
             return 0
@@ -3862,6 +3892,7 @@ class FastCombatSimulator:
             'hex': 0,
             'entangled': 0,
             'confused': 0,
+            'draw_reduction': 0,
         }
         try:
             current_turn = getattr(context, 'turn', 1)
@@ -3914,10 +3945,17 @@ class FastCombatSimulator:
                         else:
                             totals['confused'] += confused
                             totals['total'] += confused
+                    draw_reduction = self._extract_move_draw_reduction(move, context)
+                    if draw_reduction > 0:
+                        if player_artifact > 0:
+                            player_artifact -= 1
+                        else:
+                            totals['draw_reduction'] += draw_reduction
+                            totals['total'] += draw_reduction
 
             if totals['total'] > 0:
                 logger.info(
-                    "[STATUS_LOOKAHEAD] predicted=%s dazed=%s burn=%s slimed=%s wound=%s void=%s hex=%s entangled=%s confused=%s",
+                    "[STATUS_LOOKAHEAD] predicted=%s dazed=%s burn=%s slimed=%s wound=%s void=%s hex=%s entangled=%s confused=%s draw_reduction=%s",
                     totals['total'],
                     totals['dazed'],
                     totals['burn'],
@@ -3927,6 +3965,7 @@ class FastCombatSimulator:
                     totals['hex'],
                     totals['entangled'],
                     totals['confused'],
+                    totals['draw_reduction'],
                 )
             return totals
         except Exception as e:
