@@ -59,6 +59,71 @@ def test_damage_curve_counts_champ_execute_after_transition_strength():
     assert damage_curve[0] == 32
 
 
+def test_timing_classifier_prediction_passes_live_enemy_context(monkeypatch):
+    class FakeLoader:
+        def __init__(self):
+            self.calls = []
+
+        def get_monster_timing_hints(self, _monster_name):
+            return {}
+
+        def predict_monster_moves(
+            self,
+            monster_name,
+            current_turn,
+            hp_percent,
+            ascension_level=0,
+            other_enemy_count=None,
+            other_enemy_names=None,
+            same_monster_index=None,
+        ):
+            self.calls.append(
+                {
+                    "monster_name": monster_name,
+                    "current_turn": current_turn,
+                    "hp_percent": hp_percent,
+                    "ascension_level": ascension_level,
+                    "other_enemy_count": other_enemy_count,
+                    "other_enemy_names": other_enemy_names,
+                    "same_monster_index": same_monster_index,
+                }
+            )
+            return [{"move": {"intent": "BUFF"}, "confidence": 1.0}]
+
+    loader = FakeLoader()
+    monkeypatch.setattr(data_loader, "game_data_loader", loader)
+    leader = SimpleNamespace(
+        name="Gremlin Leader",
+        current_hp=145,
+        max_hp=145,
+        intent="BUFF",
+        move_adjusted_damage=0,
+    )
+    minion = SimpleNamespace(
+        name="Mad Gremlin",
+        current_hp=20,
+        max_hp=20,
+        intent="ATTACK",
+        move_adjusted_damage=4,
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(monsters=[leader, minion], ascension_level=18),
+        ascension_level=18,
+    )
+
+    TurnTimingClassifier()._analyze_monster_timing(context, [leader, minion], 1)
+
+    assert loader.calls[0] == {
+        "monster_name": "Gremlin Leader",
+        "current_turn": 1,
+        "hp_percent": 1.0,
+        "ascension_level": 18,
+        "other_enemy_count": 1,
+        "other_enemy_names": ["Mad Gremlin"],
+        "same_monster_index": 0,
+    }
+
+
 def _unknown_attack():
     card = Card(
         card_id="UnknownAttack",

@@ -9,7 +9,7 @@ import logging
 from typing import List, Dict, Any, Optional, Tuple
 
 from spirecomm.ai.intent_utils import intent_is_attack
-from spirecomm.ai.monster_names import canonical_live_monster_name
+from spirecomm.ai.monster_names import canonical_live_monster_name, monster_field
 
 from .models import (
     TurnTiming,
@@ -164,6 +164,7 @@ class TurnTimingClassifier:
                     current_turn,
                     hp_percent,
                     context,
+                    monster=monster,
                 )
 
                 if predicted_moves:
@@ -284,6 +285,7 @@ class TurnTimingClassifier:
                         current_turn,
                         hp_percent,
                         context,
+                        monster=monster,
                     )
                     prediction = self._select_prediction_for_turn(
                         anchored_predictions,
@@ -471,26 +473,121 @@ class TurnTimingClassifier:
         current_turn: int,
         hp_percent: float,
         context,
+        monster: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
         try:
             from spirecomm.data.loader import game_data_loader
 
             ascension_level = self._context_ascension_level(context)
-            try:
-                return game_data_loader.predict_monster_moves(
-                    monster_name,
-                    current_turn,
-                    hp_percent,
-                    ascension_level=ascension_level,
-                )
-            except TypeError:
-                return game_data_loader.predict_monster_moves(
-                    monster_name,
-                    current_turn,
-                    hp_percent,
-                )
+            other_enemy_names = self._context_other_enemy_names(context, monster_name, monster)
+            other_enemy_count = len(other_enemy_names) if other_enemy_names is not None else None
+            same_monster_index = self._context_same_monster_index(context, monster_name, monster)
+            call_variants = [
+                {
+                    "ascension_level": ascension_level,
+                    "other_enemy_count": other_enemy_count,
+                    "other_enemy_names": other_enemy_names,
+                    "same_monster_index": same_monster_index,
+                },
+                {
+                    "ascension_level": ascension_level,
+                    "other_enemy_count": other_enemy_count,
+                    "other_enemy_names": other_enemy_names,
+                },
+                {
+                    "ascension_level": ascension_level,
+                    "other_enemy_count": other_enemy_count,
+                },
+                {
+                    "ascension_level": ascension_level,
+                },
+                {},
+            ]
+            for kwargs in call_variants:
+                try:
+                    return game_data_loader.predict_monster_moves(
+                        monster_name,
+                        current_turn,
+                        hp_percent,
+                        **kwargs,
+                    )
+                except TypeError:
+                    continue
+            return []
         except Exception:
             return []
+
+    def _context_other_enemy_names(
+        self,
+        context,
+        monster_name: str,
+        target_monster: Optional[Any] = None,
+    ) -> Optional[List[str]]:
+        monsters = self._context_prediction_monsters(context)
+        if not monsters:
+            return None
+
+        target_name = str(monster_name or "").lower()
+        other_names = []
+        skipped_target_by_name = target_monster is not None
+        for monster in monsters:
+            if not self._is_live_context_monster(monster):
+                continue
+            candidate_name = str(canonical_live_monster_name(monster) or "").lower()
+            if target_monster is not None:
+                if monster is target_monster:
+                    continue
+            elif candidate_name == target_name and not skipped_target_by_name:
+                skipped_target_by_name = True
+                continue
+            if candidate_name:
+                other_names.append(canonical_live_monster_name(monster))
+        return other_names
+
+    def _context_same_monster_index(
+        self,
+        context,
+        monster_name: str,
+        target_monster: Optional[Any] = None,
+    ) -> Optional[int]:
+        if target_monster is None:
+            return None
+
+        monsters = self._context_prediction_monsters(context)
+        if not monsters:
+            return None
+
+        target_name = str(monster_name or "").lower()
+        same_name_index = 0
+        for monster in monsters:
+            if not self._is_live_context_monster(monster):
+                continue
+            candidate_name = str(canonical_live_monster_name(monster) or "").lower()
+            if candidate_name != target_name:
+                continue
+            if monster is target_monster:
+                return same_name_index
+            same_name_index += 1
+        return None
+
+    def _context_prediction_monsters(self, context) -> Optional[List[Any]]:
+        if context is None:
+            return None
+
+        game = getattr(context, "game", None)
+        monsters = getattr(game, "monsters", None) if game is not None else None
+        if monsters is None:
+            monsters = getattr(context, "monsters_alive", None)
+        return monsters
+
+    @staticmethod
+    def _is_live_context_monster(monster: Any) -> bool:
+        hp = monster_field(monster, "current_hp", monster_field(monster, "hp", 1))
+        return (
+            not monster_field(monster, "is_gone", False)
+            and not monster_field(monster, "half_dead", False)
+            and hp > 0
+        )
 
     @staticmethod
     def _apply_strength_to_per_hit_damage(damage: int, strength: int) -> int:
