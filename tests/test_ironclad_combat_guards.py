@@ -1326,6 +1326,41 @@ def test_enemy_status_lookahead_player_artifact_blocks_predicted_hex():
     assert status["total"] == 0
 
 
+def test_enemy_status_lookahead_counts_entangled_as_future_control_risk():
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_red_slaver(move_id=2, intent=Intent.DEBUFF)],
+    )
+
+    status = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_status_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert status["entangled"] == 1
+    assert status["total"] == 1
+
+
+def test_enemy_status_lookahead_player_artifact_blocks_predicted_entangled():
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_red_slaver(move_id=2, intent=Intent.DEBUFF)],
+    )
+    context.game.player.powers = [SimpleNamespace(power_name="Artifact", amount=1)]
+
+    status = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_status_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert status["entangled"] == 0
+    assert status["total"] == 0
+
+
 def test_enemy_status_lookahead_ignores_zero_hp_stale_simulated_monsters():
     context = _combat_context([], energy=0, monsters=[_sentry(move_id=1)])
     state = SimulationState(context)

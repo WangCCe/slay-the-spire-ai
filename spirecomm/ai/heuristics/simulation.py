@@ -2365,6 +2365,43 @@ class FastCombatSimulator:
             )
         return max(0, hex_stacks)
 
+    def _extract_move_entangled(
+        self,
+        move: Dict[str, Any],
+        context: Optional[DecisionContext] = None,
+    ) -> int:
+        """Extract Entangled stacks applied to the player from a monster move."""
+        entangled = 0
+        for key in ('entangled', 'entangled_applied', 'entangled_amount'):
+            value = move.get(key)
+            if isinstance(value, bool):
+                entangled = 1 if value else 0
+            else:
+                entangled = self._positive_numeric_move_value(value)
+            if entangled > 0:
+                break
+
+        if entangled <= 0:
+            effect = str(move.get('effect') or move.get('description') or '')
+            if re.search(
+                r'\b(?:apply|applies|applied|applying)\s+\d*\s*entangled\b',
+                effect,
+                re.IGNORECASE,
+            ):
+                entangled = 1
+
+        if entangled <= 0 or context is None:
+            return entangled
+
+        for key in ('entangled', 'entangled_applied', 'entangled_amount'):
+            entangled = self._apply_ascension_move_value(
+                move,
+                context,
+                key,
+                entangled,
+            )
+        return max(0, entangled)
+
     def _positive_numeric_move_value(self, value: Any) -> int:
         if isinstance(value, bool):
             return 0
@@ -3774,7 +3811,7 @@ class FastCombatSimulator:
         context: DecisionContext,
         look_ahead: int = 2,
     ) -> Dict[str, int]:
-        """Estimate status-card pollution from current and near-future monster moves."""
+        """Estimate draw/status and control disruption from near-future monster moves."""
         totals = {
             'total': 0,
             'dazed': 0,
@@ -3783,6 +3820,7 @@ class FastCombatSimulator:
             'wound': 0,
             'void': 0,
             'hex': 0,
+            'entangled': 0,
         }
         try:
             current_turn = getattr(context, 'turn', 1)
@@ -3821,10 +3859,17 @@ class FastCombatSimulator:
                             totals['hex'] += hex_stacks
                             totals['dazed'] += dazed_risk
                             totals['total'] += dazed_risk
+                    entangled = self._extract_move_entangled(move, context)
+                    if entangled > 0:
+                        if player_artifact > 0:
+                            player_artifact -= 1
+                        else:
+                            totals['entangled'] += entangled
+                            totals['total'] += entangled
 
             if totals['total'] > 0:
                 logger.info(
-                    "[STATUS_LOOKAHEAD] predicted=%s dazed=%s burn=%s slimed=%s wound=%s void=%s hex=%s",
+                    "[STATUS_LOOKAHEAD] predicted=%s dazed=%s burn=%s slimed=%s wound=%s void=%s hex=%s entangled=%s",
                     totals['total'],
                     totals['dazed'],
                     totals['burn'],
@@ -3832,10 +3877,11 @@ class FastCombatSimulator:
                     totals['wound'],
                     totals['void'],
                     totals['hex'],
+                    totals['entangled'],
                 )
             return totals
         except Exception as e:
-            logger.warning(f"[STATUS_LOOKAHEAD] Failed to simulate enemy status pollution: {e}")
+            logger.warning(f"[STATUS_LOOKAHEAD] Failed to simulate enemy disruption: {e}")
             return totals
 
     def _predicted_monster_move_for_step(
@@ -4748,7 +4794,7 @@ class FastCombatSimulator:
                     )
                     score -= future_status_penalty
                     logger.info(
-                        "[FUTURE_STATUS_PENALTY] -%.1f score for %s predicted status cards",
+                        "[FUTURE_STATUS_PENALTY] -%.1f score for %s predicted status/control effects",
                         future_status_penalty,
                         future_status['total'],
                     )
