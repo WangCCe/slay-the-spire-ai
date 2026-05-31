@@ -310,8 +310,23 @@ class EnhancedMonsterDatabase:
 
         predictions = []
 
+        # Check for shared boss records with per-member deterministic patterns.
+        if "member_patterns" in pattern:
+            member_name, member_pattern = self._select_member_pattern(
+                pattern["member_patterns"],
+                monster_name,
+            )
+            if member_pattern:
+                self._append_sequence_predictions(
+                    predictions,
+                    monster_name,
+                    member_pattern.get("move_sequence", []),
+                    current_turn,
+                    member_name=member_name,
+                )
+
         # Check for move_sequence
-        if "move_sequence" in pattern:
+        elif "move_sequence" in pattern:
             move_ids = pattern["move_sequence"]
             sequence_length = len(move_ids)
             for i in range(3):
@@ -626,6 +641,7 @@ class EnhancedMonsterDatabase:
         monster_name: str,
         sequence: List[str],
         current_turn: int,
+        member_name: Optional[str] = None,
     ) -> None:
         if not isinstance(sequence, list) or not sequence:
             return
@@ -634,7 +650,7 @@ class EnhancedMonsterDatabase:
         for i in range(3):
             target_turn = current_turn + i
             move_name = sequence[(target_turn - 1) % sequence_length]
-            move = self.get_move_by_name(monster_name, move_name)
+            move = self._get_move_by_name_for_member(monster_name, move_name, member_name)
             if not move:
                 continue
             predictions.append({
@@ -642,6 +658,38 @@ class EnhancedMonsterDatabase:
                 "move": move,
                 "confidence": 1.0,
             })
+
+    def _select_member_pattern(
+        self,
+        member_patterns: Dict[str, Any],
+        monster_name: str,
+    ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+        if not isinstance(member_patterns, dict):
+            return None, None
+
+        normalized_name = str(monster_name or "").lower()
+        for member_name, member_pattern in member_patterns.items():
+            normalized_member = str(member_name).lower()
+            if normalized_member == normalized_name or normalized_member in normalized_name:
+                if isinstance(member_pattern, dict):
+                    return member_name, member_pattern
+        return None, None
+
+    def _get_move_by_name_for_member(
+        self,
+        monster_name: str,
+        move_name: str,
+        member_name: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        moves = self.get_moves(monster_name)
+        normalized_member = str(member_name or "").lower()
+        for move in moves:
+            if move.get("name") != move_name:
+                continue
+            if normalized_member and str(move.get("monster", "")).lower() != normalized_member:
+                continue
+            return move
+        return None
 
     def _select_turn_threshold(self, thresholds: List[Dict[str, Any]], target_turn: int) -> Optional[Dict[str, Any]]:
         if not isinstance(thresholds, list):

@@ -469,118 +469,89 @@
     "name": "Donu & Deca",
     "monster_type": "boss",
     "hp_ranges": {
-      "donu": {"min": 150, "max": 160},
-      "deca": {"min": 150, "max": 160},
+      "donu": {"min": 250, "max": 250},
+      "deca": {"min": 250, "max": 250},
       "ascension_9+": {
-        "donu": {"min": 160, "max": 170},
-        "deca": {"min": 160, "max": 170}
+        "donu": {"min": 265, "max": 265},
+        "deca": {"min": 265, "max": 265}
       }
     },
     "monsters": ["Donu", "Deca"],
     "moves": [
       {
         "move_id": 0,
-        "name": "Anger",
+        "name": "Circle of Power",
         "intent": "BUFF",
         "damage": null,
-        "effect": "Donu gains 2 Strength.",
-        "strength_gain": 2,
+        "effect": "All enemies gain 3 Strength.",
+        "all_enemies_strength_gain": 3,
+        "ascension_modifiers": {
+          "4+": {"all_enemies_strength_gain": 3}
+        },
         "monster": "Donu"
       },
       {
         "move_id": 1,
-        "name": "Bash",
-        "intent": "ATTACK_DEBUFF",
-        "damage": 8,
-        "effect": "Deals 8 damage and applies 2 Vulnerable.",
-        "vulnerable_applied": 2,
+        "name": "Beam",
+        "intent": "ATTACK",
+        "damage": 10,
+        "hits": 2,
+        "effect": "Deals 10 damage 2 times.",
+        "ascension_modifiers": {
+          "4+": {"damage": 12}
+        },
         "monster": "Donu"
       },
       {
         "move_id": 2,
-        "name": "Defensive Mode",
-        "intent": "DEFEND",
-        "damage": null,
-        "effect": "Gains 12 Block and 3 Plated Armor. Cannot use twice in a row.",
-        "block_gain": 12,
-        "plated_armor_gain": 3,
-        "monster": "Donu"
+        "name": "Beam",
+        "intent": "ATTACK_DEBUFF",
+        "damage": 10,
+        "hits": 2,
+        "dazed": 2,
+        "effect": "Deals 10 damage 2 times and shuffles 2 Dazed into the discard pile.",
+        "ascension_modifiers": {
+          "4+": {"damage": 12}
+        },
+        "monster": "Deca"
       },
       {
         "move_id": 3,
-        "name": "Haste",
-        "intent": "BUFF",
-        "damage": null,
-        "effect": "Deca gains 1 Dexterity and 1 Focus.",
-        "dexterity_gain": 1,
-        "focus_gain": 1,
-        "monster": "Deca"
-      },
-      {
-        "move_id": 4,
-        "name": "Beam",
-        "intent": "ATTACK",
-        "damage": 6,
-        "hits": 3,
-        "effect": "Deals 6 damage 3 times.",
-        "monster": "Deca"
-      },
-      {
-        "move_id": 5,
-        "name": "Focus",
-        "intent": "BUFF",
-        "damage": null,
-        "effect": "Gains 2 Focus. Cannot use twice in a row.",
-        "focus_gain": 2,
-        "monster": "Deca"
-      },
-      {
-        "move_id": 6,
-        "name": "Shield",
+        "name": "Square of Protection",
         "intent": "DEFEND",
         "damage": null,
-        "effect": "Gains 20 Block.",
-        "block_gain": 20,
+        "effect": "All enemies gain 16 Block.",
+        "all_enemies_block_gain": 16,
+        "ascension_modifiers": {
+          "19+": {"all_enemies_plated_armor_gain": 3}
+        },
         "monster": "Deca"
       }
     ],
     "pattern": {
-      "description": "Donu and Deca share a circular buffer of 6 moves: Anger, Bash, Defensive Mode, Haste, Beam, Focus, Shield. They cycle through these moves in order, each using every third move.",
-      "circular_pattern": [
-        "Anger (Donu)",
-        "Bash (Donu)",
-        "Defensive Mode (Donu)",
-        "Haste (Deca)",
-        "Beam (Deca)",
-        "Focus (Deca)",
-        "Shield (Deca)"
-      ],
-      "pattern_length": 7,
-      "monster_turn_order": ["Donu", "Deca"],
-      "constraints": ["cannot_use_defensive_mode_twice_in_a_row", "cannot_use_focus_twice_in_a_row"]
+      "description": "Donu starts with Circle of Power, then alternates between Beam and Circle of Power. Deca starts with Beam, then alternates between Square of Protection and Beam.",
+      "member_patterns": {
+        "Donu": {"move_sequence": ["Circle of Power", "Beam"]},
+        "Deca": {"move_sequence": ["Beam", "Square of Protection"]}
+      }
     },
     "special_mechanics": {
       "type": "duo_boss",
       "monsters": ["Donu", "Deca"],
-      "synergy": "Circular move pattern with shared buffs",
+      "synergy": "Fixed alternating patterns with shared Strength and Block support",
       "buffs": {
         "donu_scaling": {
           "type": "strength",
-          "rate": "+2 Strength per Anger"
-        },
-        "deca_scaling": {
-          "type": "dexterity_focus",
-          "rate": "+1 Dexterity and +1-2 Focus per Haste/Focus"
+          "rate": "+3 Strength to all enemies per Circle of Power"
         }
       },
       "defensive_mechanics": {
-        "donu": "+3 Plated Armor per Defensive Mode",
-        "deca": "+20 Block per Shield"
+        "deca": "+16 Block to all enemies per Square of Protection"
       },
       "recommended_strategy": {
         "primary": "kill_one_quickly_to_break_pattern",
-        "secondary": "prioritize_deca_if_high_orb_count",
-        "note": "Both bosses scale quickly. Killing one stops the pattern. Deca is priority if you have orb build."
+        "secondary": "prioritize_donu_to_stop_strength_scaling",
+        "note": "Donu scales all enemy attacks with Circle of Power; Deca alternates between Dazed pressure and party defense."
       }
     },
     "threat_profile": {

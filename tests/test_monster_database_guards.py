@@ -89,5 +89,72 @@ def test_enhanced_database_keeps_native_chosen_and_sentry_records():
 def test_enhanced_database_returns_duo_boss_member_hp_ranges():
     database = EnhancedMonsterDatabase()
 
-    assert database.get_hp_range("Donu") == (150, 160)
-    assert database.get_hp_range("Deca", ascension_level=9) == (160, 170)
+    assert database.get_hp_range("Donu") == (250, 250)
+    assert database.get_hp_range("Deca", ascension_level=9) == (265, 265)
+
+
+def test_donu_deca_wiki_data_matches_vanilla_moves():
+    database = EnhancedMonsterDatabase()
+
+    data = database.get_monster_data("Donu & Deca")
+    moves_by_member = {
+        (move["monster"], move["name"]): move
+        for move in data["moves"]
+    }
+
+    assert set(moves_by_member) == {
+        ("Donu", "Circle of Power"),
+        ("Donu", "Beam"),
+        ("Deca", "Beam"),
+        ("Deca", "Square of Protection"),
+    }
+
+    circle = moves_by_member[("Donu", "Circle of Power")]
+    assert circle["intent"] == "BUFF"
+    assert circle["all_enemies_strength_gain"] == 3
+
+    donu_beam = moves_by_member[("Donu", "Beam")]
+    assert donu_beam["intent"] == "ATTACK"
+    assert donu_beam["damage"] == 10
+    assert donu_beam["hits"] == 2
+    assert donu_beam["ascension_modifiers"]["4+"]["damage"] == 12
+
+    deca_beam = moves_by_member[("Deca", "Beam")]
+    assert deca_beam["intent"] == "ATTACK_DEBUFF"
+    assert deca_beam["damage"] == 10
+    assert deca_beam["hits"] == 2
+    assert deca_beam["dazed"] == 2
+    assert deca_beam["ascension_modifiers"]["4+"]["damage"] == 12
+
+    square = moves_by_member[("Deca", "Square of Protection")]
+    assert square["intent"] == "DEFEND"
+    assert square["all_enemies_block_gain"] == 16
+    assert square["ascension_modifiers"]["19+"]["all_enemies_plated_armor_gain"] == 3
+
+
+def test_donu_deca_member_predictions_follow_fixed_alternating_patterns():
+    database = EnhancedMonsterDatabase()
+
+    donu_predictions = database.predict_next_moves("Donu", current_turn=1, monster_hp_percent=1.0)
+    deca_predictions = database.predict_next_moves("Deca", current_turn=1, monster_hp_percent=1.0)
+
+    assert [prediction["move"]["name"] for prediction in donu_predictions] == [
+        "Circle of Power",
+        "Beam",
+        "Circle of Power",
+    ]
+    assert [prediction["move"]["monster"] for prediction in donu_predictions] == [
+        "Donu",
+        "Donu",
+        "Donu",
+    ]
+    assert [prediction["move"]["name"] for prediction in deca_predictions] == [
+        "Beam",
+        "Square of Protection",
+        "Beam",
+    ]
+    assert [prediction["move"]["monster"] for prediction in deca_predictions] == [
+        "Deca",
+        "Deca",
+        "Deca",
+    ]
