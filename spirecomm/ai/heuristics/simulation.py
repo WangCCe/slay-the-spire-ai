@@ -4501,7 +4501,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             state.player_energy += potion.effect_value
             state.energy_gained += potion.effect_value
         elif potion.effect_type in ['draw', 'draw_randomize_cost']:
-            state.cards_drawn += potion.effect_value
+            self.simulator._add_card_draw(state, potion.effect_value)
 
     def _find_best_potion_target(self, potion, context: DecisionContext) -> Monster:
         """

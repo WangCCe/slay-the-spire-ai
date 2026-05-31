@@ -8279,3 +8279,22 @@ def test_potion_target_state_index_prefers_live_monster_index_for_identical_targ
     )
 
     assert HeuristicCombatPlanner._state_monster_index_for_potion_target(state, target) == 1
+
+
+def test_draw_potions_respect_no_draw_power():
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+
+    for effect_type in ("draw", "draw_randomize_cost"):
+        potion = SimpleNamespace(
+            name="Draw Potion",
+            effect_type=effect_type,
+            effect_value=3,
+            target_type="self",
+        )
+        context = _combat_context([], energy=0, monsters=[_louse(current_hp=100)])
+        state = SimulationState(context)
+        state.draw_blocked = True
+
+        result = planner._simulate_potion_use(state, potion, target=None)
+
+        assert result.cards_drawn == 0
