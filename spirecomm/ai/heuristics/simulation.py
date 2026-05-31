@@ -4435,9 +4435,10 @@ class HeuristicCombatPlanner(CombatPlanner):
             deduplicated_candidates.sort(key=lambda x: x[3], reverse=True)
             beam = deduplicated_candidates[:self.beam_width]
 
-            # Track best sequence
-            if beam:
-                best_sequence, best_state, best_energy, best_score = beam[0]
+            # Track the best sequence found across all depths.
+            if beam and beam[0][3] > best_score:
+                best_sequence = beam[0][0]
+                best_score = beam[0][3]
 
         # Log final result
         if best_sequence:
