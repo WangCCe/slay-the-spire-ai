@@ -557,6 +557,12 @@ class SimulationState:
                     'IntangiblePower',
                     'IntangibleMonster',
                 ),
+                'slow_active': self._has_monster_power_any(monster, 'Slow', 'SlowPower'),
+                'slow_stacks': self._get_monster_power_amount_any(
+                    monster,
+                    'Slow',
+                    'SlowPower',
+                ),
             }
             self.monsters.append(monster_state)
 
@@ -652,6 +658,26 @@ class SimulationState:
                 except (TypeError, ValueError):
                     return 0
         return 0
+
+    def _has_monster_power_any(self, monster: Any, *power_names: str) -> bool:
+        """Return whether a monster has any display-name/id variant of a power."""
+        if not hasattr(monster, 'powers'):
+            return False
+
+        normalized_names = {
+            re.sub(r'[^a-z0-9]', '', name.lower())
+            for name in power_names
+        }
+        for power in monster.powers:
+            power_name = self._power_name(power)
+            normalized_power_name = re.sub(
+                r'[^a-z0-9]',
+                '',
+                str(power_name or '').lower(),
+            )
+            if normalized_power_name in normalized_names:
+                return True
+        return False
 
     def _get_monster_skill_strength_gain(self, monster: Any) -> int:
         """Return Strength a monster gains whenever the player plays a Skill."""
@@ -793,6 +819,8 @@ class SimulationState:
                 m.get('hit_strength_gain', 0),
                 m.get('flight_stacks', 0),
                 m.get('intangible', 0),
+                bool(m.get('slow_active', False)),
+                m.get('slow_stacks', 0),
                 m.get('move_base_damage', 0),
                 (
                     m.get('move_adjusted_damage', None) is None,
@@ -924,6 +952,8 @@ class FastCombatSimulator:
                 self._handle_phase_change(new_state, monster)
                 self._handle_hibernation(new_state, monster)
 
+        self._apply_slow_card_play(new_state)
+
         # Apply card effects based on type
         resolved_target_index = self._resolve_target_index(target, target_index, context)
 
@@ -1014,6 +1044,15 @@ class FastCombatSimulator:
                 monster.get('name', 'Unknown'),
                 strength_gain,
             )
+
+    def _apply_slow_card_play(self, state: SimulationState):
+        """Giant Head's Slow gains a stack whenever the player plays a card."""
+        for monster in state.monsters:
+            if not self._is_live_monster_state(monster):
+                continue
+            if not monster.get('slow_active', False):
+                continue
+            monster['slow_stacks'] = int(monster.get('slow_stacks', 0) or 0) + 1
 
     def _apply_hex_card_pollution(self, state: SimulationState, card_type: Optional[CardType]):
         """Chosen's Hex adds Dazed to the draw pile whenever a non-Attack is played."""
@@ -1173,6 +1212,7 @@ class FastCombatSimulator:
                     damage = self._calculate_attack_damage(card, base_damage, state, context)
                     damage = self._apply_weak_damage(damage, getattr(state, 'player_weak', 0))
                     damage = self._apply_vulnerable_damage(damage, monster)
+                    damage = self._apply_slow_attack_damage(damage, monster)
                     self._deal_damage_to_monster(state, monster, damage)
                     state.damage_instances += 1  # Track each damage instance
             if card_data:
@@ -1196,6 +1236,7 @@ class FastCombatSimulator:
                 damage = self._calculate_attack_damage(card, base_damage, state, context)
                 damage = self._apply_weak_damage(damage, getattr(state, 'player_weak', 0))
                 damage = self._apply_vulnerable_damage(damage, monster)
+                damage = self._apply_slow_attack_damage(damage, monster)
                 self._deal_damage_to_monster(state, monster, damage)
                 state.damage_instances += 1
         else:
@@ -1215,6 +1256,7 @@ class FastCombatSimulator:
                         damage = self._calculate_attack_damage(card, base_damage, state, context)
                         damage = self._apply_weak_damage(damage, getattr(state, 'player_weak', 0))
                         damage = self._apply_vulnerable_damage(damage, monster)
+                        damage = self._apply_slow_attack_damage(damage, monster)
                         self._deal_damage_to_monster(state, monster, damage)
                         state.damage_instances += 1  # Track damage instance
 
@@ -1537,6 +1579,13 @@ class FastCombatSimulator:
         if monster.get('vulnerable', 0) > 0:
             return int(damage * 1.5)
         return damage
+
+    def _apply_slow_attack_damage(self, damage: int, monster: dict) -> int:
+        """Apply Giant Head Slow's attack-damage multiplier."""
+        slow_stacks = int(monster.get('slow_stacks', 0) or 0)
+        if slow_stacks <= 0 or damage <= 0:
+            return damage
+        return int(damage * (1 + 0.1 * slow_stacks))
 
     def _apply_player_vulnerable_damage(
         self,

@@ -250,6 +250,24 @@ def _nemesis(current_hp=185, intangible=0):
     return monster
 
 
+def _giant_head(current_hp=500, slow=0):
+    monster = Monster(
+        name="Giant Head",
+        monster_id="GiantHead",
+        max_hp=500,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=0,
+        move_adjusted_damage=13,
+        move_hits=1,
+    )
+    monster.powers = [SimpleNamespace(power_name="Slow", amount=slow)]
+    return monster
+
+
 def _lagavulin(
     current_hp=82,
     intent=Intent.ATTACK,
@@ -947,6 +965,45 @@ def test_monster_intangible_caps_non_attack_damage_to_one():
 
     assert state.monsters[0]["hp"] == 184
     assert state.total_damage_dealt == 1
+
+
+def test_giant_head_slow_increments_on_each_card_and_boosts_attack_damage():
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    carnage = _card("Carnage", "Carnage", cost=2)
+    carnage.damage = 20
+    giant_head = _giant_head()
+    context = _combat_context([defend, carnage], energy=3, monsters=[giant_head])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    after_defend = simulator.simulate_card_play(
+        SimulationState(context),
+        defend,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        after_defend,
+        carnage,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert after_defend.monsters[0]["slow_stacks"] == 1
+    assert result.monsters[0]["slow_stacks"] == 2
+    assert result.monsters[0]["hp"] == 476
+    assert result.total_damage_dealt == 24
+
+
+def test_state_key_distinguishes_giant_head_slow_stacks():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_giant_head()])
+    base_state = SimulationState(context)
+    slow_state = base_state.clone()
+    slow_state.monsters[0]["slow_stacks"] = 1
+
+    assert base_state.state_key(context.playable_cards) != slow_state.state_key(
+        context.playable_cards
+    )
 
 
 def test_fungi_beast_death_vulnerable_can_make_same_turn_attack_lethal():
