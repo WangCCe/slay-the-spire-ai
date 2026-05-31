@@ -909,6 +909,18 @@ class FastCombatSimulator:
                 return idx
 
         target_id = getattr(target, 'monster_id', None)
+        live_target_index = getattr(target, 'monster_index', None)
+        if (
+            isinstance(live_target_index, int)
+            and 0 <= live_target_index < len(monsters)
+        ):
+            monster = monsters[live_target_index]
+            if (
+                not target_id
+                or getattr(monster, 'monster_id', None) == target_id
+            ):
+                return live_target_index
+
         target_name = getattr(target, 'name', None)
         target_hp = getattr(target, 'current_hp', None)
         id_candidates = []
