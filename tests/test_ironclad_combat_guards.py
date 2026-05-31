@@ -1613,6 +1613,45 @@ def test_played_juggernaut_deals_damage_on_followup_block():
     assert result.monsters[0]["hp"] == 15
 
 
+def test_feel_no_pain_block_triggers_juggernaut_per_exhaust_event(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "description": "Exhaust your hand. Deal 7 damage for each card Exhausted. Exhaust.",
+        },
+    }
+    loader._wiki_data = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "text": "#Exhaust your hand.\nDeal [7|10] damage for each card #Exhausted.\n#Exhaust.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    fiend_fire = _card("Fiend Fire", "Fiend Fire", cost=2)
+    strike = _card("Strike_R", "Strike", cost=1)
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([fiend_fire, strike, defend], energy=2, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [
+        SimpleNamespace(power_name="Feel No Pain", amount=3),
+        SimpleNamespace(power_name="Juggernaut", amount=5),
+    ]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        fiend_fire,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.exhaust_events == 3
+    assert result.player_block == 9
+    assert result.total_damage_dealt == 29
+    assert result.damage_instances == 5
+
+
 def test_rupture_gains_strength_once_when_card_loses_hp(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

@@ -2406,11 +2406,12 @@ class FastCombatSimulator:
         if exhaust_delta <= 0 or state.feel_no_pain_block_per_exhaust <= 0:
             return
 
-        block_gain = exhaust_delta * state.feel_no_pain_block_per_exhaust
-        self._add_player_block(
-            state,
-            self._apply_frail_block(block_gain, state.player_frail),
+        block_gain = self._apply_frail_block(
+            state.feel_no_pain_block_per_exhaust,
+            state.player_frail,
         )
+        for _ in range(exhaust_delta):
+            self._add_player_block(state, block_gain)
 
     def _apply_dark_embrace_draw(self, state: SimulationState, starting_exhaust_events: int):
         exhaust_delta = state.exhaust_events - starting_exhaust_events
