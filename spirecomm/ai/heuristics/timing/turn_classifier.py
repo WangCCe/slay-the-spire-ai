@@ -159,8 +159,11 @@ class TurnTimingClassifier:
                     monster_hints[monster_name] = MonsterTimingHints()
 
                 # Predict next moves
-                predicted_moves = game_data_loader.predict_monster_moves(
-                    monster_name, current_turn, hp_percent
+                predicted_moves = self._predict_monster_moves(
+                    monster_name,
+                    current_turn,
+                    hp_percent,
+                    context,
                 )
 
                 if predicted_moves:
@@ -276,16 +279,18 @@ class TurnTimingClassifier:
                         hp_percent = 1.0
 
                     monster_name = canonical_live_monster_name(monster)
-                    anchored_predictions = game_data_loader.predict_monster_moves(
+                    anchored_predictions = self._predict_monster_moves(
                         monster_name,
                         current_turn,
                         hp_percent,
+                        context,
                     )
                     prediction = self._select_prediction_for_turn(
                         anchored_predictions,
                         monster_name,
                         target_turn,
                         hp_percent,
+                        ascension_level=self._context_ascension_level(context),
                     )
 
                     if prediction:
@@ -379,16 +384,18 @@ class TurnTimingClassifier:
                         hp_percent = 1.0
 
                     monster_name = canonical_live_monster_name(monster)
-                    anchored_predictions = game_data_loader.predict_monster_moves(
+                    anchored_predictions = self._predict_monster_moves(
                         monster_name,
                         current_turn,
                         hp_percent,
+                        context,
                     )
                     prediction = self._select_prediction_for_turn(
                         anchored_predictions,
                         monster_name,
                         target_turn,
                         hp_percent,
+                        ascension_level=self._context_ascension_level(context),
                     )
 
                     if prediction:
@@ -432,6 +439,7 @@ class TurnTimingClassifier:
         monster_name: str,
         target_turn: int,
         hp_percent: float,
+        ascension_level: int = 0,
     ) -> Optional[Dict[str, Any]]:
         for prediction in anchored_predictions:
             if prediction.get('turn') == target_turn:
@@ -440,14 +448,49 @@ class TurnTimingClassifier:
         try:
             from spirecomm.data.loader import game_data_loader
 
-            fallback_predictions = game_data_loader.predict_monster_moves(
-                monster_name,
-                target_turn,
-                hp_percent,
-            )
+            try:
+                fallback_predictions = game_data_loader.predict_monster_moves(
+                    monster_name,
+                    target_turn,
+                    hp_percent,
+                    ascension_level=ascension_level,
+                )
+            except TypeError:
+                fallback_predictions = game_data_loader.predict_monster_moves(
+                    monster_name,
+                    target_turn,
+                    hp_percent,
+                )
             return fallback_predictions[0] if fallback_predictions else None
         except Exception:
             return None
+
+    def _predict_monster_moves(
+        self,
+        monster_name: str,
+        current_turn: int,
+        hp_percent: float,
+        context,
+    ) -> List[Dict[str, Any]]:
+        try:
+            from spirecomm.data.loader import game_data_loader
+
+            ascension_level = self._context_ascension_level(context)
+            try:
+                return game_data_loader.predict_monster_moves(
+                    monster_name,
+                    current_turn,
+                    hp_percent,
+                    ascension_level=ascension_level,
+                )
+            except TypeError:
+                return game_data_loader.predict_monster_moves(
+                    monster_name,
+                    current_turn,
+                    hp_percent,
+                )
+        except Exception:
+            return []
 
     @staticmethod
     def _apply_strength_to_per_hit_damage(damage: int, strength: int) -> int:
@@ -952,10 +995,11 @@ class TurnTimingClassifier:
 
                 monster_name = canonical_live_monster_name(monster)
                 # Check next 2 turns
-                anchored_predictions = game_data_loader.predict_monster_moves(
+                anchored_predictions = self._predict_monster_moves(
                     monster_name,
                     current_turn,
                     hp_percent,
+                    context,
                 )
                 for turn_offset in range(1, 3):
                     target_turn = current_turn + turn_offset
@@ -964,6 +1008,7 @@ class TurnTimingClassifier:
                         monster_name,
                         target_turn,
                         hp_percent,
+                        ascension_level=self._context_ascension_level(context),
                     )
 
                     if prediction:

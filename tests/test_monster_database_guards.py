@@ -158,3 +158,25 @@ def test_donu_deca_member_predictions_follow_fixed_alternating_patterns():
         "Deca",
         "Deca",
     ]
+
+
+def test_monster_predictions_use_ascension_opening_overrides():
+    database = EnhancedMonsterDatabase()
+
+    normal_chosen = database.predict_next_moves("Chosen", current_turn=1, monster_hp_percent=1.0)
+    asc17_chosen = database.predict_next_moves(
+        "Chosen",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        ascension_level=17,
+    )
+    asc17_acid_slime = database.predict_next_moves(
+        "Acid Slime (S)",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        ascension_level=17,
+    )
+
+    assert normal_chosen[0]["move"]["name"] == "Poke"
+    assert asc17_chosen[0]["move"]["name"] == "Hex"
+    assert asc17_acid_slime[0]["move"]["name"] == "Lick"

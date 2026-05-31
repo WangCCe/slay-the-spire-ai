@@ -958,8 +958,13 @@ class GameDataLoader:
             return db.get_monster_type(monster_name)
         return "normal"
 
-    def predict_monster_moves(self, monster_name: str, current_turn: int,
-                             monster_hp_percent: float) -> List[Dict[str, Any]]:
+    def predict_monster_moves(
+        self,
+        monster_name: str,
+        current_turn: int,
+        monster_hp_percent: float,
+        ascension_level: int = 0,
+    ) -> List[Dict[str, Any]]:
         """
         Predict next moves for a monster based on its Wiki pattern.
 
@@ -967,13 +972,19 @@ class GameDataLoader:
             monster_name: Name of the monster
             current_turn: Current combat turn (1-indexed)
             monster_hp_percent: Current HP as percentage (0.0 to 1.0)
+            ascension_level: Current ascension level (default 0)
 
         Returns:
             List of predicted moves for next 3 turns with confidence scores
         """
         db = self._get_enhanced_monster_db()
         if db and isinstance(db, object):
-            return db.predict_next_moves(monster_name, current_turn, monster_hp_percent)
+            return db.predict_next_moves(
+                monster_name,
+                current_turn,
+                monster_hp_percent,
+                ascension_level=ascension_level,
+            )
         return []
 
     def calculate_monster_future_threat(self, monster_name: str, current_turn: int,

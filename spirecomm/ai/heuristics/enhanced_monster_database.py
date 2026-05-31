@@ -14,6 +14,7 @@ Key features:
 import json
 import os
 import logging
+import re
 from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
 
@@ -288,8 +289,13 @@ class EnhancedMonsterDatabase:
             return monster_data["monster_type"]
         return "normal"  # Default
 
-    def predict_next_moves(self, monster_name: str, current_turn: int,
-                           monster_hp_percent: float) -> List[Dict[str, Any]]:
+    def predict_next_moves(
+        self,
+        monster_name: str,
+        current_turn: int,
+        monster_hp_percent: float,
+        ascension_level: int = 0,
+    ) -> List[Dict[str, Any]]:
         """
         Predict next moves for a monster based on its pattern.
 
@@ -297,6 +303,7 @@ class EnhancedMonsterDatabase:
             monster_name: Name of the monster
             current_turn: Current combat turn (1-indexed)
             monster_hp_percent: Current HP as percentage (0.0 to 1.0)
+            ascension_level: Current ascension level (default 0)
 
         Returns:
             List of predicted moves for next 3 turns
@@ -429,8 +436,21 @@ class EnhancedMonsterDatabase:
 
         # Check for explicit turn-one probabilities with a separate later pattern.
         elif "turn_1_probabilities" in pattern:
+            ascension_opening = self._move_sequence_from_value(
+                self._ascension_pattern_override(pattern, "opening", ascension_level)
+            )
             for i in range(3):
                 target_turn = current_turn + i
+                if 1 <= target_turn <= len(ascension_opening):
+                    self._append_named_move_prediction(
+                        predictions,
+                        monster_name,
+                        ascension_opening[target_turn - 1],
+                        target_turn,
+                        confidence=1.0,
+                    )
+                    continue
+
                 if target_turn == 1:
                     self._append_probability_predictions(
                         predictions,
@@ -467,10 +487,19 @@ class EnhancedMonsterDatabase:
 
         # Check for probabilities (less certain prediction)
         elif "probabilities" in pattern or "move_probabilities" in pattern:
-            probs = self._select_probability_table(
-                pattern.get("probabilities") or pattern.get("move_probabilities"),
-                current_turn,
-                monster_hp_percent,
+            ascension_probs = self._ascension_pattern_override(
+                pattern,
+                "probabilities",
+                ascension_level,
+            )
+            probs = (
+                ascension_probs
+                if isinstance(ascension_probs, dict)
+                else self._select_probability_table(
+                    pattern.get("probabilities") or pattern.get("move_probabilities"),
+                    current_turn,
+                    monster_hp_percent,
+                )
             )
             # Predict most likely moves
             if isinstance(probs, dict):
@@ -533,12 +562,16 @@ class EnhancedMonsterDatabase:
 
         # Check for opening + alternating phase probabilities format (e.g., normal Chosen)
         elif "opening" in pattern:
-            opening_moves = pattern["opening"]
-            opening_length = len(opening_moves) if isinstance(opening_moves, list) else 0
+            opening_moves = self._move_sequence_from_value(
+                self._ascension_pattern_override(pattern, "opening", ascension_level)
+            )
+            if not opening_moves:
+                opening_moves = self._move_sequence_from_value(pattern["opening"])
+            opening_length = len(opening_moves)
             then_moves = pattern.get("then", [])
             if not isinstance(then_moves, list):
                 then_moves = []
-            fixed_sequence = opening_moves + then_moves if isinstance(opening_moves, list) else then_moves
+            fixed_sequence = opening_moves + then_moves
             alternating_moves = pattern.get("alternating", [])
             if not isinstance(alternating_moves, list):
                 alternating_moves = []
@@ -714,6 +747,38 @@ class EnhancedMonsterDatabase:
 
         phase_index = (target_turn - opening_length - 1) % len(phase_keys)
         return phase_keys[phase_index]
+
+    def _ascension_pattern_override(
+        self,
+        pattern: Dict[str, Any],
+        suffix: str,
+        ascension_level: int,
+    ) -> Any:
+        if not isinstance(pattern, dict):
+            return None
+
+        selected_threshold = None
+        selected_value = None
+        for key, value in pattern.items():
+            if not isinstance(key, str):
+                continue
+            match = re.match(rf"ascension_(\d+)\+_{re.escape(suffix)}$", key)
+            if not match:
+                continue
+            threshold = int(match.group(1))
+            if ascension_level < threshold:
+                continue
+            if selected_threshold is None or threshold > selected_threshold:
+                selected_threshold = threshold
+                selected_value = value
+        return selected_value
+
+    def _move_sequence_from_value(self, value: Any) -> List[str]:
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, list):
+            return [move for move in value if isinstance(move, str)]
+        return []
 
     def _append_probability_predictions(
         self,
@@ -1125,11 +1190,18 @@ def get_monster_pattern(monster_name: str) -> Optional[Dict[str, Any]]:
     return get_enhanced_monster_db().get_pattern(monster_name)
 
 
-def predict_monster_moves(monster_name: str, current_turn: int,
-                         monster_hp_percent: float) -> List[Dict[str, Any]]:
+def predict_monster_moves(
+    monster_name: str,
+    current_turn: int,
+    monster_hp_percent: float,
+    ascension_level: int = 0,
+) -> List[Dict[str, Any]]:
     """Predict monster moves (convenience function)."""
     return get_enhanced_monster_db().predict_next_moves(
-        monster_name, current_turn, monster_hp_percent
+        monster_name,
+        current_turn,
+        monster_hp_percent,
+        ascension_level=ascension_level,
     )
 
 

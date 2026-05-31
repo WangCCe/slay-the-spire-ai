@@ -3599,7 +3599,12 @@ class FastCombatSimulator:
                 continue
             max_hp = monster.get('max_hp', monster.get('hp', 1))
             hp_percent = monster.get('hp', max_hp) / max_hp if max_hp > 0 else 1.0
-            predicted_moves = self._predict_monster_moves(monster_name, current_turn, hp_percent)
+            predicted_moves = self._predict_monster_moves(
+                monster_name,
+                current_turn,
+                hp_percent,
+                context,
+            )
             if not predicted_moves:
                 continue
 
@@ -3633,6 +3638,8 @@ class FastCombatSimulator:
         Returns:
             Total predicted damage over next N turns (discounted for uncertainty)
         """
+        previous_prediction_context = getattr(self, "_prediction_context", None)
+        self._prediction_context = context
         try:
             lookahead_state = state.clone()
             logger.info(
@@ -3830,6 +3837,11 @@ class FastCombatSimulator:
         except Exception as e:
             logger.warning(f"[LOOKAHEAD] Failed to simulate enemy lookahead: {e}")
             return 0
+        finally:
+            if previous_prediction_context is None:
+                self.__dict__.pop("_prediction_context", None)
+            else:
+                self._prediction_context = previous_prediction_context
 
     def _apply_monster_end_turn_strength_gains(self, state: SimulationState):
         for monster in state.monsters:
@@ -3902,6 +3914,8 @@ class FastCombatSimulator:
             'confused': 0,
             'draw_reduction': 0,
         }
+        previous_prediction_context = getattr(self, "_prediction_context", None)
+        self._prediction_context = context
         try:
             current_turn = getattr(context, 'turn', 1)
             player_artifact = max(0, getattr(state, 'player_artifact', 0))
@@ -3979,6 +3993,11 @@ class FastCombatSimulator:
         except Exception as e:
             logger.warning(f"[STATUS_LOOKAHEAD] Failed to simulate enemy disruption: {e}")
             return totals
+        finally:
+            if previous_prediction_context is None:
+                self.__dict__.pop("_prediction_context", None)
+            else:
+                self._prediction_context = previous_prediction_context
 
     def _predicted_monster_move_for_step(
         self,
@@ -3987,8 +4006,14 @@ class FastCombatSimulator:
         step: int,
         hp_percent: float,
     ) -> Optional[Dict[str, Any]]:
+        context = getattr(self, "_prediction_context", None)
         target_turn = current_turn + step
-        predictions = self._predict_monster_moves(monster_name, current_turn, hp_percent)
+        predictions = self._predict_monster_moves(
+            monster_name,
+            current_turn,
+            hp_percent,
+            context,
+        )
         for prediction in predictions:
             if prediction.get('turn') == target_turn:
                 return prediction.get('move', None)
@@ -3996,7 +4021,12 @@ class FastCombatSimulator:
         if predictions and step == 0:
             return predictions[0].get('move', None)
 
-        predictions = self._predict_monster_moves(monster_name, target_turn, hp_percent)
+        predictions = self._predict_monster_moves(
+            monster_name,
+            target_turn,
+            hp_percent,
+            context,
+        )
         if predictions:
             return predictions[0].get('move', None)
         return None
@@ -4006,13 +4036,27 @@ class FastCombatSimulator:
         monster_name: str,
         current_turn: int,
         hp_percent: float,
+        context: Optional[DecisionContext] = None,
     ) -> List[Dict[str, Any]]:
         try:
-            return game_data_loader.predict_monster_moves(
-                monster_name,
-                current_turn,
-                hp_percent,
+            ascension_level = (
+                self._context_ascension_level(context)
+                if context is not None
+                else 0
             )
+            try:
+                return game_data_loader.predict_monster_moves(
+                    monster_name,
+                    current_turn,
+                    hp_percent,
+                    ascension_level=ascension_level,
+                )
+            except TypeError:
+                return game_data_loader.predict_monster_moves(
+                    monster_name,
+                    current_turn,
+                    hp_percent,
+                )
         except AttributeError:
             return []
 
