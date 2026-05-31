@@ -3700,6 +3700,55 @@ def test_state_key_and_clone_preserve_player_ritual():
     assert base_state.state_key([]) != ritual_state.state_key([])
 
 
+def test_beam_search_regen_potion_heals_at_end_of_turn_projection():
+    potion = Potion(
+        potion_id="RegenPotion",
+        name="Regen Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    context = _potion_projection_context(potion)
+    planner = HeuristicCombatPlanner()
+    observed = []
+
+    def score(_initial_state, final_state, _act, _weights, _context, sequence):
+        if sequence and isinstance(sequence[-1], PotionAction):
+            projected = planner.simulator.project_end_turn_effects(final_state)
+            observed.append(
+                (
+                    final_state.player_hp,
+                    getattr(final_state, "player_regen", 0),
+                    projected.player_hp,
+                    getattr(projected, "player_regen", 0),
+                )
+            )
+        return 0
+
+    planner.simulator.calculate_outcome_score = score
+
+    planner.plan_turn(context)
+
+    assert observed == [(40, 5, 45, 4)]
+
+
+def test_state_key_and_clone_preserve_player_regen():
+    potion = Potion(
+        potion_id="RegenPotion",
+        name="Regen Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    context = _potion_projection_context(potion)
+    base_state = simulation.SimulationState(context)
+    regen_state = base_state.clone()
+    regen_state.player_regen = 5
+
+    assert regen_state.clone().player_regen == 5
+    assert base_state.state_key([]) != regen_state.state_key([])
+
+
 def test_simulation_state_clone_preserves_future_state_fields():
     potion = Potion(
         potion_id="CultistPotion",

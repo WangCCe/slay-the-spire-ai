@@ -451,6 +451,10 @@ class SimulationState:
         self.player_strength = context.strength
         self.player_temp_strength = 0
         self.player_ritual = self._get_player_power_amount(context, 'Ritual')
+        self.player_regen = max(
+            self._get_player_power_amount(context, 'Regeneration'),
+            self._get_player_power_amount(context, 'Regen'),
+        )
         self.player_dexterity = self._get_player_power_amount(context, 'Dexterity')
         self.player_temp_dexterity = 0
         self.player_thorns = self._get_player_power_amount(context, 'Thorns')
@@ -636,6 +640,7 @@ class SimulationState:
             self.player_strength,
             self.player_temp_strength,
             self.player_ritual,
+            self.player_regen,
             self.player_dexterity,
             self.player_temp_dexterity,
             self.player_thorns,
@@ -2019,6 +2024,10 @@ class FastCombatSimulator:
         ritual_strength = max(0, getattr(projected, 'player_ritual', 0))
         if ritual_strength:
             projected.player_strength += ritual_strength
+        regen = max(0, getattr(projected, 'player_regen', 0))
+        if regen:
+            projected.player_hp = min(projected.player_max_hp, projected.player_hp + regen)
+            projected.player_regen = regen - 1
         temp_dexterity = getattr(projected, 'player_temp_dexterity', 0)
         if temp_dexterity:
             projected.player_dexterity -= temp_dexterity
@@ -4367,8 +4376,10 @@ class HeuristicCombatPlanner(CombatPlanner):
             state.player_block += potion.effect_value
         elif potion.effect_type in ['plated_armor', 'metallicize']:
             state.end_turn_block += potion.effect_value
-        elif potion.effect_type in ['heal', 'regen']:
+        elif potion.effect_type == 'heal':
             state.player_hp = min(state.player_max_hp, state.player_hp + potion.effect_value)
+        elif potion.effect_type == 'regen':
+            state.player_regen = getattr(state, 'player_regen', 0) + potion.effect_value
         elif potion.effect_type == 'heal_percent':
             heal_amount = int(state.player_max_hp * potion.effect_value)
             state.player_hp = min(state.player_max_hp, state.player_hp + heal_amount)
