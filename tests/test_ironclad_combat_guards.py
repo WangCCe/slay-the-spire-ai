@@ -268,6 +268,22 @@ def _giant_head(current_hp=500, slow=0):
     return monster
 
 
+def _darkling(current_hp=48):
+    return Monster(
+        name="Darkling",
+        monster_id="Darkling",
+        max_hp=48,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=0,
+        move_adjusted_damage=9,
+        move_hits=1,
+    )
+
+
 def _lagavulin(
     current_hp=82,
     intent=Intent.ATTACK,
@@ -1004,6 +1020,95 @@ def test_state_key_distinguishes_giant_head_slow_stacks():
     assert base_state.state_key(context.playable_cards) != slow_state.state_key(
         context.playable_cards
     )
+
+
+def test_darkling_life_link_first_defeat_becomes_half_dead():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.damage = 6
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_darkling(current_hp=6), _darkling(current_hp=20)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["hp"] == 0
+    assert result.monsters[0]["half_dead"] is True
+    assert result.monsters[0]["is_gone"] is False
+    assert result.monsters_killed == 0
+
+
+def test_darkling_life_link_group_clears_when_final_darkling_defeated():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.damage = 6
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_darkling(current_hp=6), _darkling(current_hp=6)],
+    )
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["half_dead"] = True
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[1],
+        target_index=1,
+        context=context,
+    )
+
+    assert all(monster["is_gone"] for monster in result.monsters)
+    assert all(monster["half_dead"] is False for monster in result.monsters)
+    assert result.monsters_killed == 2
+
+
+def test_half_dead_monsters_are_not_live_attack_or_damage_targets():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.damage = 6
+    context = _combat_context([strike], energy=1, monsters=[_darkling(current_hp=20)])
+    state = SimulationState(context)
+    state.monsters[0]["half_dead"] = True
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["hp"] == 20
+    assert result.total_damage_dealt == 0
+
+
+def test_state_key_distinguishes_half_dead_monsters():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_darkling(current_hp=20)])
+    base_state = SimulationState(context)
+    half_dead_state = base_state.clone()
+    half_dead_state.monsters[0]["half_dead"] = True
+
+    assert base_state.state_key(context.playable_cards) != half_dead_state.state_key(
+        context.playable_cards
+    )
+
+
+def test_incoming_damage_ignores_half_dead_monsters():
+    context = _combat_context([], energy=0, monsters=[_darkling(current_hp=20)])
+    state = SimulationState(context)
+    state.monsters[0]["half_dead"] = True
+
+    assert FastCombatSimulator(SynergyCardEvaluator())._estimate_incoming_damage(
+        state.monsters
+    ) == 0
 
 
 def test_fungi_beast_death_vulnerable_can_make_same_turn_attack_lethal():

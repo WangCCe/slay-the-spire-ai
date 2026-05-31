@@ -821,6 +821,7 @@ class SimulationState:
                 m.get('intangible', 0),
                 bool(m.get('slow_active', False)),
                 m.get('slow_stacks', 0),
+                bool(m.get('half_dead', False)),
                 m.get('move_base_damage', 0),
                 (
                     m.get('move_adjusted_damage', None) is None,
@@ -2321,8 +2322,66 @@ class FastCombatSimulator:
         # Check if killed
         if monster['hp'] <= 0:
             self._apply_monster_death_effects(state, monster)
-            monster['is_gone'] = True
-            state.monsters_killed += 1
+            self._mark_monster_defeated(state, monster)
+
+    def _mark_monster_defeated(self, state: SimulationState, monster: dict):
+        if self._has_life_link(monster):
+            if self._has_live_life_link_partner(state, monster):
+                monster['half_dead'] = True
+                monster['is_gone'] = False
+                monster['block'] = 0
+                monster['intent'] = Intent.STUN
+                monster['move_base_damage'] = 0
+                monster['move_adjusted_damage'] = 0
+                monster['move_hits'] = 0
+                return
+
+            self._mark_life_link_group_gone(state, monster)
+            return
+
+        monster['is_gone'] = True
+        monster['half_dead'] = False
+        state.monsters_killed += 1
+
+    def _has_life_link(self, monster: dict) -> bool:
+        monster_name = _canonical_live_monster_name(monster)
+        if not monster_name:
+            return False
+
+        try:
+            monster_data = game_data_loader.get_enhanced_monster_data(monster_name)
+        except Exception:
+            monster_data = None
+
+        mechanics = (monster_data or {}).get('special_mechanics', {}) or {}
+        return mechanics.get('type') == 'life_link'
+
+    def _is_life_link_group_member(self, monster: dict, candidate: dict) -> bool:
+        return (
+            self._has_life_link(candidate)
+            and _canonical_live_monster_name(candidate)
+            == _canonical_live_monster_name(monster)
+        )
+
+    def _has_live_life_link_partner(self, state: SimulationState, monster: dict) -> bool:
+        return any(
+            other is not monster
+            and self._is_life_link_group_member(monster, other)
+            and self._is_live_monster_state(other)
+            for other in state.monsters
+        )
+
+    def _mark_life_link_group_gone(self, state: SimulationState, monster: dict):
+        for other in state.monsters:
+            if other is not monster and not self._is_life_link_group_member(monster, other):
+                continue
+            if other.get('is_gone', False):
+                continue
+            if other is monster or other.get('half_dead', False) or other.get('hp', 0) <= 0:
+                other['is_gone'] = True
+                other['half_dead'] = False
+                other['block'] = 0
+                state.monsters_killed += 1
 
     def _apply_reactive_monster_block(self, monster: dict):
         """Apply non-lethal attack-damage reactions such as Curl Up and Malleable."""
@@ -2930,6 +2989,7 @@ class FastCombatSimulator:
     def _is_live_monster_state(monster: dict) -> bool:
         return (
             not monster.get('is_gone', False)
+            and not monster.get('half_dead', False)
             and monster.get('hp', monster.get('current_hp', 1)) > 0
         )
 
@@ -2958,8 +3018,17 @@ class FastCombatSimulator:
 
         for monster in monsters_state:
             monster_hp = monster.get('hp', monster.get('current_hp', 1))
-            if monster.get('is_gone', False) or monster_hp <= 0:
-                skip_reason = "gone" if monster.get('is_gone', False) else "dead"
+            if (
+                monster.get('is_gone', False)
+                or monster.get('half_dead', False)
+                or monster_hp <= 0
+            ):
+                if monster.get('is_gone', False):
+                    skip_reason = "gone"
+                elif monster.get('half_dead', False):
+                    skip_reason = "half_dead"
+                else:
+                    skip_reason = "dead"
                 debug_entries.append(
                     f"{monster.get('name', 'Unknown')}[{monster.get('monster_id', '?')}|move={monster.get('move_id', '?')}]:"
                     f"skip={skip_reason}"
@@ -4946,7 +5015,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                 and 0 <= target_index < len(state.monsters)
             ):
                 monster = state.monsters[target_index]
-                if monster.get('hp', 0) > 0 and not monster.get('is_gone'):
+                if FastCombatSimulator._is_live_monster_state(monster):
                     return target_index
 
             target_id = getattr(target, 'monster_id', None)
@@ -4954,7 +5023,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             id_candidates = []
             name_candidates = []
             for i, monster in enumerate(state.monsters):
-                if monster.get('hp', 0) <= 0 or monster.get('is_gone'):
+                if not FastCombatSimulator._is_live_monster_state(monster):
                     continue
                 hp_delta = abs(
                     monster.get('hp', 0)
@@ -4970,7 +5039,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                     return candidates[0][1]
 
         for i, monster in enumerate(state.monsters):
-            if monster.get('hp', 0) > 0 and not monster.get('is_gone'):
+            if FastCombatSimulator._is_live_monster_state(monster):
                 return i
         return None
 
