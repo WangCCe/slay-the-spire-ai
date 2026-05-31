@@ -8,21 +8,23 @@ def _card(card_id, name, uuid=None):
     return SimpleNamespace(card_id=card_id, name=name, uuid=uuid)
 
 
-def _monster():
+def _monster(move_adjusted_damage=12, move_hits=1):
     return SimpleNamespace(
         current_hp=40,
         block=0,
         intent=Intent.ATTACK,
+        move_adjusted_damage=move_adjusted_damage,
+        move_hits=move_hits,
         is_gone=False,
         half_dead=False,
     )
 
 
-def _game(hand):
+def _game(hand, monster=None):
     return SimpleNamespace(
         hand=hand,
         player=SimpleNamespace(energy=3),
-        monsters=[_monster()],
+        monsters=[monster or _monster()],
     )
 
 
@@ -32,3 +34,20 @@ def test_turn_plan_signature_distinguishes_cards_when_uuid_is_missing():
 
     assert strike_signature.hand_cards != defend_signature.hand_cards
     assert strike_signature != defend_signature
+
+
+def test_turn_plan_signature_distinguishes_live_monster_damage_changes():
+    weaker_signature = TurnPlanSignature(
+        _game([_card("Defend_R", "Defend")], monster=_monster(move_adjusted_damage=8))
+    )
+    stronger_signature = TurnPlanSignature(
+        _game([_card("Defend_R", "Defend")], monster=_monster(move_adjusted_damage=18))
+    )
+    multi_hit_signature = TurnPlanSignature(
+        _game([_card("Defend_R", "Defend")], monster=_monster(move_adjusted_damage=8, move_hits=2))
+    )
+
+    assert weaker_signature.monster_signature != stronger_signature.monster_signature
+    assert weaker_signature.monster_signature != multi_hit_signature.monster_signature
+    assert weaker_signature != stronger_signature
+    assert weaker_signature != multi_hit_signature

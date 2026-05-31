@@ -1194,6 +1194,8 @@ class TurnPlanSignature:
                     m.current_hp,
                     m.block if hasattr(m, "block") else 0,
                     str(m.intent) if hasattr(m, "intent") else None,
+                    getattr(m, "move_adjusted_damage", None),
+                    getattr(m, "move_hits", None),
                     m.is_gone if hasattr(m, "is_gone") else True,
                     m.half_dead if hasattr(m, "half_dead") else False,
                 )
