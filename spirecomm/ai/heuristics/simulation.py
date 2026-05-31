@@ -2188,11 +2188,50 @@ class FastCombatSimulator:
                 return int(value)
             return 0
 
+        def _random_debuff_risk() -> Tuple[Optional[str], int]:
+            raw_candidates = move.get('random_debuff', [])
+            if isinstance(raw_candidates, str):
+                candidates = [raw_candidates]
+            elif isinstance(raw_candidates, list):
+                candidates = raw_candidates
+            else:
+                candidates = []
+
+            normalized = {
+                str(candidate).strip().lower()
+                for candidate in candidates
+            }
+            if not normalized:
+                return None, 0
+
+            stacks = (
+                _get_stack('debuff_count')
+                or _get_stack('random_debuff_count')
+                or 1
+            )
+            if context is not None:
+                stacks = self._apply_ascension_move_value(
+                    move,
+                    context,
+                    'debuff_count',
+                    stacks,
+                )
+            if stacks <= 0:
+                return None, 0
+
+            for debuff in ('vulnerable', 'frail', 'weak'):
+                if debuff in normalized:
+                    return debuff, stacks
+            return None, 0
+
         debuffs = {
             'weak': _get_stack('weak') or _get_stack('weak_applied') or _get_stack('weak_amount'),
             'frail': _get_stack('frail') or _get_stack('frail_applied') or _get_stack('frail_amount'),
             'vulnerable': _get_stack('vulnerable') or _get_stack('vulnerable_applied') or _get_stack('vulnerable_amount'),
         }
+        random_debuff, random_stacks = _random_debuff_risk()
+        if random_debuff is not None:
+            debuffs[random_debuff] = max(debuffs[random_debuff], random_stacks)
         if context is None:
             return debuffs
 

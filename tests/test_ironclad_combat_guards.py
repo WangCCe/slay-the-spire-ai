@@ -1936,6 +1936,38 @@ def test_enemy_lookahead_applies_ascension_debuff_modifiers(monkeypatch):
     assert future_damage == int(15 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
 
 
+def test_enemy_lookahead_counts_random_debuff_as_conservative_single_risk(monkeypatch):
+    class FakeLoader:
+        def get_enhanced_monster_data(self, _monster_name):
+            return None
+
+        def predict_monster_moves(self, _monster_name, turn, _hp_percent):
+            move = (
+                {
+                    "move": {
+                        "intent": "DEBUFF",
+                        "random_debuff": ["weak", "vulnerable", "frail"],
+                        "debuff_count": 2,
+                    }
+                }
+                if turn == 1
+                else {"move": {"intent": "ATTACK", "damage": 10, "hits": 1}}
+            )
+            return [move]
+
+    monkeypatch.setattr(simulation, "game_data_loader", FakeLoader())
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=50)])
+    context.turn = 1
+
+    future_damage = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=2,
+    )
+
+    assert future_damage == int(15 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
+
+
 def test_enemy_lookahead_player_artifact_blocks_predicted_debuff(monkeypatch):
     class FakeLoader:
         def get_enhanced_monster_data(self, _monster_name):
