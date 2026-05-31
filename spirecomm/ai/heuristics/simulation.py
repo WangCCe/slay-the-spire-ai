@@ -530,7 +530,7 @@ class SimulationState:
                 'move_adjusted_damage': monster.move_adjusted_damage if hasattr(monster, 'move_adjusted_damage') else 0,
                 'move_hits': monster.move_hits if hasattr(monster, 'move_hits') else 1,
                 'strength': monster.strength if hasattr(monster, 'strength') else 0,
-                'skill_strength_gain': self._get_monster_skill_strength_gain(monster),
+                'skill_strength_gain': self._get_monster_skill_strength_gain(monster, context),
                 'power_strength_gain': self._get_monster_power_strength_gain(monster),
                 'end_turn_strength_gain': self._get_monster_end_turn_strength_gain(
                     monster,
@@ -694,7 +694,11 @@ class SimulationState:
                 return True
         return False
 
-    def _get_monster_skill_strength_gain(self, monster: Any) -> int:
+    def _get_monster_skill_strength_gain(
+        self,
+        monster: Any,
+        context: Optional[DecisionContext] = None,
+    ) -> int:
         """Return Strength a monster gains whenever the player plays a Skill."""
         for power in getattr(monster, 'powers', []) or []:
             power_name = str(self._power_name(power) or '').lower()
@@ -705,7 +709,43 @@ class SimulationState:
         monster_id = str(getattr(monster, 'monster_id', ''))
         monster_name = str(getattr(monster, 'name', ''))
         if monster_id in {'GremlinNob', 'Gremlin Nob'} or monster_name == 'Gremlin Nob':
-            return 2
+            strength_gain = 2
+            try:
+                monster_data = game_data_loader.get_enhanced_monster_data('Gremlin Nob')
+            except Exception:
+                monster_data = None
+
+            mechanics = (monster_data or {}).get('special_mechanics', {}) or {}
+            if mechanics.get('type') == 'skill_reactive_strength':
+                data_gain = mechanics.get('skill_strength_gain', strength_gain)
+                if isinstance(data_gain, (int, float)) and not isinstance(data_gain, bool):
+                    strength_gain = max(0, int(data_gain))
+
+                modifiers = mechanics.get('ascension_modifiers', {})
+                if context is not None and isinstance(modifiers, dict):
+                    ascension_level = self._context_ascension_level(context)
+                    thresholds = [
+                        int(threshold_key.split('+')[0])
+                        for threshold_key in modifiers
+                        if (
+                            isinstance(threshold_key, str)
+                            and threshold_key.endswith('+')
+                            and threshold_key.split('+')[0].isdigit()
+                        )
+                    ]
+                    for threshold in sorted(thresholds, reverse=True):
+                        if ascension_level < threshold:
+                            continue
+                        modifier = modifiers.get(f"{threshold}+", {})
+                        if isinstance(modifier, dict):
+                            modified_gain = modifier.get('skill_strength_gain')
+                            if (
+                                isinstance(modified_gain, (int, float))
+                                and not isinstance(modified_gain, bool)
+                            ):
+                                strength_gain = max(0, int(modified_gain))
+                        break
+            return max(0, strength_gain)
         return 0
 
     def _get_monster_power_strength_gain(self, monster: Any) -> int:

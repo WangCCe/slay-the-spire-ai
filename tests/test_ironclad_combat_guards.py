@@ -1326,6 +1326,25 @@ def test_gremlin_nob_gains_strength_when_skill_is_simulated():
     assert simulator._estimate_incoming_damage(result.monsters) == 16
 
 
+def test_gremlin_nob_skill_strength_fallback_uses_ascension_modifier():
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    nob = _gremlin_nob()
+    nob.powers = []
+    context = _combat_context([defend], energy=1, monsters=[nob])
+    context.ascension_level = 18
+    context.game.ascension_level = 18
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        defend,
+        context=context,
+    )
+
+    assert result.monsters[0]["strength"] == 3
+    assert simulator._estimate_incoming_damage(result.monsters) == 17
+
+
 def test_mad_gremlin_angry_does_not_trigger_on_skill_cards():
     defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
     context = _combat_context([defend], energy=1, monsters=[_mad_gremlin()])
