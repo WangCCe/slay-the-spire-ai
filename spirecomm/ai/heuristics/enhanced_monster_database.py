@@ -239,24 +239,39 @@ class EnhancedMonsterDatabase:
                 asc_threshold = int(asc_key.split("_")[1].split("+")[0])
                 if ascension_level >= asc_threshold:
                     range_data = hp_ranges[asc_key]
-                    if isinstance(range_data, dict):
-                        if "min" in range_data and "max" in range_data:
-                            return (range_data["min"], range_data["max"])
-                    # Handle duo monsters (Donu & Deca)
-                    elif isinstance(range_data, dict) and monster_name in range_data:
-                        return (range_data[monster_name]["min"], range_data[monster_name]["max"])
+                    hp_range = self._extract_hp_range_tuple(range_data, monster_name)
+                    if hp_range:
+                        return hp_range
 
         # Default to normal range
         if "normal" in hp_ranges:
-            normal_range = hp_ranges["normal"]
-            if isinstance(normal_range, dict):
-                if "min" in normal_range and "max" in normal_range:
-                    return (normal_range["min"], normal_range["max"])
-                # Handle duo monsters
-                elif monster_name in normal_range:
-                    return (normal_range[monster_name]["min"], normal_range[monster_name]["max"])
+            hp_range = self._extract_hp_range_tuple(hp_ranges["normal"], monster_name)
+            if hp_range:
+                return hp_range
+
+        hp_range = self._extract_hp_range_tuple(hp_ranges, monster_name)
+        if hp_range:
+            return hp_range
 
         return (50, 60)  # Final fallback
+
+    def _extract_hp_range_tuple(
+        self,
+        range_data: Any,
+        monster_name: str,
+    ) -> Optional[Tuple[int, int]]:
+        if not isinstance(range_data, dict):
+            return None
+
+        if "min" in range_data and "max" in range_data:
+            return (range_data["min"], range_data["max"])
+
+        normalized_name = str(monster_name or "").lower()
+        for key, nested_range in range_data.items():
+            if str(key).lower() != normalized_name:
+                continue
+            return self._extract_hp_range_tuple(nested_range, monster_name)
+        return None
 
     def get_monster_type(self, monster_name: str) -> str:
         """

@@ -84,3 +84,10 @@ def test_enhanced_database_keeps_native_chosen_and_sentry_records():
         "min": 38,
         "max": 42,
     }
+
+
+def test_enhanced_database_returns_duo_boss_member_hp_ranges():
+    database = EnhancedMonsterDatabase()
+
+    assert database.get_hp_range("Donu") == (150, 160)
+    assert database.get_hp_range("Deca", ascension_level=9) == (160, 170)
