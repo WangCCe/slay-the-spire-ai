@@ -143,20 +143,24 @@ def _fungi_beast(current_hp=22):
     )
 
 
-def _cultist_ritual(current_hp=50):
-    return Monster(
+def _cultist_ritual(current_hp=50, ritual=0, intent=Intent.BUFF, move_id=0):
+    monster = Monster(
         name="Cultist",
         monster_id="Cultist",
         max_hp=current_hp,
         current_hp=current_hp,
         block=0,
-        intent=Intent.BUFF,
+        intent=intent,
         half_dead=False,
         is_gone=False,
-        move_id=0,
-        move_adjusted_damage=0,
+        move_id=move_id,
+        move_adjusted_damage=6 if intent == Intent.ATTACK else 0,
         move_hits=1,
     )
+    monster.powers = []
+    if ritual:
+        monster.powers.append(SimpleNamespace(power_name="Ritual", amount=ritual))
+    return monster
 
 
 def _sentry(current_hp=39, move_id=1, intent=Intent.DEBUFF):
@@ -1363,6 +1367,49 @@ def test_enemy_lookahead_applies_orb_walker_strength_up_to_future_attacks():
     )
 
     assert damage == 24
+
+
+def test_simulation_state_tracks_live_monster_ritual_strength_gain():
+    context = _combat_context([], energy=0, monsters=[_cultist_ritual(ritual=3)])
+    state = SimulationState(context)
+    no_ritual_state = state.clone()
+    no_ritual_state.monsters[0]["end_turn_strength_gain"] = 0
+
+    assert state.monsters[0]["end_turn_strength_gain"] == 3
+    assert state.state_key(context.playable_cards) != no_ritual_state.state_key(
+        context.playable_cards
+    )
+
+
+def test_enemy_lookahead_applies_live_cultist_ritual_to_future_attacks():
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[
+            _cultist_ritual(
+                ritual=3,
+                intent=Intent.ATTACK,
+                move_id=1,
+            )
+        ],
+    )
+    context.turn = 2
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    def predicted_attack(_monster_name, _current_turn, step, _hp_percent):
+        if step == 1:
+            return {"intent": "ATTACK", "damage": 6, "hits": 1}
+        return None
+
+    simulator._predicted_monster_move_for_step = predicted_attack
+
+    damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=2,
+    )
+
+    assert damage == 13
 
 
 def test_state_key_distinguishes_internal_monster_damage_refresh_state():

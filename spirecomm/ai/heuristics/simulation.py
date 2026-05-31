@@ -712,6 +712,14 @@ class SimulationState:
         context: DecisionContext,
     ) -> int:
         """Return deterministic Strength gained after the monster's own turn."""
+        ritual_power = self._get_monster_power_amount_any(
+            monster,
+            'Ritual',
+            'RitualPower',
+        )
+        if ritual_power > 0:
+            return ritual_power
+
         monster_name = _canonical_live_monster_name(monster)
         if not monster_name:
             return 0
