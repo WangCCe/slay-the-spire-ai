@@ -769,7 +769,21 @@
       }
     ],
     "pattern": {
-      "description": "Charges for 2 turns, attacks on turn 3. Then charges for 3 turns between attacks. A17+: Attacks every turn after first blast."
+      "description": "Charges for 2 turns, attacks on turn 3. Then charges for 3 turns between attacks. A17+: Attacks every turn after first blast.",
+      "opening": [
+        "Charging",
+        "Charging",
+        "Ultimate Blast"
+      ],
+      "subsequent_cycle": [
+        "Charging",
+        "Charging",
+        "Charging",
+        "Ultimate Blast"
+      ],
+      "ascension_17+_subsequent_cycle": [
+        "Ultimate Blast"
+      ]
     },
     "special_mechanics": {
       "type": "none"

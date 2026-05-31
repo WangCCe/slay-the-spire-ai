@@ -358,6 +358,40 @@ def test_shield_gremlin_predicts_from_enemy_count_modes():
     ] == ["Shield Bash"]
 
 
+def test_gremlin_wizard_predicts_charge_and_blast_sequence():
+    database = EnhancedMonsterDatabase()
+
+    opening = database.predict_next_moves(
+        "Gremlin Wizard",
+        current_turn=1,
+        monster_hp_percent=1.0,
+    )
+    later = database.predict_next_moves(
+        "Gremlin Wizard",
+        current_turn=4,
+        monster_hp_percent=1.0,
+    )
+    asc17_later = database.predict_next_moves(
+        "Gremlin Wizard",
+        current_turn=4,
+        monster_hp_percent=1.0,
+        ascension_level=17,
+    )
+
+    assert [
+        prediction["move"]["name"]
+        for prediction in opening
+    ] == ["Charging", "Charging", "Ultimate Blast"]
+    assert [
+        prediction["move"]["name"]
+        for prediction in later
+    ] == ["Charging", "Charging", "Charging"]
+    assert [
+        prediction["move"]["name"]
+        for prediction in asc17_later
+    ] == ["Ultimate Blast", "Ultimate Blast", "Ultimate Blast"]
+
+
 def test_game_data_loader_forwards_other_enemy_count_to_monster_predictions():
     loader = GameDataLoader(auto_load=False)
 

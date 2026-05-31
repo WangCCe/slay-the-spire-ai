@@ -716,6 +716,22 @@ class EnhancedMonsterDatabase:
                         })
                     continue
 
+                subsequent_cycle = self._move_sequence_from_value(
+                    self._ascension_pattern_override(pattern, "subsequent_cycle", ascension_level)
+                )
+                if not subsequent_cycle:
+                    subsequent_cycle = self._move_sequence_from_value(pattern.get("subsequent_cycle"))
+                if subsequent_cycle and target_turn > len(fixed_sequence):
+                    cycle_index = (target_turn - len(fixed_sequence) - 1) % len(subsequent_cycle)
+                    self._append_named_move_prediction(
+                        predictions,
+                        monster_name,
+                        subsequent_cycle[cycle_index],
+                        target_turn,
+                        confidence=1.0,
+                    )
+                    continue
+
                 pre_entangle_sequence = self._pre_entangle_sequence(pattern, ascension_level)
                 if pre_entangle_sequence and target_turn > opening_length:
                     sequence_index = (target_turn - opening_length - 1) % len(pre_entangle_sequence)
