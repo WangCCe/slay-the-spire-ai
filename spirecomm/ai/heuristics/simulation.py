@@ -449,6 +449,7 @@ class SimulationState:
         self.end_turn_block = self._get_player_power_amount(context, 'Metallicize')
         self.player_energy = context.energy_available
         self.player_strength = context.strength
+        self.player_temp_strength = 0
         self.player_dexterity = self._get_player_power_amount(context, 'Dexterity')
         self.player_thorns = self._get_player_power_amount(context, 'Thorns')
         self.player_intangible = max(
@@ -610,6 +611,7 @@ class SimulationState:
         new_state.end_turn_block = self.end_turn_block
         new_state.player_energy = self.player_energy
         new_state.player_strength = self.player_strength
+        new_state.player_temp_strength = self.player_temp_strength
         new_state.player_dexterity = self.player_dexterity
         new_state.player_thorns = self.player_thorns
         new_state.player_intangible = self.player_intangible
@@ -666,6 +668,7 @@ class SimulationState:
             self.end_turn_block,
             self.player_energy,
             self.player_strength,
+            self.player_temp_strength,
             self.player_dexterity,
             self.player_thorns,
             self.player_intangible,
@@ -2041,6 +2044,10 @@ class FastCombatSimulator:
 
         projected.end_turn_aoe_damage = 0
         projected.end_turn_hp_loss = 0
+        temp_strength = getattr(projected, 'player_temp_strength', 0)
+        if temp_strength:
+            projected.player_strength -= temp_strength
+            projected.player_temp_strength = 0
         projected = self._materialize_pending_death_splits(projected)
         return projected
 
@@ -2288,7 +2295,12 @@ class FastCombatSimulator:
         upgrades = getattr(card, 'upgrades', 0)
 
         if card_id == 'Flex':
-            state.player_strength += 4 if upgrades > 0 else 2
+            strength_gain = 4 if upgrades > 0 else 2
+            state.player_strength += strength_gain
+            if state.player_artifact > 0:
+                state.player_artifact -= 1
+            else:
+                state.player_temp_strength += strength_gain
         elif card_id == 'Limit Break':
             state.player_strength *= 2
         elif card_id == 'Spot Weakness' and self._spot_weakness_condition_met(state, target_index):

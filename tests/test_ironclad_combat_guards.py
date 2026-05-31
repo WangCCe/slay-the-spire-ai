@@ -5047,6 +5047,49 @@ def test_strength_skill_cards_affect_followup_attacks():
     assert result.total_damage_dealt == 12
 
 
+def test_flex_strength_expires_at_end_of_turn_projection():
+    flex = _card("Flex", "Flex", card_type=CardType.SKILL, cost=0, has_target=False)
+    context = _combat_context([flex], energy=0, monsters=[_louse(current_hp=100)])
+    context.strength = 3
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        flex,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert state.player_strength == 5
+
+    projected = simulator.project_end_turn_effects(state)
+
+    assert projected.player_strength == 3
+
+
+def test_flex_artifact_blocks_end_of_turn_strength_loss():
+    flex = _card("Flex", "Flex", card_type=CardType.SKILL, cost=0, has_target=False)
+    context = _combat_context([flex], energy=0, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Artifact", amount=1)]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        flex,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert state.player_strength == 2
+    assert state.player_artifact == 0
+
+    projected = simulator.project_end_turn_effects(state)
+
+    assert projected.player_strength == 2
+
+
 def test_spot_weakness_ignores_zero_hp_stale_attacking_target():
     spot_weakness = _card(
         "Spot Weakness",
