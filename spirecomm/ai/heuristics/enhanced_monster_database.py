@@ -99,8 +99,9 @@ class EnhancedMonsterDatabase:
             return self._data[mapped_name]
 
         # Some mechanics records refer to spawned monsters by monster_id.
+        normalized_monster_id = normalize_monster_id(monster_name)
         for value in self._data.values():
-            if str(value.get("monster_id", "")).lower() == monster_name.lower():
+            if normalize_monster_id(value.get("monster_id", "")) == normalized_monster_id:
                 return value
 
         # Try case-insensitive match

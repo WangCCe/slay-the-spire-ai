@@ -283,6 +283,22 @@ def test_enhanced_database_accepts_live_slaver_ids():
     } == {"Stab", "Rake"}
 
 
+def test_enhanced_database_accepts_normalized_live_monster_ids():
+    database = EnhancedMonsterDatabase()
+
+    assert database.get_monster_data("AcidSlimeL")["name"] == "Acid Slime (L)"
+    assert database.get_monster_data("TheCollector")["name"] == "The Collector"
+    assert database.get_monster_data("TimeEater")["name"] == "Time Eater"
+    assert [
+        prediction["move"]["name"]
+        for prediction in database.predict_next_moves("AcidSlimeL", 1, 1.0)
+    ] == ["Tackle", "Corrosive Spit"]
+    assert [
+        prediction["move"]["name"]
+        for prediction in database.predict_next_moves("TheCollector", 1, 1.0)
+    ][:1] == ["Spawn"]
+
+
 def test_gremlin_leader_predicts_from_enemy_count_probabilities():
     database = EnhancedMonsterDatabase()
 
