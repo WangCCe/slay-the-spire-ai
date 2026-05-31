@@ -901,10 +901,12 @@ class FastCombatSimulator:
             if strength_gain <= 0:
                 continue
 
+            self._remember_monster_adjusted_damage_source(monster)
             monster['strength'] = monster.get('strength', 0) + strength_gain
-            raw_damage = monster.get('move_adjusted_damage')
-            if self._monster_intends_attack(monster) and isinstance(raw_damage, (int, float)):
-                monster['move_adjusted_damage'] = max(0, raw_damage + strength_gain)
+            monster['_simulated_strength_delta'] = (
+                monster.get('_simulated_strength_delta', 0) + strength_gain
+            )
+            self._refresh_monster_adjusted_damage_from_debuffs(monster)
             logger.debug(
                 "[SKILL_REACTION] %s gained %s Strength from Skill",
                 monster.get('name', 'Unknown'),

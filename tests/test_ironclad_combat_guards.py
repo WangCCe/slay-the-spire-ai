@@ -938,6 +938,26 @@ def test_gremlin_nob_skill_strength_updates_current_attack_after_disarm():
     assert result.monsters[0]["move_adjusted_damage"] == 14
 
 
+def test_gremlin_nob_skill_strength_recomputes_weak_adjusted_attack_damage():
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    nob = _gremlin_nob(move_adjusted_damage=6)
+    nob.move_base_damage = 8
+    context = _combat_context([defend], energy=1, monsters=[nob])
+    context.weak_stacks[0] = 1
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        defend,
+        context=context,
+    )
+
+    assert result.monsters[0]["strength"] == 2
+    assert result.monsters[0]["move_adjusted_damage"] == 7
+    assert FastCombatSimulator(SynergyCardEvaluator())._estimate_incoming_damage(
+        result.monsters
+    ) == 7
+
+
 def test_state_key_distinguishes_monster_strength_changes():
     defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
     context = _combat_context([defend], energy=1, monsters=[_gremlin_nob()])
