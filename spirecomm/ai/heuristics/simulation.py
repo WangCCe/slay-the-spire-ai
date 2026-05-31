@@ -4160,6 +4160,14 @@ class HeuristicCombatPlanner(CombatPlanner):
             return 0
         return cost
 
+    def _calculate_x_block(
+        self,
+        card: Card,
+        state: SimulationState,
+        context: DecisionContext,
+    ) -> int:
+        return self.simulator._calculate_x_block(card, state, context)
+
     def plan_turn(self, context: DecisionContext) -> List[Action]:
         """
         Plan optimal action sequence for this turn.
@@ -4360,10 +4368,20 @@ class HeuristicCombatPlanner(CombatPlanner):
                             M_targets = 2 if depth == 0 else (1 if depth >= 2 else 2)
 
                             # Get ranked targets
-                            ranked_targets = self._rank_targets(card, context, estimate_damage=True)
+                            ranked_targets = self._rank_targets(
+                                card,
+                                context,
+                                estimate_damage=True,
+                                state=state,
+                            )
 
                             # Prune targets
-                            pruned_targets = self._prune_targets(card, ranked_targets, context)
+                            pruned_targets = self._prune_targets(
+                                card,
+                                ranked_targets,
+                                context,
+                                state=state,
+                            )
 
                             if pruned_targets and len(pruned_targets) > 1:
                                 # Explore multiple targets (limited by M_targets)
@@ -4391,7 +4409,11 @@ class HeuristicCombatPlanner(CombatPlanner):
                                     new_candidates.append((new_sequence, new_state_copy, energy_spent + cost, total_score))
                             else:
                                 # Fallback to deterministic if pruning returned 0 or 1 target
-                                target = self._find_best_target(card, context)
+                                target = self._find_best_target(
+                                    card,
+                                    context,
+                                    state=state,
+                                )
 
                                 # Simulate playing this card
                                 new_state = self.simulator.simulate_card_play(state, card, target, context=context)
@@ -4416,7 +4438,11 @@ class HeuristicCombatPlanner(CombatPlanner):
                                 new_candidates.append((new_sequence, new_state, energy_spent + cost, total_score))
                         else:
                             # Use deterministic targeting (either no target exploration needed, or card has no target)
-                            target = self._find_best_target(card, context) if card.has_target else None
+                            target = (
+                                self._find_best_target(card, context, state=state)
+                                if card.has_target
+                                else None
+                            )
 
                             # Simulate playing this card
                             new_state = self.simulator.simulate_card_play(state, card, target, context=context)
@@ -4803,7 +4829,66 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         return potion_actions
 
-    def _rank_targets(self, card: Card, context: DecisionContext, estimate_damage: bool = True) -> list:
+    def _live_target_options(
+        self,
+        context: DecisionContext,
+        state: Optional[SimulationState] = None,
+    ) -> list:
+        """Return context monsters that are still alive in the simulated state."""
+        options = []
+        for idx, monster in enumerate(getattr(context, 'monsters_alive', []) or []):
+            simulated_monster = None
+            if state is not None:
+                if idx >= len(getattr(state, 'monsters', [])):
+                    continue
+                simulated_monster = state.monsters[idx]
+                if not self.simulator._is_live_monster_state(simulated_monster):
+                    continue
+            options.append((idx, monster, simulated_monster))
+        return options
+
+    def _simulated_target_state(
+        self,
+        context: DecisionContext,
+        state: Optional[SimulationState],
+        target: Monster,
+    ) -> Optional[dict]:
+        if state is None:
+            return None
+        for idx, monster in enumerate(getattr(context, 'monsters_alive', []) or []):
+            if monster is target and idx < len(getattr(state, 'monsters', [])):
+                return state.monsters[idx]
+        return None
+
+    def _target_effective_hp(
+        self,
+        context: DecisionContext,
+        state: Optional[SimulationState],
+        target: Monster,
+    ) -> int:
+        simulated = self._simulated_target_state(context, state, target)
+        if simulated is not None:
+            return max(0, simulated.get('hp', 0)) + max(0, simulated.get('block', 0))
+        return getattr(target, 'current_hp', 0) + getattr(target, 'block', 0)
+
+    def _target_current_hp(
+        self,
+        context: DecisionContext,
+        state: Optional[SimulationState],
+        target: Monster,
+    ) -> int:
+        simulated = self._simulated_target_state(context, state, target)
+        if simulated is not None:
+            return max(0, simulated.get('hp', 0))
+        return getattr(target, 'current_hp', 0)
+
+    def _rank_targets(
+        self,
+        card: Card,
+        context: DecisionContext,
+        estimate_damage: bool = True,
+        state: Optional[SimulationState] = None,
+    ) -> list:
         """
         Rank targets for a card using threat-based targeting.
 
@@ -4818,15 +4903,13 @@ class HeuristicCombatPlanner(CombatPlanner):
         Returns:
             List of (monster, threat_score) tuples sorted by threat descending
         """
-        if not context.monsters_alive:
+        target_options = self._live_target_options(context, state)
+        if not target_options:
             return []
-
-        # Check if card is an attack
-        is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
 
         # Rank all monsters by threat
         ranked_targets = []
-        for monster in context.monsters_alive:
+        for _idx, monster, _simulated_monster in target_options:
             threat = context.compute_threat(monster)
             ranked_targets.append((monster, threat))
 
@@ -4835,7 +4918,13 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         return ranked_targets
 
-    def _prune_targets(self, card: Card, ranked_targets: list, context: DecisionContext) -> list:
+    def _prune_targets(
+        self,
+        card: Card,
+        ranked_targets: list,
+        context: DecisionContext,
+        state: Optional[SimulationState] = None,
+    ) -> list:
         """
         Prune target space to limit beam search expansion.
 
@@ -4855,7 +4944,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         if not ranked_targets:
             return []
 
-        monster_count = len(context.monsters_alive)
+        monster_count = len(ranked_targets)
 
         # Skip pruning if too many monsters (fallback to deterministic)
         if monster_count > 4:
@@ -4863,13 +4952,16 @@ class HeuristicCombatPlanner(CombatPlanner):
             return []
 
         # Check if cleanup phase (all monsters low HP)
-        all_low_hp = all(m.current_hp < 8 for m in context.monsters_alive)
+        all_low_hp = all(
+            self._target_current_hp(context, state, monster) < 8
+            for monster, _threat in ranked_targets
+        )
         if all_low_hp:
             logger.info("[TARGET_PRUNING] Cleanup phase detected - using greedy lowest-HP")
             # Use greedy lowest-HP targeting
             low_hp_targets = sorted(
                 [(m, threat) for m, threat in ranked_targets],
-                key=lambda x: x[0].current_hp
+                key=lambda x: self._target_current_hp(context, state, x[0])
             )
             return low_hp_targets[:1]  # Just the lowest HP target
 
@@ -4895,13 +4987,18 @@ class HeuristicCombatPlanner(CombatPlanner):
                 base_damage = 6  # Fallback
 
             # Add player strength
-            total_damage = base_damage + context.player.strength if hasattr(context.player, 'strength') else base_damage
+            player_strength = getattr(
+                state,
+                'player_strength',
+                getattr(getattr(context, 'player', None), 'strength', 0),
+            )
+            total_damage = base_damage + player_strength
 
             # Separate killable and non-killable targets
             killable = []
             non_killable = []
             for monster, threat in ranked_targets:
-                effective_hp = monster.current_hp + monster.block
+                effective_hp = self._target_effective_hp(context, state, monster)
                 if total_damage >= effective_hp:
                     killable.append((monster, threat))
                 else:
@@ -4982,7 +5079,12 @@ class HeuristicCombatPlanner(CombatPlanner):
         logger.info(f"[TARGET_EXPLORE] Enabled - {monster_count} monsters, {hand_size} cards, {elapsed_time:.1f}ms")
         return True
 
-    def _find_best_target(self, card: Card, context: DecisionContext) -> Monster:
+    def _find_best_target(
+        self,
+        card: Card,
+        context: DecisionContext,
+        state: Optional[SimulationState] = None,
+    ) -> Monster:
         """
         Find the best target for a card using threat-based targeting.
 
@@ -5001,7 +5103,8 @@ class HeuristicCombatPlanner(CombatPlanner):
         Returns:
             Target monster
         """
-        if not context.monsters_alive:
+        target_options = self._live_target_options(context, state)
+        if not target_options:
             return None
 
         # Check if card is an attack
@@ -5029,12 +5132,17 @@ class HeuristicCombatPlanner(CombatPlanner):
                 base_damage = 6  # Fallback estimate
 
             # Add player strength
-            total_damage = base_damage + context.player.strength if hasattr(context.player, 'strength') else base_damage
+            player_strength = getattr(
+                state,
+                'player_strength',
+                getattr(getattr(context, 'player', None), 'strength', 0),
+            )
+            total_damage = base_damage + player_strength
 
             # Find killable targets
             killable_targets = []
-            for monster in context.monsters_alive:
-                effective_hp = monster.current_hp + monster.block
+            for _idx, monster, _simulated_monster in target_options:
+                effective_hp = self._target_effective_hp(context, state, monster)
                 if total_damage >= effective_hp:
                     killable_targets.append(monster)
 
@@ -5043,11 +5151,21 @@ class HeuristicCombatPlanner(CombatPlanner):
                 return max(killable_targets, key=lambda m: context.compute_threat(m))
             else:
                 # No killable targets, target highest threat overall
-                ranked_targets = self._rank_targets(card, context, estimate_damage=False)
+                ranked_targets = self._rank_targets(
+                    card,
+                    context,
+                    estimate_damage=False,
+                    state=state,
+                )
                 return ranked_targets[0][0] if ranked_targets else None
         else:
             # For debuff/buff cards, target highest threat monster
-            ranked_targets = self._rank_targets(card, context, estimate_damage=False)
+            ranked_targets = self._rank_targets(
+                card,
+                context,
+                estimate_damage=False,
+                state=state,
+            )
             return ranked_targets[0][0] if ranked_targets else None
 
     def fast_score_action(self, card: Card, state: SimulationState, context: DecisionContext) -> float:

@@ -7,7 +7,11 @@ import spirecomm.ai.heuristics.ironclad_combat as ironclad_combat
 import spirecomm.ai.heuristics.simulation as simulation
 import spirecomm.data.loader as data_loader
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
-from spirecomm.ai.heuristics.simulation import FastCombatSimulator, HeuristicCombatPlanner
+from spirecomm.ai.heuristics.simulation import (
+    FastCombatSimulator,
+    HeuristicCombatPlanner,
+    SimulationState,
+)
 from spirecomm.ai.heuristics.timing.models import MonsterTimingHints, TurnTiming
 from spirecomm.ai.heuristics.timing.turn_classifier import TurnTimingClassifier
 from spirecomm.communication.action import PlayCardAction, PotionAction
@@ -5239,6 +5243,171 @@ def test_beam_search_keeps_best_scoring_sequence_across_depths():
     sequence = planner.plan_turn(context)
 
     assert [action.card.card_id for action in sequence] == ["BaitA"]
+
+
+def test_beam_search_retargets_after_simulated_monster_death(monkeypatch):
+    loader = data_loader.GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    monsters = [
+        SimpleNamespace(
+            name="Louse",
+            monster_id="LouseA",
+            monster_index=0,
+            max_hp=6,
+            current_hp=6,
+            block=0,
+            intent=Intent.ATTACK,
+            half_dead=False,
+            is_gone=False,
+            move_id=1,
+            move_adjusted_damage=5,
+            move_hits=1,
+            strength=0,
+            powers=[],
+        ),
+        SimpleNamespace(
+            name="Louse",
+            monster_id="LouseB",
+            monster_index=1,
+            max_hp=6,
+            current_hp=6,
+            block=0,
+            intent=Intent.ATTACK,
+            half_dead=False,
+            is_gone=False,
+            move_id=1,
+            move_adjusted_damage=5,
+            move_hits=1,
+            strength=0,
+            powers=[],
+        ),
+    ]
+    strikes = [
+        Card(
+            card_id="Strike_R",
+            name="Strike",
+            card_type=CardType.ATTACK,
+            rarity=CardRarity.COMMON,
+            has_target=True,
+            cost=1,
+            cost_for_turn=1,
+        )
+        for _ in range(2)
+    ]
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[], strength=0),
+            monsters=monsters,
+            room_type="Monster",
+            get_real_potions=lambda: [],
+        ),
+        player=SimpleNamespace(strength=0),
+        act=1,
+        turn=1,
+        floor=5,
+        energy_available=2,
+        strength=0,
+        player_hp=40,
+        player_hp_pct=0.5,
+        monsters_alive=monsters,
+        vulnerable_stacks={0: 0, 1: 0},
+        weak_stacks={0: 0, 1: 0},
+        frail_stacks={0: 0, 1: 0},
+        thorns_stacks={0: 0, 1: 0},
+        playable_cards=strikes,
+        compute_threat=lambda _monster: 1,
+    )
+    planner = HeuristicCombatPlanner(beam_width=4, max_depth=2)
+    planner.card_evaluator.evaluate_card = lambda _card, _context: 0
+
+    sequence = planner._beam_search_plan(context)
+
+    assert [action.target_monster for action in sequence] == monsters
+
+
+def test_find_best_target_ignores_simulated_dead_target_for_threat_fallback(monkeypatch):
+    loader = data_loader.GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    dead_high_threat = SimpleNamespace(
+        name="Louse",
+        monster_id="DeadThreat",
+        max_hp=30,
+        current_hp=30,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=20,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    live_low_threat = SimpleNamespace(
+        name="Louse",
+        monster_id="LiveThreat",
+        max_hp=30,
+        current_hp=30,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=5,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            get_real_potions=lambda: [],
+        ),
+        player=SimpleNamespace(strength=0),
+        energy_available=1,
+        strength=0,
+        monsters_alive=[dead_high_threat, live_low_threat],
+        vulnerable_stacks={0: 0, 1: 0},
+        weak_stacks={0: 0, 1: 0},
+        frail_stacks={0: 0, 1: 0},
+        thorns_stacks={0: 0, 1: 0},
+        playable_cards=[],
+        compute_threat=lambda monster: 100 if monster is dead_high_threat else 1,
+    )
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = True
+    strike = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.COMMON,
+        has_target=True,
+        cost=1,
+        cost_for_turn=1,
+    )
+
+    target = HeuristicCombatPlanner()._find_best_target(strike, context, state=state)
+
+    assert target is live_low_threat
 
 
 def test_beam_search_can_spend_energy_gained_from_potion():
