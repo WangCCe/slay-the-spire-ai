@@ -3808,6 +3808,30 @@ def test_state_key_distinguishes_live_monster_move_threat():
     assert base_state.state_key([]) != multi_hit_state.state_key([])
 
 
+def test_state_key_distinguishes_engine_events_used_for_scoring():
+    potion = Potion(
+        potion_id="SwiftPotion",
+        name="Swift Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=False,
+    )
+    context = _potion_projection_context(potion)
+    base_state = simulation.SimulationState(context)
+    event_state = base_state.clone()
+
+    event_state.exhaust_events += 1
+    event_state.cards_drawn += 2
+    event_state.energy_gained += 1
+    event_state.energy_saved += 1
+
+    assert (
+        FastCombatSimulator(None).calculate_outcome_score(base_state, event_state)
+        > FastCombatSimulator(None).calculate_outcome_score(base_state, base_state)
+    )
+    assert base_state.state_key([]) != event_state.state_key([])
+
+
 def test_simulation_state_includes_existing_plated_armor_end_turn_block():
     potion = Potion(
         potion_id="FirePotion",
