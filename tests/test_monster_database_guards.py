@@ -193,3 +193,41 @@ def test_looter_and_mugger_predict_turn_three_options():
         prediction["move"]["name"]
         for prediction in database.predict_next_moves("Mugger", current_turn=3, monster_hp_percent=1.0)
     ] == ["Lunge", "Smoke Bomb"]
+
+
+def test_initial_move_probabilities_start_after_opening_turn():
+    database = EnhancedMonsterDatabase()
+
+    predictions = database.predict_next_moves(
+        "Gremlin Nob",
+        current_turn=1,
+        monster_hp_percent=1.0,
+    )
+
+    assert [
+        (prediction["turn"], prediction["move"]["name"])
+        for prediction in predictions
+    ] == [
+        (1, "Bellow"),
+        (2, "Bull Rush"),
+        (2, "Skull Bash"),
+    ]
+
+
+def test_initial_move_is_not_duplicated_when_opening_already_predicts_it():
+    database = EnhancedMonsterDatabase()
+
+    predictions = database.predict_next_moves(
+        "The Collector",
+        current_turn=1,
+        monster_hp_percent=1.0,
+    )
+
+    assert [
+        (prediction["turn"], prediction["move"]["name"])
+        for prediction in predictions
+    ] == [
+        (1, "Spawn"),
+        (2, "Fireball"),
+        (3, "Buff"),
+    ]

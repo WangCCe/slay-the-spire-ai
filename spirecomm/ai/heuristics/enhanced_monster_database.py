@@ -487,41 +487,64 @@ class EnhancedMonsterDatabase:
 
         # Check for probabilities (less certain prediction)
         elif "probabilities" in pattern or "move_probabilities" in pattern:
-            ascension_probs = self._ascension_pattern_override(
-                pattern,
-                "probabilities",
-                ascension_level,
-            )
-            probs = (
-                ascension_probs
-                if isinstance(ascension_probs, dict)
-                else self._select_probability_table(
-                    pattern.get("probabilities") or pattern.get("move_probabilities"),
-                    current_turn,
-                    monster_hp_percent,
+            probability_table = pattern.get("probabilities") or pattern.get("move_probabilities")
+            prediction_limit = pattern.get("prediction_limit", 2)
+            if "initial_move" in pattern:
+                for i in range(3):
+                    target_turn = current_turn + i
+                    if target_turn == 1:
+                        self._append_named_move_prediction(
+                            predictions,
+                            monster_name,
+                            pattern["initial_move"],
+                            target_turn,
+                            confidence=1.0,
+                        )
+                        continue
+
+                    ascension_probs = self._ascension_pattern_override(
+                        pattern,
+                        "probabilities",
+                        ascension_level,
+                    )
+                    probs = (
+                        ascension_probs
+                        if isinstance(ascension_probs, dict)
+                        else self._select_probability_table(
+                            probability_table,
+                            target_turn,
+                            monster_hp_percent,
+                        )
+                    )
+                    self._append_probability_predictions(
+                        predictions,
+                        moves,
+                        probs,
+                        target_turn,
+                        limit=prediction_limit,
+                    )
+            else:
+                ascension_probs = self._ascension_pattern_override(
+                    pattern,
+                    "probabilities",
+                    ascension_level,
                 )
-            )
-            # Predict most likely moves
-            if isinstance(probs, dict):
-                # Get top 2 most likely moves
-                sorted_probs = sorted(
-                    (
-                        (move_name, prob)
-                        for move_name, prob in probs.items()
-                        if isinstance(prob, (int, float))
-                    ),
-                    key=lambda x: x[1],
-                    reverse=True
-                )[:2]
-                for move_name, prob in sorted_probs:
-                    for move in moves:
-                        if self._normalize_move_name(move["name"]) == self._normalize_move_name(move_name):
-                            predictions.append({
-                                "turn": current_turn,
-                                "move": move,
-                                "confidence": prob
-                            })
-                            break
+                probs = (
+                    ascension_probs
+                    if isinstance(ascension_probs, dict)
+                    else self._select_probability_table(
+                        probability_table,
+                        current_turn,
+                        monster_hp_percent,
+                    )
+                )
+                self._append_probability_predictions(
+                    predictions,
+                    moves,
+                    probs,
+                    current_turn,
+                    limit=prediction_limit,
+                )
 
         # Check for opening + subsequent_pattern format (e.g., Cultist)
         elif "opening" in pattern and "subsequent_pattern" in pattern:
@@ -631,14 +654,20 @@ class EnhancedMonsterDatabase:
         # Special handling for initial moves
         if "initial_move" in pattern and current_turn == 1:
             initial_move_name = pattern["initial_move"]
-            for move in moves:
-                if move["name"] == initial_move_name:
-                    predictions.insert(0, {
-                        "turn": current_turn,
-                        "move": move,
-                        "confidence": 1.0
-                    })
-                    break
+            already_predicted = any(
+                prediction.get("turn") == current_turn
+                and prediction.get("move", {}).get("name") == initial_move_name
+                for prediction in predictions
+            )
+            if not already_predicted:
+                for move in moves:
+                    if move["name"] == initial_move_name:
+                        predictions.insert(0, {
+                            "turn": current_turn,
+                            "move": move,
+                            "confidence": 1.0
+                        })
+                        break
 
         return predictions[:3]  # Return at most 3 predictions
 
