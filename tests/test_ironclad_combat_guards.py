@@ -1918,6 +1918,30 @@ def test_enemy_lookahead_player_artifact_blocks_predicted_debuff(monkeypatch):
     assert future_damage == int(10 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
 
 
+def test_enemy_lookahead_applies_same_turn_vulnerable_before_later_attack():
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_green_louse_debuff(current_hp=20), _louse(current_hp=50)],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    def current_move(monster):
+        if monster["monster_id"] == "FuzzyLouseDefensive":
+            return {"intent": "DEBUFF", "vulnerable_applied": 2}
+        return {"intent": "ATTACK", "damage": 10, "hits": 1}
+
+    simulator._current_monster_move = current_move
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 15
+
+
 def test_live_champ_transition_buff_resolves_to_anger_despite_live_move_id():
     context = _combat_context([], energy=0, monsters=[_champ_transition()])
     state = SimulationState(context)

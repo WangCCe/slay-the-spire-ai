@@ -3518,9 +3518,12 @@ class FastCombatSimulator:
                                     monster.get('weak', 0),
                                 )
                                 damage = per_hit_damage * move_hits
+                                effective_player_vulnerable = (
+                                    player_vulnerable + pending_debuffs['vulnerable']
+                                )
                                 damage = self._apply_player_vulnerable_damage(
                                     damage,
-                                    player_vulnerable,
+                                    effective_player_vulnerable,
                                     move_hits,
                                 )
                                 damage = self._apply_debuff_risk_multiplier(damage, player_weak, player_frail)
@@ -3583,9 +3586,12 @@ class FastCombatSimulator:
                                     monster.get('weak', 0),
                                 )
                             damage = per_hit_damage * move_hits
+                            effective_player_vulnerable = (
+                                player_vulnerable + pending_debuffs['vulnerable']
+                            )
                             damage = self._apply_player_vulnerable_damage(
                                 damage,
-                                player_vulnerable,
+                                effective_player_vulnerable,
                                 move_hits,
                             )
                             damage = self._apply_debuff_risk_multiplier(damage, player_weak, player_frail)
