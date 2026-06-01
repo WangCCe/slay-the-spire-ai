@@ -2543,7 +2543,9 @@ class OptimizedAgent(SimpleAgent):
             return None
 
         # Calculate current needs
-        hp_pct = self.game.current_hp / max(self.game.max_hp, 1)
+        current_hp = self._safe_float(getattr(self.game, "current_hp", 0), 0.0)
+        max_hp = max(self._safe_float(getattr(self.game, "max_hp", 1), 1.0), 1.0)
+        hp_pct = current_hp / max_hp
         incoming_damage = self.get_incoming_damage()
         alive_monsters = [
             m for m in self.game.monsters if self._is_live_monster(m)
@@ -2615,8 +2617,11 @@ class OptimizedAgent(SimpleAgent):
                 )
             ):
                 # Use defensive potions when incoming damage exceeds current HP or block
-                current_block = getattr(getattr(self.game, "player", None), "block", 0)
-                if incoming_damage > current_block + self.game.current_hp * 0.5:
+                current_block = self._safe_float(
+                    getattr(getattr(self.game, "player", None), "block", 0),
+                    0.0,
+                )
+                if incoming_damage > current_block + current_hp * 0.5:
                     use_potion = True
                     potions_to_use.append((1, potion))
 
@@ -2686,13 +2691,15 @@ class OptimizedAgent(SimpleAgent):
         ]
         danger += min(len(alive_monsters) * 0.15, 0.4)
 
+        current_hp = self._safe_float(getattr(self.game, "current_hp", 0), 0.0)
+        max_hp = max(self._safe_float(getattr(self.game, "max_hp", 1), 1.0), 1.0)
+
         # Incoming damage
         incoming = self.get_incoming_damage()
-        if self.game.max_hp > 0:
-            danger += min(incoming / self.game.max_hp, 0.4)
+        danger += min(incoming / max_hp, 0.4)
 
         # HP percentage
-        hp_pct = self.game.current_hp / max(self.game.max_hp, 1)
+        hp_pct = current_hp / max_hp
         if hp_pct < 0.3:
             danger += 0.3
 
