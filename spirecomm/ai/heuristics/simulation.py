@@ -131,9 +131,20 @@ def _canonical_card_name(card: Any) -> str:
 BLOCK_UPGRADE_BONUS = {
     # Ironclad
     'Defend': 3,        # 5 → 8
+    'Shrug It Off': 3,  # 8 → 11
+    'Ghostly Armor': 3, # 10 → 13
+    'Power Through': 5, # 15 → 20
     'Iron Wave': 2,     # 5 → 7
+    'Sentinel': 3,      # 5 → 8
+    'True Grit': 2,     # 7 → 9
     'Flame Barrier': 4, # 12 → 16
     'Impervious': 10,   # 30 → 40
+
+    # Colorless
+    'Finesse': 2,       # 2 → 4
+    'Good Instincts': 3, # 6 → 9
+    'Panic Button': 10, # 30 → 40
+    'Safety': 4,        # 12 → 16
 
     # Silent
     'Survivor': 3,      # 8 → 11

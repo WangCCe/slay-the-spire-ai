@@ -435,6 +435,114 @@ def test_skill_simulation_applies_targeted_debuff_to_selected_monster(monkeypatc
     assert state.monsters[1]["weak"] == 2
 
 
+class _BaseOnlyBlockLoader:
+    def __init__(self, descriptions):
+        self.descriptions = descriptions
+        self._wiki_data = {}
+
+    def get_card_data(self, card_name):
+        description = self.descriptions.get(card_name)
+        if description is None:
+            return None
+        return {"name": card_name, "description": description}
+
+    def _parse_card_block(self, card_data):
+        match = re.search(r"gain (\d+) block", card_data.get("description", "").lower())
+        if not match:
+            return None
+        return int(match.group(1))
+
+
+def _simple_skill_state():
+    return SimpleNamespace(
+        monsters=[
+            {
+                "hp": 30,
+                "block": 0,
+                "is_gone": False,
+                "half_dead": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "frail": 0,
+                "artifact": 0,
+            }
+        ],
+        player_block=0,
+        player_frail=0,
+        player_dexterity=0,
+        player_energy=0,
+        player_strength=0,
+        player_artifact=0,
+        player_temp_strength=0,
+        energy_gained=0,
+        exhaust_events=0,
+        cards_drawn=0,
+        draw_blocked=False,
+        status_cards_added=0,
+        dazed_cards_added=0,
+        rage_block_per_attack=0,
+        damage_instances=0,
+        total_damage_dealt=0,
+        monsters_killed=0,
+    )
+
+
+def _upgraded_block_skill(name, cost=1):
+    return Card(
+        card_id=name,
+        name=name,
+        card_type=CardType.SKILL,
+        rarity=CardRarity.UNCOMMON,
+        has_target=False,
+        cost=cost,
+        upgrades=1,
+    )
+
+
+def test_upgraded_block_skills_use_fallback_bonus_without_wiki(monkeypatch):
+    monkeypatch.setattr(
+        simulation,
+        "game_data_loader",
+        _BaseOnlyBlockLoader(
+            {
+                "Finesse": "Gain 2 Block. Draw 1 card.",
+                "Ghostly Armor": "Gain 10 Block. Exhaust.",
+                "Good Instincts": "Gain 6 Block.",
+                "Panic Button": "Gain 30 Block. You cannot gain Block from cards for 2 turns.",
+                "Power Through": "Add 2 Wounds to your hand. Gain 15 Block.",
+                "Safety": "Gain 12 Block.",
+                "Sentinel": "Gain 5 Block.",
+                "Shrug It Off": "Gain 8 Block. Draw 1 card.",
+                "True Grit": "Gain 7 Block. Exhaust a random card in your hand.",
+            }
+        ),
+    )
+    cases = [
+        ("Finesse", 0, 4),
+        ("Ghostly Armor", 1, 13),
+        ("Good Instincts", 0, 9),
+        ("Panic Button", 0, 40),
+        ("Power Through", 1, 20),
+        ("Safety", 1, 16),
+        ("Sentinel", 1, 8),
+        ("Shrug It Off", 1, 11),
+        ("True Grit", 1, 9),
+    ]
+
+    simulator = FastCombatSimulator(None)
+    context = SimpleNamespace(energy_available=3)
+    for card_name, cost, expected_block in cases:
+        state = _simple_skill_state()
+
+        simulator._apply_skill(
+            state,
+            _upgraded_block_skill(card_name, cost=cost),
+            context=context,
+        )
+
+        assert state.player_block == expected_block, card_name
+
+
 def test_skill_simulation_applies_temporary_targeted_strength_loss(monkeypatch):
     card = Card(
         card_id="Dark Shackles",
