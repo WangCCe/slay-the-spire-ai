@@ -51,6 +51,22 @@ def test_action_dim_constants():
     assert space.encode_use_potion(2, 1) == 73
 
 
+def test_encode_potion_action_uses_get_real_potions_without_raw_potions():
+    encoder = ActionEncoderV2()
+    potion = SimpleNamespace(
+        potion_id="Strength Potion",
+        can_use=True,
+        requires_target=False,
+    )
+    game = _make_game(screen_type=None, in_combat=True)
+    del game.potions
+    game.get_real_potions = lambda: [potion]
+
+    action_index = encoder.encode_action(PotionAction(True, potion=potion), game)
+
+    assert action_index == space.encode_use_potion(0, 0)
+
+
 def test_combat_mask_targets():
     encoder = ActionEncoderV2()
     game = _make_game(

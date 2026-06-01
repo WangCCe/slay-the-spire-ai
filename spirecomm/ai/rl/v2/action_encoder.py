@@ -291,7 +291,9 @@ class ActionEncoderV2:
         potion = getattr(action, "potion", None)
         if potion is None:
             return None
-        potions = getattr(game, "potions", []) or []
+        raw_potions = getattr(game, "potions", None)
+        potions = raw_potions if raw_potions is not None else game_real_potions(game)
+        potions = potions or []
         try:
             return potions.index(potion)
         except Exception:
