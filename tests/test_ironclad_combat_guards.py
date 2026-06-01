@@ -12144,6 +12144,26 @@ def test_potion_target_state_index_prefers_live_monster_id_over_same_name():
     assert HeuristicCombatPlanner._state_monster_index_for_potion_target(state, target) == 1
 
 
+def test_targeted_potions_are_skipped_without_live_targets():
+    potion = SimpleNamespace(
+        name="Fire Potion",
+        can_use=True,
+        requires_target=True,
+        effect_type="damage",
+        effect_value=20,
+        target_type="monster",
+    )
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=30)])
+    context.monsters_alive = []
+    context.game.monsters = []
+    context.game.room_type = "Monster"
+    context.game.get_real_potions = lambda: [potion]
+    state = SimulationState(context)
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+
+    assert planner._get_potion_actions(context, state) == []
+
+
 def test_potion_target_state_index_prefers_live_monster_index_for_identical_targets():
     state = SimpleNamespace(
         monsters=[

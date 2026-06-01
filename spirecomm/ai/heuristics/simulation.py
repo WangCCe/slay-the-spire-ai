@@ -5968,6 +5968,8 @@ class HeuristicCombatPlanner(CombatPlanner):
             target = None
             if getattr(potion, "requires_target", False):
                 target = self._find_best_potion_target(potion, context)
+                if target is None:
+                    continue
 
             # Potions cost 0 energy
             potion_actions.append((potion, target, 0, priority))
