@@ -377,6 +377,22 @@ def test_legacy_potion_decoder_falls_back_for_dead_target():
     assert isinstance(action, EndTurnAction)
 
 
+def test_legacy_potion_mask_accepts_numeric_string_monster_hp():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        potions=[_potion("Fire Potion", requires_target=True)],
+        monsters=[
+            SimpleNamespace(current_hp="0", is_gone=False, half_dead=False),
+            SimpleNamespace(current_hp="12", is_gone=False, half_dead=False),
+        ],
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert not mask[encoder.encode_use_potion(0, 0)]
+    assert mask[encoder.encode_use_potion(0, 1)]
+
+
 def test_legacy_card_decoder_falls_back_for_unplayable_card():
     encoder = ActionEncoder()
     game = _combat_game(
@@ -400,6 +416,21 @@ def test_legacy_card_decoder_falls_back_for_dead_target():
     action = encoder.decode_action(encoder.encode_play_card(0, 0), game)
 
     assert isinstance(action, EndTurnAction)
+
+
+def test_legacy_card_decoder_accepts_numeric_string_target_hp():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        hand=[_card(has_target=True)],
+        monsters=[SimpleNamespace(current_hp="12", is_gone=False, half_dead=False)],
+        end_available=True,
+    )
+
+    action = encoder.decode_action(encoder.encode_play_card(0, 0), game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index == 0
 
 
 def test_legacy_card_decoder_keeps_valid_targeted_card():

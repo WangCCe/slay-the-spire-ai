@@ -342,9 +342,18 @@ class ActionEncoder:
         return None
 
     @staticmethod
-    def _is_targetable_monster(monster) -> bool:
+    def _safe_int(value, default: int = 0) -> int:
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @classmethod
+    def _is_targetable_monster(cls, monster) -> bool:
         return (
-            getattr(monster, "current_hp", 0) > 0
+            cls._safe_int(getattr(monster, "current_hp", 0), default=0) > 0
             and not getattr(monster, "is_gone", False)
             and not getattr(monster, "half_dead", False)
         )
