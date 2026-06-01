@@ -5,6 +5,7 @@ from spirecomm.ai.heuristics.card_upgrades import (
     is_card_upgraded,
     known_damage_upgrade_bonus,
 )
+from spirecomm.spire.card import Card
 
 
 def _card(name, upgrades=0):
@@ -23,3 +24,20 @@ def test_card_upgrade_count_uses_counted_display_suffix():
 
     assert card_upgrade_count(searing_blow_plus_two) == 2
     assert known_damage_upgrade_bonus(searing_blow_plus_two, "Searing Blow") == 9
+
+
+def test_card_from_json_infers_counted_upgrade_suffix():
+    card = Card.from_json(
+        {
+            "id": "Searing Blow",
+            "name": "Searing Blow+2",
+            "type": "ATTACK",
+            "rarity": "UNCOMMON",
+            "upgrades": 0,
+            "has_target": True,
+            "cost": 2,
+            "uuid": "searing-1",
+        }
+    )
+
+    assert card.upgrades == 2

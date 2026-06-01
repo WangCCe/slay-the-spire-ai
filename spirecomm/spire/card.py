@@ -1,7 +1,10 @@
 from enum import Enum
 import logging
+import re
 
 logger = logging.getLogger(__name__)
+
+_UPGRADE_SUFFIX_RE = re.compile(r"\+(\d*)$")
 
 
 class CardType(Enum):
@@ -41,9 +44,10 @@ class Card:
     def from_json(cls, json_object):
         upgrades = json_object.get("upgrades", 0)
         name = json_object.get("name", "")
-        if upgrades == 0 and name.endswith("+"):
-            upgrades = 1
-            logger.info(f"[CARD_UPGRADE_FIX] name='{name}' indicates upgrade; treating upgrades=1")
+        upgrade_suffix = _UPGRADE_SUFFIX_RE.search(name)
+        if upgrades == 0 and upgrade_suffix:
+            upgrades = int(upgrade_suffix.group(1) or 1)
+            logger.info(f"[CARD_UPGRADE_FIX] name='{name}' indicates upgrade; treating upgrades={upgrades}")
         return cls(
             card_id=json_object["id"],
             name=name,
