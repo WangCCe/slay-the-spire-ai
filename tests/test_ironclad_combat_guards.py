@@ -5799,6 +5799,58 @@ def test_upgraded_dramatic_entrance_uses_12_aoe_damage(monkeypatch):
     assert result.total_damage_dealt == 24
 
 
+def _patch_bite_loader(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bite": {
+            "name": "Bite",
+            "description": "Deal 7 damage. Heal 2 HP.",
+        }
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+
+def test_bite_heals_fixed_amount(monkeypatch):
+    _patch_bite_loader(monkeypatch)
+
+    bite = _card("Bite", "Bite", cost=1)
+    context = _combat_context([bite], energy=1, monsters=[_louse(current_hp=20)])
+    context.game.current_hp = 20
+    context.player_hp = 20
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        bite,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 7
+    assert result.player_hp == 22
+
+
+def test_upgraded_bite_uses_8_damage_and_heals_3(monkeypatch):
+    _patch_bite_loader(monkeypatch)
+
+    bite_plus = _card("Bite", "Bite+", cost=1, upgrades=1)
+    context = _combat_context([bite_plus], energy=1, monsters=[_louse(current_hp=20)])
+    context.game.current_hp = 20
+    context.player_hp = 20
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        bite_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 8
+    assert result.player_hp == 23
+
+
 def test_feed_does_not_gain_max_hp_from_minion(monkeypatch):
     _patch_feed_loader(monkeypatch)
 

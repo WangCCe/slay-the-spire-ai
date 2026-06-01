@@ -134,6 +134,7 @@ DAMAGE_UPGRADE_BONUS = {
     'Rampage': 0,  # Has separate scaling mechanism
 
     # +1 damage
+    'Bite': 1,
     'Pommel Strike': 1,
     'Reaper': 1,
 
@@ -1468,6 +1469,11 @@ class FastCombatSimulator:
 
     def _apply_attack_healing(self, state: SimulationState, card: Card, starting_total_damage: int):
         card_name = _canonical_card_name(card)
+        if card_name == 'Bite':
+            heal_amount = 3 if getattr(card, 'upgrades', 0) > 0 else 2
+            state.player_hp = min(state.player_max_hp, state.player_hp + heal_amount)
+            return
+
         if card_name != 'Reaper':
             return
 
