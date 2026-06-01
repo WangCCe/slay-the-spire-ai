@@ -1734,7 +1734,7 @@ class IroncladCombatPlanner(CombatPlanner):
         if card_name in ['Bash', 'Strike', 'Defend']:
             return False
 
-        if getattr(candidate, 'type', None) != CardType.ATTACK:
+        if not is_attack_card(candidate):
             return False
 
         return self._estimate_attack_damage_without_simulation(candidate, context) > 10

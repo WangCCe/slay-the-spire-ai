@@ -11142,6 +11142,50 @@ def test_ironclad_sequence_bash_followup_bonus_uses_parsed_big_attack(monkeypatc
     assert followup_score - solo_score == 25
 
 
+def test_ironclad_sequence_bash_followup_bonus_accepts_string_attack_type(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "carnage": {
+            "name": "Carnage",
+            "description": "Ethereal. Deal 20 damage.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+
+    bash = _card("Bash", "Bash", cost=2)
+    bash.uuid = "bash"
+    carnage = _card("Carnage", "Carnage", cost=2)
+    carnage.uuid = "carnage"
+    carnage.type = "ATTACK"
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+
+    solo_context = _combat_context([bash], energy=2, monsters=[_louse(current_hp=100)])
+    solo_initial = SimulationState(solo_context)
+    solo_score = planner._score_sequence(
+        [PlayCardAction(card=bash)],
+        solo_initial,
+        solo_initial.clone(),
+        solo_context,
+    )
+
+    followup_context = _combat_context(
+        [bash, carnage],
+        energy=3,
+        monsters=[_louse(current_hp=100)],
+    )
+    followup_initial = SimulationState(followup_context)
+    followup_score = planner._score_sequence(
+        [PlayCardAction(card=bash)],
+        followup_initial,
+        followup_initial.clone(),
+        followup_context,
+    )
+
+    assert followup_score - solo_score == 25
+
+
 def test_ironclad_sequence_immolate_bonus_uses_parsed_damage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
