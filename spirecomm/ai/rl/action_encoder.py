@@ -7,7 +7,7 @@ Converts between discrete action indices (0-999) and Slay the Spire Action objec
 from typing import List, Optional, Tuple
 
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
-from spirecomm.ai.heuristics.card_types import card_requires_target
+from spirecomm.ai.heuristics.card_types import card_is_playable, card_requires_target
 from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id
 from spirecomm.spire.screen import reward_type_name
@@ -357,7 +357,7 @@ class ActionEncoder:
             return self._fallback_combat_action(game)
 
         card = hand[card_index]
-        if hasattr(card, "is_playable") and not card.is_playable:
+        if not card_is_playable(card):
             return self._fallback_combat_action(game)
 
         if card_requires_target(card):
@@ -741,7 +741,7 @@ class ActionEncoder:
                 for card_idx in range(min(len(hand), self.MAX_CARDS)):
                     card = hand[card_idx]
                     # Check if card is playable (skip curses like Dazed)
-                    if hasattr(card, "is_playable") and not card.is_playable:
+                    if not card_is_playable(card):
                         continue
                     raw_cost = getattr(card, "cost_for_turn", None)
                     if raw_cost is None:

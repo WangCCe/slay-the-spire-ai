@@ -11,7 +11,7 @@ from spirecomm.spire.card import Card
 from spirecomm.spire.character import Intent
 from spirecomm.spire.screen import ScreenType
 from spirecomm.ai.heuristics.card_costs import raw_card_cost
-from spirecomm.ai.heuristics.card_types import card_type_name
+from spirecomm.ai.heuristics.card_types import card_is_playable, card_type_name
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 from spirecomm.ai.heuristics.combat_state import power_matches
 from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
@@ -234,7 +234,7 @@ class StateEncoderV2:
             cost_norm = 1.0
         else:
             cost_norm = min(cost, 5) / 5.0
-        is_playable = 1.0 if getattr(card, "is_playable", False) else 0.0
+        is_playable = 1.0 if card_is_playable(card) else 0.0
         type_one_hot = self._encode_card_type(card)
         tag_one_hot = self._encode_card_tags(card)
 

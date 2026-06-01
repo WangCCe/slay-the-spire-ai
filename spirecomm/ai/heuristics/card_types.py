@@ -64,6 +64,10 @@ def is_attack_card(card_or_type) -> bool:
     return is_card_type(card_or_type, "ATTACK")
 
 
+def card_is_playable(card) -> bool:
+    return not hasattr(card, "is_playable") or bool(card.is_playable)
+
+
 def card_requires_target(card, aoe_attack_names=None) -> bool:
     is_attack = is_attack_card(card)
     untargeted_attack_names = COMMON_UNTARGETED_ATTACK_NAMES | set(aoe_attack_names or ())

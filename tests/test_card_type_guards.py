@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from spirecomm.ai.heuristics.card_types import (
+    card_is_playable,
     card_requires_target,
     card_type_name,
     is_attack_card,
@@ -75,3 +76,11 @@ def test_card_requires_target_accepts_requires_target_false_for_attack_cards():
     )
 
     assert card_requires_target(strike) is False
+
+
+def test_card_is_playable_treats_missing_flag_as_playable():
+    assert card_is_playable(SimpleNamespace(name="Strike")) is True
+
+
+def test_card_is_playable_respects_explicit_false():
+    assert card_is_playable(SimpleNamespace(name="Wound", is_playable=False)) is False
