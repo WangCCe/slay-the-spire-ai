@@ -296,12 +296,24 @@ class StateEncoderV2:
         return [1.0 if tag in tags else 0.0 for tag in self.TAGS]
 
     def _encode_card_type(self, card_type) -> List[float]:
+        card_type_name = self._card_type_name(card_type)
         return [
-            1.0 if card_type == CardType.ATTACK else 0.0,
-            1.0 if card_type == CardType.SKILL else 0.0,
-            1.0 if card_type == CardType.POWER else 0.0,
-            1.0 if card_type in (CardType.STATUS, CardType.CURSE) else 0.0,
+            1.0 if card_type_name == "ATTACK" else 0.0,
+            1.0 if card_type_name == "SKILL" else 0.0,
+            1.0 if card_type_name == "POWER" else 0.0,
+            1.0 if card_type_name in ("STATUS", "CURSE") else 0.0,
         ]
+
+    @staticmethod
+    def _card_type_name(card_type) -> str:
+        if card_type is None:
+            return ""
+        if hasattr(card_type, "name"):
+            return str(card_type.name).upper()
+        value = str(card_type).upper()
+        if value.startswith("CARDTYPE."):
+            return value.split(".", 1)[1]
+        return value
 
     def _encode_player_class(self, player_class) -> List[float]:
         return [

@@ -85,6 +85,18 @@ def test_rl_v2_card_features_infer_upgrade_flag_from_suffix():
     assert features[0] == 1.0
 
 
+def test_rl_v2_card_type_features_accept_strings():
+    encoder = StateEncoderV2(_mapper())
+    card = _card("Cleave")
+    card.cost = 1
+    card.cost_for_turn = 1
+    card.type = "ATTACK"
+
+    features = encoder._encode_card_features(card)
+
+    assert features[3] == 1.0
+
+
 def test_rl_v2_card_features_treat_missing_cost_as_zero():
     encoder = StateEncoderV2(_mapper())
     card = _card("Cleave")

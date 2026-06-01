@@ -79,6 +79,16 @@ def test_rl_state_encoder_treats_missing_cost_as_zero():
     assert features[1] == 0.0
 
 
+def test_rl_state_encoder_card_type_features_accept_strings():
+    encoder = StateEncoder()
+    card = _card("Cleave")
+    card.type = "ATTACK"
+
+    features = encoder._encode_single_card(card)
+
+    assert features[4] == 1.0
+
+
 def test_rl_card_reward_features_infer_upgrade_flag_from_suffix():
     encoder = StateEncoder()
 

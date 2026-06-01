@@ -81,13 +81,7 @@ class StateEncoder:
     def _encode_single_card(self, card: Card) -> List[float]:
         damage, block = self._extract_card_damage_block(card)
 
-        # Get card type safely
-        card_type_val = 0
-        if hasattr(card, 'type'):
-            try:
-                card_type_val = int(card.type.value) if card.type is not None else 0
-            except (TypeError, ValueError, AttributeError):
-                card_type_val = 0
+        card_type_name = self._card_type_name(getattr(card, 'type', None))
 
         card_id_hash = 0.0
         card_key = self._card_hash_key(card)
@@ -103,10 +97,10 @@ class StateEncoder:
             min(raw_card_cost(card), 3) / 3.0,
             min(damage, 30) / 30.0,
             min(block, 20) / 20.0,
-            1.0 if card_type_val == 1 else 0.0,  # Attack
-            1.0 if card_type_val == 2 else 0.0,  # Skill
-            1.0 if card_type_val == 3 else 0.0,  # Power
-            1.0 if card_type_val in (4, 5) else 0.0,  # Status/Curse
+            1.0 if card_type_name == 'ATTACK' else 0.0,
+            1.0 if card_type_name == 'SKILL' else 0.0,
+            1.0 if card_type_name == 'POWER' else 0.0,
+            1.0 if card_type_name in ('STATUS', 'CURSE') else 0.0,
             1.0 if is_card_upgraded(card) else 0.0,
             0.0,  # is_ethereal (not exposed)
             1.0 if (hasattr(card, 'exhausts') and card.exhausts) else 0.0,
@@ -115,6 +109,17 @@ class StateEncoder:
             1.0 if card_name in weak_cards else 0.0,
             1.0 if card_name in vulnerable_cards else 0.0,
         ]
+
+    @staticmethod
+    def _card_type_name(card_type) -> str:
+        if card_type is None:
+            return ''
+        if hasattr(card_type, 'name'):
+            return str(card_type.name).upper()
+        value = str(card_type).upper()
+        if value.startswith('CARDTYPE.'):
+            return value.split('.', 1)[1]
+        return value
 
     def _encode_deck_composition(self, game: Game) -> List[float]:
         counts = [0.0] * 120
