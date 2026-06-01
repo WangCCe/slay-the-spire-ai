@@ -38,6 +38,7 @@ from .card_upgrades import (
     known_damage_upgrade_bonus,
     perfected_strike_bonus_per_strike,
 )
+from .combat_state import player_block_value
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
@@ -1066,7 +1067,7 @@ class IroncladCombatPlanner(CombatPlanner):
         card_name = canonical_card_name(card)
         if card_name == 'Body Slam':
             strength = getattr(context, 'strength', 0)
-            return max(0, self._get_player_block(context) + strength)
+            return max(0, player_block_value(context) + strength)
         if card_name == 'Whirlwind':
             energy = x_effect_energy(card, getattr(context, 'energy_available', 0), context)
             return whirlwind_damage(card, energy, getattr(context, 'strength', 0))
@@ -1108,18 +1109,6 @@ class IroncladCombatPlanner(CombatPlanner):
 
         hit_count = self._get_attack_hit_count(card, context)
         return max(0, base_damage + strength) * hit_count
-
-    @staticmethod
-    def _get_player_block(context: DecisionContext) -> int:
-        block = getattr(context, 'player_block', None)
-        if block is None:
-            player = getattr(getattr(context, 'game', None), 'player', None)
-            block = getattr(player, 'block', 0)
-
-        try:
-            return max(0, int(block or 0))
-        except (TypeError, ValueError):
-            return 0
 
     @staticmethod
     def _get_attack_hit_count(card: Card, context: Optional[DecisionContext] = None) -> int:

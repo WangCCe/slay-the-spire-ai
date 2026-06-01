@@ -15,6 +15,7 @@ from spirecomm.communication.action import PlayCardAction
 from spirecomm.ai.intent_utils import intent_is_attack
 from spirecomm.data.loader import game_data_loader
 from ..decision.base import DecisionContext
+from .combat_state import player_block_value
 from .card_names import canonical_card_name
 from .card_costs import (
     effective_card_cost,
@@ -1632,7 +1633,7 @@ class CombatEndingDetector:
             )
 
         if card_name == 'Body Slam':
-            base_damage = self._get_player_block(context)
+            base_damage = player_block_value(context)
 
         if card_name == 'Mind Blast':
             base_damage = self._count_draw_pile_cards(context)
@@ -1771,17 +1772,6 @@ class CombatEndingDetector:
                 amount = getattr(power, 'amount', None)
                 return amount if amount is not None else 1
         return 0
-
-    def _get_player_block(self, context: DecisionContext) -> int:
-        block = getattr(context, 'player_block', None)
-        if block is None:
-            player = getattr(getattr(context, 'game', None), 'player', None)
-            block = getattr(player, 'block', 0)
-
-        try:
-            return max(0, int(block or 0))
-        except (TypeError, ValueError):
-            return 0
 
     @staticmethod
     def _count_draw_pile_cards(context: DecisionContext) -> int:
