@@ -1634,7 +1634,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
     def _get_card_priority(self, card: Card, context: DecisionContext) -> float:
         """Get priority score for a card (simplified version of existing logic)."""
-        card_type = card.type if hasattr(card, 'type') else None
+        card_type = card_type_name(card)
         card_id = canonical_card_name(card)
         
         # Check if fighting Gremlins or other weak monsters that require aggressive play
@@ -1652,7 +1652,7 @@ class IroncladCombatPlanner(CombatPlanner):
             aggressive_mode = True
 
         # Powers first
-        if card_type == CardType.POWER:
+        if card_type == 'POWER':
             if self._has_awakened_one(context):
                 return -200
             if card_id == 'Demon Form' and context.turn <= 3:
@@ -1676,7 +1676,7 @@ class IroncladCombatPlanner(CombatPlanner):
             return 750  # Still good when we don't need block
 
         # Attacks - prioritize more in aggressive mode
-        if card_type == CardType.ATTACK:
+        if card_type == 'ATTACK':
             base_attack_priority = 700
             
             # Increase attack priority for aggressive mode against Gremlins

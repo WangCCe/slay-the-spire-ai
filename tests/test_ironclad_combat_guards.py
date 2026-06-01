@@ -11220,6 +11220,34 @@ def test_ironclad_fallback_priority_treats_counted_upgraded_demon_form_as_demon_
     assert counted_priority == canonical_priority
 
 
+def test_ironclad_fallback_priority_accepts_string_power_type():
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    demon_form.type = "POWER"
+    context = _combat_context([demon_form], energy=3, monsters=[_louse(current_hp=100)])
+    context.turn = 2
+
+    assert IroncladCombatPlanner()._get_card_priority(demon_form, context) == 1000
+
+
+def test_ironclad_fallback_priority_accepts_string_attack_type():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.type = "ATTACK"
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=100)])
+    planner = IroncladCombatPlanner()
+    planner._get_monster_info = lambda _monster: {
+        "recommended_strategy": "balanced",
+        "threat_level": 2,
+    }
+
+    assert planner._get_card_priority(strike, context) == 700
+
+
 def test_ironclad_fallback_priority_values_bash_before_big_attacks():
     bash = _card("Bash+1", "Bash+1", cost=2, upgrades=1)
     carnage = _card("Carnage", "Carnage", cost=2)
