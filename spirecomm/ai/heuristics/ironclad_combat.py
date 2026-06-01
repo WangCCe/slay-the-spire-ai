@@ -1457,8 +1457,7 @@ class IroncladCombatPlanner(CombatPlanner):
                         exclude_card=card,
                     )
                     if upgradeable > 0:
-                        upgrades = getattr(card, 'upgrades', 0)
-                        per_card = 3 if upgrades > 0 else 2
+                        per_card = 3 if is_card_upgraded(card) else 2
                         score += per_card * upgradeable
 
                 # Limit Break with high strength
@@ -1491,11 +1490,10 @@ class IroncladCombatPlanner(CombatPlanner):
                 if card_id in ['Iron Wave', 'Flame Barrier']:
                     # Value both the block and damage aspects
                     # Block values from game_data_loader since card.block is not set
-                    upgrades = getattr(card, 'upgrades', 0)
                     if card_id == 'Iron Wave':
-                        block_val = 7 if upgrades > 0 else 5
+                        block_val = 7 if is_card_upgraded(card) else 5
                     elif card_id == 'Flame Barrier':
-                        block_val = 16 if upgrades > 0 else 12
+                        block_val = 16 if is_card_upgraded(card) else 12
                     else:
                         # Fallback: try to get from game data
                         block_val = 0
@@ -1607,7 +1605,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 continue
             if exclude_uuid is not None and getattr(card, 'uuid', None) == exclude_uuid:
                 continue
-            if getattr(card, 'upgrades', 0) == 0:
+            if card_upgrade_count(card) == 0:
                 count += 1
         return count
 

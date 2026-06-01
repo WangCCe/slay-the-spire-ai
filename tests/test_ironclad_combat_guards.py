@@ -4694,7 +4694,7 @@ def test_iron_wave_deals_damage_and_gains_block(monkeypatch):
     }
     monkeypatch.setattr(simulation, "game_data_loader", loader)
     simulator = FastCombatSimulator(SynergyCardEvaluator())
-    iron_wave = _card("Iron Wave", "Iron Wave", cost=1)
+    iron_wave = _card("Iron Wave", "Iron Wave", cost=1, upgrades=None)
     context = _combat_context([iron_wave], energy=1, monsters=[_louse(current_hp=100)])
 
     result = simulator.simulate_card_play(
@@ -4733,7 +4733,7 @@ def test_thunderclap_applies_vulnerable_to_all_enemies(monkeypatch):
     }
     monkeypatch.setattr(simulation, "game_data_loader", loader)
 
-    thunderclap = _card("Thunderclap", "Thunderclap", cost=1, has_target=False)
+    thunderclap = _card("Thunderclap", "Thunderclap", cost=1, has_target=False, upgrades=None)
     context = _combat_context(
         [thunderclap],
         energy=1,
@@ -4823,7 +4823,7 @@ def test_pommel_strike_tracks_attack_card_draw(monkeypatch):
     monkeypatch.setattr(simulation, "game_data_loader", loader)
 
     simulator = FastCombatSimulator(SynergyCardEvaluator())
-    pommel = _card("Pommel Strike", "Pommel Strike", cost=1)
+    pommel = _card("Pommel Strike", "Pommel Strike", cost=1, upgrades=None)
     context = _combat_context([pommel], energy=1, monsters=[_louse(current_hp=30)])
     result = simulator.simulate_card_play(
         SimulationState(context),
@@ -5360,6 +5360,7 @@ def test_second_wind_exhausting_sentinel_grants_energy():
         card_type=CardType.SKILL,
         cost=1,
         has_target=False,
+        upgrades=None,
     )
     defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
     context = _combat_context([second_wind, sentinel, defend], energy=1, monsters=[_louse(current_hp=100)])
@@ -5616,7 +5617,7 @@ def _patch_feed_loader(monkeypatch):
 def test_feed_kill_increases_max_hp_and_current_hp(monkeypatch):
     _patch_feed_loader(monkeypatch)
 
-    feed = _card("Feed", "Feed", cost=1)
+    feed = _card("Feed", "Feed", cost=1, upgrades=None)
     context = _combat_context([feed], energy=1, monsters=[_louse(current_hp=8)])
     context.game.current_hp = 30
     context.player_hp = 30
@@ -5886,7 +5887,7 @@ def _patch_bite_loader(monkeypatch):
 def test_bite_heals_fixed_amount(monkeypatch):
     _patch_bite_loader(monkeypatch)
 
-    bite = _card("Bite", "Bite", cost=1)
+    bite = _card("Bite", "Bite", cost=1, upgrades=None)
     context = _combat_context([bite], energy=1, monsters=[_louse(current_hp=20)])
     context.game.current_hp = 20
     context.player_hp = 20
@@ -8159,7 +8160,7 @@ def test_double_tapped_rampage_uses_first_play_scaling(monkeypatch):
         cost=1,
         has_target=False,
     )
-    rampage = _card("Rampage", "Rampage", cost=1)
+    rampage = _card("Rampage", "Rampage", cost=1, upgrades=None)
     context = _combat_context([double_tap, rampage], energy=2, monsters=[_louse(current_hp=100)])
     simulator = FastCombatSimulator(SynergyCardEvaluator())
 
@@ -8352,7 +8353,7 @@ def test_fast_score_uses_upgraded_trip_aoe_text_for_setup_bonus(monkeypatch):
     monkeypatch.setattr(simulation, "game_data_loader", loader)
     monkeypatch.setattr(HeuristicCombatPlanner, "_calculate_x_block", lambda *_args, **_kwargs: 0, raising=False)
     strike = _card("Strike_R", "Strike")
-    base_trip = _card("Trip", "Trip", card_type=CardType.SKILL, cost=0, has_target=True)
+    base_trip = _card("Trip", "Trip", card_type=CardType.SKILL, cost=0, has_target=True, upgrades=None)
     upgraded_trip = _card("Trip", "Trip+", card_type=CardType.SKILL, cost=0, has_target=True, upgrades=1)
     base_context = _combat_context(
         [base_trip, strike],
@@ -10567,6 +10568,7 @@ def test_armaments_bonus_does_not_count_itself_when_uuid_is_missing():
         card_type=CardType.SKILL,
         cost=1,
         has_target=False,
+        upgrades=None,
     )
     strike_with_uuid = _card("Strike_R", "Strike", cost=1)
     armaments_with_uuid.uuid = "armaments"
@@ -10578,6 +10580,7 @@ def test_armaments_bonus_does_not_count_itself_when_uuid_is_missing():
         card_type=CardType.SKILL,
         cost=1,
         has_target=False,
+        upgrades=None,
     )
     strike_without_uuid = _card("Strike_R", "Strike", cost=1)
     armaments_without_uuid.uuid = None
@@ -10614,6 +10617,27 @@ def test_armaments_bonus_does_not_count_itself_when_uuid_is_missing():
     )
 
     assert score_without_uuid == score_with_uuid
+
+
+def test_armaments_counts_none_upgrades_as_upgradeable():
+    armaments = _card(
+        "Armaments",
+        "Armaments",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1, upgrades=None)
+    context = _combat_context(
+        [armaments, strike],
+        energy=2,
+        monsters=[_louse(current_hp=100)],
+    )
+
+    assert IroncladCombatPlanner()._count_upgradeable_cards(
+        context,
+        exclude_card=armaments,
+    ) == 1
 
 
 def test_ironclad_sequence_bash_followup_bonus_ignores_upgraded_bash_as_big_attack():
@@ -10736,7 +10760,7 @@ def test_ironclad_sequence_iron_wave_hybrid_bonus_uses_parsed_damage(monkeypatch
     }
     monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
 
-    iron_wave = _card("Iron Wave", "Iron Wave", cost=1)
+    iron_wave = _card("Iron Wave", "Iron Wave", cost=1, upgrades=None)
     planner = IroncladCombatPlanner()
     planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
     planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0

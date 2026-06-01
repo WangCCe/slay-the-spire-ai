@@ -1998,6 +1998,54 @@ def test_fast_simulator_treats_none_upgrades_as_base_sword_boomerang_hits(monkey
     assert state.total_damage_dealt == 9
 
 
+def test_fast_simulator_treats_none_upgrades_as_base_heavy_blade_scaling(monkeypatch):
+    card = Card(
+        card_id="Heavy Blade",
+        name="Heavy Blade",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.COMMON,
+        has_target=True,
+        cost=2,
+        upgrades=None,
+    )
+    card_data = {
+        "name": "Heavy Blade",
+        "description": "Deal 14 damage. Strength affects Heavy Blade 3 times.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Heavy Blade" else None,
+    )
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 40,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "thorns": 0,
+            }
+        ],
+        player_strength=2,
+        player_hp=80,
+        total_damage_dealt=0,
+        monsters_killed=0,
+        damage_instances=0,
+    )
+
+    FastCombatSimulator(None)._apply_attack(
+        state,
+        card,
+        target=None,
+        target_index=0,
+        context=None,
+    )
+
+    assert state.total_damage_dealt == 20
+
+
 def test_fast_simulator_reaper_healing_uses_counted_upgrade_suffix(monkeypatch):
     card = Card(
         card_id="Reaper+1",
@@ -2324,6 +2372,7 @@ def test_fast_score_values_upgraded_rage_block_per_attack():
         rarity=CardRarity.UNCOMMON,
         has_target=False,
         cost=0,
+        upgrades=None,
     )
     upgraded_rage = Card(
         card_id="Rage",

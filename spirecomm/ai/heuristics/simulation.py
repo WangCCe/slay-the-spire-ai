@@ -1290,7 +1290,7 @@ class FastCombatSimulator:
                     state.damage_instances += 1  # Track each damage instance
             if card_data:
                 description = self._get_card_effect_text(card_name, card_data)
-                upgraded = getattr(card, 'upgrades', 0) > 0
+                upgraded = is_card_upgraded(card)
                 debuff_effects = self._description_debuff_effects(description, upgraded, card_name)
                 if debuff_effects:
                     for monster in state.monsters:
@@ -1338,7 +1338,7 @@ class FastCombatSimulator:
                     # Check for card effects using game data
                     if card_data:
                         description = self._get_card_effect_text(card_name, card_data)
-                        upgraded = getattr(card, 'upgrades', 0) > 0
+                        upgraded = is_card_upgraded(card)
                         self._apply_monster_debuffs(
                             monster,
                             self._description_debuff_effects(description, upgraded, card_name),
@@ -1369,7 +1369,7 @@ class FastCombatSimulator:
         card_key = self._card_identity(card)
         state.rampage_damage_bonus_by_card[card_key] = (
             state.rampage_damage_bonus_by_card.get(card_key, 0)
-            + (8 if getattr(card, 'upgrades', 0) > 0 else 5)
+            + (8 if is_card_upgraded(card) else 5)
         )
 
     def _get_attack_hit_count(
@@ -1419,7 +1419,7 @@ class FastCombatSimulator:
     def _apply_attack_healing(self, state: SimulationState, card: Card, starting_total_damage: int):
         card_name = _canonical_card_name(card)
         if card_name == 'Bite':
-            heal_amount = 3 if getattr(card, 'upgrades', 0) > 0 else 2
+            heal_amount = 3 if is_card_upgraded(card) else 2
             state.player_hp = min(state.player_max_hp, state.player_hp + heal_amount)
             return
 
@@ -1471,7 +1471,7 @@ class FastCombatSimulator:
         if self._is_minion_monster_state(monster):
             return
 
-        max_hp_gain = 4 if getattr(card, 'upgrades', 0) > 0 else 3
+        max_hp_gain = 4 if is_card_upgraded(card) else 3
         state.player_max_hp += max_hp_gain
         state.player_hp = min(state.player_max_hp, state.player_hp + max_hp_gain)
 
@@ -1495,7 +1495,7 @@ class FastCombatSimulator:
         if 'draw' not in description:
             return
 
-        upgraded = getattr(card, 'upgrades', 0) > 0
+        upgraded = is_card_upgraded(card)
         self._add_card_draw(state, self._extract_draw_count(description, upgraded))
 
     def _apply_attack_block_effects(
@@ -1514,8 +1514,7 @@ class FastCombatSimulator:
         if block_gain is None:
             block_gain = 5
 
-        upgrades = getattr(card, 'upgrades', 0)
-        if upgrades > 0:
+        if is_card_upgraded(card):
             block_gain += BLOCK_UPGRADE_BONUS.get(card_name, 2)
 
         self._add_player_block(
@@ -1560,7 +1559,7 @@ class FastCombatSimulator:
             if card_name != 'Sentinel':
                 continue
 
-            energy_gain += 3 if getattr(exhausted_card, 'upgrades', 0) > 0 else 2
+            energy_gain += 3 if is_card_upgraded(exhausted_card) else 2
 
         if energy_gain <= 0:
             return
@@ -1646,11 +1645,11 @@ class FastCombatSimulator:
             base_damage += self._positive_card_misc(card)
 
         if card_name == 'Heavy Blade':
-            multiplier = 5 if getattr(card, 'upgrades', 0) > 0 else 3
+            multiplier = 5 if is_card_upgraded(card) else 3
             return max(0, base_damage + state.player_strength * multiplier)
 
         if card_name == 'Perfected Strike':
-            per_strike_bonus = 3 if getattr(card, 'upgrades', 0) > 0 else 2
+            per_strike_bonus = 3 if is_card_upgraded(card) else 2
             return max(
                 0,
                 base_damage + self._count_strike_cards(context) * per_strike_bonus + state.player_strength,
@@ -6302,7 +6301,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             attack_cards = [c for c in context.playable_cards
                           if hasattr(c, 'type') and c.type == CardType.ATTACK]
 
-            rage_block = 5 if getattr(card, 'upgrades', 0) > 0 else 3
+            rage_block = 5 if is_card_upgraded(card) else 3
             potential_block = len(attack_cards) * rage_block
 
             # Base bonus for Rage (it's 0 cost and enables block generation)
@@ -6344,7 +6343,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
                 description = self.simulator._get_card_effect_text(card_name, card_data)
-                upgraded = getattr(card, 'upgrades', 0) > 0
+                upgraded = is_card_upgraded(card)
                 effect_text = self.simulator._effect_text_for_upgrade(description, upgraded).lower()
                 if 'vulnerable' in effect_text or 'weak' in effect_text:
                     attack_cards = [c for c in context.playable_cards
