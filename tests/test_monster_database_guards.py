@@ -492,6 +492,36 @@ def test_time_eater_below_half_hp_predicts_haste():
     ]
 
 
+def test_slime_split_threshold_predicts_split_move():
+    database = EnhancedMonsterDatabase()
+
+    above_threshold = database.predict_next_moves(
+        "Acid Slime (L)",
+        current_turn=1,
+        monster_hp_percent=0.51,
+    )
+    at_threshold = database.predict_next_moves(
+        "Acid Slime (L)",
+        current_turn=1,
+        monster_hp_percent=0.5,
+    )
+    slime_boss_below_threshold = database.predict_next_moves(
+        "Slime Boss",
+        current_turn=2,
+        monster_hp_percent=0.49,
+    )
+
+    assert above_threshold[0]["move"]["name"] != "Split"
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in at_threshold
+    ] == [(1, "Split", 1.0)]
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in slime_boss_below_threshold
+    ] == [(2, "Split", 1.0)]
+
+
 def test_giant_head_ascension_eighteen_starts_it_is_time_on_turn_four():
     database = EnhancedMonsterDatabase()
 

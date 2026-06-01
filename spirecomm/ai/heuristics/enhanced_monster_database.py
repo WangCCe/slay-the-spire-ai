@@ -329,7 +329,12 @@ class EnhancedMonsterDatabase:
 
         predictions = []
 
-        forced_move = self._hp_forced_move(pattern, monster_hp_percent)
+        forced_move = self._hp_forced_move(
+            pattern,
+            special_mechanics,
+            monster_hp_percent,
+            moves,
+        )
 
         # Check for HP-triggered forced moves.
         if forced_move:
@@ -342,7 +347,7 @@ class EnhancedMonsterDatabase:
             )
             probability_table = pattern.get("probabilities") or pattern.get("move_probabilities")
             prediction_limit = pattern.get("prediction_limit", 2)
-            if isinstance(probability_table, dict):
+            if forced_move != "Split" and isinstance(probability_table, dict):
                 for i in range(1, 3):
                     target_turn = current_turn + i
                     ascension_probs = self._ascension_pattern_override(
@@ -923,11 +928,18 @@ class EnhancedMonsterDatabase:
     def _hp_forced_move(
         self,
         pattern: Dict[str, Any],
+        special_mechanics: Optional[Dict[str, Any]],
         monster_hp_percent: float,
+        moves: List[Dict[str, Any]],
     ) -> Optional[str]:
         constraints = pattern.get("constraints", [])
         if not isinstance(constraints, list):
-            return None
+            constraints = []
+
+        split_threshold = self._split_threshold(pattern, special_mechanics)
+        if split_threshold is not None and monster_hp_percent <= split_threshold:
+            if any(move.get("name") == "Split" for move in moves):
+                return "Split"
 
         normalized_constraints = {str(constraint).lower() for constraint in constraints}
         if (
@@ -935,6 +947,38 @@ class EnhancedMonsterDatabase:
             and monster_hp_percent < 0.5
         ):
             return "Haste"
+        return None
+
+    def _split_threshold(
+        self,
+        pattern: Dict[str, Any],
+        special_mechanics: Optional[Dict[str, Any]],
+    ) -> Optional[float]:
+        if isinstance(special_mechanics, dict):
+            threshold = special_mechanics.get("split_threshold")
+            if isinstance(threshold, (int, float)):
+                return threshold if threshold <= 1 else threshold / 100.0
+            split_conditions = special_mechanics.get("split_conditions")
+            if isinstance(split_conditions, dict):
+                condition_threshold = split_conditions.get("hp_threshold")
+                if isinstance(condition_threshold, (int, float)):
+                    return (
+                        condition_threshold
+                        if condition_threshold <= 1
+                        else condition_threshold / 100.0
+                    )
+
+        split_trigger = pattern.get("split_trigger")
+        if split_trigger == "hp_below_50_percent":
+            return 0.5
+        if isinstance(split_trigger, dict):
+            trigger_threshold = split_trigger.get("hp_threshold")
+            if isinstance(trigger_threshold, (int, float)):
+                return (
+                    trigger_threshold
+                    if trigger_threshold <= 1
+                    else trigger_threshold / 100.0
+                )
         return None
 
     def _limit_predictions_with_boundary_ties(
