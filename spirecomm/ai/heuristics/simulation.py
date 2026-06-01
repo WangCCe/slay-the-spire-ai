@@ -394,9 +394,11 @@ class SimulationState:
         self.turn = getattr(context, 'turn', 1)
 
         # Player state
-        self.player_hp = context.game.current_hp
-        self.player_max_hp = context.game.max_hp
-        self.player_block = context.game.player.block if hasattr(context.game.player, 'block') else 0
+        self.player_hp = self._non_negative_int(context.game.current_hp)
+        self.player_max_hp = self._non_negative_int(context.game.max_hp)
+        self.player_block = self._non_negative_int(
+            context.game.player.block if hasattr(context.game.player, 'block') else 0
+        )
         plated_armor = max(
             self._get_player_power_amount(context, 'Plated Armor'),
             self._get_player_power_amount(context, 'PlatedArmor'),

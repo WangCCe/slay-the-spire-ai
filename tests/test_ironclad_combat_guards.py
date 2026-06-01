@@ -703,6 +703,20 @@ def test_simulation_state_coerces_string_monster_hp_and_block():
     assert state.monsters[0]["block"] == 3
 
 
+def test_simulation_state_coerces_string_player_hp_and_block():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=20)])
+    context.game.current_hp = "31"
+    context.game.max_hp = "80"
+    context.game.player.block = "5"
+
+    state = SimulationState(context)
+
+    assert state.player_hp == 31
+    assert state.player_max_hp == 80
+    assert state.player_block == 5
+    assert state.turn_block() == 5
+
+
 def test_simulate_card_play_accepts_name_only_upgraded_attack_from_data(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
