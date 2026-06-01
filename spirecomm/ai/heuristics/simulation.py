@@ -31,6 +31,7 @@ from spirecomm.ai.heuristics.card_costs import (
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_upgrades import (
     DAMAGE_UPGRADE_BONUS,
+    card_upgrade_count,
     is_card_upgraded,
     known_damage_upgrade_bonus as _known_damage_upgrade_bonus,
 )
@@ -1215,7 +1216,7 @@ class FastCombatSimulator:
                 base_damage = parsed_damage if parsed_damage is not None else 0
 
                 # Apply upgrade bonus if card is upgraded
-                upgrades = getattr(card, 'upgrades', 0)
+                upgrades = card_upgrade_count(card)
                 if upgrades > 0 and base_damage:
                     # Check if we have a known upgrade bonus for this card
                     if card_name in DAMAGE_UPGRADE_BONUS:
@@ -1380,7 +1381,7 @@ class FastCombatSimulator:
     ) -> int:
         """Return known hit counts for repeated-hit attacks."""
         card_name = _canonical_card_name(card)
-        upgrades = getattr(card, 'upgrades', 0)
+        upgrades = card_upgrade_count(card)
 
         if card_name in {'Skewer', 'Whirlwind'}:
             energy = x_energy_spent
@@ -1549,7 +1550,7 @@ class FastCombatSimulator:
 
         if card_data:
             description = self._get_card_effect_text(card_name, card_data)
-            if self._card_exhausts_itself(description, getattr(card, 'upgrades', 0) > 0):
+            if self._card_exhausts_itself(description, is_card_upgraded(card)):
                 state.exhaust_events += 1
 
     def _apply_sentinel_exhaust_energy(self, state: SimulationState, exhausted_cards: List[Card]):
@@ -2039,7 +2040,7 @@ class FastCombatSimulator:
         description = self._get_card_effect_text(card_name, card_data)
         counts = self._extract_card_status_pollution(
             description,
-            getattr(card, 'upgrades', 0) > 0,
+            is_card_upgraded(card),
         )
         if counts['total'] <= 0:
             return

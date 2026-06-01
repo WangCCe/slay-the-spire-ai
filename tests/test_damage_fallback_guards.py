@@ -1880,6 +1880,55 @@ def test_fast_simulator_counts_upgraded_sword_boomerang_hits_with_counted_suffix
     assert state.total_damage_dealt == 12
 
 
+def test_fast_simulator_treats_none_upgrades_as_base_sword_boomerang_hits(monkeypatch):
+    card = Card(
+        card_id="Sword Boomerang",
+        name="Sword Boomerang",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.COMMON,
+        has_target=False,
+        cost=1,
+        upgrades=None,
+    )
+    card_data = {
+        "name": "Sword Boomerang",
+        "description": "Deal 3 damage to a random enemy 3 times.",
+    }
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: card_data if card_name == "Sword Boomerang" else None,
+    )
+    state = SimpleNamespace(
+        monsters=[
+            {
+                "hp": 40,
+                "block": 0,
+                "is_gone": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "thorns": 0,
+            }
+        ],
+        player_strength=0,
+        player_hp=80,
+        total_damage_dealt=0,
+        monsters_killed=0,
+        damage_instances=0,
+    )
+
+    FastCombatSimulator(None)._apply_attack(
+        state,
+        card,
+        target=None,
+        target_index=None,
+        context=None,
+    )
+
+    assert state.damage_instances == 3
+    assert state.total_damage_dealt == 9
+
+
 def test_fast_simulator_reaper_healing_uses_counted_upgrade_suffix(monkeypatch):
     card = Card(
         card_id="Reaper+1",
