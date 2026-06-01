@@ -256,6 +256,26 @@ def test_rl_state_encoder_player_state_accepts_string_numeric_fields():
     assert features[13] == 0.5
 
 
+def test_rl_state_encoder_context_accepts_string_energy():
+    encoder = StateEncoder()
+    game = SimpleNamespace(
+        room_type="MONSTER",
+        screen_type=None,
+        in_combat=True,
+        choice_list=[],
+        choice_available=False,
+        available_commands=[],
+        turn=2,
+        hand=[],
+        player=SimpleNamespace(energy="4"),
+    )
+
+    features = encoder._encode_context(game)
+
+    assert features[24] == 0.8
+    assert features[25] == 0.8
+
+
 def test_rl_state_encoder_power_amount_accepts_name_only_power():
     encoder = StateEncoder()
 

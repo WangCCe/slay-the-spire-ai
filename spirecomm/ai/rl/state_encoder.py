@@ -315,6 +315,11 @@ class StateEncoder:
             can_confirm = 1.0
         available = getattr(game, "available_commands", []) or []
         available_set = {str(cmd).lower() for cmd in available}
+        player = getattr(game, 'player', None)
+        player_energy = self._safe_float(
+            getattr(player, 'energy', 0.0) if player else 0.0,
+            default=0.0,
+        )
 
         return [
             *[1.0 if room_type == rt else 0.0 for rt in
@@ -337,8 +342,8 @@ class StateEncoder:
             1.0 if getattr(game, 'cancel_available', False) else 0.0,
             1.0 if getattr(game, 'proceed_available', False) else 0.0,
             min(len(game.hand) if game.hand else 0, 10) / 10.0,
-            min((game.player.energy if game.player else 0), 5) / 5.0,
-            min(max((game.player.energy if game.player else 0), 3), 5) / 5.0,
+            min(player_energy, 5) / 5.0,
+            min(max(player_energy, 3), 5) / 5.0,
             1.0 if "confirm" in available_set else 0.0,
             1.0 if "proceed" in available_set else 0.0,
             1.0 if "cancel" in available_set else 0.0,
