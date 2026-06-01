@@ -7,6 +7,7 @@ This script tests the enhanced deck archetype detection system.
 
 import sys
 import os
+from types import SimpleNamespace
 
 # Add the project root to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -112,6 +113,22 @@ def test_deck_stats_parses_string_costs_for_average():
     stats = analyzer.get_deck_stats(context)
 
     assert stats["avg_cost"] == 1.5
+
+
+def test_deck_stats_accepts_string_card_types():
+    analyzer = DeckAnalyzer()
+    context = MockDecisionContext([
+        SimpleNamespace(card_id="Strike_R", name="Strike", type="ATTACK", cost=1, upgrades=0),
+        SimpleNamespace(card_id="Defend_R", name="Defend", type="SKILL", cost=1, upgrades=0),
+        SimpleNamespace(card_id="Inflame", name="Inflame", type="POWER", cost=1, upgrades=0),
+    ])
+
+    stats = analyzer.get_deck_stats(context)
+
+    assert stats["attack_count"] == 1
+    assert stats["skill_count"] == 1
+    assert stats["power_count"] == 1
+    assert analyzer.needs_cards_of_type(context, "power") is True
 
 
 def test_strength_deck():

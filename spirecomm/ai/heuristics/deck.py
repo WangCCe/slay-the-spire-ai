@@ -78,6 +78,15 @@ class DeckAnalyzer:
         return canonical_card_name(card)
 
     @staticmethod
+    def _card_type_name(card: Card) -> str:
+        card_type = getattr(card, 'type', None)
+        if card_type is None:
+            return ''
+        if hasattr(card_type, 'name'):
+            return str(card_type.name).upper()
+        return str(card_type).upper()
+
+    @staticmethod
     def _canonical_card_set(cards) -> set:
         return {canonical_card_name(card) for card in cards}
 
@@ -304,9 +313,9 @@ class DeckAnalyzer:
         stats = {
             'size': len(deck),
             'avg_cost': sum(normalized_base_cost(c) for c in deck) / len(deck) if deck else 0,
-            'attack_count': sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'ATTACK'),
-            'skill_count': sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'SKILL'),
-            'power_count': sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'POWER'),
+            'attack_count': sum(1 for c in deck if self._card_type_name(c) == 'ATTACK'),
+            'skill_count': sum(1 for c in deck if self._card_type_name(c) == 'SKILL'),
+            'power_count': sum(1 for c in deck if self._card_type_name(c) == 'POWER'),
             'curse_count': sum(1 for c in deck if self._card_name(c) in self.normalized_bad_curses),
             'upgraded_count': sum(1 for c in deck if is_card_upgraded(c)),
             'archetype': self.get_archetype(context),
@@ -339,15 +348,15 @@ class DeckAnalyzer:
         deck = context.game.deck
 
         if card_type == 'attack':
-            attack_count = sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'ATTACK')
+            attack_count = sum(1 for c in deck if self._card_type_name(c) == 'ATTACK')
             return attack_count < len(deck) * 0.4  # Don't want more than 40% attacks
 
         elif card_type == 'skill':
-            skill_count = sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'SKILL')
+            skill_count = sum(1 for c in deck if self._card_type_name(c) == 'SKILL')
             return skill_count < len(deck) * 0.5
 
         elif card_type == 'power':
-            power_count = sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'POWER')
+            power_count = sum(1 for c in deck if self._card_type_name(c) == 'POWER')
             return power_count < 5  # Powers are rare, cap at 5
 
         elif card_type in self.card_categories:
