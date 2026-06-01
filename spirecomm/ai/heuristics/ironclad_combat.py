@@ -134,6 +134,13 @@ class IroncladCombatPlanner(CombatPlanner):
             return 0
 
     @staticmethod
+    def _non_negative_float(value) -> float:
+        try:
+            return max(0.0, float(value or 0))
+        except (TypeError, ValueError):
+            return 0.0
+
+    @staticmethod
     def _is_aoe_attack(card: Card) -> bool:
         return canonical_card_name(card) in AOE_ATTACK_CARDS
 
@@ -1660,7 +1667,8 @@ class IroncladCombatPlanner(CombatPlanner):
             # In aggressive mode, only use defense cards if incoming damage is very high
             if aggressive_mode:
                 # Only use defense if incoming damage is extremely high
-                if context.incoming_damage > context.game.current_hp * 0.8:
+                player_hp = self._non_negative_float(context.game.current_hp)
+                if context.incoming_damage > player_hp * 0.8:
                     return 600
                 # Otherwise, lower defense priority
                 return 100

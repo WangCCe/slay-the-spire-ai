@@ -12212,6 +12212,26 @@ def test_ironclad_fallback_priority_accepts_string_attack_type():
     assert planner._get_card_priority(strike, context) == 700
 
 
+def test_ironclad_fallback_priority_accepts_string_player_hp_for_aggressive_defense():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    context = _combat_context([defend], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.current_hp = "20"
+    context.incoming_damage = 17
+    planner = IroncladCombatPlanner()
+    planner._get_monster_info = lambda _monster: {
+        "recommended_strategy": "aggressive",
+        "threat_level": 2,
+    }
+
+    assert planner._get_card_priority(defend, context) == 600
+
+
 def test_ironclad_fallback_priority_values_bash_before_big_attacks():
     bash = _card("Bash+1", "Bash+1", cost=2, upgrades=1)
     carnage = _card("Carnage", "Carnage", cost=2)
