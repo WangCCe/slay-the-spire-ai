@@ -475,8 +475,7 @@ class StateEncoder:
             cost = getattr(card, 'cost', 0)
         cost = self._safe_int(cost, default=0)
 
-        card_type = getattr(card, 'type', None)
-        normalized_card_type = card_type_name(card_type)
+        normalized_card_type = card_type_name(card)
         type_flags = [0.0, 0.0, 0.0, 0.0]
         if normalized_card_type == 'ATTACK':
             type_flags[0] = 1.0

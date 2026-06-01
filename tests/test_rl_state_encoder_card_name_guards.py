@@ -195,6 +195,24 @@ def test_rl_card_reward_features_accept_string_type_and_rarity():
     assert features[7] == 1.0
 
 
+def test_rl_card_reward_features_accept_card_type_attribute():
+    encoder = StateEncoder()
+    card = SimpleNamespace(
+        name="Inflame",
+        card_type="CardType.POWER",
+        rarity="UNCOMMON",
+        cost=1,
+        cost_for_turn=1,
+        upgrades=0,
+        exhausts=False,
+        properties=[],
+    )
+
+    features = encoder._encode_card_reward_card(card)
+
+    assert features[3] == 1.0
+
+
 def test_rl_state_encoder_player_class_features_accept_strings():
     encoder = StateEncoder()
 
