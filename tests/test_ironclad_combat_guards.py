@@ -11044,6 +11044,84 @@ def test_ironclad_sequence_aoe_bonus_treats_counted_upgraded_cleave_as_cleave():
     assert counted_score == canonical_score
 
 
+def test_ironclad_sequence_aoe_bonus_accepts_name_only_cleave():
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    name_only_cleave = SimpleNamespace(
+        name="Cleave",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        damage=8,
+        upgrades=0,
+        has_target=False,
+        is_playable=True,
+    )
+    context = _combat_context(
+        [cleave, name_only_cleave],
+        energy=1,
+        monsters=[_louse(current_hp=50), _louse(current_hp=50)],
+    )
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+    initial_state = SimulationState(context)
+    final_state = initial_state.clone()
+
+    canonical_score = planner._score_sequence(
+        [PlayCardAction(card=cleave)],
+        initial_state,
+        final_state,
+        context,
+    )
+    name_only_score = planner._score_sequence(
+        [PlayCardAction(card=name_only_cleave)],
+        initial_state,
+        final_state,
+        context,
+    )
+
+    assert name_only_score == canonical_score
+
+
+def test_simulator_outcome_aoe_bonus_accepts_name_only_cleave():
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    name_only_cleave = SimpleNamespace(
+        name="Cleave",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        damage=8,
+        upgrades=0,
+        has_target=False,
+        is_playable=True,
+    )
+    context = _combat_context(
+        [cleave, name_only_cleave],
+        energy=1,
+        monsters=[_louse(current_hp=50), _louse(current_hp=50)],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    initial_state = SimulationState(context)
+    final_state = initial_state.clone()
+
+    canonical_score = simulator.calculate_outcome_score(
+        initial_state,
+        final_state,
+        current_act=1,
+        context=context,
+        sequence=[PlayCardAction(card=cleave)],
+    )
+    name_only_score = simulator.calculate_outcome_score(
+        initial_state,
+        final_state,
+        current_act=1,
+        context=context,
+        sequence=[PlayCardAction(card=name_only_cleave)],
+    )
+
+    assert name_only_score == canonical_score
+
+
 def test_ironclad_sequence_strategic_bonus_treats_counted_upgraded_whirlwind_as_whirlwind():
     whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
     counted_whirlwind = _card(

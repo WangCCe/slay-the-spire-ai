@@ -1340,7 +1340,7 @@ class IroncladCombatPlanner(CombatPlanner):
             aoe_cards = ['Cleave', 'Whirlwind', 'Thunderclap', 'Immolate']
 
             for action in sequence:
-                if isinstance(action, PlayCardAction) and hasattr(action.card, 'card_id'):
+                if isinstance(action, PlayCardAction) and getattr(action, 'card', None) is not None:
                     card_id = canonical_card_name(action.card)
 
                     if card_id in aoe_cards:

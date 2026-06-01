@@ -5039,7 +5039,7 @@ class FastCombatSimulator:
             aoe_cards = ['Cleave', 'Whirlwind', 'Thunderclap', 'Immolate']
 
             for action in sequence:
-                if hasattr(action, 'card') and hasattr(action.card, 'card_id'):
+                if getattr(action, 'card', None) is not None:
                     card_id = _canonical_card_name(action.card)
 
                     if card_id in aoe_cards:
