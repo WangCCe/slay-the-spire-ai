@@ -23,6 +23,7 @@ from .card_costs import (
     whirlwind_damage,
     x_effect_energy,
 )
+from .card_types import is_attack_card
 from .card_upgrades import card_upgrade_count, is_card_upgraded, known_damage_upgrade_bonus
 
 logger = logging.getLogger(__name__)
@@ -170,7 +171,7 @@ class CombatEndingDetector:
 
             attack_cards = [
                 card for card in context.playable_cards
-                if hasattr(card, 'type') and card.type == CardType.ATTACK
+                if is_attack_card(card)
             ]
             proven_aoe_cleanup = bool(self._find_aoe_cleanup_sequence(
                 context,
@@ -259,7 +260,7 @@ class CombatEndingDetector:
 
         # Get attack cards sorted by damage
         attack_cards = [c for c in context.playable_cards
-                       if hasattr(c, 'type') and c.type == CardType.ATTACK]
+                       if is_attack_card(c)]
         attack_cards.sort(key=lambda c: self._get_card_damage(c, context), reverse=True)
 
         for card in attack_cards:
@@ -1392,8 +1393,7 @@ class CombatEndingDetector:
         # Sort attack cards by damage efficiency (damage per energy)
         attack_cards = []
         for card in context.playable_cards:
-            # FIX: Compare CardType enum directly, not string
-            if hasattr(card, 'type') and card.type == CardType.ATTACK:
+            if is_attack_card(card):
                 if len(context.monsters_alive) == 1:
                     cost = self._card_energy_cost_against_monster(
                         card,
@@ -1516,7 +1516,7 @@ class CombatEndingDetector:
         single_target_count = 0
 
         for card in context.playable_cards:
-            if hasattr(card, 'type') and card.type == CardType.ATTACK:
+            if is_attack_card(card):
                 attack_cards.append(card)
                 if self._is_aoe_attack(card):
                     aoe_cards.append(card)
@@ -1570,7 +1570,7 @@ class CombatEndingDetector:
         total_damage = 0
 
         for card in context.playable_cards:
-            if hasattr(card, 'type') and card.type == CardType.ATTACK:
+            if is_attack_card(card):
                 total_damage += self._get_card_damage(card, context)
 
         return total_damage
@@ -1633,7 +1633,7 @@ class CombatEndingDetector:
             strength = getattr(context, 'strength', 0) if strength_override is None else strength_override
             return whirlwind_damage(card, energy, strength)
 
-        if hasattr(card, 'type') and card.type == CardType.ATTACK:
+        if is_attack_card(card):
             strength = getattr(context, 'strength', 0) if strength_override is None else strength_override
             if card_name == 'Heavy Blade':
                 multiplier = 5 if upgrades > 0 else 3
