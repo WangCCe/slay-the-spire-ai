@@ -99,6 +99,21 @@ def test_combat_mask_ignores_half_dead_monsters():
     assert mask[space.encode_play_card(0, 2)]
 
 
+def test_combat_mask_accepts_numeric_string_monster_hp():
+    encoder = ActionEncoderV2()
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[_make_card(has_target=True)],
+        monsters=[_make_monster(hp="0"), _make_monster(hp="12")],
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert not mask[space.encode_play_card(0, 1)]
+    assert mask[space.encode_play_card(0, 2)]
+
+
 def test_combat_mask_nontarget_card():
     encoder = ActionEncoderV2()
     game = _make_game(
@@ -199,6 +214,22 @@ def test_combat_decoder_keeps_valid_card_and_potion_actions():
     assert isinstance(potion_action, PotionAction)
     assert potion_action.potion_index == 0
     assert potion_action.target_index == 0
+
+
+def test_combat_decoder_accepts_numeric_string_monster_hp():
+    encoder = ActionEncoderV2()
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[_make_card(has_target=True, is_playable=True)],
+        monsters=[_make_monster(hp="12")],
+    )
+
+    action = encoder.decode_action(space.encode_play_card(0, 1), game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index == 0
 
 
 def test_combat_mask_and_decoder_infer_target_for_name_only_attack_without_has_target():
