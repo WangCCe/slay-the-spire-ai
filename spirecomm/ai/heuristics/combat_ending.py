@@ -204,13 +204,15 @@ class CombatEndingDetector:
 
             # Low HP must not suppress a deterministic kill. The margin and
             # targeting checks already keep this detector conservative.
-            low_hp = context.player_hp <= 30 and context.player_hp_pct <= 0.3
+            player_hp = self._context_player_hp(context)
+            player_hp_pct = self._context_player_hp_pct(context)
+            low_hp = player_hp <= 30 and player_hp_pct <= 0.3
 
             # Log detection results
             logger.info(f"[LETHAL_DETECTION] affordable_damage={affordable_damage}, "
                        f"total_monster_hp={total_monster_hp}, margin_ok={has_damage_potential}, "
                        f"targeting_ok={targeting_feasible}, low_hp={low_hp}, "
-                       f"player_hp={context.player_hp}, player_hp_pct={context.player_hp_pct:.2f}")
+                       f"player_hp={player_hp}, player_hp_pct={player_hp_pct:.2f}")
 
             attack_cards = [
                 card for card in context.playable_cards
@@ -745,10 +747,19 @@ class CombatEndingDetector:
         hp = getattr(context, 'player_hp', None)
         if hp is None:
             hp = getattr(getattr(context, 'game', None), 'current_hp', 0)
-        try:
-            return int(hp)
-        except (TypeError, ValueError):
-            return 0
+        return max(0, int(self._safe_float(hp, 0.0)))
+
+    def _context_player_hp_pct(self, context: DecisionContext) -> float:
+        hp_pct = getattr(context, 'player_hp_pct', None)
+        if hp_pct is not None:
+            return max(0.0, self._safe_float(hp_pct, 0.0))
+
+        game = getattr(context, 'game', None)
+        hp = getattr(context, 'player_hp', getattr(game, 'current_hp', 0))
+        max_hp = getattr(context, 'player_max_hp', getattr(game, 'max_hp', 0))
+        hp_value = self._safe_float(hp, 0.0)
+        max_hp_value = self._safe_float(max_hp, 0.0)
+        return max(0.0, hp_value / max_hp_value) if max_hp_value > 0 else 0.0
 
     def _context_corruption_active(self, context: DecisionContext) -> bool:
         return self._get_player_debuff_stacks(context, 'Corruption') > 0
@@ -1407,7 +1418,7 @@ class CombatEndingDetector:
         # Check if we have lethal
         if self.can_kill_all(context):
             # But only skip if we're not at critical HP
-            return context.player_hp_pct > 0.3
+            return self._context_player_hp_pct(context) > 0.3
 
         return False
 
@@ -1793,6 +1804,15 @@ class CombatEndingDetector:
 
     def _get_player_debuff_stacks(self, context: DecisionContext, power_name: str) -> int:
         return player_debuff_stacks(context, power_name)
+
+    @staticmethod
+    def _safe_float(value, default: float = 0.0) -> float:
+        if value is None:
+            return default
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
 
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:

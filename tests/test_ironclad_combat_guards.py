@@ -9296,6 +9296,26 @@ def test_lethal_detector_allows_certain_kill_at_critical_hp():
     assert CombatEndingDetector().can_kill_all(context) is True
 
 
+def test_lethal_detector_accepts_numeric_string_player_hp_at_critical_hp():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=5)])
+    context.game.current_hp = "6"
+    context.player_hp = "6"
+    context.player_hp_pct = "0.075"
+
+    assert CombatEndingDetector().can_kill_all(context) is True
+
+
+def test_lethal_detector_skip_defense_accepts_numeric_string_player_hp_pct():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=5)])
+    context.game.current_hp = "80"
+    context.player_hp = "80"
+    context.player_hp_pct = "1.0"
+
+    assert CombatEndingDetector().should_skip_defense(context) is True
+
+
 def test_lethal_detector_allows_exact_single_target_kill(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
