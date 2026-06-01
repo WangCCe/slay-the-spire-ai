@@ -5918,7 +5918,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         potion_actions = []
 
         for potion in potions:
-            if not potion.can_use:
+            if hasattr(potion, "can_use") and not potion.can_use:
                 continue
 
             # Calculate priority score based on potion type and game state
@@ -5926,7 +5926,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
             # Determine target if needed
             target = None
-            if potion.requires_target:
+            if getattr(potion, "requires_target", False):
                 target = self._find_best_potion_target(potion, context)
 
             # Potions cost 0 energy
