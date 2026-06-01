@@ -71,6 +71,8 @@ def card_requires_target(card, aoe_attack_names=None) -> bool:
         return False
 
     explicit_target_flag = getattr(card, "has_target", None)
+    if explicit_target_flag is None:
+        explicit_target_flag = getattr(card, "requires_target", None)
     if explicit_target_flag is not None:
         return bool(explicit_target_flag)
 

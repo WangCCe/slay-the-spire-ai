@@ -55,3 +55,23 @@ def test_card_requires_target_treats_name_only_untargeted_attacks_as_not_targete
         card = SimpleNamespace(name=name, type="CardType.ATTACK")
 
         assert card_requires_target(card) is False
+
+
+def test_card_requires_target_accepts_requires_target_attribute_for_targeted_skills():
+    disarm = SimpleNamespace(
+        name="Disarm",
+        type="CardType.SKILL",
+        requires_target=True,
+    )
+
+    assert card_requires_target(disarm) is True
+
+
+def test_card_requires_target_accepts_requires_target_false_for_attack_cards():
+    strike = SimpleNamespace(
+        name="Strike",
+        type="CardType.ATTACK",
+        requires_target=False,
+    )
+
+    assert card_requires_target(strike) is False
