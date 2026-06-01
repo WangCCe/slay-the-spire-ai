@@ -2592,7 +2592,7 @@ class FastCombatSimulator:
                 fallback_energy = getattr(state, 'player_energy', 0)
                 energy = x_effect_energy(card, fallback_energy, context)
             energy = max(0, energy)
-            per_hit_damage = 8 if getattr(card, 'upgrades', 0) > 0 else 5
+            per_hit_damage = 8 if is_card_upgraded(card) else 5
             if per_hit:
                 return per_hit_damage
             strength = getattr(state, 'player_strength', 0)
@@ -2667,12 +2667,12 @@ class FastCombatSimulator:
                 energy = (
                     x_effect_energy(card, getattr(state, 'player_energy', 0), context)
                 )
-            per_energy_block = 9 if getattr(card, 'upgrades', 0) > 0 else 7
+            per_energy_block = 9 if is_card_upgraded(card) else 7
             return max(0, energy) * per_energy_block
 
         if card_name == 'Stack':
             block = self._count_discard_pile_cards(context)
-            if getattr(card, 'upgrades', 0) > 0:
+            if is_card_upgraded(card):
                 block += 3
             return block
 

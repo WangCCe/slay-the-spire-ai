@@ -7,6 +7,7 @@ import spirecomm.ai.heuristics.ironclad_combat as ironclad_combat
 import spirecomm.ai.heuristics.simulation as simulation
 import spirecomm.data.loader as data_loader
 from spirecomm.data.loader import GameDataLoader
+from spirecomm.ai.heuristics.card_costs import whirlwind_damage
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
 from spirecomm.ai.heuristics.simulation import (
     FastCombatSimulator,
@@ -1094,6 +1095,74 @@ def test_x_damage_estimate_applies_strength_to_each_whirlwind_hit():
     )
 
     assert FastCombatSimulator(None)._calculate_x_damage(card, state, context) == 21
+
+
+def test_whirlwind_damage_treats_none_upgrades_as_base_card():
+    card = Card(
+        card_id="Whirlwind",
+        name="Whirlwind",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.UNCOMMON,
+        upgrades=None,
+        has_target=False,
+        cost=-1,
+        cost_for_turn=-1,
+    )
+
+    assert whirlwind_damage(card, energy_spent=3, strength=2) == 21
+
+
+def test_x_card_helpers_treat_none_upgrades_as_base_card():
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            relics=[],
+            discard_pile=[
+                SimpleNamespace(card_id="Strike_R"),
+                SimpleNamespace(card_id="Defend_R"),
+                SimpleNamespace(card_id="Bash"),
+            ],
+        )
+    )
+    state = SimpleNamespace(
+        player_block=0,
+        player_energy=3,
+        player_strength=0,
+    )
+    simulator = FastCombatSimulator(None)
+
+    whirlwind = Card(
+        card_id="Whirlwind",
+        name="Whirlwind",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.UNCOMMON,
+        upgrades=None,
+        has_target=False,
+        cost=-1,
+        cost_for_turn=-1,
+    )
+    reinforced_body = Card(
+        card_id="Reinforced Body",
+        name="Reinforced Body",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.UNCOMMON,
+        upgrades=None,
+        has_target=False,
+        cost=-1,
+        cost_for_turn=-1,
+    )
+    stack = Card(
+        card_id="Stack",
+        name="Stack",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.COMMON,
+        upgrades=None,
+        has_target=False,
+        cost=1,
+    )
+
+    assert simulator._calculate_x_damage(whirlwind, state, context) == 15
+    assert simulator._calculate_x_block(reinforced_body, state, context) == 21
+    assert simulator._calculate_x_block(stack, state, context) == 3
 
 
 def test_x_hit_count_estimate_applies_chemical_x_without_playing_card():

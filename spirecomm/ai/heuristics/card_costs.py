@@ -4,6 +4,7 @@ import re
 from typing import Any, Optional
 
 from .card_names import canonical_card_name
+from .card_upgrades import is_card_upgraded
 
 
 def raw_card_cost(card) -> int:
@@ -116,5 +117,5 @@ def x_effect_energy(card, available_energy: Optional[int] = None, context=None) 
 
 def whirlwind_damage(card, energy_spent: int, strength: int = 0) -> int:
     """Damage Whirlwind deals to each target for a planned energy spend."""
-    per_hit = 8 if getattr(card, "upgrades", 0) > 0 else 5
+    per_hit = 8 if is_card_upgraded(card) else 5
     return max(0, energy_spent) * max(0, per_hit + strength)
