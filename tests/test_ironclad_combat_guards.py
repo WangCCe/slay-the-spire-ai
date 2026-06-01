@@ -11788,6 +11788,62 @@ def test_heuristic_beam_target_exploration_accepts_name_only_card():
     assert sequence[0].card is strike
 
 
+def test_heuristic_simple_plan_accepts_name_only_power_without_has_target():
+    demon_form = SimpleNamespace(
+        name="Demon Form",
+        type=CardType.POWER,
+        cost=3,
+        cost_for_turn=3,
+        upgrades=0,
+        is_playable=True,
+    )
+    context = _combat_context([demon_form], energy=3, monsters=[_louse(current_hp=100)])
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+    planner.card_evaluator.get_best_card = lambda _cards, _context: demon_form
+
+    sequence = planner._simple_plan(context)
+
+    assert len(sequence) == 1
+    assert sequence[0].card is demon_form
+    assert getattr(sequence[0], "target_monster", None) is None
+
+
+def test_heuristic_target_exploration_accepts_name_only_aoe_without_has_target():
+    cleave = SimpleNamespace(
+        name="Cleave",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        upgrades=0,
+        is_playable=True,
+    )
+    context = _combat_context(
+        [cleave],
+        energy=1,
+        monsters=[_louse(current_hp=30), _louse(current_hp=30)],
+    )
+
+    assert HeuristicCombatPlanner(SynergyCardEvaluator())._should_explore_targets(context, 0) is False
+
+
+def test_ironclad_target_exploration_accepts_name_only_aoe_without_has_target():
+    cleave = SimpleNamespace(
+        name="Cleave",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        upgrades=0,
+        is_playable=True,
+    )
+    context = _combat_context(
+        [cleave],
+        energy=1,
+        monsters=[_louse(current_hp=30), _louse(current_hp=30)],
+    )
+
+    assert IroncladCombatPlanner()._should_explore_targets(context, 0) is False
+
+
 def test_beam_search_does_not_set_primary_target_for_counted_upgraded_aoe():
     counted_cleave = _card("Cleave+1", "Cleave+1", cost=1, has_target=True, upgrades=1)
     strike = _card("Strike_R", "Strike", cost=1, has_target=True)

@@ -5395,7 +5395,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         # Rank cards by evaluator
         best_card = self.card_evaluator.get_best_card(context.playable_cards, context)
 
-        if best_card.has_target:
+        if getattr(best_card, 'has_target', False):
             # Find best target
             target = self._find_best_target(best_card, context)
             return [PlayCardAction(card=best_card, target_monster=target)]
@@ -5499,7 +5499,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                         # card_idx is the card index, card is the Card object
 
                         # === Target exploration with progressive expansion ===
-                        if card.has_target and explore_targets:
+                        if getattr(card, 'has_target', False) and explore_targets:
                             # Progressive target expansion: depth 0→2 targets, depth 1→1-2, depth 2+→1
                             M_targets = 2 if depth == 0 else (1 if depth >= 2 else 2)
 
@@ -5577,7 +5577,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                             # Use deterministic targeting (either no target exploration needed, or card has no target)
                             target = (
                                 self._find_best_target(card, context, state=state)
-                                if card.has_target
+                                if getattr(card, 'has_target', False)
                                 else None
                             )
 
@@ -6202,7 +6202,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         # Condition 3: Check for single-target cards
         has_single_target = False
         for card in context.playable_cards:
-            if card.has_target:
+            if getattr(card, 'has_target', False):
                 has_single_target = True
                 break
 

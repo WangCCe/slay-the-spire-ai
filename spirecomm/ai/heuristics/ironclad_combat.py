@@ -313,7 +313,7 @@ class IroncladCombatPlanner(CombatPlanner):
                         continue
 
                     # === NEW: Target exploration ===
-                    if card.has_target and explore_targets:
+                    if getattr(card, 'has_target', False) and explore_targets:
                         # Get ranked targets
                         ranked_targets = self._rank_targets(card, context, state)
 
@@ -1219,7 +1219,7 @@ class IroncladCombatPlanner(CombatPlanner):
         # Condition 3: Check for single-target cards
         has_single_target = False
         for card in context.playable_cards:
-            if card.has_target and not self._is_aoe_attack(card):
+            if getattr(card, 'has_target', False) and not self._is_aoe_attack(card):
                 has_single_target = True
                 break
 
@@ -1625,7 +1625,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
         if scored_cards and scored_cards[0][1] > 0:
             best_card = scored_cards[0][0]
-            if best_card.has_target and context.monsters_alive:
+            if getattr(best_card, 'has_target', False) and context.monsters_alive:
                 target, _ = self._choose_target_for_card(best_card, context, SimulationState(context))
                 return [PlayCardAction(card=best_card, target_monster=target)]
             else:
