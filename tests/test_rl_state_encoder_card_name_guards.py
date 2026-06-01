@@ -276,6 +276,36 @@ def test_rl_state_encoder_context_accepts_string_energy():
     assert features[25] == 0.8
 
 
+def test_rl_state_encoder_context_accepts_string_hand_select_requirement():
+    from spirecomm.spire.screen import ScreenType
+
+    encoder = StateEncoder()
+    game = SimpleNamespace(
+        room_type="MONSTER",
+        screen_type=ScreenType.HAND_SELECT,
+        in_combat=True,
+        choice_list=[],
+        choice_available=False,
+        available_commands=[],
+        turn=2,
+        hand=[],
+        player=SimpleNamespace(energy=3),
+        proceed_available=False,
+        cancel_available=False,
+        screen=SimpleNamespace(
+            num_cards="2",
+            selected_cards=[SimpleNamespace(name="Strike"), SimpleNamespace(name="Defend")],
+            can_pick_zero=False,
+        ),
+    )
+
+    features = encoder._encode_context(game)
+
+    assert features[18] == 2 / 5
+    assert features[19] == 2 / 5
+    assert features[20] == 1.0
+
+
 def test_rl_state_encoder_power_amount_accepts_name_only_power():
     encoder = StateEncoder()
 
@@ -364,6 +394,23 @@ def test_rl_state_encoder_combat_piles_card_in_play_accepts_name_only_card():
     features = encoder._encode_combat_piles(game)
 
     assert features[3] == encoder._stable_hash("Bash", 50) / 50.0
+
+
+def test_rl_state_encoder_combat_piles_accepts_string_discard_count():
+    encoder = StateEncoder()
+    game = SimpleNamespace(
+        exhaust_pile=[],
+        limbo=[],
+        cards_discarded_this_turn="4",
+        card_in_play=None,
+        potions=[],
+        potion_available=False,
+        are_potions_full=lambda: False,
+    )
+
+    features = encoder._encode_combat_piles(game)
+
+    assert features[2] == 0.4
 
 
 def test_rl_state_encoder_combat_piles_count_string_potion_slots_as_empty():

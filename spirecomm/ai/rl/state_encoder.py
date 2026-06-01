@@ -303,7 +303,10 @@ class StateEncoder:
             ]
         )
         choice_size = len(game.choice_list) if game.choice_list else 0
-        num_required = getattr(game.screen, 'num_cards', 0) if hasattr(game, 'screen') else 0
+        num_required = self._safe_int(
+            getattr(game.screen, 'num_cards', 0) if hasattr(game, 'screen') else 0,
+            default=0,
+        )
         selected_cards = getattr(game.screen, 'selected_cards', []) if hasattr(game, 'screen') else []
         can_confirm = 1.0 if getattr(game, 'proceed_available', False) else 0.0
         if hand_select and hasattr(game.screen, 'can_pick_zero'):
@@ -409,7 +412,7 @@ class StateEncoder:
     def _encode_combat_piles(self, game: Game) -> List[float]:
         exhaust_size = len(game.exhaust_pile) if game.exhaust_pile else 0
         limbo_size = len(game.limbo) if game.limbo else 0
-        discarded = getattr(game, 'cards_discarded_this_turn', 0) or 0
+        discarded = self._safe_int(getattr(game, 'cards_discarded_this_turn', 0), default=0)
         card_in_play = getattr(game, 'card_in_play', None)
         card_in_play_id = getattr(card_in_play, 'card_id', None) if card_in_play else None
         if card_in_play_id is None and card_in_play is not None:
