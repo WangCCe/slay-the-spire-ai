@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from spirecomm.ai.rl.agent import RLAgent
-from spirecomm.communication.action import PlayCardAction
+from spirecomm.communication.action import ConfirmAction, PlayCardAction
 
 
 class _ActionEncoder:
@@ -82,3 +82,41 @@ def test_rl_action_context_accepts_card_type_attribute_for_played_card():
 
     assert isinstance(action, PlayCardAction)
     assert agent.reward_calculator.action_context["played_card_type"] == "SKILL"
+
+
+def test_rl_agent_hand_select_confirm_bypass_accepts_string_num_cards():
+    from spirecomm.spire.screen import ScreenType
+
+    class ConfirmActionEncoder:
+        USE_POTION_OFFSET = 5
+        END_TURN_ACTION = 9
+        CONFIRM_ACTION = 7
+
+        def get_action_mask(self, _game):
+            mask = [False] * 10
+            mask[self.CONFIRM_ACTION] = True
+            return mask
+
+    agent = RLAgent.__new__(RLAgent)
+    agent.state_encoder = SimpleNamespace(encode=lambda _game: np.zeros(3, dtype=float))
+    agent.action_encoder = ConfirmActionEncoder()
+    agent.training_mode = False
+    agent.failed_actions = set()
+    agent.consecutive_failures = {}
+    agent.last_state_key = None
+    agent.last_logged_turn = None
+    game = SimpleNamespace(
+        screen_type=ScreenType.HAND_SELECT,
+        in_combat=True,
+        floor=1,
+        turn=1,
+        screen=SimpleNamespace(
+            selected_cards=[SimpleNamespace(name="Strike"), SimpleNamespace(name="Defend")],
+            num_cards="2",
+            can_pick_zero=False,
+        ),
+    )
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, ConfirmAction)

@@ -214,6 +214,7 @@ class RLAgent:
                 screen = getattr(game, "screen", None)
                 selected_cards = getattr(screen, "selected_cards", []) if screen else []
                 num_required = getattr(screen, "num_cards", 0) if screen else 0
+                num_required = self._safe_int(num_required, default=0)
                 can_pick_zero = getattr(screen, "can_pick_zero", False) if screen else False
                 confirm_ready = can_pick_zero or (
                     num_required > 0 and len(selected_cards) >= num_required
@@ -438,6 +439,15 @@ class RLAgent:
             # Return safe fallback action
             from spirecomm.communication.action import EndTurnAction
             return EndTurnAction()
+
+    @staticmethod
+    def _safe_int(value, default: int = 0) -> int:
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
 
     def reset(self) -> None:
         """Reset agent state for new episode."""
