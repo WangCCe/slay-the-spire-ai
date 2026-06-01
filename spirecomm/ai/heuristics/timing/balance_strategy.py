@@ -260,11 +260,20 @@ class CombatBalanceStrategy:
         try:
             player = getattr(context, 'player', None)
             if player and hasattr(player, 'current_hp') and hasattr(player, 'max_hp'):
-                return player.current_hp / max(player.max_hp, 1)
-        except:
+                current_hp = self._coerce_float(player.current_hp)
+                max_hp = max(self._coerce_float(player.max_hp, default=1.0), 1.0)
+                return max(0.0, current_hp / max_hp)
+        except Exception:
             pass
 
         return 1.0  # Default to full HP
+
+    @staticmethod
+    def _coerce_float(value, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
 
     @staticmethod
     def _is_live_monster(monster) -> bool:

@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from spirecomm.data import loader as data_loader
 from spirecomm.ai.heuristics.timing.balance_strategy import CombatBalanceStrategy
+from spirecomm.ai.heuristics.timing.models import BalanceWeights, TurnTiming
 
 
 def test_balance_strategy_current_damage_ignores_zero_hp_stale_monsters():
@@ -57,6 +58,18 @@ def test_balance_strategy_current_damage_ignores_non_attack_intents():
     context = SimpleNamespace(monsters_alive=[buffing, attacking])
 
     assert CombatBalanceStrategy()._estimate_current_damage(context) == 10
+
+
+def test_balance_strategy_uses_numeric_string_player_hp_for_defensive_adjustment():
+    context = SimpleNamespace(
+        player=SimpleNamespace(current_hp="20", max_hp="80"),
+        monsters_alive=[],
+    )
+    weights = CombatBalanceStrategy().get_balance_weights(TurnTiming.BALANCED, context)
+    baseline = BalanceWeights.balanced_weights()
+
+    assert weights.block_weight > baseline.block_weight
+    assert weights.damage_weight < baseline.damage_weight
 
 
 def test_low_scaling_encounter_uses_live_monster_id_for_summoners(monkeypatch):
