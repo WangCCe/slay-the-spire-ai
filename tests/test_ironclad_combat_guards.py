@@ -9868,6 +9868,33 @@ def test_lethal_detector_uses_inflame_strength_before_followup(monkeypatch):
     ]
 
 
+def test_lethal_detector_treats_none_upgrades_as_base_strength_support(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    inflame = _card(
+        "Inflame",
+        "Inflame",
+        card_type=CardType.POWER,
+        cost=1,
+        has_target=False,
+    )
+    inflame.upgrades = None
+    inflame.uuid = "inflame"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = _combat_context([inflame, strike], energy=2, monsters=[_louse(current_hp=8)])
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "inflame",
+        "strike",
+    ]
+
+
 def test_lethal_detector_does_not_use_demon_form_as_immediate_strength(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}

@@ -23,7 +23,7 @@ from .card_costs import (
     whirlwind_damage,
     x_effect_energy,
 )
-from .card_upgrades import known_damage_upgrade_bonus
+from .card_upgrades import card_upgrade_count, is_card_upgraded, known_damage_upgrade_bonus
 
 logger = logging.getLogger(__name__)
 
@@ -587,7 +587,7 @@ class CombatEndingDetector:
         if not text:
             return []
 
-        upgraded = getattr(card, 'upgrades', 0) > 0
+        upgraded = is_card_upgraded(card)
         effects = []
         effect_text = text.replace('\\n', '\n').replace('#', '').lower()
         for clause in re.split(r'[\n.;]', effect_text):
@@ -658,13 +658,13 @@ class CombatEndingDetector:
 
     def _strength_after_lethal_support_card(self, card: Card, strength: int) -> int:
         if self._base_card_name(card) == 'Flex':
-            return strength + (4 if getattr(card, 'upgrades', 0) > 0 else 2)
+            return strength + (4 if is_card_upgraded(card) else 2)
         if self._base_card_name(card) == 'Limit Break':
             return strength * 2
         if self._base_card_name(card) == 'Spot Weakness':
-            return strength + (4 if getattr(card, 'upgrades', 0) > 0 else 3)
+            return strength + (4 if is_card_upgraded(card) else 3)
         if self._base_card_name(card) == 'Inflame':
-            return strength + (3 if getattr(card, 'upgrades', 0) > 0 else 2)
+            return strength + (3 if is_card_upgraded(card) else 2)
         return strength
 
     def _lethal_strength_support_targets(
@@ -691,7 +691,7 @@ class CombatEndingDetector:
     def _lethal_energy_gain(self, card: Card) -> int:
         card_name = self._base_card_name(card)
         if card_name == 'Bloodletting':
-            return 3 if getattr(card, 'upgrades', 0) > 0 else 2
+            return 3 if is_card_upgraded(card) else 2
         if card_name in {'Offering', 'Seeing Red'}:
             return 2
         return 0
@@ -749,7 +749,7 @@ class CombatEndingDetector:
         return self._base_card_name(card) == 'Double Tap'
 
     def _lethal_double_tap_charges(self, card: Card) -> int:
-        return 2 if getattr(card, 'upgrades', 0) > 0 else 1
+        return 2 if is_card_upgraded(card) else 1
 
     def _lethal_attack_repeats(self, card: Card, double_tap_charges: int) -> int:
         if double_tap_charges <= 0:
@@ -764,7 +764,7 @@ class CombatEndingDetector:
     def _rampage_scaling_per_play(self, card: Card) -> int:
         if self._base_card_name(card) != 'Rampage':
             return 0
-        return 8 if getattr(card, 'upgrades', 0) > 0 else 5
+        return 8 if is_card_upgraded(card) else 5
 
     def _is_lethal_vulnerable_support_card(self, card: Card) -> bool:
         if getattr(card, 'type', None) != CardType.SKILL:
@@ -1596,7 +1596,7 @@ class CombatEndingDetector:
             Damage value
         """
         card_name = self._base_card_name(card)
-        upgrades = getattr(card, 'upgrades', 0)
+        upgrades = card_upgrade_count(card)
         display_name = getattr(card, 'name', None) or card_name
         if upgrades > 0 and '+' not in display_name:
             upgrade_suffix = f"+{upgrades}" if card_name == 'Searing Blow' and upgrades > 1 else '+'
@@ -1635,8 +1635,6 @@ class CombatEndingDetector:
 
         if hasattr(card, 'type') and card.type == CardType.ATTACK:
             strength = getattr(context, 'strength', 0) if strength_override is None else strength_override
-            upgrades = getattr(card, 'upgrades', 0)
-
             if card_name == 'Heavy Blade':
                 multiplier = 5 if upgrades > 0 else 3
                 base_damage += strength * multiplier
@@ -1843,7 +1841,7 @@ class CombatEndingDetector:
     ) -> int:
         """Return known hit counts for repeated-hit attacks."""
         card_name = self._base_card_name(card)
-        upgrades = getattr(card, 'upgrades', 0)
+        upgrades = card_upgrade_count(card)
 
         if card_name == 'Twin Strike':
             return 2
