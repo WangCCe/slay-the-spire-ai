@@ -433,7 +433,7 @@ class DecisionContext:
         # ===== Component 3: Scaling threat (from Wiki threat profile) =====
         threat_profile = game_data_loader.get_monster_threat_profile(monster_name)
         if threat_profile:
-            scaling_threat = threat_profile.get('scaling_threat', 0)
+            scaling_threat = self._safe_float(threat_profile.get('scaling_threat', 0), 0.0)
 
             # Estimate turns to kill based on HP percentage
             if scaling_threat > 0:
@@ -442,7 +442,10 @@ class DecisionContext:
 
             # Strength scaling threat
             if current_strength > 0:
-                strength_scaling = threat_profile.get('strength_scaling_threat', 4.0)
+                strength_scaling = self._safe_float(
+                    threat_profile.get('strength_scaling_threat', 4.0),
+                    4.0,
+                )
                 threat += int(strength_scaling * current_strength)
 
         # ===== Component 4: Special ability threat =====
@@ -514,7 +517,7 @@ class DecisionContext:
 
         # ===== Component 6: Base threat adjustment =====
         if threat_profile:
-            base_threat = threat_profile.get('base_threat', 20)
+            base_threat = self._safe_float(threat_profile.get('base_threat', 20), 20.0)
             # Blend calculated threat with base threat (70% calculated, 30% base)
             threat = int(threat * 0.7 + base_threat * 0.3)
 
