@@ -122,6 +122,24 @@ def test_rl_state_encoder_card_type_features_accept_strings():
     assert features[4] == 1.0
 
 
+def test_rl_state_encoder_card_type_features_accept_card_type_attribute():
+    encoder = StateEncoder()
+    card = SimpleNamespace(
+        name="Defend",
+        card_type="CardType.SKILL",
+        cost=1,
+        cost_for_turn=1,
+        upgrades=0,
+        has_target=False,
+        exhausts=False,
+        properties=[],
+    )
+
+    features = encoder._encode_single_card(card)
+
+    assert features[5] == 1.0
+
+
 def test_rl_state_encoder_infers_target_feature_for_name_only_attack_without_has_target():
     encoder = StateEncoder()
     strike = SimpleNamespace(

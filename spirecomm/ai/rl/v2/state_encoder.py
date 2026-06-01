@@ -234,7 +234,7 @@ class StateEncoderV2:
         else:
             cost_norm = min(cost, 5) / 5.0
         is_playable = 1.0 if getattr(card, "is_playable", False) else 0.0
-        type_one_hot = self._encode_card_type(getattr(card, "type", None))
+        type_one_hot = self._encode_card_type(card)
         tag_one_hot = self._encode_card_tags(card)
 
         return [

@@ -84,7 +84,7 @@ class StateEncoder:
     def _encode_single_card(self, card: Card) -> List[float]:
         damage, block = self._extract_card_damage_block(card)
 
-        normalized_card_type = card_type_name(getattr(card, 'type', None))
+        normalized_card_type = card_type_name(card)
 
         card_id_hash = 0.0
         card_key = self._card_hash_key(card)

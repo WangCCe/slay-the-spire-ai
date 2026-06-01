@@ -97,6 +97,18 @@ def test_rl_v2_card_type_features_accept_strings():
     assert features[3] == 1.0
 
 
+def test_rl_v2_card_type_features_accept_card_type_attribute():
+    encoder = StateEncoderV2(_mapper())
+    card = _card("Cleave")
+    card.cost = 1
+    card.cost_for_turn = 1
+    card.card_type = "CardType.SKILL"
+
+    features = encoder._encode_card_features(card)
+
+    assert features[4] == 1.0
+
+
 def test_rl_v2_player_class_features_accept_strings():
     encoder = StateEncoderV2(_mapper())
 
