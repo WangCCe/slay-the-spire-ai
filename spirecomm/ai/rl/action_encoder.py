@@ -8,6 +8,7 @@ from typing import List, Optional, Tuple
 
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.ai.heuristics.card_types import card_is_playable, card_requires_target
+from spirecomm.ai.heuristics.potions import game_real_potions
 from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id
 from spirecomm.spire.screen import reward_type_name
@@ -730,7 +731,9 @@ class ActionEncoder:
         if game.in_combat:
             hand = game.hand if game.hand else []
             monsters = game.monsters if game.monsters else []
-            potions = game.potions if game.potions else []
+            raw_potions = getattr(game, "potions", None)
+            potions = raw_potions if raw_potions is not None else game_real_potions(game)
+            potions = potions or []
 
             # End turn is only valid when end is available
             if hasattr(game, "end_available") and game.end_available:
