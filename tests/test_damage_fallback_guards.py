@@ -6,6 +6,7 @@ import re
 import spirecomm.ai.heuristics.ironclad_combat as ironclad_combat
 import spirecomm.ai.heuristics.simulation as simulation
 import spirecomm.data.loader as data_loader
+from spirecomm.data.loader import GameDataLoader
 from spirecomm.ai.heuristics.ironclad_combat import IroncladCombatPlanner
 from spirecomm.ai.heuristics.simulation import (
     FastCombatSimulator,
@@ -433,6 +434,103 @@ def test_skill_simulation_applies_targeted_debuff_to_selected_monster(monkeypatc
 
     assert state.monsters[0]["weak"] == 0
     assert state.monsters[1]["weak"] == 2
+
+
+def _patch_malformed_aoe_upgrade_loader(monkeypatch, card_name, description, wiki_text):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        card_name.lower(): {
+            "name": card_name,
+            "description": description,
+        }
+    }
+    loader._wiki_data = {
+        card_name.lower(): {
+            "name": card_name,
+            "text": wiki_text,
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+
+def _two_monster_skill_state():
+    return SimpleNamespace(
+        monsters=[
+            {
+                "hp": 30,
+                "block": 0,
+                "is_gone": False,
+                "half_dead": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "frail": 0,
+                "artifact": 0,
+            },
+            {
+                "hp": 30,
+                "block": 0,
+                "is_gone": False,
+                "half_dead": False,
+                "vulnerable": 0,
+                "weak": 0,
+                "frail": 0,
+                "artifact": 0,
+            },
+        ],
+        player_block=0,
+        player_energy=0,
+        player_strength=0,
+        energy_gained=0,
+        exhaust_events=0,
+        cards_drawn=0,
+    )
+
+
+def test_malformed_blind_upgrade_suffix_keeps_base_card_single_target(monkeypatch):
+    _patch_malformed_aoe_upgrade_loader(
+        monkeypatch,
+        "Blind",
+        "Apply 2 Weak.",
+        "Apply 2 #Weak| to ALL enemies].",
+    )
+    blind = Card(
+        card_id="Blind",
+        name="Blind",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.UNCOMMON,
+        has_target=True,
+        cost=0,
+    )
+    state = _two_monster_skill_state()
+
+    FastCombatSimulator(None)._apply_skill(state, blind, target_index=1)
+
+    assert state.monsters[0]["weak"] == 0
+    assert state.monsters[1]["weak"] == 2
+
+
+def test_malformed_trip_upgrade_suffix_applies_aoe_only_when_upgraded(monkeypatch):
+    _patch_malformed_aoe_upgrade_loader(
+        monkeypatch,
+        "Trip",
+        "Apply 2 Vulnerable.",
+        "Apply 2 #Vulnerable| to ALL enemies].",
+    )
+    trip_plus = Card(
+        card_id="Trip",
+        name="Trip+",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.UNCOMMON,
+        has_target=True,
+        cost=0,
+        upgrades=1,
+    )
+    state = _two_monster_skill_state()
+
+    FastCombatSimulator(None)._apply_skill(state, trip_plus, target_index=1)
+
+    assert state.monsters[0]["vulnerable"] == 2
+    assert state.monsters[1]["vulnerable"] == 2
 
 
 class _BaseOnlyBlockLoader:

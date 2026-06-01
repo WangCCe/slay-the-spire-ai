@@ -1609,6 +1609,11 @@ class FastCombatSimulator:
             lambda match: '' if upgraded else match.group(1),
             text,
         )
+        text = re.sub(
+            r'\|([^\]]*)\]',
+            lambda match: match.group(1) if upgraded else '',
+            text,
+        )
         return text
 
     def _card_exhausts_itself(self, description: str, upgraded: bool = False) -> bool:
@@ -3100,7 +3105,11 @@ class FastCombatSimulator:
                 )
                 # Disarm is handled above as a data-independent fallback.
                 if has_debuff and card_name != 'Disarm':
-                    is_aoe = game_data_loader._is_card_aoe(card_data) or 'all enemies' in description
+                    effect_text = self._effect_text_for_upgrade(
+                        description,
+                        upgrades,
+                    ).lower()
+                    is_aoe = 'all enemies' in effect_text
                     debuff_effects = self._description_debuff_effects(
                         description,
                         upgrades,
