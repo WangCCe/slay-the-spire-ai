@@ -983,11 +983,18 @@ class EnemyThreatProfiler:
         # Check power names for scaling indicators
         scaling_keywords = ['strength', 'ritual', 'thorns', 'anger', 'enrage']
         for power in monster.powers:
-            if hasattr(power, 'name'):
-                power_name = power.name.lower()
-                for keyword in scaling_keywords:
-                    if keyword in power_name:
-                        return True
+            power_name = (
+                getattr(power, 'power_id', None)
+                or getattr(power, 'power_name', None)
+                or getattr(power, 'name', None)
+            )
+            if power_name is None:
+                continue
+
+            power_name = str(power_name).lower()
+            for keyword in scaling_keywords:
+                if keyword in power_name:
+                    return True
 
         return False
 

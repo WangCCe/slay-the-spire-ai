@@ -496,3 +496,13 @@ def test_enemy_threat_profiler_uses_live_monster_id_for_automaton():
     )
 
     assert EnemyThreatProfiler().analyze_threat([live_automaton]) == ThreatCategory.ELITE
+
+
+def test_enemy_threat_profiler_detects_power_name_scaling():
+    cultist = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        powers=[SimpleNamespace(power_name="Ritual", amount=3)],
+    )
+
+    assert EnemyThreatProfiler().analyze_threat([cultist]) == ThreatCategory.SCALING
