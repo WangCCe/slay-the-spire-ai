@@ -925,7 +925,7 @@ class EnemyThreatProfiler:
             ThreatCategory indicating the threat level
         """
         # Check cache to avoid redundant computation
-        monster_key = tuple(id(m) for m in monsters)
+        monster_key = tuple(self._monster_cache_key(monster) for monster in monsters)
         if self._cached_threat is not None and self._cached_monsters == monster_key:
             return self._cached_threat
 
@@ -936,6 +936,23 @@ class EnemyThreatProfiler:
         self._cached_monsters = monster_key
 
         return threat
+
+    def _monster_cache_key(self, monster: Monster):
+        powers = getattr(monster, 'powers', None) or []
+        power_key = tuple(
+            (
+                getattr(power, 'power_id', None),
+                getattr(power, 'power_name', None),
+                getattr(power, 'name', None),
+                getattr(power, 'amount', None),
+            )
+            for power in powers
+        )
+        return (
+            id(monster),
+            canonical_live_monster_name(monster),
+            power_key,
+        )
 
     def _do_analyze_threat(self, monsters: List[Monster]) -> ThreatCategory:
         """Internal threat analysis logic."""

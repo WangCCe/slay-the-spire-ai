@@ -506,3 +506,18 @@ def test_enemy_threat_profiler_detects_power_name_scaling():
     )
 
     assert EnemyThreatProfiler().analyze_threat([cultist]) == ThreatCategory.SCALING
+
+
+def test_enemy_threat_profiler_cache_tracks_power_changes():
+    cultist = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        powers=[],
+    )
+    profiler = EnemyThreatProfiler()
+
+    assert profiler.analyze_threat([cultist]) == ThreatCategory.REGULAR
+
+    cultist.powers.append(SimpleNamespace(power_name="Ritual", amount=3))
+
+    assert profiler.analyze_threat([cultist]) == ThreatCategory.SCALING
