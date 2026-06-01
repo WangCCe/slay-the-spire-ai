@@ -25,6 +25,15 @@ class StateEncoder:
     def __init__(self):
         self.feature_dim = 781  # UNCHANGED - using reserved space for new features
 
+    @staticmethod
+    def _potion_id(potion):
+        return (
+            getattr(potion, 'potion_id', None)
+            or getattr(potion, 'name', None)
+            or getattr(potion, 'id', None)
+            or potion
+        )
+
     def encode(self, game: Game) -> np.ndarray:
         features = []
         features.extend(self._encode_player_state(game))
@@ -248,7 +257,7 @@ class StateEncoder:
                         potion_hash = 0.0
                     can_use = 0.0
 
-                is_present = 0.0 if getattr(potion, 'potion_id', None) == "Potion Slot" else 1.0
+                is_present = 0.0 if self._potion_id(potion) == "Potion Slot" else 1.0
                 features.extend([potion_hash, is_present, can_use])
             else:
                 features.extend([0.0] * 3)
@@ -389,7 +398,7 @@ class StateEncoder:
         card_in_play_hash = self._stable_hash(card_in_play_id, 50) / 50.0 if card_in_play_id else 0.0
 
         potions = game.potions if game.potions else []
-        real_potions = [p for p in potions if getattr(p, 'potion_id', None) != "Potion Slot"]
+        real_potions = [p for p in potions if self._potion_id(p) != "Potion Slot"]
         empty_slots = len(potions) - len(real_potions)
         potions_full = 1.0 if hasattr(game, 'are_potions_full') and game.are_potions_full() else 0.0
         potion_available = 1.0 if getattr(game, 'potion_available', False) else 0.0

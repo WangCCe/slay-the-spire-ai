@@ -120,6 +120,21 @@ def test_rl_v2_relic_ids_accept_strings():
     assert ids[0] == 11
 
 
+def test_rl_v2_potion_ids_accept_strings():
+    mapper = IdMapper(
+        card_ids={},
+        potion_ids={"Fire Potion": 13},
+        relic_ids={},
+        card_tags={},
+    )
+    encoder = StateEncoderV2(mapper)
+    game = SimpleNamespace(potions=["Fire Potion"])
+
+    ids = encoder._encode_potion_ids(game)
+
+    assert ids[0] == 13
+
+
 def test_rl_v2_card_features_treat_missing_cost_as_zero():
     encoder = StateEncoderV2(_mapper())
     card = _card("Cleave")

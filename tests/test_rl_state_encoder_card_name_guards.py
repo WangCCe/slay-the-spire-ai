@@ -142,6 +142,34 @@ def test_rl_state_encoder_relic_features_accept_strings():
     assert sum(features) == 1.0
 
 
+def test_rl_state_encoder_potion_slot_string_is_empty():
+    encoder = StateEncoder()
+    game = SimpleNamespace(potions=["Potion Slot"])
+
+    features = encoder._encode_potions(game)
+
+    assert features[1] == 0.0
+    assert features[2] == 0.0
+
+
+def test_rl_state_encoder_combat_piles_count_string_potion_slots_as_empty():
+    encoder = StateEncoder()
+    game = SimpleNamespace(
+        exhaust_pile=[],
+        limbo=[],
+        cards_discarded_this_turn=0,
+        card_in_play=None,
+        potions=["Potion Slot", "Fire Potion"],
+        potion_available=False,
+        are_potions_full=lambda: False,
+    )
+
+    features = encoder._encode_combat_piles(game)
+
+    assert features[4] == 1 / 5
+    assert features[5] == 1 / 5
+
+
 def test_rl_state_encoder_intent_encoding_accepts_string_representations():
     encoder = StateEncoder()
 

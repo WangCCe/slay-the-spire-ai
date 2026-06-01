@@ -275,7 +275,7 @@ class StateEncoderV2:
         potions = game.potions or []
         for idx in range(min(len(potions), self.POTION_SLOTS)):
             potion = potions[idx]
-            potion_id = getattr(potion, "potion_id", None) or getattr(potion, "name", None)
+            potion_id = getattr(potion, "potion_id", None) or getattr(potion, "name", None) or potion
             if potion_id == "Potion Slot":
                 ids[idx] = 0
             else:
