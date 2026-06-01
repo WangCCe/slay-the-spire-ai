@@ -20,6 +20,7 @@ from spirecomm.ai.heuristics.simulation import (
     BLOCK_UPGRADE_BONUS,
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
+from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 
 # Note: Logging is configured in main.py to write to ai_debug.log
@@ -499,7 +500,12 @@ class SimpleAgent:
 
     def get_play_card_action(self):
         playable_cards = [card for card in self.game.hand if card.is_playable]
-        zero_cost_cards = [card for card in playable_cards if card.cost == 0]
+        available_energy = getattr(getattr(self.game, "player", None), "energy", None)
+        zero_cost_cards = [
+            card
+            for card in playable_cards
+            if effective_card_cost(card, available_energy) == 0
+        ]
         zero_cost_attacks = [
             card
             for card in zero_cost_cards
@@ -510,7 +516,11 @@ class SimpleAgent:
             for card in zero_cost_cards
             if card.type != spirecomm.spire.card.CardType.ATTACK
         ]
-        nonzero_cost_cards = [card for card in playable_cards if card.cost != 0]
+        nonzero_cost_cards = [
+            card
+            for card in playable_cards
+            if effective_card_cost(card, available_energy) != 0
+        ]
         aoe_cards = [
             card for card in playable_cards if self.priorities.is_card_aoe(card)
         ]

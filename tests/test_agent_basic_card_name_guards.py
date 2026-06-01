@@ -2,7 +2,8 @@ from types import SimpleNamespace
 
 from spirecomm.ai.agent import SimpleAgent
 from spirecomm.ai.priorities import IroncladPriority
-from spirecomm.communication.action import CardSelectAction, ChooseAction
+from spirecomm.communication.action import CardSelectAction, ChooseAction, PlayCardAction
+from spirecomm.spire.card import CardType
 from spirecomm.spire.screen import ScreenType
 
 
@@ -24,6 +25,33 @@ def _agent(**game_overrides):
     agent._shop_exit_waits = 0
     agent.game = SimpleNamespace(**game_overrides)
     return agent
+
+
+def _playable_card(card_id, card_type, cost, cost_for_turn=None):
+    return SimpleNamespace(
+        card_id=card_id,
+        name=card_id,
+        type=card_type,
+        cost=cost,
+        cost_for_turn=cost if cost_for_turn is None else cost_for_turn,
+        is_playable=True,
+        has_target=False,
+        exhausts=False,
+    )
+
+
+class _PreferCostlyAttackPriority:
+    def is_card_aoe(self, card):
+        return False
+
+    def is_card_defensive(self, card):
+        return False
+
+    def get_best_card_to_play(self, cards):
+        for card in cards:
+            if getattr(card, "type", None) == CardType.ATTACK:
+                return card
+        return cards[0]
 
 
 def test_shop_purges_upgraded_strike_before_buying_good_card():
@@ -104,3 +132,20 @@ def test_upgrade_candidate_treats_none_upgrades_as_unupgraded():
     assert agent._score_upgrade_candidate(unknown_upgrade_card) == agent._score_upgrade_candidate(
         base_card
     )
+
+
+def test_play_card_action_treats_turn_cost_zero_non_attack_as_free():
+    free_inflame = _playable_card("Inflame", CardType.POWER, cost=1, cost_for_turn=0)
+    strike = _playable_card("Strike_R", CardType.ATTACK, cost=1, cost_for_turn=1)
+    agent = _agent(
+        hand=[free_inflame, strike],
+        monsters=[],
+        player=SimpleNamespace(block=0, energy=1),
+        act=1,
+    )
+    agent.priorities = _PreferCostlyAttackPriority()
+
+    action = agent.get_play_card_action()
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card is free_inflame
