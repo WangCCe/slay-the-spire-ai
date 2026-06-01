@@ -140,6 +140,18 @@ def test_rl_state_encoder_card_type_features_accept_card_type_attribute():
     assert features[5] == 1.0
 
 
+def test_rl_state_encoder_card_stats_accept_string_damage_and_block():
+    encoder = StateEncoder()
+    card = _card("Iron Wave")
+    card.damage = "5"
+    card.block = "5"
+
+    features = encoder._encode_single_card(card)
+
+    assert features[2] == 5 / 30
+    assert features[3] == 5 / 20
+
+
 def test_rl_state_encoder_infers_target_feature_for_name_only_attack_without_has_target():
     encoder = StateEncoder()
     strike = SimpleNamespace(

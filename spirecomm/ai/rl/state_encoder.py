@@ -568,7 +568,10 @@ class StateEncoder:
             except (AttributeError, TypeError):
                 pass
 
-        return damage, block
+        return (
+            StateEncoder._safe_float(damage, default=0.0),
+            StateEncoder._safe_float(block, default=0.0),
+        )
 
     @staticmethod
     def _card_hash_key(card: Card):
