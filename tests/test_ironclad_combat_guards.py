@@ -7543,6 +7543,26 @@ def test_flex_artifact_blocks_end_of_turn_strength_loss():
     assert projected.player_strength == 2
 
 
+def test_flex_treats_none_upgrades_as_base_strength_gain():
+    flex = _card("Flex", "Flex", card_type=CardType.SKILL, cost=0, has_target=False)
+    flex.upgrades = None
+    context = _combat_context([flex], energy=0, monsters=[_louse(current_hp=100)])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        flex,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    projected = simulator.project_end_turn_effects(state)
+
+    assert state.player_strength == 2
+    assert projected.player_strength == 0
+
+
 def test_spot_weakness_ignores_zero_hp_stale_attacking_target():
     spot_weakness = _card(
         "Spot Weakness",
@@ -7662,6 +7682,27 @@ def test_energy_gain_skills_add_usable_energy(monkeypatch):
 
     assert result.player_energy == 4
     assert result.energy_gained == 3
+    assert result.player_hp == 77
+
+    bloodletting_unknown_upgrade = _card(
+        "Bloodletting",
+        "Bloodletting",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    bloodletting_unknown_upgrade.upgrades = None
+    context = _combat_context([bloodletting_unknown_upgrade], energy=1, monsters=[_louse(current_hp=100)])
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        bloodletting_unknown_upgrade,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 3
+    assert result.energy_gained == 2
     assert result.player_hp == 77
 
     offering = _card("Offering", "Offering", card_type=CardType.SKILL, cost=0, has_target=False)

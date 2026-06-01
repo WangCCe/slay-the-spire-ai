@@ -1630,7 +1630,7 @@ class FastCombatSimulator:
             return False
         return self._card_exhausts_itself(
             self._get_card_effect_text(card_name, card_data),
-            getattr(card, 'upgrades', 0) > 0,
+            is_card_upgraded(card),
         )
 
     def _calculate_attack_damage(
@@ -3035,7 +3035,7 @@ class FastCombatSimulator:
                     card_data = game_data_loader.get_card_data(card_name)
                     if card_data:
                         block_data = dict(card_data)
-                        upgrades = getattr(card, 'upgrades', 0)
+                        upgrades = card_upgrade_count(card)
                         block_data['name'] = f"{card_name}+" if upgrades > 0 else card_name
                         base_block = game_data_loader._parse_card_block(block_data)
                         if base_block and base_block > 0:
@@ -3065,7 +3065,7 @@ class FastCombatSimulator:
                     else:
                         logger.debug(f"[BLOCK_NODATA] No card data found for {card_name}")
         if _canonical_card_name(card) == 'Rage':
-            rage_gain = 5 if getattr(card, 'upgrades', 0) > 0 else 3
+            rage_gain = 5 if is_card_upgraded(card) else 3
             state.rage_block_per_attack += rage_gain
 
         self._apply_strength_skill(state, card, target_index)
@@ -3079,7 +3079,7 @@ class FastCombatSimulator:
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
                 description = self._get_card_effect_text(card_name, card_data)
-                upgrades = getattr(card, 'upgrades', 0) > 0
+                upgrades = is_card_upgraded(card)
                 has_debuff = any(
                     debuff in description
                     for debuff in ('vulnerable', 'weak', 'poison', 'strength down')
@@ -3134,7 +3134,7 @@ class FastCombatSimulator:
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
                 description = self._get_card_effect_text(card_name, card_data)
-                upgraded = getattr(card, 'upgrades', 0) > 0
+                upgraded = is_card_upgraded(card)
                 state.exhaust_events += self._skill_exhaust_events_from_description(
                     description,
                     upgraded,
@@ -3243,7 +3243,7 @@ class FastCombatSimulator:
     ):
         """Apply immediate Strength-changing Ironclad skills."""
         card_id = _canonical_card_name(card)
-        upgrades = getattr(card, 'upgrades', 0)
+        upgrades = card_upgrade_count(card)
 
         if card_id == 'Flex':
             strength_gain = 4 if upgrades > 0 else 2
@@ -3284,7 +3284,7 @@ class FastCombatSimulator:
 
     def _apply_energy_gain_skill(self, state: SimulationState, card: Card):
         card_id = _canonical_card_name(card)
-        upgrades = getattr(card, 'upgrades', 0)
+        upgrades = card_upgrade_count(card)
         energy_gain = 0
 
         if card_id == 'Bloodletting':
@@ -3318,7 +3318,7 @@ class FastCombatSimulator:
         if current_poison <= 0:
             return
 
-        multiplier = 3 if getattr(card, 'upgrades', 0) > 0 else 2
+        multiplier = 3 if is_card_upgraded(card) else 2
         self._apply_monster_poison(monster, current_poison * (multiplier - 1))
 
     def _apply_second_wind(
@@ -3342,7 +3342,7 @@ class FastCombatSimulator:
         if exhausted_count <= 0:
             return True
 
-        block_per_card = 7 if getattr(card, 'upgrades', 0) > 0 else 5
+        block_per_card = 7 if is_card_upgraded(card) else 5
         block_gain = self._apply_card_block_modifiers(block_per_card, state)
         for _ in range(exhausted_count):
             self._add_player_block(state, block_gain)
@@ -3356,7 +3356,7 @@ class FastCombatSimulator:
         if card_id != 'Double Tap':
             return False
 
-        state.double_tap_charges += 2 if getattr(card, 'upgrades', 0) > 0 else 1
+        state.double_tap_charges += 2 if is_card_upgraded(card) else 1
         return True
 
     def _apply_block_multiplier_skill(self, state: SimulationState, card: Card) -> bool:
@@ -3386,7 +3386,7 @@ class FastCombatSimulator:
         if self._consume_monster_artifact(monster):
             return
 
-        strength_loss = 3 if getattr(card, 'upgrades', 0) > 0 else 2
+        strength_loss = 3 if is_card_upgraded(card) else 2
         self._remember_monster_adjusted_damage_source(monster)
         monster['strength'] = monster.get('strength', 0) - strength_loss
         monster['_simulated_strength_delta'] = (
