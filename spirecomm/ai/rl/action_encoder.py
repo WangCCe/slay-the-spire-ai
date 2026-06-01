@@ -8,6 +8,7 @@ from typing import List, Optional, Tuple
 
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.spire.game import Game
+from spirecomm.spire.screen import reward_type_name
 from spirecomm.communication.action import (
     PlayCardAction,
     PotionAction,
@@ -674,8 +675,6 @@ class ActionEncoder:
 
         # COMBAT_REWARD screen (after battle or chest rewards)
         if self._is_screen_type(game, "COMBAT_REWARD"):
-            from spirecomm.spire.screen import RewardType
-
             rewards = []
             if (
                 hasattr(game, "screen")
@@ -696,7 +695,7 @@ class ActionEncoder:
 
                 # Check if potion reward and potions are full
                 if hasattr(reward, "reward_type"):
-                    if reward.reward_type == RewardType.POTION:
+                    if reward_type_name(reward) == "POTION":
                         # Check if player has full potion slots
                         if (
                             hasattr(game, "are_potions_full")

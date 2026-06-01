@@ -41,6 +41,18 @@ class RewardType(Enum):
     SAPPHIRE_KEY = 7
 
 
+def reward_type_name(reward_or_type) -> str:
+    reward_type = getattr(reward_or_type, "reward_type", reward_or_type)
+    if reward_type is None:
+        return ""
+    if hasattr(reward_type, "name"):
+        return str(reward_type.name).upper()
+    value = str(reward_type).upper()
+    if value.startswith("REWARDTYPE."):
+        return value.split(".", 1)[1]
+    return value
+
+
 class RestOption(Enum):
     DIG = 1
     LIFT = 2

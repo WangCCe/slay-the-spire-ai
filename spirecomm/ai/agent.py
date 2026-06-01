@@ -6,7 +6,7 @@ from datetime import datetime
 
 from spirecomm.spire.game import Game
 from spirecomm.spire.character import Intent, PlayerClass
-from spirecomm.spire.screen import RestOption
+from spirecomm.spire.screen import RestOption, reward_type_name
 from spirecomm.communication.action import *
 from spirecomm.ai.incoming_damage import (
     known_unknown_move_has_no_immediate_damage,
@@ -28,19 +28,6 @@ from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_up
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
-
-
-def _reward_type_name(reward_or_type) -> str:
-    reward_type = getattr(reward_or_type, "reward_type", reward_or_type)
-    if reward_type is None:
-        return ""
-    if hasattr(reward_type, "name"):
-        return str(reward_type.name).upper()
-    value = str(reward_type).upper()
-    if value.startswith("REWARDTYPE."):
-        return value.split(".", 1)[1]
-    return value
-
 
 # Import optimized AI components
 try:
@@ -664,7 +651,7 @@ class SimpleAgent:
             )
 
             for i, reward_item in enumerate(rewards):
-                reward_type = _reward_type_name(reward_item)
+                reward_type = reward_type_name(reward_item)
                 skip_potion = reward_type == "POTION" and self.game.are_potions_full()
                 skip_card = reward_type == "CARD" and self.skipped_cards
                 logging.info(
@@ -672,7 +659,7 @@ class SimpleAgent:
                 )
 
             for reward_item in rewards:
-                reward_type = _reward_type_name(reward_item)
+                reward_type = reward_type_name(reward_item)
                 if reward_type == "POTION" and self.game.are_potions_full():
                     continue
                 elif reward_type == "CARD" and self.skipped_cards:
