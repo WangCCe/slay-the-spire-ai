@@ -11,7 +11,12 @@ from typing import List, Optional
 from .models import TimingContext, TurnTiming, BalanceWeights
 from .turn_classifier import TurnTimingClassifier
 from .balance_strategy import CombatBalanceStrategy
-from spirecomm.ai.heuristics.combat_state import player_block_value
+from spirecomm.ai.heuristics.combat_state import (
+    monster_power_amount,
+    player_block_value,
+    player_debuff_stacks,
+    player_power_amount,
+)
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_hits import (
     fiend_fire_exhaust_count,
@@ -903,29 +908,10 @@ class TimingAwareCombatPlanner:
         return max(1, self._get_attack_hit_count(card, context))
 
     def _get_player_debuff_stacks(self, context, power_name: str) -> int:
-        player = getattr(getattr(context, 'game', None), 'player', None)
-        powers = getattr(player, 'powers', []) if player is not None else []
-        for power in powers:
-            if self._power_name(power) == power_name:
-                amount = getattr(power, 'amount', None)
-                return amount if amount is not None else 1
-        return 0
+        return player_debuff_stacks(context, power_name)
 
     def _get_player_power_amount(self, context, power_name: str) -> int:
-        player = getattr(getattr(context, 'game', None), 'player', None)
-        powers = getattr(player, 'powers', []) if player is not None else []
-        for power in powers:
-            if self._power_name(power) == power_name:
-                amount = getattr(power, 'amount', None)
-                return amount if amount is not None else 0
-        return 0
-
-    def _power_name(self, power):
-        return (
-            getattr(power, 'name', None)
-            or getattr(power, 'power_name', None)
-            or getattr(power, 'power_id', None)
-        )
+        return player_power_amount(context, power_name)
 
     def _all_alive_targets_vulnerable(self, context, monsters) -> bool:
         alive_targets = [
@@ -967,21 +953,7 @@ class TimingAwareCombatPlanner:
         )
 
     def _get_monster_power_amount(self, monster, power_name: str) -> int:
-        direct_attr = power_name.lower()
-        direct_amount = getattr(monster, direct_attr, None)
-        if direct_amount is not None:
-            try:
-                return max(0, int(direct_amount))
-            except (TypeError, ValueError):
-                return 0
-
-        powers = getattr(monster, 'powers', []) or []
-        for power in powers:
-            if self._power_name(power) == power_name:
-                amount = getattr(power, 'amount', None)
-                return amount if amount is not None else 1
-
-        return 0
+        return monster_power_amount(monster, power_name)
 
     def _apply_attack_damage_scaling(self, card, base_damage: int, strength: int, context) -> int:
         """Apply non-standard attack damage scaling for timing estimates."""

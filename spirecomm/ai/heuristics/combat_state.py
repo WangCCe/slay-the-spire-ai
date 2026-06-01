@@ -3,6 +3,46 @@
 from typing import Any
 
 
+def power_name(power: Any):
+    return (
+        getattr(power, 'name', None)
+        or getattr(power, 'power_name', None)
+        or getattr(power, 'power_id', None)
+    )
+
+
+def _power_amount(powers, name: str, missing_amount: int) -> int:
+    for power in powers or []:
+        if power_name(power) == name:
+            amount = getattr(power, 'amount', None)
+            return amount if amount is not None else missing_amount
+    return 0
+
+
+def player_power_amount(context: Any, name: str) -> int:
+    player = getattr(getattr(context, 'game', None), 'player', None)
+    powers = getattr(player, 'powers', []) if player is not None else []
+    return _power_amount(powers, name, 0)
+
+
+def player_debuff_stacks(context: Any, name: str) -> int:
+    player = getattr(getattr(context, 'game', None), 'player', None)
+    powers = getattr(player, 'powers', []) if player is not None else []
+    return _power_amount(powers, name, 1)
+
+
+def monster_power_amount(monster: Any, name: str) -> int:
+    direct_amount = getattr(monster, name.lower(), None)
+    if direct_amount is not None:
+        try:
+            return max(0, int(direct_amount))
+        except (TypeError, ValueError):
+            return 0
+
+    powers = getattr(monster, 'powers', []) or []
+    return _power_amount(powers, name, 1)
+
+
 def player_block_value(context: Any) -> int:
     block = getattr(context, 'player_block', None)
     if block is None:
