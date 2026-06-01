@@ -648,6 +648,27 @@ def test_x_cost_whirlwind_spends_current_energy_without_negative_simulation_stat
     assert result.total_damage_dealt == 30
 
 
+def test_simulate_card_play_applies_string_attack_type_damage():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.type = "ATTACK"
+    strike.damage = 6
+    target = _louse(current_hp=6)
+    context = _combat_context([strike], energy=1, monsters=[target])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.player_energy == 0
+    assert result.energy_spent == 1
+    assert result.total_damage_dealt == 6
+
+
 def test_cultist_ritual_turn_handles_string_attack_intents():
     context = _combat_context(
         [],

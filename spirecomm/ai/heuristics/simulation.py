@@ -29,6 +29,7 @@ from spirecomm.ai.heuristics.card_costs import (
     x_effect_energy,
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
+from spirecomm.ai.heuristics.card_types import card_type_name
 from spirecomm.ai.heuristics.card_upgrades import (
     DAMAGE_UPGRADE_BONUS,
     card_upgrade_count,
@@ -993,13 +994,13 @@ class FastCombatSimulator:
             New simulation state after playing the card
         """
         new_state = state.clone()
-        card_type = card.type if hasattr(card, 'type') else None
+        card_type = card_type_name(card)
 
         # Use actual cost (for Snecko Eye and other cost modifiers). X-cost
         # cards arrive as -1, but planning should spend all current energy.
         raw_cost = raw_card_cost(card)
         cost = effective_card_cost(card, new_state.player_energy)
-        if card_type == CardType.SKILL and new_state.corruption_active:
+        if card_type == 'SKILL' and new_state.corruption_active:
             cost = 0
         base_cost = raw_cost if raw_cost >= 0 else cost
         x_energy_spent = (
@@ -1030,7 +1031,7 @@ class FastCombatSimulator:
         # Apply card effects based on type
         resolved_target_index = self._resolve_target_index(target, target_index, context)
 
-        if card_type == CardType.ATTACK:
+        if card_type == 'ATTACK':
             attack_repeats = 1
             if new_state.double_tap_charges > 0:
                 attack_repeats = 2
@@ -1047,7 +1048,7 @@ class FastCombatSimulator:
                 )
                 self._apply_rage_block(new_state)
                 self._apply_self_damage(new_state, card)
-        elif card_type == CardType.SKILL:
+        elif card_type == 'SKILL':
             new_state.skills_played += 1
             corruption_exhausts_skill = new_state.corruption_active
             self._apply_skill(
@@ -1060,13 +1061,13 @@ class FastCombatSimulator:
             self._apply_skill_reactive_monster_powers(new_state)
             if corruption_exhausts_skill and not self._skill_exhausts_itself(card):
                 new_state.exhaust_events += 1
-        elif card_type == CardType.POWER:
+        elif card_type == 'POWER':
             self._apply_power(new_state, card)
             self._apply_power_reactive_monster_powers(new_state)
 
         self._apply_hex_card_pollution(new_state, card_type)
 
-        if card_type != CardType.ATTACK:
+        if card_type != 'ATTACK':
             self._apply_self_damage(new_state, card)
 
         self._apply_feel_no_pain_block(new_state, starting_exhaust_events)
@@ -1127,11 +1128,12 @@ class FastCombatSimulator:
                 continue
             monster['slow_stacks'] = int(monster.get('slow_stacks', 0) or 0) + 1
 
-    def _apply_hex_card_pollution(self, state: SimulationState, card_type: Optional[CardType]):
+    def _apply_hex_card_pollution(self, state: SimulationState, card_type):
         """Chosen's Hex adds Dazed to the draw pile whenever a non-Attack is played."""
         if getattr(state, 'player_hex', 0) <= 0:
             return
-        if card_type is None or card_type == CardType.ATTACK:
+        normalized_card_type = card_type_name(card_type)
+        if not normalized_card_type or normalized_card_type == 'ATTACK':
             return
 
         dazed_added = max(1, int(state.player_hex))
