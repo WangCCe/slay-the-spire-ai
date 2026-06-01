@@ -7302,6 +7302,28 @@ def test_inflame_uses_real_strength_amount_before_attacks():
     assert result.total_damage_dealt == 9
 
 
+def test_power_simulation_treats_none_upgrades_as_base_card():
+    inflame = _card(
+        "Inflame",
+        "Inflame",
+        card_type=CardType.POWER,
+        cost=1,
+        has_target=False,
+    )
+    inflame.upgrades = None
+    context = _combat_context([inflame], energy=1, monsters=[_louse(current_hp=100)])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        inflame,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_strength == 2
+
+
 def test_berserk_applies_self_vulnerable_without_immediate_energy_gain():
     simulator = FastCombatSimulator(SynergyCardEvaluator())
     berserk = _card(

@@ -31,6 +31,7 @@ from spirecomm.ai.heuristics.card_costs import (
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_upgrades import (
     DAMAGE_UPGRADE_BONUS,
+    is_card_upgraded,
     known_damage_upgrade_bonus as _known_damage_upgrade_bonus,
 )
 from spirecomm.data.loader import (
@@ -3154,6 +3155,7 @@ class FastCombatSimulator:
     def _apply_power(self, state: SimulationState, card: Card):
         """Apply power card effects."""
         card_id = _canonical_card_name(card)
+        upgraded = is_card_upgraded(card)
 
         # Demon Form starts gaining Strength on future turns, not immediately.
         if card_id == 'Demon Form':
@@ -3161,12 +3163,12 @@ class FastCombatSimulator:
 
         # Berserk applies Vulnerable immediately and grants extra energy on future turns.
         elif card_id == 'Berserk':
-            vulnerable = 1 if card.upgrades > 0 else 2
+            vulnerable = 1 if upgraded else 2
             self._apply_player_vulnerable_debuff(state, vulnerable)
 
         # Inflame - adds strength
         elif card_id == 'Inflame':
-            state.player_strength += 3 if card.upgrades > 0 else 2
+            state.player_strength += 3 if upgraded else 2
 
         # Corruption - skills cost 0 (track for synergy evaluation)
         elif card_id == 'Corruption':
@@ -3174,7 +3176,7 @@ class FastCombatSimulator:
 
         # Feel No Pain - gain block when cards exhaust
         elif card_id == 'Feel No Pain':
-            state.feel_no_pain_block_per_exhaust += 4 if card.upgrades > 0 else 3
+            state.feel_no_pain_block_per_exhaust += 4 if upgraded else 3
 
         # Dark Embrace - draw when cards exhaust
         elif card_id == 'Dark Embrace':
@@ -3182,24 +3184,24 @@ class FastCombatSimulator:
 
         # Juggernaut - damage a random enemy whenever block is gained.
         elif card_id == 'Juggernaut':
-            state.juggernaut_damage_on_block += 7 if card.upgrades > 0 else 5
+            state.juggernaut_damage_on_block += 7 if upgraded else 5
 
         # Metallicize - end-turn block applies before enemies attack, but not immediately.
         elif card_id == 'Metallicize':
-            state.end_turn_block += 4 if card.upgrades > 0 else 3
+            state.end_turn_block += 4 if upgraded else 3
 
         # Rupture - card HP loss grants Strength once per HP-loss event.
         elif card_id == 'Rupture':
-            state.rupture_strength_per_hp_loss += 2 if card.upgrades > 0 else 1
+            state.rupture_strength_per_hp_loss += 2 if upgraded else 1
 
         # Combust - end-turn HP loss and AOE damage happen before enemies attack.
         elif card_id == 'Combust':
             state.end_turn_hp_loss += 1
-            state.end_turn_aoe_damage += 7 if card.upgrades > 0 else 5
+            state.end_turn_aoe_damage += 7 if upgraded else 5
 
         # Draw power
         elif card_id == 'Draw':
-            self._add_card_draw(state, 1 if card.upgrades == 0 else 2)
+            self._add_card_draw(state, 2 if upgraded else 1)
 
         # Energy gain (Bloodletting, etc.)
         elif 'energy' in card_id.lower() or card_id in ['Demon Form', 'Combust']:
