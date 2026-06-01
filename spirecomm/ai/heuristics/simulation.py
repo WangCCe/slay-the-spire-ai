@@ -145,6 +145,7 @@ DAMAGE_UPGRADE_BONUS = {
     'Iron Wave': 2,
     'Clothesline': 2,
     'Twin Strike': 2,
+    'Shiv': 2,
 
     # +3 damage
     'Dropkick': 3,
@@ -165,6 +166,7 @@ DAMAGE_UPGRADE_BONUS = {
     'Blood for Blood': 4,
     'Searing Blow': 4,
     'Dramatic Entrance': 4,
+    'Smite': 4,
 
     # +5 damage
     'Wild Strike': 5,
@@ -182,6 +184,7 @@ DAMAGE_UPGRADE_BONUS = {
 
     # +10 damage
     'Bludgeon': 10,
+    'Through Violence': 10,
 }
 
 

@@ -5733,6 +5733,18 @@ def _patch_simple_colorless_attack_loader(monkeypatch):
             "name": "Dramatic Entrance",
             "description": "Innate. Deal 8 damage to ALL enemies. Exhaust.",
         },
+        "shiv": {
+            "name": "Shiv",
+            "description": "Deal 4 damage. Exhaust.",
+        },
+        "smite": {
+            "name": "Smite",
+            "description": "Retain. Deal 12 damage. Exhaust.",
+        },
+        "through violence": {
+            "name": "Through Violence",
+            "description": "Retain. Deal 20 damage. Exhaust.",
+        },
     }
     loader._wiki_data = {}
     monkeypatch.setattr(simulation, "game_data_loader", loader)
@@ -5797,6 +5809,66 @@ def test_upgraded_dramatic_entrance_uses_12_aoe_damage(monkeypatch):
     )
 
     assert result.total_damage_dealt == 24
+
+
+def test_upgraded_shiv_uses_6_damage(monkeypatch):
+    _patch_simple_colorless_attack_loader(monkeypatch)
+
+    shiv_plus = _card("Shiv", "Shiv+", cost=0, upgrades=1)
+    context = _combat_context([shiv_plus], energy=0, monsters=[_louse(current_hp=20)])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        shiv_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 6
+
+
+def test_upgraded_smite_uses_16_damage(monkeypatch):
+    _patch_simple_colorless_attack_loader(monkeypatch)
+
+    smite_plus = _card("Smite", "Smite+", cost=1, upgrades=1)
+    context = _combat_context([smite_plus], energy=1, monsters=[_louse(current_hp=30)])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        smite_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 16
+
+
+def test_upgraded_through_violence_uses_30_damage(monkeypatch):
+    _patch_simple_colorless_attack_loader(monkeypatch)
+
+    through_violence_plus = _card(
+        "Through Violence",
+        "Through Violence+",
+        cost=0,
+        upgrades=1,
+    )
+    context = _combat_context(
+        [through_violence_plus],
+        energy=0,
+        monsters=[_louse(current_hp=40)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        through_violence_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 30
 
 
 def _patch_bite_loader(monkeypatch):
