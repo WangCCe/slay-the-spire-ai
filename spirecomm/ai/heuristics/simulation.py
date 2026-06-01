@@ -5248,7 +5248,7 @@ class HeuristicCombatPlanner(CombatPlanner):
     def _card_cost_for_state(card, state: SimulationState) -> int:
         cost = effective_card_cost(card, state.player_energy)
         if (
-            getattr(card, 'type', None) == CardType.SKILL
+            card_type_name(card) == 'SKILL'
             and getattr(state, 'corruption_active', False)
         ):
             return 0

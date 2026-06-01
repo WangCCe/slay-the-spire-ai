@@ -8332,6 +8332,17 @@ def test_corruption_makes_followup_skills_cost_zero(monkeypatch):
     assert result.exhaust_events == 1
 
 
+def test_planner_corruption_cost_handles_string_skill_type():
+    defend = _card("Defend", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    defend.type = "SKILL"
+    context = _combat_context([defend], energy=0, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Corruption", amount=1)]
+
+    cost = HeuristicCombatPlanner._card_cost_for_state(defend, SimulationState(context))
+
+    assert cost == 0
+
+
 def test_demon_form_does_not_add_strength_on_the_turn_it_is_played():
     demon_form = _card(
         "Demon Form",
