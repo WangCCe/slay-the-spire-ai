@@ -320,6 +320,20 @@ def test_legacy_potion_mask_uses_get_real_potions_without_raw_potions():
     assert mask[encoder.encode_use_potion(0, 0)]
 
 
+def test_legacy_potion_decoder_uses_get_real_potions_without_raw_potions():
+    encoder = ActionEncoder()
+    potion = _potion("Fire Potion", requires_target=False)
+    game = _combat_game(end_available=True)
+    del game.potions
+    game.get_real_potions = lambda: [potion]
+
+    action = encoder.decode_action(encoder.encode_use_potion(0, 0), game)
+
+    assert isinstance(action, PotionAction)
+    assert action.potion_index == 0
+    assert action.target_index is None
+
+
 def test_legacy_potion_decoder_falls_back_for_string_empty_potion_slot():
     encoder = ActionEncoder()
     game = _combat_game(

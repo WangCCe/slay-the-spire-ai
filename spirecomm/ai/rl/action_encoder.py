@@ -378,7 +378,9 @@ class ActionEncoder:
         return PlayCardAction(card_index=card_index, target_index=None)
 
     def _decode_potion_action(self, potion_index: int, monster_index: int, game: Game):
-        potions = getattr(game, "potions", []) or []
+        raw_potions = getattr(game, "potions", None)
+        potions = raw_potions if raw_potions is not None else game_real_potions(game)
+        potions = potions or []
         if not getattr(game, "potion_available", True):
             return self._fallback_combat_action(game)
         if potion_index < 0 or potion_index >= min(
