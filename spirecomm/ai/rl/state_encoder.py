@@ -10,6 +10,7 @@ from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_types import card_type_name
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 from spirecomm.spire.game import Game
+from spirecomm.spire.identifiers import potion_id, relic_id
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster, PlayerClass, Intent
 from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
@@ -24,15 +25,6 @@ class StateEncoder:
 
     def __init__(self):
         self.feature_dim = 781  # UNCHANGED - using reserved space for new features
-
-    @staticmethod
-    def _potion_id(potion):
-        return (
-            getattr(potion, 'potion_id', None)
-            or getattr(potion, 'name', None)
-            or getattr(potion, 'id', None)
-            or potion
-        )
 
     def encode(self, game: Game) -> np.ndarray:
         features = []
@@ -220,10 +212,10 @@ class StateEncoder:
     def _encode_relics(self, game: Game) -> List[float]:
         relics = [0.0] * 89
         for relic in game.relics if game.relics else []:
-            relic_id = getattr(relic, 'relic_id', None) or getattr(relic, 'name', None) or relic
-            if relic_id is None:
+            relic_key = relic_id(relic)
+            if relic_key is None:
                 continue
-            idx = self._stable_hash(relic_id, 89)
+            idx = self._stable_hash(relic_key, 89)
             relics[idx] = 1.0
         return relics
 
@@ -257,7 +249,7 @@ class StateEncoder:
                         potion_hash = 0.0
                     can_use = 0.0
 
-                is_present = 0.0 if self._potion_id(potion) == "Potion Slot" else 1.0
+                is_present = 0.0 if potion_id(potion) == "Potion Slot" else 1.0
                 features.extend([potion_hash, is_present, can_use])
             else:
                 features.extend([0.0] * 3)
@@ -398,7 +390,7 @@ class StateEncoder:
         card_in_play_hash = self._stable_hash(card_in_play_id, 50) / 50.0 if card_in_play_id else 0.0
 
         potions = game.potions if game.potions else []
-        real_potions = [p for p in potions if self._potion_id(p) != "Potion Slot"]
+        real_potions = [p for p in potions if potion_id(p) != "Potion Slot"]
         empty_slots = len(potions) - len(real_potions)
         potions_full = 1.0 if hasattr(game, 'are_potions_full') and game.are_potions_full() else 0.0
         potion_available = 1.0 if getattr(game, 'potion_available', False) else 0.0

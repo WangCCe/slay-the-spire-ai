@@ -1,5 +1,8 @@
 import math
 
+from spirecomm.spire.identifiers import relic_id
+
+
 class Priority:
 
     CARD_PRIORITY_LIST = []
@@ -180,9 +183,9 @@ class Priority:
         return group_count < group_limit
 
     def _boss_relic_priority_score(self, relic):
-        relic_id = getattr(relic, "relic_id", getattr(relic, "name", str(relic)))
-        avoid_rank = 1 if relic_id in self.BOSS_RELIC_AVOID_LIST else 0
-        return (avoid_rank, self.BOSS_RELIC_PRIORITIES.get(relic_id, math.inf))
+        relic_key = relic_id(relic)
+        avoid_rank = 1 if relic_key in self.BOSS_RELIC_AVOID_LIST else 0
+        return (avoid_rank, self.BOSS_RELIC_PRIORITIES.get(relic_key, math.inf))
 
     def get_best_boss_relic(self, relic_list):
         return min(relic_list, key=self._boss_relic_priority_score)

@@ -6,6 +6,7 @@ import spirecomm.spire.character
 import spirecomm.spire.map
 import spirecomm.spire.potion
 import spirecomm.spire.screen
+from spirecomm.spire.identifiers import potion_id, relic_id
 
 
 class RoomPhase(Enum):
@@ -66,15 +67,6 @@ class Game:
         self.play_available = False
         self.proceed_available = False
         self.cancel_available = False
-
-    @staticmethod
-    def _potion_id(potion):
-        return (
-            getattr(potion, "potion_id", None)
-            or getattr(potion, "name", None)
-            or getattr(potion, "id", None)
-            or potion
-        )
 
     @classmethod
     def from_json(cls, json_state, available_commands):
@@ -176,22 +168,19 @@ class Game:
 
     def are_potions_full(self):
         for potion in self.potions:
-            if self._potion_id(potion) == "Potion Slot":
+            if potion_id(potion) == "Potion Slot":
                 return False
         return True
 
     def has_potion_space(self):
         """Return True if the player can obtain another potion."""
-        relic_ids = {
-            getattr(relic, "relic_id", None) or getattr(relic, "name", None) or relic
-            for relic in self.relics or []
-        }
+        relic_ids = {relic_id(relic) for relic in self.relics or []}
         if "Sozu" in relic_ids:
             return False
 
         potions = self.potions or []
         for potion in potions:
-            if self._potion_id(potion) == "Potion Slot":
+            if potion_id(potion) == "Potion Slot":
                 return True
 
         ascension = self.ascension_level or 0
@@ -202,13 +191,13 @@ class Game:
         real_potions = [
             potion
             for potion in potions
-            if self._potion_id(potion) != "Potion Slot"
+            if potion_id(potion) != "Potion Slot"
         ]
         return len(real_potions) < base_slots
 
     def get_real_potions(self):
         potions = []
         for potion in self.potions:
-            if self._potion_id(potion) != "Potion Slot":
+            if potion_id(potion) != "Potion Slot":
                 potions.append(potion)
         return potions

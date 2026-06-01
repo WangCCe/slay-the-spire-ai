@@ -6,6 +6,7 @@ from typing import List
 import numpy as np
 
 from spirecomm.spire.game import Game
+from spirecomm.spire.identifiers import potion_id, relic_id
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Intent
 from spirecomm.spire.screen import ScreenType
@@ -275,11 +276,11 @@ class StateEncoderV2:
         potions = game.potions or []
         for idx in range(min(len(potions), self.POTION_SLOTS)):
             potion = potions[idx]
-            potion_id = getattr(potion, "potion_id", None) or getattr(potion, "name", None) or potion
-            if potion_id == "Potion Slot":
+            potion_key = potion_id(potion)
+            if potion_key == "Potion Slot":
                 ids[idx] = 0
             else:
-                ids[idx] = self.id_mapper.potion_id(potion_id)
+                ids[idx] = self.id_mapper.potion_id(potion_key)
         return ids
 
     def _encode_relic_ids(self, game: Game) -> List[int]:
@@ -287,8 +288,7 @@ class StateEncoderV2:
         relics = game.relics or []
         for idx in range(min(len(relics), self.RELIC_SLOTS)):
             relic = relics[idx]
-            relic_id = getattr(relic, "relic_id", None) or getattr(relic, "name", None) or relic
-            ids[idx] = self.id_mapper.relic_id(relic_id)
+            ids[idx] = self.id_mapper.relic_id(relic_id(relic))
         return ids
 
     def _encode_card_tags(self, card: Card) -> List[float]:

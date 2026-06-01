@@ -8,6 +8,7 @@ from typing import List, Optional, Tuple
 
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.spire.game import Game
+from spirecomm.spire.identifiers import potion_id
 from spirecomm.spire.screen import reward_type_name
 from spirecomm.communication.action import (
     PlayCardAction,
@@ -64,15 +65,6 @@ class ActionEncoder:
     def __init__(self):
         """Initialize action encoder."""
         pass
-
-    @staticmethod
-    def _potion_id(potion):
-        return (
-            getattr(potion, "potion_id", None)
-            or getattr(potion, "name", None)
-            or getattr(potion, "id", None)
-            or potion
-        )
 
     @staticmethod
     def _is_screen_type(
@@ -392,7 +384,7 @@ class ActionEncoder:
             return self._fallback_combat_action(game)
 
         potion = potions[potion_index]
-        if self._potion_id(potion) == "Potion Slot":
+        if potion_id(potion) == "Potion Slot":
             return self._fallback_combat_action(game)
         if hasattr(potion, "can_use") and not potion.can_use:
             return self._fallback_combat_action(game)
@@ -782,7 +774,7 @@ class ActionEncoder:
                 for potion_idx in range(max_potion_slots):
                     potion = potions[potion_idx]
                     # Skip empty potion slots
-                    if self._potion_id(potion) == "Potion Slot":
+                    if potion_id(potion) == "Potion Slot":
                         continue
                     # Only enable if potion can be used
                     if hasattr(potion, "can_use") and not potion.can_use:

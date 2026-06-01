@@ -26,21 +26,13 @@ from spirecomm.communication.action import (
 )
 from spirecomm.spire.screen import ScreenType, RestOption, reward_type_name
 from spirecomm.spire.game import Game
+from spirecomm.spire.identifiers import potion_id
 
 from . import action_space as space
 
 
 class ActionEncoderV2:
     MAX_ACTIONS = space.ACTION_DIM
-
-    @staticmethod
-    def _potion_id(potion):
-        return (
-            getattr(potion, "potion_id", None)
-            or getattr(potion, "name", None)
-            or getattr(potion, "id", None)
-            or potion
-        )
 
     def encode_action(self, action, game: Game) -> Optional[int]:
         if action is None:
@@ -332,7 +324,7 @@ class ActionEncoderV2:
             return self._fallback_combat_action(game)
 
         potion = potions[potion_slot]
-        if self._potion_id(potion) == "Potion Slot":
+        if potion_id(potion) == "Potion Slot":
             return self._fallback_combat_action(game)
         if hasattr(potion, "can_use") and not potion.can_use:
             return self._fallback_combat_action(game)
@@ -605,7 +597,7 @@ class ActionEncoderV2:
 
         if getattr(game, "potion_available", True):
             for potion_idx, potion in enumerate((game.potions or [])[:space.MAX_POTION_SLOTS]):
-                if self._potion_id(potion) == "Potion Slot":
+                if potion_id(potion) == "Potion Slot":
                     continue
                 if hasattr(potion, "can_use") and not potion.can_use:
                     continue
