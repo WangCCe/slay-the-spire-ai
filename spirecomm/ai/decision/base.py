@@ -414,12 +414,12 @@ class DecisionContext:
         # Add threat from predicted moves (discounted by 60% for uncertainty)
         for prediction in predicted_moves:
             move = prediction.get('move', {})
-            confidence = prediction.get('confidence', 0.5)
+            confidence = self._safe_float(prediction.get('confidence', 0.5), 0.5)
 
             # Damage threat
             if 'damage' in move and move['damage']:
-                hits = move.get('hits', 1)
-                damage = move['damage'] * hits
+                hits = self._safe_int(move.get('hits', 1), 1)
+                damage = self._safe_float(move['damage'], 0.0) * hits
                 threat += int(damage * 0.6 * confidence)  # Discount future damage
 
             # Debuff threat

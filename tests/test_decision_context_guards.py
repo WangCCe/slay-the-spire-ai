@@ -59,6 +59,25 @@ class _CanonicalOnlyMonsterDataLoader:
         return None
 
 
+class _StringPredictionMonsterDataLoader:
+    def get_enhanced_monster_data(self, monster_name):
+        return {"name": monster_name}
+
+    def predict_monster_moves(self, monster_name, turn, monster_hp_percent):
+        return [
+            {
+                "move": {"name": "Strike", "damage": "10", "hits": "2"},
+                "confidence": "0.5",
+            }
+        ]
+
+    def get_monster_threat_profile(self, monster_name):
+        return None
+
+    def get_monster_special_mechanics(self, monster_name):
+        return None
+
+
 def _context_for_deck(deck):
     context = DecisionContext.__new__(DecisionContext)
     context.game = SimpleNamespace(deck=deck)
@@ -536,6 +555,28 @@ def test_compute_threat_v2_accepts_string_numeric_monster_fields(monkeypatch):
     context.monsters_alive = [monster]
 
     assert context.compute_threat_v2(monster) == 18
+
+
+def test_compute_threat_v2_accepts_string_numeric_predicted_moves(monkeypatch):
+    monkeypatch.setattr(
+        decision_base,
+        "game_data_loader",
+        _StringPredictionMonsterDataLoader(),
+    )
+    monster = SimpleNamespace(
+        name="Jaw Worm",
+        intent=Intent.NONE,
+        move_adjusted_damage=0,
+        move_hits=1,
+        strength=0,
+        current_hp=50,
+        max_hp=100,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.turn = 1
+    context.monsters_alive = [monster]
+
+    assert context.compute_threat_v2(monster) == 6
 
 
 def test_compute_threat_v2_does_not_count_debuff_intent_as_party_buff(monkeypatch):
