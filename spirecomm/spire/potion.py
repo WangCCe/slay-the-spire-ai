@@ -44,6 +44,25 @@ POTION_EFFECTS = {
 }
 
 
+def _compact_identifier(value):
+    return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
+
+
+POTION_EFFECTS_BY_ID = {
+    _compact_identifier(name): effects for name, effects in POTION_EFFECTS.items()
+}
+
+
+def _potion_effect_data(potion_id, name):
+    for value in (name, potion_id):
+        if value in POTION_EFFECTS:
+            return POTION_EFFECTS[value]
+        compact_value = _compact_identifier(value)
+        if compact_value in POTION_EFFECTS_BY_ID:
+            return POTION_EFFECTS_BY_ID[compact_value]
+    return {"effect_type": "utility", "effect_value": 0, "target_type": "none"}
+
+
 class Potion:
 
     def __init__(self, potion_id, name, can_use, can_discard, requires_target, price=0):
@@ -55,7 +74,7 @@ class Potion:
         self.price = price
 
         # Look up effect metadata
-        effect_data = POTION_EFFECTS.get(name, {"effect_type": "utility", "effect_value": 0, "target_type": "none"})
+        effect_data = _potion_effect_data(potion_id, name)
         self.effect_type = effect_data["effect_type"]
         self.effect_value = effect_data["effect_value"]
         self.target_type = effect_data["target_type"]

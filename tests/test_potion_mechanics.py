@@ -23,6 +23,20 @@ def test_card_generating_potions_are_not_direct_damage():
     assert planner._is_damage_potion(_potion("Fire Potion"))
 
 
+def test_potion_metadata_falls_back_to_potion_id():
+    potion = Potion(
+        potion_id="FirePotion",
+        name=None,
+        can_use=True,
+        can_discard=True,
+        requires_target=True,
+    )
+
+    assert potion.effect_type == "damage"
+    assert potion.effect_value == 20
+    assert potion.target_type == "monster"
+
+
 def test_speed_and_swift_potions_have_distinct_mechanics():
     speed = _potion("Speed Potion")
     swift = _potion("Swift Potion")
