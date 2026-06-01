@@ -26,7 +26,7 @@ from .simulation import (
 )
 from .card_costs import effective_card_cost, is_x_cost_card, whirlwind_damage, x_effect_energy
 from .card_names import canonical_card_name
-from .card_types import is_attack_card
+from .card_types import card_type_name, is_attack_card
 from .card_upgrades import card_upgrade_count, is_card_upgraded
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
@@ -456,7 +456,7 @@ class IroncladCombatPlanner(CombatPlanner):
     def _card_cost_for_state(card: Card, state: SimulationState) -> int:
         cost = effective_card_cost(card, getattr(state, 'player_energy', 0))
         if (
-            getattr(card, 'type', None) == CardType.SKILL
+            card_type_name(card) == 'SKILL'
             and getattr(state, 'corruption_active', False)
         ):
             return 0
