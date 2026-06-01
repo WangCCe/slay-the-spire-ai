@@ -473,14 +473,25 @@ class DecisionContext:
 
             # Hibernation threat (low while sleeping, high when awake)
             elif mech_type == 'hibernation':
-                hibernation_turns = special_mechanics.get('hibernation_turns', 3)
+                hibernation_turns = self._safe_int(
+                    special_mechanics.get('hibernation_turns', 3),
+                    3,
+                )
                 if self.turn <= hibernation_turns:
                     # Still sleeping - low threat
-                    hibernation_threat = threat_profile.get('hibernation_threat', 5) if threat_profile else 5
+                    hibernation_threat = (
+                        self._safe_float(threat_profile.get('hibernation_threat', 5), 5.0)
+                        if threat_profile
+                        else 5
+                    )
                     threat = hibernation_threat  # Replace, not add
                 else:
                     # Awakened - high threat
-                    awakened_threat = threat_profile.get('awakened_threat', 40) if threat_profile else 40
+                    awakened_threat = (
+                        self._safe_float(threat_profile.get('awakened_threat', 40), 40.0)
+                        if threat_profile
+                        else 40
+                    )
                     threat += awakened_threat
 
             # Phase change threat

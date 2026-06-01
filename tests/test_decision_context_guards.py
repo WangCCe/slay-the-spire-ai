@@ -114,6 +114,24 @@ class _StringSummonerThreatProfileMonsterDataLoader:
         return {"type": "summoner"}
 
 
+class _StringHibernationMonsterDataLoader:
+    def get_enhanced_monster_data(self, monster_name):
+        return {"name": monster_name}
+
+    def predict_monster_moves(self, monster_name, turn, monster_hp_percent):
+        return []
+
+    def get_monster_threat_profile(self, monster_name):
+        return {
+            "hibernation_threat": "5",
+            "awakened_threat": "40",
+            "base_threat": "20",
+        }
+
+    def get_monster_special_mechanics(self, monster_name):
+        return {"type": "hibernation", "hibernation_turns": "3"}
+
+
 def _context_for_deck(deck):
     context = DecisionContext.__new__(DecisionContext)
     context.game = SimpleNamespace(deck=deck)
@@ -659,6 +677,28 @@ def test_compute_threat_v2_accepts_string_numeric_summoner_profile(monkeypatch):
     context.monsters_alive = [summoner, first_minion, second_minion]
 
     assert context.compute_threat_v2(summoner) == 34
+
+
+def test_compute_threat_v2_accepts_string_numeric_hibernation_profile(monkeypatch):
+    monkeypatch.setattr(
+        decision_base,
+        "game_data_loader",
+        _StringHibernationMonsterDataLoader(),
+    )
+    lagavulin = SimpleNamespace(
+        name="Lagavulin",
+        intent=Intent.NONE,
+        move_adjusted_damage=0,
+        move_hits=1,
+        strength=0,
+        current_hp=109,
+        max_hp=109,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.turn = 2
+    context.monsters_alive = [lagavulin]
+
+    assert context.compute_threat_v2(lagavulin) == 9
 
 
 def test_compute_threat_v2_does_not_count_debuff_intent_as_party_buff(monkeypatch):
