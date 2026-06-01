@@ -1,12 +1,5 @@
 import math
 
-
-def _card_upgrade_count(card):
-    try:
-        return max(0, int(getattr(card, "upgrades", 0) or 0))
-    except (TypeError, ValueError):
-        return 0
-
 class Priority:
 
     CARD_PRIORITY_LIST = []
@@ -91,13 +84,17 @@ class Priority:
 
     def _card_priority_score(self, card):
         """Calculate priority score for a card."""
+        from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count
+
         priority = self.CARD_PRIORITIES_BY_NAME.get(self._card_name(card), math.inf)
-        return priority - 0.5 * _card_upgrade_count(card)
+        return priority - 0.5 * card_upgrade_count(card)
 
     def _card_play_score(self, card):
         """Calculate play priority score for a card."""
+        from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count
+
         priority = self.PLAY_PRIORITIES_BY_NAME.get(self._card_name(card), math.inf)
-        return priority - 0.5 * _card_upgrade_count(card)
+        return priority - 0.5 * card_upgrade_count(card)
 
     def get_best_card(self, card_list):
         return min(card_list, key=self._card_priority_score)
