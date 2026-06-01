@@ -521,7 +521,11 @@ class DecisionContext:
 
             # Charge attack threat
             elif mech_type == 'charge_attack':
-                charge_threat = threat_profile.get('charge_threat', 25) if threat_profile else 25
+                charge_threat = (
+                    self._safe_float(threat_profile.get('charge_threat', 25), 25.0)
+                    if threat_profile
+                    else 25
+                )
                 threat += charge_threat
 
             # Duo boss threat (both monsters scale together)
