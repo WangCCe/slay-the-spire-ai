@@ -10,6 +10,7 @@ from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Intent, PlayerClass
 from spirecomm.spire.screen import ScreenType
 from spirecomm.ai.heuristics.card_costs import raw_card_cost
+from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 
 from .id_mapping import IdMapper, load_default_id_mapper
@@ -224,7 +225,7 @@ class StateEncoderV2:
         return features
 
     def _encode_card_features(self, card: Card) -> List[float]:
-        is_upgraded = 1.0 if getattr(card, "upgrades", 0) else 0.0
+        is_upgraded = 1.0 if is_card_upgraded(card) else 0.0
         cost = raw_card_cost(card)
         if cost < 0:
             cost_norm = 1.0

@@ -473,7 +473,7 @@ class StateEncoder:
         elif rarity == CardRarity.RARE:
             rarity_flags[3] = 1.0
 
-        upgrades_flag = 1.0 if getattr(card, 'upgrades', 0) else 0.0
+        upgrades_flag = 1.0 if is_card_upgraded(card) else 0.0
         exhausts_flag = 1.0 if getattr(card, 'exhausts', False) else 0.0
 
         # NEW: Add card ID hash to let network learn card-specific patterns

@@ -79,6 +79,14 @@ def test_rl_state_encoder_treats_missing_cost_as_zero():
     assert features[1] == 0.0
 
 
+def test_rl_card_reward_features_infer_upgrade_flag_from_suffix():
+    encoder = StateEncoder()
+
+    features = encoder._encode_card_reward_card(_card("Cleave+1"))
+
+    assert features[11] == 1.0
+
+
 def test_rl_state_encoder_intent_encoding_accepts_string_representations():
     encoder = StateEncoder()
 

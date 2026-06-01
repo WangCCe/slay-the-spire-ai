@@ -74,6 +74,17 @@ def test_rl_v2_card_features_parse_string_turn_cost():
     assert features[1] == 2 / 5
 
 
+def test_rl_v2_card_features_infer_upgrade_flag_from_suffix():
+    encoder = StateEncoderV2(_mapper())
+    card = _card("Cleave+1")
+    card.cost = 1
+    card.cost_for_turn = 1
+
+    features = encoder._encode_card_features(card)
+
+    assert features[0] == 1.0
+
+
 def test_rl_v2_card_features_treat_missing_cost_as_zero():
     encoder = StateEncoderV2(_mapper())
     card = _card("Cleave")
