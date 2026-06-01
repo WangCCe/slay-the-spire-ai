@@ -317,7 +317,7 @@ class SynergyCardEvaluator(CardEvaluator):
     def _is_defensive_card(self, card: Card) -> bool:
         """Check if card is primarily defensive."""
         defensive_keywords = ['defend', 'block', 'blur', 'wave', 'glacier',
-                            'iron wave', 'flame barrier', 'hand of greed', 'protect']
+                            'iron wave', 'flame barrier', 'protect']
         
         # Check card type first
         if hasattr(card, 'type') and card.type == CardType.SKILL:

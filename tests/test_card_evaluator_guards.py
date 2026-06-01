@@ -41,6 +41,20 @@ def test_defensive_detection_uses_base_name_for_upgraded_cards(monkeypatch):
     assert SynergyCardEvaluator(player_class="IRONCLAD")._is_defensive_card(shrug_plus) is True
 
 
+def test_hand_of_greed_is_not_classified_as_defensive():
+    hand_of_greed = Card(
+        "HandOfGreed",
+        "Hand of Greed",
+        CardType.ATTACK,
+        CardRarity.RARE,
+        cost=2,
+    )
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+
+    assert evaluator._is_offensive_card(hand_of_greed) is True
+    assert evaluator._is_defensive_card(hand_of_greed) is False
+
+
 def test_baseline_score_uses_base_name_for_upgraded_cards():
     evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
     base_card = Card(
