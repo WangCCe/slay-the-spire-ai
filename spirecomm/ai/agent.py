@@ -115,6 +115,24 @@ class SimpleAgent:
     def _card_ids_for_tracking(self, cards):
         return [self._card_id_for_tracking(card) for card in cards]
 
+    @staticmethod
+    def _safe_float(value, default=0.0):
+        if value is None:
+            return default
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _safe_int(value, default=0):
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
     def _get_upgrade_bonus(self, card):
         if is_card_upgraded(card):
             return 0
@@ -923,17 +941,21 @@ class SimpleAgent:
     def choose_rest_option(self):
         rest_options = self.game.screen.rest_options
         if len(rest_options) > 0 and not self.game.screen.has_rested:
-            hp_pct = self.game.current_hp / max(self.game.max_hp, 1)
-            is_pre_boss = self.game.floor % 17 in (15, 16)
+            current_hp = self._safe_float(getattr(self.game, "current_hp", 0), 0.0)
+            max_hp = max(self._safe_float(getattr(self.game, "max_hp", 1), 1.0), 1.0)
+            floor = self._safe_int(getattr(self.game, "floor", 0), 0)
+            act = self._safe_int(getattr(self.game, "act", 1), 1)
+            hp_pct = current_hp / max_hp
+            is_pre_boss = floor % 17 in (15, 16)
             if RestOption.REST in rest_options and (
                 hp_pct < 0.5 or (is_pre_boss and hp_pct < 0.8)
             ):
                 logging.info(
                     "[REST_GUARD] Forcing REST hp=%s/%s hp_pct=%.1f%% floor=%s pre_boss=%s",
-                    self.game.current_hp,
-                    self.game.max_hp,
+                    current_hp,
+                    max_hp,
                     hp_pct * 100,
-                    self.game.floor,
+                    floor,
                     is_pre_boss,
                 )
                 return RestAction(RestOption.REST)
@@ -975,14 +997,14 @@ class SimpleAgent:
                     pass
             if (
                 RestOption.REST in rest_options
-                and self.game.current_hp < self.game.max_hp / 2
+                and current_hp < max_hp / 2
             ):
                 return RestAction(RestOption.REST)
             elif (
                 RestOption.REST in rest_options
-                and self.game.act != 1
-                and self.game.floor % 17 == 15
-                and self.game.current_hp < self.game.max_hp * 0.9
+                and act != 1
+                and floor % 17 == 15
+                and current_hp < max_hp * 0.9
             ):
                 return RestAction(RestOption.REST)
             elif RestOption.SMITH in rest_options:
@@ -993,7 +1015,7 @@ class SimpleAgent:
                 return RestAction(RestOption.DIG)
             elif (
                 RestOption.REST in rest_options
-                and self.game.current_hp < self.game.max_hp
+                and current_hp < max_hp
             ):
                 return RestAction(RestOption.REST)
             else:

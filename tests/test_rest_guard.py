@@ -63,6 +63,23 @@ def test_low_hp_rest_overrides_high_value_smith(monkeypatch):
     assert action.name == RestOption.REST.name
 
 
+def test_rest_guard_accepts_numeric_string_hp(monkeypatch):
+    agent = _agent_for_rest_choice(
+        monkeypatch,
+        hp="31",
+        max_hp="80",
+        floor="7",
+        rest_score=130,
+        smith_score=170,
+        upgrade_score=80,
+    )
+
+    action = agent.choose_rest_option()
+
+    assert isinstance(action, RestAction)
+    assert action.name == RestOption.REST.name
+
+
 def test_pre_boss_rest_overrides_high_value_smith(monkeypatch):
     agent = _agent_for_rest_choice(
         monkeypatch,
