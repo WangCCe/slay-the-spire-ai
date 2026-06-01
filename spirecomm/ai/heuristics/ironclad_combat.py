@@ -67,9 +67,10 @@ def _monster_matches_any_name(monster, candidate_names) -> bool:
 def _format_card_for_log(card: Card) -> str:
     upgrades = getattr(card, 'upgrades', 0)
     name = getattr(card, 'name', '')
+    card_id = getattr(card, 'card_id', None) or canonical_card_name(card)
     if name:
-        return f"{card.card_id}({name},u{upgrades})"
-    return f"{card.card_id}(u{upgrades})"
+        return f"{card_id}({name},u{upgrades})"
+    return f"{card_id}(u{upgrades})"
 
 
 class EliteType(Enum):

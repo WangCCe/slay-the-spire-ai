@@ -719,6 +719,12 @@ def test_ironclad_planner_defensive_card_detection_uses_display_name():
     assert IroncladCombatPlanner()._is_defensive_card(shrug) is True
 
 
+def test_ironclad_card_log_format_accepts_name_only_card():
+    pommel = SimpleNamespace(name="Pommel Strike", upgrades=1)
+
+    assert ironclad_combat._format_card_for_log(pommel) == "Pommel Strike(Pommel Strike,u1)"
+
+
 def test_stack_block_uses_discard_pile_size(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
