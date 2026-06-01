@@ -156,6 +156,49 @@ def test_turn_plan_signature_distinguishes_player_power_changes():
     assert no_strength_signature != strength_signature
 
 
+def test_turn_plan_signature_prefers_protocol_power_id_over_display_name():
+    localized_signature = TurnPlanSignature(
+        _game(
+            [_card("Strike_R", "Strike")],
+            powers=[
+                SimpleNamespace(
+                    power_id="Strength",
+                    power_name="Strength Display",
+                    name="Localized Strength",
+                    amount=2,
+                )
+            ],
+        )
+    )
+    renamed_signature = TurnPlanSignature(
+        _game(
+            [_card("Strike_R", "Strike")],
+            powers=[
+                SimpleNamespace(
+                    power_id="Strength",
+                    power_name="Alternate Display",
+                    name="Renamed Strength",
+                    amount=2,
+                )
+            ],
+        )
+    )
+
+    assert localized_signature.player_powers == (("Strength", 2),)
+    assert localized_signature == renamed_signature
+
+
+def test_turn_plan_signature_handles_power_without_identifier():
+    signature = TurnPlanSignature(
+        _game(
+            [_card("Strike_R", "Strike")],
+            powers=[SimpleNamespace(amount=1), _power("Strength", 2)],
+        )
+    )
+
+    assert set(signature.player_powers) == {(None, 1), ("Strength", 2)}
+
+
 def test_turn_plan_signature_distinguishes_monster_power_changes():
     normal_signature = TurnPlanSignature(
         _game([_card("Strike_R", "Strike")], monster=_monster(powers=[]))

@@ -11,6 +11,18 @@ def power_name(power: Any):
     )
 
 
+def power_identifier(power: Any):
+    return (
+        getattr(power, 'power_id', None)
+        or getattr(power, 'power_name', None)
+        or getattr(power, 'name', None)
+    )
+
+
+def power_signature(power: Any):
+    return (power_identifier(power), getattr(power, 'amount', None))
+
+
 def power_matches(power: Any, name: str) -> bool:
     return any(
         getattr(power, attr, None) == name

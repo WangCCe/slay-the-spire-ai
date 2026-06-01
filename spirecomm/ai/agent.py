@@ -24,6 +24,7 @@ from spirecomm.ai.heuristics.card_upgrades import (
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name, is_attack_card
+from spirecomm.ai.heuristics.combat_state import power_signature
 
 # Note: Logging is configured in main.py to write to ai_debug.log
 # No need to configure here
@@ -1268,15 +1269,18 @@ class TurnPlanSignature:
 
     @staticmethod
     def _powers_signature(powers):
-        power_signatures = []
-        for power in powers or []:
-            power_id = (
-                getattr(power, "power_id", None)
-                or getattr(power, "power_name", None)
-                or getattr(power, "name", None)
-            )
-            power_signatures.append((power_id, getattr(power, "amount", None)))
-        return tuple(sorted(power_signatures))
+        signatures = [power_signature(power) for power in powers or []]
+        return tuple(sorted(signatures, key=TurnPlanSignature._power_signature_sort_key))
+
+    @staticmethod
+    def _power_signature_sort_key(signature):
+        identifier, amount = signature
+        return (
+            identifier is None,
+            str(identifier) if identifier is not None else "",
+            amount is None,
+            str(amount) if amount is not None else "",
+        )
 
     @staticmethod
     def _potion_signature(potions):

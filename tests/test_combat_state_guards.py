@@ -7,7 +7,9 @@ from spirecomm.ai.heuristics.combat_state import (
     player_debuff_stacks,
     player_power_amount,
     power_amount,
+    power_identifier,
     power_name,
+    power_signature,
     player_block_value,
 )
 
@@ -60,6 +62,20 @@ def test_power_name_reads_known_power_identifier_fields_in_order():
     assert power_name(SimpleNamespace(power_name="PowerName", power_id="PowerId")) == "PowerName"
     assert power_name(SimpleNamespace(power_id="PowerId")) == "PowerId"
     assert power_name(SimpleNamespace()) is None
+
+
+def test_power_identifier_and_signature_prefer_protocol_id_for_state_keys():
+    power = SimpleNamespace(
+        name="Localized Strength",
+        power_name="Strength Display",
+        power_id="Strength",
+        amount=2,
+    )
+
+    assert power_identifier(power) == "Strength"
+    assert power_signature(power) == ("Strength", 2)
+    assert power_signature(SimpleNamespace(power_name="Weak")) == ("Weak", None)
+    assert power_signature(SimpleNamespace()) == (None, None)
 
 
 def test_power_amount_reads_named_power_with_configurable_missing_amount():

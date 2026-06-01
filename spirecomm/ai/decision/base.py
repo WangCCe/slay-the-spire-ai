@@ -23,7 +23,11 @@ from spirecomm.ai.incoming_damage import (
     known_unknown_move_immediate_damage,
 )
 from spirecomm.ai.monster_names import canonical_live_monster_name
-from spirecomm.ai.heuristics.combat_state import power_amount
+from spirecomm.ai.heuristics.combat_state import (
+    power_amount,
+    power_identifier,
+    power_signature,
+)
 from spirecomm.data.loader import game_data_loader
 
 
@@ -925,15 +929,7 @@ class EnemyThreatProfiler:
 
     def _monster_cache_key(self, monster: Monster):
         powers = getattr(monster, 'powers', None) or []
-        power_key = tuple(
-            (
-                getattr(power, 'power_id', None),
-                getattr(power, 'power_name', None),
-                getattr(power, 'name', None),
-                getattr(power, 'amount', None),
-            )
-            for power in powers
-        )
+        power_key = tuple(power_signature(power) for power in powers)
         return (
             id(monster),
             canonical_live_monster_name(monster),
@@ -986,11 +982,7 @@ class EnemyThreatProfiler:
         # Check power names for scaling indicators
         scaling_keywords = ['strength', 'ritual', 'thorns', 'anger', 'enrage']
         for power in monster.powers:
-            power_name = (
-                getattr(power, 'power_id', None)
-                or getattr(power, 'power_name', None)
-                or getattr(power, 'name', None)
-            )
+            power_name = power_identifier(power)
             if power_name is None:
                 continue
 
