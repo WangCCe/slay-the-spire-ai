@@ -87,6 +87,25 @@ def test_legacy_deck_archetype_uses_display_name_for_basic_card_ids(monkeypatch)
     assert _context_for_deck(deck)._analyze_deck_archetype() == "strength"
 
 
+def test_legacy_deck_archetype_accepts_name_only_card_keyword(monkeypatch):
+    monkeypatch.setattr(
+        decision_base,
+        "game_data_loader",
+        _FakeCardDataLoader(
+            {
+                "quick draw": {
+                    "description": "Useful setup.",
+                    "type": "SKILL",
+                    "cost": "1",
+                },
+            }
+        ),
+    )
+    deck = [SimpleNamespace(name="Quick Draw")]
+
+    assert _context_for_deck(deck)._analyze_deck_archetype() == "draw"
+
+
 def test_legacy_synergies_use_display_name_for_basic_attack_ids(monkeypatch):
     monkeypatch.setattr(
         decision_base,
@@ -115,6 +134,35 @@ def test_legacy_synergies_use_display_name_for_basic_attack_ids(monkeypatch):
 
     assert synergies["vulnerable"] > 0
     assert synergies["weak"] > 0
+
+
+def test_legacy_synergies_accept_name_only_catalyst_cards(monkeypatch):
+    monkeypatch.setattr(
+        decision_base,
+        "game_data_loader",
+        _FakeCardDataLoader(
+            {
+                "catalyst": {
+                    "description": "Double a status.",
+                    "type": "SKILL",
+                    "cost": "1",
+                },
+                "deadly poison": {
+                    "description": "Apply 5 Poison.",
+                    "type": "SKILL",
+                    "cost": "1",
+                },
+            }
+        ),
+    )
+    deck = [
+        SimpleNamespace(name="Catalyst"),
+        SimpleNamespace(name="Deadly Poison"),
+    ]
+
+    synergies = _context_for_deck(deck)._calculate_synergies()
+
+    assert synergies["poison"] > 0
 
 
 def test_incoming_damage_ignores_zero_hp_stale_monsters():

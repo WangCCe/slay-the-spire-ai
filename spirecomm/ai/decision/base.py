@@ -514,7 +514,7 @@ class DecisionContext:
                 cost = card_data.get('cost', '0')
                 
                 # Count archetype-specific cards
-                if 'poison' in description or 'catalyst' in card.card_id.lower():
+                if 'poison' in description or 'catalyst' in card_name:
                     poison_count += 1
                 
                 if card_type == 'attack' and ('strength' in description or 'deal' in description):
@@ -523,7 +523,7 @@ class DecisionContext:
                 if card_type == 'skill' and ('block' in description or 'gain' in description):
                     block_count += 1
                 
-                if 'draw' in description or 'draw' in card.card_id.lower():
+                if 'draw' in description or 'draw' in card_name:
                     draw_count += 1
                 
                 if any(keyword in description for keyword in ['strength', 'dexterity', 'poison', 'thorns']):
@@ -641,7 +641,7 @@ class DecisionContext:
                     desc2 = card2_data.get('description', '').lower()
                     
                     # Calculate synergies between specific card types
-                    if ('poison' in desc1 and 'poison' in desc2) or ('catalyst' in card1.card_id.lower() and 'poison' in desc2):
+                    if ('poison' in desc1 and 'poison' in desc2) or ('catalyst' in card1_name and 'poison' in desc2):
                         synergies['poison'] += 0.05
                     
                     if ('strength' in desc1 and 'strength' in desc2) or ('strength' in desc1 and 'attack' in card2_data.get('type', '').lower()):
