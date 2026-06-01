@@ -179,6 +179,32 @@ def test_rl_incoming_damage_clamps_negative_live_move_damage_to_zero():
     assert CombatRLAgent._incoming_damage(game) == 0
 
 
+def test_rl_alive_monsters_accepts_numeric_string_hp():
+    dead = _monster(hp="0", index=0)
+    live = _monster(hp="12", index=1)
+    game = _game(monsters=[dead, live])
+
+    assert CombatRLAgent._alive_monsters(game) == [live]
+
+
+def test_rl_best_monster_index_accepts_numeric_string_hp():
+    dead = _monster(hp="0", index=0)
+    low = _monster(hp="3", index=1)
+    high = _monster(hp="12", index=2)
+    game = _game(monsters=[dead, low, high])
+
+    assert CombatRLAgent._best_monster_index(game) == 2
+
+
+def test_rl_potion_target_index_orders_numeric_string_hp_numerically():
+    potion = SimpleNamespace(effect_type="damage")
+    low = _monster(hp="9", index=0)
+    high = _monster(hp="12", index=1)
+    game = _game(monsters=[low, high])
+
+    assert CombatRLAgent._potion_target_index(potion, [low, high], game) == 1
+
+
 def test_rl_incoming_damage_clamps_negative_live_move_hits_to_one():
     monster = _monster(hp=25, damage=7)
     monster.move_hits = -2

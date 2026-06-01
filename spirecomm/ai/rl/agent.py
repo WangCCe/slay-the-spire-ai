@@ -1468,13 +1468,28 @@ class CombatRLAgent:
         return card_type_name(card) == "POWER"
 
     @staticmethod
+    def _safe_int(value, default: int = 0) -> int:
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
     def _alive_monsters(game: Game):
         return [
             monster
             for monster in (getattr(game, "monsters", []) or [])
-            if getattr(monster, "current_hp", 0) > 0
-            and not getattr(monster, "is_gone", False)
-            and not getattr(monster, "half_dead", False)
+            if (
+                CombatRLAgent._safe_int(
+                    getattr(monster, "current_hp", 0),
+                    default=0,
+                )
+                > 0
+                and not getattr(monster, "is_gone", False)
+                and not getattr(monster, "half_dead", False)
+            )
         ]
 
     @classmethod
@@ -1556,13 +1571,25 @@ class CombatRLAgent:
         candidates = [
             (index, monster)
             for index, monster in enumerate(monsters)
-            if getattr(monster, "current_hp", 0) > 0
-            and not getattr(monster, "is_gone", False)
-            and not getattr(monster, "half_dead", False)
+            if (
+                CombatRLAgent._safe_int(
+                    getattr(monster, "current_hp", 0),
+                    default=0,
+                )
+                > 0
+                and not getattr(monster, "is_gone", False)
+                and not getattr(monster, "half_dead", False)
+            )
         ]
         if not candidates:
             return None
-        return max(candidates, key=lambda item: getattr(item[1], "current_hp", 0))[0]
+        return max(
+            candidates,
+            key=lambda item: CombatRLAgent._safe_int(
+                getattr(item[1], "current_hp", 0),
+                default=0,
+            ),
+        )[0]
 
     @staticmethod
     def _potion_target_index(
@@ -1573,9 +1600,21 @@ class CombatRLAgent:
         if not alive_monsters:
             return None
         if str(getattr(potion, "effect_type", "") or "") in ("damage", "debuff_weak", "debuff_vulnerable"):
-            target = max(alive_monsters, key=lambda monster: getattr(monster, "current_hp", 0))
+            target = max(
+                alive_monsters,
+                key=lambda monster: CombatRLAgent._safe_int(
+                    getattr(monster, "current_hp", 0),
+                    default=0,
+                ),
+            )
         else:
-            target = min(alive_monsters, key=lambda monster: getattr(monster, "current_hp", 0))
+            target = min(
+                alive_monsters,
+                key=lambda monster: CombatRLAgent._safe_int(
+                    getattr(monster, "current_hp", 0),
+                    default=0,
+                ),
+            )
         target_index = getattr(target, "monster_index", None)
         if target_index is not None:
             return target_index
