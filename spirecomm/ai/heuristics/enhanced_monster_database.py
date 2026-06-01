@@ -1057,7 +1057,15 @@ class EnhancedMonsterDatabase:
             ),
             key=lambda x: x[1],
             reverse=True
-        )[:limit]
+        )
+        if limit <= 0:
+            return
+        if len(sorted_probs) > limit:
+            boundary_probability = sorted_probs[limit - 1][1]
+            sorted_probs = [
+                item for item in sorted_probs
+                if item[1] >= boundary_probability
+            ]
         for move_name, prob in sorted_probs:
             for move in moves:
                 if self._normalize_move_name(move["name"]) == self._normalize_move_name(move_name):

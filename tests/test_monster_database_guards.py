@@ -222,6 +222,25 @@ def test_looter_and_mugger_keep_turn_three_options_in_opening_window():
     ] == ["Lunge", "Smoke Bomb"]
 
 
+def test_probability_predictions_keep_boundary_ties_within_turn():
+    database = EnhancedMonsterDatabase()
+
+    predictions = database.predict_next_moves(
+        "Acid Slime (M)",
+        current_turn=1,
+        monster_hp_percent=1.0,
+    )
+
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in predictions
+    ] == [
+        (1, "Tackle", 0.4),
+        (1, "Corrosive Spit", 0.3),
+        (1, "Lick", 0.3),
+    ]
+
+
 def test_initial_move_probabilities_start_after_opening_turn():
     database = EnhancedMonsterDatabase()
 
@@ -320,7 +339,7 @@ def test_enhanced_database_accepts_normalized_live_monster_ids():
     assert [
         prediction["move"]["name"]
         for prediction in database.predict_next_moves("AcidSlimeL", 1, 1.0)
-    ] == ["Tackle", "Corrosive Spit"]
+    ] == ["Tackle", "Corrosive Spit", "Lick"]
     assert [
         prediction["move"]["name"]
         for prediction in database.predict_next_moves("TheCollector", 1, 1.0)
