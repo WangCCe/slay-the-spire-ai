@@ -1245,7 +1245,7 @@ class FastCombatSimulator:
     ):
         """Apply attack card effects with proper damage calculation."""
         card_name = _canonical_card_name(card)
-        dynamic_damage_card = card_name in {'Body Slam', 'Whirlwind'}
+        dynamic_damage_card = card_name in {'Body Slam', 'Mind Blast', 'Whirlwind'}
         base_damage = getattr(card, 'damage', 0)
         if base_damage is None:
             base_damage = 0
@@ -2566,8 +2566,9 @@ class FastCombatSimulator:
         """
         Calculate dynamic damage for X-damage cards.
 
-        X-damage cards have variable damage based on game state:
+        Dynamic-damage cards have variable damage based on game state:
         - Body Slam: damage = player_block
+        - Mind Blast: damage = cards in draw pile
         - Whirlwind: damage = max_energy (applies AOE multiplier automatically)
 
         Args:
@@ -2589,6 +2590,9 @@ class FastCombatSimulator:
             # Body Slam deals damage equal to your current block
             return state.player_block
 
+        elif card_name == 'Mind Blast':
+            return self._count_draw_pile_cards(context)
+
         elif card_name == 'Whirlwind':
             # Combat simulation needs per-hit damage so Weak, Vulnerable,
             # thorns, and damage instance tracking happen once per hit.
@@ -2606,6 +2610,30 @@ class FastCombatSimulator:
             return max(0, per_hit_damage + strength) * energy
 
         # Fallback: not an X-damage card
+        return 0
+
+    @staticmethod
+    def _count_draw_pile_cards(context: Optional[DecisionContext]) -> int:
+        game = getattr(context, 'game', None)
+        for owner in (game, context):
+            draw_pile = getattr(owner, 'draw_pile', None)
+            if draw_pile is not None:
+                try:
+                    return max(0, len(draw_pile))
+                except TypeError:
+                    try:
+                        return max(0, int(draw_pile))
+                    except (TypeError, ValueError):
+                        return 0
+
+        for owner in (game, context):
+            size = getattr(owner, 'draw_pile_size', None)
+            if size is not None:
+                try:
+                    return max(0, int(size))
+                except (TypeError, ValueError):
+                    return 0
+
         return 0
 
     def _calculate_x_block(

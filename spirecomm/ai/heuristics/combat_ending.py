@@ -1598,6 +1598,9 @@ class CombatEndingDetector:
         if card_name == 'Body Slam':
             base_damage = self._get_player_block(context)
 
+        if card_name == 'Mind Blast':
+            base_damage = self._count_draw_pile_cards(context)
+
         if card_name == 'Whirlwind':
             energy = x_effect_energy(
                 card,
@@ -1726,6 +1729,30 @@ class CombatEndingDetector:
             return max(0, int(block or 0))
         except (TypeError, ValueError):
             return 0
+
+    @staticmethod
+    def _count_draw_pile_cards(context: DecisionContext) -> int:
+        game = getattr(context, 'game', None)
+        for owner in (game, context):
+            draw_pile = getattr(owner, 'draw_pile', None)
+            if draw_pile is not None:
+                try:
+                    return max(0, len(draw_pile))
+                except TypeError:
+                    try:
+                        return max(0, int(draw_pile))
+                    except (TypeError, ValueError):
+                        return 0
+
+        for owner in (game, context):
+            size = getattr(owner, 'draw_pile_size', None)
+            if size is not None:
+                try:
+                    return max(0, int(size))
+                except (TypeError, ValueError):
+                    return 0
+
+        return 0
 
     def _all_alive_targets_poisoned(self, context: DecisionContext) -> bool:
         monsters = getattr(context, 'monsters_alive', []) or []

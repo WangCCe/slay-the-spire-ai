@@ -6715,6 +6715,37 @@ def test_perfected_strike_counts_strike_cards_in_deck(monkeypatch):
     assert result.total_damage_dealt == 18
 
 
+def test_mind_blast_damage_uses_draw_pile_size(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "mind blast": {
+            "name": "Mind Blast",
+            "description": "Innate. Deal damage equal to the number of cards in your draw pile.",
+        }
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    mind_blast = _card("Mind Blast", "Mind Blast+", cost=1, upgrades=1)
+    context = _combat_context([mind_blast], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.draw_pile = [
+        _card("Strike_R", "Strike"),
+        _card("Defend_R", "Defend", card_type=CardType.SKILL, has_target=False),
+        _card("Bash", "Bash"),
+        _card("Anger", "Anger"),
+    ]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        mind_blast,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 4
+
+
 def test_inflame_uses_real_strength_amount_before_attacks():
     inflame = _card(
         "Inflame",
@@ -8018,6 +8049,33 @@ def test_lethal_detector_counts_body_slam_current_block(monkeypatch):
     assert detector._calculate_affordable_damage(context) == 18
     assert detector.can_kill_all(context) is True
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["body-slam"]
+
+
+def test_lethal_detector_counts_mind_blast_draw_pile_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "mind blast": {
+            "name": "Mind Blast",
+            "description": "Innate. Deal damage equal to the number of cards in your draw pile.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+
+    mind_blast = _card("Mind Blast", "Mind Blast+", cost=1, upgrades=1)
+    mind_blast.uuid = "mind-blast"
+    context = _combat_context([mind_blast], energy=1, monsters=[_louse(current_hp=4)])
+    context.game.draw_pile = [
+        _card("Strike_R", "Strike"),
+        _card("Defend_R", "Defend", card_type=CardType.SKILL, has_target=False),
+        _card("Bash", "Bash"),
+        _card("Anger", "Anger"),
+    ]
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 4
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["mind-blast"]
 
 
 def test_lethal_detector_uses_dropkick_energy_refund_for_sequence(monkeypatch):
