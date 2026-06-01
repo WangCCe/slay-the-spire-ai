@@ -679,6 +679,13 @@ class DecisionContext:
             return False
         return any(r.relic_id == relic_id for r in self.game.relics)
 
+    @staticmethod
+    def _power_matches(power, power_id: str) -> bool:
+        for attr in ('power_id', 'power_name', 'name'):
+            if getattr(power, attr, None) == power_id:
+                return True
+        return False
+
     def _get_player_power_amount(self, power_id: str) -> int:
         """
         Get amount of specific player power.
@@ -692,7 +699,7 @@ class DecisionContext:
         if not hasattr(self.game, 'player') or not hasattr(self.game.player, 'powers'):
             return 0
         for power in self.game.player.powers:
-            if power.power_id == power_id:
+            if self._power_matches(power, power_id):
                 return power.amount if hasattr(power, 'amount') else 0
         return 0
 
@@ -710,7 +717,7 @@ class DecisionContext:
         if not hasattr(monster, 'powers'):
             return 0
         for power in monster.powers:
-            if power.power_id == power_id:
+            if self._power_matches(power, power_id):
                 return power.amount if hasattr(power, 'amount') else 0
         return 0
 

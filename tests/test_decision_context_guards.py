@@ -234,6 +234,49 @@ def test_incoming_damage_ignores_missing_intent_without_damage():
     assert context._calculate_incoming_damage() == 0
 
 
+def test_decision_context_accepts_power_name_only_objects():
+    monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        is_gone=False,
+        half_dead=False,
+        current_hp=48,
+        max_hp=48,
+        intent=Intent.DEBUFF,
+        move_adjusted_damage=0,
+        move_hits=1,
+        powers=[
+            SimpleNamespace(power_name="Vulnerable", amount=2),
+            SimpleNamespace(power_name="Weak", amount=1),
+        ],
+    )
+    game = SimpleNamespace(
+        current_hp=70,
+        max_hp=80,
+        player=SimpleNamespace(
+            energy=3,
+            powers=[
+                SimpleNamespace(power_name="Strength", amount=2),
+                SimpleNamespace(power_name="Dexterity", amount=1),
+            ],
+        ),
+        turn=1,
+        floor=3,
+        act=1,
+        monsters=[monster],
+        deck=[],
+        hand=[],
+        relics=[],
+    )
+
+    context = DecisionContext(game)
+
+    assert context.strength == 2
+    assert context.dexterity == 1
+    assert context.vulnerable_stacks[0] == 2
+    assert context.weak_stacks[0] == 1
+
+
 def test_base_immediate_threat_clamps_negative_live_move_damage_to_zero():
     monster = SimpleNamespace(
         move_adjusted_damage=-3,
