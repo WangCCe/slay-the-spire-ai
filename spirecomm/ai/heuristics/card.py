@@ -14,6 +14,7 @@ from spirecomm.data.loader import game_data_loader
 from spirecomm.ai.decision.base import DecisionContext, CardEvaluator
 from spirecomm.ai.priorities import Priority, SilentPriority, IroncladPriority, DefectPowerPriority
 from spirecomm.ai.heuristics.deck import DeckAnalyzer
+from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.ai.heuristics.card_names import canonical_card_name, card_data_key
 from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count
 
@@ -183,11 +184,13 @@ class SynergyCardEvaluator(CardEvaluator):
         modifier = 1.0
 
         # Energy efficiency
-        if card.cost > 0 and context.energy_available > 0:
-            energy_ratio = context.energy_available / card.cost
+        available_energy = getattr(context, 'energy_available', 0)
+        cost = effective_card_cost(card, available_energy)
+        if cost > 0 and available_energy > 0:
+            energy_ratio = available_energy / cost
             # Bonus if we have plenty of energy for this card
             modifier *= min(energy_ratio, 1.5)
-        elif card.cost == 0:
+        elif cost == 0:
             # Zero-cost cards are always efficient
             modifier *= 1.2
 

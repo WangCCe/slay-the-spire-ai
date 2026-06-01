@@ -177,3 +177,41 @@ def test_apotheosis_combo_counts_none_upgrades_as_unupgraded():
     )
 
     assert evaluator._detect_combo_potential(apotheosis, context, None) >= 1
+
+
+def test_context_modifier_uses_turn_cost_for_energy_efficiency():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    context = SimpleNamespace(
+        energy_available=1,
+        player_hp_pct=0.5,
+        monsters_alive=[],
+    )
+    zero_for_turn = Card(
+        "Shrug It Off",
+        "Shrug It Off",
+        CardType.SKILL,
+        CardRarity.COMMON,
+        cost=1,
+        cost_for_turn=0,
+    )
+
+    assert evaluator._calculate_context_modifier(zero_for_turn, context, None) == 1.2
+
+
+def test_context_modifier_handles_missing_card_cost_as_zero():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    context = SimpleNamespace(
+        energy_available=1,
+        player_hp_pct=0.5,
+        monsters_alive=[],
+    )
+    missing_cost = Card(
+        "Discovery",
+        "Discovery",
+        CardType.SKILL,
+        CardRarity.RARE,
+        cost=None,
+        cost_for_turn=None,
+    )
+
+    assert evaluator._calculate_context_modifier(missing_cost, context, None) == 1.2
