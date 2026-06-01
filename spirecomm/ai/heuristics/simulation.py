@@ -42,6 +42,7 @@ from spirecomm.ai.heuristics.card_costs import (
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_hits import fixed_attack_hit_count, strike_card_count
 from spirecomm.ai.heuristics.card_types import (
+    card_is_playable,
     card_requires_target,
     card_type_name,
     is_attack_card,
@@ -6410,7 +6411,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         total_energy = sum(
             effective_card_cost(c, context.energy_available)
             for c in context.playable_cards
-            if c.is_playable
+            if card_is_playable(c)
         )
         if total_energy <= context.energy_available:
             confidence += 0.1  # Can use all energy

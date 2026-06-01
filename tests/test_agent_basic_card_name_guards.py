@@ -300,6 +300,36 @@ def test_play_card_action_low_hp_cleanup_targets_name_only_attack_without_has_ta
     assert action.target_monster is low_hp
 
 
+def test_play_card_action_accepts_missing_is_playable_on_partial_attack():
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+    )
+    low_hp = SimpleNamespace(
+        current_hp=1,
+        max_hp=10,
+        half_dead=False,
+        is_gone=False,
+        intent="DEFEND",
+        move_adjusted_damage=0,
+    )
+    agent = _agent(
+        hand=[strike],
+        monsters=[low_hp],
+        player=SimpleNamespace(block=0, energy=1),
+        act=1,
+    )
+    agent.priorities = _FirstPlayablePriority()
+
+    action = agent.get_play_card_action()
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card is strike
+    assert action.target_monster is low_hp
+
+
 def test_play_card_action_low_hp_cleanup_does_not_target_name_only_aoe_without_has_target():
     cleave = SimpleNamespace(
         name="Cleave",

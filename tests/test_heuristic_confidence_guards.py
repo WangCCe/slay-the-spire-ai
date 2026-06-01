@@ -28,6 +28,20 @@ def test_confidence_energy_efficiency_uses_turn_cost():
     assert confidence == pytest.approx(0.8)
 
 
+def test_confidence_accepts_missing_is_playable_on_playable_cards():
+    context = SimpleNamespace(
+        playable_cards=[
+            SimpleNamespace(name="Strike", cost=1, cost_for_turn=1),
+        ],
+        monsters_alive=[],
+        energy_available=1,
+    )
+
+    confidence = HeuristicCombatPlanner().get_confidence(context)
+
+    assert confidence == pytest.approx(0.8)
+
+
 def test_planner_adaptive_depth_counts_string_zero_turn_cost(monkeypatch):
     planner = HeuristicCombatPlanner()
     context = SimpleNamespace(

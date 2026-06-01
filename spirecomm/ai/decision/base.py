@@ -28,6 +28,7 @@ from spirecomm.ai.heuristics.combat_state import (
     power_identifier,
     power_signature,
 )
+from spirecomm.ai.heuristics.card_types import card_is_playable
 from spirecomm.data.loader import game_data_loader
 
 
@@ -125,7 +126,7 @@ class DecisionContext:
         self.hand_size = len(game.hand) if hasattr(game, 'hand') else 0
         self.playable_cards = [
             c for c in game.hand
-            if hasattr(c, 'is_playable') and c.is_playable
+            if card_is_playable(c)
         ] if hasattr(game, 'hand') else []
 
         # === 新增：遗物检测 ===

@@ -23,7 +23,12 @@ from spirecomm.ai.heuristics.card_upgrades import (
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
-from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name, is_attack_card
+from spirecomm.ai.heuristics.card_types import (
+    card_is_playable,
+    card_requires_target,
+    card_type_name,
+    is_attack_card,
+)
 from spirecomm.ai.heuristics.combat_state import power_signature
 
 # Note: Logging is configured in main.py to write to ai_debug.log
@@ -515,7 +520,7 @@ class SimpleAgent:
         return card_requires_target(card, aoe_names)
 
     def get_play_card_action(self):
-        playable_cards = [card for card in self.game.hand if card.is_playable]
+        playable_cards = [card for card in self.game.hand if card_is_playable(card)]
         available_energy = getattr(getattr(self.game, "player", None), "energy", None)
         zero_cost_cards = [
             card

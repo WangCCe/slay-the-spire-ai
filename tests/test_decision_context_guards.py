@@ -350,6 +350,27 @@ def test_decision_context_accepts_relic_strings_and_names():
     assert context.has_paper_crane is True
 
 
+def test_decision_context_treats_missing_is_playable_as_playable():
+    strike = SimpleNamespace(name="Strike", cost=1, cost_for_turn=1)
+    wound = SimpleNamespace(name="Wound", is_playable=False)
+    game = SimpleNamespace(
+        current_hp=70,
+        max_hp=80,
+        player=SimpleNamespace(energy=3, powers=[]),
+        turn=1,
+        floor=3,
+        act=1,
+        monsters=[],
+        deck=[],
+        hand=[strike, wound],
+        relics=[],
+    )
+
+    context = DecisionContext(game)
+
+    assert context.playable_cards == [strike]
+
+
 def test_base_immediate_threat_clamps_negative_live_move_damage_to_zero():
     monster = SimpleNamespace(
         move_adjusted_damage=-3,
