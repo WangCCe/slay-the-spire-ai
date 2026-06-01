@@ -405,9 +405,22 @@ class RLAgentV2:
         if "GAME_OVER" in str(getattr(game, "screen_type", "")):
             return True
         player = getattr(game, "player", None)
-        if player is not None and getattr(player, "current_hp", 1) <= 0:
+        current_hp = RLAgentV2._safe_int(
+            getattr(player, "current_hp", 1) if player is not None else 1,
+            default=1,
+        )
+        if player is not None and current_hp <= 0:
             return True
         return False
+
+    @staticmethod
+    def _safe_int(value, default: int = 0) -> int:
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
 
     def reset(self) -> None:
         self.last_game = None

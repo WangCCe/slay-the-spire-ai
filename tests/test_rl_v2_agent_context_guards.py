@@ -46,3 +46,17 @@ def test_rl_v2_action_context_accepts_card_type_attribute_for_played_card():
     assert context["action_name"] == "PlayCardAction"
     assert context["had_play_options"] is True
     assert context["played_card_type"] == "SKILL"
+
+
+def test_rl_v2_terminal_check_accepts_string_player_hp():
+    alive_game = SimpleNamespace(
+        screen_type=None,
+        player=SimpleNamespace(current_hp="12"),
+    )
+    dead_game = SimpleNamespace(
+        screen_type=None,
+        player=SimpleNamespace(current_hp="0"),
+    )
+
+    assert RLAgentV2._is_terminal(alive_game) is False
+    assert RLAgentV2._is_terminal(dead_game) is True
