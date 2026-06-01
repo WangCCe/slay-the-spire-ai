@@ -12,7 +12,6 @@ import time
 from typing import List, Dict, Tuple, Optional, Any
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster, Intent
-from spirecomm.spire.identifiers import potion_id
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.incoming_damage import (
     known_unknown_move_has_no_immediate_damage,
@@ -48,7 +47,7 @@ from spirecomm.ai.heuristics.card_types import (
     card_type_name,
     is_attack_card,
 )
-from spirecomm.ai.heuristics.potions import potion_can_use
+from spirecomm.ai.heuristics.potions import game_real_potions, potion_can_use
 import spirecomm.ai.heuristics.card_upgrades as card_upgrade_helpers
 from spirecomm.ai.heuristics.card_upgrades import (
     card_upgrade_count,
@@ -5260,11 +5259,9 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         # === Adaptive max_depth by hand size and energy ===
         playable_count = len(context.playable_cards)
-        potions = []
-        if hasattr(context.game, 'get_real_potions'):
-            potions = context.game.get_real_potions() or []
+        potions = game_real_potions(context.game)
         has_usable_potion = any(
-            potion_id(potion) != "Potion Slot" and potion_can_use(potion)
+            potion_can_use(potion)
             for potion in potions
         )
 
@@ -5884,11 +5881,11 @@ class HeuristicCombatPlanner(CombatPlanner):
         """
         from spirecomm.spire.potion import Potion
 
-        potions = context.game.get_real_potions()
+        potions = game_real_potions(context.game)
         potion_actions = []
 
         for potion in potions:
-            if potion_id(potion) == "Potion Slot" or not potion_can_use(potion):
+            if not potion_can_use(potion):
                 continue
 
             # Calculate priority score based on potion type and game state
