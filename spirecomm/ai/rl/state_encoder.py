@@ -7,7 +7,7 @@ import numpy as np
 from typing import List, Tuple
 from spirecomm.ai.heuristics.card_costs import raw_card_cost
 from spirecomm.ai.heuristics.card_names import canonical_card_name
-from spirecomm.ai.heuristics.card_types import card_type_name
+from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id, relic_id
@@ -108,7 +108,7 @@ class StateEncoder:
             0.0,  # is_ethereal (not exposed)
             1.0 if (hasattr(card, 'exhausts') and card.exhausts) else 0.0,
             0.0,  # has_retain (not exposed)
-            1.0 if (hasattr(card, 'has_target') and card.has_target) else 0.0,
+            1.0 if card_requires_target(card) else 0.0,
             1.0 if card_name in weak_cards else 0.0,
             1.0 if card_name in vulnerable_cards else 0.0,
         ]

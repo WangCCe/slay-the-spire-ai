@@ -122,6 +122,41 @@ def test_rl_state_encoder_card_type_features_accept_strings():
     assert features[4] == 1.0
 
 
+def test_rl_state_encoder_infers_target_feature_for_name_only_attack_without_has_target():
+    encoder = StateEncoder()
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        upgrades=0,
+        exhausts=False,
+        properties=[],
+    )
+
+    features = encoder._encode_single_card(strike)
+
+    assert features[12] == 1.0
+
+
+def test_rl_state_encoder_ignores_misleading_aoe_target_flag():
+    encoder = StateEncoder()
+    cleave = SimpleNamespace(
+        name="Cleave",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        upgrades=0,
+        has_target=True,
+        exhausts=False,
+        properties=[],
+    )
+
+    features = encoder._encode_single_card(cleave)
+
+    assert features[12] == 0.0
+
+
 def test_rl_card_reward_features_infer_upgrade_flag_from_suffix():
     encoder = StateEncoder()
 

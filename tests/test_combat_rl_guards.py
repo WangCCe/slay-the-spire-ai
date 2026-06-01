@@ -204,6 +204,47 @@ def test_energy_guard_replaces_wasteful_end_turn_with_play_card():
     assert replacement.target_index == 0
 
 
+def test_energy_guard_targets_name_only_attack_without_has_target():
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+    )
+    game = _game(hand=[strike], monsters=[_monster(hp=30, damage=8, index=0)])
+    agent = _agent()
+
+    replacement = agent._get_non_end_turn_fallback(game)
+
+    assert isinstance(replacement, PlayCardAction)
+    assert replacement.card_index == 0
+    assert replacement.target_index == 0
+
+
+def test_energy_guard_does_not_target_name_only_aoe_with_misleading_flag():
+    cleave = SimpleNamespace(
+        name="Cleave",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    game = _game(
+        hand=[cleave],
+        monsters=[
+            _monster(hp=30, damage=8, index=0),
+            _monster(hp=30, damage=8, index=1),
+        ],
+    )
+    agent = _agent()
+
+    replacement = agent._get_non_end_turn_fallback(game)
+
+    assert isinstance(replacement, PlayCardAction)
+    assert replacement.card_index == 0
+    assert replacement.target_index is None
+
+
 def test_rl_playable_cards_parse_string_turn_cost():
     card = SimpleNamespace(is_playable=True, cost=3, cost_for_turn="2", has_target=True)
     game = _game(hand=[card], player=SimpleNamespace(energy=1))

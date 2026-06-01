@@ -27,6 +27,7 @@ from spirecomm.ai.incoming_damage import (
     known_unknown_move_immediate_damage,
 )
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
+from spirecomm.ai.heuristics.card_types import card_requires_target
 from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
 from spirecomm.spire.character import PlayerClass
 from spirecomm.spire.identifiers import potion_id
@@ -1297,7 +1298,7 @@ class CombatRLAgent:
                 continue
             if excluded and self._card_matches_normalized_names(card, excluded):
                 continue
-            if getattr(card, "has_target", False):
+            if card_requires_target(card):
                 if target_index is None:
                     continue
                 return PlayCardAction(card_index=card_index, target_index=target_index)
