@@ -6435,7 +6435,11 @@ class HeuristicCombatPlanner(CombatPlanner):
             confidence += 0.2  # Can probably kill
 
         # Energy efficiency
-        total_energy = sum(c.cost for c in context.playable_cards if c.is_playable)
+        total_energy = sum(
+            effective_card_cost(c, context.energy_available)
+            for c in context.playable_cards
+            if c.is_playable
+        )
         if total_energy <= context.energy_available:
             confidence += 0.1  # Can use all energy
 
