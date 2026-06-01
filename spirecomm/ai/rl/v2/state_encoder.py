@@ -166,17 +166,20 @@ class StateEncoderV2:
         return features
 
     def _encode_monster(self, monster) -> List[float]:
-        max_hp = max(getattr(monster, "max_hp", 0) or 0, 0)
-        current_hp = max(getattr(monster, "current_hp", 0) or 0, 0)
+        max_hp = max(self._safe_float(getattr(monster, "max_hp", 0), 0.0), 0.0)
+        current_hp = max(self._safe_float(getattr(monster, "current_hp", 0), 0.0), 0.0)
         hp_ratio = self._safe_ratio(current_hp, max_hp, 1.0)
-        block_ratio = min(max(getattr(monster, "block", 0) or 0, 0), 100) / 100.0
+        block = max(self._safe_float(getattr(monster, "block", 0), 0.0), 0.0)
+        block_ratio = min(block, 100) / 100.0
         is_alive = 1.0 if current_hp > 0 and not getattr(monster, "is_gone", False) else 0.0
 
         intent = self._normalize_intent(getattr(monster, "intent", Intent.UNKNOWN))
         intent_one_hot = [1.0 if intent == value else 0.0 for value in self.INTENT_ORDER]
 
-        intent_damage = np.tanh((getattr(monster, "move_adjusted_damage", 0) or 0) / 50.0)
-        intent_hits = min(max(getattr(monster, "move_hits", 0) or 0, 0), 10) / 10.0
+        move_damage = self._safe_float(getattr(monster, "move_adjusted_damage", 0), 0.0)
+        move_hits = max(self._safe_float(getattr(monster, "move_hits", 0), 0.0), 0.0)
+        intent_damage = np.tanh(move_damage / 50.0)
+        intent_hits = min(move_hits, 10) / 10.0
 
         keyword_values = [self._encode_keyword(monster.powers, key) for key in self.KEYWORDS]
 
@@ -347,6 +350,17 @@ class StateEncoderV2:
 
     @staticmethod
     def _safe_ratio(numerator, denominator, default: float) -> float:
+        numerator = StateEncoderV2._safe_float(numerator, 0.0)
+        denominator = StateEncoderV2._safe_float(denominator, 0.0)
         if denominator is None or denominator <= 0:
             return default
         return min(max(numerator, 0), denominator) / float(denominator)
+
+    @staticmethod
+    def _safe_float(value, default: float = 0.0) -> float:
+        if value is None:
+            return default
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default

@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import math
 
 from spirecomm.ai.rl.v2.id_mapping import IdMapper
 from spirecomm.ai.rl.v2.state_encoder import StateEncoderV2
@@ -118,6 +119,24 @@ def test_rl_v2_card_type_features_accept_card_type_attribute():
     features = encoder._encode_card_features(card)
 
     assert features[4] == 1.0
+
+
+def test_rl_v2_monster_features_accept_string_numeric_fields():
+    encoder = StateEncoderV2(_mapper())
+    monster = _monster(Intent.ATTACK)
+    monster.max_hp = "20"
+    monster.current_hp = "10"
+    monster.block = "5"
+    monster.move_adjusted_damage = "12"
+    monster.move_hits = "2"
+
+    features = encoder._encode_monster(monster)
+
+    assert features[0] == 1.0
+    assert features[1] == 0.5
+    assert features[2] == 0.05
+    assert abs(features[12] - math.tanh(12 / 50.0)) < 1e-9
+    assert features[13] == 0.2
 
 
 def test_rl_v2_player_class_features_accept_strings():
