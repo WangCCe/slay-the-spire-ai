@@ -6165,7 +6165,10 @@ class HeuristicCombatPlanner(CombatPlanner):
             return False
 
         # Condition 5: Cleanup phase detection
-        all_low_hp = all(m.current_hp < 8 for m in context.monsters_alive)
+        all_low_hp = all(
+            self._non_negative_int(getattr(m, 'current_hp', 0)) < 8
+            for m in context.monsters_alive
+        )
         if all_low_hp:
             logger.info("[TARGET_EXPLORE] Disabled - cleanup phase (all monsters < 8 HP)")
             return False

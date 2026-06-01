@@ -12009,6 +12009,44 @@ def test_ironclad_target_exploration_infers_name_only_single_target_attack():
     assert IroncladCombatPlanner()._should_explore_targets(context, 0) is True
 
 
+def test_heuristic_target_exploration_accepts_numeric_string_monster_hp():
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        damage=6,
+        upgrades=0,
+        is_playable=True,
+    )
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_louse(current_hp="7"), _louse(current_hp="12")],
+    )
+
+    assert HeuristicCombatPlanner(SynergyCardEvaluator())._should_explore_targets(context, 0) is True
+
+
+def test_ironclad_target_exploration_accepts_numeric_string_monster_hp():
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        damage=6,
+        upgrades=0,
+        is_playable=True,
+    )
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_louse(current_hp="7"), _louse(current_hp="12")],
+    )
+
+    assert IroncladCombatPlanner()._should_explore_targets(context, 0) is True
+
+
 def test_heuristic_target_exploration_accepts_name_only_aoe_without_has_target():
     cleave = SimpleNamespace(
         name="Cleave",
