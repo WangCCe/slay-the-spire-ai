@@ -1,6 +1,11 @@
 from types import SimpleNamespace
 
-from spirecomm.ai.heuristics.card_types import card_type_name, is_attack_card, is_card_type
+from spirecomm.ai.heuristics.card_types import (
+    card_requires_target,
+    card_type_name,
+    is_attack_card,
+    is_card_type,
+)
 from spirecomm.spire.card import Card, CardRarity, CardType
 
 
@@ -20,3 +25,24 @@ def test_card_type_matchers_accept_namespaced_strings():
     assert is_card_type(card, "ATTACK") is True
     assert is_card_type(card, CardType.ATTACK) is True
     assert is_attack_card(card) is True
+
+
+def test_card_requires_target_infers_name_only_targeted_attacks():
+    strike = SimpleNamespace(name="Strike", type="CardType.ATTACK")
+
+    assert card_requires_target(strike) is True
+
+
+def test_card_requires_target_treats_name_only_untargeted_attacks_as_not_targeted():
+    for name in (
+        "Cleave",
+        "Sword Boomerang",
+        "Sword Boomerang+1",
+        "Blizzard",
+        "Thunder Strike",
+        "Ragnarok",
+        "Dramatic Entrance",
+    ):
+        card = SimpleNamespace(name=name, type="CardType.ATTACK")
+
+        assert card_requires_target(card) is False

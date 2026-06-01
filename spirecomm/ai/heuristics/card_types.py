@@ -21,6 +21,16 @@ COMMON_AOE_ATTACK_NAMES = frozenset(
     ]
 )
 
+COMMON_UNTARGETED_ATTACK_NAMES = COMMON_AOE_ATTACK_NAMES | frozenset(
+    [
+        "Sword Boomerang",
+        "Blizzard",
+        "Thunder Strike",
+        "Ragnarok",
+        "Dramatic Entrance",
+    ]
+)
+
 
 def card_type_name(card_or_type) -> str:
     """Return a normalized card type name such as ``ATTACK`` or ``SKILL``."""
@@ -47,8 +57,8 @@ def is_attack_card(card_or_type) -> bool:
 
 def card_requires_target(card, aoe_attack_names=None) -> bool:
     is_attack = is_attack_card(card)
-    aoe_attack_names = COMMON_AOE_ATTACK_NAMES | set(aoe_attack_names or ())
-    if is_attack and canonical_card_name(card) in aoe_attack_names:
+    untargeted_attack_names = COMMON_UNTARGETED_ATTACK_NAMES | set(aoe_attack_names or ())
+    if is_attack and canonical_card_name(card) in untargeted_attack_names:
         return False
 
     explicit_target_flag = getattr(card, "has_target", None)
