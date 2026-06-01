@@ -158,6 +158,23 @@ def test_rl_v2_potion_ids_accept_strings():
     assert ids[0] == 13
 
 
+def test_rl_v2_potion_ids_use_get_real_potions_without_raw_potions():
+    mapper = IdMapper(
+        card_ids={},
+        potion_ids={"Strength Potion": 17},
+        relic_ids={},
+        card_tags={},
+    )
+    encoder = StateEncoderV2(mapper)
+    game = SimpleNamespace(
+        get_real_potions=lambda: [SimpleNamespace(potion_id="Strength Potion")]
+    )
+
+    ids = encoder._encode_potion_ids(game)
+
+    assert ids[0] == 17
+
+
 def test_rl_v2_card_features_treat_missing_cost_as_zero():
     encoder = StateEncoderV2(_mapper())
     card = _card("Cleave")

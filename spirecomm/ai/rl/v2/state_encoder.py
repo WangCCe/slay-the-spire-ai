@@ -14,6 +14,7 @@ from spirecomm.ai.heuristics.card_costs import raw_card_cost
 from spirecomm.ai.heuristics.card_types import card_is_playable, card_type_name
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 from spirecomm.ai.heuristics.combat_state import power_matches
+from spirecomm.ai.heuristics.potions import game_real_potions
 from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 
 from .id_mapping import IdMapper, load_default_id_mapper
@@ -274,7 +275,9 @@ class StateEncoderV2:
 
     def _encode_potion_ids(self, game: Game) -> List[int]:
         ids = [0] * self.POTION_SLOTS
-        potions = game.potions or []
+        raw_potions = getattr(game, "potions", None)
+        potions = raw_potions if raw_potions is not None else game_real_potions(game)
+        potions = potions or []
         for idx in range(min(len(potions), self.POTION_SLOTS)):
             potion = potions[idx]
             potion_key = potion_id(potion)
