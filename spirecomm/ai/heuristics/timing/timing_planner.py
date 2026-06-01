@@ -12,6 +12,7 @@ from .models import TimingContext, TurnTiming, BalanceWeights
 from .turn_classifier import TurnTimingClassifier
 from .balance_strategy import CombatBalanceStrategy
 from spirecomm.ai.heuristics.card_names import canonical_card_name
+from spirecomm.ai.heuristics.card_hits import fixed_attack_hit_count
 from spirecomm.ai.heuristics.card_costs import (
     effective_card_cost,
     energy_refund_for_card,
@@ -1018,10 +1019,10 @@ class TimingAwareCombatPlanner:
     def _get_attack_hit_count(self, card, context=None, available_energy=None) -> int:
         """Return known deterministic hit counts for attack damage estimates."""
         card_name = canonical_card_name(card)
-        upgrades = card_upgrade_count(card)
+        fixed_hit_count = fixed_attack_hit_count(card)
+        if fixed_hit_count is not None:
+            return fixed_hit_count
 
-        if card_name == 'Twin Strike':
-            return 2
         if card_name == 'Bane' and context is not None:
             return 2 if self._all_alive_targets_poisoned(context) else 1
         if card_name == 'Skewer':
@@ -1031,10 +1032,6 @@ class TimingAwareCombatPlanner:
                 else available_energy
             )
             return x_effect_energy(card, energy, context)
-        if card_name == 'Sword Boomerang':
-            return 4 if upgrades > 0 else 3
-        if card_name == 'Pummel':
-            return 5 if upgrades > 0 else 4
         if card_name == 'Fiend Fire' and context is not None:
             return self._count_fiend_fire_exhausted_cards(card, context)
 

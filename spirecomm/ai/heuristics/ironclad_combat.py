@@ -24,6 +24,7 @@ from .simulation import (
     W_DEATHRISK,
 )
 from .card_costs import effective_card_cost, is_x_cost_card, whirlwind_damage, x_effect_energy
+from .card_hits import fixed_attack_hit_count
 from .card_names import canonical_card_name
 from .card_types import card_requires_target, card_type_name, is_attack_card
 from .card_upgrades import card_upgrade_count, is_card_upgraded, known_damage_upgrade_bonus
@@ -1127,14 +1128,10 @@ class IroncladCombatPlanner(CombatPlanner):
     @staticmethod
     def _get_attack_hit_count(card: Card, context: Optional[DecisionContext] = None) -> int:
         card_name = canonical_card_name(card)
-        upgrades = card_upgrade_count(card)
+        fixed_hit_count = fixed_attack_hit_count(card)
+        if fixed_hit_count is not None:
+            return fixed_hit_count
 
-        if card_name == 'Twin Strike':
-            return 2
-        if card_name == 'Sword Boomerang':
-            return 4 if upgrades > 0 else 3
-        if card_name == 'Pummel':
-            return 5 if upgrades > 0 else 4
         if card_name == 'Fiend Fire' and context is not None:
             return IroncladCombatPlanner._count_fiend_fire_exhausted_cards(card, context)
 

@@ -29,6 +29,7 @@ from spirecomm.ai.heuristics.card_costs import (
     x_effect_energy,
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
+from spirecomm.ai.heuristics.card_hits import fixed_attack_hit_count
 from spirecomm.ai.heuristics.card_types import (
     card_requires_target,
     card_type_name,
@@ -1345,7 +1346,6 @@ class FastCombatSimulator:
     ) -> int:
         """Return known hit counts for repeated-hit attacks."""
         card_name = _canonical_card_name(card)
-        upgrades = card_upgrade_count(card)
 
         if card_name in {'Skewer', 'Whirlwind'}:
             energy = x_energy_spent
@@ -1354,12 +1354,9 @@ class FastCombatSimulator:
             if energy is None:
                 energy = x_effect_energy(card, getattr(state, 'player_energy', 0), context)
             return max(0, energy)
-        if card_name == 'Twin Strike':
-            return 2
-        if card_name == 'Sword Boomerang':
-            return 4 if upgrades > 0 else 3
-        if card_name == 'Pummel':
-            return 5 if upgrades > 0 else 4
+        fixed_hit_count = fixed_attack_hit_count(card)
+        if fixed_hit_count is not None:
+            return fixed_hit_count
         if card_name == 'Fiend Fire' and context is not None:
             return len(self._unplayed_hand_cards(state, context, exclude_card=card))
 

@@ -24,6 +24,7 @@ from .card_costs import (
     x_effect_energy,
 )
 from .card_types import card_requires_target, card_type_name, is_attack_card
+from .card_hits import fixed_attack_hit_count
 from .card_upgrades import card_upgrade_count, is_card_upgraded, known_damage_upgrade_bonus
 
 logger = logging.getLogger(__name__)
@@ -1846,10 +1847,10 @@ class CombatEndingDetector:
     ) -> int:
         """Return known hit counts for repeated-hit attacks."""
         card_name = self._base_card_name(card)
-        upgrades = card_upgrade_count(card)
+        fixed_hit_count = fixed_attack_hit_count(card)
+        if fixed_hit_count is not None:
+            return fixed_hit_count
 
-        if card_name == 'Twin Strike':
-            return 2
         if card_name == 'Bane' and context is not None:
             if monster_idx is not None:
                 return 2 if self._monster_poison_stacks(context, monster_idx) > 0 else 1
@@ -1861,10 +1862,6 @@ class CombatEndingDetector:
                 else available_energy
             )
             return x_effect_energy(card, energy, context)
-        if card_name == 'Sword Boomerang':
-            return 4 if upgrades > 0 else 3
-        if card_name == 'Pummel':
-            return 5 if upgrades > 0 else 4
         if card_name == 'Fiend Fire':
             if fiend_fire_exhaust_count is not None:
                 return fiend_fire_exhaust_count
