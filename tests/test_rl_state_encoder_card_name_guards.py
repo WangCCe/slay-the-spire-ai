@@ -333,6 +333,25 @@ def test_rl_state_encoder_combat_piles_infers_potion_available_for_usable_potion
     assert features[7] == 1.0
 
 
+def test_rl_state_encoder_combat_piles_counts_get_real_potions_without_raw_potions():
+    encoder = StateEncoder()
+    potion = SimpleNamespace(potion_id="Strength Potion")
+    game = SimpleNamespace(
+        exhaust_pile=[],
+        limbo=[],
+        cards_discarded_this_turn=0,
+        card_in_play=None,
+        get_real_potions=lambda: [potion],
+        are_potions_full=lambda: False,
+    )
+
+    features = encoder._encode_combat_piles(game)
+
+    assert features[4] == 1 / 5
+    assert features[5] == 0.0
+    assert features[7] == 1.0
+
+
 def test_rl_state_encoder_intent_encoding_accepts_string_representations():
     encoder = StateEncoder()
 
