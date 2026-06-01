@@ -918,6 +918,11 @@ class EnhancedMonsterDatabase:
                         })
                         break
 
+        predictions = self._filter_predictions_by_fading(
+            predictions,
+            special_mechanics,
+            ascension_level,
+        )
         return self._limit_predictions_with_boundary_ties(predictions)
 
     def _get_threshold_phase(
@@ -1037,6 +1042,30 @@ class EnhancedMonsterDatabase:
                 break
             limited.append(prediction)
         return limited
+
+    def _filter_predictions_by_fading(
+        self,
+        predictions: List[Dict[str, Any]],
+        special_mechanics: Optional[Dict[str, Any]],
+        ascension_level: int,
+    ) -> List[Dict[str, Any]]:
+        if not isinstance(special_mechanics, dict):
+            return predictions
+
+        fading_turns = special_mechanics.get("fading_turns")
+        if isinstance(fading_turns, dict):
+            max_turn = fading_turns.get("ascension_17+") if ascension_level >= 17 else None
+            if not isinstance(max_turn, int):
+                max_turn = fading_turns.get("normal")
+        else:
+            max_turn = fading_turns
+
+        if not isinstance(max_turn, int):
+            return predictions
+        return [
+            prediction for prediction in predictions
+            if prediction.get("turn", 0) <= max_turn
+        ]
 
     def _append_named_move_prediction(
         self,

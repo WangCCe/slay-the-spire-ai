@@ -612,6 +612,39 @@ def test_opening_with_move_probabilities_predicts_opening_first():
     ]
 
 
+def test_transient_predictions_stop_after_fading_turns():
+    database = EnhancedMonsterDatabase()
+
+    normal_turn_four = database.predict_next_moves(
+        "Transient",
+        current_turn=4,
+        monster_hp_percent=1.0,
+        ascension_level=0,
+    )
+    normal_turn_six = database.predict_next_moves(
+        "Transient",
+        current_turn=6,
+        monster_hp_percent=1.0,
+        ascension_level=0,
+    )
+    asc17_turn_five = database.predict_next_moves(
+        "Transient",
+        current_turn=5,
+        monster_hp_percent=1.0,
+        ascension_level=17,
+    )
+
+    assert [
+        (prediction["turn"], prediction["move"]["name"])
+        for prediction in normal_turn_four
+    ] == [(4, "Attack"), (5, "Attack")]
+    assert normal_turn_six == []
+    assert [
+        (prediction["turn"], prediction["move"]["name"])
+        for prediction in asc17_turn_five
+    ] == [(5, "Attack"), (6, "Attack")]
+
+
 def test_game_data_loader_forwards_other_enemy_count_to_monster_predictions():
     loader = GameDataLoader(auto_load=False)
 
