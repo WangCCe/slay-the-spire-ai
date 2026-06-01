@@ -272,10 +272,24 @@ def test_initial_move_is_not_duplicated_when_opening_already_predicts_it():
     assert [
         (prediction["turn"], prediction["move"]["name"])
         for prediction in predictions
+    ] == [(1, "Spawn")]
+
+
+def test_collector_without_minion_context_uses_probability_table():
+    database = EnhancedMonsterDatabase()
+
+    predictions = database.predict_next_moves(
+        "The Collector",
+        current_turn=2,
+        monster_hp_percent=1.0,
+    )
+
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in predictions
     ] == [
-        (1, "Spawn"),
-        (2, "Fireball"),
-        (3, "Buff"),
+        (2, "Fireball", 0.7),
+        (2, "Buff", 0.3),
     ]
 
 

@@ -478,8 +478,7 @@ class EnhancedMonsterDatabase:
 
         # Check for Collector probabilities that depend on whether Torch Heads are alive.
         elif (
-            other_enemy_names is not None
-            and "probabilities_with_torch_heads" in pattern
+            "probabilities_with_torch_heads" in pattern
             and "probabilities_with_dead_torch_head" in pattern
         ):
             if current_turn == 1 and pattern.get("initial_move"):
@@ -499,11 +498,9 @@ class EnhancedMonsterDatabase:
                     confidence=1.0,
                 )
             else:
-                probabilities = (
-                    pattern["probabilities_with_torch_heads"]
-                    if self._torch_head_count(other_enemy_names) >= 2
-                    else pattern["probabilities_with_dead_torch_head"]
-                )
+                probabilities = pattern["probabilities_with_torch_heads"]
+                if other_enemy_names is not None and self._torch_head_count(other_enemy_names) < 2:
+                    probabilities = pattern["probabilities_with_dead_torch_head"]
                 self._append_probability_predictions(
                     predictions,
                     moves,
