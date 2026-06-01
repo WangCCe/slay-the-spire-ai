@@ -53,6 +53,18 @@ def _playable_card(card_id, card_type, cost, cost_for_turn=None):
     )
 
 
+def _name_only_playable_card(name, card_type, cost, cost_for_turn=None):
+    return SimpleNamespace(
+        name=name,
+        type=card_type,
+        cost=cost,
+        cost_for_turn=cost if cost_for_turn is None else cost_for_turn,
+        is_playable=True,
+        has_target=False,
+        exhausts=False,
+    )
+
+
 class _PreferCostlyAttackPriority:
     def is_card_aoe(self, card):
         return False
@@ -218,6 +230,32 @@ def test_play_card_action_targets_low_hp_with_string_attack_type():
     agent = _agent(
         hand=[strike],
         monsters=[high_hp, low_hp],
+        player=SimpleNamespace(block=0, energy=1),
+        act=1,
+    )
+    agent.priorities = _FirstPlayablePriority()
+
+    action = agent.get_play_card_action()
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card is strike
+    assert action.target_monster is low_hp
+
+
+def test_play_card_action_low_hp_cleanup_accepts_name_only_attack():
+    strike = _name_only_playable_card("Strike", CardType.ATTACK, cost=1)
+    strike.has_target = True
+    low_hp = SimpleNamespace(
+        current_hp=1,
+        max_hp=10,
+        half_dead=False,
+        is_gone=False,
+        intent="DEFEND",
+        move_adjusted_damage=0,
+    )
+    agent = _agent(
+        hand=[strike],
+        monsters=[low_hp],
         player=SimpleNamespace(block=0, energy=1),
         act=1,
     )

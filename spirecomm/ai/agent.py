@@ -557,7 +557,7 @@ class SimpleAgent:
                 else:
                     card_to_play = self.priorities.get_best_card_to_play(attack_cards)
                 logging.info(
-                    f"[SIMPLE_AGENT_LETHAL] Cleanup attack selected: {card_to_play.card_id}"
+                    f"[SIMPLE_AGENT_LETHAL] Cleanup attack selected: {self._card_id_for_tracking(card_to_play)}"
                 )
                 if card_to_play.has_target:
                     target = self.get_low_hp_target()
