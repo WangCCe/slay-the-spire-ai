@@ -6383,15 +6383,13 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         # Detect AOE cards
         is_aoe = False
-        if hasattr(card, 'card_id'):
-            # Check known AOE cards
-            if hasattr(context, 'player_class'):
-                player_class = str(context.player_class)
-            else:
-                player_class = 'IRONCLAD'
+        if hasattr(context, 'player_class'):
+            player_class = str(context.player_class)
+        else:
+            player_class = 'IRONCLAD'
 
-            if player_class == 'IRONCLAD':
-                is_aoe = card_name in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
+        if player_class == 'IRONCLAD':
+            is_aoe = card_name in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
 
         # Base damage estimate with AOE multiplier
         base_damage = 0

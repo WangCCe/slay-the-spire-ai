@@ -8827,6 +8827,33 @@ def test_fast_score_aoe_multiplier_ignores_zero_hp_stale_simulated_monsters(monk
     assert score == simulation.FASTSCORE_ATTACK_BONUS + 8 * simulation.FASTSCORE_DAMAGE_MULTIPLIER
 
 
+def test_fast_score_aoe_multiplier_accepts_name_only_cleave(monkeypatch):
+    monkeypatch.setattr(HeuristicCombatPlanner, "_calculate_x_block", lambda *_args, **_kwargs: 0, raising=False)
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    name_only_cleave = SimpleNamespace(
+        name="Cleave",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        damage=8,
+        upgrades=0,
+        has_target=False,
+        is_playable=True,
+    )
+    context = _combat_context(
+        [cleave, name_only_cleave],
+        energy=1,
+        monsters=[_louse(current_hp=30), _louse(current_hp=30)],
+    )
+    state = SimulationState(context)
+    planner = HeuristicCombatPlanner()
+
+    canonical_score = planner.fast_score_action(cleave, state, context)
+    name_only_score = planner.fast_score_action(name_only_cleave, state, context)
+
+    assert name_only_score == canonical_score
+
+
 def test_lethal_targeting_treats_carnage_as_single_target():
     carnage = _card("Carnage", "Carnage", cost=2)
     context = _combat_context([carnage], energy=2, monsters=[_louse(current_hp=20), _louse(current_hp=20)])
