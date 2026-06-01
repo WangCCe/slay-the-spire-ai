@@ -677,7 +677,16 @@ class DecisionContext:
         """
         if not hasattr(self.game, 'relics'):
             return False
-        return any(r.relic_id == relic_id for r in self.game.relics)
+        return any(self._relic_matches(relic, relic_id) for relic in self.game.relics)
+
+    @staticmethod
+    def _relic_matches(relic, relic_id: str) -> bool:
+        if relic == relic_id:
+            return True
+        return any(
+            getattr(relic, attr, None) == relic_id
+            for attr in ('relic_id', 'name')
+        )
 
     @staticmethod
     def _power_matches(power, power_id: str) -> bool:

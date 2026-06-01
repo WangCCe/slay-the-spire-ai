@@ -277,6 +277,31 @@ def test_decision_context_accepts_power_name_only_objects():
     assert context.weak_stacks[0] == 1
 
 
+def test_decision_context_accepts_relic_strings_and_names():
+    game = SimpleNamespace(
+        current_hp=70,
+        max_hp=80,
+        player=SimpleNamespace(energy=3, powers=[]),
+        turn=1,
+        floor=3,
+        act=1,
+        monsters=[],
+        deck=[],
+        hand=[],
+        relics=[
+            "Snecko Eye",
+            SimpleNamespace(name="Orichalcum"),
+            SimpleNamespace(relic_id="Paper Crane"),
+        ],
+    )
+
+    context = DecisionContext(game)
+
+    assert context.has_snecko_eye is True
+    assert context.has_orichalcum is True
+    assert context.has_paper_crane is True
+
+
 def test_base_immediate_threat_clamps_negative_live_move_damage_to_zero():
     monster = SimpleNamespace(
         move_adjusted_damage=-3,
