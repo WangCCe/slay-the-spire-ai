@@ -105,3 +105,13 @@ def test_act1_elite_readiness_counts_compact_potion_ids_by_name():
     ]
 
     assert router._act_1_elite_readiness_score(context) == 2
+
+
+def test_act1_elite_readiness_uses_get_real_potions_without_raw_potions():
+    router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="aggressive")
+    context = _context(floor=9, hp_pct=0.9)
+    potion = SimpleNamespace(potion_id="FirePotion", name="Fire Potion", can_use=True)
+    del context.game.potions
+    context.game.get_real_potions = lambda: [potion]
+
+    assert router._act_1_elite_readiness_score(context) == 2

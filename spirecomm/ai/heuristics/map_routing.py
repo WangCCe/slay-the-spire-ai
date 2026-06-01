@@ -14,6 +14,7 @@ from typing import List, Dict
 from ..decision.base import DecisionContext
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_upgraded
+from spirecomm.ai.heuristics.potions import game_real_potions
 from spirecomm.spire.map import Node
 from spirecomm.spire.screen import RestOption
 
@@ -141,7 +142,7 @@ class AdaptiveMapRouter:
         """Estimate if the deck is ready for Nob/Lagavulin/Sentries."""
         game = getattr(context, "game", None)
         deck = list(getattr(game, "deck", []) or [])
-        potions = list(getattr(game, "potions", []) or [])
+        potions = list(game_real_potions(game))
         relics = list(getattr(game, "relics", []) or [])
 
         card_names = [self._card_name(card) for card in deck]
