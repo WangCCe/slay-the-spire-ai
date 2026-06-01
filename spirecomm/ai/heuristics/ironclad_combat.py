@@ -1403,13 +1403,17 @@ class IroncladCombatPlanner(CombatPlanner):
                 }
                 if card_id in hp_costs and not all_killed:
                     hp_cost = hp_costs[card_id]
-                    if context.player_hp <= hp_cost:
+                    player_hp = self._non_negative_float(
+                        getattr(context, 'player_hp', getattr(getattr(context, 'game', None), 'current_hp', 0))
+                    )
+                    player_hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
+                    if player_hp <= hp_cost:
                         score -= 1000
                     else:
                         multiplier = 1.0
-                        if context.player_hp_pct < 0.3:
+                        if player_hp_pct < 0.3:
                             multiplier = 3.0
-                        elif context.player_hp_pct < 0.5:
+                        elif player_hp_pct < 0.5:
                             multiplier = 2.0
                         penalty_per_hp = 12
                         penalty = hp_cost * penalty_per_hp * multiplier
