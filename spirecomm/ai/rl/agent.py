@@ -387,10 +387,7 @@ class RLAgent:
                         )
 
                     # Check for game over
-                    done = "GAME_OVER" in str(game.screen_type) or (
-                        hasattr(game, 'player') and game.player is not None and
-                        hasattr(game.player, 'current_hp') and game.player.current_hp <= 0
-                    )
+                    done = self._is_terminal(game)
                 else:
                     # First action, no reward yet
                     reward = 0.0
@@ -439,6 +436,17 @@ class RLAgent:
             # Return safe fallback action
             from spirecomm.communication.action import EndTurnAction
             return EndTurnAction()
+
+    @staticmethod
+    def _is_terminal(game: Game) -> bool:
+        if "GAME_OVER" in str(getattr(game, "screen_type", "")):
+            return True
+        player = getattr(game, "player", None)
+        current_hp = RLAgent._safe_int(
+            getattr(player, "current_hp", 1) if player is not None else 1,
+            default=1,
+        )
+        return player is not None and current_hp <= 0
 
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:

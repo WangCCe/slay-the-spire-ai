@@ -23,11 +23,14 @@ class _Trainer:
     epsilon = 0.0
     total_steps = 0
 
+    def __init__(self):
+        self.last_done = None
+
     def select_action(self, _state, _mask, training, epsilon_override=None):
         return 0
 
-    def store_transition(self, *args, **kwargs):
-        return None
+    def store_transition(self, _state, _action, _reward, _next_state, done, **_kwargs):
+        self.last_done = done
 
     def train_step(self):
         return None
@@ -82,6 +85,37 @@ def test_rl_action_context_accepts_card_type_attribute_for_played_card():
 
     assert isinstance(action, PlayCardAction)
     assert agent.reward_calculator.action_context["played_card_type"] == "SKILL"
+
+
+def test_rl_agent_terminal_done_accepts_numeric_string_player_hp():
+    agent = RLAgent.__new__(RLAgent)
+    agent.state_encoder = SimpleNamespace(encode=lambda _game: np.zeros(3, dtype=float))
+    agent.action_encoder = _ActionEncoder()
+    agent.reward_calculator = _RewardCalculator()
+    agent.trainer = _Trainer()
+    agent.training_mode = True
+    agent.failed_actions = set()
+    agent.consecutive_failures = {}
+    agent.last_state_key = None
+    agent.last_logged_turn = None
+    agent.last_state = np.zeros(3, dtype=float)
+    agent.pending_reward_action = 0
+    agent.pending_reward_mask = np.array(agent.action_encoder.get_action_mask(None), dtype=bool)
+    agent.boss_min_epsilon = 0.0
+    card = SimpleNamespace(
+        name="Defend",
+        card_type="CardType.SKILL",
+        is_playable=True,
+        has_target=False,
+    )
+    agent.pending_reward_game = _game(card)
+    current_game = _game(card)
+    current_game.player.current_hp = "0"
+
+    action = agent.get_next_action_in_game(current_game)
+
+    assert isinstance(action, PlayCardAction)
+    assert agent.trainer.last_done is True
 
 
 def test_rl_agent_hand_select_confirm_bypass_accepts_string_num_cards():
