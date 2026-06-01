@@ -21,7 +21,7 @@ from spirecomm.ai.heuristics.simulation import (
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
-from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
+from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_upgraded
 
 # Note: Logging is configured in main.py to write to ai_debug.log
 # No need to configure here
@@ -1251,7 +1251,7 @@ class TurnPlanSignature:
             card_identity = id(card)
         return (
             card_identity,
-            getattr(card, "upgrades", 0),
+            card_upgrade_count(card),
             getattr(card, "cost", None),
             getattr(card, "cost_for_turn", getattr(card, "cost", None)),
             getattr(card, "is_playable", None),

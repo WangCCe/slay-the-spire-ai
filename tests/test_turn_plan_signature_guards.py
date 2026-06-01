@@ -185,6 +185,17 @@ def test_turn_plan_signature_distinguishes_hand_card_cost_and_upgrade_changes():
     assert base_signature != upgraded_signature
 
 
+def test_turn_plan_signature_infers_upgrade_changes_from_card_suffix():
+    base_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike", uuid="strike-1", cost=1, cost_for_turn=1)])
+    )
+    suffix_upgraded_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike+1", uuid="strike-1", cost=1, cost_for_turn=1)])
+    )
+
+    assert base_signature != suffix_upgraded_signature
+
+
 def test_turn_plan_signature_distinguishes_hand_card_playability_changes():
     playable_signature = TurnPlanSignature(
         _game([_card("Strike_R", "Strike", uuid="strike-1", is_playable=True)])
