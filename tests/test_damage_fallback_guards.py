@@ -4419,6 +4419,37 @@ def test_heuristic_incoming_damage_ignores_zero_hp_stale_monsters():
     assert HeuristicCombatPlanner()._get_incoming_damage(context) == 0
 
 
+def test_heuristic_incoming_damage_accepts_numeric_string_monster_hp():
+    stale_monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        current_hp="0",
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_id=1,
+        move_adjusted_damage=12,
+        move_hits=1,
+    )
+    live_monster = SimpleNamespace(
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+        current_hp="12",
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_id=2,
+        move_adjusted_damage=7,
+        move_hits=2,
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(monsters=[stale_monster, live_monster]),
+        act=1,
+    )
+
+    assert HeuristicCombatPlanner()._get_incoming_damage(context) == 14
+
+
 def test_damage_potion_score_ignores_zero_hp_stale_monsters():
     monster = SimpleNamespace(
         name="Cultist",

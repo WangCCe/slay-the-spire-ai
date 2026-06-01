@@ -5595,9 +5595,16 @@ class HeuristicCombatPlanner(CombatPlanner):
         return potion.effect_type in ['block', 'plated_armor', 'metallicize']
 
     @staticmethod
+    def _non_negative_int(value) -> int:
+        try:
+            return max(0, int(value or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
     def _is_live_monster_object(monster) -> bool:
         return (
-            getattr(monster, 'current_hp', 0) > 0
+            HeuristicCombatPlanner._non_negative_int(getattr(monster, 'current_hp', 0)) > 0
             and not getattr(monster, 'is_gone', False)
             and not getattr(monster, 'half_dead', False)
         )
