@@ -33,7 +33,10 @@ from spirecomm.ai.heuristics.card_upgrades import (
     DAMAGE_UPGRADE_BONUS,
     known_damage_upgrade_bonus as _known_damage_upgrade_bonus,
 )
-from spirecomm.data.loader import game_data_loader
+from spirecomm.data.loader import (
+    _effect_text_for_upgrade as _select_effect_text_for_upgrade,
+    game_data_loader,
+)
 
 # Configure logging for combat decisions
 logger = logging.getLogger(__name__)
@@ -1598,23 +1601,7 @@ class FastCombatSimulator:
             state.played_card_uuids.add(id(card))
 
     def _effect_text_for_upgrade(self, description: str, upgraded: bool) -> str:
-        text = (description or '').replace('\\n', '\n')
-
-        def select_upgrade_value(match):
-            return match.group(2 if upgraded else 1)
-
-        text = re.sub(r'\[([^\[\]|]*)\|([^\[\]]*)\]', select_upgrade_value, text)
-        text = re.sub(
-            r'\[([^\[\]|]*)\|',
-            lambda match: '' if upgraded else match.group(1),
-            text,
-        )
-        text = re.sub(
-            r'\|([^\]]*)\]',
-            lambda match: match.group(1) if upgraded else '',
-            text,
-        )
-        return text
+        return _select_effect_text_for_upgrade(description, upgraded)
 
     def _card_exhausts_itself(self, description: str, upgraded: bool = False) -> bool:
         description = self._effect_text_for_upgrade(description, upgraded)
