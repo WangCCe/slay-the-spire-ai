@@ -373,6 +373,16 @@ class EnhancedMonsterDatabase:
                         limit=prediction_limit,
                     )
 
+        # Check for sleep-window monsters with a deterministic awake cycle.
+        elif self._append_hibernation_predictions(
+            predictions,
+            monster_name,
+            pattern,
+            special_mechanics,
+            current_turn,
+        ):
+            pass
+
         # Check for shared boss records with per-member deterministic patterns.
         elif "member_patterns" in pattern:
             member_name, member_pattern = self._select_member_pattern(
@@ -1104,6 +1114,42 @@ class EnhancedMonsterDatabase:
                 "move": move,
                 "confidence": 1.0,
             })
+
+    def _append_hibernation_predictions(
+        self,
+        predictions: List[Dict[str, Any]],
+        monster_name: str,
+        pattern: Dict[str, Any],
+        special_mechanics: Optional[Dict[str, Any]],
+        current_turn: int,
+    ) -> bool:
+        if not isinstance(special_mechanics, dict):
+            return False
+        if special_mechanics.get("type") != "hibernation":
+            return False
+
+        hibernation_turns = special_mechanics.get("hibernation_turns", 3)
+        if not isinstance(hibernation_turns, int):
+            return False
+        if current_turn <= hibernation_turns:
+            return True
+
+        sequence = self._move_sequence_from_value(pattern.get("after_hibernation_sequence"))
+        if not sequence:
+            return False
+
+        sequence_length = len(sequence)
+        for i in range(3):
+            target_turn = current_turn + i
+            sequence_index = (target_turn - hibernation_turns - 1) % sequence_length
+            self._append_named_move_prediction(
+                predictions,
+                monster_name,
+                sequence[sequence_index],
+                target_turn,
+                confidence=1.0,
+            )
+        return True
 
     def _select_member_pattern(
         self,

@@ -71,6 +71,7 @@
       }
     ],
     "pattern": {
+      "after_hibernation_sequence": ["Attack", "Attack", "Siphon Soul"],
       "description": "Will attack twice, then uses Siphon Soul; repeats this pattern for the entire duration of the fight."
     },
     "special_mechanics": {

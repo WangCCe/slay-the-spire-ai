@@ -520,6 +520,44 @@ def test_champ_ascension_nineteen_replaces_gloat_with_defensive_stance():
     ]
 
 
+def test_lagavulin_predicts_awake_cycle_after_hibernation_turns():
+    database = EnhancedMonsterDatabase()
+
+    sleeping = database.predict_next_moves(
+        "Lagavulin",
+        current_turn=3,
+        monster_hp_percent=1.0,
+    )
+    awake = database.predict_next_moves(
+        "Lagavulin",
+        current_turn=4,
+        monster_hp_percent=1.0,
+    )
+    siphon_window = database.predict_next_moves(
+        "Lagavulin",
+        current_turn=6,
+        monster_hp_percent=1.0,
+    )
+
+    assert sleeping == []
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in awake
+    ] == [
+        (4, "Attack", 1.0),
+        (5, "Attack", 1.0),
+        (6, "Siphon Soul", 1.0),
+    ]
+    assert [
+        (prediction["turn"], prediction["move"]["name"])
+        for prediction in siphon_window
+    ] == [
+        (6, "Siphon Soul"),
+        (7, "Attack"),
+        (8, "Attack"),
+    ]
+
+
 def test_time_eater_below_half_hp_predicts_haste():
     database = EnhancedMonsterDatabase()
 
