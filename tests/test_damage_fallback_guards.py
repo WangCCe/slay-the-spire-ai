@@ -4473,6 +4473,43 @@ def test_damage_potion_score_ignores_zero_hp_stale_monsters():
     assert HeuristicCombatPlanner()._score_potion(potion, context, state) == 0
 
 
+def test_damage_potion_score_accepts_numeric_string_monster_hp():
+    stale_monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        current_hp="0",
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_id=1,
+        move_adjusted_damage=12,
+        move_hits=1,
+    )
+    live_monster = SimpleNamespace(
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+        current_hp="12",
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_id=2,
+        move_adjusted_damage=7,
+        move_hits=2,
+    )
+    potion = SimpleNamespace(effect_type="damage", effect_value=10)
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            monsters=[stale_monster, live_monster],
+            room_type="Monster",
+        ),
+        act=1,
+        vulnerable_stacks={0: 0},
+    )
+    state = SimpleNamespace(player_hp=80, player_max_hp=80)
+
+    assert HeuristicCombatPlanner()._score_potion(potion, context, state) == 20
+
+
 def test_damage_potion_score_does_not_treat_vulnerable_as_lethal():
     monster = SimpleNamespace(
         name="Lagavulin",

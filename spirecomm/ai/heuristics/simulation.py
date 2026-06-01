@@ -5691,8 +5691,9 @@ class HeuristicCombatPlanner(CombatPlanner):
             if alive_monsters:
                 # Immediate lethal check for any target (ignore incoming damage gating).
                 for i, monster in alive_monsters:
-                    damage = potion.effect_value
-                    if damage >= monster.current_hp:
+                    damage = self._non_negative_int(potion.effect_value)
+                    monster_hp = self._non_negative_int(getattr(monster, 'current_hp', 0))
+                    if damage >= monster_hp:
                         score += 100
                         break
 
@@ -5704,7 +5705,10 @@ class HeuristicCombatPlanner(CombatPlanner):
                 if len(alive_monsters) >= 2:
                     score += 25
                 # Bonus when close to lethal
-                total_monster_hp = sum(m.current_hp for _i, m in alive_monsters)
+                total_monster_hp = sum(
+                    self._non_negative_int(getattr(m, 'current_hp', 0))
+                    for _i, m in alive_monsters
+                )
                 if total_monster_hp < 50:
                     score += 20
 
