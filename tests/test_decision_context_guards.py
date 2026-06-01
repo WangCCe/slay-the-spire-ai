@@ -371,6 +371,45 @@ def test_decision_context_treats_missing_is_playable_as_playable():
     assert context.playable_cards == [strike]
 
 
+def test_decision_context_accepts_string_numeric_runtime_fields():
+    monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        is_gone=False,
+        half_dead=False,
+        current_hp="24",
+        max_hp="48",
+        intent=Intent.ATTACK,
+        move_adjusted_damage="6",
+        move_hits="2",
+        powers=[],
+    )
+    game = SimpleNamespace(
+        current_hp="40",
+        max_hp="80",
+        player=SimpleNamespace(energy="3", powers=[]),
+        turn="2",
+        floor="3",
+        act="1",
+        monsters=[monster],
+        deck=[],
+        hand=[],
+        relics=[],
+    )
+
+    context = DecisionContext(game)
+
+    assert context.player_hp == 40
+    assert context.player_max_hp == 80
+    assert context.player_hp_pct == 0.5
+    assert context.energy_available == 3
+    assert context.turn == 2
+    assert context.floor == 3
+    assert context.act == 1
+    assert context.incoming_damage == 12
+    assert context.monsters_alive == [monster]
+
+
 def test_base_immediate_threat_clamps_negative_live_move_damage_to_zero():
     monster = SimpleNamespace(
         move_adjusted_damage=-3,

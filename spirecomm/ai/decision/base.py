@@ -57,10 +57,12 @@ class DecisionContext:
         self.game_id = getattr(game, 'game_id', None)
         
         # Player stats - check if player exists
-        if hasattr(game, 'current_hp') and hasattr(game, 'max_hp') and game.max_hp > 0:
-            self.player_hp = game.current_hp
-            self.player_max_hp = game.max_hp
-            self.player_hp_pct = max(0, game.current_hp / max(game.max_hp, 1))
+        player_hp = self._safe_float(getattr(game, 'current_hp', 0), 0.0)
+        player_max_hp = self._safe_float(getattr(game, 'max_hp', 0), 0.0)
+        if player_max_hp > 0:
+            self.player_hp = player_hp
+            self.player_max_hp = player_max_hp
+            self.player_hp_pct = max(0, player_hp / max(player_max_hp, 1))
         else:
             import logging
             logger = logging.getLogger(__name__)
@@ -70,19 +72,19 @@ class DecisionContext:
             self.player_hp_pct = 1.0  # Default to full HP
 
         if hasattr(game, 'player') and game.player is not None:
-            self.energy_available = game.player.energy if hasattr(game.player, 'energy') else 3
+            self.energy_available = self._safe_int(getattr(game.player, 'energy', 3), 3)
         else:
             self.energy_available = 3  # Default energy
 
-        self.turn = game.turn if hasattr(game, 'turn') else 1
-        self.floor = game.floor if hasattr(game, 'floor') else 0
-        self.act = game.act if hasattr(game, 'act') else 1
+        self.turn = self._safe_int(getattr(game, 'turn', 1), 1)
+        self.floor = self._safe_int(getattr(game, 'floor', 0), 0)
+        self.act = self._safe_int(getattr(game, 'act', 1), 1)
 
         # Combat state
         self.incoming_damage = self._calculate_incoming_damage()
         self.monsters_alive = [
             m for m in game.monsters
-            if not m.is_gone and not m.half_dead and m.current_hp > 0
+            if self._monster_is_alive(m)
         ] if hasattr(game, 'monsters') else []
 
         # Deck analysis - dynamically import DeckAnalyzer to avoid circular imports
@@ -170,6 +172,32 @@ class DecisionContext:
         self.is_elite_fight = self.threat_category in [ThreatCategory.ELITE, ThreatCategory.SCALING]
 
     @staticmethod
+    def _safe_float(value, default=0.0):
+        if value is None:
+            return default
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _safe_int(value, default=0):
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @classmethod
+    def _monster_is_alive(cls, monster) -> bool:
+        return (
+            not getattr(monster, 'is_gone', False)
+            and not getattr(monster, 'half_dead', False)
+            and cls._safe_float(getattr(monster, 'current_hp', 1), 1.0) > 0
+        )
+
+    @staticmethod
     def _positive_move_hits(monster) -> int:
         try:
             return max(1, int(getattr(monster, 'move_hits', 1) or 1))
@@ -201,11 +229,7 @@ class DecisionContext:
 
         total = 0
         for monster in self.game.monsters:
-            if (
-                not getattr(monster, 'is_gone', False)
-                and not getattr(monster, 'half_dead', False)
-                and getattr(monster, 'current_hp', 1) > 0
-            ):
+            if self._monster_is_alive(monster):
                 intent = getattr(monster, 'intent', None)
 
                 if intent_is_unknown(intent):
