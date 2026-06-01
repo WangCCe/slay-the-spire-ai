@@ -278,7 +278,10 @@ class CombatBalanceStrategy:
     @staticmethod
     def _is_live_monster(monster) -> bool:
         return (
-            getattr(monster, 'current_hp', 1) > 0
+            CombatBalanceStrategy._coerce_float(
+                getattr(monster, 'current_hp', 1),
+                default=1.0,
+            ) > 0
             and not getattr(monster, 'is_gone', False)
             and not getattr(monster, 'half_dead', False)
         )
