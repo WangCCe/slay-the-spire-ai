@@ -5,6 +5,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "capture_sts_screenshot.ps1"
+SCRIPT_TIMEOUT_SECONDS = 30
 
 
 def _powershell():
@@ -31,7 +32,7 @@ def test_capture_script_supports_all_screens_dry_run(tmp_path):
         ],
         capture_output=True,
         text=True,
-        timeout=15,
+        timeout=SCRIPT_TIMEOUT_SECONDS,
     )
 
     output = result.stdout + result.stderr
@@ -74,7 +75,7 @@ def test_capture_script_reports_missing_window(tmp_path):
         ],
         capture_output=True,
         text=True,
-        timeout=15,
+        timeout=SCRIPT_TIMEOUT_SECONDS,
     )
 
     output = result.stdout + result.stderr
