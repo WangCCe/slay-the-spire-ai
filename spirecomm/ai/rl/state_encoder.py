@@ -5,6 +5,7 @@ import hashlib
 import re
 import numpy as np
 from typing import List, Tuple
+from spirecomm.ai.heuristics.combat_state import power_amount
 from spirecomm.ai.heuristics.card_costs import raw_card_cost
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
@@ -599,12 +600,7 @@ class StateEncoder:
 
     @staticmethod
     def _get_power_amount(powers, power_id):
-        for power in powers or []:
-            if getattr(power, 'power_id', None) == power_id:
-                return power.amount
-            if getattr(power, 'power_name', None) == power_id:
-                return power.amount
-        return 0
+        return power_amount(powers, power_id, 0)
 
     @staticmethod
     def _encode_intent(intent):

@@ -221,6 +221,17 @@ def test_rl_state_encoder_player_class_features_accept_strings():
     assert features[14] == 1.0
 
 
+def test_rl_state_encoder_power_amount_accepts_name_only_power():
+    encoder = StateEncoder()
+
+    amount = encoder._get_power_amount(
+        [SimpleNamespace(name="Strength", amount=3)],
+        "Strength",
+    )
+
+    assert amount == 3
+
+
 def test_rl_state_encoder_relic_features_accept_strings():
     encoder = StateEncoder()
     game = SimpleNamespace(relics=["Sozu"])

@@ -175,3 +175,14 @@ def test_rl_v2_monster_intent_encoding_accepts_string_representations():
         encoder, Intent.DEBUFF
     )
     assert _intent_one_hot(encoder, "NOT_ATTACK") == [0.0] * len(encoder.INTENT_ORDER)
+
+
+def test_rl_v2_keyword_encoding_accepts_name_only_power():
+    encoder = StateEncoderV2(_mapper())
+
+    encoded = encoder._encode_keyword(
+        [SimpleNamespace(name="Artifact", amount=4)],
+        "Artifact",
+    )
+
+    assert encoded == 4 / 20

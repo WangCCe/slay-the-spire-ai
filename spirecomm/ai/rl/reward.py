@@ -12,6 +12,7 @@ from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
 from spirecomm.spire.card import CardRarity
 from spirecomm.spire.character import PlayerClass
+from spirecomm.ai.heuristics.combat_state import power_amount
 from spirecomm.ai.priorities import (
     Priority,
     IroncladPriority,
@@ -660,13 +661,7 @@ class RewardCalculator:
 
     @staticmethod
     def _get_power_amount(entity, power_id: str) -> int:
-        powers = getattr(entity, "powers", []) or []
-        for power in powers:
-            if getattr(power, "power_id", None) == power_id:
-                return getattr(power, "amount", 0) or 0
-            if getattr(power, "power_name", None) == power_id:
-                return getattr(power, "amount", 0) or 0
-        return 0
+        return power_amount(getattr(entity, "powers", []) or [], power_id, 0) or 0
 
     def _calculate_enemy_strength_gain(self, last_game: Game, current_game: Game) -> int:
         last_monsters = last_game.monsters if last_game.monsters else []

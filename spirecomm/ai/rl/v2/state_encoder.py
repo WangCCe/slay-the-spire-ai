@@ -13,6 +13,7 @@ from spirecomm.spire.screen import ScreenType
 from spirecomm.ai.heuristics.card_costs import raw_card_cost
 from spirecomm.ai.heuristics.card_types import card_type_name
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
+from spirecomm.ai.heuristics.combat_state import power_matches
 from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 
 from .id_mapping import IdMapper, load_default_id_mapper
@@ -334,9 +335,7 @@ class StateEncoderV2:
         power_ids = self.KEYWORD_POWER_IDS.get(keyword_name, [])
         amount = 0.0
         for power in powers or []:
-            power_id = getattr(power, "power_id", None)
-            power_name = getattr(power, "power_name", None)
-            if (power_id in power_ids) or (power_name in power_ids):
+            if any(power_matches(power, power_id) for power_id in power_ids):
                 amount = getattr(power, "amount", 0) or 0
                 break
         if keyword_name in ("Strength", "Dexterity"):

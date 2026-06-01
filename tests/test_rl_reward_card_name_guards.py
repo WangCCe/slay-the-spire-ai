@@ -39,3 +39,10 @@ def test_rl_step_reward_uses_observed_floor_delta_after_reset():
 
     assert info["progress_reward"] == calc.FLOOR_REWARD_SCALE
     assert reward == calc.FLOOR_REWARD_SCALE
+
+
+def test_rl_reward_power_amount_accepts_name_only_power():
+    calc = RewardCalculator()
+    entity = SimpleNamespace(powers=[SimpleNamespace(name="Vulnerable", amount=2)])
+
+    assert calc._get_power_amount(entity, "Vulnerable") == 2
