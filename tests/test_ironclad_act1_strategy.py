@@ -95,3 +95,13 @@ def test_act1_elite_readiness_counts_upgraded_card_names():
     context.game.relics = ["Burning Blood", "Akabeko"]
 
     assert router._act_1_elite_readiness_score(context) >= 5
+
+
+def test_act1_elite_readiness_counts_compact_potion_ids_by_name():
+    router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="aggressive")
+    context = _context(floor=9, hp_pct=0.9)
+    context.game.potions = [
+        SimpleNamespace(potion_id="FirePotion", name="Fire Potion", can_use=True)
+    ]
+
+    assert router._act_1_elite_readiness_score(context) == 2

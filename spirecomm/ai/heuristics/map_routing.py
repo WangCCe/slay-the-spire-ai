@@ -58,6 +58,10 @@ class AdaptiveMapRouter:
     def _card_name(card) -> str:
         return canonical_card_name(card)
 
+    @staticmethod
+    def _compact_identifier(value) -> str:
+        return "".join(ch for ch in str(value or "") if ch.isalnum()).lower()
+
     def calculate_node_priority(self, node: Node, context: DecisionContext) -> int:
         """
         Calculate dynamic priority for a map node.
@@ -162,6 +166,10 @@ class AdaptiveMapRouter:
             "Duplication Potion", "Distilled Chaos", "Explosive Potion",
             "Swift Potion", "Energy Potion", "Entropic Brew",
         }
+        fight_potion_keys = {
+            self._compact_identifier(potion_name)
+            for potion_name in fight_potions
+        }
 
         score = 0
         score += min(4, sum(1 for card_name in card_names if card_name in premium_attacks))
@@ -173,7 +181,12 @@ class AdaptiveMapRouter:
             sum(
                 1
                 for potion in potions
-                if getattr(potion, "potion_id", "") in fight_potions
+                if (
+                    self._compact_identifier(getattr(potion, "potion_id", ""))
+                    in fight_potion_keys
+                    or self._compact_identifier(getattr(potion, "name", ""))
+                    in fight_potion_keys
+                )
                 and getattr(potion, "can_use", True)
             ),
         )
