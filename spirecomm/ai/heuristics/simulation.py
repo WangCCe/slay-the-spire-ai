@@ -10,7 +10,7 @@ import logging
 import re
 import time
 from typing import List, Dict, Tuple, Optional, Any
-from spirecomm.spire.card import Card, CardType
+from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster, Intent
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.incoming_damage import (
@@ -6301,10 +6301,12 @@ class HeuristicCombatPlanner(CombatPlanner):
         # Rage effect: "Whenever you play an Attack this turn, gain 3 Block"
         # Value depends on how many attack cards can be played after it
         card_name = _canonical_card_name(card)
+        normalized_card_type = card_type_name(card)
+        card_is_attack = is_attack_card(card)
         if card_name == 'Rage':
             # Count playable attack cards in hand
             attack_cards = [c for c in context.playable_cards
-                          if hasattr(c, 'type') and c.type == CardType.ATTACK]
+                          if is_attack_card(c)]
 
             rage_block = 5 if is_card_upgraded(card) else 3
             potential_block = len(attack_cards) * rage_block
@@ -6327,7 +6329,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             score += FASTSCORE_ZERO_COST_BONUS
 
         # Baseline power bonus to avoid pruning setup cards
-        if hasattr(card, 'type') and card.type == CardType.POWER:
+        if normalized_card_type == 'POWER':
             power_bonus = FASTSCORE_POWER_BONUS
             if hasattr(context, 'turn') and context.turn <= 2:
                 power_bonus += FASTSCORE_POWER_EARLY_BONUS
@@ -6339,11 +6341,11 @@ class HeuristicCombatPlanner(CombatPlanner):
             if self.simulator._is_live_monster_state(m)
         ]
         num_monsters = len(monsters_alive)
-        if monsters_alive and hasattr(card, 'type') and card.type == CardType.ATTACK:
+        if monsters_alive and card_is_attack:
             score += FASTSCORE_ATTACK_BONUS
 
         # Debuff setup bonus when attacks remain (e.g., Shockwave before attacks).
-        if monsters_alive and hasattr(card, 'type') and card.type == CardType.SKILL:
+        if monsters_alive and normalized_card_type == 'SKILL':
             card_name = _canonical_card_name(card)
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
@@ -6352,7 +6354,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                 effect_text = self.simulator._effect_text_for_upgrade(description, upgraded).lower()
                 if 'vulnerable' in effect_text or 'weak' in effect_text:
                     attack_cards = [c for c in context.playable_cards
-                                    if hasattr(c, 'type') and c.type == CardType.ATTACK]
+                                    if is_attack_card(c)]
                     if attack_cards:
                         is_aoe = 'all enemies' in effect_text
                         bonus = 6
@@ -6393,7 +6395,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         base_damage = 0
         if hasattr(card, 'damage') and card.damage:
             base_damage = card.damage
-        elif hasattr(card, 'type') and card.type == CardType.ATTACK:
+        elif card_is_attack:
             # Fallback: use game data for damage
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:

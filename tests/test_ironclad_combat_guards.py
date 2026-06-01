@@ -8466,6 +8466,7 @@ def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     monkeypatch.setattr(simulation, "game_data_loader", loader)
     monkeypatch.setattr(HeuristicCombatPlanner, "_calculate_x_block", lambda *_args, **_kwargs: 0, raising=False)
     carnage = _card("Carnage", "Carnage", cost=2)
+    carnage.type = "ATTACK"
     context = _combat_context([carnage], energy=2, monsters=[_louse(current_hp=30), _louse(current_hp=30)])
 
     score = HeuristicCombatPlanner().fast_score_action(
@@ -8475,6 +8476,44 @@ def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     )
 
     assert score == simulation.FASTSCORE_ATTACK_BONUS + 20 * simulation.FASTSCORE_DAMAGE_MULTIPLIER
+
+
+def test_fast_score_gives_setup_bonus_to_string_power_cards(monkeypatch):
+    monkeypatch.setattr(HeuristicCombatPlanner, "_calculate_x_block", lambda *_args, **_kwargs: 0, raising=False)
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    demon_form.type = "POWER"
+    context = _combat_context([demon_form], energy=3, monsters=[_louse(current_hp=100)])
+    context.turn = 1
+
+    score = HeuristicCombatPlanner().fast_score_action(
+        demon_form,
+        SimulationState(context),
+        context,
+    )
+
+    assert score == simulation.FASTSCORE_POWER_BONUS + simulation.FASTSCORE_POWER_EARLY_BONUS
+
+
+def test_fast_score_rage_counts_string_attack_cards(monkeypatch):
+    monkeypatch.setattr(HeuristicCombatPlanner, "_calculate_x_block", lambda *_args, **_kwargs: 0, raising=False)
+    rage = _card("Rage", "Rage", card_type=CardType.SKILL, cost=0, has_target=False)
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.type = "ATTACK"
+    context = _combat_context([rage, strike], energy=0, monsters=[_louse(current_hp=100)])
+
+    score = HeuristicCombatPlanner().fast_score_action(
+        rage,
+        SimulationState(context),
+        context,
+    )
+
+    assert score == 15 + (3 * 1.5) + simulation.FASTSCORE_ZERO_COST_BONUS
 
 
 def test_fast_score_uses_upgraded_trip_aoe_text_for_setup_bonus(monkeypatch):
@@ -8502,8 +8541,11 @@ def test_fast_score_uses_upgraded_trip_aoe_text_for_setup_bonus(monkeypatch):
     monkeypatch.setattr(simulation, "game_data_loader", loader)
     monkeypatch.setattr(HeuristicCombatPlanner, "_calculate_x_block", lambda *_args, **_kwargs: 0, raising=False)
     strike = _card("Strike_R", "Strike")
+    strike.type = "ATTACK"
     base_trip = _card("Trip", "Trip", card_type=CardType.SKILL, cost=0, has_target=True, upgrades=None)
+    base_trip.type = "SKILL"
     upgraded_trip = _card("Trip", "Trip+", card_type=CardType.SKILL, cost=0, has_target=True, upgrades=1)
+    upgraded_trip.type = "SKILL"
     base_context = _combat_context(
         [base_trip, strike],
         energy=1,
