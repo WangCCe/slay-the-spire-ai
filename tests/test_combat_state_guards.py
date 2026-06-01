@@ -67,6 +67,7 @@ def test_card_play_key_prefers_uuid_and_keeps_uuidless_duplicates_distinct():
     assert card_play_key(first) == "same-card"
     assert card_play_key(second) == "same-card"
     assert card_play_key(uuidless_first) != card_play_key(uuidless_second)
+    assert card_play_key(None) is None
 
 
 def test_power_name_reads_known_power_identifier_fields_in_order():

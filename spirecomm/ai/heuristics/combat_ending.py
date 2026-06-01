@@ -319,7 +319,7 @@ class CombatEndingDetector:
                 best_priority = None
 
                 for card in attack_cards:
-                    card_uuid = getattr(card, 'uuid', None) or id(card)
+                    card_uuid = card_play_key(card)
                     if card_uuid in played_cards:
                         continue
 

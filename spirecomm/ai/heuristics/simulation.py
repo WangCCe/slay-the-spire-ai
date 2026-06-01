@@ -23,6 +23,7 @@ from spirecomm.ai.monster_names import canonical_live_monster_name, monster_fiel
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.combat_state import (
+    card_play_key,
     draw_pile_count,
     player_debuff_stacks,
     player_has_power,
@@ -1311,13 +1312,13 @@ class FastCombatSimulator:
     def _rampage_damage_bonus(self, state: SimulationState, card: Card) -> int:
         if _canonical_card_name(card) != 'Rampage':
             return 0
-        card_key = self._card_identity(card)
+        card_key = card_play_key(card)
         return state.rampage_damage_bonus_by_card.get(card_key, 0)
 
     def _apply_rampage_scaling(self, state: SimulationState, card: Card):
         if _canonical_card_name(card) != 'Rampage':
             return
-        card_key = self._card_identity(card)
+        card_key = card_play_key(card)
         state.rampage_damage_bonus_by_card[card_key] = (
             state.rampage_damage_bonus_by_card.get(card_key, 0)
             + (8 if is_card_upgraded(card) else 5)
@@ -1525,9 +1526,9 @@ class FastCombatSimulator:
             hand_cards = getattr(context, 'playable_cards', [])
 
         cards = []
-        exclude_key = self._card_identity(exclude_card) if exclude_card is not None else None
+        exclude_key = card_play_key(exclude_card)
         for hand_card in hand_cards:
-            card_key = self._card_identity(hand_card)
+            card_key = card_play_key(hand_card)
             if hand_card is exclude_card or (exclude_key is not None and card_key == exclude_key):
                 continue
             if card_key in state.played_card_uuids or id(hand_card) in state.played_card_uuids:
@@ -1535,15 +1536,9 @@ class FastCombatSimulator:
             cards.append(hand_card)
         return cards
 
-    @staticmethod
-    def _card_identity(card: Optional[Card]):
-        if card is None:
-            return None
-        return getattr(card, 'uuid', None) or id(card)
-
     def _mark_cards_unavailable(self, state: SimulationState, cards: List[Card]):
         for card in cards:
-            card_key = self._card_identity(card)
+            card_key = card_play_key(card)
             if card_key is not None:
                 state.played_card_uuids.add(card_key)
             state.played_card_uuids.add(id(card))

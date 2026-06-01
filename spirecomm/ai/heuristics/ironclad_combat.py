@@ -38,7 +38,7 @@ from .card_upgrades import (
     known_damage_upgrade_bonus,
     perfected_strike_bonus_per_strike,
 )
-from .combat_state import player_block_value
+from .combat_state import card_play_key, player_block_value
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
@@ -311,7 +311,7 @@ class IroncladCombatPlanner(CombatPlanner):
             for sequence, state, energy_spent, score in beam:
                 # Try each remaining card
                 for card in playable_cards:
-                    card_uuid = self._card_identity(card)
+                    card_uuid = card_play_key(card)
 
                     if card_uuid in state.played_card_uuids:
                         continue
@@ -460,10 +460,6 @@ class IroncladCombatPlanner(CombatPlanner):
                 )
 
         return best_sequence
-
-    @staticmethod
-    def _card_identity(card: Card):
-        return getattr(card, 'uuid', None) or id(card)
 
     @staticmethod
     def _card_cost_for_state(card: Card, state: SimulationState) -> int:

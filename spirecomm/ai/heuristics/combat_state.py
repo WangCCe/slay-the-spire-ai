@@ -4,6 +4,8 @@ from typing import Any
 
 
 def card_play_key(card: Any):
+    if card is None:
+        return None
     return getattr(card, 'uuid', None) or id(card)
 
 
