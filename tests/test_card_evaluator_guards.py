@@ -305,3 +305,24 @@ def test_context_modifier_accepts_numeric_string_low_monster_hp():
     )
 
     assert evaluator._calculate_context_modifier(strike, context, None) == 1.3
+
+
+def test_context_modifier_accepts_numeric_string_player_hp_for_threat_ratio():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    context = SimpleNamespace(
+        energy_available=1,
+        player_hp_pct=0.5,
+        incoming_damage=30,
+        game=SimpleNamespace(current_hp="80"),
+        monsters_alive=[SimpleNamespace(current_hp=40)],
+    )
+    defend = Card(
+        "Defend_R",
+        "Defend",
+        CardType.SKILL,
+        CardRarity.BASIC,
+        cost=1,
+        cost_for_turn=1,
+    )
+
+    assert evaluator._calculate_context_modifier(defend, context, None) == 1.5

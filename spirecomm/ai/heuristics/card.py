@@ -71,6 +71,14 @@ class SynergyCardEvaluator(CardEvaluator):
         except (TypeError, ValueError):
             return 0
 
+    @staticmethod
+    def _positive_float(value, default: float = 1.0) -> float:
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return default
+        return numeric if numeric > 0 else default
+
     def load_legacy_priorities(self, player_class):
         """Load baseline scores from legacy priority lists."""
         if player_class == 'THE_SILENT' or player_class is None:
@@ -219,7 +227,11 @@ class SynergyCardEvaluator(CardEvaluator):
 
         # Monster intent adaptation
         if len(context.monsters_alive) > 0:
-            incoming_threat = context.incoming_damage / max(context.game.current_hp, 1)
+            player_hp = self._positive_float(
+                getattr(getattr(context, 'game', None), 'current_hp', 1),
+                default=1.0,
+            )
+            incoming_threat = context.incoming_damage / player_hp
 
             if self._is_defensive_card(card):
                 if incoming_threat > 0.3:
