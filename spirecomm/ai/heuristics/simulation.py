@@ -151,6 +151,7 @@ DAMAGE_UPGRADE_BONUS = {
     'Reckless Charge': 3,
     'Strike': 3,
     'Thunderclap': 3,
+    'Lesson Learned': 3,
     'Headbutt': 3,
     'Cleave': 3,
     'Bane': 3,
@@ -164,6 +165,7 @@ DAMAGE_UPGRADE_BONUS = {
     # +5 damage
     'Wild Strike': 5,
     'Hemokinesis': 5,
+    'Hand of Greed': 5,
 
     # +6 damage
     'Sever Soul': 6,

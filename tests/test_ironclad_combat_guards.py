@@ -5657,6 +5657,67 @@ def test_upgraded_feed_uses_12_damage_and_4_max_hp(monkeypatch):
     assert result.player_hp == 34
 
 
+def _patch_reward_attack_loader(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "hand of greed": {
+            "name": "Hand of Greed",
+            "description": "Deal 20 damage. If Fatal, gain 20 Gold.",
+        },
+        "lesson learned": {
+            "name": "Lesson Learned",
+            "description": (
+                "Deal 10 damage. If Fatal, Upgrade a random card in your deck. "
+                "Exhaust."
+            ),
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+
+def test_upgraded_hand_of_greed_uses_25_damage(monkeypatch):
+    _patch_reward_attack_loader(monkeypatch)
+
+    hand_of_greed_plus = _card("Hand of Greed", "Hand of Greed+", cost=2, upgrades=1)
+    context = _combat_context(
+        [hand_of_greed_plus],
+        energy=2,
+        monsters=[_louse(current_hp=40)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        hand_of_greed_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 25
+
+
+def test_upgraded_lesson_learned_uses_13_damage(monkeypatch):
+    _patch_reward_attack_loader(monkeypatch)
+
+    lesson_learned_plus = _card("Lesson Learned", "Lesson Learned+", cost=2, upgrades=1)
+    context = _combat_context(
+        [lesson_learned_plus],
+        energy=2,
+        monsters=[_louse(current_hp=40)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        lesson_learned_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 13
+
+
 def test_feed_does_not_gain_max_hp_from_minion(monkeypatch):
     _patch_feed_loader(monkeypatch)
 
