@@ -84,7 +84,10 @@ class DeckAnalyzer:
             return ''
         if hasattr(card_type, 'name'):
             return str(card_type.name).upper()
-        return str(card_type).upper()
+        value = str(card_type).upper()
+        if value.startswith('CARDTYPE.'):
+            return value.split('.', 1)[1]
+        return value
 
     @staticmethod
     def _canonical_card_set(cards) -> set:

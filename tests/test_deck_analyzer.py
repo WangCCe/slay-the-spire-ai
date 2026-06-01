@@ -131,6 +131,22 @@ def test_deck_stats_accepts_string_card_types():
     assert analyzer.needs_cards_of_type(context, "power") is True
 
 
+def test_deck_stats_accepts_namespaced_string_card_types():
+    analyzer = DeckAnalyzer()
+    context = MockDecisionContext([
+        SimpleNamespace(card_id="Strike_R", name="Strike", type="CardType.ATTACK", cost=1, upgrades=0),
+        SimpleNamespace(card_id="Defend_R", name="Defend", type="CardType.SKILL", cost=1, upgrades=0),
+        SimpleNamespace(card_id="Inflame", name="Inflame", type="CardType.POWER", cost=1, upgrades=0),
+    ])
+
+    stats = analyzer.get_deck_stats(context)
+
+    assert stats["attack_count"] == 1
+    assert stats["skill_count"] == 1
+    assert stats["power_count"] == 1
+    assert analyzer.needs_cards_of_type(context, "power") is True
+
+
 def test_strength_deck():
     """Test deck analyzer with strength archetype deck."""
     print("\nTesting strength archetype deck...")
