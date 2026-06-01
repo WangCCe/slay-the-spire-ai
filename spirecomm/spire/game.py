@@ -174,7 +174,7 @@ class Game:
     def has_potion_space(self):
         """Return True if the player can obtain another potion."""
         relic_ids = {
-            getattr(relic, "relic_id", None) or getattr(relic, "name", None)
+            getattr(relic, "relic_id", None) or getattr(relic, "name", None) or relic
             for relic in self.relics or []
         }
         if "Sozu" in relic_ids:
