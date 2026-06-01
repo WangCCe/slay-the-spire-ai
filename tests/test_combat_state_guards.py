@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from spirecomm.ai.heuristics.combat_state import (
+    card_play_key,
     draw_pile_count,
     monster_power_amount,
     player_has_power,
@@ -55,6 +56,17 @@ def test_draw_pile_count_clamps_missing_invalid_or_negative_values():
     assert draw_pile_count(SimpleNamespace(draw_pile_size="not-a-number")) == 0
     assert draw_pile_count(SimpleNamespace()) == 0
     assert draw_pile_count(None) == 0
+
+
+def test_card_play_key_prefers_uuid_and_keeps_uuidless_duplicates_distinct():
+    first = SimpleNamespace(uuid="same-card")
+    second = SimpleNamespace(uuid="same-card")
+    uuidless_first = SimpleNamespace()
+    uuidless_second = SimpleNamespace()
+
+    assert card_play_key(first) == "same-card"
+    assert card_play_key(second) == "same-card"
+    assert card_play_key(uuidless_first) != card_play_key(uuidless_second)
 
 
 def test_power_name_reads_known_power_identifier_fields_in_order():

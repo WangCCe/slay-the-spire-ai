@@ -3,6 +3,10 @@
 from typing import Any
 
 
+def card_play_key(card: Any):
+    return getattr(card, 'uuid', None) or id(card)
+
+
 def power_name(power: Any):
     return (
         getattr(power, 'name', None)

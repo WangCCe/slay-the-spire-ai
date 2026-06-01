@@ -16,6 +16,7 @@ from spirecomm.ai.intent_utils import intent_is_attack
 from spirecomm.data.loader import game_data_loader
 from ..decision.base import DecisionContext
 from .combat_state import (
+    card_play_key,
     draw_pile_count,
     monster_power_amount,
     player_block_value,
@@ -414,10 +415,6 @@ class CombatEndingDetector:
             if damage < monster.current_hp + monster.block:
                 return False
         return True
-
-    @staticmethod
-    def _card_play_key(card: Card):
-        return getattr(card, 'uuid', None) or id(card)
 
     def _can_use_exact_lethal_sequence(
         self,
@@ -826,7 +823,7 @@ class CombatEndingDetector:
         ):
             return []
 
-        sequence_card_keys = {self._card_play_key(card) for card in sequence_cards}
+        sequence_card_keys = {card_play_key(card) for card in sequence_cards}
         starting_hp = tuple(
             max(0, monster.current_hp + monster.block)
             for monster in context.monsters_alive
@@ -855,7 +852,7 @@ class CombatEndingDetector:
             if all(hp <= 0 for hp in state.hp):
                 return []
 
-            remaining_card_keys = tuple(self._card_play_key(card) for card in remaining_cards)
+            remaining_card_keys = tuple(card_play_key(card) for card in remaining_cards)
             state_key = state.seen_key(remaining_card_keys)
             if state_key in seen:
                 return None
@@ -1246,13 +1243,13 @@ class CombatEndingDetector:
             hand_cards = getattr(context, 'playable_cards', []) or []
 
         remaining_card_keys = {
-            self._card_play_key(remaining_card)
+            card_play_key(remaining_card)
             for remaining_card in remaining_cards
         }
-        played_card_key = self._card_play_key(card)
+        played_card_key = card_play_key(card)
         count = 0
         for hand_card in hand_cards:
-            hand_card_key = self._card_play_key(hand_card)
+            hand_card_key = card_play_key(hand_card)
             if hand_card is card or hand_card_key == played_card_key:
                 continue
             if (
@@ -1275,7 +1272,7 @@ class CombatEndingDetector:
 
         aoe_cards = [card for card in attack_cards if self._is_aoe_attack(card)]
         aoe_cards.sort(key=lambda card: self._get_card_damage(card, context), reverse=True)
-        sequence_card_keys = {self._card_play_key(card) for card in attack_cards}
+        sequence_card_keys = {card_play_key(card) for card in attack_cards}
 
         for aoe_card in aoe_cards:
             aoe_cost = effective_card_cost(aoe_card, available_energy)
@@ -1299,7 +1296,7 @@ class CombatEndingDetector:
 
             sequence = [PlayCardAction(card=aoe_card)]
             remaining_energy = available_energy - aoe_cost
-            played_cards = {self._card_play_key(aoe_card)}
+            played_cards = {card_play_key(aoe_card)}
             survivors.sort(key=lambda item: item[0], reverse=True)
 
             for damage_needed, monster_idx, monster in survivors:
@@ -1310,7 +1307,7 @@ class CombatEndingDetector:
                     best_priority = None
 
                     for card in attack_cards:
-                        card_key = self._card_play_key(card)
+                        card_key = card_play_key(card)
                         if card_key in played_cards or self._is_aoe_attack(card):
                             continue
 
@@ -1326,7 +1323,7 @@ class CombatEndingDetector:
                         remaining_cards = tuple(
                             remaining_card
                             for remaining_card in attack_cards
-                            if self._card_play_key(remaining_card) not in played_cards
+                            if card_play_key(remaining_card) not in played_cards
                         )
                         fiend_fire_exhaust_count = self._fiend_fire_exhaust_count_for_remaining_cards(
                             card,
@@ -1366,7 +1363,7 @@ class CombatEndingDetector:
                     if self._base_card_name(best_card) == 'Fiend Fire':
                         played_cards.update(sequence_card_keys)
                     else:
-                        played_cards.add(self._card_play_key(best_card))
+                        played_cards.add(card_play_key(best_card))
                     remaining_energy -= best_cost
                     damage_needed -= best_damage
 

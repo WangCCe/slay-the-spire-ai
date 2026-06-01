@@ -12,6 +12,7 @@ from .models import TimingContext, TurnTiming, BalanceWeights
 from .turn_classifier import TurnTimingClassifier
 from .balance_strategy import CombatBalanceStrategy
 from spirecomm.ai.heuristics.combat_state import (
+    card_play_key,
     monster_power_amount,
     player_block_value,
     player_debuff_stacks,
@@ -599,7 +600,7 @@ class TimingAwareCombatPlanner:
                 return []
 
             state_key = (
-                tuple(self._card_play_key(card) for card in remaining_cards),
+                tuple(card_play_key(card) for card in remaining_cards),
                 hp_state,
                 remaining_energy,
             )
@@ -726,10 +727,6 @@ class TimingAwareCombatPlanner:
 
         sequence = search(tuple(attack_cards), starting_hp, max(0, int(available_energy)))
         return sequence or []
-
-    @staticmethod
-    def _card_play_key(card):
-        return getattr(card, 'uuid', None) or id(card)
 
     def _card_damage_against_monster(
         self,
