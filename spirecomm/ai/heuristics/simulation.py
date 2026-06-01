@@ -140,6 +140,7 @@ DAMAGE_UPGRADE_BONUS = {
     # +2 damage
     'Anger': 2,
     'Bash': 2,
+    'Feed': 2,
     'Iron Wave': 2,
     'Clothesline': 2,
     'Twin Strike': 2,
@@ -520,6 +521,7 @@ class SimulationState:
                 'move_id': getattr(monster, 'move_id', None),
                 'is_gone': monster.is_gone,
                 'half_dead': monster.half_dead,
+                'is_minion': self._has_monster_power_any(monster, 'Minion', 'MinionPower'),
                 'vulnerable': context.vulnerable_stacks.get(i, 0),  # Vulnerable stacks (by index)
                 'weak': context.weak_stacks.get(i, 0),  # Weak stacks (by index)
                 'frail': context.frail_stacks.get(i, 0),  # Frail stacks (by index)
@@ -1477,18 +1479,45 @@ class FastCombatSimulator:
         target_was_live_at_attack_start: bool,
     ):
         card_name = _canonical_card_name(card)
-        if card_name != 'Dropkick':
-            return
         if not target_was_live_at_attack_start:
             return
-        if target_index is None or not (0 <= target_index < len(state.monsters)):
-            return
-        if state.monsters[target_index].get('vulnerable', 0) <= 0:
+
+        if card_name == 'Dropkick':
+            if target_index is None or not (0 <= target_index < len(state.monsters)):
+                return
+            if state.monsters[target_index].get('vulnerable', 0) <= 0:
+                return
+
+            state.player_energy += 1
+            state.energy_gained += 1
+            self._add_card_draw(state, 1)
             return
 
-        state.player_energy += 1
-        state.energy_gained += 1
-        self._add_card_draw(state, 1)
+        if card_name == 'Feed':
+            self._apply_feed_max_hp_gain(state, card, target_index)
+
+    def _apply_feed_max_hp_gain(
+        self,
+        state: SimulationState,
+        card: Card,
+        target_index: Optional[int],
+    ):
+        if target_index is None or not (0 <= target_index < len(state.monsters)):
+            return
+
+        monster = state.monsters[target_index]
+        if not monster.get('is_gone', False) or monster.get('half_dead', False):
+            return
+        if self._is_minion_monster_state(monster):
+            return
+
+        max_hp_gain = 4 if getattr(card, 'upgrades', 0) > 0 else 3
+        state.player_max_hp += max_hp_gain
+        state.player_hp = min(state.player_max_hp, state.player_hp + max_hp_gain)
+
+    @staticmethod
+    def _is_minion_monster_state(monster: dict) -> bool:
+        return bool(monster.get('is_minion', False) or monster.get('minion', False))
 
     def _apply_attack_draw_effects(
         self,

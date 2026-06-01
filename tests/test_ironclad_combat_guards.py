@@ -5565,6 +5565,85 @@ def test_reaper_healing_caps_overkill_damage(monkeypatch):
     assert result.player_hp == 22
 
 
+def _patch_feed_loader(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "feed": {
+            "name": "Feed",
+            "description": "Deal 10 damage. If this kills a non-minion enemy, gain 3 Max HP. Exhaust.",
+        }
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+
+def test_feed_kill_increases_max_hp_and_current_hp(monkeypatch):
+    _patch_feed_loader(monkeypatch)
+
+    feed = _card("Feed", "Feed", cost=1)
+    context = _combat_context([feed], energy=1, monsters=[_louse(current_hp=8)])
+    context.game.current_hp = 30
+    context.player_hp = 30
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        feed,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 8
+    assert result.monsters[0]["is_gone"] is True
+    assert result.player_max_hp == 83
+    assert result.player_hp == 33
+
+
+def test_upgraded_feed_uses_12_damage_and_4_max_hp(monkeypatch):
+    _patch_feed_loader(monkeypatch)
+
+    feed_plus = _card("Feed", "Feed+", cost=1, upgrades=1)
+    context = _combat_context([feed_plus], energy=1, monsters=[_louse(current_hp=12)])
+    context.game.current_hp = 30
+    context.player_hp = 30
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        feed_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 12
+    assert result.monsters[0]["is_gone"] is True
+    assert result.player_max_hp == 84
+    assert result.player_hp == 34
+
+
+def test_feed_does_not_gain_max_hp_from_minion(monkeypatch):
+    _patch_feed_loader(monkeypatch)
+
+    feed = _card("Feed", "Feed", cost=1)
+    minion = _louse(current_hp=8)
+    minion.powers = [SimpleNamespace(power_name="Minion", amount=0)]
+    context = _combat_context([feed], energy=1, monsters=[minion])
+    context.game.current_hp = 30
+    context.player_hp = 30
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        feed,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["is_gone"] is True
+    assert result.player_max_hp == 80
+    assert result.player_hp == 30
+
+
 def test_carnage_is_single_target_not_aoe(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
