@@ -151,6 +151,48 @@ def test_timing_lethal_check_accepts_string_attack_type(monkeypatch):
     assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_lethal_check_infers_name_only_single_target_attacks_without_has_target(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    strike_a = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        uuid="strike-a",
+        is_playable=True,
+    )
+    strike_b = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        uuid="strike-b",
+        is_playable=True,
+    )
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=2,
+        playable_cards=[strike_a, strike_b],
+        monsters_alive=[
+            SimpleNamespace(current_hp=6, block=0),
+            SimpleNamespace(current_hp=6, block=0),
+        ],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
 def test_timing_lethal_check_ignores_unaffordable_parsed_damage(monkeypatch):
     monkeypatch.setattr(
         timing_planner,
@@ -911,6 +953,45 @@ def test_timing_lethal_sequence_targets_multiple_single_target_monsters(monkeypa
     assert [action.target_monster for action in actions] == [first_monster, second_monster]
 
 
+def test_timing_lethal_sequence_targets_name_only_attacks_without_has_target(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    strike_a = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        uuid="strike-a",
+        is_playable=True,
+    )
+    strike_b = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        uuid="strike-b",
+        is_playable=True,
+    )
+    first_monster = SimpleNamespace(current_hp=6, block=0, monster_index=0)
+    second_monster = SimpleNamespace(current_hp=6, block=0, monster_index=1)
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=2,
+        playable_cards=[strike_a, strike_b],
+        monsters_alive=[first_monster, second_monster],
+    )
+
+    actions = TimingAwareCombatPlanner()._generate_lethal_sequence(context)
+
+    assert [action.card for action in actions] == [strike_a, strike_b]
+    assert [action.target_monster for action in actions] == [first_monster, second_monster]
+
+
 def test_timing_lethal_sequence_uses_lethal_subset_not_highest_damage_greedy(monkeypatch):
     monkeypatch.setattr(
         timing_planner,
@@ -1171,3 +1252,39 @@ def test_timing_fallback_does_not_target_no_target_cards(monkeypatch):
     assert len(actions) == 1
     assert actions[0].card is defend
     assert actions[0].target_monster is None
+
+
+def test_timing_fallback_targets_name_only_single_target_attack_without_has_target(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        uuid="strike",
+        is_playable=True,
+    )
+    target = SimpleNamespace(current_hp=30, block=0, monster_index=0)
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[strike],
+        monsters_alive=[target],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.BURST_WINDOW,
+        current_damage=0,
+        balance_weights=BalanceWeights(damage_weight=1.0, block_weight=0.1),
+    )
+
+    actions = TimingAwareCombatPlanner()._fallback_plan(context, timing_ctx)
+
+    assert len(actions) == 1
+    assert actions[0].card is strike
+    assert actions[0].target_monster is target

@@ -19,7 +19,7 @@ from spirecomm.ai.heuristics.card_costs import (
     whirlwind_damage,
     x_effect_energy,
 )
-from spirecomm.ai.heuristics.card_types import card_type_name
+from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
 from spirecomm.ai.heuristics.simulation import BLOCK_UPGRADE_BONUS, _known_damage_upgrade_bonus
 from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_upgraded
 from spirecomm.data.loader import game_data_loader
@@ -300,7 +300,7 @@ class TimingAwareCombatPlanner:
                             max(0, hp - damage)
                             for hp in remaining_hp
                         ]
-                    elif getattr(card, 'has_target', False):
+                    elif card_requires_target(card):
                         live_targets = [
                             (hp, idx)
                             for idx, hp in enumerate(remaining_hp)
@@ -380,7 +380,7 @@ class TimingAwareCombatPlanner:
             if best_card:
                 # Find target if needed
                 target = None
-                if getattr(best_card, 'has_target', False) and not self._is_card_aoe(best_card):
+                if card_requires_target(best_card):
                     target = monsters[0] if monsters else None
 
                 return [PlayCardAction(card=best_card, target_monster=target)]
@@ -512,7 +512,7 @@ class TimingAwareCombatPlanner:
     def _can_use_scalar_damage_option(self, card, monsters) -> bool:
         if len(monsters) <= 1:
             return True
-        return self._is_card_aoe(card) or getattr(card, 'has_target', False)
+        return self._is_card_aoe(card) or card_requires_target(card)
 
     def _affordable_damage_effects_can_kill_all(self, damage_options, monster_hp, energy) -> bool:
         """Check whether any affordable subset of damage effects can kill all monsters."""
@@ -637,7 +637,7 @@ class TimingAwareCombatPlanner:
                     ))
                     continue
 
-                if not getattr(card, 'has_target', False):
+                if not card_requires_target(card):
                     continue
 
                 for monster_idx, hp in enumerate(hp_state):
