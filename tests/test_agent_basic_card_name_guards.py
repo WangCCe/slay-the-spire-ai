@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from spirecomm.ai.agent import SimpleAgent
+from spirecomm.ai.agent import OptimizedAgent, SimpleAgent
 from spirecomm.ai.priorities import IroncladPriority
 from spirecomm.communication.action import (
     CardSelectAction,
@@ -16,6 +16,14 @@ def _card(card_id, price=0, upgrades=0):
     return SimpleNamespace(
         card_id=card_id,
         name=card_id,
+        price=price,
+        upgrades=upgrades,
+    )
+
+
+def _name_only_card(name, price=0, upgrades=0):
+    return SimpleNamespace(
+        name=name,
         price=price,
         upgrades=upgrades,
     )
@@ -68,6 +76,19 @@ class _FirstPlayablePriority:
 
     def get_best_card_to_play(self, cards):
         return cards[0]
+
+
+class _RecordingTracker:
+    def __init__(self):
+        self.cards_obtained = []
+        self.cards_skipped = 0
+        self.calls = []
+
+    def record_card_choice(self, chosen, skipped, available):
+        self.calls.append((chosen, skipped, available))
+        if chosen:
+            self.cards_obtained.append(chosen)
+        self.cards_skipped += skipped
 
 
 def test_shop_purges_upgraded_strike_before_buying_good_card():
@@ -207,6 +228,31 @@ def test_play_card_action_targets_low_hp_with_string_attack_type():
     assert isinstance(action, PlayCardAction)
     assert action.card is strike
     assert action.target_monster is low_hp
+
+
+def test_optimized_card_reward_records_name_only_reward_card_when_falling_back():
+    offered = _name_only_card("Pommel Strike")
+    tracker = _RecordingTracker()
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.priorities = IroncladPriority()
+    agent.use_optimized_card_selection = False
+    agent.card_evaluator = None
+    agent.game_tracker = tracker
+    agent.deck_strategy = None
+    agent.skipped_cards = False
+    agent.game = SimpleNamespace(
+        screen=SimpleNamespace(cards=[offered], can_skip=False, can_bowl=False),
+        in_combat=False,
+        floor=3,
+        deck=[],
+        monsters=[],
+        room_type="",
+    )
+
+    action = agent.choose_card_reward()
+
+    assert action.name == "Pommel Strike"
+    assert tracker.calls == [("Pommel Strike", 0, ["Pommel Strike"])]
 
 
 def test_combat_reward_skips_string_potion_type_when_slots_are_full():

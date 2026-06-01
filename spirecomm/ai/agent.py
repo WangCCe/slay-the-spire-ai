@@ -98,6 +98,15 @@ class SimpleAgent:
             return ""
         return canonical_card_name(card).replace("_", " ")
 
+    def _card_id_for_tracking(self, card):
+        card_id = getattr(card, "card_id", None)
+        if card_id:
+            return str(card_id)
+        return canonical_card_name(card)
+
+    def _card_ids_for_tracking(self, cards):
+        return [self._card_id_for_tracking(card) for card in cards]
+
     def _get_upgrade_bonus(self, card):
         if is_card_upgraded(card):
             return 0
@@ -843,7 +852,7 @@ class SimpleAgent:
                     reverse=True,
                 )
                 logging.debug(
-                    f"[GRID_SCREEN] Got {len(available_cards)} sorted cards: {[c.card_id for c in available_cards]}"
+                    f"[GRID_SCREEN] Got {len(available_cards)} sorted cards: {self._card_ids_for_tracking(available_cards)}"
                 )
             else:
                 # For purge/remove: prioritize Strike_R, then Defend_R, then others by reverse priority
@@ -866,12 +875,12 @@ class SimpleAgent:
 
                 # Combine: strikes first, then defends, then others
                 available_cards = strikes + defends + others_sorted
-                logging.debug(f"[GRID_SCREEN] Got {len(available_cards)} cards: {[c.card_id for c in available_cards]}")
+                logging.debug(f"[GRID_SCREEN] Got {len(available_cards)} cards: {self._card_ids_for_tracking(available_cards)}")
 
             num_cards = self.game.screen.num_cards
             selected_cards = available_cards[:num_cards]
             logging.debug(
-                f"[GRID_SCREEN] Returning CardSelectAction with {len(selected_cards)} cards: {[c.card_id for c in selected_cards]}"
+                f"[GRID_SCREEN] Returning CardSelectAction with {len(selected_cards)} cards: {self._card_ids_for_tracking(selected_cards)}"
             )
             return CardSelectAction(selected_cards)
         elif self.game.screen_type == ScreenType.HAND_SELECT:
@@ -1009,7 +1018,7 @@ class SimpleAgent:
                 else True
             )
             logging.info(
-                f"  [{i}] {card.card_id} (copies={count}, needs_more={needs})\n"
+                f"  [{i}] {self._card_id_for_tracking(card)} (copies={count}, needs_more={needs})\n"
             )
 
         if can_skip and not in_combat:
@@ -1026,7 +1035,7 @@ class SimpleAgent:
         if len(pickable_cards) > 0:
             potential_pick = self.priorities.get_best_card(pickable_cards)
             logging.info(
-                f"[CARD_REWARD] Choosing: {potential_pick.card_id if potential_pick else 'None'}\n"
+                f"[CARD_REWARD] Choosing: {self._card_id_for_tracking(potential_pick) if potential_pick else 'None'}\n"
             )
             return CardRewardAction(potential_pick)
         elif hasattr(self.game.screen, "can_bowl") and self.game.screen.can_bowl:
@@ -1454,7 +1463,7 @@ class OptimizedAgent(SimpleAgent):
 
         def _fallback_snapshot():
             try:
-                hand_ids = [c.card_id for c in self.game.hand]
+                hand_ids = self._card_ids_for_tracking(self.game.hand)
                 monsters = []
                 for m in self.game.monsters:
                     if m.is_gone or m.half_dead:
@@ -1920,7 +1929,7 @@ class OptimizedAgent(SimpleAgent):
         logging.info(f"[CARD_REWARD_DEBUG] reward_cards count: {len(reward_cards)}")
         for i, card in enumerate(reward_cards):
             logging.info(
-                f"[CARD_REWARD_DEBUG]   Card {i}: {card.card_id} (name={card.name})"
+                f"[CARD_REWARD_DEBUG]   Card {i}: {self._card_id_for_tracking(card)} (name={getattr(card, 'name', '')})"
             )
         combat_generated_choice = self._is_generated_combat_card_choice(reward_cards)
         if combat_generated_choice:
@@ -2016,9 +2025,9 @@ class OptimizedAgent(SimpleAgent):
                 chosen_card_id = None
                 for card in reward_cards:
                     if hasattr(card, "name") and card.name == action.name:
-                        chosen_card_id = card.card_id
+                        chosen_card_id = self._card_id_for_tracking(card)
                         logging.info(
-                            f"[CARD_REWARD_DEBUG] MATCHED card: {card.card_id} with name {card.name}"
+                            f"[CARD_REWARD_DEBUG] MATCHED card: {chosen_card_id} with name {card.name}"
                         )
                         break
 
@@ -2040,7 +2049,7 @@ class OptimizedAgent(SimpleAgent):
                         self.game_tracker.record_card_choice(
                             chosen=chosen_card_id,
                             skipped=len(reward_cards) - 1,
-                            available=[c.card_id for c in reward_cards],
+                            available=self._card_ids_for_tracking(reward_cards),
                         )
 
                         card_count_after = (
@@ -2083,7 +2092,7 @@ class OptimizedAgent(SimpleAgent):
                 self.game_tracker.record_card_choice(
                     chosen=None,
                     skipped=len(reward_cards),
-                    available=[c.card_id for c in reward_cards],
+                    available=self._card_ids_for_tracking(reward_cards),
                 )
 
                 skipped_after = (
@@ -2162,7 +2171,7 @@ class OptimizedAgent(SimpleAgent):
                         self.game_tracker.record_card_choice(
                             chosen=None,
                             skipped=len(reward_cards),
-                            available=[c.card_id for c in reward_cards],
+                            available=self._card_ids_for_tracking(reward_cards),
                         )
                         # 记录跳过决策
                         self.game_tracker.record_decision(
@@ -2217,7 +2226,7 @@ class OptimizedAgent(SimpleAgent):
                         self.game_tracker.record_card_choice(
                             chosen=None,
                             skipped=len(reward_cards),
-                            available=[c.card_id for c in reward_cards],
+                            available=self._card_ids_for_tracking(reward_cards),
                         )
                     return CancelAction()
 
@@ -2404,7 +2413,7 @@ class OptimizedAgent(SimpleAgent):
                             self.game_tracker.record_card_choice(
                                 chosen=None,
                                 skipped=len(reward_cards),
-                                available=[c.card_id for c in reward_cards],
+                                available=self._card_ids_for_tracking(reward_cards),
                             )
                         return CancelAction()
 
@@ -2431,16 +2440,16 @@ class OptimizedAgent(SimpleAgent):
                 # Track card choice
                 if self.game_tracker:
                     self.game_tracker.record_card_choice(
-                        chosen=best_card.card_id,
+                        chosen=self._card_id_for_tracking(best_card),
                         skipped=len(reward_cards) - 1,
-                        available=[c.card_id for c in reward_cards],
+                        available=self._card_ids_for_tracking(reward_cards),
                     )
 
                 # Record decision
                 self.decision_history.append(
                     {
                         "type": "card_reward",
-                        "card": best_card.card_id,
+                        "card": self._card_id_for_tracking(best_card),
                         "floor": context.floor,
                         "archetype": context.deck_archetype,
                     }
