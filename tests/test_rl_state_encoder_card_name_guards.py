@@ -162,6 +162,23 @@ def test_rl_state_encoder_name_only_potion_slot_has_no_identity_hash():
     assert features[:3] == [0.0, 0.0, 0.0]
 
 
+def test_rl_state_encoder_combat_piles_card_in_play_accepts_name_only_card():
+    encoder = StateEncoder()
+    game = SimpleNamespace(
+        exhaust_pile=[],
+        limbo=[],
+        cards_discarded_this_turn=0,
+        card_in_play=SimpleNamespace(name="Bash"),
+        potions=[],
+        potion_available=False,
+        are_potions_full=lambda: False,
+    )
+
+    features = encoder._encode_combat_piles(game)
+
+    assert features[3] == encoder._stable_hash("Bash", 50) / 50.0
+
+
 def test_rl_state_encoder_combat_piles_count_string_potion_slots_as_empty():
     encoder = StateEncoder()
     game = SimpleNamespace(

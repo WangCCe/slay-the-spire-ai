@@ -389,6 +389,8 @@ class StateEncoder:
         card_in_play = getattr(game, 'card_in_play', None)
         card_in_play_id = getattr(card_in_play, 'card_id', None) if card_in_play else None
         if card_in_play_id is None and card_in_play is not None:
+            card_in_play_id = getattr(card_in_play, 'name', None)
+        if card_in_play_id is None and card_in_play is not None:
             card_in_play_id = getattr(card_in_play, 'id', None)
         card_in_play_hash = self._stable_hash(card_in_play_id, 50) / 50.0 if card_in_play_id else 0.0
 
