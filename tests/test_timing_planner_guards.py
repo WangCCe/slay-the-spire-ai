@@ -1,10 +1,16 @@
 from types import SimpleNamespace
 
 import spirecomm.ai.heuristics.timing.timing_planner as timing_planner
-from spirecomm.ai.heuristics.timing.models import BalanceWeights, TimingContext, TurnTiming
+from spirecomm.ai.heuristics.timing.models import (
+    BalanceWeights,
+    MonsterTimingHints,
+    TimingContext,
+    TurnTiming,
+)
 from spirecomm.ai.heuristics.timing.timing_planner import TimingAwareCombatPlanner
 from spirecomm.data.loader import GameDataLoader
 from spirecomm.spire.card import Card, CardRarity, CardType
+from spirecomm.spire.character import Intent
 
 
 def _card(card_id, name, card_type=CardType.ATTACK, cost=1, has_target=True):
@@ -76,6 +82,17 @@ def _loader_with_basic_ironclad_cards():
         },
     }
     return loader
+
+
+def test_monster_timing_hints_accept_enum_intents():
+    hints = MonsterTimingHints(
+        safe_turn_indicators=["DEFEND"],
+        spike_turn_indicators=["ATTACK_DEBUFF"],
+    )
+
+    assert hints.is_safe_turn(Intent.DEFEND) is True
+    assert hints.is_safe_turn(Intent.ATTACK) is False
+    assert hints.is_spike_turn(Intent.ATTACK_DEBUFF) is True
 
 
 def test_timing_lethal_check_uses_parsed_damage_for_plain_cards(monkeypatch):

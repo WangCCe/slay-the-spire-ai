@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Dict, Any, Optional
 
-from spirecomm.ai.intent_utils import intent_is_attack
+from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 
 
 class TurnTiming(Enum):
@@ -164,20 +164,31 @@ class MonsterTimingHints:
     preferred_response: Dict[str, str] = field(default_factory=dict)
     raw_data: Dict[str, Any] = field(default_factory=dict)
 
-    def is_safe_turn(self, move_intent: str) -> bool:
+    @staticmethod
+    def _intent_matches_indicator(move_intent: Any, indicator: Any) -> bool:
+        indicator_tokens = intent_tokens(indicator)
+        if not indicator_tokens:
+            return False
+        return indicator_tokens.issubset(intent_tokens(move_intent))
+
+    def is_safe_turn(self, move_intent: Any) -> bool:
         """Check if a move intent indicates a safe turn."""
         if intent_is_attack(move_intent):
             return False
-        intent_upper = move_intent.upper()
-        return any(indicator in intent_upper for indicator in self.safe_turn_indicators)
+        return any(
+            self._intent_matches_indicator(move_intent, indicator)
+            for indicator in self.safe_turn_indicators
+        )
 
-    def is_spike_turn(self, move_intent: str) -> bool:
+    def is_spike_turn(self, move_intent: Any) -> bool:
         """Check if a move intent indicates a threat spike."""
         if any(intent_is_attack(indicator) for indicator in self.spike_turn_indicators):
             if not intent_is_attack(move_intent):
                 return False
-        intent_upper = move_intent.upper()
-        return any(indicator in intent_upper for indicator in self.spike_turn_indicators)
+        return any(
+            self._intent_matches_indicator(move_intent, indicator)
+            for indicator in self.spike_turn_indicators
+        )
 
     def get_preferred_response(self, timing: TurnTiming) -> str:
         """Get preferred action for a timing category."""
