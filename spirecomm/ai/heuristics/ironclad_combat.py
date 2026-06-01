@@ -763,7 +763,13 @@ class IroncladCombatPlanner(CombatPlanner):
                         if 'burst' in primary.lower() and '50_percent' in primary:
                             # Burst phase active - prioritize this monster
                             if hasattr(real_monster, 'current_hp') and hasattr(real_monster, 'max_hp'):
-                                if real_monster.current_hp / real_monster.max_hp < 0.6:
+                                max_hp = self._non_negative_float(real_monster.max_hp)
+                                hp_pct = (
+                                    self._non_negative_float(real_monster.current_hp) / max_hp
+                                    if max_hp > 0
+                                    else 1.0
+                                )
+                                if hp_pct < 0.6:
                                     # In burst window - prioritize
                                     return real_monster, i
 

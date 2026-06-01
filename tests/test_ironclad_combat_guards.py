@@ -4830,6 +4830,50 @@ def test_v2_split_targeting_uses_parsed_damage_for_plain_cards(monkeypatch):
     assert target_idx == 1
 
 
+def test_v2_phase_change_targeting_accepts_string_hp_for_burst_window(monkeypatch):
+    class FakeMonsterLoader:
+        def is_monster_summoner(self, _monster_name):
+            return False
+
+        def get_monster_minions(self, _monster_name):
+            return []
+
+        def is_monster_hibernating(self, _monster_name, _turn):
+            return False
+
+        def does_monster_have_death_split(self, _monster_name):
+            return False
+
+        def does_monster_have_phase_change(self, monster_name):
+            return monster_name == "The Guardian"
+
+        def get_monster_recommended_strategy(self, monster_name):
+            if monster_name == "The Guardian":
+                return {"primary": "burst_50_percent_window"}
+            return None
+
+        def is_monster_duo_boss(self, _monster_name):
+            return False
+
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", FakeMonsterLoader())
+
+    strike = _card("Strike_R", "Strike", cost=1)
+    high_threat = _louse(current_hp=40)
+    guardian = _guardian(current_hp="100")
+    guardian.max_hp = "240"
+    context = _combat_context([strike], energy=1, monsters=[high_threat, guardian])
+    context.compute_threat_v2 = lambda monster: 100 if monster is high_threat else 1
+
+    target, target_idx = IroncladCombatPlanner()._choose_target_for_card_v2(
+        strike,
+        context,
+        SimulationState(context),
+    )
+
+    assert target is guardian
+    assert target_idx == 1
+
+
 def test_v2_summoner_targeting_matches_live_bronze_orbs_by_id(monkeypatch):
     class FakeMonsterLoader:
         def __init__(self):
