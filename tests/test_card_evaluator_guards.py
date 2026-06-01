@@ -282,3 +282,26 @@ def test_context_modifier_handles_missing_card_cost_as_zero():
     )
 
     assert evaluator._calculate_context_modifier(missing_cost, context, None) == 1.2
+
+
+def test_context_modifier_accepts_numeric_string_low_monster_hp():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    context = SimpleNamespace(
+        energy_available=1,
+        player_hp_pct=0.5,
+        incoming_damage=0,
+        game=SimpleNamespace(current_hp=80),
+        monsters_alive=[
+            SimpleNamespace(current_hp="19"),
+        ],
+    )
+    strike = Card(
+        "Strike_R",
+        "Strike",
+        CardType.ATTACK,
+        CardRarity.BASIC,
+        cost=1,
+        cost_for_turn=1,
+    )
+
+    assert evaluator._calculate_context_modifier(strike, context, None) == 1.3

@@ -64,6 +64,13 @@ class SynergyCardEvaluator(CardEvaluator):
         self.baseline_scores = {}
         self.load_legacy_priorities(player_class)
 
+    @staticmethod
+    def _non_negative_int(value) -> int:
+        try:
+            return max(0, int(value or 0))
+        except (TypeError, ValueError):
+            return 0
+
     def load_legacy_priorities(self, player_class):
         """Load baseline scores from legacy priority lists."""
         if player_class == 'THE_SILENT' or player_class is None:
@@ -224,7 +231,11 @@ class SynergyCardEvaluator(CardEvaluator):
 
             # Offensive cards against low HP monsters (finish them off)
             if self._is_offensive_card(card):
-                low_hp_monsters = [m for m in context.monsters_alive if m.current_hp < 20]
+                low_hp_monsters = [
+                    m
+                    for m in context.monsters_alive
+                    if self._non_negative_int(getattr(m, 'current_hp', 0)) < 20
+                ]
                 if len(low_hp_monsters) > 0:
                     modifier *= 1.3
 
