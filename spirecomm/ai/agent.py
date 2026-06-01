@@ -29,6 +29,19 @@ from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_up
 # Get logger for this module
 logger = logging.getLogger(__name__)
 
+
+def _reward_type_name(reward_or_type) -> str:
+    reward_type = getattr(reward_or_type, "reward_type", reward_or_type)
+    if reward_type is None:
+        return ""
+    if hasattr(reward_type, "name"):
+        return str(reward_type.name).upper()
+    value = str(reward_type).upper()
+    if value.startswith("REWARDTYPE."):
+        return value.split(".", 1)[1]
+    return value
+
+
 # Import optimized AI components
 try:
     from spirecomm.ai.decision.base import DecisionContext
@@ -651,24 +664,18 @@ class SimpleAgent:
             )
 
             for i, reward_item in enumerate(rewards):
-                skip_potion = (
-                    reward_item.reward_type == RewardType.POTION
-                    and self.game.are_potions_full()
-                )
-                skip_card = (
-                    reward_item.reward_type == RewardType.CARD and self.skipped_cards
-                )
+                reward_type = _reward_type_name(reward_item)
+                skip_potion = reward_type == "POTION" and self.game.are_potions_full()
+                skip_card = reward_type == "CARD" and self.skipped_cards
                 logging.info(
                     f"  [{i}] type={reward_item.reward_type}, skip_potion={skip_potion}, skip_card={skip_card}\n"
                 )
 
             for reward_item in rewards:
-                if (
-                    reward_item.reward_type == RewardType.POTION
-                    and self.game.are_potions_full()
-                ):
+                reward_type = _reward_type_name(reward_item)
+                if reward_type == "POTION" and self.game.are_potions_full():
                     continue
-                elif reward_item.reward_type == RewardType.CARD and self.skipped_cards:
+                elif reward_type == "CARD" and self.skipped_cards:
                     continue
                 else:
                     logging.info(

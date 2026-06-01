@@ -2,7 +2,12 @@ from types import SimpleNamespace
 
 from spirecomm.ai.agent import SimpleAgent
 from spirecomm.ai.priorities import IroncladPriority
-from spirecomm.communication.action import CardSelectAction, ChooseAction, PlayCardAction
+from spirecomm.communication.action import (
+    CardSelectAction,
+    ChooseAction,
+    CombatRewardAction,
+    PlayCardAction,
+)
 from spirecomm.spire.card import CardType
 from spirecomm.spire.screen import ScreenType
 
@@ -202,3 +207,37 @@ def test_play_card_action_targets_low_hp_with_string_attack_type():
     assert isinstance(action, PlayCardAction)
     assert action.card is strike
     assert action.target_monster is low_hp
+
+
+def test_combat_reward_skips_string_potion_type_when_slots_are_full():
+    potion_reward = SimpleNamespace(reward_type="POTION")
+    gold_reward = SimpleNamespace(reward_type="GOLD")
+    agent = _agent(
+        screen_type=ScreenType.COMBAT_REWARD,
+        screen=SimpleNamespace(rewards=[potion_reward, gold_reward]),
+        floor=3,
+        are_potions_full=lambda: True,
+    )
+    agent.skipped_cards = False
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CombatRewardAction)
+    assert action.combat_reward is gold_reward
+
+
+def test_combat_reward_skips_string_card_type_after_card_reward_skip():
+    card_reward = SimpleNamespace(reward_type="CARD")
+    gold_reward = SimpleNamespace(reward_type="GOLD")
+    agent = _agent(
+        screen_type=ScreenType.COMBAT_REWARD,
+        screen=SimpleNamespace(rewards=[card_reward, gold_reward]),
+        floor=3,
+        are_potions_full=lambda: False,
+    )
+    agent.skipped_cards = True
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CombatRewardAction)
+    assert action.combat_reward is gold_reward
