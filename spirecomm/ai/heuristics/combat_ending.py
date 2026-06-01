@@ -15,7 +15,7 @@ from spirecomm.communication.action import PlayCardAction
 from spirecomm.ai.intent_utils import intent_is_attack
 from spirecomm.data.loader import game_data_loader
 from ..decision.base import DecisionContext
-from .combat_state import player_block_value
+from .combat_state import draw_pile_count, player_block_value
 from .card_names import canonical_card_name
 from .card_costs import (
     effective_card_cost,
@@ -1636,7 +1636,7 @@ class CombatEndingDetector:
             base_damage = player_block_value(context)
 
         if card_name == 'Mind Blast':
-            base_damage = self._count_draw_pile_cards(context)
+            base_damage = draw_pile_count(context)
 
         if card_name == 'Ritual Dagger':
             base_damage += self._positive_card_misc(card)
@@ -1771,30 +1771,6 @@ class CombatEndingDetector:
             if self._power_name(power) == power_name:
                 amount = getattr(power, 'amount', None)
                 return amount if amount is not None else 1
-        return 0
-
-    @staticmethod
-    def _count_draw_pile_cards(context: DecisionContext) -> int:
-        game = getattr(context, 'game', None)
-        for owner in (game, context):
-            draw_pile = getattr(owner, 'draw_pile', None)
-            if draw_pile is not None:
-                try:
-                    return max(0, len(draw_pile))
-                except TypeError:
-                    try:
-                        return max(0, int(draw_pile))
-                    except (TypeError, ValueError):
-                        return 0
-
-        for owner in (game, context):
-            size = getattr(owner, 'draw_pile_size', None)
-            if size is not None:
-                try:
-                    return max(0, int(size))
-                except (TypeError, ValueError):
-                    return 0
-
         return 0
 
     def _all_alive_targets_poisoned(self, context: DecisionContext) -> bool:

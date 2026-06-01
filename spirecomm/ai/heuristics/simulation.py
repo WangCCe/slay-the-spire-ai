@@ -22,6 +22,7 @@ from spirecomm.ai.intent_utils import intent_is_attack, intent_is_unknown, inten
 from spirecomm.ai.monster_names import canonical_live_monster_name, monster_field
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
+from spirecomm.ai.heuristics.combat_state import draw_pile_count
 from spirecomm.ai.heuristics.card_costs import (
     effective_card_cost,
     is_x_cost_card,
@@ -2550,7 +2551,7 @@ class FastCombatSimulator:
             return state.player_block
 
         elif card_name == 'Mind Blast':
-            return self._count_draw_pile_cards(context)
+            return draw_pile_count(context)
 
         elif card_name == 'Whirlwind':
             # Combat simulation needs per-hit damage so Weak, Vulnerable,
@@ -2573,7 +2574,7 @@ class FastCombatSimulator:
 
     @classmethod
     def _count_draw_pile_cards(cls, context: Optional[DecisionContext]) -> int:
-        return cls._count_card_pile(context, 'draw_pile', 'draw_pile_size')
+        return draw_pile_count(context)
 
     @classmethod
     def _count_discard_pile_cards(cls, context: Optional[DecisionContext]) -> int:
