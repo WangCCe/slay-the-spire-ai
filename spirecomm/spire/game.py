@@ -67,6 +67,15 @@ class Game:
         self.proceed_available = False
         self.cancel_available = False
 
+    @staticmethod
+    def _potion_id(potion):
+        return (
+            getattr(potion, "potion_id", None)
+            or getattr(potion, "name", None)
+            or getattr(potion, "id", None)
+            or potion
+        )
+
     @classmethod
     def from_json(cls, json_state, available_commands):
         game = cls()
@@ -167,7 +176,7 @@ class Game:
 
     def are_potions_full(self):
         for potion in self.potions:
-            if potion.potion_id == "Potion Slot":
+            if self._potion_id(potion) == "Potion Slot":
                 return False
         return True
 
@@ -182,7 +191,7 @@ class Game:
 
         potions = self.potions or []
         for potion in potions:
-            if getattr(potion, "potion_id", None) == "Potion Slot":
+            if self._potion_id(potion) == "Potion Slot":
                 return True
 
         ascension = self.ascension_level or 0
@@ -193,13 +202,13 @@ class Game:
         real_potions = [
             potion
             for potion in potions
-            if getattr(potion, "potion_id", None) != "Potion Slot"
+            if self._potion_id(potion) != "Potion Slot"
         ]
         return len(real_potions) < base_slots
 
     def get_real_potions(self):
         potions = []
         for potion in self.potions:
-            if potion.potion_id != "Potion Slot":
+            if self._potion_id(potion) != "Potion Slot":
                 potions.append(potion)
         return potions

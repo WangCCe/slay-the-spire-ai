@@ -35,3 +35,27 @@ def test_has_potion_space_counts_string_potion_belt_slots():
     )
 
     assert game.has_potion_space() is True
+
+
+def test_has_potion_space_treats_string_potion_slot_as_empty():
+    game = _game(
+        potions=[
+            "Potion Slot",
+            _potion("FirePotion"),
+        ],
+        ascension_level=11,
+    )
+
+    assert game.has_potion_space() is True
+
+
+def test_are_potions_full_treats_string_potion_slot_as_empty():
+    game = _game(potions=["Potion Slot"])
+
+    assert game.are_potions_full() is False
+
+
+def test_get_real_potions_filters_string_potion_slot():
+    game = _game(potions=["Potion Slot", "FirePotion"])
+
+    assert game.get_real_potions() == ["FirePotion"]
