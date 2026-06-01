@@ -213,9 +213,9 @@ class TimingAwareCombatPlanner:
                     damage_options.append((effect_type, card_damage, cost))
 
             monster_hp = [
-                m.current_hp + getattr(m, 'block', 0)
-                for m in monsters
-                if hasattr(m, 'current_hp')
+                self._monster_effective_hp(monster)
+                for monster in monsters
+                if hasattr(monster, 'current_hp')
             ]
 
             can_kill = self._affordable_damage_effects_can_kill_all(
@@ -287,7 +287,7 @@ class TimingAwareCombatPlanner:
                     attack_options.append((card, effect_type, damage, cost))
 
             monster_hp = [
-                max(0, getattr(monster, 'current_hp', 0) + getattr(monster, 'block', 0))
+                self._monster_effective_hp(monster)
                 for monster in monsters
             ]
             selected_options = self._find_affordable_lethal_card_options(
@@ -590,7 +590,7 @@ class TimingAwareCombatPlanner:
             return []
 
         starting_hp = tuple(
-            max(0, getattr(monster, 'current_hp', 0) + getattr(monster, 'block', 0))
+            self._monster_effective_hp(monster)
             for monster in monsters
         )
         seen = set()
@@ -925,6 +925,13 @@ class TimingAwareCombatPlanner:
             return int(value)
         except (TypeError, ValueError):
             return default
+
+    def _monster_effective_hp(self, monster) -> int:
+        return max(
+            0,
+            self._safe_int(getattr(monster, 'current_hp', 0), default=0)
+            + self._safe_int(getattr(monster, 'block', 0), default=0),
+        )
 
     def _all_alive_targets_vulnerable(self, context, monsters) -> bool:
         alive_targets = [

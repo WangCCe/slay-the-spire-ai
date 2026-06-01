@@ -122,6 +122,33 @@ def test_timing_lethal_check_uses_parsed_damage_for_plain_cards(monkeypatch):
     assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_lethal_check_accepts_numeric_string_monster_hp_and_block(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    strike_a = _card("Strike_R", "Strike")
+    strike_a.uuid = "strike-a"
+    strike_b = _card("Strike_R", "Strike")
+    strike_b.uuid = "strike-b"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=2,
+        playable_cards=[strike_a, strike_b],
+        monsters_alive=[SimpleNamespace(current_hp="10", block="2")],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
 def test_timing_lethal_check_accepts_string_attack_type(monkeypatch):
     monkeypatch.setattr(
         timing_planner,
