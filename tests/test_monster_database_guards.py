@@ -183,6 +183,26 @@ def test_monster_predictions_use_ascension_opening_overrides():
     assert asc17_acid_slime[0]["move"]["name"] == "Lick"
 
 
+def test_ascension_small_acid_slime_alternates_after_forced_opening():
+    database = EnhancedMonsterDatabase()
+
+    predictions = database.predict_next_moves(
+        "Acid Slime (S)",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        ascension_level=17,
+    )
+
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in predictions
+    ] == [
+        (1, "Lick", 1.0),
+        (2, "Tackle", 1.0),
+        (3, "Lick", 1.0),
+    ]
+
+
 def test_looter_and_mugger_predict_turn_three_options():
     database = EnhancedMonsterDatabase()
 

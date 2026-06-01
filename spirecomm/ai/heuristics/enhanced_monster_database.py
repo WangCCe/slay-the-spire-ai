@@ -641,12 +641,13 @@ class EnhancedMonsterDatabase:
                     if not move_names:
                         continue
                     move_name = move_names[(target_turn - 1) % len(move_names)]
+                    confidence = 1.0 if ascension_opening else 0.5
                     move = self.get_move_by_name(monster_name, move_name)
                     if move:
                         predictions.append({
                             "turn": target_turn,
                             "move": move,
-                            "confidence": 0.5,
+                            "confidence": confidence,
                         })
 
         # Check for probabilities (less certain prediction)
