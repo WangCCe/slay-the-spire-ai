@@ -243,6 +243,48 @@ def test_play_card_action_targets_low_hp_with_string_attack_type():
     assert action.target_monster is low_hp
 
 
+def test_play_card_action_targets_numeric_string_low_hp():
+    strike = _playable_card("Strike_R", CardType.ATTACK, cost=1)
+    strike.has_target = True
+    dead = SimpleNamespace(
+        current_hp="0",
+        max_hp=10,
+        half_dead=False,
+        is_gone=False,
+        intent="DEFEND",
+        move_adjusted_damage=0,
+    )
+    low_hp = SimpleNamespace(
+        current_hp="1",
+        max_hp=10,
+        half_dead=False,
+        is_gone=False,
+        intent="DEFEND",
+        move_adjusted_damage=0,
+    )
+    high_hp = SimpleNamespace(
+        current_hp="12",
+        max_hp=20,
+        half_dead=False,
+        is_gone=False,
+        intent="DEFEND",
+        move_adjusted_damage=0,
+    )
+    agent = _agent(
+        hand=[strike],
+        monsters=[dead, high_hp, low_hp],
+        player=SimpleNamespace(block=0, energy=1),
+        act=1,
+    )
+    agent.priorities = _FirstPlayablePriority()
+
+    action = agent.get_play_card_action()
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card is strike
+    assert action.target_monster is low_hp
+
+
 def test_play_card_action_low_hp_cleanup_accepts_name_only_attack():
     strike = _name_only_playable_card("Strike", CardType.ATTACK, cost=1)
     strike.has_target = True

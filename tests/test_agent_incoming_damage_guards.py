@@ -33,6 +33,25 @@ def test_simple_agent_incoming_damage_ignores_zero_hp_stale_monsters():
     assert _agent_with_monsters([monster]).get_incoming_damage() == 0
 
 
+def test_simple_agent_live_monster_accepts_numeric_string_hp():
+    live = SimpleNamespace(current_hp="7", is_gone=False, half_dead=False)
+    dead = SimpleNamespace(current_hp="0", is_gone=False, half_dead=False)
+
+    assert SimpleAgent._is_live_monster(live)
+    assert not SimpleAgent._is_live_monster(dead)
+
+
+def test_simple_agent_target_helpers_accept_numeric_string_hp():
+    dead = SimpleNamespace(current_hp="0", is_gone=False, half_dead=False)
+    low = SimpleNamespace(current_hp="3", is_gone=False, half_dead=False)
+    high = SimpleNamespace(current_hp="12", is_gone=False, half_dead=False)
+    agent = _agent_with_monsters([dead, high, low])
+
+    assert agent.many_monsters_alive()
+    assert agent.get_low_hp_target() is low
+    assert agent.get_high_hp_target() is high
+
+
 def test_simple_agent_incoming_damage_clamps_negative_live_move_damage_to_zero():
     monster = SimpleNamespace(
         current_hp=20,

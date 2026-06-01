@@ -447,9 +447,19 @@ class SimpleAgent:
         return False
 
     @staticmethod
-    def _is_live_monster(monster):
+    def _monster_current_hp(monster, default=0):
+        value = getattr(monster, "current_hp", None)
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @classmethod
+    def _is_live_monster(cls, monster):
         return (
-            getattr(monster, "current_hp", 1) > 0
+            cls._monster_current_hp(monster, default=1) > 0
             and not getattr(monster, "is_gone", False)
             and not getattr(monster, "half_dead", False)
         )
@@ -494,25 +504,25 @@ class SimpleAgent:
         available_monsters = [
             monster
             for monster in self.game.monsters
-            if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone
+            if self._is_live_monster(monster)
         ]
-        best_monster = min(available_monsters, key=lambda x: x.current_hp)
+        best_monster = min(available_monsters, key=lambda x: self._monster_current_hp(x))
         return best_monster
 
     def get_high_hp_target(self):
         available_monsters = [
             monster
             for monster in self.game.monsters
-            if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone
+            if self._is_live_monster(monster)
         ]
-        best_monster = max(available_monsters, key=lambda x: x.current_hp)
+        best_monster = max(available_monsters, key=lambda x: self._monster_current_hp(x))
         return best_monster
 
     def many_monsters_alive(self):
         available_monsters = [
             monster
             for monster in self.game.monsters
-            if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone
+            if self._is_live_monster(monster)
         ]
         return len(available_monsters) > 1
 
@@ -550,10 +560,8 @@ class SimpleAgent:
         low_hp_monsters = [
             monster
             for monster in self.game.monsters
-            if monster.current_hp > 0
-            and not monster.half_dead
-            and not monster.is_gone
-            and monster.current_hp <= 1
+            if self._is_live_monster(monster)
+            and self._monster_current_hp(monster) <= 1
         ]
         if low_hp_monsters:
             attack_cards = [
@@ -616,9 +624,7 @@ class SimpleAgent:
             available_monsters = [
                 monster
                 for monster in self.game.monsters
-                if monster.current_hp > 0
-                and not monster.half_dead
-                and not monster.is_gone
+                if self._is_live_monster(monster)
             ]
             if len(available_monsters) == 0:
                 return EndTurnAction()
@@ -1914,9 +1920,7 @@ class OptimizedAgent(SimpleAgent):
         live_monsters = [
             monster
             for monster in (getattr(self.game, "monsters", []) or [])
-            if getattr(monster, "current_hp", 0) > 0
-            and not getattr(monster, "is_gone", False)
-            and not getattr(monster, "half_dead", False)
+            if self._is_live_monster(monster)
         ]
         if not live_monsters:
             return False
