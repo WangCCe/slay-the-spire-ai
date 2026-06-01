@@ -648,6 +648,17 @@ def test_ironclad_evaluator_treats_counted_upgraded_immolate_as_immolate():
     assert counted_score == immolate_score
 
 
+def test_ironclad_energy_curve_parses_string_card_costs():
+    deck = [_card("Strike_R", cost=1) for _ in range(10)]
+    context = DecisionContext(SimpleNamespace(deck=deck, act=1))
+    evaluator = IroncladCardEvaluator()
+
+    int_modifier = evaluator._evaluate_energy_curve(_card("Pommel Strike", cost=1), context)
+    string_modifier = evaluator._evaluate_energy_curve(_card("Pommel Strike", cost="1"), context)
+
+    assert string_modifier == int_modifier
+
+
 def test_large_deck_reward_keeps_strategy_good_card_despite_energy_curve_penalty():
     deck = [
         _card("Strike_R"),

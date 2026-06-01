@@ -288,13 +288,22 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         deck = context.game.deck
         deck_size = len(deck)
 
+        def normalized_base_cost(deck_card) -> int:
+            cost = getattr(deck_card, 'cost', 1)
+            if cost is None:
+                return 1
+            try:
+                return int(cost)
+            except (TypeError, ValueError):
+                return 1
+
         # Count cards by cost
         cost_counts = {}
         for c in deck:
-            cost = c.cost if hasattr(c, 'cost') else 1
+            cost = normalized_base_cost(c)
             cost_counts[cost] = cost_counts.get(cost, 0) + 1
 
-        card_cost = card.cost if hasattr(card, 'cost') else 1
+        card_cost = normalized_base_cost(card)
 
         # Ideal percentages
         ideal_percentages = {
