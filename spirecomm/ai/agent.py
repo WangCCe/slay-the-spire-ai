@@ -2506,18 +2506,20 @@ class OptimizedAgent(SimpleAgent):
         potions_to_use = []
 
         for potion in potions:
-            if not potion.can_use:
+            if hasattr(potion, "can_use") and not potion.can_use:
                 continue
+            potion_name = str(getattr(potion, "name", None) or potion_id(potion) or "")
+            potion_name_lower = potion_name.lower()
 
             # Prioritize potions based on situation
             use_potion = False
 
             # Healing potions - use when HP is low and in danger
             if (
-                "heal" in potion.name.lower()
-                or "health" in potion.name.lower()
-                or "strawberry" in potion.name.lower()
-                or "apple" in potion.name.lower()
+                "heal" in potion_name_lower
+                or "health" in potion_name_lower
+                or "strawberry" in potion_name_lower
+                or "apple" in potion_name_lower
                 or getattr(potion, "effect_type", None) in (
                     "heal",
                     "heal_percent",
@@ -2535,11 +2537,11 @@ class OptimizedAgent(SimpleAgent):
 
             # Damage potions - use when multiple monsters or dangerous enemies
             elif (
-                "damage" in potion.name.lower()
-                or "strength" in potion.name.lower()
-                or "fire" in potion.name.lower()
-                or "ice" in potion.name.lower()
-                or "lightning" in potion.name.lower()
+                "damage" in potion_name_lower
+                or "strength" in potion_name_lower
+                or "fire" in potion_name_lower
+                or "ice" in potion_name_lower
+                or "lightning" in potion_name_lower
                 or getattr(potion, "effect_type", None) in ("damage", "poison")
             ):
                 # Use damage potions in elite/boss fights or when multiple monsters
@@ -2551,9 +2553,9 @@ class OptimizedAgent(SimpleAgent):
 
             # Defensive potions - use when incoming damage is high
             elif (
-                "block" in potion.name.lower()
-                or "shield" in potion.name.lower()
-                or "barrier" in potion.name.lower()
+                "block" in potion_name_lower
+                or "shield" in potion_name_lower
+                or "barrier" in potion_name_lower
                 or getattr(potion, "effect_type", None) in (
                     "block",
                     "plated_armor",
@@ -2578,10 +2580,12 @@ class OptimizedAgent(SimpleAgent):
         # Use the highest priority potion
         if potions_to_use:
             _, potion = potions_to_use[0]
-            if potion.requires_target:
+            potion_name = str(getattr(potion, "name", None) or potion_id(potion) or "")
+            potion_name_lower = potion_name.lower()
+            if getattr(potion, "requires_target", False):
                 # For damage potions, target highest HP monster; for others, target as appropriate
                 if (
-                    "damage" in potion.name.lower()
+                    "damage" in potion_name_lower
                     or getattr(potion, "effect_type", None) in ("damage", "poison")
                 ):
                     target = max(alive_monsters, key=lambda m: m.current_hp)

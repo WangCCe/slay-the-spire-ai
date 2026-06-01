@@ -348,6 +348,50 @@ def test_damage_potion_uses_effect_metadata_not_only_name():
     assert action.potion is potion
 
 
+def test_damage_potion_usage_accepts_potion_id_only_object():
+    monsters = [
+        SimpleNamespace(
+            current_hp=25,
+            is_gone=False,
+            half_dead=False,
+            intent="Intent.ATTACK",
+            move_adjusted_damage=12,
+            move_hits=1,
+            block=0,
+        ),
+        SimpleNamespace(
+            current_hp=30,
+            is_gone=False,
+            half_dead=False,
+            intent="Intent.ATTACK",
+            move_adjusted_damage=12,
+            move_hits=1,
+            block=0,
+        ),
+    ]
+    potion = SimpleNamespace(
+        potion_id="FirePotion",
+        can_use=True,
+        requires_target=False,
+    )
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.game_tracker = None
+    agent.game = SimpleNamespace(
+        monsters=monsters,
+        player=SimpleNamespace(block=0),
+        current_hp=80,
+        max_hp=80,
+        act=1,
+        room_type="Monster",
+        get_real_potions=lambda: [potion],
+    )
+
+    action = agent.use_next_potion()
+
+    assert isinstance(action, PotionAction)
+    assert action.potion is potion
+
+
 def test_targeted_damage_potion_uses_effect_metadata_for_targeting():
     low_hp = SimpleNamespace(
         current_hp=10,
