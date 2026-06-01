@@ -9,7 +9,7 @@ import logging
 import re
 from dataclasses import dataclass, replace
 from typing import List, Tuple, Optional
-from spirecomm.spire.card import Card, CardType
+from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster
 from spirecomm.communication.action import PlayCardAction
 from spirecomm.ai.intent_utils import intent_is_attack
@@ -23,7 +23,7 @@ from .card_costs import (
     whirlwind_damage,
     x_effect_energy,
 )
-from .card_types import is_attack_card
+from .card_types import card_type_name, is_attack_card
 from .card_upgrades import card_upgrade_count, is_card_upgraded, known_damage_upgrade_bonus
 
 logger = logging.getLogger(__name__)
@@ -650,10 +650,10 @@ class CombatEndingDetector:
 
     def _is_lethal_strength_support_card(self, card: Card) -> bool:
         card_name = self._base_card_name(card)
-        card_type = getattr(card, 'type', None)
-        if card_type == CardType.SKILL:
+        card_type = card_type_name(card)
+        if card_type == 'SKILL':
             return card_name in {'Flex', 'Limit Break', 'Spot Weakness'}
-        if card_type == CardType.POWER:
+        if card_type == 'POWER':
             return card_name == 'Inflame'
         return False
 
@@ -685,7 +685,7 @@ class CombatEndingDetector:
         )
 
     def _is_lethal_energy_support_card(self, card: Card) -> bool:
-        if getattr(card, 'type', None) != CardType.SKILL:
+        if card_type_name(card) != 'SKILL':
             return False
         return self._base_card_name(card) in {'Bloodletting', 'Offering', 'Seeing Red'}
 
@@ -727,14 +727,14 @@ class CombatEndingDetector:
         if corruption_active is None:
             corruption_active = self._context_corruption_active(context)
         if (
-            getattr(card, 'type', None) == CardType.SKILL
+            card_type_name(card) == 'SKILL'
             and corruption_active
         ):
             return 0
         return effective_card_cost(card, available_energy)
 
     def _is_lethal_corruption_support_card(self, card: Card) -> bool:
-        if getattr(card, 'type', None) != CardType.POWER:
+        if card_type_name(card) != 'POWER':
             return False
         return self._base_card_name(card) == 'Corruption'
 
@@ -745,7 +745,7 @@ class CombatEndingDetector:
             return 0
 
     def _is_lethal_double_tap_support_card(self, card: Card) -> bool:
-        if getattr(card, 'type', None) != CardType.SKILL:
+        if card_type_name(card) != 'SKILL':
             return False
         return self._base_card_name(card) == 'Double Tap'
 
@@ -768,7 +768,7 @@ class CombatEndingDetector:
         return 8 if is_card_upgraded(card) else 5
 
     def _is_lethal_vulnerable_support_card(self, card: Card) -> bool:
-        if getattr(card, 'type', None) != CardType.SKILL:
+        if card_type_name(card) != 'SKILL':
             return False
         return self._is_all_enemy_debuff_card(card)
 
