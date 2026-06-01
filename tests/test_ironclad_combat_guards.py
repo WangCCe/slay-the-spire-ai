@@ -11172,6 +11172,36 @@ def test_ironclad_sequence_score_accepts_string_skill_type_against_gremlin_nob()
     assert string_score == enum_score
 
 
+def test_ironclad_sequence_score_accepts_name_only_skill_against_gremlin_nob():
+    defend = SimpleNamespace(
+        name="Defend",
+        type=CardType.SKILL,
+        cost=1,
+        cost_for_turn=1,
+        block=5,
+        upgrades=0,
+        has_target=False,
+        is_playable=True,
+    )
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+    context = _combat_context([defend], energy=1, monsters=[_gremlin_nob()])
+    initial = SimulationState(context)
+    final = initial.clone()
+    final.player_block = 5
+    final.energy_spent = 1
+
+    score = planner._score_sequence(
+        [PlayCardAction(card=defend)],
+        initial,
+        final,
+        context,
+    )
+
+    assert score == -45.5
+
+
 def test_ironclad_block_penalty_accepts_string_attack_type_against_gremlin_nob():
     defend = _card(
         "Defend_R",

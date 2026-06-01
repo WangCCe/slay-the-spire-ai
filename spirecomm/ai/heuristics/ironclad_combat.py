@@ -1441,7 +1441,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 # This heavily penalizes SKILL cards to discourage triggering Nob's passive
                 if has_gremlin_nob and card_type == "SKILL":
                     score -= 50
-                    logger.info(f"[SKILL_PENALTY] Applied -50 for {card.card_id} (SKILL) against Gremlin Nob")
+                    logger.info(f"[SKILL_PENALTY] Applied -50 for {card_id} (SKILL) against Gremlin Nob")
 
                 # Powers are valuable early
                 if card_id == 'Demon Form' and context.turn <= 3:
