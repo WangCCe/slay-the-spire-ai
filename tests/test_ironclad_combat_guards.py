@@ -690,6 +690,19 @@ def test_simulate_card_play_accepts_string_damage_attribute():
     assert result.total_damage_dealt == 8
 
 
+def test_simulation_state_coerces_string_monster_hp_and_block():
+    target = _louse(current_hp="20")
+    target.max_hp = "50"
+    target.block = "3"
+    context = _combat_context([], energy=0, monsters=[target])
+
+    state = SimulationState(context)
+
+    assert state.monsters[0]["hp"] == 20
+    assert state.monsters[0]["max_hp"] == 50
+    assert state.monsters[0]["block"] == 3
+
+
 def test_simulate_card_play_accepts_name_only_upgraded_attack_from_data(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -3808,6 +3821,24 @@ def test_slime_boss_strategy_accepts_string_attack_type_for_parsed_aoe(monkeypat
     )
 
     assert score == 12.0
+
+
+def test_slime_boss_strategy_accepts_string_hp_for_split_window_bonus():
+    carnage = _card("Carnage", "Carnage", cost=2)
+    carnage.damage = 20
+    context = _combat_context(
+        [carnage],
+        energy=2,
+        monsters=[_slime_boss(current_hp="70", max_hp="140")],
+    )
+
+    score = IroncladCombatPlanner()._apply_slime_boss_strategy(
+        [PlayCardAction(card=carnage)],
+        context,
+        0.0,
+    )
+
+    assert score == 30.0
 
 
 def test_sentries_damage_distribution_uses_parsed_damage_without_damage_field(monkeypatch):

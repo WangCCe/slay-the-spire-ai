@@ -382,6 +382,13 @@ class SimulationState:
     and modified during simulation, with accurate tracking of combat modifiers.
     """
 
+    @staticmethod
+    def _non_negative_int(value) -> int:
+        try:
+            return max(0, int(value or 0))
+        except (TypeError, ValueError):
+            return 0
+
     def __init__(self, context: DecisionContext):
         """Initialize simulation state from decision context."""
         self.turn = getattr(context, 'turn', 1)
@@ -453,9 +460,9 @@ class SimulationState:
             monster_state = {
                 'monster_id': getattr(monster, 'monster_id', ''),
                 'name': monster.name,
-                'hp': monster.current_hp,
-                'max_hp': monster.max_hp,
-                'block': monster.block if hasattr(monster, 'block') else 0,
+                'hp': self._non_negative_int(monster.current_hp),
+                'max_hp': self._non_negative_int(monster.max_hp),
+                'block': self._non_negative_int(monster.block if hasattr(monster, 'block') else 0),
                 'intent': monster.intent if hasattr(monster, 'intent') else None,
                 'move_id': getattr(monster, 'move_id', None),
                 'is_gone': monster.is_gone,

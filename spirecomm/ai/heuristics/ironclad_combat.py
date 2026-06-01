@@ -2153,7 +2153,12 @@ class IroncladCombatPlanner(CombatPlanner):
         # Get Slime Boss HP percentage
         slime_boss = context.monsters_alive[0]
         if hasattr(slime_boss, 'current_hp') and hasattr(slime_boss, 'max_hp'):
-            hp_pct = slime_boss.current_hp / slime_boss.max_hp
+            max_hp = self._non_negative_float(slime_boss.max_hp)
+            hp_pct = (
+                self._non_negative_float(slime_boss.current_hp) / max_hp
+                if max_hp > 0
+                else 1.0
+            )
         else:
             hp_pct = 1.0  # Default to full HP if unknown
 
