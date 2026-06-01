@@ -96,6 +96,24 @@ class _StringThreatProfileMonsterDataLoader:
         return None
 
 
+class _StringSummonerThreatProfileMonsterDataLoader:
+    def get_enhanced_monster_data(self, monster_name):
+        return {"name": monster_name}
+
+    def predict_monster_moves(self, monster_name, turn, monster_hp_percent):
+        return []
+
+    def get_monster_threat_profile(self, monster_name):
+        return {
+            "summoning_threat": "20",
+            "minion_threat": "10",
+            "base_threat": "20",
+        }
+
+    def get_monster_special_mechanics(self, monster_name):
+        return {"type": "summoner"}
+
+
 def _context_for_deck(deck):
     context = DecisionContext.__new__(DecisionContext)
     context.game = SimpleNamespace(deck=deck)
@@ -617,6 +635,30 @@ def test_compute_threat_v2_accepts_string_numeric_threat_profile(monkeypatch):
     context.monsters_alive = [monster]
 
     assert context.compute_threat_v2(monster) == 22
+
+
+def test_compute_threat_v2_accepts_string_numeric_summoner_profile(monkeypatch):
+    monkeypatch.setattr(
+        decision_base,
+        "game_data_loader",
+        _StringSummonerThreatProfileMonsterDataLoader(),
+    )
+    summoner = SimpleNamespace(
+        name="The Collector",
+        intent=Intent.NONE,
+        move_adjusted_damage=0,
+        move_hits=1,
+        strength=0,
+        current_hp=150,
+        max_hp=300,
+    )
+    first_minion = SimpleNamespace(name="Torch Head")
+    second_minion = SimpleNamespace(name="Torch Head")
+    context = DecisionContext.__new__(DecisionContext)
+    context.turn = 1
+    context.monsters_alive = [summoner, first_minion, second_minion]
+
+    assert context.compute_threat_v2(summoner) == 34
 
 
 def test_compute_threat_v2_does_not_count_debuff_intent_as_party_buff(monkeypatch):

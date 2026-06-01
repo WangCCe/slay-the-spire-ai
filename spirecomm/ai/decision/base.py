@@ -455,12 +455,20 @@ class DecisionContext:
 
             # Summoner threat (high priority to kill)
             if mech_type == 'summoner':
-                summoning_threat = threat_profile.get('summoning_threat', 20) if threat_profile else 20
+                summoning_threat = (
+                    self._safe_float(threat_profile.get('summoning_threat', 20), 20.0)
+                    if threat_profile
+                    else 20
+                )
                 threat += summoning_threat
 
                 # Add minion threat
                 minion_count = len([m for m in self.monsters_alive if m.name != monster_name])
-                minion_threat = threat_profile.get('minion_threat', 10) if threat_profile else 10
+                minion_threat = (
+                    self._safe_float(threat_profile.get('minion_threat', 10), 10.0)
+                    if threat_profile
+                    else 10
+                )
                 threat += minion_threat * minion_count
 
             # Hibernation threat (low while sleeping, high when awake)
