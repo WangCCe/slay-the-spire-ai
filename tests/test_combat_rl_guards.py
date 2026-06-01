@@ -105,6 +105,25 @@ def test_potion_guard_infers_missing_potion_available_from_usable_potion():
     assert action.target_index == 0
 
 
+def test_potion_guard_uses_get_real_potions_when_raw_potions_are_missing():
+    potion = SimpleNamespace(
+        potion_id="Fire Potion",
+        name="Fire Potion",
+        can_use=True,
+        requires_target=True,
+        effect_type="damage",
+    )
+    game = _game(potions=[], monsters=[_monster(hp=50, damage=20, index=0)])
+    del game.potions
+    game.get_real_potions = lambda: [potion]
+
+    action = _agent()._maybe_use_potion_guard(game)
+
+    assert isinstance(action, PotionAction)
+    assert action.potion is potion
+    assert action.target_index == 0
+
+
 def test_potion_guard_preserves_target_index_when_dead_monster_precedes_target():
     potion = SimpleNamespace(
         potion_id="Fire Potion",

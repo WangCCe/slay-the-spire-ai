@@ -28,7 +28,11 @@ from spirecomm.ai.incoming_damage import (
 )
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
-from spirecomm.ai.heuristics.potions import game_potion_available, potion_can_use
+from spirecomm.ai.heuristics.potions import (
+    game_potion_available,
+    game_real_potions,
+    potion_can_use,
+)
 from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
 from spirecomm.spire.character import PlayerClass
 from spirecomm.spire.identifiers import potion_id
@@ -1116,9 +1120,8 @@ class CombatRLAgent:
 
         potions = [
             potion
-            for potion in (getattr(game, "potions", []) or [])
-            if potion_id(potion) != "Potion Slot"
-            and potion_can_use(potion)
+            for potion in game_real_potions(game)
+            if potion_can_use(potion)
         ]
         if not potions:
             return None
