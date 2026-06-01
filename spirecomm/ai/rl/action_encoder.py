@@ -96,6 +96,15 @@ class ActionEncoder:
             return not game.are_potions_full()
         return False
 
+    @staticmethod
+    def _safe_int(value, default: int = 0) -> int:
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
     def encode_play_card(self, card_index: int, monster_index: int) -> int:
         """
         Encode play card action to action index.
@@ -533,6 +542,7 @@ class ActionEncoder:
             num_required = (
                 getattr(game.screen, "num_cards", 0) if hasattr(game, "screen") else 0
             )
+            num_required = self._safe_int(num_required, default=0)
             can_pick_zero = (
                 getattr(game.screen, "can_pick_zero", False)
                 if hasattr(game, "screen")

@@ -269,6 +269,24 @@ def test_legacy_combat_mask_parses_string_turn_cost():
     assert not any(mask[: encoder.USE_POTION_OFFSET])
 
 
+def test_legacy_hand_select_mask_accepts_string_num_cards_for_confirm():
+    encoder = ActionEncoder()
+    game = _game(
+        screen_type=ScreenType.HAND_SELECT,
+        screen=SimpleNamespace(
+            cards=[SimpleNamespace(name="Strike"), SimpleNamespace(name="Defend")],
+            selected_cards=[SimpleNamespace(name="Strike"), SimpleNamespace(name="Defend")],
+            num_cards="2",
+            can_pick_zero=False,
+        ),
+        available_commands=["key", "click"],
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert mask[encoder.CONFIRM_ACTION]
+
+
 def test_legacy_potion_decoder_falls_back_for_unusable_potion():
     encoder = ActionEncoder()
     potion = _potion("Fire Potion")
