@@ -492,6 +492,37 @@ def test_time_eater_below_half_hp_predicts_haste():
     ]
 
 
+def test_giant_head_ascension_eighteen_starts_it_is_time_on_turn_four():
+    database = EnhancedMonsterDatabase()
+
+    below_a18 = database.predict_next_moves(
+        "Giant Head",
+        current_turn=4,
+        monster_hp_percent=1.0,
+        ascension_level=17,
+    )
+    asc18 = database.predict_next_moves(
+        "Giant Head",
+        current_turn=4,
+        monster_hp_percent=1.0,
+        ascension_level=18,
+    )
+
+    assert [
+        prediction["move"]["name"]
+        for prediction in below_a18
+        if prediction["turn"] == 4
+    ] == ["Count", "Glare"]
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in asc18
+    ] == [
+        (4, "It Is Time", 1.0),
+        (5, "It Is Time", 1.0),
+        (6, "It Is Time", 1.0),
+    ]
+
+
 def test_game_data_loader_forwards_other_enemy_count_to_monster_predictions():
     loader = GameDataLoader(auto_load=False)
 

@@ -411,7 +411,11 @@ class EnhancedMonsterDatabase:
 
         # Check for turn-threshold patterns (e.g., Giant Head countdown into It Is Time)
         elif "turn_thresholds" in pattern:
-            thresholds = pattern.get("turn_thresholds", [])
+            thresholds = self._ascension_adjusted_turn_thresholds(
+                pattern.get("turn_thresholds", []),
+                special_mechanics,
+                ascension_level,
+            )
             for i in range(3):
                 target_turn = current_turn + i
                 threshold = self._select_turn_threshold(thresholds, target_turn)
@@ -1030,6 +1034,33 @@ class EnhancedMonsterDatabase:
             if target_turn >= from_turn and (selected is None or from_turn >= selected.get("from_turn", 1)):
                 selected = threshold
         return selected
+
+    def _ascension_adjusted_turn_thresholds(
+        self,
+        thresholds: List[Dict[str, Any]],
+        special_mechanics: Optional[Dict[str, Any]],
+        ascension_level: int,
+    ) -> List[Dict[str, Any]]:
+        if not isinstance(thresholds, list):
+            return []
+        if (
+            not isinstance(special_mechanics, dict)
+            or ascension_level < 18
+            or not isinstance(special_mechanics.get("ascension_18_first_turn"), int)
+        ):
+            return thresholds
+
+        first_turn = special_mechanics["ascension_18_first_turn"]
+        adjusted = []
+        for threshold in thresholds:
+            if not isinstance(threshold, dict):
+                adjusted.append(threshold)
+                continue
+            threshold_copy = dict(threshold)
+            if threshold_copy.get("move") == "It Is Time":
+                threshold_copy["from_turn"] = first_turn
+            adjusted.append(threshold_copy)
+        return adjusted
 
     def _phase_probability_key(self, pattern: Dict[str, Any], target_turn: int, opening_length: int) -> Optional[str]:
         phase_keys = sorted(
