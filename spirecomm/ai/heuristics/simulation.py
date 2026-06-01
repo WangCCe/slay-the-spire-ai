@@ -12,6 +12,7 @@ import time
 from typing import List, Dict, Tuple, Optional, Any
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster, Intent
+from spirecomm.spire.identifiers import potion_id
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.incoming_damage import (
     known_unknown_move_has_no_immediate_damage,
@@ -5262,7 +5263,10 @@ class HeuristicCombatPlanner(CombatPlanner):
         potions = []
         if hasattr(context.game, 'get_real_potions'):
             potions = context.game.get_real_potions() or []
-        has_usable_potion = any(potion_can_use(potion) for potion in potions)
+        has_usable_potion = any(
+            potion_id(potion) != "Potion Slot" and potion_can_use(potion)
+            for potion in potions
+        )
 
         # Count zero-cost cards (they enable deeper chains)
         extra_zero_cost = sum(
@@ -5884,7 +5888,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         potion_actions = []
 
         for potion in potions:
-            if not potion_can_use(potion):
+            if potion_id(potion) == "Potion Slot" or not potion_can_use(potion):
                 continue
 
             # Calculate priority score based on potion type and game state

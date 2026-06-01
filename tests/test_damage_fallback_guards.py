@@ -4452,6 +4452,36 @@ def test_potion_actions_accept_missing_can_use_and_requires_target():
     assert actions == [(potion, None, 0, 100.0)]
 
 
+def test_potion_actions_skip_name_only_empty_potion_slot():
+    monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        current_hp=15,
+        is_gone=False,
+        half_dead=False,
+        intent=Intent.SLEEP,
+        move_id=1,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+    empty_slot = SimpleNamespace(name="Potion Slot")
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            monsters=[monster],
+            get_real_potions=lambda: [empty_slot],
+            room_type="Monster",
+        ),
+        monsters_alive=[monster],
+        act=1,
+        vulnerable_stacks={0: 0},
+    )
+    state = SimpleNamespace(player_hp=80, player_max_hp=80)
+
+    actions = HeuristicCombatPlanner()._get_potion_actions(context, state)
+
+    assert actions == []
+
+
 def _potion_projection_context(potion, *, player_powers=None, cards=None, energy=0):
     cards = cards or []
     monster = SimpleNamespace(
