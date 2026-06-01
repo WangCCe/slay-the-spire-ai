@@ -5,6 +5,7 @@ import hashlib
 import re
 import numpy as np
 from typing import List, Tuple
+from spirecomm.ai.heuristics.card_costs import raw_card_cost
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 from spirecomm.spire.game import Game
@@ -99,7 +100,7 @@ class StateEncoder:
 
         return [
             card_id_hash,
-            min((card.cost_for_turn if hasattr(card, 'cost_for_turn') else card.cost), 3) / 3.0 if hasattr(card, 'cost') else 0.0,
+            min(raw_card_cost(card), 3) / 3.0,
             min(damage, 30) / 30.0,
             min(block, 20) / 20.0,
             1.0 if card_type_val == 1 else 0.0,  # Attack

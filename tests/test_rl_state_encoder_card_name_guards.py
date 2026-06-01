@@ -57,6 +57,28 @@ def test_rl_state_encoder_treats_none_upgrades_as_base_card():
     assert features[8] == 0.0
 
 
+def test_rl_state_encoder_falls_back_to_base_cost_when_turn_cost_is_none():
+    encoder = StateEncoder()
+    card = _card("Cleave")
+    card.cost = 2
+    card.cost_for_turn = None
+
+    features = encoder._encode_single_card(card)
+
+    assert features[1] == 2 / 3
+
+
+def test_rl_state_encoder_treats_missing_cost_as_zero():
+    encoder = StateEncoder()
+    card = _card("Discovery")
+    card.cost = None
+    card.cost_for_turn = None
+
+    features = encoder._encode_single_card(card)
+
+    assert features[1] == 0.0
+
+
 def test_rl_state_encoder_intent_encoding_accepts_string_representations():
     encoder = StateEncoder()
 
