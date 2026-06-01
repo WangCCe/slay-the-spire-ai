@@ -921,6 +921,13 @@ class FastCombatSimulator:
         """
         self.timing_context = timing_context
 
+    @staticmethod
+    def _non_negative_int(value) -> int:
+        try:
+            return max(0, int(value or 0))
+        except (TypeError, ValueError):
+            return 0
+
     def simulate_card_play(self, state: SimulationState, card: Card,
                           target: Optional[Monster] = None,
                           target_index: Optional[int] = None,
@@ -2058,6 +2065,7 @@ class FastCombatSimulator:
 
     def _apply_card_block_modifiers(self, block: int, state: SimulationState) -> int:
         """Apply player modifiers for block gained by a card."""
+        block = self._non_negative_int(block)
         block_with_dexterity = max(0, block + getattr(state, 'player_dexterity', 0))
         return self._apply_frail_block(block_with_dexterity, state.player_frail)
 
@@ -2957,8 +2965,8 @@ class FastCombatSimulator:
         card_name = _canonical_card_name(card)
 
         # Block skills - apply frail multiplier if player has frail
-        if hasattr(card, 'block') and card.block is not None and card.block > 0:
-            block_gain = card.block
+        block_gain = self._non_negative_int(getattr(card, 'block', 0))
+        if block_gain > 0:
             logger.debug(f"[BLOCK_SKILL] Using card.block attribute: {block_gain} for {card_name}")
             block_gain = self._apply_card_block_modifiers(block_gain, state)
             self._add_player_block(state, block_gain)

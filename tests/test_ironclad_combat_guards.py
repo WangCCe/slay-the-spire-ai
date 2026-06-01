@@ -734,6 +734,33 @@ def test_simulate_card_play_accepts_name_only_block_skill():
     assert result.player_block == 5
 
 
+def test_simulate_card_play_accepts_string_block_attribute():
+    defend = SimpleNamespace(
+        name="Defend",
+        type=CardType.SKILL,
+        cost=1,
+        cost_for_turn=1,
+        block="5",
+        upgrades=0,
+        has_target=False,
+        is_playable=True,
+    )
+    context = _combat_context([defend], energy=1, monsters=[_louse()])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        defend,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 0
+    assert result.energy_spent == 1
+    assert result.player_block == 5
+
+
 def test_cultist_ritual_turn_handles_string_attack_intents():
     context = _combat_context(
         [],
