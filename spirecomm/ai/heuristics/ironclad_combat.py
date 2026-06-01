@@ -26,7 +26,7 @@ from .simulation import (
 )
 from .card_costs import effective_card_cost, is_x_cost_card, whirlwind_damage, x_effect_energy
 from .card_names import canonical_card_name
-from .card_types import card_type_name, is_attack_card
+from .card_types import card_requires_target, card_type_name, is_attack_card
 from .card_upgrades import card_upgrade_count, is_card_upgraded
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
@@ -313,7 +313,7 @@ class IroncladCombatPlanner(CombatPlanner):
                         continue
 
                     # === NEW: Target exploration ===
-                    if getattr(card, 'has_target', False) and explore_targets:
+                    if card_requires_target(card, AOE_ATTACK_CARDS) and explore_targets:
                         # Get ranked targets
                         ranked_targets = self._rank_targets(card, context, state)
 
@@ -1219,7 +1219,7 @@ class IroncladCombatPlanner(CombatPlanner):
         # Condition 3: Check for single-target cards
         has_single_target = False
         for card in context.playable_cards:
-            if getattr(card, 'has_target', False) and not self._is_aoe_attack(card):
+            if card_requires_target(card, AOE_ATTACK_CARDS):
                 has_single_target = True
                 break
 
@@ -1625,7 +1625,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
         if scored_cards and scored_cards[0][1] > 0:
             best_card = scored_cards[0][0]
-            if getattr(best_card, 'has_target', False) and context.monsters_alive:
+            if card_requires_target(best_card, AOE_ATTACK_CARDS) and context.monsters_alive:
                 target, _ = self._choose_target_for_card(best_card, context, SimulationState(context))
                 return [PlayCardAction(card=best_card, target_monster=target)]
             else:
@@ -2118,7 +2118,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 )
                 if target_idx is not None and 0 <= target_idx < len(context.monsters_alive):
                     target = context.monsters_alive[target_idx]
-                elif target is None and hasattr(card, 'has_target') and card.has_target and context.monsters_alive:
+                elif target is None and card_requires_target(card, AOE_ATTACK_CARDS) and context.monsters_alive:
                     # Default to first monster if we can't determine target
                     target = context.monsters_alive[0]
                     target_idx = 0

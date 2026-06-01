@@ -29,7 +29,11 @@ from spirecomm.ai.heuristics.card_costs import (
     x_effect_energy,
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
-from spirecomm.ai.heuristics.card_types import card_type_name, is_attack_card
+from spirecomm.ai.heuristics.card_types import (
+    card_requires_target,
+    card_type_name,
+    is_attack_card,
+)
 from spirecomm.ai.heuristics.card_upgrades import (
     DAMAGE_UPGRADE_BONUS,
     card_upgrade_count,
@@ -77,6 +81,14 @@ ENERGY_EFFICIENCY_WEIGHT = 3.0  # Points per energy spent
 
 HP_LOSS_PENALTY = 10.0  # Penalty per HP lost this turn
                        # Increase for more conservative play
+
+IRONCLAD_AOE_ATTACK_CARDS = {
+    'Cleave',
+    'Whirlwind',
+    'Immolate',
+    'Thunderclap',
+    'Reaper',
+}
 
 # Danger threshold penalty
 DANGER_PENALTY = 50.0  # Extra penalty when below danger threshold
@@ -5395,7 +5407,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         # Rank cards by evaluator
         best_card = self.card_evaluator.get_best_card(context.playable_cards, context)
 
-        if getattr(best_card, 'has_target', False):
+        if card_requires_target(best_card, IRONCLAD_AOE_ATTACK_CARDS):
             # Find best target
             target = self._find_best_target(best_card, context)
             return [PlayCardAction(card=best_card, target_monster=target)]
@@ -5499,7 +5511,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                         # card_idx is the card index, card is the Card object
 
                         # === Target exploration with progressive expansion ===
-                        if getattr(card, 'has_target', False) and explore_targets:
+                        if card_requires_target(card, IRONCLAD_AOE_ATTACK_CARDS) and explore_targets:
                             # Progressive target expansion: depth 0→2 targets, depth 1→1-2, depth 2+→1
                             M_targets = 2 if depth == 0 else (1 if depth >= 2 else 2)
 
@@ -5577,7 +5589,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                             # Use deterministic targeting (either no target exploration needed, or card has no target)
                             target = (
                                 self._find_best_target(card, context, state=state)
-                                if getattr(card, 'has_target', False)
+                                if card_requires_target(card, IRONCLAD_AOE_ATTACK_CARDS)
                                 else None
                             )
 
@@ -6204,7 +6216,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         # Condition 3: Check for single-target cards
         has_single_target = False
         for card in context.playable_cards:
-            if getattr(card, 'has_target', False):
+            if card_requires_target(card, IRONCLAD_AOE_ATTACK_CARDS):
                 has_single_target = True
                 break
 

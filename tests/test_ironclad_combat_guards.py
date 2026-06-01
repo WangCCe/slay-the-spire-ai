@@ -11808,6 +11808,67 @@ def test_heuristic_simple_plan_accepts_name_only_power_without_has_target():
     assert getattr(sequence[0], "target_monster", None) is None
 
 
+def test_heuristic_simple_plan_targets_name_only_single_target_attack_without_has_target():
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        damage=6,
+        upgrades=0,
+        is_playable=True,
+    )
+    target = _louse(current_hp=30)
+    context = _combat_context([strike], energy=1, monsters=[target])
+    context.compute_threat = lambda _monster: 0
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+    planner.card_evaluator.get_best_card = lambda _cards, _context: strike
+
+    sequence = planner._simple_plan(context)
+
+    assert len(sequence) == 1
+    assert sequence[0].card is strike
+    assert sequence[0].target_monster is target
+
+
+def test_heuristic_target_exploration_infers_name_only_single_target_attack():
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        damage=6,
+        upgrades=0,
+        is_playable=True,
+    )
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_louse(current_hp=30), _louse(current_hp=30)],
+    )
+
+    assert HeuristicCombatPlanner(SynergyCardEvaluator())._should_explore_targets(context, 0) is True
+
+
+def test_ironclad_target_exploration_infers_name_only_single_target_attack():
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        damage=6,
+        upgrades=0,
+        is_playable=True,
+    )
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_louse(current_hp=30), _louse(current_hp=30)],
+    )
+
+    assert IroncladCombatPlanner()._should_explore_targets(context, 0) is True
+
+
 def test_heuristic_target_exploration_accepts_name_only_aoe_without_has_target():
     cleave = SimpleNamespace(
         name="Cleave",
