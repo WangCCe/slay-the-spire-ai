@@ -129,9 +129,12 @@ class StateEncoderV2:
             return [0.0] * self.PLAYER_FEATURES
 
         hp_ratio = self._safe_ratio(player.current_hp, player.max_hp, 1.0)
-        energy_ratio = min(max(player.energy, 0), 5) / 5.0
-        block_ratio = min(max(player.block, 0), 100) / 100.0
-        floor_ratio = min(max(game.floor or 0, 0), 50) / 50.0
+        energy = max(self._safe_float(getattr(player, "energy", 0), 0.0), 0.0)
+        block = max(self._safe_float(getattr(player, "block", 0), 0.0), 0.0)
+        floor = max(self._safe_float(getattr(game, "floor", 0), 0.0), 0.0)
+        energy_ratio = min(energy, 5) / 5.0
+        block_ratio = min(block, 100) / 100.0
+        floor_ratio = min(floor, 50) / 50.0
 
         keyword_values = [self._encode_keyword(player.powers, key) for key in self.KEYWORDS]
 

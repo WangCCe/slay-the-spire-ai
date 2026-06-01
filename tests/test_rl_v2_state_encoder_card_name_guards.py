@@ -139,6 +139,32 @@ def test_rl_v2_monster_features_accept_string_numeric_fields():
     assert features[13] == 0.2
 
 
+def test_rl_v2_player_features_accept_string_numeric_fields():
+    encoder = StateEncoderV2(_mapper())
+    game = SimpleNamespace(
+        player=SimpleNamespace(
+            current_hp="40",
+            max_hp="80",
+            energy="3",
+            block="12",
+            powers=[],
+        ),
+        floor="10",
+        draw_pile=[],
+        discard_pile=[],
+        exhaust_pile=[],
+        hand=[],
+        character="IRONCLAD",
+    )
+
+    features = encoder._encode_player(game)
+
+    assert features[0] == 0.5
+    assert features[1] == 0.6
+    assert features[2] == 0.12
+    assert features[3] == 0.2
+
+
 def test_rl_v2_player_class_features_accept_strings():
     encoder = StateEncoderV2(_mapper())
 
