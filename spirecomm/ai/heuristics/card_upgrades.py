@@ -155,3 +155,7 @@ def known_block_upgrade_bonus(card: Any, card_name: str) -> int:
     if card_upgrade_count(card) <= 0:
         return 0
     return BLOCK_UPGRADE_BONUS.get(card_name, 0)
+
+
+def heavy_blade_strength_multiplier(card: Any) -> int:
+    return 5 if is_card_upgraded(card) else 3

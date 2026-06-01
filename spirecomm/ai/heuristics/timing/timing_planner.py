@@ -27,6 +27,7 @@ from spirecomm.ai.heuristics.card_costs import (
 from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
 from spirecomm.ai.heuristics.card_upgrades import (
     card_upgrade_count,
+    heavy_blade_strength_multiplier,
     is_card_upgraded,
     known_block_upgrade_bonus,
     known_damage_upgrade_bonus,
@@ -985,8 +986,7 @@ class TimingAwareCombatPlanner:
         card_name = canonical_card_name(card)
 
         if card_name == 'Heavy Blade':
-            multiplier = 5 if is_card_upgraded(card) else 3
-            return base_damage + strength * multiplier
+            return base_damage + strength * heavy_blade_strength_multiplier(card)
         if card_name == 'Perfected Strike':
             per_strike_bonus = 3 if is_card_upgraded(card) else 2
             return base_damage + strike_card_count(context) * per_strike_bonus + strength

@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from spirecomm.ai.heuristics.card_upgrades import (
     card_upgrade_count,
+    heavy_blade_strength_multiplier,
     is_card_upgraded,
     known_block_upgrade_bonus,
     known_damage_upgrade_bonus,
@@ -32,6 +33,12 @@ def test_known_block_upgrade_bonus_uses_shared_mapping_and_upgrade_count():
 
     assert known_block_upgrade_bonus(shrug_plus, "Shrug It Off") == 3
     assert known_block_upgrade_bonus(_card("Shrug It Off"), "Shrug It Off") == 0
+
+
+def test_heavy_blade_strength_multiplier_uses_upgrade_count():
+    assert heavy_blade_strength_multiplier(_card("Heavy Blade")) == 3
+    assert heavy_blade_strength_multiplier(_card("Heavy Blade+1", upgrades=1)) == 5
+    assert heavy_blade_strength_multiplier(_card("Heavy Blade", upgrades=None)) == 3
 
 
 def test_upgrade_bonus_tables_are_owned_by_card_upgrades_not_simulation():

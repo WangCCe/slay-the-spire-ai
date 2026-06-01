@@ -31,7 +31,12 @@ from .card_hits import (
 )
 from .card_names import canonical_card_name
 from .card_types import card_requires_target, card_type_name, is_attack_card
-from .card_upgrades import card_upgrade_count, is_card_upgraded, known_damage_upgrade_bonus
+from .card_upgrades import (
+    card_upgrade_count,
+    heavy_blade_strength_multiplier,
+    is_card_upgraded,
+    known_damage_upgrade_bonus,
+)
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
@@ -1093,8 +1098,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
         strength = getattr(context, 'strength', 0)
         if card_name == 'Heavy Blade':
-            multiplier = 5 if is_card_upgraded(card) else 3
-            return max(0, base_damage + strength * multiplier)
+            return max(0, base_damage + strength * heavy_blade_strength_multiplier(card))
         if card_name == 'Perfected Strike':
             per_strike_bonus = 3 if is_card_upgraded(card) else 2
             return max(0, base_damage + strike_card_count(context) * per_strike_bonus + strength)

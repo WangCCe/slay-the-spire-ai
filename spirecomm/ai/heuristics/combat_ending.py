@@ -29,7 +29,12 @@ from .card_hits import (
     fixed_attack_hit_count,
     strike_card_count,
 )
-from .card_upgrades import card_upgrade_count, is_card_upgraded, known_damage_upgrade_bonus
+from .card_upgrades import (
+    card_upgrade_count,
+    heavy_blade_strength_multiplier,
+    is_card_upgraded,
+    known_damage_upgrade_bonus,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1646,8 +1651,7 @@ class CombatEndingDetector:
         if is_attack_card(card):
             strength = getattr(context, 'strength', 0) if strength_override is None else strength_override
             if card_name == 'Heavy Blade':
-                multiplier = 5 if upgrades > 0 else 3
-                base_damage += strength * multiplier
+                base_damage += strength * heavy_blade_strength_multiplier(card)
             elif card_name == 'Perfected Strike':
                 per_strike_bonus = 3 if upgrades > 0 else 2
                 base_damage += strike_card_count(context) * per_strike_bonus + strength

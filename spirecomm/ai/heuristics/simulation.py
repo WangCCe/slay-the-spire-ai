@@ -36,7 +36,11 @@ from spirecomm.ai.heuristics.card_types import (
     is_attack_card,
 )
 import spirecomm.ai.heuristics.card_upgrades as card_upgrade_helpers
-from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_upgraded
+from spirecomm.ai.heuristics.card_upgrades import (
+    card_upgrade_count,
+    heavy_blade_strength_multiplier,
+    is_card_upgraded,
+)
 from spirecomm.data.loader import (
     _effect_text_for_upgrade as _select_effect_text_for_upgrade,
     game_data_loader,
@@ -1625,8 +1629,7 @@ class FastCombatSimulator:
             base_damage += self._positive_card_misc(card)
 
         if card_name == 'Heavy Blade':
-            multiplier = 5 if is_card_upgraded(card) else 3
-            return max(0, base_damage + state.player_strength * multiplier)
+            return max(0, base_damage + state.player_strength * heavy_blade_strength_multiplier(card))
 
         if card_name == 'Perfected Strike':
             per_strike_bonus = 3 if is_card_upgraded(card) else 2
