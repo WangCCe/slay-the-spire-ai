@@ -1128,6 +1128,33 @@ def test_timing_block_estimate_treats_none_upgrades_as_base_card(monkeypatch):
     assert block == 5
 
 
+def test_timing_damage_estimate_accepts_string_damage_field():
+    card = SimpleNamespace(
+        card_id="Strike_R",
+        name="Strike",
+        type=CardType.ATTACK,
+        damage="6",
+    )
+    context = SimpleNamespace(turn=1, strength=2, energy_available=1)
+
+    damage = TimingAwareCombatPlanner()._estimate_card_damage(card, context)
+
+    assert damage == 8
+
+
+def test_timing_block_estimate_accepts_string_block_field():
+    card = SimpleNamespace(
+        card_id="Defend_R",
+        name="Defend",
+        type=CardType.SKILL,
+        block="5",
+    )
+
+    block = TimingAwareCombatPlanner()._estimate_card_block(card)
+
+    assert block == 5
+
+
 def test_timing_fallback_applies_frail_to_block_scores(monkeypatch):
     monkeypatch.setattr(
         timing_planner,

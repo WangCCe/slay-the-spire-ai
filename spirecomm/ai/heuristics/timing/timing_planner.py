@@ -804,6 +804,13 @@ class TimingAwareCombatPlanner:
 
         return False
 
+    @staticmethod
+    def _non_negative_int(value) -> int:
+        try:
+            return max(0, int(value or 0))
+        except (TypeError, ValueError):
+            return 0
+
     def _estimate_card_damage(self, card, context, available_energy=None) -> int:
         """Estimate card damage for timing decisions from methods or parsed data."""
         card_type = card_type_name(card)
@@ -831,7 +838,7 @@ class TimingAwareCombatPlanner:
         if card_name == 'Body Slam':
             return max(0, player_block_value(context) + strength)
 
-        base_damage = getattr(card, 'damage', 0) or 0
+        base_damage = self._non_negative_int(getattr(card, 'damage', 0))
         if base_damage <= 0:
             try:
                 card_data = game_data_loader.get_card_data(card_name)
@@ -993,7 +1000,7 @@ class TimingAwareCombatPlanner:
             except Exception:
                 pass
 
-        block = getattr(card, 'block', 0) or 0
+        block = self._non_negative_int(getattr(card, 'block', 0))
         if block <= 0:
             try:
                 card_name = canonical_card_name(card)
