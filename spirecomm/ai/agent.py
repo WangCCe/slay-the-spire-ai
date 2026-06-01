@@ -30,7 +30,7 @@ from spirecomm.ai.heuristics.card_types import (
     is_attack_card,
 )
 from spirecomm.ai.heuristics.combat_state import power_signature
-from spirecomm.ai.heuristics.potions import potion_can_use
+from spirecomm.ai.heuristics.potions import game_real_potions, potion_can_use
 
 # Note: Logging is configured in main.py to write to ai_debug.log
 # No need to configure here
@@ -1229,7 +1229,9 @@ class TurnPlanSignature:
         self.energy = getattr(player, "energy", getattr(game, "energy", 3))
 
         # Track potion slots because cached plans can contain PotionAction objects.
-        self.potion_signature = self._potion_signature(getattr(game, "potions", None))
+        raw_potions = getattr(game, "potions", None)
+        potions = raw_potions if raw_potions is not None else game_real_potions(game)
+        self.potion_signature = self._potion_signature(potions)
 
         # Track monster states
         if hasattr(game, "monsters") and game.monsters:

@@ -279,6 +279,17 @@ def test_turn_plan_signature_distinguishes_string_potion_inventory_changes():
     assert fire_signature != empty_slot_signature
 
 
+def test_turn_plan_signature_uses_get_real_potions_without_raw_potions():
+    game_with_potion = _game([_card("Strike_R", "Strike")])
+    del game_with_potion.potions
+    game_with_potion.get_real_potions = lambda: [_potion()]
+
+    available_signature = TurnPlanSignature(game_with_potion)
+    empty_signature = TurnPlanSignature(_game([_card("Strike_R", "Strike")], potions=[]))
+
+    assert available_signature != empty_signature
+
+
 def test_should_replan_when_potion_inventory_changes():
     agent = OptimizedAgent.__new__(OptimizedAgent)
     agent.current_plan_signature = TurnPlanSignature(
