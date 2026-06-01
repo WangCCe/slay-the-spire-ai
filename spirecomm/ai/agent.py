@@ -21,7 +21,7 @@ from spirecomm.ai.heuristics.simulation import (
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
-from spirecomm.ai.heuristics.card_types import card_type_name, is_attack_card
+from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name, is_attack_card
 from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_upgraded
 
 # Note: Logging is configured in main.py to write to ai_debug.log
@@ -508,6 +508,10 @@ class SimpleAgent:
         ]
         return len(available_monsters) > 1
 
+    def _card_requires_target(self, card):
+        aoe_names = getattr(self.priorities, "AOE_CARD_NAMES", ())
+        return card_requires_target(card, aoe_names)
+
     def get_play_card_action(self):
         playable_cards = [card for card in self.game.hand if card.is_playable]
         available_energy = getattr(getattr(self.game, "player", None), "energy", None)
@@ -559,7 +563,7 @@ class SimpleAgent:
                 logging.info(
                     f"[SIMPLE_AGENT_LETHAL] Cleanup attack selected: {self._card_id_for_tracking(card_to_play)}"
                 )
-                if card_to_play.has_target:
+                if self._card_requires_target(card_to_play):
                     target = self.get_low_hp_target()
                     return PlayCardAction(card=card_to_play, target_monster=target)
                 return PlayCardAction(card=card_to_play)
@@ -600,7 +604,7 @@ class SimpleAgent:
         else:
             # This shouldn't happen!
             return EndTurnAction()
-        if card_to_play.has_target:
+        if self._card_requires_target(card_to_play):
             available_monsters = [
                 monster
                 for monster in self.game.monsters
