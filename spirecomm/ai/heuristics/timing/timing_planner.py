@@ -20,11 +20,11 @@ from spirecomm.ai.heuristics.card_costs import (
     x_effect_energy,
 )
 from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
-from spirecomm.ai.heuristics.simulation import _known_damage_upgrade_bonus
 from spirecomm.ai.heuristics.card_upgrades import (
     card_upgrade_count,
     is_card_upgraded,
     known_block_upgrade_bonus,
+    known_damage_upgrade_bonus,
 )
 from spirecomm.data.loader import game_data_loader
 
@@ -828,7 +828,7 @@ class TimingAwareCombatPlanner:
                 if card_data:
                     parsed_damage = game_data_loader._parse_card_damage(card_data)
                     if parsed_damage is not None:
-                        base_damage = parsed_damage + _known_damage_upgrade_bonus(card, card_name)
+                        base_damage = parsed_damage + known_damage_upgrade_bonus(card, card_name)
             except Exception:
                 base_damage = 0
 

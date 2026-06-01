@@ -22,12 +22,11 @@ from .simulation import (
     SimulationState,
     FastCombatSimulator,
     W_DEATHRISK,
-    _known_damage_upgrade_bonus,
 )
 from .card_costs import effective_card_cost, is_x_cost_card, whirlwind_damage, x_effect_energy
 from .card_names import canonical_card_name
 from .card_types import card_requires_target, card_type_name, is_attack_card
-from .card_upgrades import card_upgrade_count, is_card_upgraded
+from .card_upgrades import card_upgrade_count, is_card_upgraded, known_damage_upgrade_bonus
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
@@ -1085,7 +1084,7 @@ class IroncladCombatPlanner(CombatPlanner):
             and parsed_card_data_name is not None
             and '+' not in str(parsed_card_data_name or '')
         ):
-            base_damage += _known_damage_upgrade_bonus(card, card_name)
+            base_damage += known_damage_upgrade_bonus(card, card_name)
 
         strength = getattr(context, 'strength', 0)
         if card_name == 'Heavy Blade':
@@ -1178,7 +1177,7 @@ class IroncladCombatPlanner(CombatPlanner):
             parsed_damage = game_data_loader._parse_card_damage(card_data)
             if parsed_damage is None or parsed_damage <= 0:
                 return 0
-            return parsed_damage + _known_damage_upgrade_bonus(card, card_name)
+            return parsed_damage + known_damage_upgrade_bonus(card, card_name)
         except Exception:
             return 0
 
