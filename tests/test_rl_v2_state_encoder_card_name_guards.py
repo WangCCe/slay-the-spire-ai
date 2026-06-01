@@ -62,6 +62,30 @@ def test_rl_v2_card_tags_strip_counted_upgrade_suffix():
     assert tags[StateEncoderV2.TAGS.index("AOE")] == 1.0
 
 
+def test_rl_v2_card_features_parse_string_turn_cost():
+    encoder = StateEncoderV2(_mapper())
+    card = _card("Cleave")
+    card.cost = 3
+    card.cost_for_turn = "2"
+    card.is_playable = True
+
+    features = encoder._encode_card_features(card)
+
+    assert features[1] == 2 / 5
+
+
+def test_rl_v2_card_features_treat_missing_cost_as_zero():
+    encoder = StateEncoderV2(_mapper())
+    card = _card("Cleave")
+    card.cost = None
+    card.cost_for_turn = None
+    card.is_playable = True
+
+    features = encoder._encode_card_features(card)
+
+    assert features[1] == 0.0
+
+
 def test_rl_v2_monster_intent_encoding_accepts_string_representations():
     encoder = StateEncoderV2(_mapper())
 
