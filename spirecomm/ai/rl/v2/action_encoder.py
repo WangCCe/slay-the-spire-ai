@@ -24,7 +24,7 @@ from spirecomm.communication.action import (
     ChooseMapNodeAction,
     ChooseMapBossAction,
 )
-from spirecomm.spire.screen import ScreenType, RestOption, RewardType
+from spirecomm.spire.screen import ScreenType, RestOption, reward_type_name
 from spirecomm.spire.game import Game
 
 from . import action_space as space
@@ -127,11 +127,7 @@ class ActionEncoderV2:
         return False
 
     def _is_unclaimable_combat_reward(self, game: Game, reward) -> bool:
-        reward_type = getattr(reward, "reward_type", None)
-        reward_type_name = getattr(reward_type, "name", reward_type)
-        is_potion_reward = (
-            reward_type == RewardType.POTION or reward_type_name == "POTION"
-        )
+        is_potion_reward = reward_type_name(reward) == "POTION"
         if not is_potion_reward and getattr(reward, "potion", None) is None:
             return False
         return self._are_potions_full(game)
