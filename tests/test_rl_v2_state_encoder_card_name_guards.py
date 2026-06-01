@@ -97,6 +97,14 @@ def test_rl_v2_card_type_features_accept_strings():
     assert features[3] == 1.0
 
 
+def test_rl_v2_player_class_features_accept_strings():
+    encoder = StateEncoderV2(_mapper())
+
+    features = encoder._encode_player_class("IRONCLAD")
+
+    assert features[0] == 1.0
+
+
 def test_rl_v2_card_features_treat_missing_cost_as_zero():
     encoder = StateEncoderV2(_mapper())
     card = _card("Cleave")

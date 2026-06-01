@@ -6,8 +6,8 @@ from typing import List
 import numpy as np
 
 from spirecomm.spire.game import Game
-from spirecomm.spire.card import Card, CardType
-from spirecomm.spire.character import Intent, PlayerClass
+from spirecomm.spire.card import Card
+from spirecomm.spire.character import Intent
 from spirecomm.spire.screen import ScreenType
 from spirecomm.ai.heuristics.card_costs import raw_card_cost
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
@@ -316,17 +316,29 @@ class StateEncoderV2:
         return value
 
     def _encode_player_class(self, player_class) -> List[float]:
+        player_class_name = self._player_class_name(player_class)
         return [
-            1.0 if player_class == PlayerClass.IRONCLAD else 0.0,
-            1.0 if player_class == PlayerClass.THE_SILENT else 0.0,
-            1.0 if player_class == PlayerClass.DEFECT else 0.0,
-            1.0 if str(player_class) == "PlayerClass.WATCHER" else 0.0,
+            1.0 if player_class_name == "IRONCLAD" else 0.0,
+            1.0 if player_class_name == "THE_SILENT" else 0.0,
+            1.0 if player_class_name == "DEFECT" else 0.0,
+            1.0 if player_class_name == "WATCHER" else 0.0,
             0.0,
             0.0,
             0.0,
             0.0,
             0.0,
         ]
+
+    @staticmethod
+    def _player_class_name(player_class) -> str:
+        if player_class is None:
+            return ""
+        if hasattr(player_class, "name"):
+            return str(player_class.name).upper()
+        value = str(player_class).upper()
+        if value.startswith("PLAYERCLASS."):
+            return value.split(".", 1)[1]
+        return value
 
     def _encode_keyword(self, powers, keyword_name: str) -> float:
         power_ids = self.KEYWORD_POWER_IDS.get(keyword_name, [])

@@ -48,6 +48,7 @@ class StateEncoder:
         import math
         strength = self._get_power_amount(getattr(player, 'powers', []), "Strength")
         dexterity = self._get_power_amount(getattr(player, 'powers', []), "Dexterity")
+        player_class = self._player_class_name(game.character or PlayerClass.IRONCLAD)
         return [
             player.current_hp / player.max_hp if player.max_hp > 0 else 0.0,
             min(player.energy, 5) / 5.0,
@@ -60,9 +61,9 @@ class StateEncoder:
             min(game.floor, 55) / 55.0,
             *[1.0 if (game.act or 1) == i else 0.0 for i in range(1, 5)],
             min((game.ascension_level or 0), 20) / 20.0,
-            1.0 if (game.character or PlayerClass.IRONCLAD) == PlayerClass.IRONCLAD else 0.0,
-            1.0 if (game.character or PlayerClass.IRONCLAD) == PlayerClass.THE_SILENT else 0.0,
-            1.0 if (game.character or PlayerClass.IRONCLAD) == PlayerClass.DEFECT else 0.0,
+            1.0 if player_class == 'IRONCLAD' else 0.0,
+            1.0 if player_class == 'THE_SILENT' else 0.0,
+            1.0 if player_class == 'DEFECT' else 0.0,
             0.0,  # Placeholder for 4th class (Watcher)
             min(strength, 10) / 10.0,
             min(dexterity, 10) / 10.0,
@@ -129,6 +130,17 @@ class StateEncoder:
             return str(rarity.name).upper()
         value = str(rarity).upper()
         if value.startswith('CARDRARITY.'):
+            return value.split('.', 1)[1]
+        return value
+
+    @staticmethod
+    def _player_class_name(player_class) -> str:
+        if player_class is None:
+            return ''
+        if hasattr(player_class, 'name'):
+            return str(player_class.name).upper()
+        value = str(player_class).upper()
+        if value.startswith('PLAYERCLASS.'):
             return value.split('.', 1)[1]
         return value
 

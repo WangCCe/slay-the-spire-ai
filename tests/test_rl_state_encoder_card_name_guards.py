@@ -23,6 +23,21 @@ def _game(deck):
     return SimpleNamespace(deck=deck, draw_pile=[], discard_pile=[], hand=[])
 
 
+def _game_state(character):
+    return SimpleNamespace(
+        player=SimpleNamespace(current_hp=70, max_hp=80, energy=3, block=0, powers=[]),
+        gold=0,
+        hand=[],
+        deck=[],
+        discard_pile=[],
+        draw_pile=[],
+        floor=1,
+        act=1,
+        ascension_level=0,
+        character=character,
+    )
+
+
 def test_rl_state_encoder_hand_card_hash_strips_counted_upgrade_suffix():
     encoder = StateEncoder()
 
@@ -107,6 +122,14 @@ def test_rl_card_reward_features_accept_string_type_and_rarity():
 
     assert features[1] == 1.0
     assert features[7] == 1.0
+
+
+def test_rl_state_encoder_player_class_features_accept_strings():
+    encoder = StateEncoder()
+
+    features = encoder._encode_player_state(_game_state("IRONCLAD"))
+
+    assert features[14] == 1.0
 
 
 def test_rl_state_encoder_intent_encoding_accepts_string_representations():
