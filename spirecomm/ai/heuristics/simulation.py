@@ -25,6 +25,7 @@ from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.combat_state import (
     card_play_key,
     draw_pile_count,
+    is_card_played,
     mark_card_played,
     player_debuff_stacks,
     player_has_power,
@@ -881,8 +882,7 @@ class SimulationState:
                 sortable_text(getattr(c, 'cost_for_turn', getattr(c, 'cost', 0))),
             )
             for c in playable_cards
-            if id(c) not in self.played_card_uuids
-            and (not getattr(c, 'uuid', None) or c.uuid not in self.played_card_uuids)
+            if not is_card_played(self.played_card_uuids, c)
         ))
 
         return (player_key, monster_key, hand_key)
@@ -1532,7 +1532,7 @@ class FastCombatSimulator:
             card_key = card_play_key(hand_card)
             if hand_card is exclude_card or (exclude_key is not None and card_key == exclude_key):
                 continue
-            if card_key in state.played_card_uuids or id(hand_card) in state.played_card_uuids:
+            if is_card_played(state.played_card_uuids, hand_card):
                 continue
             cards.append(hand_card)
         return cards
@@ -5358,7 +5358,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                 playable_actions = []
                 for card in context.playable_cards:
                     card_idx = id(card)
-                    if card_idx not in state.played_card_uuids:
+                    if not is_card_played(state.played_card_uuids, card):
                         cost = self._card_cost_for_state(card, state)
                         if cost <= state.player_energy:
                             playable_actions.append((card, card_idx, cost))

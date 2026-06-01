@@ -18,6 +18,13 @@ def mark_card_played(played_cards: set, card: Any) -> None:
     played_cards.add(id(card))
 
 
+def is_card_played(played_cards: set, card: Any) -> bool:
+    if card is None:
+        return False
+    key = card_play_key(card)
+    return key in played_cards or id(card) in played_cards
+
+
 def power_name(power: Any):
     return (
         getattr(power, 'name', None)

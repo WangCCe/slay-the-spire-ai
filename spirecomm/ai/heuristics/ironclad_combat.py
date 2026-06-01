@@ -38,7 +38,7 @@ from .card_upgrades import (
     known_damage_upgrade_bonus,
     perfected_strike_bonus_per_strike,
 )
-from .combat_state import card_play_key, mark_card_played, player_block_value
+from .combat_state import is_card_played, mark_card_played, player_block_value
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
@@ -311,9 +311,7 @@ class IroncladCombatPlanner(CombatPlanner):
             for sequence, state, energy_spent, score in beam:
                 # Try each remaining card
                 for card in playable_cards:
-                    card_uuid = card_play_key(card)
-
-                    if card_uuid in state.played_card_uuids:
+                    if is_card_played(state.played_card_uuids, card):
                         continue
 
                     # Check energy

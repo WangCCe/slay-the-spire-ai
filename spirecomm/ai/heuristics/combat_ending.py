@@ -18,6 +18,7 @@ from ..decision.base import DecisionContext
 from .combat_state import (
     card_play_key,
     draw_pile_count,
+    is_card_played,
     mark_card_played,
     monster_power_amount,
     player_block_value,
@@ -319,8 +320,7 @@ class CombatEndingDetector:
                 best_priority = None
 
                 for card in attack_cards:
-                    card_uuid = card_play_key(card)
-                    if card_uuid in played_cards:
+                    if is_card_played(played_cards, card):
                         continue
 
                     cost = self._card_energy_cost_against_monster(
@@ -1295,7 +1295,8 @@ class CombatEndingDetector:
 
             sequence = [PlayCardAction(card=aoe_card)]
             remaining_energy = available_energy - aoe_cost
-            played_cards = {card_play_key(aoe_card)}
+            played_cards = set()
+            mark_card_played(played_cards, aoe_card)
             survivors.sort(key=lambda item: item[0], reverse=True)
 
             for damage_needed, monster_idx, monster in survivors:
@@ -1306,8 +1307,7 @@ class CombatEndingDetector:
                     best_priority = None
 
                     for card in attack_cards:
-                        card_key = card_play_key(card)
-                        if card_key in played_cards or self._is_aoe_attack(card):
+                        if is_card_played(played_cards, card) or self._is_aoe_attack(card):
                             continue
 
                         cost = self._card_energy_cost_against_monster(
@@ -1322,7 +1322,7 @@ class CombatEndingDetector:
                         remaining_cards = tuple(
                             remaining_card
                             for remaining_card in attack_cards
-                            if card_play_key(remaining_card) not in played_cards
+                            if not is_card_played(played_cards, remaining_card)
                         )
                         fiend_fire_exhaust_count = self._fiend_fire_exhaust_count_for_remaining_cards(
                             card,

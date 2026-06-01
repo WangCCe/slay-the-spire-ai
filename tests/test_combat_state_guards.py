@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from spirecomm.ai.heuristics.combat_state import (
     card_play_key,
     draw_pile_count,
+    is_card_played,
     mark_card_played,
     monster_power_amount,
     player_has_power,
@@ -85,6 +86,17 @@ def test_mark_card_played_records_uuid_and_object_identity():
     assert id(card) in played_cards
     assert id(uuidless_card) in played_cards
     assert played_cards == before_none
+
+
+def test_is_card_played_checks_uuid_or_object_identity():
+    card = SimpleNamespace(uuid="card-uuid")
+    uuidless_card = SimpleNamespace()
+
+    assert is_card_played({"card-uuid"}, card) is True
+    assert is_card_played({id(card)}, card) is True
+    assert is_card_played({id(uuidless_card)}, uuidless_card) is True
+    assert is_card_played(set(), card) is False
+    assert is_card_played({"card-uuid"}, None) is False
 
 
 def test_power_name_reads_known_power_identifier_fields_in_order():
