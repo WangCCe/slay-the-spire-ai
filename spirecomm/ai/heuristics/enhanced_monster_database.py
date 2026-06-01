@@ -357,6 +357,7 @@ class EnhancedMonsterDatabase:
                             probability_table,
                             target_turn,
                             monster_hp_percent,
+                            other_enemy_names,
                         )
                     )
                     self._append_probability_predictions(
@@ -675,6 +676,7 @@ class EnhancedMonsterDatabase:
                             probability_table,
                             target_turn,
                             monster_hp_percent,
+                            other_enemy_names,
                         )
                     )
                     self._append_probability_predictions(
@@ -697,6 +699,7 @@ class EnhancedMonsterDatabase:
                         probability_table,
                         current_turn,
                         monster_hp_percent,
+                        other_enemy_names,
                     )
                 )
                 self._append_probability_predictions(
@@ -1245,6 +1248,7 @@ class EnhancedMonsterDatabase:
         probabilities: Dict[str, Any],
         current_turn: int,
         monster_hp_percent: float,
+        other_enemy_names: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         if not isinstance(probabilities, dict):
             return {}
@@ -1255,6 +1259,26 @@ class EnhancedMonsterDatabase:
             low_hp_table = probabilities.get("below_50_percent_hp_first_turn")
             if isinstance(low_hp_table, dict):
                 return low_hp_table
+
+        dagger_count = sum(
+            1
+            for name in (other_enemy_names or [])
+            if self._normalize_move_name(str(name or "")) == "dagger"
+        )
+        selected_dagger_threshold = None
+        selected_dagger_table = None
+        for key, table in probabilities.items():
+            match = re.match(r"(\d+)\+_daggers$", str(key))
+            if not match or not isinstance(table, dict):
+                continue
+            threshold = int(match.group(1))
+            if dagger_count < threshold:
+                continue
+            if selected_dagger_threshold is None or threshold > selected_dagger_threshold:
+                selected_dagger_threshold = threshold
+                selected_dagger_table = table
+        if selected_dagger_table is not None:
+            return selected_dagger_table
 
         normal_table = probabilities.get("normal")
         if isinstance(normal_table, dict):

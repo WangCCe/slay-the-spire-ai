@@ -523,6 +523,34 @@ def test_giant_head_ascension_eighteen_starts_it_is_time_on_turn_four():
     ]
 
 
+def test_reptomancer_uses_four_dagger_probability_table():
+    database = EnhancedMonsterDatabase()
+
+    normal = database.predict_next_moves(
+        "Reptomancer",
+        current_turn=2,
+        monster_hp_percent=1.0,
+        other_enemy_names=["Dagger", "Dagger", "Dagger"],
+    )
+    full_daggers = database.predict_next_moves(
+        "Reptomancer",
+        current_turn=2,
+        monster_hp_percent=1.0,
+        other_enemy_names=["Dagger", "Dagger", "Dagger", "Dagger"],
+    )
+
+    assert [
+        prediction["move"]["name"]
+        for prediction in normal
+        if prediction["turn"] == 2
+    ] == ["Summon", "Snake Strike", "Big Bite"]
+    assert [
+        (prediction["move"]["name"], prediction["confidence"])
+        for prediction in full_daggers
+        if prediction["turn"] == 2
+    ] == [("Snake Strike", 0.67), ("Big Bite", 0.33)]
+
+
 def test_game_data_loader_forwards_other_enemy_count_to_monster_predictions():
     loader = GameDataLoader(auto_load=False)
 
