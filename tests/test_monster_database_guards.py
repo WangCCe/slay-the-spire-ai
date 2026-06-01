@@ -558,6 +558,32 @@ def test_lagavulin_predicts_awake_cycle_after_hibernation_turns():
     ]
 
 
+def test_single_move_gremlins_predict_their_only_move():
+    database = EnhancedMonsterDatabase()
+
+    expected_moves = {
+        "Fat Gremlin": "Smash",
+        "Mad Gremlin": "Scratch",
+        "Sneaky Gremlin": "Puncture",
+    }
+
+    for monster_name, move_name in expected_moves.items():
+        predictions = database.predict_next_moves(
+            monster_name,
+            current_turn=1,
+            monster_hp_percent=1.0,
+        )
+
+        assert [
+            (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+            for prediction in predictions
+        ] == [
+            (1, move_name, 1.0),
+            (2, move_name, 1.0),
+            (3, move_name, 1.0),
+        ]
+
+
 def test_time_eater_below_half_hp_predicts_haste():
     database = EnhancedMonsterDatabase()
 

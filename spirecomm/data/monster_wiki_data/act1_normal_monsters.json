@@ -584,7 +584,9 @@
         }
       }
     ],
-    "pattern": null,
+    "pattern": {
+      "only_move": "Smash"
+    },
     "special_mechanics": {
       "type": "none"
     },
@@ -622,7 +624,9 @@
         }
       }
     ],
-    "pattern": null,
+    "pattern": {
+      "only_move": "Scratch"
+    },
     "special_mechanics": {
       "type": "strength_on_hit",
       "description": "Gains Strength when taking attack damage",
@@ -724,7 +728,9 @@
         }
       }
     ],
-    "pattern": null,
+    "pattern": {
+      "only_move": "Puncture"
+    },
     "special_mechanics": {
       "type": "none"
     },
