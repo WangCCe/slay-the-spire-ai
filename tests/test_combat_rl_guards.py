@@ -91,6 +91,20 @@ def test_potion_guard_preserves_target_index_when_dead_monster_precedes_target()
     assert action.target_index == 1
 
 
+def test_potion_guard_skips_name_only_empty_potion_slot():
+    empty_slot = SimpleNamespace(
+        name="Potion Slot",
+        can_use=True,
+        requires_target=False,
+    )
+    game = _game(
+        potions=[empty_slot],
+        monsters=[_monster(hp=50, damage=25, index=0)],
+    )
+
+    assert _agent()._maybe_use_potion_guard(game) is None
+
+
 def test_potion_guard_skips_safe_combat():
     potion = SimpleNamespace(
         potion_id="Fire Potion",

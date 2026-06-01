@@ -29,6 +29,7 @@ from spirecomm.ai.incoming_damage import (
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
 from spirecomm.spire.character import PlayerClass
+from spirecomm.spire.identifiers import potion_id
 
 logger = logging.getLogger(__name__)
 
@@ -1115,7 +1116,7 @@ class CombatRLAgent:
         potions = [
             potion
             for potion in (getattr(game, "potions", []) or [])
-            if getattr(potion, "potion_id", None) != "Potion Slot"
+            if potion_id(potion) != "Potion Slot"
             and getattr(potion, "can_use", False)
         ]
         if not potions:
