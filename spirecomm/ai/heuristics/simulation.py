@@ -3585,46 +3585,72 @@ class FastCombatSimulator:
         state: SimulationState,
         context: DecisionContext,
     ) -> bool:
-        current_turn = getattr(context, 'turn', 1)
-        for monster in state.monsters:
-            if not self._is_live_monster_state(monster):
-                continue
+        previous_prediction_context = getattr(self, "_prediction_context", None)
+        previous_prediction_monsters = getattr(self, "_prediction_monsters", None)
+        previous_prediction_monster = getattr(self, "_prediction_monster", None)
+        self._prediction_context = context
+        self._prediction_monsters = state.monsters
+        try:
+            current_turn = getattr(context, 'turn', 1)
+            for monster in state.monsters:
+                if not self._is_live_monster_state(monster):
+                    continue
 
-            current_move = self._current_monster_move(monster)
-            if self._is_live_phase_transition_move(monster, current_move):
-                return True
-
-            monster_name = _canonical_live_monster_name(monster)
-            if not monster_name:
-                continue
-            max_hp = monster.get('max_hp', monster.get('hp', 1))
-            hp_percent = monster.get('hp', max_hp) / max_hp if max_hp > 0 else 1.0
-            predicted_moves = self._predict_monster_moves(
-                monster_name,
-                current_turn,
-                hp_percent,
-                context,
-            )
-            if not predicted_moves:
-                continue
-
-            if current_move and not self._move_can_deal_immediate_damage(current_move):
-                future_attack_after_current_move = any(
-                    self._move_can_deal_immediate_damage(prediction.get('move', {}))
-                    for prediction in predicted_moves
-                )
-                if future_attack_after_current_move:
+                current_move = self._current_monster_move(monster)
+                if self._is_live_phase_transition_move(monster, current_move):
                     return True
 
-            first_move = predicted_moves[0].get('move', {})
-            later_attack = any(
-                self._move_can_deal_immediate_damage(prediction.get('move', {}))
-                for prediction in predicted_moves[1:]
-            )
-            if later_attack and not self._move_can_deal_immediate_damage(first_move):
-                return True
+                monster_name = _canonical_live_monster_name(monster)
+                if not monster_name:
+                    continue
+                max_hp = monster.get('max_hp', monster.get('hp', 1))
+                hp_percent = monster.get('hp', max_hp) / max_hp if max_hp > 0 else 1.0
+                self._prediction_monster = monster
+                try:
+                    predicted_moves = self._predict_monster_moves(
+                        monster_name,
+                        current_turn,
+                        hp_percent,
+                        context,
+                    )
+                finally:
+                    if previous_prediction_monster is None:
+                        self.__dict__.pop("_prediction_monster", None)
+                    else:
+                        self._prediction_monster = previous_prediction_monster
+                if not predicted_moves:
+                    continue
 
-        return False
+                if current_move and not self._move_can_deal_immediate_damage(current_move):
+                    future_attack_after_current_move = any(
+                        self._move_can_deal_immediate_damage(prediction.get('move', {}))
+                        for prediction in predicted_moves
+                    )
+                    if future_attack_after_current_move:
+                        return True
+
+                first_move = predicted_moves[0].get('move', {})
+                later_attack = any(
+                    self._move_can_deal_immediate_damage(prediction.get('move', {}))
+                    for prediction in predicted_moves[1:]
+                )
+                if later_attack and not self._move_can_deal_immediate_damage(first_move):
+                    return True
+
+            return False
+        finally:
+            if previous_prediction_context is None:
+                self.__dict__.pop("_prediction_context", None)
+            else:
+                self._prediction_context = previous_prediction_context
+            if previous_prediction_monsters is None:
+                self.__dict__.pop("_prediction_monsters", None)
+            else:
+                self._prediction_monsters = previous_prediction_monsters
+            if previous_prediction_monster is None:
+                self.__dict__.pop("_prediction_monster", None)
+            else:
+                self._prediction_monster = previous_prediction_monster
 
     def simulate_enemy_lookahead(self, state: SimulationState, context: DecisionContext, look_ahead: int = 2) -> int:
         """

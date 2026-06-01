@@ -2043,6 +2043,61 @@ def test_enemy_prediction_passes_same_monster_index_to_loader(monkeypatch):
     }) == [0, 1]
 
 
+def test_enemy_lookahead_depth_prediction_passes_same_monster_index_to_loader(monkeypatch):
+    class FakeLoader:
+        def __init__(self):
+            self.calls = []
+
+        def predict_monster_moves(
+            self,
+            monster_name,
+            current_turn,
+            hp_percent,
+            ascension_level=0,
+            other_enemy_count=None,
+            other_enemy_names=None,
+            same_monster_index=None,
+        ):
+            self.calls.append(
+                {
+                    "monster_name": monster_name,
+                    "current_turn": current_turn,
+                    "same_monster_index": same_monster_index,
+                }
+            )
+            if same_monster_index != 1:
+                return [
+                    {"move": {"name": "Bolt", "intent": "DEBUFF"}},
+                    {"move": {"name": "Bolt", "intent": "DEBUFF"}},
+                ]
+            return [
+                {"move": {"name": "Bolt", "intent": "DEBUFF"}},
+                {"move": {"name": "Beam", "intent": "ATTACK", "damage": 10, "hits": 1}},
+            ]
+
+    loader = FakeLoader()
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_sentry(current_hp=40), _sentry(current_hp=40)],
+    )
+    context.turn = 1
+
+    needs_lookahead = FastCombatSimulator(SynergyCardEvaluator())._needs_multi_turn_enemy_lookahead(
+        SimulationState(context),
+        context,
+    )
+
+    assert needs_lookahead is True
+    assert sorted({
+        call["same_monster_index"]
+        for call in loader.calls
+        if call["monster_name"] == "Sentry" and call["current_turn"] == 1
+        and call["same_monster_index"] is not None
+    }) == [0, 1]
+
+
 def test_enemy_lookahead_ignores_negated_attack_intent(monkeypatch):
     class FakeLoader:
         def get_enhanced_monster_data(self, _monster_name):
