@@ -1099,6 +1099,12 @@ class CombatEndingDetector:
                         current_hp = next_hp[monster_idx]
                         if current_hp <= 0:
                             break
+                        if self._base_card_name(card) == 'Melter':
+                            current_hp = min(
+                                current_hp,
+                                max(0, context.monsters_alive[monster_idx].current_hp),
+                            )
+                            next_hp[monster_idx] = current_hp
 
                         total_energy_refund += self._card_energy_refund_against_monster(
                             card,

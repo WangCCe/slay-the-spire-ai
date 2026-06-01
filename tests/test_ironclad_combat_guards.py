@@ -5792,6 +5792,35 @@ def test_attack_damage_clamps_negative_player_strength_before_block():
     assert result.total_damage_dealt == 0
 
 
+def test_melter_removes_block_before_dealing_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "melter": {
+            "name": "Melter",
+            "description": "Remove all Block from the enemy. Deal 10 damage.",
+        }
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    melter = _card("Melter", "Melter", cost=1)
+    monster = _louse(current_hp=20)
+    monster.block = 12
+    context = _combat_context([melter], energy=1, monsters=[monster])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        melter,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["block"] == 0
+    assert result.monsters[0]["hp"] == 10
+    assert result.total_damage_dealt == 10
+
+
 def test_deal_damage_to_monster_ignores_negative_damage():
     context = _combat_context([], energy=0, monsters=[_louse(current_hp=20)])
     state = SimulationState(context)
@@ -8059,6 +8088,28 @@ def test_lethal_detector_allows_exact_single_target_kill(monkeypatch):
     assert detector._calculate_affordable_damage(context) == 6
     assert detector.can_kill_all(context) is True
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["strike"]
+
+
+def test_lethal_detector_counts_melter_block_removal(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "melter": {
+            "name": "Melter",
+            "description": "Remove all Block from the enemy. Deal 10 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+
+    melter = _card("Melter", "Melter", cost=1)
+    melter.uuid = "melter"
+    monster = _louse(current_hp=10)
+    monster.block = 12
+    context = _combat_context([melter], energy=1, monsters=[monster])
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["melter"]
 
 
 def test_lethal_detector_counts_body_slam_current_block(monkeypatch):

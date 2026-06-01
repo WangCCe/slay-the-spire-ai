@@ -1366,6 +1366,8 @@ class FastCombatSimulator:
                         hit_count,
                         monster,
                     )
+                    if card_name == 'Melter':
+                        monster['block'] = 0
                     for _ in range(target_hit_count):
                         if not self._is_live_monster_state(monster):
                             break
