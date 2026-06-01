@@ -17,3 +17,19 @@ def fixed_attack_hit_count(card: Any) -> Optional[int]:
     if card_name == 'Pummel':
         return 5 if upgrades > 0 else 4
     return None
+
+
+def fiend_fire_exhaust_count(card: Any, context: Any) -> int:
+    hand_cards = getattr(getattr(context, 'game', None), 'hand', None)
+    if not hand_cards:
+        hand_cards = getattr(context, 'playable_cards', []) or []
+
+    played_uuid = getattr(card, 'uuid', None)
+    count = 0
+    for hand_card in hand_cards:
+        if hand_card is card:
+            continue
+        if played_uuid and getattr(hand_card, 'uuid', None) == played_uuid:
+            continue
+        count += 1
+    return max(0, count)

@@ -24,7 +24,10 @@ from .card_costs import (
     x_effect_energy,
 )
 from .card_types import card_requires_target, card_type_name, is_attack_card
-from .card_hits import fixed_attack_hit_count
+from .card_hits import (
+    fiend_fire_exhaust_count as context_fiend_fire_exhaust_count,
+    fixed_attack_hit_count,
+)
 from .card_upgrades import card_upgrade_count, is_card_upgraded, known_damage_upgrade_bonus
 
 logger = logging.getLogger(__name__)
@@ -1865,25 +1868,9 @@ class CombatEndingDetector:
         if card_name == 'Fiend Fire':
             if fiend_fire_exhaust_count is not None:
                 return fiend_fire_exhaust_count
-            return self._count_fiend_fire_exhausted_cards(card, context)
+            return context_fiend_fire_exhaust_count(card, context)
 
         return 1
-
-    def _count_fiend_fire_exhausted_cards(self, card: Card, context: DecisionContext) -> int:
-        """Count cards Fiend Fire will exhaust after the played card leaves hand."""
-        hand_cards = getattr(getattr(context, 'game', None), 'hand', None)
-        if not hand_cards:
-            hand_cards = getattr(context, 'playable_cards', []) or []
-
-        played_uuid = getattr(card, 'uuid', None)
-        count = 0
-        for hand_card in hand_cards:
-            if hand_card is card:
-                continue
-            if played_uuid and getattr(hand_card, 'uuid', None) == played_uuid:
-                continue
-            count += 1
-        return max(0, count)
 
     def _count_strike_cards(self, context: DecisionContext) -> int:
         """Count deck cards whose displayed name or id contains Strike."""

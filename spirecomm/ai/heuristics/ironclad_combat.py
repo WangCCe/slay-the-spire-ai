@@ -24,7 +24,7 @@ from .simulation import (
     W_DEATHRISK,
 )
 from .card_costs import effective_card_cost, is_x_cost_card, whirlwind_damage, x_effect_energy
-from .card_hits import fixed_attack_hit_count
+from .card_hits import fiend_fire_exhaust_count, fixed_attack_hit_count
 from .card_names import canonical_card_name
 from .card_types import card_requires_target, card_type_name, is_attack_card
 from .card_upgrades import card_upgrade_count, is_card_upgraded, known_damage_upgrade_bonus
@@ -1133,25 +1133,9 @@ class IroncladCombatPlanner(CombatPlanner):
             return fixed_hit_count
 
         if card_name == 'Fiend Fire' and context is not None:
-            return IroncladCombatPlanner._count_fiend_fire_exhausted_cards(card, context)
+            return fiend_fire_exhaust_count(card, context)
 
         return 1
-
-    @staticmethod
-    def _count_fiend_fire_exhausted_cards(card: Card, context: DecisionContext) -> int:
-        hand_cards = getattr(getattr(context, 'game', None), 'hand', None)
-        if not hand_cards:
-            hand_cards = getattr(context, 'playable_cards', []) or []
-
-        played_uuid = getattr(card, 'uuid', None)
-        count = 0
-        for hand_card in hand_cards:
-            if hand_card is card:
-                continue
-            if played_uuid and getattr(hand_card, 'uuid', None) == played_uuid:
-                continue
-            count += 1
-        return max(0, count)
 
     def _known_attack_damage_for_bonus(self, card: Card) -> int:
         """Return known attack damage for strategic bonuses without generic fallback."""

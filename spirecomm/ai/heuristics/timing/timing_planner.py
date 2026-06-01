@@ -12,7 +12,7 @@ from .models import TimingContext, TurnTiming, BalanceWeights
 from .turn_classifier import TurnTimingClassifier
 from .balance_strategy import CombatBalanceStrategy
 from spirecomm.ai.heuristics.card_names import canonical_card_name
-from spirecomm.ai.heuristics.card_hits import fixed_attack_hit_count
+from spirecomm.ai.heuristics.card_hits import fiend_fire_exhaust_count, fixed_attack_hit_count
 from spirecomm.ai.heuristics.card_costs import (
     effective_card_cost,
     energy_refund_for_card,
@@ -1033,26 +1033,9 @@ class TimingAwareCombatPlanner:
             )
             return x_effect_energy(card, energy, context)
         if card_name == 'Fiend Fire' and context is not None:
-            return self._count_fiend_fire_exhausted_cards(card, context)
+            return fiend_fire_exhaust_count(card, context)
 
         return 1
-
-    def _count_fiend_fire_exhausted_cards(self, card, context) -> int:
-        """Count cards Fiend Fire will exhaust after the played card leaves hand."""
-        hand_cards = getattr(getattr(context, 'game', None), 'hand', None)
-        if not hand_cards:
-            hand_cards = getattr(context, 'playable_cards', []) or []
-
-        played_uuid = getattr(card, 'uuid', None)
-        count = 0
-        for hand_card in hand_cards:
-            if hand_card is card:
-                continue
-            if played_uuid and getattr(hand_card, 'uuid', None) == played_uuid:
-                continue
-            count += 1
-
-        return max(0, count)
 
     def _estimate_card_block(self, card, context=None) -> int:
         """Estimate card block for timing decisions from methods or parsed data."""
