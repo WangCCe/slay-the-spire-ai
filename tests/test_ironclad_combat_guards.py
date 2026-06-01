@@ -8775,6 +8775,13 @@ def test_ironclad_known_attack_damage_bonus_accepts_string_attack_type(monkeypat
     assert IroncladCombatPlanner()._known_attack_damage_for_bonus(iron_wave) == 5
 
 
+def test_ironclad_known_attack_damage_bonus_accepts_string_damage_attribute():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.damage = "6"
+
+    assert IroncladCombatPlanner()._known_attack_damage_for_bonus(strike) == 6
+
+
 def test_demon_form_does_not_add_strength_on_the_turn_it_is_played():
     demon_form = _card(
         "Demon Form",

@@ -1127,9 +1127,7 @@ class IroncladCombatPlanner(CombatPlanner):
         if card_type and card_type != 'ATTACK':
             return 0
 
-        base_damage = getattr(card, 'damage', 0)
-        if base_damage is None:
-            base_damage = 0
+        base_damage = self._non_negative_int(getattr(card, 'damage', 0))
         if base_damage > 0:
             return base_damage
 
