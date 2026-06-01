@@ -152,3 +152,28 @@ def test_combo_detection_rewards_second_combo_piece_when_first_is_in_deck():
     )
 
     assert evaluator._detect_combo_potential(limit_break, context, None) >= 25
+
+
+def test_apotheosis_combo_counts_none_upgrades_as_unupgraded():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    apotheosis = Card(
+        "Apotheosis",
+        "Apotheosis",
+        CardType.SKILL,
+        CardRarity.RARE,
+        cost=2,
+    )
+    unknown_upgrade_card = Card(
+        "Pommel Strike",
+        "Pommel Strike",
+        CardType.ATTACK,
+        CardRarity.COMMON,
+        upgrades=None,
+        cost=1,
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(deck=[unknown_upgrade_card]),
+        deck_archetype="unknown",
+    )
+
+    assert evaluator._detect_combo_potential(apotheosis, context, None) >= 1

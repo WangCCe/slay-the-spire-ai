@@ -6,6 +6,7 @@ import re
 import numpy as np
 from typing import List, Tuple
 from spirecomm.ai.heuristics.card_names import canonical_card_name
+from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 from spirecomm.spire.game import Game
 from spirecomm.spire.card import Card, CardType, CardRarity
 from spirecomm.spire.character import Monster, PlayerClass, Intent
@@ -105,7 +106,7 @@ class StateEncoder:
             1.0 if card_type_val == 2 else 0.0,  # Skill
             1.0 if card_type_val == 3 else 0.0,  # Power
             1.0 if card_type_val in (4, 5) else 0.0,  # Status/Curse
-            1.0 if (hasattr(card, 'upgrades') and card.upgrades != 0) else 0.0,
+            1.0 if is_card_upgraded(card) else 0.0,
             0.0,  # is_ethereal (not exposed)
             1.0 if (hasattr(card, 'exhausts') and card.exhausts) else 0.0,
             0.0,  # has_retain (not exposed)

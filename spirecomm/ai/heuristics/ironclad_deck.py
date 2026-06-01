@@ -13,6 +13,7 @@ Key principles:
 from typing import List, Tuple
 from ..decision.base import DecisionContext
 from .card_names import canonical_card_name
+from .card_upgrades import is_card_upgraded
 from .ironclad_archetype import IroncladArchetypeManager
 from spirecomm.spire.card import Card
 
@@ -375,7 +376,7 @@ class IroncladDeckStrategy:
             score += 0.05
 
         # 4. Upgrade count
-        upgrade_count = sum(1 for c in deck if hasattr(c, 'upgrades') and c.upgrades > 0)
+        upgrade_count = sum(1 for c in deck if is_card_upgraded(c))
         upgrade_rate = upgrade_count / deck_size if deck_size > 0 else 0
 
         if upgrade_rate >= 0.4:

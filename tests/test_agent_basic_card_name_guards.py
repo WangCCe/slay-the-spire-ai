@@ -94,3 +94,13 @@ def test_upgrade_candidate_priority_uses_normalized_display_name():
     assert agent._score_upgrade_candidate(internal_id_card) == agent._score_upgrade_candidate(
         display_name_card
     )
+
+
+def test_upgrade_candidate_treats_none_upgrades_as_unupgraded():
+    agent = _agent(deck=[])
+    base_card = _card("Pommel Strike", upgrades=0)
+    unknown_upgrade_card = _card("Pommel Strike", upgrades=None)
+
+    assert agent._score_upgrade_candidate(unknown_upgrade_card) == agent._score_upgrade_candidate(
+        base_card
+    )

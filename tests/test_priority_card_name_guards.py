@@ -18,6 +18,17 @@ def test_priority_order_treats_counted_upgraded_cards_as_base_cards():
     assert best.card_id == "Demon Form+1"
 
 
+def test_priority_order_treats_none_upgrades_as_base_cards():
+    priority = IroncladPriority()
+
+    best = priority.get_best_card([
+        _card("Demon Form", upgrades=None),
+        _card("Strike_R"),
+    ])
+
+    assert best.card_id == "Demon Form"
+
+
 def test_priority_traits_treat_counted_upgraded_cards_as_base_cards():
     priority = IroncladPriority()
 

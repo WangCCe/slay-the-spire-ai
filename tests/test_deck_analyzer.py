@@ -85,6 +85,23 @@ def test_empty_deck():
         print(f"  [ERROR] Failed to analyze empty deck: {e}")
         raise AssertionError(f"Failed to analyze empty deck: {e}") from e
 
+
+def test_deck_stats_treat_none_upgrades_as_base_card():
+    analyzer = DeckAnalyzer()
+    card = Card(
+        "Pommel Strike",
+        "Pommel Strike",
+        CardType.ATTACK,
+        CardRarity.COMMON,
+        upgrades=None,
+    )
+    context = MockDecisionContext([card])
+
+    stats = analyzer.get_deck_stats(context)
+
+    assert stats["upgraded_count"] == 0
+
+
 def test_strength_deck():
     """Test deck analyzer with strength archetype deck."""
     print("\nTesting strength archetype deck...")

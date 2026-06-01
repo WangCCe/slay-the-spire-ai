@@ -5058,7 +5058,7 @@ class FastCombatSimulator:
                     # Check if this is a block card by looking at known block cards
                     card_name = card_id.replace('+', '')
                     if any(bc in card_name for bc in ['Defend', 'Iron Wave', 'Flame Barrier', 'Impervious', 'Entrench', 'Rage', 'Body Slam']):
-                        upgrades = getattr(action.card, 'upgrades', 0)
+                        upgrades = card_upgrade_count(action.card)
                         block_cards.append(f"{card_id}({upgrades}u)" if upgrades > 0 else card_id)
             if block_cards:
                 logger.info(f"[BLOCK_CARDS] Block cards in sequence: {', '.join(block_cards)} → {block_gained} block gained")

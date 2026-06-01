@@ -101,6 +101,13 @@ def test_map_router_pre_boss_moderate_hp_still_forces_rest():
     assert option == RestOption.REST
 
 
+def test_map_router_counts_none_upgrades_as_upgradeable():
+    router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
+    context = _context(deck=[_card("Pommel Strike", upgrades=None)])
+
+    assert router._count_upgradeable_cards(context) == 1
+
+
 def test_replanned_map_route_starts_from_current_node():
     agent = SimpleAgent(chosen_class=PlayerClass.IRONCLAD, elite_mode="conservative")
     game_map = Map()

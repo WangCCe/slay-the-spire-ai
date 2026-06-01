@@ -107,6 +107,20 @@ def test_ironclad_boss_relic_selection_avoids_crown_and_dripper_for_low_risk_opt
     assert best_relic.relic_id == "Black Star"
 
 
+def test_ironclad_deck_quality_treats_none_upgrades_as_base_card():
+    strategy = IroncladDeckStrategy()
+    context = DecisionContext(
+        SimpleNamespace(
+            deck=[
+                _card("Pommel Strike", upgrades=None),
+                _card("Bash", upgrades=1),
+            ]
+        )
+    )
+
+    assert 0.0 <= strategy.get_deck_health_score(context) <= 1.0
+
+
 def test_ironclad_strategy_can_take_carnage_despite_legacy_zero_copy_cap():
     deck = [
         _card("Strike_R"),

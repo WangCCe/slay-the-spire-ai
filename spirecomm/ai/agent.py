@@ -20,6 +20,7 @@ from spirecomm.ai.heuristics.simulation import (
     BLOCK_UPGRADE_BONUS,
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
+from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 
 # Note: Logging is configured in main.py to write to ai_debug.log
 # No need to configure here
@@ -96,7 +97,7 @@ class SimpleAgent:
         return canonical_card_name(card).replace("_", " ")
 
     def _get_upgrade_bonus(self, card):
-        if getattr(card, "upgrades", 0) > 0:
+        if is_card_upgraded(card):
             return 0
         base_name = self._normalize_card_name(card)
         bonus = 0
@@ -117,7 +118,7 @@ class SimpleAgent:
         return bonus
 
     def _score_upgrade_candidate(self, card, context=None):
-        if getattr(card, "upgrades", 0) > 0:
+        if is_card_upgraded(card):
             return -999.0
         bonus = self._get_upgrade_bonus(card)
         priority_rank = self.priorities.CARD_PRIORITIES_BY_NAME.get(

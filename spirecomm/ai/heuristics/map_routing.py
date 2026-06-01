@@ -13,6 +13,7 @@ import logging
 from typing import List, Dict
 from ..decision.base import DecisionContext
 from spirecomm.ai.heuristics.card_names import canonical_card_name
+from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_upgraded
 from spirecomm.spire.map import Node
 from spirecomm.spire.screen import RestOption
 
@@ -143,7 +144,7 @@ class AdaptiveMapRouter:
         upgraded_ids = {
             self._card_name(card)
             for card in deck
-            if int(getattr(card, "upgrades", 0) or 0) > 0
+            if is_card_upgraded(card)
         }
 
         premium_attacks = {
@@ -401,7 +402,7 @@ class AdaptiveMapRouter:
         count = 0
         for card in context.game.deck:
             # Unupgraded cards
-            if hasattr(card, 'upgrades') and card.upgrades == 0:
+            if card_upgrade_count(card) == 0:
                 # Skip strikes/defends (low priority)
                 if self._card_name(card) not in ['Strike', 'Defend']:
                     count += 1

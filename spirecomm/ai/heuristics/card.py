@@ -15,6 +15,7 @@ from spirecomm.ai.decision.base import DecisionContext, CardEvaluator
 from spirecomm.ai.priorities import Priority, SilentPriority, IroncladPriority, DefectPowerPriority
 from spirecomm.ai.heuristics.deck import DeckAnalyzer
 from spirecomm.ai.heuristics.card_names import canonical_card_name, card_data_key
+from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count
 
 
 class SynergyCardEvaluator(CardEvaluator):
@@ -291,7 +292,7 @@ class SynergyCardEvaluator(CardEvaluator):
                 if card2 == 'unupgraded':
                     # Special case: count unupgraded cards
                     unupgraded = sum(1 for c in context.game.deck
-                                   if hasattr(c, 'upgrades') and c.upgrades == 0)
+                                   if card_upgrade_count(c) == 0)
                     combo_score += unupgraded * bonus / 10
                 elif card2 in deck_card_names:
                     combo_score += bonus

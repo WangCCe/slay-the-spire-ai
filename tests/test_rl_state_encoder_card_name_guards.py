@@ -49,6 +49,14 @@ def test_rl_state_encoder_traits_strip_counted_upgrade_suffix():
     assert bash_features[-1] == 1.0
 
 
+def test_rl_state_encoder_treats_none_upgrades_as_base_card():
+    encoder = StateEncoder()
+
+    features = encoder._encode_single_card(_card("Cleave", upgrades=None))
+
+    assert features[8] == 0.0
+
+
 def test_rl_state_encoder_intent_encoding_accepts_string_representations():
     encoder = StateEncoder()
 

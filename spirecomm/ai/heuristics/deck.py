@@ -9,6 +9,7 @@ from typing import Dict, List, Tuple, Optional, TYPE_CHECKING
 from spirecomm.spire.card import Card
 from spirecomm.data.loader import game_data_loader
 from spirecomm.ai.heuristics.card_names import canonical_card_name, card_data_key
+from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 import re
 
 # Avoid circular imports using TYPE_CHECKING
@@ -298,7 +299,7 @@ class DeckAnalyzer:
             'skill_count': sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'SKILL'),
             'power_count': sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'POWER'),
             'curse_count': sum(1 for c in deck if self._card_name(c) in self.normalized_bad_curses),
-            'upgraded_count': sum(1 for c in deck if hasattr(c, 'upgrades') and c.upgrades > 0),
+            'upgraded_count': sum(1 for c in deck if is_card_upgraded(c)),
             'archetype': self.get_archetype(context),
             'archetype_scores': self.get_archetype_score(context),
             'quality': self.evaluate_deck_quality(context)
