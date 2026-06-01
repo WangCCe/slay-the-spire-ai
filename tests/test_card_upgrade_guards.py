@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from spirecomm.ai.heuristics.card_upgrades import (
     card_upgrade_count,
     is_card_upgraded,
+    known_block_upgrade_bonus,
     known_damage_upgrade_bonus,
 )
 from spirecomm.spire.card import Card
@@ -24,6 +25,13 @@ def test_card_upgrade_count_uses_counted_display_suffix():
 
     assert card_upgrade_count(searing_blow_plus_two) == 2
     assert known_damage_upgrade_bonus(searing_blow_plus_two, "Searing Blow") == 9
+
+
+def test_known_block_upgrade_bonus_uses_shared_mapping_and_upgrade_count():
+    shrug_plus = _card("Shrug It Off+1", upgrades=1)
+
+    assert known_block_upgrade_bonus(shrug_plus, "Shrug It Off") == 3
+    assert known_block_upgrade_bonus(_card("Shrug It Off"), "Shrug It Off") == 0
 
 
 def test_card_from_json_infers_counted_upgrade_suffix():

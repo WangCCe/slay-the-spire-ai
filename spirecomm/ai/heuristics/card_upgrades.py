@@ -72,6 +72,44 @@ DAMAGE_UPGRADE_BONUS = {
     'Through Violence': 10,
 }
 
+BLOCK_UPGRADE_BONUS = {
+    # Ironclad
+    'Defend': 3,
+    'Shrug It Off': 3,
+    'Ghostly Armor': 3,
+    'Power Through': 5,
+    'Iron Wave': 2,
+    'Sentinel': 3,
+    'True Grit': 2,
+    'Flame Barrier': 4,
+    'Impervious': 10,
+
+    # Colorless
+    'Finesse': 2,
+    'Good Instincts': 3,
+    'Panic Button': 10,
+    'Safety': 4,
+
+    # Silent
+    'Survivor': 3,
+    'Backflip': 3,
+    'Deflect': 3,
+    'Dodge and Roll': 2,
+    'Blur': 3,
+    'Leg Sweep': 3,
+
+    # Defect
+    'Charge Battery': 3,
+    'Hologram': 2,
+    'Leap': 3,
+    'Steam Barrier': 2,
+    'Boot Sequence': 3,
+    'Equilibrium': 3,
+    'Force Field': 4,
+    'Glacier': 3,
+    'Reinforced Body': 2,
+}
+
 
 def _upgrade_count_from_name(card: Any) -> int:
     candidates = []
@@ -111,3 +149,9 @@ def known_damage_upgrade_bonus(card: Any, card_name: str) -> int:
     if card_name == 'Searing Blow':
         return upgrades * (upgrades + 7) // 2
     return DAMAGE_UPGRADE_BONUS.get(card_name, 0)
+
+
+def known_block_upgrade_bonus(card: Any, card_name: str) -> int:
+    if card_upgrade_count(card) <= 0:
+        return 0
+    return BLOCK_UPGRADE_BONUS.get(card_name, 0)

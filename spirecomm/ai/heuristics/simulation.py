@@ -35,9 +35,11 @@ from spirecomm.ai.heuristics.card_types import (
     is_attack_card,
 )
 from spirecomm.ai.heuristics.card_upgrades import (
+    BLOCK_UPGRADE_BONUS,
     DAMAGE_UPGRADE_BONUS,
     card_upgrade_count,
     is_card_upgraded,
+    known_block_upgrade_bonus as _known_block_upgrade_bonus,
     known_damage_upgrade_bonus as _known_damage_upgrade_bonus,
 )
 from spirecomm.data.loader import (
@@ -139,50 +141,6 @@ _canonical_live_monster_name = canonical_live_monster_name
 
 def _canonical_card_name(card: Any) -> str:
     return canonical_card_name(card)
-
-# =============================================================================
-# CARD UPGRADE MAPPINGS
-# =============================================================================
-
-# Block card upgrade block bonuses (All characters)
-# Maps card name to block increase when upgraded (upgrades=1)
-BLOCK_UPGRADE_BONUS = {
-    # Ironclad
-    'Defend': 3,        # 5 → 8
-    'Shrug It Off': 3,  # 8 → 11
-    'Ghostly Armor': 3, # 10 → 13
-    'Power Through': 5, # 15 → 20
-    'Iron Wave': 2,     # 5 → 7
-    'Sentinel': 3,      # 5 → 8
-    'True Grit': 2,     # 7 → 9
-    'Flame Barrier': 4, # 12 → 16
-    'Impervious': 10,   # 30 → 40
-
-    # Colorless
-    'Finesse': 2,       # 2 → 4
-    'Good Instincts': 3, # 6 → 9
-    'Panic Button': 10, # 30 → 40
-    'Safety': 4,        # 12 → 16
-
-    # Silent
-    'Survivor': 3,      # 8 → 11
-    'Backflip': 3,      # 5 → 8
-    'Deflect': 3,       # 4 → 7
-    'Dodge and Roll': 2, # 4 → 6
-    'Blur': 3,          # 5 → 8
-    'Leg Sweep': 3,     # 11 → 14
-
-    # Defect
-    'Charge Battery': 3,  # 7 → 10
-    'Hologram': 2,        # 3 → 5
-    'Leap': 3,            # 9 → 12
-    'Steam Barrier': 2,   # 6 → 8
-    'Boot Sequence': 3,   # 10 → 13
-    'Equilibrium': 3,     # 13 → 16
-    'Force Field': 4,     # 12 → 16
-    'Glacier': 3,         # 7 → 10
-    'Reinforced Body': 2, # 7 → 9
-}
 
 # Timeout protection
 TIMEOUT_BUDGET = 0.15  # Seconds (150ms budget for beam search) - increased from 80ms
@@ -1529,7 +1487,7 @@ class FastCombatSimulator:
             block_gain = 5
 
         if is_card_upgraded(card):
-            block_gain += BLOCK_UPGRADE_BONUS.get(card_name, 2)
+            block_gain += _known_block_upgrade_bonus(card, card_name)
 
         self._add_player_block(
             state,
@@ -3082,8 +3040,8 @@ class FastCombatSimulator:
                                 else:
                                     # Some upgrades (for example Armaments+) improve the non-block effect.
                                     # Only apply a manual bonus when the card is explicitly mapped.
-                                    upgrade_bonus = BLOCK_UPGRADE_BONUS.get(card_name)
-                                    if upgrade_bonus is not None:
+                                    upgrade_bonus = _known_block_upgrade_bonus(card, card_name)
+                                    if upgrade_bonus > 0:
                                         base_block += upgrade_bonus
                                         logger.debug(f"[BLOCK_UPGRADE] {card_name} (upgrades={upgrades}): {base_block} block (+{upgrade_bonus})")
                                     else:

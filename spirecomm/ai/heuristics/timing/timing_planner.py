@@ -20,8 +20,12 @@ from spirecomm.ai.heuristics.card_costs import (
     x_effect_energy,
 )
 from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
-from spirecomm.ai.heuristics.simulation import BLOCK_UPGRADE_BONUS, _known_damage_upgrade_bonus
-from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_upgraded
+from spirecomm.ai.heuristics.simulation import _known_damage_upgrade_bonus
+from spirecomm.ai.heuristics.card_upgrades import (
+    card_upgrade_count,
+    is_card_upgraded,
+    known_block_upgrade_bonus,
+)
 from spirecomm.data.loader import game_data_loader
 
 logger = logging.getLogger(__name__)
@@ -1072,7 +1076,7 @@ class TimingAwareCombatPlanner:
                     if parsed_block is not None:
                         block = parsed_block
                         if is_card_upgraded(card):
-                            block += BLOCK_UPGRADE_BONUS.get(card_name, 0)
+                            block += known_block_upgrade_bonus(card, card_name)
             except Exception:
                 block = 0
 

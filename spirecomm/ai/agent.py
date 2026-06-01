@@ -15,14 +15,15 @@ from spirecomm.ai.incoming_damage import (
 )
 from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
 from spirecomm.ai.priorities import *
-from spirecomm.ai.heuristics.simulation import (
-    DAMAGE_UPGRADE_BONUS,
+from spirecomm.ai.heuristics.card_upgrades import (
     BLOCK_UPGRADE_BONUS,
+    DAMAGE_UPGRADE_BONUS,
+    card_upgrade_count,
+    is_card_upgraded,
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name, is_attack_card
-from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_upgraded
 
 # Note: Logging is configured in main.py to write to ai_debug.log
 # No need to configure here
