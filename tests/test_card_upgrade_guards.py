@@ -41,3 +41,20 @@ def test_card_from_json_infers_counted_upgrade_suffix():
     )
 
     assert card.upgrades == 2
+
+
+def test_card_from_json_normalizes_string_zero_before_suffix_inference():
+    card = Card.from_json(
+        {
+            "id": "Bash",
+            "name": "Bash+",
+            "type": "ATTACK",
+            "rarity": "BASIC",
+            "upgrades": "0",
+            "has_target": True,
+            "cost": 2,
+            "uuid": "bash-1",
+        }
+    )
+
+    assert card.upgrades == 1

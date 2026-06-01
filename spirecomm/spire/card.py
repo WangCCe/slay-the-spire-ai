@@ -42,7 +42,10 @@ class Card:
 
     @classmethod
     def from_json(cls, json_object):
-        upgrades = json_object.get("upgrades", 0)
+        try:
+            upgrades = max(0, int(json_object.get("upgrades", 0) or 0))
+        except (TypeError, ValueError):
+            upgrades = 0
         name = json_object.get("name", "")
         upgrade_suffix = _UPGRADE_SUFFIX_RE.search(name)
         if upgrades == 0 and upgrade_suffix:
