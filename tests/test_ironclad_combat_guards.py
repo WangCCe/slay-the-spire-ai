@@ -6919,6 +6919,57 @@ def test_ironclad_target_pruning_counts_multi_hit_attack_damage(monkeypatch):
     assert [idx for _, idx, _ in pruned] == [1]
 
 
+def test_heuristic_target_pruning_treats_string_attack_as_attack(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.type = "ATTACK"
+    high_threat = _louse(current_hp=40)
+    killable = _louse(current_hp=6)
+    context = _combat_context([strike], energy=1, monsters=[high_threat, killable])
+    state = SimulationState(context)
+
+    pruned = HeuristicCombatPlanner()._prune_targets(
+        strike,
+        [(high_threat, 100.0), (killable, 1.0)],
+        context,
+        state,
+    )
+
+    assert pruned == [(killable, 1.0)]
+
+
+def test_heuristic_best_target_treats_string_attack_as_attack(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.type = "ATTACK"
+    high_threat = _louse(current_hp=40)
+    killable = _louse(current_hp=6)
+    context = _combat_context([strike], energy=1, monsters=[high_threat, killable])
+    context.compute_threat = lambda monster: 100 if monster is high_threat else 1
+
+    target = HeuristicCombatPlanner()._find_best_target(
+        strike,
+        context,
+        SimulationState(context),
+    )
+
+    assert target is killable
+
+
 def test_shockwave_plus_uses_upgraded_stacks_for_all_debuffs(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

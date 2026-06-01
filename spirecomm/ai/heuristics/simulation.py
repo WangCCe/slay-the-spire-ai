@@ -6070,7 +6070,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             )
             return low_hp_targets[:1]  # Just the lowest HP target
 
-        is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
+        is_attack = is_attack_card(card)
 
         if is_attack:
             # Estimate damage for attack cards
@@ -6213,7 +6213,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             return None
 
         # Check if card is an attack
-        is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
+        is_attack = is_attack_card(card)
 
         if is_attack:
             # Estimate damage for this attack
