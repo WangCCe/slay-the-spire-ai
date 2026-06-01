@@ -6353,14 +6353,16 @@ class HeuristicCombatPlanner(CombatPlanner):
             card_name = _canonical_card_name(card)
             card_data = game_data_loader.get_card_data(card_name)
             if card_data:
-                description = card_data.get('description', '').lower()
-                if 'vulnerable' in description or 'weak' in description:
+                description = self.simulator._get_card_effect_text(card_name, card_data)
+                upgraded = getattr(card, 'upgrades', 0) > 0
+                effect_text = self.simulator._effect_text_for_upgrade(description, upgraded).lower()
+                if 'vulnerable' in effect_text or 'weak' in effect_text:
                     attack_cards = [c for c in context.playable_cards
                                     if hasattr(c, 'type') and c.type == CardType.ATTACK]
                     if attack_cards:
-                        is_aoe = game_data_loader._is_card_aoe(card_data) or 'all enemies' in description
+                        is_aoe = 'all enemies' in effect_text
                         bonus = 6
-                        if 'vulnerable' in description:
+                        if 'vulnerable' in effect_text:
                             bonus += 4
                         bonus += min(len(attack_cards), 3) * 2
                         if is_aoe and num_monsters > 1:

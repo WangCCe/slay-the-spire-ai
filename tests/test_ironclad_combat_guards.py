@@ -8264,6 +8264,51 @@ def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     assert score == simulation.FASTSCORE_ATTACK_BONUS + 20 * simulation.FASTSCORE_DAMAGE_MULTIPLIER
 
 
+def test_fast_score_uses_upgraded_trip_aoe_text_for_setup_bonus(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "trip": {
+            "name": "Trip",
+            "description": "Apply 2 Vulnerable.",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {
+        "trip": {
+            "name": "Trip",
+            "text": "Apply 2 #Vulnerable| to ALL enemies].",
+        },
+        "strike": {
+            "name": "Strike",
+            "text": "Deal [6|9] damage.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    monkeypatch.setattr(HeuristicCombatPlanner, "_calculate_x_block", lambda *_args, **_kwargs: 0, raising=False)
+    strike = _card("Strike_R", "Strike")
+    base_trip = _card("Trip", "Trip", card_type=CardType.SKILL, cost=0, has_target=True)
+    upgraded_trip = _card("Trip", "Trip+", card_type=CardType.SKILL, cost=0, has_target=True, upgrades=1)
+    base_context = _combat_context(
+        [base_trip, strike],
+        energy=1,
+        monsters=[_louse(current_hp=30), _louse(current_hp=30)],
+    )
+    upgraded_context = _combat_context(
+        [upgraded_trip, strike],
+        energy=1,
+        monsters=[_louse(current_hp=30), _louse(current_hp=30)],
+    )
+    planner = HeuristicCombatPlanner()
+
+    base_score = planner.fast_score_action(base_trip, SimulationState(base_context), base_context)
+    upgraded_score = planner.fast_score_action(upgraded_trip, SimulationState(upgraded_context), upgraded_context)
+
+    assert upgraded_score == base_score + 4
+
+
 def test_fast_score_aoe_multiplier_ignores_zero_hp_stale_simulated_monsters(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
