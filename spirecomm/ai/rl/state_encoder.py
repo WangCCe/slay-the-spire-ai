@@ -10,7 +10,7 @@ from spirecomm.ai.heuristics.card_costs import raw_card_cost
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
-from spirecomm.ai.heuristics.potions import potion_can_use
+from spirecomm.ai.heuristics.potions import game_potion_available, potion_can_use
 from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id, relic_id
 from spirecomm.spire.card import Card
@@ -400,7 +400,7 @@ class StateEncoder:
         real_potions = [p for p in potions if potion_id(p) != "Potion Slot"]
         empty_slots = len(potions) - len(real_potions)
         potions_full = 1.0 if hasattr(game, 'are_potions_full') and game.are_potions_full() else 0.0
-        potion_available = 1.0 if getattr(game, 'potion_available', False) else 0.0
+        potion_available = 1.0 if game_potion_available(game) else 0.0
 
         return [
             min(exhaust_size, 30) / 30.0,
