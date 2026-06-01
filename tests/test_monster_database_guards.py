@@ -467,6 +467,31 @@ def test_champ_phase_one_predicts_probabilities_and_taunt_turns():
     ] == [(4, "Taunt", 1.0)]
 
 
+def test_time_eater_below_half_hp_predicts_haste():
+    database = EnhancedMonsterDatabase()
+
+    above_half = database.predict_next_moves(
+        "Time Eater",
+        current_turn=1,
+        monster_hp_percent=0.51,
+    )
+    below_half = database.predict_next_moves(
+        "Time Eater",
+        current_turn=1,
+        monster_hp_percent=0.49,
+    )
+
+    assert above_half[0]["move"]["name"] != "Haste"
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in below_half
+    ] == [
+        (1, "Haste", 1.0),
+        (2, "Reverberate", 0.45),
+        (2, "Head Slam", 0.35),
+    ]
+
+
 def test_game_data_loader_forwards_other_enemy_count_to_monster_predictions():
     loader = GameDataLoader(auto_load=False)
 

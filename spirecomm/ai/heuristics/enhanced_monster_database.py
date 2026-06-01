@@ -329,8 +329,46 @@ class EnhancedMonsterDatabase:
 
         predictions = []
 
+        forced_move = self._hp_forced_move(pattern, monster_hp_percent)
+
+        # Check for HP-triggered forced moves.
+        if forced_move:
+            self._append_named_move_prediction(
+                predictions,
+                monster_name,
+                forced_move,
+                current_turn,
+                confidence=1.0,
+            )
+            probability_table = pattern.get("probabilities") or pattern.get("move_probabilities")
+            prediction_limit = pattern.get("prediction_limit", 2)
+            if isinstance(probability_table, dict):
+                for i in range(1, 3):
+                    target_turn = current_turn + i
+                    ascension_probs = self._ascension_pattern_override(
+                        pattern,
+                        "probabilities",
+                        ascension_level,
+                    )
+                    probs = (
+                        ascension_probs
+                        if isinstance(ascension_probs, dict)
+                        else self._select_probability_table(
+                            probability_table,
+                            target_turn,
+                            monster_hp_percent,
+                        )
+                    )
+                    self._append_probability_predictions(
+                        predictions,
+                        moves,
+                        probs,
+                        target_turn,
+                        limit=prediction_limit,
+                    )
+
         # Check for shared boss records with per-member deterministic patterns.
-        if "member_patterns" in pattern:
+        elif "member_patterns" in pattern:
             member_name, member_pattern = self._select_member_pattern(
                 pattern["member_patterns"],
                 monster_name,
@@ -873,6 +911,23 @@ class EnhancedMonsterDatabase:
         normalized_constraints = {str(constraint).lower() for constraint in constraints}
         if "taunt_every_4_turns" in normalized_constraints and target_turn % 4 == 0:
             return "Taunt"
+        return None
+
+    def _hp_forced_move(
+        self,
+        pattern: Dict[str, Any],
+        monster_hp_percent: float,
+    ) -> Optional[str]:
+        constraints = pattern.get("constraints", [])
+        if not isinstance(constraints, list):
+            return None
+
+        normalized_constraints = {str(constraint).lower() for constraint in constraints}
+        if (
+            "haste_once_below_50_percent_hp" in normalized_constraints
+            and monster_hp_percent < 0.5
+        ):
+            return "Haste"
         return None
 
     def _limit_predictions_with_boundary_ties(
