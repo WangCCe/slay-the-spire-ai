@@ -2727,6 +2727,9 @@ class FastCombatSimulator:
                 block += 3
             return block
 
+        if card_name == 'Genetic Algorithm':
+            return 1 + self._positive_card_misc(card)
+
         # Fallback: not an X-block card
         return 0
 

@@ -729,6 +729,42 @@ def test_stack_block_uses_discard_pile_size(monkeypatch):
     assert result.player_block == 7
 
 
+def test_genetic_algorithm_block_uses_misc_growth(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "genetic algorithm": {
+            "name": "Genetic Algorithm",
+            "description": "Gain 1 Block. Permanently increase this card's Block by 2. Exhaust.",
+        }
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    genetic_algorithm = _card(
+        "Genetic Algorithm",
+        "Genetic Algorithm",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    genetic_algorithm.misc = 8
+    context = _combat_context(
+        [genetic_algorithm],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        genetic_algorithm,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 9
+
+
 def test_simulation_reads_power_name_field_from_player_powers():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=100)])
