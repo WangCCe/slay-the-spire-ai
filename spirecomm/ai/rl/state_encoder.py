@@ -10,6 +10,7 @@ from spirecomm.ai.heuristics.card_costs import raw_card_cost
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
+from spirecomm.ai.heuristics.potions import potion_can_use
 from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id, relic_id
 from spirecomm.spire.card import Card
@@ -239,13 +240,13 @@ class StateEncoder:
                     can_use = 0.0
                 elif hasattr(potion, 'potion_id'):
                     potion_hash = self._stable_hash(potion.potion_id, 30) / 30.0
-                    can_use = 1.0 if getattr(potion, 'can_use', False) else 0.0
+                    can_use = 1.0 if potion_can_use(potion) else 0.0
                 elif hasattr(potion, 'name'):
                     potion_hash = self._stable_hash(potion.name, 30) / 30.0
-                    can_use = 1.0 if getattr(potion, 'can_use', False) else 0.0
+                    can_use = 1.0 if potion_can_use(potion) else 0.0
                 elif hasattr(potion, 'id'):
                     potion_hash = self._stable_hash(potion.id, 30) / 30.0
-                    can_use = 1.0 if getattr(potion, 'can_use', False) else 0.0
+                    can_use = 1.0 if potion_can_use(potion) else 0.0
                 else:
                     # Convert to string safely
                     try:

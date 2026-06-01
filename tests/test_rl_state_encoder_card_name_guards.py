@@ -262,6 +262,16 @@ def test_rl_state_encoder_name_only_potion_slot_has_no_identity_hash():
     assert features[:3] == [0.0, 0.0, 0.0]
 
 
+def test_rl_state_encoder_treats_missing_potion_can_use_as_usable():
+    encoder = StateEncoder()
+    game = SimpleNamespace(potions=[SimpleNamespace(potion_id="Strength Potion")])
+
+    features = encoder._encode_potions(game)
+
+    assert features[1] == 1.0
+    assert features[2] == 1.0
+
+
 def test_rl_state_encoder_combat_piles_card_in_play_accepts_name_only_card():
     encoder = StateEncoder()
     game = SimpleNamespace(
