@@ -20,6 +20,7 @@ from spirecomm.ai.heuristics.card_costs import (
     x_effect_energy,
 )
 from spirecomm.ai.heuristics.simulation import BLOCK_UPGRADE_BONUS, _known_damage_upgrade_bonus
+from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_upgraded
 from spirecomm.data.loader import game_data_loader
 from spirecomm.spire.card import CardType
 
@@ -974,10 +975,10 @@ class TimingAwareCombatPlanner:
         card_name = canonical_card_name(card)
 
         if card_name == 'Heavy Blade':
-            multiplier = 5 if getattr(card, 'upgrades', 0) > 0 else 3
+            multiplier = 5 if is_card_upgraded(card) else 3
             return base_damage + strength * multiplier
         if card_name == 'Perfected Strike':
-            per_strike_bonus = 3 if getattr(card, 'upgrades', 0) > 0 else 2
+            per_strike_bonus = 3 if is_card_upgraded(card) else 2
             return base_damage + self._count_strike_cards(context) * per_strike_bonus + strength
 
         return base_damage + strength
@@ -1012,7 +1013,7 @@ class TimingAwareCombatPlanner:
     def _get_attack_hit_count(self, card, context=None, available_energy=None) -> int:
         """Return known deterministic hit counts for attack damage estimates."""
         card_name = canonical_card_name(card)
-        upgrades = getattr(card, 'upgrades', 0)
+        upgrades = card_upgrade_count(card)
 
         if card_name == 'Twin Strike':
             return 2
@@ -1069,7 +1070,7 @@ class TimingAwareCombatPlanner:
                     parsed_block = game_data_loader._parse_card_block(card_data)
                     if parsed_block is not None:
                         block = parsed_block
-                        if getattr(card, 'upgrades', 0) > 0:
+                        if is_card_upgraded(card):
                             block += BLOCK_UPGRADE_BONUS.get(card_name, 0)
             except Exception:
                 block = 0

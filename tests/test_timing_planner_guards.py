@@ -390,6 +390,37 @@ def test_timing_lethal_check_counts_random_hit_attack_damage_against_single_mons
     assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_lethal_check_treats_none_upgrades_as_base_hit_count(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    sword_boomerang = _card(
+        "Sword Boomerang",
+        "Sword Boomerang",
+        cost=1,
+        has_target=False,
+    )
+    sword_boomerang.upgrades = None
+    sword_boomerang.uuid = "sword-boomerang"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[sword_boomerang],
+        monsters_alive=[SimpleNamespace(current_hp=9, block=0)],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
 def test_timing_lethal_check_rejects_random_hit_attack_against_multiple_monsters(monkeypatch):
     monkeypatch.setattr(
         timing_planner,
@@ -953,6 +984,21 @@ def test_timing_fallback_applies_dexterity_to_block_scores(monkeypatch):
 
     assert len(actions) == 1
     assert actions[0].card is defend
+
+
+def test_timing_block_estimate_treats_none_upgrades_as_base_card(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, has_target=False)
+    defend.upgrades = None
+
+    block = TimingAwareCombatPlanner()._estimate_card_block(defend)
+
+    assert block == 5
 
 
 def test_timing_fallback_applies_frail_to_block_scores(monkeypatch):

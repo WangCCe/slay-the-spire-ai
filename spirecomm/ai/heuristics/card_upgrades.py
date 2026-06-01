@@ -69,8 +69,20 @@ DAMAGE_UPGRADE_BONUS = {
 }
 
 
+def card_upgrade_count(card: Any) -> int:
+    """Return a non-negative integer upgrade count for partially populated card objects."""
+    try:
+        return max(0, int(getattr(card, 'upgrades', 0) or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def is_card_upgraded(card: Any) -> bool:
+    return card_upgrade_count(card) > 0
+
+
 def known_damage_upgrade_bonus(card: Any, card_name: str) -> int:
-    upgrades = getattr(card, 'upgrades', 0) or 0
+    upgrades = card_upgrade_count(card)
     if upgrades <= 0:
         return 0
     if card_name == 'Searing Blow':
