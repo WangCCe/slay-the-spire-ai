@@ -5260,7 +5260,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         potions = []
         if hasattr(context.game, 'get_real_potions'):
             potions = context.game.get_real_potions() or []
-        has_usable_potion = any(getattr(potion, 'can_use', False) for potion in potions)
+        has_usable_potion = any(self._potion_can_use(potion) for potion in potions)
 
         # Count zero-cost cards (they enable deeper chains)
         extra_zero_cost = sum(
@@ -5882,7 +5882,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         potion_actions = []
 
         for potion in potions:
-            if hasattr(potion, "can_use") and not potion.can_use:
+            if not self._potion_can_use(potion):
                 continue
 
             # Calculate priority score based on potion type and game state
@@ -5899,6 +5899,10 @@ class HeuristicCombatPlanner(CombatPlanner):
             potion_actions.append((potion, target, 0, priority))
 
         return potion_actions
+
+    @staticmethod
+    def _potion_can_use(potion) -> bool:
+        return not hasattr(potion, "can_use") or bool(potion.can_use)
 
     def _live_target_options(
         self,

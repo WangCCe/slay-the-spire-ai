@@ -4550,6 +4550,61 @@ def test_beam_search_can_use_potion_when_no_cards_are_playable():
     assert sequence[0].potion is potion
 
 
+def test_beam_search_can_use_potion_missing_can_use_when_no_cards_are_playable():
+    potion = SimpleNamespace(
+        potion_id="FirePotion",
+        name="Fire Potion",
+        effect_type="damage",
+        effect_value=20,
+        target_type="monster",
+        requires_target=True,
+    )
+    monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        max_hp=15,
+        current_hp=15,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=6,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            player=SimpleNamespace(block=0, powers=[]),
+            monsters=[monster],
+            room_type="Monster",
+            get_real_potions=lambda: [potion],
+        ),
+        act=1,
+        turn=1,
+        floor=5,
+        energy_available=0,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[],
+        compute_threat=lambda monster: 6,
+    )
+
+    sequence = HeuristicCombatPlanner().plan_turn(context)
+
+    assert len(sequence) == 1
+    assert isinstance(sequence[0], PotionAction)
+    assert sequence[0].potion is potion
+    assert sequence[0].target_monster is monster
+
+
 def test_beam_search_cultist_potion_applies_ritual_at_end_of_turn_projection():
     potion = Potion(
         potion_id="CultistPotion",
