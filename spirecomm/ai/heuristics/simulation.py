@@ -1613,6 +1613,27 @@ class FastCombatSimulator:
             return True
         return bool(re.search(r'\bexhaust\.\s*$', description))
 
+    def _skill_hand_exhaust_count_from_description(self, description: str, upgraded: bool = False) -> int:
+        description = self._effect_text_for_upgrade(description, upgraded)
+        description = (description or '').lower().replace('#', '')
+        match = re.search(r'\bexhaust\s+(?:(\d+)|a|an)\s+cards?\b', description)
+        if not match:
+            return 0
+        return max(1, int(match.group(1) or 1))
+
+    def _skill_hand_exhaust_cards(
+        self,
+        state: SimulationState,
+        card: Card,
+        context: Optional[DecisionContext],
+        description: str,
+        upgraded: bool = False,
+    ) -> List[Card]:
+        exhaust_count = self._skill_hand_exhaust_count_from_description(description, upgraded)
+        if exhaust_count <= 0 or context is None:
+            return []
+        return self._unplayed_hand_cards(state, context, exclude_card=card)[:exhaust_count]
+
     def _skill_exhaust_events_from_description(self, description: str, upgraded: bool = False) -> int:
         description = self._effect_text_for_upgrade(description, upgraded)
         description = (description or '').lower().replace('#', '')
@@ -1620,9 +1641,7 @@ class FastCombatSimulator:
             return 0
         if self._card_exhausts_itself(description):
             return 1
-        if re.search(r'\bexhaust\s+\d+\s+cards?\b', description):
-            return 1
-        return 0
+        return self._skill_hand_exhaust_count_from_description(description)
 
     def _skill_exhausts_itself(self, card: Card) -> bool:
         card_name = _canonical_card_name(card)
@@ -3137,10 +3156,30 @@ class FastCombatSimulator:
             if card_data:
                 description = self._get_card_effect_text(card_name, card_data)
                 upgraded = is_card_upgraded(card)
-                state.exhaust_events += self._skill_exhaust_events_from_description(
+                exhaust_events = self._skill_exhaust_events_from_description(
                     description,
                     upgraded,
                 )
+                hand_exhaust_count = self._skill_hand_exhaust_count_from_description(
+                    description,
+                    upgraded,
+                )
+                if hand_exhaust_count > 0:
+                    exhausted_cards = self._skill_hand_exhaust_cards(
+                        state,
+                        card,
+                        context,
+                        description,
+                        upgraded,
+                    )
+                    if exhausted_cards:
+                        self._mark_cards_unavailable(state, exhausted_cards)
+                        self._apply_sentinel_exhaust_energy(state, exhausted_cards)
+                    exhaust_events = (
+                        max(0, exhaust_events - hand_exhaust_count)
+                        + len(exhausted_cards)
+                    )
+                state.exhaust_events += exhaust_events
                 # Track draw events
                 if 'draw' in description:
                     self._add_card_draw(
