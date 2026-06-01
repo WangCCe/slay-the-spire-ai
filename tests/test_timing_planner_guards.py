@@ -423,6 +423,20 @@ def test_timing_lethal_check_counts_bane_second_hit_against_poisoned_target(monk
     assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_poisoned_target_check_accepts_numeric_string_hp():
+    dead_poisoned = SimpleNamespace(
+        current_hp="0",
+        powers=[SimpleNamespace(power_name="Poison", amount=1)],
+    )
+    live_poisoned = SimpleNamespace(
+        current_hp="12",
+        powers=[SimpleNamespace(power_name="Poison", amount=1)],
+    )
+    context = SimpleNamespace(monsters_alive=[dead_poisoned, live_poisoned])
+
+    assert TimingAwareCombatPlanner()._all_alive_targets_poisoned(context)
+
+
 def test_timing_lethal_check_counts_multi_hit_attack_damage(monkeypatch):
     monkeypatch.setattr(
         timing_planner,
@@ -755,6 +769,17 @@ def test_timing_lethal_check_uses_dropkick_energy_refund(monkeypatch):
         "dropkick",
         "strike",
     ]
+
+
+def test_timing_vulnerable_target_check_accepts_numeric_string_hp():
+    dead_target = SimpleNamespace(current_hp="0", block=0)
+    live_target = SimpleNamespace(current_hp="12", block=0)
+    context = SimpleNamespace(vulnerable_stacks={0: 0, 1: 1})
+
+    assert TimingAwareCombatPlanner()._all_alive_targets_vulnerable(
+        context,
+        [dead_target, live_target],
+    )
 
 
 def test_timing_lethal_sequence_reorders_dropkick_before_spending_refunded_energy(monkeypatch):
