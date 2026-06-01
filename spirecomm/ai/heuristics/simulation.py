@@ -34,14 +34,8 @@ from spirecomm.ai.heuristics.card_types import (
     card_type_name,
     is_attack_card,
 )
-from spirecomm.ai.heuristics.card_upgrades import (
-    BLOCK_UPGRADE_BONUS,
-    DAMAGE_UPGRADE_BONUS,
-    card_upgrade_count,
-    is_card_upgraded,
-    known_block_upgrade_bonus as _known_block_upgrade_bonus,
-    known_damage_upgrade_bonus as _known_damage_upgrade_bonus,
-)
+import spirecomm.ai.heuristics.card_upgrades as card_upgrade_helpers
+from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_upgraded
 from spirecomm.data.loader import (
     _effect_text_for_upgrade as _select_effect_text_for_upgrade,
     game_data_loader,
@@ -1190,10 +1184,8 @@ class FastCombatSimulator:
                 # Apply upgrade bonus if card is upgraded
                 upgrades = card_upgrade_count(card)
                 if upgrades > 0 and base_damage:
-                    # Check if we have a known upgrade bonus for this card
-                    if card_name in DAMAGE_UPGRADE_BONUS:
-                        # Use known bonus
-                        upgrade_bonus = _known_damage_upgrade_bonus(card, card_name)
+                    if card_name in card_upgrade_helpers.DAMAGE_UPGRADE_BONUS:
+                        upgrade_bonus = card_upgrade_helpers.known_damage_upgrade_bonus(card, card_name)
                         base_damage += upgrade_bonus
                         logger.debug(f"[DAMAGE_UPGRADE] {card_name} (upgrades={upgrades}): {base_damage} damage (+{upgrade_bonus})")
                     else:
@@ -1487,7 +1479,7 @@ class FastCombatSimulator:
             block_gain = 5
 
         if is_card_upgraded(card):
-            block_gain += _known_block_upgrade_bonus(card, card_name)
+            block_gain += card_upgrade_helpers.known_block_upgrade_bonus(card, card_name)
 
         self._add_player_block(
             state,
@@ -3040,7 +3032,7 @@ class FastCombatSimulator:
                                 else:
                                     # Some upgrades (for example Armaments+) improve the non-block effect.
                                     # Only apply a manual bonus when the card is explicitly mapped.
-                                    upgrade_bonus = _known_block_upgrade_bonus(card, card_name)
+                                    upgrade_bonus = card_upgrade_helpers.known_block_upgrade_bonus(card, card_name)
                                     if upgrade_bonus > 0:
                                         base_block += upgrade_bonus
                                         logger.debug(f"[BLOCK_UPGRADE] {card_name} (upgrades={upgrades}): {base_block} block (+{upgrade_bonus})")
@@ -6096,7 +6088,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                     if card_data:
                         parsed_damage = game_data_loader._parse_card_damage(card_data)
                         if parsed_damage is not None:
-                            base_damage = parsed_damage + _known_damage_upgrade_bonus(card, card_name)
+                            base_damage = parsed_damage + card_upgrade_helpers.known_damage_upgrade_bonus(card, card_name)
                 except:
                     pass
 
@@ -6241,7 +6233,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                     if card_data:
                         parsed_damage = game_data_loader._parse_card_damage(card_data)
                         if parsed_damage is not None:
-                            base_damage = parsed_damage + _known_damage_upgrade_bonus(card, card_name)
+                            base_damage = parsed_damage + card_upgrade_helpers.known_damage_upgrade_bonus(card, card_name)
                 except:
                     pass
 
@@ -6411,7 +6403,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             if card_data:
                 parsed_damage = game_data_loader._parse_card_damage(card_data)
                 if parsed_damage is not None:
-                    base_damage = parsed_damage + _known_damage_upgrade_bonus(card, card_name)
+                    base_damage = parsed_damage + card_upgrade_helpers.known_damage_upgrade_bonus(card, card_name)
 
             # Check for X-damage cards and calculate dynamically
             if base_damage == 0:

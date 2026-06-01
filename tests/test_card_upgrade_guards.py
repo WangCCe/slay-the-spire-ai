@@ -34,6 +34,15 @@ def test_known_block_upgrade_bonus_uses_shared_mapping_and_upgrade_count():
     assert known_block_upgrade_bonus(_card("Shrug It Off"), "Shrug It Off") == 0
 
 
+def test_upgrade_bonus_tables_are_owned_by_card_upgrades_not_simulation():
+    from spirecomm.ai.heuristics import simulation
+
+    assert "DAMAGE_UPGRADE_BONUS" not in simulation.__dict__
+    assert "BLOCK_UPGRADE_BONUS" not in simulation.__dict__
+    assert "_known_damage_upgrade_bonus" not in simulation.__dict__
+    assert "_known_block_upgrade_bonus" not in simulation.__dict__
+
+
 def test_card_from_json_infers_counted_upgrade_suffix():
     card = Card.from_json(
         {
