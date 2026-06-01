@@ -42,6 +42,8 @@ def test_card_requires_target_treats_name_only_untargeted_attacks_as_not_targete
         "Thunder Strike",
         "Ragnarok",
         "Dramatic Entrance",
+        "Grand Finale",
+        "Rip and Tear",
     ):
         card = SimpleNamespace(name=name, type="CardType.ATTACK")
 

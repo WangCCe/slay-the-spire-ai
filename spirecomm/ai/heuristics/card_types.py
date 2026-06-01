@@ -28,6 +28,8 @@ COMMON_UNTARGETED_ATTACK_NAMES = COMMON_AOE_ATTACK_NAMES | frozenset(
         "Thunder Strike",
         "Ragnarok",
         "Dramatic Entrance",
+        "Grand Finale",
+        "Rip and Tear",
     ]
 )
 
