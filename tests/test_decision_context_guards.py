@@ -183,6 +183,23 @@ class _StringChargeAttackMonsterDataLoader:
         return {"type": "charge_attack"}
 
 
+class _StringDuoBossMonsterDataLoader:
+    def get_enhanced_monster_data(self, monster_name):
+        return {"name": monster_name}
+
+    def predict_monster_moves(self, monster_name, turn, monster_hp_percent):
+        return []
+
+    def get_monster_threat_profile(self, monster_name):
+        return {
+            "party_threat_multiplier": "1.5",
+            "base_threat": "20",
+        }
+
+    def get_monster_special_mechanics(self, monster_name):
+        return {"type": "duo_boss"}
+
+
 def _context_for_deck(deck):
     context = DecisionContext.__new__(DecisionContext)
     context.game = SimpleNamespace(deck=deck)
@@ -816,6 +833,28 @@ def test_compute_threat_v2_accepts_string_numeric_charge_attack_profile(monkeypa
     context.monsters_alive = [bronze_automaton]
 
     assert context.compute_threat_v2(bronze_automaton) == 23
+
+
+def test_compute_threat_v2_accepts_string_numeric_duo_boss_multiplier(monkeypatch):
+    monkeypatch.setattr(
+        decision_base,
+        "game_data_loader",
+        _StringDuoBossMonsterDataLoader(),
+    )
+    donu = SimpleNamespace(
+        name="Donu",
+        intent=Intent.ATTACK,
+        move_adjusted_damage=10,
+        move_hits=1,
+        strength=0,
+        current_hp=250,
+        max_hp=250,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.turn = 1
+    context.monsters_alive = [donu]
+
+    assert context.compute_threat_v2(donu) == 16
 
 
 def test_compute_threat_v2_does_not_count_debuff_intent_as_party_buff(monkeypatch):

@@ -530,7 +530,11 @@ class DecisionContext:
 
             # Duo boss threat (both monsters scale together)
             elif mech_type == 'duo_boss':
-                party_multiplier = threat_profile.get('party_threat_multiplier', 1.5) if threat_profile else 1.5
+                party_multiplier = (
+                    self._safe_float(threat_profile.get('party_threat_multiplier', 1.5), 1.5)
+                    if threat_profile
+                    else 1.5
+                )
                 threat = int(threat * party_multiplier)
 
         # ===== Component 5: Composition threat (party buffs) =====
