@@ -211,7 +211,7 @@ class StateEncoder:
     def _encode_relics(self, game: Game) -> List[float]:
         relics = [0.0] * 89
         for relic in game.relics if game.relics else []:
-            relic_id = getattr(relic, 'relic_id', None) or getattr(relic, 'name', None)
+            relic_id = getattr(relic, 'relic_id', None) or getattr(relic, 'name', None) or relic
             if relic_id is None:
                 continue
             idx = self._stable_hash(relic_id, 89)

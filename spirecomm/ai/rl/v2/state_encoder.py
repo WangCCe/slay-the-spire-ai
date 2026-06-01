@@ -287,7 +287,7 @@ class StateEncoderV2:
         relics = game.relics or []
         for idx in range(min(len(relics), self.RELIC_SLOTS)):
             relic = relics[idx]
-            relic_id = getattr(relic, "relic_id", None) or getattr(relic, "name", None)
+            relic_id = getattr(relic, "relic_id", None) or getattr(relic, "name", None) or relic
             ids[idx] = self.id_mapper.relic_id(relic_id)
         return ids
 

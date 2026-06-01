@@ -132,6 +132,16 @@ def test_rl_state_encoder_player_class_features_accept_strings():
     assert features[14] == 1.0
 
 
+def test_rl_state_encoder_relic_features_accept_strings():
+    encoder = StateEncoder()
+    game = SimpleNamespace(relics=["Sozu"])
+
+    features = encoder._encode_relics(game)
+
+    assert features[encoder._stable_hash("Sozu", 89)] == 1.0
+    assert sum(features) == 1.0
+
+
 def test_rl_state_encoder_intent_encoding_accepts_string_representations():
     encoder = StateEncoder()
 
