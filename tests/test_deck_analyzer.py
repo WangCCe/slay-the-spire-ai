@@ -102,6 +102,18 @@ def test_deck_stats_treat_none_upgrades_as_base_card():
     assert stats["upgraded_count"] == 0
 
 
+def test_deck_stats_parses_string_costs_for_average():
+    analyzer = DeckAnalyzer()
+    strike = Card("Strike_R", "Strike", CardType.ATTACK, CardRarity.BASIC, cost=1)
+    strike.cost = "1"
+    bash = Card("Bash", "Bash", CardType.ATTACK, CardRarity.BASIC, cost=2)
+    context = MockDecisionContext([strike, bash])
+
+    stats = analyzer.get_deck_stats(context)
+
+    assert stats["avg_cost"] == 1.5
+
+
 def test_strength_deck():
     """Test deck analyzer with strength archetype deck."""
     print("\nTesting strength archetype deck...")

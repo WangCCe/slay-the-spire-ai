@@ -292,9 +292,18 @@ class DeckAnalyzer:
 
         deck = context.game.deck
 
+        def normalized_base_cost(card) -> int:
+            cost = getattr(card, 'cost', 0)
+            if cost is None:
+                return 0
+            try:
+                return int(cost)
+            except (TypeError, ValueError):
+                return 0
+
         stats = {
             'size': len(deck),
-            'avg_cost': sum(c.cost for c in deck) / len(deck) if deck else 0,
+            'avg_cost': sum(normalized_base_cost(c) for c in deck) / len(deck) if deck else 0,
             'attack_count': sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'ATTACK'),
             'skill_count': sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'SKILL'),
             'power_count': sum(1 for c in deck if hasattr(c, 'type') and c.type.name == 'POWER'),
