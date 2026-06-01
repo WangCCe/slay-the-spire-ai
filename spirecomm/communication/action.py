@@ -1,6 +1,6 @@
 import time
 
-from spirecomm.spire.screen import ScreenType, RewardType
+from spirecomm.spire.screen import ScreenType, reward_type_name
 
 
 class Action:
@@ -397,7 +397,7 @@ class CombatRewardAction(ChooseAction):
                 "Reward is not available: {}".format(self.combat_reward.reward_type)
             )
         if (
-            self.combat_reward.reward_type == RewardType.POTION
+            reward_type_name(self.combat_reward) == "POTION"
             and coordinator.last_game_state.are_potions_full()
         ):
             raise Exception("Cannot choose potion reward with full potion slots.")
