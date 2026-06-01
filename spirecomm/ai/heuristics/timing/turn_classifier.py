@@ -138,10 +138,7 @@ class TurnTimingClassifier:
                 current_intent = self._intent_name(getattr(monster, 'intent', 'UNKNOWN'))
 
                 # Calculate HP percentage
-                if hasattr(monster, 'current_hp') and hasattr(monster, 'max_hp'):
-                    hp_percent = monster.current_hp / max(monster.max_hp, 1)
-                else:
-                    hp_percent = 1.0
+                hp_percent = self._monster_hp_percent(monster)
 
                 # Get current damage
                 current_damage = self._coerce_damage_value(getattr(monster, 'move_adjusted_damage', 0))
@@ -274,10 +271,7 @@ class TurnTimingClassifier:
 
                 for monster in monsters:
                     # Get HP percentage
-                    if hasattr(monster, 'current_hp') and hasattr(monster, 'max_hp'):
-                        hp_percent = monster.current_hp / max(monster.max_hp, 1)
-                    else:
-                        hp_percent = 1.0
+                    hp_percent = self._monster_hp_percent(monster)
 
                     monster_name = canonical_live_monster_name(monster)
                     anchored_predictions = self._predict_monster_moves(
@@ -382,10 +376,7 @@ class TurnTimingClassifier:
 
                 for monster in monsters:
                     # Get HP percentage
-                    if hasattr(monster, 'current_hp') and hasattr(monster, 'max_hp'):
-                        hp_percent = monster.current_hp / max(monster.max_hp, 1)
-                    else:
-                        hp_percent = 1.0
+                    hp_percent = self._monster_hp_percent(monster)
 
                     monster_name = canonical_live_monster_name(monster)
                     anchored_predictions = self._predict_monster_moves(
@@ -614,9 +605,11 @@ class TurnTimingClassifier:
             monsters = getattr(context, "monsters_alive", None)
         return monsters
 
-    @staticmethod
-    def _is_live_context_monster(monster: Any) -> bool:
+    def _is_live_context_monster(self, monster: Any) -> bool:
         hp = monster_field(monster, "current_hp", monster_field(monster, "hp", 1))
+        hp = self._coerce_damage_value(hp)
+        if hp is None:
+            hp = 1
         return (
             not monster_field(monster, "is_gone", False)
             and not monster_field(monster, "half_dead", False)
@@ -826,6 +819,20 @@ class TurnTimingClassifier:
     def _coerce_int(self, value, default: int = 0) -> int:
         coerced = self._coerce_damage_value(value)
         return default if coerced is None else coerced
+
+    def _monster_hp_percent(self, monster) -> float:
+        if not hasattr(monster, 'current_hp') or not hasattr(monster, 'max_hp'):
+            return 1.0
+
+        max_hp = self._coerce_damage_value(getattr(monster, 'max_hp', None))
+        if max_hp is None or max_hp <= 0:
+            return 1.0
+
+        current_hp = self._coerce_damage_value(getattr(monster, 'current_hp', None))
+        if current_hp is None:
+            return 1.0
+
+        return current_hp / max_hp
 
     def _context_ascension_level(self, context) -> int:
         if hasattr(context, 'game') and hasattr(context.game, 'ascension_level'):
@@ -1101,11 +1108,10 @@ class TurnTimingClassifier:
         monsters = getattr(context, 'monsters_alive', [])
 
         for monster in monsters:
-            if hasattr(monster, 'current_hp') and hasattr(monster, 'max_hp'):
-                hp_percent = monster.current_hp / max(monster.max_hp, 1)
-                if hp_percent < 0.3 and hp_percent > 0.1:
-                    # Low HP but not dead - burst opportunity
-                    return True
+            hp_percent = self._monster_hp_percent(monster)
+            if hp_percent < 0.3 and hp_percent > 0.1:
+                # Low HP but not dead - burst opportunity
+                return True
 
         return False
 
@@ -1119,10 +1125,7 @@ class TurnTimingClassifier:
 
             for monster in monsters:
                 # Get HP percentage
-                if hasattr(monster, 'current_hp') and hasattr(monster, 'max_hp'):
-                    hp_percent = monster.current_hp / max(monster.max_hp, 1)
-                else:
-                    hp_percent = 1.0
+                hp_percent = self._monster_hp_percent(monster)
 
                 monster_name = canonical_live_monster_name(monster)
                 # Check next 2 turns

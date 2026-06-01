@@ -126,6 +126,54 @@ def test_timing_classifier_prediction_passes_live_enemy_context(monkeypatch):
     }
 
 
+def test_timing_classifier_coerces_numeric_string_monster_hp_for_predictions(monkeypatch):
+    class FakeLoader:
+        def __init__(self):
+            self.calls = []
+
+        def get_monster_timing_hints(self, _monster_name):
+            return {}
+
+        def predict_monster_moves(
+            self,
+            monster_name,
+            current_turn,
+            hp_percent,
+            ascension_level=0,
+            other_enemy_count=None,
+            other_enemy_names=None,
+            same_monster_index=None,
+        ):
+            self.calls.append(
+                {
+                    "monster_name": monster_name,
+                    "current_turn": current_turn,
+                    "hp_percent": hp_percent,
+                }
+            )
+            return [{"move": {"intent": "ATTACK"}, "confidence": 1.0}]
+
+    loader = FakeLoader()
+    monkeypatch.setattr(data_loader, "game_data_loader", loader)
+    monster = SimpleNamespace(
+        name="Jaw Worm",
+        current_hp="45",
+        max_hp="90",
+        intent="ATTACK",
+        move_adjusted_damage="5",
+        move_hits="2",
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(monsters=[monster], ascension_level=0),
+        ascension_level=0,
+    )
+
+    analysis = TurnTimingClassifier()._analyze_monster_timing(context, [monster], 1)
+
+    assert loader.calls[0]["hp_percent"] == 0.5
+    assert analysis["current_damage"] == 10
+
+
 def test_damage_curve_fallback_prediction_keeps_live_enemy_context(monkeypatch):
     class FakeLoader:
         def __init__(self):
