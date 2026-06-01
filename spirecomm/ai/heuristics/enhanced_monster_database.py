@@ -692,28 +692,69 @@ class EnhancedMonsterDatabase:
                         limit=prediction_limit,
                     )
             else:
-                ascension_probs = self._ascension_pattern_override(
-                    pattern,
-                    "probabilities",
-                    ascension_level,
+                opening_moves = self._move_sequence_from_value(
+                    self._ascension_pattern_override(pattern, "opening", ascension_level)
                 )
-                probs = (
-                    ascension_probs
-                    if isinstance(ascension_probs, dict)
-                    else self._select_probability_table(
-                        probability_table,
-                        current_turn,
-                        monster_hp_percent,
-                        other_enemy_names,
+                if not opening_moves:
+                    opening_moves = self._move_sequence_from_value(pattern.get("opening"))
+
+                if opening_moves and current_turn <= len(opening_moves):
+                    for target_turn in range(current_turn, min(current_turn + 3, len(opening_moves) + 1)):
+                        self._append_named_move_prediction(
+                            predictions,
+                            monster_name,
+                            opening_moves[target_turn - 1],
+                            target_turn,
+                            confidence=1.0,
+                        )
+
+                    follow_up_turn = len(opening_moves) + 1
+                    if current_turn <= follow_up_turn < current_turn + 3:
+                        ascension_probs = self._ascension_pattern_override(
+                            pattern,
+                            "probabilities",
+                            ascension_level,
+                        )
+                        probs = (
+                            ascension_probs
+                            if isinstance(ascension_probs, dict)
+                            else self._select_probability_table(
+                                probability_table,
+                                follow_up_turn,
+                                monster_hp_percent,
+                                other_enemy_names,
+                            )
+                        )
+                        self._append_probability_predictions(
+                            predictions,
+                            moves,
+                            probs,
+                            follow_up_turn,
+                            limit=prediction_limit,
+                        )
+                else:
+                    ascension_probs = self._ascension_pattern_override(
+                        pattern,
+                        "probabilities",
+                        ascension_level,
                     )
-                )
-                self._append_probability_predictions(
-                    predictions,
-                    moves,
-                    probs,
-                    current_turn,
-                    limit=prediction_limit,
-                )
+                    probs = (
+                        ascension_probs
+                        if isinstance(ascension_probs, dict)
+                        else self._select_probability_table(
+                            probability_table,
+                            current_turn,
+                            monster_hp_percent,
+                            other_enemy_names,
+                        )
+                    )
+                    self._append_probability_predictions(
+                        predictions,
+                        moves,
+                        probs,
+                        current_turn,
+                        limit=prediction_limit,
+                    )
 
         # Check for opening + subsequent_pattern format (e.g., Cultist)
         elif "opening" in pattern and "subsequent_pattern" in pattern:

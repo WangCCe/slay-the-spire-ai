@@ -581,6 +581,37 @@ def test_reptomancer_uses_four_dagger_probability_table():
     ] == [("Snake Strike", 0.67), ("Big Bite", 0.33)]
 
 
+def test_opening_with_move_probabilities_predicts_opening_first():
+    database = EnhancedMonsterDatabase()
+
+    opening = database.predict_next_moves(
+        "Snecko",
+        current_turn=1,
+        monster_hp_percent=1.0,
+    )
+    later = database.predict_next_moves(
+        "Snecko",
+        current_turn=2,
+        monster_hp_percent=1.0,
+    )
+
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in opening
+    ] == [
+        (1, "Perplexing Glare", 1.0),
+        (2, "Bite", 0.6),
+        (2, "Tail Whip", 0.4),
+    ]
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in later
+    ] == [
+        (2, "Bite", 0.6),
+        (2, "Tail Whip", 0.4),
+    ]
+
+
 def test_game_data_loader_forwards_other_enemy_count_to_monster_predictions():
     loader = GameDataLoader(auto_load=False)
 
