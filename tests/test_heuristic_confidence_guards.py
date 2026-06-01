@@ -26,3 +26,19 @@ def test_confidence_energy_efficiency_uses_turn_cost():
     confidence = HeuristicCombatPlanner().get_confidence(context)
 
     assert confidence == pytest.approx(0.8)
+
+
+def test_planner_adaptive_depth_counts_string_zero_turn_cost(monkeypatch):
+    planner = HeuristicCombatPlanner()
+    context = SimpleNamespace(
+        act=1,
+        turn=1,
+        playable_cards=[_card(cost=1, cost_for_turn="0") for _ in range(4)],
+        energy_available=3,
+        game=SimpleNamespace(get_real_potions=lambda: []),
+    )
+    monkeypatch.setattr(planner, "_beam_search_plan", lambda _context: [])
+
+    planner.plan_turn(context)
+
+    assert planner.max_depth == 4

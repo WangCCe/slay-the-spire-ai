@@ -5298,8 +5298,11 @@ class HeuristicCombatPlanner(CombatPlanner):
         has_usable_potion = any(getattr(potion, 'can_use', False) for potion in potions)
 
         # Count zero-cost cards (they enable deeper chains)
-        extra_zero_cost = sum(1 for c in context.playable_cards
-                             if hasattr(c, 'cost_for_turn') and c.cost_for_turn == 0)
+        extra_zero_cost = sum(
+            1
+            for c in context.playable_cards
+            if getattr(c, 'cost_for_turn', None) is not None and raw_card_cost(c) == 0
+        )
 
         # Extra energy beyond base 3
         extra_energy = (
