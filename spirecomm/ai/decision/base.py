@@ -514,7 +514,7 @@ class DecisionContext:
 
             # Death split threat (prioritize AOE)
             elif mech_type == 'death_split':
-                split_hp = special_mechanics.get('hp_threshold', 50)
+                split_hp = self._safe_float(special_mechanics.get('hp_threshold', 50), 50.0)
                 if monster_hp_percent < (split_hp / 100.0):
                     # About to split - high threat unless we have AOE
                     threat += 15
