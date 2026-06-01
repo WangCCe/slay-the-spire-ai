@@ -115,7 +115,17 @@ class PotionAction(Action):
 
     def execute(self, coordinator):
         if self.potion is not None:
-            self.potion_index = coordinator.last_game_state.potions.index(self.potion)
+            raw_potions = getattr(coordinator.last_game_state, "potions", None)
+            if raw_potions is not None:
+                potions = raw_potions
+            else:
+                get_real_potions = getattr(
+                    coordinator.last_game_state,
+                    "get_real_potions",
+                    None,
+                )
+                potions = get_real_potions() if callable(get_real_potions) else []
+            self.potion_index = potions.index(self.potion)
         if self.potion_index == -1:
             raise Exception("Specified potion for PotionAction is not available")
         arguments = [self.command]
