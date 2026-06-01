@@ -6427,7 +6427,11 @@ class HeuristicCombatPlanner(CombatPlanner):
             confidence += 0.1
 
         # Check for lethal
-        low_hp_monsters = [m for m in context.monsters_alive if m.current_hp < 15]
+        low_hp_monsters = [
+            m
+            for m in context.monsters_alive
+            if self._non_negative_int(getattr(m, 'current_hp', 0)) < 15
+        ]
         if len(low_hp_monsters) > 0 and len(low_hp_monsters) <= len(context.playable_cards):
             confidence += 0.2  # Can probably kill
 

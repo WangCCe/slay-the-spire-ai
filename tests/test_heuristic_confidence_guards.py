@@ -42,6 +42,22 @@ def test_confidence_accepts_missing_is_playable_on_playable_cards():
     assert confidence == pytest.approx(0.8)
 
 
+def test_confidence_accepts_numeric_string_monster_hp():
+    context = SimpleNamespace(
+        playable_cards=[
+            _card(cost=1),
+        ],
+        monsters_alive=[
+            SimpleNamespace(current_hp="14"),
+        ],
+        energy_available=1,
+    )
+
+    confidence = HeuristicCombatPlanner().get_confidence(context)
+
+    assert confidence == pytest.approx(1.0)
+
+
 def test_planner_adaptive_depth_counts_string_zero_turn_cost(monkeypatch):
     planner = HeuristicCombatPlanner()
     context = SimpleNamespace(
