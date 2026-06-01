@@ -669,6 +669,44 @@ def test_simulate_card_play_applies_string_attack_type_damage():
     assert result.total_damage_dealt == 6
 
 
+def test_simulate_card_play_accepts_name_only_upgraded_attack_from_data(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "type": "ATTACK",
+            "cost": 1,
+            "description": "Deal 6 damage.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        upgrades=1,
+        has_target=True,
+        is_playable=True,
+    )
+    target = _louse(current_hp=20)
+    context = _combat_context([strike], energy=1, monsters=[target])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.player_energy == 0
+    assert result.energy_spent == 1
+    assert result.total_damage_dealt == 9
+
+
 def test_simulate_card_play_accepts_name_only_block_skill():
     defend = SimpleNamespace(
         name="Defend",

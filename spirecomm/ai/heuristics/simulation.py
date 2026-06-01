@@ -1225,10 +1225,10 @@ class FastCombatSimulator:
                         # Use known bonus
                         upgrade_bonus = _known_damage_upgrade_bonus(card, card_name)
                         base_damage += upgrade_bonus
-                        logger.debug(f"[DAMAGE_UPGRADE] {card.card_id} (upgrades={upgrades}): {base_damage} damage (+{upgrade_bonus})")
+                        logger.debug(f"[DAMAGE_UPGRADE] {card_name} (upgrades={upgrades}): {base_damage} damage (+{upgrade_bonus})")
                     else:
                         logger.debug(
-                            f"[DAMAGE_UPGRADE_UNKNOWN] {card.card_id} "
+                            f"[DAMAGE_UPGRADE_UNKNOWN] {card_name} "
                             f"(upgrades={upgrades}): {base_damage} damage "
                             "(no generic upgrade bonus)"
                         )
