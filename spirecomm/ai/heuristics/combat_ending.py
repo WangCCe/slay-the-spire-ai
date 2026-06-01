@@ -23,13 +23,14 @@ from .card_costs import (
     whirlwind_damage,
     x_effect_energy,
 )
-from .card_types import card_type_name, is_attack_card
+from .card_types import card_requires_target, card_type_name, is_attack_card
 from .card_upgrades import card_upgrade_count, is_card_upgraded, known_damage_upgrade_bonus
 
 logger = logging.getLogger(__name__)
 
 TARGETED_LETHAL_MAX_CARDS = 8
 TARGETED_LETHAL_MAX_MONSTERS = 4
+AOE_ATTACK_NAMES = frozenset(['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper'])
 
 
 @dataclass(frozen=True)
@@ -95,8 +96,12 @@ class CombatEndingDetector:
             return 0
 
     @staticmethod
+    def _card_requires_target(card: Card) -> bool:
+        return card_requires_target(card, AOE_ATTACK_NAMES)
+
+    @staticmethod
     def _play_card_action(card: Card, target_monster: Optional[Monster] = None) -> PlayCardAction:
-        if not getattr(card, 'has_target', False):
+        if not CombatEndingDetector._card_requires_target(card):
             target_monster = None
         return PlayCardAction(card=card, target_monster=target_monster)
 
@@ -358,7 +363,7 @@ class CombatEndingDetector:
 
     def _is_aoe_attack(self, card: Card) -> bool:
         card_id = self._base_card_name(card)
-        return card_id in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
+        return card_id in AOE_ATTACK_NAMES
 
     def _is_all_enemy_debuff_card(self, card: Card) -> bool:
         return self._base_card_name(card) == 'Shockwave'
@@ -409,7 +414,7 @@ class CombatEndingDetector:
         sequence_cards = [
             card
             for card in attack_cards
-            if self._is_aoe_attack(card) or getattr(card, 'has_target', False)
+            if self._is_aoe_attack(card) or self._card_requires_target(card)
         ]
         return (
             bool(sequence_cards)
@@ -428,7 +433,7 @@ class CombatEndingDetector:
             return False
 
         return any(
-            not self._is_aoe_attack(card) and not getattr(card, 'has_target', False)
+            not self._is_aoe_attack(card) and not self._card_requires_target(card)
             for card in attack_cards
         )
 
@@ -782,7 +787,7 @@ class CombatEndingDetector:
         sequence_cards = [
             card
             for card in attack_cards
-            if self._is_aoe_attack(card) or getattr(card, 'has_target', False)
+            if self._is_aoe_attack(card) or self._card_requires_target(card)
         ]
         support_cards = [
             card
@@ -1074,7 +1079,7 @@ class CombatEndingDetector:
                     )
                     continue
 
-                if not getattr(card, 'has_target', False):
+                if not self._card_requires_target(card):
                     continue
 
                 for monster_idx, hp in enumerate(state.hp):
@@ -1520,7 +1525,7 @@ class CombatEndingDetector:
                 attack_cards.append(card)
                 if self._is_aoe_attack(card):
                     aoe_cards.append(card)
-                elif getattr(card, 'has_target', False):
+                elif self._card_requires_target(card):
                     single_target_count += 1
 
         for card in aoe_cards:

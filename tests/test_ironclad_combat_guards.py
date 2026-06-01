@@ -9193,6 +9193,81 @@ def test_lethal_detector_counts_string_attack_cards(monkeypatch):
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["strike"]
 
 
+def test_lethal_sequence_targets_name_only_single_target_attack_without_has_target(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        damage=6,
+        upgrades=0,
+        uuid="strike",
+        is_playable=True,
+    )
+    target = _louse(current_hp=6)
+    context = _combat_context([strike], energy=1, monsters=[target])
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    sequence = detector.find_lethal_sequence(context)
+    assert [action.card.uuid for action in sequence] == ["strike"]
+    assert sequence[0].target_monster is target
+
+
+def test_lethal_detector_proves_name_only_multi_target_attacks_without_has_target(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+
+    strike_1 = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        damage=6,
+        upgrades=0,
+        uuid="strike-1",
+        is_playable=True,
+    )
+    strike_2 = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        damage=6,
+        upgrades=0,
+        uuid="strike-2",
+        is_playable=True,
+    )
+    first_target = _louse(current_hp=6)
+    second_target = _louse(current_hp=6)
+    context = _combat_context(
+        [strike_1, strike_2],
+        energy=2,
+        monsters=[first_target, second_target],
+    )
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    sequence = detector.find_lethal_sequence(context)
+    assert [action.card.uuid for action in sequence] == ["strike-1", "strike-2"]
+    assert [action.target_monster for action in sequence] == [first_target, second_target]
+
+
 def test_lethal_detector_counts_melter_block_removal(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
