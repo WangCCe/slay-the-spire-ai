@@ -698,6 +698,37 @@ def test_ironclad_planner_defensive_card_detection_uses_display_name():
     assert IroncladCombatPlanner()._is_defensive_card(shrug) is True
 
 
+def test_stack_block_uses_discard_pile_size(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "stack": {
+            "name": "Stack",
+            "description": "Gain Block equal to the number of cards in your discard pile.",
+        }
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    stack = _card("Stack", "Stack+", card_type=CardType.SKILL, cost=1, has_target=False, upgrades=1)
+    context = _combat_context([stack], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.discard_pile = [
+        _card("Strike_R", "Strike"),
+        _card("Defend_R", "Defend", card_type=CardType.SKILL, has_target=False),
+        _card("Bash", "Bash"),
+        _card("Anger", "Anger"),
+    ]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        stack,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 7
+
+
 def test_simulation_reads_power_name_field_from_player_powers():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=100)])

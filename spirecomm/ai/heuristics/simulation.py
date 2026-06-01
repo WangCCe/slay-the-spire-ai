@@ -2612,22 +2612,34 @@ class FastCombatSimulator:
         # Fallback: not an X-damage card
         return 0
 
+    @classmethod
+    def _count_draw_pile_cards(cls, context: Optional[DecisionContext]) -> int:
+        return cls._count_card_pile(context, 'draw_pile', 'draw_pile_size')
+
+    @classmethod
+    def _count_discard_pile_cards(cls, context: Optional[DecisionContext]) -> int:
+        return cls._count_card_pile(context, 'discard_pile', 'discard_pile_size')
+
     @staticmethod
-    def _count_draw_pile_cards(context: Optional[DecisionContext]) -> int:
+    def _count_card_pile(
+        context: Optional[DecisionContext],
+        pile_attr: str,
+        size_attr: str,
+    ) -> int:
         game = getattr(context, 'game', None)
         for owner in (game, context):
-            draw_pile = getattr(owner, 'draw_pile', None)
-            if draw_pile is not None:
+            pile = getattr(owner, pile_attr, None)
+            if pile is not None:
                 try:
-                    return max(0, len(draw_pile))
+                    return max(0, len(pile))
                 except TypeError:
                     try:
-                        return max(0, int(draw_pile))
+                        return max(0, int(pile))
                     except (TypeError, ValueError):
                         return 0
 
         for owner in (game, context):
-            size = getattr(owner, 'draw_pile_size', None)
+            size = getattr(owner, size_attr, None)
             if size is not None:
                 try:
                     return max(0, int(size))
@@ -2668,6 +2680,12 @@ class FastCombatSimulator:
                 )
             per_energy_block = 9 if getattr(card, 'upgrades', 0) > 0 else 7
             return max(0, energy) * per_energy_block
+
+        if card_name == 'Stack':
+            block = self._count_discard_pile_cards(context)
+            if getattr(card, 'upgrades', 0) > 0:
+                block += 3
+            return block
 
         # Fallback: not an X-block card
         return 0
