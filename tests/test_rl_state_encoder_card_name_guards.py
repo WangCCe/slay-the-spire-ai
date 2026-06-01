@@ -282,6 +282,18 @@ def test_rl_state_encoder_treats_string_potion_as_usable():
     assert features[2] == 1.0
 
 
+def test_rl_state_encoder_potion_features_use_get_real_potions_without_raw_potions():
+    encoder = StateEncoder()
+    potion = SimpleNamespace(potion_id="Strength Potion")
+    game = SimpleNamespace(get_real_potions=lambda: [potion])
+
+    features = encoder._encode_potions(game)
+
+    assert features[0] == encoder._stable_hash("Strength Potion", 30) / 30.0
+    assert features[1] == 1.0
+    assert features[2] == 1.0
+
+
 def test_rl_state_encoder_combat_piles_card_in_play_accepts_name_only_card():
     encoder = StateEncoder()
     game = SimpleNamespace(

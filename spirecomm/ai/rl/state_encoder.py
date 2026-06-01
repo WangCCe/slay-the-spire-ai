@@ -226,7 +226,9 @@ class StateEncoder:
         return relics
 
     def _encode_potions(self, game: Game) -> List[float]:
-        potions = game.potions if game.potions else []
+        raw_potions = getattr(game, "potions", None)
+        potions = raw_potions if raw_potions is not None else game_real_potions(game)
+        potions = potions or []
         features = []
         for i in range(5):
             if i < len(potions):
