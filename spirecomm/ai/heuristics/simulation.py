@@ -1167,9 +1167,7 @@ class FastCombatSimulator:
         """Apply attack card effects with proper damage calculation."""
         card_name = _canonical_card_name(card)
         dynamic_damage_card = card_name in {'Body Slam', 'Mind Blast', 'Whirlwind'}
-        base_damage = getattr(card, 'damage', 0)
-        if base_damage is None:
-            base_damage = 0
+        base_damage = self._non_negative_int(getattr(card, 'damage', 0))
         if dynamic_damage_card:
             base_damage = 0
         if base_damage == 0 or not hasattr(card, 'damage'):
