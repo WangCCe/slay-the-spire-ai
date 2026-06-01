@@ -5718,7 +5718,7 @@ def test_upgraded_lesson_learned_uses_13_damage(monkeypatch):
     assert result.total_damage_dealt == 13
 
 
-def _patch_simple_colorless_attack_loader(monkeypatch):
+def _patch_simple_colorless_attack_loader(monkeypatch, module=simulation):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
         "flash of steel": {
@@ -5747,7 +5747,7 @@ def _patch_simple_colorless_attack_loader(monkeypatch):
         },
     }
     loader._wiki_data = {}
-    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    monkeypatch.setattr(module, "game_data_loader", loader)
 
 
 def test_upgraded_flash_of_steel_uses_6_damage(monkeypatch):
@@ -9100,6 +9100,25 @@ def test_lethal_detector_counts_ritual_dagger_misc_damage(monkeypatch):
     )
 
     assert CombatEndingDetector()._calculate_affordable_damage(context) == 24
+
+
+def test_lethal_detector_counts_generated_attack_upgrades_without_wiki(monkeypatch):
+    _patch_simple_colorless_attack_loader(monkeypatch, combat_ending)
+    shiv_plus = _card("Shiv", "Shiv+", cost=0, upgrades=1)
+    smite_plus = _card("Smite", "Smite+", cost=1, upgrades=1)
+    through_violence_plus = _card(
+        "Through Violence",
+        "Through Violence+",
+        cost=0,
+        upgrades=1,
+    )
+    context = _combat_context(
+        [shiv_plus, smite_plus, through_violence_plus],
+        energy=1,
+        monsters=[_louse(current_hp=60)],
+    )
+
+    assert CombatEndingDetector()._calculate_affordable_damage(context) == 52
 
 
 def test_lethal_detector_counts_multi_hit_attack_damage(monkeypatch):

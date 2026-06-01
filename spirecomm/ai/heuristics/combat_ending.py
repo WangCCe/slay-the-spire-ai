@@ -23,6 +23,7 @@ from .card_costs import (
     whirlwind_damage,
     x_effect_energy,
 )
+from .card_upgrades import known_damage_upgrade_bonus
 
 logger = logging.getLogger(__name__)
 
@@ -1607,6 +1608,12 @@ class CombatEndingDetector:
             damage_data = dict(card_data)
             damage_data['name'] = display_name
             base_damage = game_data_loader._parse_card_damage(damage_data) or 0
+            base_damage = self._apply_known_damage_upgrade_fallback(
+                card,
+                card_name,
+                card_data,
+                base_damage,
+            )
 
         if card_name == 'Body Slam':
             base_damage = self._get_player_block(context)
@@ -1649,6 +1656,24 @@ class CombatEndingDetector:
             )
 
         return max(0, base_damage)
+
+    def _apply_known_damage_upgrade_fallback(
+        self,
+        card: Card,
+        card_name: str,
+        card_data: dict,
+        parsed_damage: int,
+    ) -> int:
+        upgrade_bonus = known_damage_upgrade_bonus(card, card_name)
+        if upgrade_bonus <= 0:
+            return parsed_damage
+
+        base_damage_data = dict(card_data)
+        base_damage_data['name'] = card_name
+        base_damage = game_data_loader._parse_card_damage(base_damage_data) or 0
+        if parsed_damage > 0 and parsed_damage == base_damage:
+            return parsed_damage + upgrade_bonus
+        return parsed_damage
 
     def _apply_player_weak_to_card_damage(
         self,
