@@ -1,6 +1,10 @@
 """Shared card upgrade value helpers for heuristic combat code."""
 
+import re
 from typing import Any
+
+
+_UPGRADE_SUFFIX_RE = re.compile(r'\+(\d*)$')
 
 
 # Attack card upgrade damage bonuses. Cards with special dynamic handling
@@ -69,12 +73,31 @@ DAMAGE_UPGRADE_BONUS = {
 }
 
 
+def _upgrade_count_from_name(card: Any) -> int:
+    candidates = []
+    if isinstance(card, str):
+        candidates.append(card)
+    candidates.extend(
+        getattr(card, attr, None)
+        for attr in ('name', 'card_id', 'id')
+    )
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        match = _UPGRADE_SUFFIX_RE.search(str(candidate))
+        if match:
+            return int(match.group(1) or 1)
+    return 0
+
+
 def card_upgrade_count(card: Any) -> int:
     """Return a non-negative integer upgrade count for partially populated card objects."""
+    parsed = 0
     try:
-        return max(0, int(getattr(card, 'upgrades', 0) or 0))
+        parsed = max(0, int(getattr(card, 'upgrades', 0) or 0))
     except (TypeError, ValueError):
-        return 0
+        parsed = 0
+    return parsed or _upgrade_count_from_name(card)
 
 
 def is_card_upgraded(card: Any) -> bool:
