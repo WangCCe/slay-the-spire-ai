@@ -8,7 +8,7 @@ to consider card synergies, game state context, and deck composition.
 import math
 import re
 from typing import Dict, List
-from spirecomm.spire.card import Card, CardType
+from spirecomm.spire.card import Card
 from spirecomm.spire.character import Intent
 from spirecomm.data.loader import game_data_loader
 from spirecomm.ai.decision.base import DecisionContext, CardEvaluator
@@ -92,6 +92,18 @@ class SynergyCardEvaluator(CardEvaluator):
     @staticmethod
     def _card_name(card: Card) -> str:
         return canonical_card_name(card)
+
+    @staticmethod
+    def _card_type_name(card: Card) -> str:
+        card_type = getattr(card, 'type', None)
+        if card_type is None:
+            return ''
+        if hasattr(card_type, 'name'):
+            return str(card_type.name).upper()
+        value = str(card_type).upper()
+        if value.startswith('CARDTYPE.'):
+            return value.split('.', 1)[1]
+        return value
 
     def evaluate_card(self, card: Card, context: DecisionContext) -> float:
         """
@@ -327,7 +339,7 @@ class SynergyCardEvaluator(CardEvaluator):
                             'iron wave', 'flame barrier', 'protect']
         
         # Check card type first
-        if hasattr(card, 'type') and card.type == CardType.SKILL:
+        if self._card_type_name(card) == 'SKILL':
             # Get card information from game data
             card_data = game_data_loader.get_card_data(self._card_data_key(card))
             if card_data:
@@ -343,7 +355,7 @@ class SynergyCardEvaluator(CardEvaluator):
     def _is_offensive_card(self, card: Card) -> bool:
         """Check if card is primarily offensive."""
         # Check if card type is ATTACK
-        if hasattr(card, 'type') and card.type == CardType.ATTACK:
+        if self._card_type_name(card) == 'ATTACK':
             return True
         
         # Check card data for offensive effects

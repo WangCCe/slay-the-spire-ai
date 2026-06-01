@@ -55,6 +55,48 @@ def test_hand_of_greed_is_not_classified_as_defensive():
     assert evaluator._is_defensive_card(hand_of_greed) is False
 
 
+def test_defensive_detection_accepts_string_card_type(monkeypatch):
+    monkeypatch.setattr(
+        card_module,
+        "game_data_loader",
+        _FakeCardDataLoader(
+            {
+                "shrug it off": {
+                    "name": "Shrug It Off",
+                    "type": "SKILL",
+                    "rarity": "COMMON",
+                    "cost": "1",
+                    "description": "Gain 8 Block. Draw 1 card.",
+                },
+            }
+        ),
+    )
+    shrug = Card(
+        "Shrug It Off",
+        "Shrug It Off",
+        CardType.SKILL,
+        CardRarity.COMMON,
+        cost=1,
+    )
+    shrug.type = "SKILL"
+
+    assert SynergyCardEvaluator(player_class="IRONCLAD")._is_defensive_card(shrug) is True
+
+
+def test_offensive_detection_accepts_string_card_type(monkeypatch):
+    monkeypatch.setattr(card_module, "game_data_loader", _FakeCardDataLoader({}))
+    strike = Card(
+        "Strike_R",
+        "Strike",
+        CardType.ATTACK,
+        CardRarity.BASIC,
+        cost=1,
+    )
+    strike.type = "ATTACK"
+
+    assert SynergyCardEvaluator(player_class="IRONCLAD")._is_offensive_card(strike) is True
+
+
 def test_baseline_score_uses_base_name_for_upgraded_cards():
     evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
     base_card = Card(
