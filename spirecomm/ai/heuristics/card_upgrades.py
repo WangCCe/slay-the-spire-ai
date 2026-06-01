@@ -159,3 +159,7 @@ def known_block_upgrade_bonus(card: Any, card_name: str) -> int:
 
 def heavy_blade_strength_multiplier(card: Any) -> int:
     return 5 if is_card_upgraded(card) else 3
+
+
+def perfected_strike_bonus_per_strike(card: Any) -> int:
+    return 3 if is_card_upgraded(card) else 2

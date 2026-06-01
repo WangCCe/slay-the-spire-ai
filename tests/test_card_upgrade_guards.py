@@ -6,6 +6,7 @@ from spirecomm.ai.heuristics.card_upgrades import (
     is_card_upgraded,
     known_block_upgrade_bonus,
     known_damage_upgrade_bonus,
+    perfected_strike_bonus_per_strike,
 )
 from spirecomm.spire.card import Card
 
@@ -39,6 +40,12 @@ def test_heavy_blade_strength_multiplier_uses_upgrade_count():
     assert heavy_blade_strength_multiplier(_card("Heavy Blade")) == 3
     assert heavy_blade_strength_multiplier(_card("Heavy Blade+1", upgrades=1)) == 5
     assert heavy_blade_strength_multiplier(_card("Heavy Blade", upgrades=None)) == 3
+
+
+def test_perfected_strike_bonus_per_strike_uses_upgrade_count():
+    assert perfected_strike_bonus_per_strike(_card("Perfected Strike")) == 2
+    assert perfected_strike_bonus_per_strike(_card("Perfected Strike+1", upgrades=1)) == 3
+    assert perfected_strike_bonus_per_strike(_card("Perfected Strike", upgrades=None)) == 2
 
 
 def test_upgrade_bonus_tables_are_owned_by_card_upgrades_not_simulation():

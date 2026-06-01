@@ -34,6 +34,7 @@ from .card_upgrades import (
     heavy_blade_strength_multiplier,
     is_card_upgraded,
     known_damage_upgrade_bonus,
+    perfected_strike_bonus_per_strike,
 )
 
 logger = logging.getLogger(__name__)
@@ -1653,8 +1654,7 @@ class CombatEndingDetector:
             if card_name == 'Heavy Blade':
                 base_damage += strength * heavy_blade_strength_multiplier(card)
             elif card_name == 'Perfected Strike':
-                per_strike_bonus = 3 if upgrades > 0 else 2
-                base_damage += strike_card_count(context) * per_strike_bonus + strength
+                base_damage += strike_card_count(context) * perfected_strike_bonus_per_strike(card) + strength
             else:
                 base_damage += strength
             base_damage += base_damage_bonus

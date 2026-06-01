@@ -31,6 +31,7 @@ from spirecomm.ai.heuristics.card_upgrades import (
     is_card_upgraded,
     known_block_upgrade_bonus,
     known_damage_upgrade_bonus,
+    perfected_strike_bonus_per_strike,
 )
 from spirecomm.data.loader import game_data_loader
 
@@ -988,8 +989,7 @@ class TimingAwareCombatPlanner:
         if card_name == 'Heavy Blade':
             return base_damage + strength * heavy_blade_strength_multiplier(card)
         if card_name == 'Perfected Strike':
-            per_strike_bonus = 3 if is_card_upgraded(card) else 2
-            return base_damage + strike_card_count(context) * per_strike_bonus + strength
+            return base_damage + strike_card_count(context) * perfected_strike_bonus_per_strike(card) + strength
 
         return base_damage + strength
 
