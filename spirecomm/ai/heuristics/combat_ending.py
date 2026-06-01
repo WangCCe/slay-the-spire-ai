@@ -86,6 +86,13 @@ class CombatEndingDetector:
         return canonical_card_name(card)
 
     @staticmethod
+    def _positive_card_misc(card: Card) -> int:
+        try:
+            return max(0, int(getattr(card, 'misc', 0) or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
     def _play_card_action(card: Card, target_monster: Optional[Monster] = None) -> PlayCardAction:
         if not getattr(card, 'has_target', False):
             target_monster = None
@@ -1606,6 +1613,9 @@ class CombatEndingDetector:
 
         if card_name == 'Mind Blast':
             base_damage = self._count_draw_pile_cards(context)
+
+        if card_name == 'Ritual Dagger':
+            base_damage += self._positive_card_misc(card)
 
         if card_name == 'Whirlwind':
             energy = x_effect_energy(

@@ -6885,6 +6885,39 @@ def test_mind_blast_damage_uses_draw_pile_size(monkeypatch):
     assert result.total_damage_dealt == 4
 
 
+def _patch_ritual_dagger_loader(monkeypatch, module):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "ritual dagger": {
+            "name": "Ritual Dagger",
+            "description": (
+                "Deal 15 damage. If Fatal, permanently increase this card's "
+                "damage by 3. Exhaust."
+            ),
+        }
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(module, "game_data_loader", loader)
+
+
+def test_ritual_dagger_damage_uses_misc_growth(monkeypatch):
+    _patch_ritual_dagger_loader(monkeypatch, simulation)
+
+    ritual_dagger = _card("Ritual Dagger", "Ritual Dagger", cost=1)
+    ritual_dagger.misc = 9
+    context = _combat_context([ritual_dagger], energy=1, monsters=[_louse(current_hp=50)])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        ritual_dagger,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 24
+
+
 def test_inflame_uses_real_strength_amount_before_attacks():
     inflame = _card(
         "Inflame",
@@ -8752,6 +8785,19 @@ def test_lethal_detector_counts_repeated_searing_blow_upgrades(monkeypatch):
     context = _combat_context([searing_blow], energy=2, monsters=[_louse(current_hp=100)])
 
     assert CombatEndingDetector()._calculate_affordable_damage(context) == 21
+
+
+def test_lethal_detector_counts_ritual_dagger_misc_damage(monkeypatch):
+    _patch_ritual_dagger_loader(monkeypatch, combat_ending)
+    ritual_dagger = _card("Ritual Dagger", "Ritual Dagger", cost=1)
+    ritual_dagger.misc = 9
+    context = _combat_context(
+        [ritual_dagger],
+        energy=1,
+        monsters=[_louse(current_hp=24)],
+    )
+
+    assert CombatEndingDetector()._calculate_affordable_damage(context) == 24
 
 
 def test_lethal_detector_counts_multi_hit_attack_damage(monkeypatch):

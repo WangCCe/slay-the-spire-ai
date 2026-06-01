@@ -1693,6 +1693,8 @@ class FastCombatSimulator:
     ) -> int:
         """Apply Strength, including cards with non-standard Strength scaling."""
         card_name = _canonical_card_name(card)
+        if card_name == 'Ritual Dagger':
+            base_damage += self._positive_card_misc(card)
 
         if card_name == 'Heavy Blade':
             multiplier = 5 if getattr(card, 'upgrades', 0) > 0 else 3
@@ -1706,6 +1708,13 @@ class FastCombatSimulator:
             )
 
         return max(0, base_damage + state.player_strength)
+
+    @staticmethod
+    def _positive_card_misc(card: Card) -> int:
+        try:
+            return max(0, int(getattr(card, 'misc', 0) or 0))
+        except (TypeError, ValueError):
+            return 0
 
     def _count_strike_cards(self, context: Optional[DecisionContext]) -> int:
         """Count deck cards whose displayed name or id contains Strike."""
