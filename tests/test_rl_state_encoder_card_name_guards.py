@@ -233,6 +233,29 @@ def test_rl_state_encoder_player_class_features_accept_strings():
     assert features[14] == 1.0
 
 
+def test_rl_state_encoder_player_state_accepts_string_numeric_fields():
+    encoder = StateEncoder()
+    game = _game_state("IRONCLAD")
+    game.player.current_hp = "40"
+    game.player.max_hp = "80"
+    game.player.energy = "3"
+    game.player.block = "12"
+    game.gold = "99"
+    game.floor = "10"
+    game.act = "2"
+    game.ascension_level = "10"
+
+    features = encoder._encode_player_state(game)
+
+    assert features[0] == 0.5
+    assert features[1] == 0.6
+    assert features[2] == 0.6
+    assert features[3] == 0.5
+    assert features[8] == 10 / 55
+    assert features[9:13] == [0.0, 1.0, 0.0, 0.0]
+    assert features[13] == 0.5
+
+
 def test_rl_state_encoder_power_amount_accepts_name_only_power():
     encoder = StateEncoder()
 

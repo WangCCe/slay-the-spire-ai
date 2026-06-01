@@ -57,18 +57,29 @@ class StateEncoder:
         strength = self._get_power_amount(getattr(player, 'powers', []), "Strength")
         dexterity = self._get_power_amount(getattr(player, 'powers', []), "Dexterity")
         player_class = self._player_class_name(game.character or PlayerClass.IRONCLAD)
+        current_hp = self._safe_float(getattr(player, 'current_hp', 0.0), default=0.0)
+        max_hp = self._safe_float(getattr(player, 'max_hp', 0.0), default=0.0)
+        energy = self._safe_float(getattr(player, 'energy', 0.0), default=0.0)
+        block = self._safe_float(getattr(player, 'block', 0.0), default=0.0)
+        gold = max(self._safe_float(getattr(game, 'gold', 0.0), default=0.0), 0.0)
+        floor = self._safe_float(getattr(game, 'floor', 0.0), default=0.0)
+        act = self._safe_int(getattr(game, 'act', 1), default=1)
+        ascension_level = self._safe_float(
+            getattr(game, 'ascension_level', 0.0),
+            default=0.0,
+        )
         return [
-            player.current_hp / player.max_hp if player.max_hp > 0 else 0.0,
-            min(player.energy, 5) / 5.0,
-            min(player.block, 20) / 20.0,
-            min(math.log10(game.gold + 1) / 4.0, 1.0),
+            current_hp / max_hp if max_hp > 0 else 0.0,
+            min(energy, 5) / 5.0,
+            min(block, 20) / 20.0,
+            min(math.log10(gold + 1) / 4.0, 1.0),
             min(len(game.hand) if game.hand else 0, 10) / 10.0,
             min(len(game.deck) if game.deck else 0, 30) / 30.0,
             min(len(game.discard_pile) if game.discard_pile else 0, 30) / 30.0,
             min(len(game.draw_pile) if game.draw_pile else 0, 30) / 30.0,
-            min(game.floor, 55) / 55.0,
-            *[1.0 if (game.act or 1) == i else 0.0 for i in range(1, 5)],
-            min((game.ascension_level or 0), 20) / 20.0,
+            min(floor, 55) / 55.0,
+            *[1.0 if (act or 1) == i else 0.0 for i in range(1, 5)],
+            min(ascension_level, 20) / 20.0,
             1.0 if player_class == 'IRONCLAD' else 0.0,
             1.0 if player_class == 'THE_SILENT' else 0.0,
             1.0 if player_class == 'DEFECT' else 0.0,
