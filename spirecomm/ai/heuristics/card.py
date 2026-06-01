@@ -152,11 +152,14 @@ class SynergyCardEvaluator(CardEvaluator):
                 'SKILL': 0
             }.get(card_type, 0)
             baseline += type_bonus
-            
+
             # Adjust based on energy cost efficiency
-            cost = card_data.get('cost', '0')
-            if cost.isdigit():
+            cost = card_data.get('cost', 0)
+            try:
                 cost_value = int(cost)
+            except (TypeError, ValueError):
+                cost_value = None
+            if cost_value is not None and cost_value >= 0:
                 # More efficient cards (higher value per energy) get bonus
                 description = card_data.get('description', '').lower()
                 if 'damage' in description:
