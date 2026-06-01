@@ -26,6 +26,7 @@ from .simulation import (
 )
 from .card_costs import effective_card_cost, is_x_cost_card, whirlwind_damage, x_effect_energy
 from .card_names import canonical_card_name
+from .card_types import is_attack_card
 from .card_upgrades import card_upgrade_count, is_card_upgraded
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
@@ -153,7 +154,7 @@ class IroncladCombatPlanner(CombatPlanner):
     def _is_single_target_attack(self, card: Card, target_idx: Optional[int]) -> bool:
         if target_idx is None:
             return False
-        is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
+        is_attack = is_attack_card(card)
         return is_attack and not self._is_aoe_attack(card)
 
     def plan_turn(self, context: DecisionContext) -> List[Action]:
@@ -527,7 +528,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 state.primary_target = None
 
         # Prefer finishing a killable low-HP target in multi-monster fights to reduce incoming attacks.
-        if hasattr(card, 'type') and card.type == CardType.ATTACK and len(alive_monsters) >= 2:
+        if is_attack_card(card) and len(alive_monsters) >= 2:
             killable_targets = []
             for i, monster_state in alive_monsters:
                 if i >= len(context.monsters_alive):
@@ -579,7 +580,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 return context.monsters_alive[i], i
 
         # Standard attacks - prioritize high threat targets, then lowest HP
-        if hasattr(card, 'type') and card.type == CardType.ATTACK:
+        if is_attack_card(card):
             # Prefer non-vulnerable high threat targets if available
             non_vulnerable = [(i, m, t) for i, m, t in monster_threats if m.get('vulnerable', 0) == 0]
             if non_vulnerable:

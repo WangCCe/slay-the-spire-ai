@@ -4396,6 +4396,44 @@ def test_standard_targeting_uses_parsed_damage_for_plain_card_lethals(monkeypatc
     assert target_idx == 1
 
 
+def test_ironclad_targeting_treats_string_attack_as_attack(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.type = "ATTACK"
+    high_threat = _louse(current_hp=40)
+    killable = _louse(current_hp=6)
+    context = _combat_context([strike], energy=1, monsters=[high_threat, killable])
+    monkeypatch.setattr(
+        ironclad_combat,
+        "evaluate_monster_threat",
+        lambda monster, _context: 100 if monster is high_threat else 1,
+    )
+
+    target, target_idx = IroncladCombatPlanner()._choose_target_for_card(
+        strike,
+        context,
+        SimulationState(context),
+    )
+
+    assert target is killable
+    assert target_idx == 1
+
+
+def test_ironclad_single_target_attack_accepts_string_attack_type():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.type = "ATTACK"
+
+    assert IroncladCombatPlanner()._is_single_target_attack(strike, target_idx=0) is True
+
+
 def test_v2_single_target_selection_ignores_zero_hp_stale_simulated_monsters():
     strike = _card("Strike_R", "Strike", cost=1)
     stale = _louse(current_hp=40)
