@@ -4454,6 +4454,50 @@ def test_v2_single_target_selection_ignores_zero_hp_stale_simulated_monsters():
     assert target_idx == 1
 
 
+def test_v2_targeting_treats_string_attack_as_attack(monkeypatch):
+    class FakeMonsterLoader:
+        def is_monster_summoner(self, _monster_name):
+            return False
+
+        def get_monster_minions(self, _monster_name):
+            return []
+
+        def is_monster_hibernating(self, _monster_name, _turn):
+            return False
+
+        def does_monster_have_death_split(self, _monster_name):
+            return False
+
+        def does_monster_have_phase_change(self, _monster_name):
+            return False
+
+        def is_monster_duo_boss(self, _monster_name):
+            return False
+
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", FakeMonsterLoader())
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.type = "ATTACK"
+    vulnerable_high_threat = _louse(current_hp=40)
+    non_vulnerable_low_threat = _louse(current_hp=40)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[vulnerable_high_threat, non_vulnerable_low_threat],
+    )
+    context.compute_threat_v2 = lambda monster: 100 if monster is vulnerable_high_threat else 1
+    state = SimulationState(context)
+    state.monsters[0]["vulnerable"] = 1
+
+    target, target_idx = IroncladCombatPlanner()._choose_target_for_card_v2(
+        strike,
+        context,
+        state,
+    )
+
+    assert target is non_vulnerable_low_threat
+    assert target_idx == 1
+
+
 def test_v2_split_targeting_uses_parsed_damage_for_plain_cards(monkeypatch):
     class FakeMonsterLoader:
         def is_monster_summoner(self, _monster_name):

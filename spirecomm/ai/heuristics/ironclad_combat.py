@@ -797,7 +797,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 return context.monsters_alive[i], i
 
         # Standard attacks - prioritize high threat targets with enhanced threat
-        if hasattr(card, 'type') and card.type == CardType.ATTACK:
+        if is_attack_card(card):
             # Prefer non-vulnerable high threat targets
             non_vulnerable = [(i, m, t) for i, m, t in monster_threats if m.get('vulnerable', 0) == 0]
             if non_vulnerable:
