@@ -1293,7 +1293,7 @@ class IroncladCombatPlanner(CombatPlanner):
         # If no attack cards are playable, don't punish defensive sequences.
         if block_penalty:
             has_attack_playable = any(
-                hasattr(card, 'type') and card.type == CardType.ATTACK
+                is_attack_card(card)
                 for card in context.playable_cards
             )
             if not has_attack_playable:
@@ -2190,7 +2190,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 card = action.card
                 card_id = canonical_card_name(card)
                 damage = 0
-                if hasattr(card, 'type') and card.type == CardType.ATTACK:
+                if is_attack_card(card):
                     damage = self._estimate_attack_damage_to_target(
                         card,
                         context,

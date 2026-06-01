@@ -3565,6 +3565,33 @@ def test_slime_boss_strategy_uses_parsed_aoe_damage_without_damage_field(monkeyp
     assert score == 12.0
 
 
+def test_slime_boss_strategy_accepts_string_attack_type_for_parsed_aoe(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "cleave": {
+            "name": "Cleave",
+            "description": "Deal 8 damage to ALL enemies.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    cleave.type = "ATTACK"
+    context = _combat_context(
+        [cleave],
+        energy=1,
+        monsters=[_slime_boss(current_hp=80)],
+    )
+
+    score = IroncladCombatPlanner()._apply_slime_boss_strategy(
+        [PlayCardAction(card=cleave)],
+        context,
+        0.0,
+    )
+
+    assert score == 12.0
+
+
 def test_sentries_damage_distribution_uses_parsed_damage_without_damage_field(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -11066,6 +11093,50 @@ def test_ironclad_sequence_score_accepts_string_skill_type_against_gremlin_nob()
     string_final.energy_spent = 1
     string_score = planner._score_sequence(
         [PlayCardAction(card=string_defend)],
+        string_initial,
+        string_final,
+        string_context,
+    )
+
+    assert string_score == enum_score
+
+
+def test_ironclad_block_penalty_accepts_string_attack_type_against_gremlin_nob():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    string_strike = _card("Strike_R", "Strike", cost=1)
+    string_strike.type = "ATTACK"
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+
+    enum_context = _combat_context([defend, strike], energy=1, monsters=[_gremlin_nob()])
+    enum_context.incoming_damage = 14
+    enum_initial = SimulationState(enum_context)
+    enum_final = enum_initial.clone()
+    enum_final.player_block = 5
+    enum_final.energy_spent = 1
+    enum_score = planner._score_sequence(
+        [PlayCardAction(card=defend)],
+        enum_initial,
+        enum_final,
+        enum_context,
+    )
+
+    string_context = _combat_context([defend, string_strike], energy=1, monsters=[_gremlin_nob()])
+    string_context.incoming_damage = 14
+    string_initial = SimulationState(string_context)
+    string_final = string_initial.clone()
+    string_final.player_block = 5
+    string_final.energy_spent = 1
+    string_score = planner._score_sequence(
+        [PlayCardAction(card=defend)],
         string_initial,
         string_final,
         string_context,
