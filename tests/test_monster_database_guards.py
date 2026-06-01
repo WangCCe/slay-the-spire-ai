@@ -501,6 +501,25 @@ def test_champ_phase_one_predicts_probabilities_and_taunt_turns():
     ] == [(4, "Taunt", 1.0)]
 
 
+def test_champ_ascension_nineteen_replaces_gloat_with_defensive_stance():
+    database = EnhancedMonsterDatabase()
+
+    predictions = database.predict_next_moves(
+        "The Champ",
+        current_turn=1,
+        monster_hp_percent=1.0,
+        ascension_level=19,
+    )
+
+    assert [
+        (prediction["turn"], prediction["move"]["name"], prediction["confidence"])
+        for prediction in predictions[:2]
+    ] == [
+        (1, "Heavy Slash", 0.45),
+        (1, "Defensive Stance", 0.3),
+    ]
+
+
 def test_time_eater_below_half_hp_predicts_haste():
     database = EnhancedMonsterDatabase()
 

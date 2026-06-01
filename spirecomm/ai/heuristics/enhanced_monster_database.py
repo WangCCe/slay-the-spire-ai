@@ -589,7 +589,7 @@ class EnhancedMonsterDatabase:
                     self._append_probability_predictions(
                         predictions,
                         moves,
-                        active_phase.get("probabilities", {}),
+                        self._phase_probabilities_for_ascension(active_phase, ascension_level),
                         target_turn,
                         limit=pattern.get("prediction_limit", 2),
                     )
@@ -1212,6 +1212,35 @@ class EnhancedMonsterDatabase:
                 selected_threshold = threshold
                 selected_value = value
         return selected_value
+
+    def _phase_probabilities_for_ascension(
+        self,
+        phase: Dict[str, Any],
+        ascension_level: int,
+    ) -> Dict[str, Any]:
+        probabilities = phase.get("probabilities", {})
+        if not isinstance(probabilities, dict):
+            return {}
+
+        adjusted = dict(probabilities)
+        modifiers = phase.get("ascension_modifiers", {})
+        if not isinstance(modifiers, dict):
+            return adjusted
+
+        for key, modifier in sorted(modifiers.items(), key=lambda item: str(item[0])):
+            match = re.match(r"^(\d+)\+$", str(key))
+            if not match or ascension_level < int(match.group(1)):
+                continue
+            if not isinstance(modifier, dict):
+                continue
+            if modifier.get("gloat_replaced_with_defensive_stance"):
+                gloat_probability = adjusted.pop("gloat", 0)
+                if isinstance(gloat_probability, (int, float)):
+                    adjusted["defensive_stance"] = (
+                        adjusted.get("defensive_stance", 0) + gloat_probability
+                    )
+
+        return adjusted
 
     def _move_sequence_from_value(self, value: Any) -> List[str]:
         if isinstance(value, str):
