@@ -277,6 +277,31 @@ def test_legacy_potion_decoder_falls_back_for_empty_potion_slot():
     assert isinstance(action, EndTurnAction)
 
 
+def test_legacy_potion_mask_skips_string_empty_potion_slot():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        potions=["Potion Slot"],
+        end_available=True,
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert mask[encoder.END_TURN_ACTION]
+    assert not any(mask[encoder.USE_POTION_OFFSET:encoder.END_TURN_ACTION])
+
+
+def test_legacy_potion_decoder_falls_back_for_string_empty_potion_slot():
+    encoder = ActionEncoder()
+    game = _combat_game(
+        potions=["Potion Slot"],
+        end_available=True,
+    )
+
+    action = encoder.decode_action(encoder.encode_use_potion(0, 0), game)
+
+    assert isinstance(action, EndTurnAction)
+
+
 def test_legacy_potion_decoder_falls_back_for_dead_target():
     encoder = ActionEncoder()
     game = _combat_game(

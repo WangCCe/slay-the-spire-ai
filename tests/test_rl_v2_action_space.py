@@ -204,6 +204,35 @@ def test_combat_decoder_falls_back_for_unavailable_potion_slot():
     assert isinstance(action, EndTurnAction)
 
 
+def test_combat_mask_skips_string_empty_potion_slot():
+    encoder = ActionEncoderV2()
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        potions=["Potion Slot"],
+        end_available=True,
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert mask[space.END_TURN_ACTION]
+    assert not any(mask[space.USE_POTION_OFFSET:space.END_TURN_ACTION])
+
+
+def test_combat_decoder_falls_back_for_string_empty_potion_slot():
+    encoder = ActionEncoderV2()
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        potions=["Potion Slot"],
+        end_available=True,
+    )
+
+    action = encoder.decode_action(space.encode_use_potion(0, 0), game)
+
+    assert isinstance(action, EndTurnAction)
+
+
 def test_map_choice_truncation():
     encoder = ActionEncoderV2()
     game = _make_game(

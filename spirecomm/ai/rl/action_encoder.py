@@ -66,6 +66,15 @@ class ActionEncoder:
         pass
 
     @staticmethod
+    def _potion_id(potion):
+        return (
+            getattr(potion, "potion_id", None)
+            or getattr(potion, "name", None)
+            or getattr(potion, "id", None)
+            or potion
+        )
+
+    @staticmethod
     def _is_screen_type(
         game: Game, screen_type: str, case_sensitive: bool = True
     ) -> bool:
@@ -383,7 +392,7 @@ class ActionEncoder:
             return self._fallback_combat_action(game)
 
         potion = potions[potion_index]
-        if getattr(potion, "potion_id", None) == "Potion Slot":
+        if self._potion_id(potion) == "Potion Slot":
             return self._fallback_combat_action(game)
         if hasattr(potion, "can_use") and not potion.can_use:
             return self._fallback_combat_action(game)
@@ -773,10 +782,7 @@ class ActionEncoder:
                 for potion_idx in range(max_potion_slots):
                     potion = potions[potion_idx]
                     # Skip empty potion slots
-                    if (
-                        hasattr(potion, "potion_id")
-                        and potion.potion_id == "Potion Slot"
-                    ):
+                    if self._potion_id(potion) == "Potion Slot":
                         continue
                     # Only enable if potion can be used
                     if hasattr(potion, "can_use") and not potion.can_use:
