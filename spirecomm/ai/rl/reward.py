@@ -84,6 +84,13 @@ class RewardCalculator:
         return result if result is not None else default
 
     @staticmethod
+    def _safe_int(value, default: int = 0) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
     def _is_truthy(value: str) -> bool:
         return str(value).strip().lower() in ("1", "true", "yes", "y", "on")
 
@@ -265,10 +272,14 @@ class RewardCalculator:
                 info["monster_count_last"] = len(last_monsters)
                 info["monster_count_current"] = len(current_monsters)
                 last_total_hp = sum(
-                    m.current_hp for m in last_monsters if hasattr(m, "current_hp")
+                    self._safe_int(getattr(m, "current_hp", 0))
+                    for m in last_monsters
+                    if hasattr(m, "current_hp")
                 )
                 current_total_hp = sum(
-                    m.current_hp for m in current_monsters if hasattr(m, "current_hp")
+                    self._safe_int(getattr(m, "current_hp", 0))
+                    for m in current_monsters
+                    if hasattr(m, "current_hp")
                 )
                 info["total_monster_hp_delta"] = last_total_hp - current_total_hp
 
@@ -280,7 +291,7 @@ class RewardCalculator:
                 else:
                     key = idx
                 if hasattr(monster, 'current_hp'):
-                    current_monster_hp[key] = monster.current_hp
+                    current_monster_hp[key] = self._safe_int(monster.current_hp)
 
             # Compare with last state to detect damage and kills
             for idx, last_monster in enumerate(last_monsters):
@@ -289,7 +300,7 @@ class RewardCalculator:
                 else:
                     key = idx
 
-                last_hp = last_monster.current_hp if hasattr(last_monster, 'current_hp') else 0
+                last_hp = self._safe_int(getattr(last_monster, 'current_hp', 0))
                 was_vulnerable = self._get_power_amount(last_monster, "Vulnerable") > 0
 
                 # Check if monster still exists
@@ -316,13 +327,21 @@ class RewardCalculator:
 
             # Check if all monsters are now dead
             if len(current_monsters) > 0:
-                all_alive = any(m.current_hp > 0 for m in current_monsters if hasattr(m, 'current_hp'))
+                all_alive = any(
+                    self._safe_int(getattr(m, 'current_hp', 0)) > 0
+                    for m in current_monsters
+                    if hasattr(m, 'current_hp')
+                )
                 all_monsters_killed = not all_alive
 
             # Track HP lost
             hp_lost = 0
-            current_hp = self._safe_attr(current_game, 'player', 'current_hp', default=0)
-            last_hp = self._safe_attr(last_game, 'player', 'current_hp', default=0)
+            current_hp = self._safe_int(
+                self._safe_attr(current_game, 'player', 'current_hp', default=0)
+            )
+            last_hp = self._safe_int(
+                self._safe_attr(last_game, 'player', 'current_hp', default=0)
+            )
 
             if current_hp < last_hp:
                 hp_lost = (last_hp - current_hp)
@@ -377,11 +396,12 @@ class RewardCalculator:
             finishing_kills = 0
             if had_alive_monsters:
                 for monster in last_monsters:
-                    if hasattr(monster, "current_hp") and monster.current_hp > 0:
-                        finishing_damage += monster.current_hp
+                    monster_hp = self._safe_int(getattr(monster, "current_hp", 0))
+                    if hasattr(monster, "current_hp") and monster_hp > 0:
+                        finishing_damage += monster_hp
                         finishing_kills += 1
                         if self._get_power_amount(monster, "Vulnerable") > 0:
-                            finishing_vulnerable_damage += monster.current_hp
+                            finishing_vulnerable_damage += monster_hp
             combat_reward = self.calculate_combat_reward(
                 last_game,
                 damage_dealt=finishing_damage,
@@ -535,7 +555,7 @@ class RewardCalculator:
 
     def _had_alive_monsters(self, monsters: Iterable) -> bool:
         for monster in monsters:
-            if hasattr(monster, 'current_hp') and monster.current_hp > 0:
+            if hasattr(monster, 'current_hp') and self._safe_int(monster.current_hp) > 0:
                 return True
         return False
 
