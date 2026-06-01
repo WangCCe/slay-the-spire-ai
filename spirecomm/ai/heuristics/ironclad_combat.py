@@ -974,7 +974,7 @@ class IroncladCombatPlanner(CombatPlanner):
             )
             return low_hp_targets[:1]  # Just the lowest HP target
 
-        is_attack = hasattr(card, 'type') and card.type == CardType.ATTACK
+        is_attack = is_attack_card(card)
 
         if is_attack:
             # Separate killable and non-killable targets
