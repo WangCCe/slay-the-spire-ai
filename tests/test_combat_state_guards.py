@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from spirecomm.ai.heuristics.combat_state import (
     draw_pile_count,
     monster_power_amount,
+    player_has_power,
     player_debuff_stacks,
     player_power_amount,
     power_name,
@@ -92,6 +93,25 @@ def test_player_debuff_stacks_reads_player_powers_with_one_default_amount():
     assert player_debuff_stacks(context, "Weak") == 2
     assert player_debuff_stacks(context, "Frail") == 1
     assert player_debuff_stacks(context, "Missing") == 0
+
+
+def test_player_has_power_checks_presence_independent_of_amount():
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            player=SimpleNamespace(
+                powers=[
+                    SimpleNamespace(power_name="Juggernaut", amount=0),
+                    SimpleNamespace(power_id="Rupture"),
+                ]
+            )
+        )
+    )
+
+    assert player_has_power(context, "Juggernaut") is True
+    assert player_has_power(context, "Rupture") is True
+    assert player_has_power(context, "Missing") is False
+    assert player_has_power(SimpleNamespace(), "Rupture") is False
+    assert player_has_power(None, "Rupture") is False
 
 
 def test_monster_power_amount_prefers_direct_amount_then_power_amount():

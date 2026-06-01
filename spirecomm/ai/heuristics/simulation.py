@@ -22,7 +22,13 @@ from spirecomm.ai.intent_utils import intent_is_attack, intent_is_unknown, inten
 from spirecomm.ai.monster_names import canonical_live_monster_name, monster_field
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
-from spirecomm.ai.heuristics.combat_state import draw_pile_count
+from spirecomm.ai.heuristics.combat_state import (
+    draw_pile_count,
+    player_debuff_stacks,
+    player_has_power,
+    player_power_amount,
+    power_name,
+)
 from spirecomm.ai.heuristics.card_costs import (
     effective_card_cost,
     is_x_cost_card,
@@ -529,30 +535,14 @@ class SimulationState:
 
     def _get_player_debuff_stacks(self, context: DecisionContext, power_name: str) -> int:
         """Get debuff stacks on the player from powers."""
-        if not hasattr(context.game, 'player') or not hasattr(context.game.player, 'powers'):
-            return 0
-
-        for power in context.game.player.powers:
-            if self._power_name(power) == power_name:
-                amount = getattr(power, 'amount', None)
-                return amount if amount is not None else 1
-        return 0
+        return player_debuff_stacks(context, power_name)
 
     def _get_player_power_amount(self, context: DecisionContext, power_name: str) -> int:
         """Get power amount on the player from powers."""
-        if not hasattr(context.game, 'player') or not hasattr(context.game.player, 'powers'):
-            return 0
-
-        for power in context.game.player.powers:
-            if self._power_name(power) == power_name:
-                amount = getattr(power, 'amount', None)
-                return amount if amount is not None else 0
-        return 0
+        return player_power_amount(context, power_name)
 
     def _has_player_power(self, context: DecisionContext, power_name: str) -> bool:
-        if not hasattr(context.game, 'player') or not hasattr(context.game.player, 'powers'):
-            return False
-        return any(self._power_name(power) == power_name for power in context.game.player.powers)
+        return player_has_power(context, power_name)
 
     def _get_player_hex_stacks(self, context: DecisionContext) -> int:
         """Hex is a persistent Chosen debuff; amount may be -1 in game state."""
@@ -745,11 +735,7 @@ class SimulationState:
         return int(getattr(context, 'ascension_level', 0) or 0)
 
     def _power_name(self, power: Any) -> Optional[str]:
-        return (
-            getattr(power, 'name', None)
-            or getattr(power, 'power_name', None)
-            or getattr(power, 'power_id', None)
-        )
+        return power_name(power)
 
     def clone(self) -> 'SimulationState':
         """Create a deep copy of this state."""

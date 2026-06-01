@@ -31,6 +31,12 @@ def player_debuff_stacks(context: Any, name: str) -> int:
     return _power_amount(powers, name, 1)
 
 
+def player_has_power(context: Any, name: str) -> bool:
+    player = getattr(getattr(context, 'game', None), 'player', None)
+    powers = getattr(player, 'powers', []) if player is not None else []
+    return any(power_name(power) == name for power in powers)
+
+
 def monster_power_amount(monster: Any, name: str) -> int:
     direct_amount = getattr(monster, name.lower(), None)
     if direct_amount is not None:
