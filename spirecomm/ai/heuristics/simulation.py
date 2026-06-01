@@ -152,6 +152,8 @@ DAMAGE_UPGRADE_BONUS = {
     'Strike': 3,
     'Thunderclap': 3,
     'Lesson Learned': 3,
+    'Flash of Steel': 3,
+    'Swift Strike': 3,
     'Headbutt': 3,
     'Cleave': 3,
     'Bane': 3,
@@ -161,6 +163,7 @@ DAMAGE_UPGRADE_BONUS = {
     'Clash': 4,
     'Blood for Blood': 4,
     'Searing Blow': 4,
+    'Dramatic Entrance': 4,
 
     # +5 damage
     'Wild Strike': 5,

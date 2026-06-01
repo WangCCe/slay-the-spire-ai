@@ -5718,6 +5718,87 @@ def test_upgraded_lesson_learned_uses_13_damage(monkeypatch):
     assert result.total_damage_dealt == 13
 
 
+def _patch_simple_colorless_attack_loader(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "flash of steel": {
+            "name": "Flash of Steel",
+            "description": "Deal 3 damage. Draw 1 card.",
+        },
+        "swift strike": {
+            "name": "Swift Strike",
+            "description": "Deal 7 damage.",
+        },
+        "dramatic entrance": {
+            "name": "Dramatic Entrance",
+            "description": "Innate. Deal 8 damage to ALL enemies. Exhaust.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+
+def test_upgraded_flash_of_steel_uses_6_damage(monkeypatch):
+    _patch_simple_colorless_attack_loader(monkeypatch)
+
+    flash_plus = _card("Flash of Steel", "Flash of Steel+", cost=0, upgrades=1)
+    context = _combat_context([flash_plus], energy=0, monsters=[_louse(current_hp=20)])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        flash_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 6
+
+
+def test_upgraded_swift_strike_uses_10_damage(monkeypatch):
+    _patch_simple_colorless_attack_loader(monkeypatch)
+
+    swift_plus = _card("Swift Strike", "Swift Strike+", cost=0, upgrades=1)
+    context = _combat_context([swift_plus], energy=0, monsters=[_louse(current_hp=20)])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        swift_plus,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 10
+
+
+def test_upgraded_dramatic_entrance_uses_12_aoe_damage(monkeypatch):
+    _patch_simple_colorless_attack_loader(monkeypatch)
+
+    dramatic_plus = _card(
+        "Dramatic Entrance",
+        "Dramatic Entrance+",
+        cost=0,
+        upgrades=1,
+        has_target=False,
+    )
+    context = _combat_context(
+        [dramatic_plus],
+        energy=0,
+        monsters=[_louse(current_hp=20), _louse(current_hp=20)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        dramatic_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 24
+
+
 def test_feed_does_not_gain_max_hp_from_minion(monkeypatch):
     _patch_feed_loader(monkeypatch)
 
