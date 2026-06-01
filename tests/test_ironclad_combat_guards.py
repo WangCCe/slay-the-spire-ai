@@ -11489,6 +11489,71 @@ def test_target_exploration_ignores_counted_upgraded_aoe_target_flag():
     assert should_explore is False
 
 
+def test_ironclad_beam_target_exploration_accepts_name_only_card():
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        damage=6,
+        upgrades=0,
+        has_target=True,
+        is_playable=True,
+    )
+    monsters = [_louse(current_hp=30), _louse(current_hp=30)]
+    context = _combat_context([strike], energy=1, monsters=monsters)
+    planner = IroncladCombatPlanner()
+
+    planner._should_explore_targets = lambda _context, _elapsed_time: True
+    planner.fast_score_action = lambda _card, _state, _context: 10
+    planner._rank_targets = lambda _card, _context, _state: [
+        (monsters[0], 0, 10),
+        (monsters[1], 1, 9),
+    ]
+    planner._prune_targets = lambda _card, ranked_targets, _context, _state: ranked_targets
+    planner._is_single_target_attack = lambda _card, _target_idx: True
+    planner.simulator.simulate_card_play = lambda state, *_args, **_kwargs: state.clone()
+    planner._score_sequence = lambda sequence, *_args: len(sequence)
+
+    sequence = planner._beam_search_turn(context, [strike], beam_width=10, max_depth=1)
+
+    assert sequence
+    assert sequence[0].card is strike
+
+
+def test_heuristic_beam_target_exploration_accepts_name_only_card():
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        damage=6,
+        upgrades=0,
+        has_target=True,
+        is_playable=True,
+    )
+    monsters = [_louse(current_hp=30), _louse(current_hp=30)]
+    context = _combat_context([strike], energy=1, monsters=monsters)
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+
+    planner._should_explore_targets = lambda _context, _elapsed_time: True
+    planner._get_potion_actions = lambda _context, _state: []
+    planner.fast_score_action = lambda _card, _state, _context: 10
+    planner._rank_targets = lambda _card, _context, **_kwargs: [
+        (monsters[0], 10),
+        (monsters[1], 9),
+    ]
+    planner._prune_targets = lambda _card, ranked_targets, _context, **_kwargs: ranked_targets
+    planner.simulator.simulate_card_play = lambda state, *_args, **_kwargs: state.clone()
+    planner.simulator.calculate_outcome_score = lambda *_args, **_kwargs: 1
+    planner.card_evaluator.evaluate_card = lambda _card, _context: 0
+
+    sequence = planner._beam_search_plan(context)
+
+    assert sequence
+    assert sequence[0].card is strike
+
+
 def test_beam_search_does_not_set_primary_target_for_counted_upgraded_aoe():
     counted_cleave = _card("Cleave+1", "Cleave+1", cost=1, has_target=True, upgrades=1)
     strike = _card("Strike_R", "Strike", cost=1, has_target=True)

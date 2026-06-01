@@ -326,7 +326,8 @@ class IroncladCombatPlanner(CombatPlanner):
                         if pruned_targets and len(pruned_targets) > 1:
                             # Explore multiple targets
                             targets_to_explore = pruned_targets[:M_targets]
-                            logger.info(f"[TARGET_EXPLORE] Depth {depth}: exploring {len(targets_to_explore)} targets for {card.card_id}")
+                            card_name = canonical_card_name(card)
+                            logger.info(f"[TARGET_EXPLORE] Depth {depth}: exploring {len(targets_to_explore)} targets for {card_name}")
 
                             for target, target_idx, threat in targets_to_explore:
                                 # Simulate
