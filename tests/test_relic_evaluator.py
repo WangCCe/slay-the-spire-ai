@@ -6,7 +6,36 @@ for evaluating relics based on their actual effects and synergies.
 """
 
 import sys
+from types import SimpleNamespace
 from typing import Dict
+
+
+def test_relic_evaluator_accepts_name_only_relics(monkeypatch):
+    from spirecomm.ai.heuristics import relic as relic_module
+    from spirecomm.ai.heuristics.relic import RelicEvaluator
+
+    def fake_relic_data(relic_name):
+        if relic_name in {"burning blood", "reaper"}:
+            return {
+                "description": "Heal 6 HP at the end of combat.",
+                "tier": "starter",
+            }
+        return None
+
+    monkeypatch.setattr(relic_module.game_data_loader, "get_relic_data", fake_relic_data)
+    burning_blood = SimpleNamespace(name="Burning Blood")
+    reaper = SimpleNamespace(name="Reaper")
+    context = SimpleNamespace(
+        game=SimpleNamespace(relics=[burning_blood, reaper]),
+        deck_archetype="balanced",
+        player_hp_pct=0.5,
+        act=2,
+        floor=15,
+    )
+
+    scores = RelicEvaluator().evaluate(context)
+
+    assert scores["Burning Blood"] > 0
 
 
 def test_imports():

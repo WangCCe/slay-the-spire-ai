@@ -12,6 +12,7 @@ import re
 from typing import Dict, List, Optional, Any
 from spirecomm.ai.decision.base import DecisionEngine, DecisionContext
 from spirecomm.data.loader import game_data_loader
+from spirecomm.spire.identifiers import relic_id as normalized_relic_id
 from spirecomm.spire.relic import Relic
 
 
@@ -100,7 +101,10 @@ class RelicEvaluator(DecisionEngine):
         
         scores = {}
         for relic in context.game.relics:
-            scores[relic.relic_id] = self.evaluate_relic(relic, context)
+            relic_key = normalized_relic_id(relic)
+            if relic_key is None:
+                continue
+            scores[relic_key] = self.evaluate_relic(relic, context)
         
         return scores
     
@@ -116,7 +120,10 @@ class RelicEvaluator(DecisionEngine):
             Numerical score representing the relic's value (higher is better)
         """
         # Get relic data from game data loader
-        relic_name = relic.relic_id.replace('+', '').lower()
+        relic_key = normalized_relic_id(relic)
+        if relic_key is None:
+            return 0.0
+        relic_name = str(relic_key).replace('+', '').lower()
         relic_data = game_data_loader.get_relic_data(relic_name)
         
         if not relic_data:
@@ -331,7 +338,10 @@ class RelicEvaluator(DecisionEngine):
             return 0.0
         
         bonus = 0.0
-        relic_id = relic.relic_id.lower()
+        relic_key = normalized_relic_id(relic)
+        if relic_key is None:
+            return 0.0
+        relic_key = str(relic_key).lower()
         
         # Check for specific relic combinations
         relic_combinations = {
@@ -356,11 +366,17 @@ class RelicEvaluator(DecisionEngine):
                 'dark embrace': 1.5,  # Draw exhaust synergy
             },
         }
-        
+
+        context_relic_ids = set()
+        for owned_relic in context.game.relics:
+            owned_relic_id = normalized_relic_id(owned_relic)
+            if owned_relic_id is not None:
+                context_relic_ids.add(str(owned_relic_id).lower())
+
         # Apply combination bonuses
-        if relic_id in relic_combinations:
-            for other_relic_id, combo_bonus in relic_combinations[relic_id].items():
-                if any(r.relic_id.lower() == other_relic_id for r in context.game.relics):
+        if relic_key in relic_combinations:
+            for other_relic_id, combo_bonus in relic_combinations[relic_key].items():
+                if other_relic_id in context_relic_ids:
                     bonus += combo_bonus
         
         return bonus
