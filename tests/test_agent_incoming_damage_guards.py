@@ -456,6 +456,51 @@ def test_targeted_damage_potion_uses_effect_metadata_for_targeting():
     assert action.target_monster is high_hp
 
 
+def test_targeted_damage_potion_orders_numeric_string_hp_numerically():
+    lower_hp = SimpleNamespace(
+        current_hp="9",
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=12,
+        move_hits=1,
+        block=0,
+    )
+    higher_hp = SimpleNamespace(
+        current_hp="12",
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=12,
+        move_hits=1,
+        block=0,
+    )
+    potion = Potion(
+        potion_id="FirePotion",
+        name="Fire Potion",
+        can_use=True,
+        can_discard=True,
+        requires_target=True,
+    )
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.game_tracker = None
+    agent.game = SimpleNamespace(
+        monsters=[lower_hp, higher_hp],
+        player=SimpleNamespace(block=0),
+        current_hp=80,
+        max_hp=80,
+        act=1,
+        room_type="Monster",
+        get_real_potions=lambda: [potion],
+    )
+
+    action = agent.use_next_potion()
+
+    assert isinstance(action, PotionAction)
+    assert action.potion is potion
+    assert action.target_monster is higher_hp
+
+
 def test_targeted_debuff_potion_uses_effect_metadata_for_targeting():
     low_hp = SimpleNamespace(
         current_hp=10,
