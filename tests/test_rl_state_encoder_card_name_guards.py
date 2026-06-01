@@ -47,6 +47,24 @@ def test_rl_state_encoder_hand_card_hash_strips_counted_upgrade_suffix():
     assert upgraded_features[0] == base_features[0]
 
 
+def test_rl_state_encoder_hand_card_hash_accepts_name_only_card():
+    encoder = StateEncoder()
+    card = SimpleNamespace(
+        name="Bash",
+        type=CardType.ATTACK,
+        cost=2,
+        cost_for_turn=2,
+        upgrades=0,
+        has_target=True,
+        exhausts=False,
+        properties=[],
+    )
+
+    features = encoder._encode_single_card(card)
+
+    assert features[0] == encoder._stable_hash("Bash", 100) / 100.0
+
+
 def test_rl_state_encoder_deck_composition_strips_counted_upgrade_suffix():
     encoder = StateEncoder()
 

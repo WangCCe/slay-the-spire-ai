@@ -567,6 +567,8 @@ class StateEncoder:
     def _card_hash_key(card: Card):
         card_id = getattr(card, 'card_id', None)
         if card_id is None:
+            card_id = getattr(card, 'name', None)
+        if card_id is None:
             card_id = getattr(card, 'id', None)
         if card_id is None:
             return None
