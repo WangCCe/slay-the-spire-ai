@@ -1,0 +1,84 @@
+from types import SimpleNamespace
+
+import numpy as np
+
+from spirecomm.ai.rl.agent import RLAgent
+from spirecomm.communication.action import PlayCardAction
+
+
+class _ActionEncoder:
+    USE_POTION_OFFSET = 5
+    END_TURN_ACTION = 9
+
+    def get_action_mask(self, _game):
+        mask = [False] * 10
+        mask[0] = True
+        return mask
+
+    def decode_action(self, _action_idx, _game):
+        return PlayCardAction(card_index=0)
+
+
+class _Trainer:
+    epsilon = 0.0
+    total_steps = 0
+
+    def select_action(self, _state, _mask, training, epsilon_override=None):
+        return 0
+
+    def store_transition(self, *args, **kwargs):
+        return None
+
+    def train_step(self):
+        return None
+
+
+class _RewardCalculator:
+    def __init__(self):
+        self.action_context = None
+
+    def calculate_step_reward(self, *args, **kwargs):
+        self.action_context = kwargs.get("action_context")
+        return 0.0
+
+
+def _game(card):
+    return SimpleNamespace(
+        screen_type=None,
+        in_combat=True,
+        floor=1,
+        turn=1,
+        room_type="Monster",
+        player=SimpleNamespace(current_hp=70),
+        hand=[card],
+    )
+
+
+def test_rl_action_context_accepts_card_type_attribute_for_played_card():
+    agent = RLAgent.__new__(RLAgent)
+    agent.state_encoder = SimpleNamespace(encode=lambda _game: np.zeros(3, dtype=float))
+    agent.action_encoder = _ActionEncoder()
+    agent.reward_calculator = _RewardCalculator()
+    agent.trainer = _Trainer()
+    agent.training_mode = True
+    agent.failed_actions = set()
+    agent.consecutive_failures = {}
+    agent.last_state_key = None
+    agent.last_logged_turn = None
+    agent.last_state = np.zeros(3, dtype=float)
+    agent.pending_reward_action = 0
+    agent.pending_reward_mask = np.array(agent.action_encoder.get_action_mask(None), dtype=bool)
+    agent.boss_min_epsilon = 0.0
+    card = SimpleNamespace(
+        name="Defend",
+        card_type="CardType.SKILL",
+        is_playable=True,
+        has_target=False,
+    )
+    agent.pending_reward_game = _game(card)
+    current_game = _game(card)
+
+    action = agent.get_next_action_in_game(current_game)
+
+    assert isinstance(action, PlayCardAction)
+    assert agent.reward_calculator.action_context["played_card_type"] == "SKILL"

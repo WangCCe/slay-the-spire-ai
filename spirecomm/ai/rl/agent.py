@@ -315,7 +315,7 @@ class RLAgent:
                         last_action_name = "DecodeError"
                     card = None
                     card_name = None
-                    card_type_name = None
+                    played_card_type = None
                     card_cost = None
                     if last_action_name == "PlayCardAction":
                         try:
@@ -328,8 +328,7 @@ class RLAgent:
                                     card = hand[idx]
                             if card is not None:
                                 card_name = getattr(card, "name", None) or getattr(card, "card_id", None)
-                                card_type = getattr(card, "type", None)
-                                card_type_name = getattr(card_type, "name", None) if card_type is not None else None
+                                played_card_type = card_type_name(card) or None
                                 card_cost = getattr(card, "cost_for_turn", None)
                                 if card_cost is None:
                                     card_cost = getattr(card, "cost", None)
@@ -343,14 +342,14 @@ class RLAgent:
                         action_context={
                             "action_name": last_action_name,
                             "had_play_options": had_play_options,
-                            "played_card_type": card_type_name,
+                            "played_card_type": played_card_type,
                         },
                     )
                     if reward_info:
                         action_detail = ""
                         if last_action_name == "PlayCardAction":
                             if card_name is not None:
-                                action_detail = f" card={card_name} type={card_type_name} cost={card_cost}"
+                                action_detail = f" card={card_name} type={played_card_type} cost={card_cost}"
                         logger.info(
                             "[RL_REWARD] floor=%s turn=%s action_idx=%s action=%s"
                             "%s reward=%.4f combat=%.4f dmg=%s hp_lost=%s turn_end=%s "

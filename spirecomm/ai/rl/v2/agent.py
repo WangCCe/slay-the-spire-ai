@@ -14,6 +14,7 @@ from spirecomm.communication.action import EndTurnAction, StartGameAction, State
 from spirecomm.spire.character import PlayerClass
 from spirecomm.spire.game import Game
 
+from spirecomm.ai.heuristics.card_types import card_type_name
 from spirecomm.ai.rl.reward import RewardCalculator
 from spirecomm.ai.rl.checkpoint_io import load_torch_checkpoint
 
@@ -386,10 +387,7 @@ class RLAgentV2:
                 hand = getattr(pending.game, "hand", []) or []
                 if card_index is not None and 0 <= int(card_index) < len(hand):
                     card = hand[int(card_index)]
-                    card_type = getattr(card, "type", None)
-                    action_context["played_card_type"] = (
-                        getattr(card_type, "name", None) if card_type is not None else None
-                    )
+                    action_context["played_card_type"] = card_type_name(card) or None
             except Exception:
                 action_context["played_card_type"] = None
 
