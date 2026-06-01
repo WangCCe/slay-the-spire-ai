@@ -116,6 +116,14 @@ class CombatEndingDetector:
             return 0
 
     @staticmethod
+    def _monster_hp_with_block(monster: Monster) -> int:
+        return max(
+            0,
+            CombatEndingDetector._safe_int(getattr(monster, 'current_hp', 0), default=0)
+            + CombatEndingDetector._safe_int(getattr(monster, 'block', 0), default=0),
+        )
+
+    @staticmethod
     def _card_requires_target(card: Card) -> bool:
         return card_requires_target(card, AOE_ATTACK_NAMES)
 
@@ -155,7 +163,10 @@ class CombatEndingDetector:
             logger.info(f"[LETHAL_ENTRY] Affordable damage calculated: {affordable_damage}")
 
             # Step 2: Calculate total monster HP (including block)
-            total_monster_hp = sum(m.current_hp + m.block for m in context.monsters_alive)
+            total_monster_hp = sum(
+                self._monster_hp_with_block(monster)
+                for monster in context.monsters_alive
+            )
 
             # Log vulnerable-related intermediate values for verification
             vulnerable_targets = []
@@ -279,7 +290,7 @@ class CombatEndingDetector:
 
         # Sort monsters by HP (kill weakest first)
         combined = list(zip(remaining_monsters, remaining_monster_indices))
-        combined.sort(key=lambda pair: pair[0].current_hp)
+        combined.sort(key=lambda pair: self._monster_hp_with_block(pair[0]))
         remaining_monsters = [m for m, _ in combined]
         remaining_monster_indices = [i for _, i in combined]
 
@@ -312,7 +323,7 @@ class CombatEndingDetector:
             return targeted_sequence
 
         for monster, monster_idx in zip(remaining_monsters, remaining_monster_indices):
-            damage_needed = monster.current_hp + monster.block
+            damage_needed = self._monster_hp_with_block(monster)
             while damage_needed > 0:
                 best_card = None
                 best_cost = 0
@@ -411,7 +422,7 @@ class CombatEndingDetector:
                     damage,
                     available_energy,
                 )
-            if damage < monster.current_hp + monster.block:
+            if damage < self._monster_hp_with_block(monster):
                 return False
         return True
 
@@ -824,7 +835,7 @@ class CombatEndingDetector:
 
         sequence_card_keys = {card_play_key(card) for card in sequence_cards}
         starting_hp = tuple(
-            max(0, monster.current_hp + monster.block)
+            self._monster_hp_with_block(monster)
             for monster in context.monsters_alive
         )
         starting_vulnerable = tuple(
@@ -1286,7 +1297,7 @@ class CombatEndingDetector:
                     monster_idx,
                     available_energy,
                 )
-                hp_after_aoe = monster.current_hp + monster.block - damage
+                hp_after_aoe = self._monster_hp_with_block(monster) - damage
                 if hp_after_aoe > 0:
                     survivors.append((hp_after_aoe, monster_idx, monster))
 
@@ -1570,10 +1581,18 @@ class CombatEndingDetector:
             return True  # Single monster, no targeting issue
         elif num_monsters == 2:
             # Need 30% more damage to overcome targeting inefficiency
-            return affordable_damage >= sum(m.current_hp + m.block for m in context.monsters_alive) * 1.3
+            total_monster_hp = sum(
+                self._monster_hp_with_block(monster)
+                for monster in context.monsters_alive
+            )
+            return affordable_damage >= total_monster_hp * 1.3
         else:
             # Need 50% more damage for 3+ monsters
-            return affordable_damage >= sum(m.current_hp + m.block for m in context.monsters_alive) * 1.5
+            total_monster_hp = sum(
+                self._monster_hp_with_block(monster)
+                for monster in context.monsters_alive
+            )
+            return affordable_damage >= total_monster_hp * 1.5
 
     def _calculate_max_damage(self, context: DecisionContext) -> int:
         """

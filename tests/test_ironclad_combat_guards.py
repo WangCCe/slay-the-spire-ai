@@ -9227,6 +9227,26 @@ def test_lethal_detector_allows_exact_single_target_kill(monkeypatch):
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["strike"]
 
 
+def test_lethal_detector_accepts_numeric_string_monster_hp(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp="6")])
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 6
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["strike"]
+
+
 def test_lethal_detector_counts_string_attack_cards(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
