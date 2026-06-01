@@ -30,6 +30,7 @@ from spirecomm.ai.heuristics.card_types import (
     is_attack_card,
 )
 from spirecomm.ai.heuristics.combat_state import power_signature
+from spirecomm.ai.heuristics.potions import potion_can_use
 
 # Note: Logging is configured in main.py to write to ai_debug.log
 # No need to configure here
@@ -631,8 +632,8 @@ class SimpleAgent:
 
     def use_next_potion(self):
         for potion in self.game.get_real_potions():
-            if potion.can_use:
-                if potion.requires_target:
+            if potion_can_use(potion):
+                if getattr(potion, "requires_target", False):
                     return PotionAction(
                         True, potion=potion, target_monster=self.get_low_hp_target()
                     )

@@ -7,6 +7,7 @@ from spirecomm.communication.action import (
     ChooseAction,
     CombatRewardAction,
     PlayCardAction,
+    PotionAction,
 )
 from spirecomm.spire.card import CardType
 from spirecomm.spire.screen import ScreenType
@@ -328,6 +329,17 @@ def test_play_card_action_accepts_missing_is_playable_on_partial_attack():
     assert isinstance(action, PlayCardAction)
     assert action.card is strike
     assert action.target_monster is low_hp
+
+
+def test_simple_agent_potion_action_accepts_missing_can_use_and_requires_target():
+    potion = SimpleNamespace(name="Strength Potion")
+    agent = _agent(get_real_potions=lambda: [potion])
+
+    action = agent.use_next_potion()
+
+    assert isinstance(action, PotionAction)
+    assert action.potion is potion
+    assert action.target_monster is None
 
 
 def test_play_card_action_low_hp_cleanup_does_not_target_name_only_aoe_without_has_target():
