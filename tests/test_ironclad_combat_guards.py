@@ -11715,6 +11715,48 @@ def test_ironclad_sequence_score_accepts_string_player_hp_for_hp_cost_cards():
     assert string_score == enum_score
 
 
+def test_ironclad_sequence_score_accepts_string_player_hp_pct_for_immolate():
+    immolate = _card(
+        "Immolate",
+        "Immolate",
+        card_type=CardType.ATTACK,
+        cost=2,
+    )
+    string_immolate = _card(
+        "Immolate",
+        "Immolate",
+        card_type=CardType.ATTACK,
+        cost=2,
+    )
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+
+    enum_context = _combat_context([immolate], energy=2, monsters=[_louse(current_hp=100)])
+    enum_context.player_hp_pct = 0.2
+    enum_initial = SimulationState(enum_context)
+    enum_final = enum_initial.clone()
+    enum_score = planner._score_sequence(
+        [PlayCardAction(card=immolate, target_monster=enum_context.monsters_alive[0])],
+        enum_initial,
+        enum_final,
+        enum_context,
+    )
+
+    string_context = _combat_context([string_immolate], energy=2, monsters=[_louse(current_hp=100)])
+    string_context.player_hp_pct = "0.2"
+    string_initial = SimulationState(string_context)
+    string_final = string_initial.clone()
+    string_score = planner._score_sequence(
+        [PlayCardAction(card=string_immolate, target_monster=string_context.monsters_alive[0])],
+        string_initial,
+        string_final,
+        string_context,
+    )
+
+    assert string_score == enum_score
+
+
 def test_ironclad_sequence_score_accepts_name_only_skill_against_gremlin_nob():
     defend = SimpleNamespace(
         name="Defend",
