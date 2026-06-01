@@ -205,7 +205,8 @@ class IroncladCombatPlanner(CombatPlanner):
         # Log card IDs for debugging
         card_ids = [_format_card_for_log(card) for card in playable_cards]
         logger.info(f"[COMBAT] Cards in hand: {', '.join(card_ids)}")
-        logger.info(f"[COMBAT] Monsters: {len(context.monsters_alive)}, HP: {context.player_hp_pct:.1%}")
+        player_hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
+        logger.info(f"[COMBAT] Monsters: {len(context.monsters_alive)}, HP: {player_hp_pct:.1%}")
 
         # Log monster intents for debugging over-defense issues
         for i, monster in enumerate(context.monsters_alive):

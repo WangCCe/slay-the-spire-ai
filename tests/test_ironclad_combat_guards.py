@@ -79,6 +79,36 @@ def test_beam_search_can_end_turn_when_every_play_is_worse_than_empty():
     assert planner._beam_search_turn(_context_with_one_playable(card), [card], 10, 4) == []
 
 
+def test_ironclad_plan_turn_accepts_string_player_hp_pct_in_opening_log():
+    strike = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        cost=1,
+        is_playable=True,
+    )
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=50)])
+    context.player_hp_pct = "0.5"
+    planner = IroncladCombatPlanner()
+    planner.combat_ending_detector.can_kill_all = lambda _context: False
+    planner.timing_classifier.classify_turn = lambda _context: SimpleNamespace(
+        turn_timing=SimpleNamespace(value="safe"),
+        current_damage=0,
+        future_damage_curve=[],
+        safe_windows=[],
+    )
+    planner.balance_strategy.get_balance_weights = lambda *_args: SimpleNamespace(
+        damage_weight=1.0,
+        block_weight=1.0,
+        kill_bonus=0.0,
+    )
+    planner._get_adaptive_parameters = lambda *_args: (1, 1)
+    planner._beam_search_turn = lambda *_args: []
+
+    assert planner.plan_turn(context) == []
+
+
 def _louse(current_hp=50):
     return Monster(
         name="Louse",
