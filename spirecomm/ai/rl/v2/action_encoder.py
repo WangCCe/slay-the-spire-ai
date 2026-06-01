@@ -276,9 +276,9 @@ class ActionEncoderV2:
         return mask
 
     def _resolve_card_index(self, game: Game, action: PlayCardAction) -> Optional[int]:
-        card_index = getattr(action, "card_index", None)
-        if card_index is not None and card_index >= 0:
-            return int(card_index)
+        card_index = self._safe_int(getattr(action, "card_index", None), default=-1)
+        if card_index >= 0:
+            return card_index
         card = getattr(action, "card", None)
         if card is None:
             return None
@@ -294,9 +294,9 @@ class ActionEncoderV2:
             return None
 
     def _resolve_potion_index(self, game: Game, action: PotionAction) -> Optional[int]:
-        potion_index = getattr(action, "potion_index", None)
-        if potion_index is not None and potion_index >= 0:
-            return int(potion_index)
+        potion_index = self._safe_int(getattr(action, "potion_index", None), default=-1)
+        if potion_index >= 0:
+            return potion_index
         potion = getattr(action, "potion", None)
         if potion is None:
             return None

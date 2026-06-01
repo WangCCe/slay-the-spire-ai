@@ -67,6 +67,35 @@ def test_encode_potion_action_uses_get_real_potions_without_raw_potions():
     assert action_index == space.encode_use_potion(0, 0)
 
 
+def test_encode_play_card_action_accepts_numeric_string_card_index():
+    encoder = ActionEncoderV2()
+    game = _make_game(screen_type=None, in_combat=True, hand=[_make_card()])
+
+    action_index = encoder.encode_action(
+        PlayCardAction(card_index="0", target_index=None),
+        game,
+    )
+
+    assert action_index == space.encode_play_card(0, 0)
+
+
+def test_encode_potion_action_accepts_numeric_string_potion_index():
+    encoder = ActionEncoderV2()
+    potion = SimpleNamespace(
+        potion_id="Strength Potion",
+        can_use=True,
+        requires_target=False,
+    )
+    game = _make_game(screen_type=None, in_combat=True, potions=[potion])
+
+    action_index = encoder.encode_action(
+        PotionAction(True, potion_index="0"),
+        game,
+    )
+
+    assert action_index == space.encode_use_potion(0, 0)
+
+
 def test_combat_mask_targets():
     encoder = ActionEncoderV2()
     game = _make_game(
