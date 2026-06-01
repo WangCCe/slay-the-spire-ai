@@ -290,6 +290,29 @@ def test_combat_mask_uses_get_real_potions_without_raw_potions():
     assert mask[space.encode_use_potion(0, 0)]
 
 
+def test_combat_decoder_uses_get_real_potions_without_raw_potions():
+    encoder = ActionEncoderV2()
+    potion = SimpleNamespace(
+        potion_id="Fire Potion",
+        can_use=True,
+        requires_target=False,
+    )
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        monsters=[_make_monster()],
+        end_available=True,
+    )
+    del game.potions
+    game.get_real_potions = lambda: [potion]
+
+    action = encoder.decode_action(space.encode_use_potion(0, 0), game)
+
+    assert isinstance(action, PotionAction)
+    assert action.potion_index == 0
+    assert action.target_index is None
+
+
 def test_combat_decoder_falls_back_for_string_empty_potion_slot():
     encoder = ActionEncoderV2()
     game = _make_game(

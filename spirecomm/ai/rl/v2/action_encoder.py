@@ -319,7 +319,9 @@ class ActionEncoderV2:
         return PlayCardAction(card_index=card_slot, target_index=None)
 
     def _decode_potion_action(self, potion_slot: int, target_slot: int, game: Game):
-        potions = getattr(game, "potions", []) or []
+        raw_potions = getattr(game, "potions", None)
+        potions = raw_potions if raw_potions is not None else game_real_potions(game)
+        potions = potions or []
         if not getattr(game, "potion_available", True):
             return self._fallback_combat_action(game)
         if potion_slot < 0 or potion_slot >= min(len(potions), space.MAX_POTION_SLOTS):
