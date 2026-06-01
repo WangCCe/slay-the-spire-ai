@@ -467,7 +467,7 @@ class IroncladCombatPlanner(CombatPlanner):
         return (
             x_effect_energy(card, cost, context) <= 0
             and is_x_cost_card(card)
-            and getattr(card, "type", None) == CardType.ATTACK
+            and is_attack_card(card)
         )
 
     @staticmethod

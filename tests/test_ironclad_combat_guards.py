@@ -8815,6 +8815,14 @@ def test_beam_search_skips_zero_energy_whirlwind():
     assert planner._beam_search_turn(context, [whirlwind], 10, 4) == []
 
 
+def test_zero_effect_x_attack_accepts_string_attack_type():
+    whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
+    whirlwind.type = "ATTACK"
+    context = _combat_context([whirlwind], energy=0, monsters=[_louse(current_hp=50)])
+
+    assert IroncladCombatPlanner._is_zero_effect_x_attack(whirlwind, 0, context) is True
+
+
 def test_beam_search_skips_zero_energy_whirlwind_in_multi_monster_fight():
     whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
     context = _combat_context(
