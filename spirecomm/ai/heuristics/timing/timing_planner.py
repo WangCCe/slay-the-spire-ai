@@ -12,7 +12,11 @@ from .models import TimingContext, TurnTiming, BalanceWeights
 from .turn_classifier import TurnTimingClassifier
 from .balance_strategy import CombatBalanceStrategy
 from spirecomm.ai.heuristics.card_names import canonical_card_name
-from spirecomm.ai.heuristics.card_hits import fiend_fire_exhaust_count, fixed_attack_hit_count
+from spirecomm.ai.heuristics.card_hits import (
+    fiend_fire_exhaust_count,
+    fixed_attack_hit_count,
+    strike_card_count,
+)
 from spirecomm.ai.heuristics.card_costs import (
     effective_card_cost,
     energy_refund_for_card,
@@ -985,24 +989,9 @@ class TimingAwareCombatPlanner:
             return base_damage + strength * multiplier
         if card_name == 'Perfected Strike':
             per_strike_bonus = 3 if is_card_upgraded(card) else 2
-            return base_damage + self._count_strike_cards(context) * per_strike_bonus + strength
+            return base_damage + strike_card_count(context) * per_strike_bonus + strength
 
         return base_damage + strength
-
-    def _count_strike_cards(self, context) -> int:
-        """Count deck cards whose displayed name or id contains Strike."""
-        deck = getattr(getattr(context, 'game', None), 'deck', None)
-        if not deck:
-            return 0
-
-        count = 0
-        for deck_card in deck:
-            card_name = getattr(deck_card, 'name', '') or ''
-            card_id = getattr(deck_card, 'card_id', '') or ''
-            if 'strike' in card_name.lower() or 'strike' in card_id.lower():
-                count += 1
-
-        return max(0, count)
 
     def _get_player_block(self, context) -> int:
         """Return current player block from common decision-context shapes."""

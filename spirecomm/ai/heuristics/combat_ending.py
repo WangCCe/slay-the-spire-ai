@@ -27,6 +27,7 @@ from .card_types import card_requires_target, card_type_name, is_attack_card
 from .card_hits import (
     fiend_fire_exhaust_count as context_fiend_fire_exhaust_count,
     fixed_attack_hit_count,
+    strike_card_count,
 )
 from .card_upgrades import card_upgrade_count, is_card_upgraded, known_damage_upgrade_bonus
 
@@ -1649,7 +1650,7 @@ class CombatEndingDetector:
                 base_damage += strength * multiplier
             elif card_name == 'Perfected Strike':
                 per_strike_bonus = 3 if upgrades > 0 else 2
-                base_damage += self._count_strike_cards(context) * per_strike_bonus + strength
+                base_damage += strike_card_count(context) * per_strike_bonus + strength
             else:
                 base_damage += strength
             base_damage += base_damage_bonus
@@ -1871,17 +1872,3 @@ class CombatEndingDetector:
             return context_fiend_fire_exhaust_count(card, context)
 
         return 1
-
-    def _count_strike_cards(self, context: DecisionContext) -> int:
-        """Count deck cards whose displayed name or id contains Strike."""
-        deck = getattr(getattr(context, 'game', None), 'deck', None)
-        if not deck:
-            return 0
-
-        count = 0
-        for deck_card in deck:
-            card_name = getattr(deck_card, 'name', '') or ''
-            card_id = getattr(deck_card, 'card_id', '') or ''
-            if 'strike' in card_name.lower() or 'strike' in card_id.lower():
-                count += 1
-        return count

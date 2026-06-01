@@ -33,3 +33,17 @@ def fiend_fire_exhaust_count(card: Any, context: Any) -> int:
             continue
         count += 1
     return max(0, count)
+
+
+def strike_card_count(context: Any) -> int:
+    deck = getattr(getattr(context, 'game', None), 'deck', None)
+    if not deck:
+        return 0
+
+    count = 0
+    for deck_card in deck:
+        card_name = getattr(deck_card, 'name', '') or ''
+        card_id = getattr(deck_card, 'card_id', '') or ''
+        if 'strike' in card_name.lower() or 'strike' in card_id.lower():
+            count += 1
+    return max(0, count)

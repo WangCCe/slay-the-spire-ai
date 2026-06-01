@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from spirecomm.ai.heuristics.card_hits import (
     fiend_fire_exhaust_count,
     fixed_attack_hit_count,
+    strike_card_count,
 )
 
 
@@ -57,3 +58,23 @@ def test_fiend_fire_exhaust_count_falls_back_to_playable_cards_and_uuid():
     )
 
     assert fiend_fire_exhaust_count(fiend_fire, context) == 2
+
+
+def test_strike_card_count_uses_deck_names_and_ids():
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            deck=[
+                _card("Strike_R"),
+                SimpleNamespace(card_id="Twin Strike", name="Twin Strike", upgrades=0),
+                SimpleNamespace(card_id="PerfectedStrike", name="Perfected Strike", upgrades=0),
+                _card("Defend_R"),
+            ]
+        )
+    )
+
+    assert strike_card_count(context) == 3
+
+
+def test_strike_card_count_handles_missing_deck():
+    assert strike_card_count(SimpleNamespace(game=SimpleNamespace(deck=[]))) == 0
+    assert strike_card_count(SimpleNamespace()) == 0

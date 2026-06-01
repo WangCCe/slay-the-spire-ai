@@ -24,7 +24,11 @@ from .simulation import (
     W_DEATHRISK,
 )
 from .card_costs import effective_card_cost, is_x_cost_card, whirlwind_damage, x_effect_energy
-from .card_hits import fiend_fire_exhaust_count, fixed_attack_hit_count
+from .card_hits import (
+    fiend_fire_exhaust_count,
+    fixed_attack_hit_count,
+    strike_card_count,
+)
 from .card_names import canonical_card_name
 from .card_types import card_requires_target, card_type_name, is_attack_card
 from .card_upgrades import card_upgrade_count, is_card_upgraded, known_damage_upgrade_bonus
@@ -1093,7 +1097,7 @@ class IroncladCombatPlanner(CombatPlanner):
             return max(0, base_damage + strength * multiplier)
         if card_name == 'Perfected Strike':
             per_strike_bonus = 3 if is_card_upgraded(card) else 2
-            return max(0, base_damage + self._count_strike_cards(context) * per_strike_bonus + strength)
+            return max(0, base_damage + strike_card_count(context) * per_strike_bonus + strength)
 
         hit_count = self._get_attack_hit_count(card, context)
         return max(0, base_damage + strength) * hit_count
@@ -1109,21 +1113,6 @@ class IroncladCombatPlanner(CombatPlanner):
             return max(0, int(block or 0))
         except (TypeError, ValueError):
             return 0
-
-    @staticmethod
-    def _count_strike_cards(context: DecisionContext) -> int:
-        deck = getattr(getattr(context, 'game', None), 'deck', None)
-        if not deck:
-            return 0
-
-        count = 0
-        for deck_card in deck:
-            card_name = getattr(deck_card, 'name', '') or ''
-            card_id = getattr(deck_card, 'card_id', '') or ''
-            if 'strike' in card_name.lower() or 'strike' in card_id.lower():
-                count += 1
-
-        return max(0, count)
 
     @staticmethod
     def _get_attack_hit_count(card: Card, context: Optional[DecisionContext] = None) -> int:

@@ -29,7 +29,7 @@ from spirecomm.ai.heuristics.card_costs import (
     x_effect_energy,
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
-from spirecomm.ai.heuristics.card_hits import fixed_attack_hit_count
+from spirecomm.ai.heuristics.card_hits import fixed_attack_hit_count, strike_card_count
 from spirecomm.ai.heuristics.card_types import (
     card_requires_target,
     card_type_name,
@@ -1632,7 +1632,7 @@ class FastCombatSimulator:
             per_strike_bonus = 3 if is_card_upgraded(card) else 2
             return max(
                 0,
-                base_damage + self._count_strike_cards(context) * per_strike_bonus + state.player_strength,
+                base_damage + strike_card_count(context) * per_strike_bonus + state.player_strength,
             )
 
         return max(0, base_damage + state.player_strength)
@@ -1643,20 +1643,6 @@ class FastCombatSimulator:
             return max(0, int(getattr(card, 'misc', 0) or 0))
         except (TypeError, ValueError):
             return 0
-
-    def _count_strike_cards(self, context: Optional[DecisionContext]) -> int:
-        """Count deck cards whose displayed name or id contains Strike."""
-        deck = getattr(getattr(context, 'game', None), 'deck', None)
-        if not deck:
-            return 0
-
-        count = 0
-        for deck_card in deck:
-            card_name = getattr(deck_card, 'name', '') or ''
-            card_id = getattr(deck_card, 'card_id', '') or ''
-            if 'strike' in card_name.lower() or 'strike' in card_id.lower():
-                count += 1
-        return count
 
     def _apply_vulnerable_damage(self, damage: int, monster: dict) -> int:
         """Apply vulnerable multiplier (1.5x). Binary: any vulnerable stacks = 1.5x damage."""
