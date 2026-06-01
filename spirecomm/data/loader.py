@@ -145,6 +145,26 @@ def _split_card_upgrade_suffix(card_name: str) -> Tuple[str, int]:
     return base_name, 1
 
 
+def _effect_text_for_upgrade(description: str, upgraded: bool) -> str:
+    text = (description or '').replace('\\n', '\n')
+
+    def select_upgrade_value(match):
+        return match.group(2 if upgraded else 1)
+
+    text = re.sub(r'\[([^\[\]|]*)\|([^\[\]]*)\]', select_upgrade_value, text)
+    text = re.sub(
+        r'\[([^\[\]|]*)\|',
+        lambda match: '' if upgraded else match.group(1),
+        text,
+    )
+    text = re.sub(
+        r'\|([^\[\]]*)\]',
+        lambda match: match.group(1) if upgraded else '',
+        text,
+    )
+    return text
+
+
 def _searing_blow_upgrade_damage(upgrades: int) -> int:
     return upgrades * (upgrades + 7) // 2 if upgrades > 0 else 0
 
@@ -821,7 +841,8 @@ class GameDataLoader:
             return False
 
         card_name = card_data.get('name', '').lower()
-        base_card_name, _upgrade_count = _split_card_upgrade_suffix(card_name)
+        base_card_name, upgrade_count = _split_card_upgrade_suffix(card_name)
+        is_upgraded = upgrade_count > 0
 
         # Stage 1: Check CARD_METADATA first (complex cards)
         if base_card_name in CARD_METADATA:
@@ -831,13 +852,13 @@ class GameDataLoader:
         self._load_wiki_data()  # Lazy load
         if self._wiki_data and base_card_name in self._wiki_data:
             wiki_entry = self._wiki_data[base_card_name]
-            text = wiki_entry.get('text', '').lower()
+            text = _effect_text_for_upgrade(wiki_entry.get('text', ''), is_upgraded).lower()
             aoe_keywords = ['all enemies', 'every enemy', 'each enemy']
             if any(keyword in text for keyword in aoe_keywords):
                 return True
 
         # Stage 3: Check description for AOE keywords
-        description = card_data.get('description', '').lower()
+        description = _effect_text_for_upgrade(card_data.get('description', ''), is_upgraded).lower()
         aoe_keywords = ['all enemies', 'every enemy', 'each enemy']
         return any(keyword in description for keyword in aoe_keywords)
 

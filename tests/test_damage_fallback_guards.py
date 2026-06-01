@@ -2410,6 +2410,19 @@ def test_aoe_parser_handles_counted_upgrade_suffixes():
     assert loader._is_card_aoe({"name": "Cleave+1"}) is True
 
 
+def test_aoe_parser_respects_malformed_upgrade_only_all_enemies_suffix():
+    loader = data_loader.GameDataLoader(auto_load=False)
+    loader._wiki_data = {
+        "trip": {
+            "name": "Trip",
+            "text": "Apply 2 #Vulnerable| to ALL enemies].",
+        },
+    }
+
+    assert loader._is_card_aoe({"name": "Trip", "description": "Apply 2 Vulnerable."}) is False
+    assert loader._is_card_aoe({"name": "Trip+1", "description": "Apply 2 Vulnerable."}) is True
+
+
 def test_ironclad_prune_targets_falls_back_when_damage_parse_returns_none(monkeypatch):
     monkeypatch.setattr(
         ironclad_combat.game_data_loader,
