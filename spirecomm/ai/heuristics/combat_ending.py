@@ -116,10 +116,17 @@ class CombatEndingDetector:
             return 0
 
     @staticmethod
+    def _monster_current_hp(monster: Monster) -> int:
+        return max(
+            0,
+            CombatEndingDetector._safe_int(getattr(monster, 'current_hp', 0), default=0),
+        )
+
+    @staticmethod
     def _monster_hp_with_block(monster: Monster) -> int:
         return max(
             0,
-            CombatEndingDetector._safe_int(getattr(monster, 'current_hp', 0), default=0)
+            CombatEndingDetector._monster_current_hp(monster)
             + CombatEndingDetector._safe_int(getattr(monster, 'block', 0), default=0),
         )
 
@@ -1140,7 +1147,7 @@ class CombatEndingDetector:
                         if self._base_card_name(card) == 'Melter':
                             current_hp = min(
                                 current_hp,
-                                max(0, context.monsters_alive[monster_idx].current_hp),
+                                self._monster_current_hp(context.monsters_alive[monster_idx]),
                             )
                             next_hp[monster_idx] = current_hp
 

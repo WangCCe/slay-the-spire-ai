@@ -9365,6 +9365,28 @@ def test_lethal_detector_counts_melter_block_removal(monkeypatch):
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["melter"]
 
 
+def test_lethal_detector_melter_accepts_numeric_string_monster_hp(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "melter": {
+            "name": "Melter",
+            "description": "Remove all Block from the enemy. Deal 10 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+
+    melter = _card("Melter", "Melter", cost=1)
+    melter.uuid = "melter"
+    monster = _louse(current_hp="10")
+    monster.block = 12
+    context = _combat_context([melter], energy=1, monsters=[monster])
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["melter"]
+
+
 def test_lethal_detector_counts_body_slam_current_block(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
