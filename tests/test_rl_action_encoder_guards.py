@@ -206,6 +206,23 @@ def test_legacy_nontarget_potion_decoder_omits_target():
     assert action.target_index is None
 
 
+def test_legacy_potion_decoder_treats_missing_requires_target_as_not_targeted():
+    encoder = ActionEncoder()
+    potion = SimpleNamespace(potion_id="Strength Potion", can_use=True)
+    game = _combat_game(
+        potions=[potion],
+        monsters=[SimpleNamespace(current_hp=10, is_gone=False, half_dead=False)],
+    )
+
+    mask = encoder.get_action_mask(game)
+    action = encoder.decode_action(encoder.encode_use_potion(0, 0), game)
+
+    assert mask[encoder.encode_use_potion(0, 0)]
+    assert isinstance(action, PotionAction)
+    assert action.potion_index == 0
+    assert action.target_index is None
+
+
 def test_legacy_combat_mask_skips_card_without_cost():
     encoder = ActionEncoder()
     game = _combat_game(

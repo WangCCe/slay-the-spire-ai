@@ -393,7 +393,7 @@ class ActionEncoder:
             return self._fallback_combat_action(game)
 
         target_index = None
-        if getattr(potion, "requires_target", True):
+        if getattr(potion, "requires_target", False):
             monsters = getattr(game, "monsters", []) or []
             if monster_index < 0 or monster_index >= min(
                 len(monsters),
