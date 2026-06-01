@@ -226,6 +226,10 @@ class StateEncoder:
             if i < len(potions):
                 # Safely get potion name/id
                 potion = potions[i]
+                potion_key = potion_id(potion)
+                if potion_key == "Potion Slot":
+                    features.extend([0.0, 0.0, 0.0])
+                    continue
 
                 # Check if potion is a primitive type (number) or object
                 if isinstance(potion, (int, float, np.integer, np.floating)):
@@ -249,8 +253,7 @@ class StateEncoder:
                         potion_hash = 0.0
                     can_use = 0.0
 
-                is_present = 0.0 if potion_id(potion) == "Potion Slot" else 1.0
-                features.extend([potion_hash, is_present, can_use])
+                features.extend([potion_hash, 1.0, can_use])
             else:
                 features.extend([0.0] * 3)
         return features

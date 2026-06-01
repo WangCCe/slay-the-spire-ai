@@ -148,8 +148,18 @@ def test_rl_state_encoder_potion_slot_string_is_empty():
 
     features = encoder._encode_potions(game)
 
+    assert features[0] == 0.0
     assert features[1] == 0.0
     assert features[2] == 0.0
+
+
+def test_rl_state_encoder_name_only_potion_slot_has_no_identity_hash():
+    encoder = StateEncoder()
+    game = SimpleNamespace(potions=[SimpleNamespace(name="Potion Slot", can_use=False)])
+
+    features = encoder._encode_potions(game)
+
+    assert features[:3] == [0.0, 0.0, 0.0]
 
 
 def test_rl_state_encoder_combat_piles_count_string_potion_slots_as_empty():
