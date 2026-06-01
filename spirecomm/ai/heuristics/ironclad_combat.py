@@ -26,6 +26,7 @@ from .simulation import (
 )
 from .card_costs import effective_card_cost, is_x_cost_card, whirlwind_damage, x_effect_energy
 from .card_names import canonical_card_name
+from .card_upgrades import card_upgrade_count, is_card_upgraded
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
@@ -1077,7 +1078,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
         if (
             card_name == 'Searing Blow'
-            and getattr(card, 'upgrades', 0) > 0
+            and is_card_upgraded(card)
             and parsed_card_data_name is not None
             and '+' not in str(parsed_card_data_name or '')
         ):
@@ -1085,10 +1086,10 @@ class IroncladCombatPlanner(CombatPlanner):
 
         strength = getattr(context, 'strength', 0)
         if card_name == 'Heavy Blade':
-            multiplier = 5 if getattr(card, 'upgrades', 0) > 0 else 3
+            multiplier = 5 if is_card_upgraded(card) else 3
             return max(0, base_damage + strength * multiplier)
         if card_name == 'Perfected Strike':
-            per_strike_bonus = 3 if getattr(card, 'upgrades', 0) > 0 else 2
+            per_strike_bonus = 3 if is_card_upgraded(card) else 2
             return max(0, base_damage + self._count_strike_cards(context) * per_strike_bonus + strength)
 
         hit_count = self._get_attack_hit_count(card, context)
@@ -1124,7 +1125,7 @@ class IroncladCombatPlanner(CombatPlanner):
     @staticmethod
     def _get_attack_hit_count(card: Card, context: Optional[DecisionContext] = None) -> int:
         card_name = canonical_card_name(card)
-        upgrades = getattr(card, 'upgrades', 0)
+        upgrades = card_upgrade_count(card)
 
         if card_name == 'Twin Strike':
             return 2

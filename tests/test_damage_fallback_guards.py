@@ -2696,6 +2696,40 @@ def test_ironclad_fallback_damage_applies_heavy_blade_strength_multiplier(monkey
     assert upgraded_damage == 29
 
 
+def test_ironclad_fallback_damage_treats_none_upgrades_as_base_heavy_blade(monkeypatch):
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"description": "Deal 14 damage. Strength affects Heavy Blade 3 times."}
+        if card_name == "Heavy Blade"
+        else None,
+    )
+    monkeypatch.setattr(
+        ironclad_combat.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: 14,
+    )
+
+    heavy_blade = Card(
+        card_id="Heavy Blade",
+        name="Heavy Blade",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.COMMON,
+        has_target=True,
+        cost=2,
+        upgrades=None,
+    )
+    heavy_blade.damage = None
+    context = SimpleNamespace(strength=3)
+
+    damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(
+        heavy_blade,
+        context,
+    )
+
+    assert damage == 23
+
+
 def test_ironclad_fallback_damage_counts_twin_strike_hits(monkeypatch):
     monkeypatch.setattr(
         ironclad_combat.game_data_loader,
