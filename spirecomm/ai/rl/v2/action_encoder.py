@@ -114,14 +114,14 @@ class ActionEncoderV2:
 
     @staticmethod
     def _are_potions_full(game: Game) -> bool:
-        if hasattr(game, "are_potions_full"):
-            try:
-                return bool(game.are_potions_full())
-            except Exception:
-                return False
         if hasattr(game, "has_potion_space"):
             try:
                 return not bool(game.has_potion_space())
+            except Exception:
+                return False
+        if hasattr(game, "are_potions_full"):
+            try:
+                return bool(game.are_potions_full())
             except Exception:
                 return False
         return False

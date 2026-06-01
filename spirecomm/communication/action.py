@@ -3,6 +3,21 @@ import time
 from spirecomm.spire.screen import ScreenType, reward_type_name
 
 
+def _has_potion_space(game_state):
+    has_potion_space = getattr(game_state, "has_potion_space", None)
+    if callable(has_potion_space):
+        try:
+            return bool(has_potion_space())
+        except Exception:
+            pass
+
+    are_potions_full = getattr(game_state, "are_potions_full", None)
+    if callable(are_potions_full):
+        return not bool(are_potions_full())
+
+    return True
+
+
 class Action:
     """A base class for an action to take in Slay the Spire"""
 
@@ -398,9 +413,9 @@ class CombatRewardAction(ChooseAction):
             )
         if (
             reward_type_name(self.combat_reward) == "POTION"
-            and coordinator.last_game_state.are_potions_full()
+            and not _has_potion_space(coordinator.last_game_state)
         ):
-            raise Exception("Cannot choose potion reward with full potion slots.")
+            raise Exception("Cannot choose potion reward without potion space.")
         self.choice_index = reward_list.index(self.combat_reward)
         # Don't wait for response - combat reward selection often doesn't trigger state updates
         # Instead, rely on the next callback to continue

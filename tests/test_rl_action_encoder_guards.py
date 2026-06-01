@@ -130,6 +130,23 @@ def test_legacy_combat_reward_mask_hides_string_potion_reward_when_slots_are_ful
     assert mask[encoder.CARD_REWARD_OFFSET + 1]
 
 
+def test_legacy_combat_reward_mask_hides_potion_reward_when_space_is_blocked():
+    encoder = ActionEncoder()
+    potion_reward = SimpleNamespace(reward_type="POTION")
+    gold_reward = SimpleNamespace(reward_type="GOLD")
+    game = _game(
+        screen_type=ScreenType.COMBAT_REWARD,
+        screen=SimpleNamespace(rewards=[potion_reward, gold_reward]),
+        are_potions_full=lambda: False,
+        has_potion_space=lambda: False,
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert not mask[encoder.CARD_REWARD_OFFSET]
+    assert mask[encoder.CARD_REWARD_OFFSET + 1]
+
+
 def test_legacy_potion_mask_respects_potion_available():
     encoder = ActionEncoder()
     game = _combat_game(

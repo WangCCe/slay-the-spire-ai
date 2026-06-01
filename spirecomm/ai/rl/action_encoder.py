@@ -696,15 +696,11 @@ class ActionEncoder:
                 # Check if potion reward and potions are full
                 if hasattr(reward, "reward_type"):
                     if reward_type_name(reward) == "POTION":
-                        # Check if player has full potion slots
-                        if (
-                            hasattr(game, "are_potions_full")
-                            and game.are_potions_full()
-                        ):
+                        if not self._has_potion_space(game):
                             is_valid = False
                 # Fallback: check if reward has 'potion' attribute (for choice_list rewards)
                 elif hasattr(reward, "potion") and reward.potion is not None:
-                    if hasattr(game, "are_potions_full") and game.are_potions_full():
+                    if not self._has_potion_space(game):
                         is_valid = False
 
                 if is_valid:

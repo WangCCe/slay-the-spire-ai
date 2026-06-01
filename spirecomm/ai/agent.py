@@ -652,7 +652,7 @@ class SimpleAgent:
 
             for i, reward_item in enumerate(rewards):
                 reward_type = reward_type_name(reward_item)
-                skip_potion = reward_type == "POTION" and self.game.are_potions_full()
+                skip_potion = reward_type == "POTION" and not self._has_potion_space()
                 skip_card = reward_type == "CARD" and self.skipped_cards
                 logging.info(
                     f"  [{i}] type={reward_item.reward_type}, skip_potion={skip_potion}, skip_card={skip_card}\n"
@@ -660,7 +660,7 @@ class SimpleAgent:
 
             for reward_item in rewards:
                 reward_type = reward_type_name(reward_item)
-                if reward_type == "POTION" and self.game.are_potions_full():
+                if reward_type == "POTION" and not self._has_potion_space():
                     continue
                 elif reward_type == "CARD" and self.skipped_cards:
                     continue

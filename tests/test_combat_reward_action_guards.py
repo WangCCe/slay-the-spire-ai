@@ -27,3 +27,27 @@ def test_combat_reward_action_rejects_namespaced_string_potion_when_slots_are_fu
         CombatRewardAction(potion_reward).execute(coordinator)
 
     assert sent_messages == []
+
+
+def test_combat_reward_action_rejects_potion_when_potion_space_is_blocked():
+    sent_messages = []
+    potion_reward = SimpleNamespace(reward_type="POTION")
+
+    def send_message(message, wait_for_response=True):
+        sent_messages.append((message, wait_for_response))
+
+    coordinator = SimpleNamespace(
+        last_game_state=SimpleNamespace(
+            screen_type=ScreenType.COMBAT_REWARD,
+            screen=SimpleNamespace(rewards=[potion_reward]),
+            are_potions_full=lambda: False,
+            has_potion_space=lambda: False,
+        ),
+        game_is_ready=True,
+        send_message=send_message,
+    )
+
+    with pytest.raises(Exception, match="Cannot choose potion reward"):
+        CombatRewardAction(potion_reward).execute(coordinator)
+
+    assert sent_messages == []

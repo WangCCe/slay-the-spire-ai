@@ -226,6 +226,24 @@ def test_combat_reward_skips_string_potion_type_when_slots_are_full():
     assert action.combat_reward is gold_reward
 
 
+def test_combat_reward_skips_potion_when_potion_space_is_blocked():
+    potion_reward = SimpleNamespace(reward_type="POTION")
+    gold_reward = SimpleNamespace(reward_type="GOLD")
+    agent = _agent(
+        screen_type=ScreenType.COMBAT_REWARD,
+        screen=SimpleNamespace(rewards=[potion_reward, gold_reward]),
+        floor=3,
+        are_potions_full=lambda: False,
+        has_potion_space=lambda: False,
+    )
+    agent.skipped_cards = False
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CombatRewardAction)
+    assert action.combat_reward is gold_reward
+
+
 def test_combat_reward_skips_string_card_type_after_card_reward_skip():
     card_reward = SimpleNamespace(reward_type="CARD")
     gold_reward = SimpleNamespace(reward_type="GOLD")
