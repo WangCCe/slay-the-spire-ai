@@ -4380,11 +4380,19 @@ class FastCombatSimulator:
 
         target_name = str(monster_name or '').lower()
         other_names = []
+        target_monster = getattr(self, "_prediction_monster", None)
+        skipped_target_by_name = target_monster is not None
         for monster in monsters:
             if not self._is_live_context_monster(monster):
                 continue
             candidate_name = str(_canonical_live_monster_name(monster) or '').lower()
-            if candidate_name and candidate_name != target_name:
+            if target_monster is not None:
+                if monster is target_monster:
+                    continue
+            elif candidate_name == target_name and not skipped_target_by_name:
+                skipped_target_by_name = True
+                continue
+            if candidate_name:
                 other_names.append(_canonical_live_monster_name(monster))
         return other_names
 

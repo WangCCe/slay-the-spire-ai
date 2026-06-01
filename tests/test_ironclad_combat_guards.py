@@ -1996,6 +1996,56 @@ def test_enemy_prediction_passes_other_enemy_names_to_loader(monkeypatch):
     ]
 
 
+def test_enemy_prediction_includes_same_name_other_enemies(monkeypatch):
+    class FakeLoader:
+        def __init__(self):
+            self.calls = []
+
+        def predict_monster_moves(
+            self,
+            monster_name,
+            current_turn,
+            hp_percent,
+            ascension_level=0,
+            other_enemy_count=None,
+            other_enemy_names=None,
+        ):
+            self.calls.append(
+                {
+                    "monster_name": monster_name,
+                    "other_enemy_count": other_enemy_count,
+                    "other_enemy_names": other_enemy_names,
+                }
+            )
+            return []
+
+    loader = FakeLoader()
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_sentry(current_hp=40), _sentry(current_hp=40)],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._prediction_monsters = context.monsters_alive
+    simulator._prediction_monster = context.monsters_alive[0]
+
+    simulator._predict_monster_moves(
+        "Sentry",
+        current_turn=1,
+        hp_percent=1.0,
+        context=context,
+    )
+
+    assert loader.calls == [
+        {
+            "monster_name": "Sentry",
+            "other_enemy_count": 1,
+            "other_enemy_names": ["Sentry"],
+        }
+    ]
+
+
 def test_enemy_prediction_passes_same_monster_index_to_loader(monkeypatch):
     class FakeLoader:
         def __init__(self):
