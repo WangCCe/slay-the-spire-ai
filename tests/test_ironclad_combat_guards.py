@@ -3343,6 +3343,38 @@ def test_end_turn_aoe_ignores_zero_hp_stale_simulated_monsters():
     assert projected.monsters[1]["is_gone"] is True
 
 
+def test_power_energy_gain_uses_name_only_card_data(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "energy surge": {
+            "name": "Energy Surge",
+            "description": "Gain 2 Energy.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    energy_surge = SimpleNamespace(
+        name="Energy Surge",
+        type=CardType.POWER,
+        cost=0,
+        cost_for_turn=0,
+        has_target=False,
+        is_playable=True,
+        upgrades=0,
+    )
+    context = _combat_context([energy_surge], energy=0, monsters=[_louse(current_hp=20)])
+
+    state = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        energy_surge,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert state.energy_gained == 2
+
+
 def test_combust_end_turn_hp_loss_triggers_rupture(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

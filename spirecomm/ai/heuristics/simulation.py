@@ -3210,8 +3210,7 @@ class FastCombatSimulator:
         elif 'energy' in card_id.lower() or card_id in ['Demon Form', 'Combust']:
             # Track energy gained
             try:
-                card_name = card.card_id.replace('+', '')
-                card_data = game_data_loader.get_card_data(card_name)
+                card_data = game_data_loader.get_card_data(card_id)
                 if card_data:
                     description = card_data.get('description', '').lower()
                     energy_match = re.search(r'gain (\d+) energy', description)
