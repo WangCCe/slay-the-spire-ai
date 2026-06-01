@@ -10984,6 +10984,96 @@ def test_ironclad_sequence_strategic_bonus_treats_counted_upgraded_whirlwind_as_
     assert counted_score == canonical_score
 
 
+def test_ironclad_sequence_score_accepts_string_power_type():
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    string_demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    string_demon_form.type = "POWER"
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+
+    enum_context = _combat_context([demon_form], energy=3, monsters=[_louse(current_hp=100)])
+    enum_initial = SimulationState(enum_context)
+    enum_final = enum_initial.clone()
+    enum_final.energy_spent = 3
+    enum_score = planner._score_sequence(
+        [PlayCardAction(card=demon_form)],
+        enum_initial,
+        enum_final,
+        enum_context,
+    )
+
+    string_context = _combat_context([string_demon_form], energy=3, monsters=[_louse(current_hp=100)])
+    string_initial = SimulationState(string_context)
+    string_final = string_initial.clone()
+    string_final.energy_spent = 3
+    string_score = planner._score_sequence(
+        [PlayCardAction(card=string_demon_form)],
+        string_initial,
+        string_final,
+        string_context,
+    )
+
+    assert string_score == enum_score
+
+
+def test_ironclad_sequence_score_accepts_string_skill_type_against_gremlin_nob():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    string_defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    string_defend.type = "SKILL"
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+
+    enum_context = _combat_context([defend], energy=1, monsters=[_gremlin_nob()])
+    enum_initial = SimulationState(enum_context)
+    enum_final = enum_initial.clone()
+    enum_final.energy_spent = 1
+    enum_score = planner._score_sequence(
+        [PlayCardAction(card=defend)],
+        enum_initial,
+        enum_final,
+        enum_context,
+    )
+
+    string_context = _combat_context([string_defend], energy=1, monsters=[_gremlin_nob()])
+    string_initial = SimulationState(string_context)
+    string_final = string_initial.clone()
+    string_final.energy_spent = 1
+    string_score = planner._score_sequence(
+        [PlayCardAction(card=string_defend)],
+        string_initial,
+        string_final,
+        string_context,
+    )
+
+    assert string_score == enum_score
+
+
 def test_armaments_bonus_does_not_count_itself_when_uuid_is_missing():
     armaments_with_uuid = _card(
         "Armaments",

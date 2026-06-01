@@ -1395,9 +1395,9 @@ class IroncladCombatPlanner(CombatPlanner):
                 card = action.card
                 card_id = canonical_card_name(card)
                 raw_card_id = getattr(card, 'card_id', card_id)
-                card_type = card.type if hasattr(card, 'type') else None
+                card_type = card_type_name(card)
 
-                if card_type == CardType.POWER:
+                if card_type == "POWER":
                     if context.turn <= 2:
                         power_bonus = POWER_BONUS_EARLY
                     elif context.turn <= 4:
@@ -1437,10 +1437,9 @@ class IroncladCombatPlanner(CombatPlanner):
 
                 # Gremlin Nob SKILL penalty: playing SKILL cards gives Nob +1 Strength
                 # This heavily penalizes SKILL cards to discourage triggering Nob's passive
-                if has_gremlin_nob and hasattr(card, 'type'):
-                    if card.type == CardType.SKILL:
-                        score -= 50
-                        logger.info(f"[SKILL_PENALTY] Applied -50 for {card.card_id} (SKILL) against Gremlin Nob")
+                if has_gremlin_nob and card_type == "SKILL":
+                    score -= 50
+                    logger.info(f"[SKILL_PENALTY] Applied -50 for {card.card_id} (SKILL) against Gremlin Nob")
 
                 # Powers are valuable early
                 if card_id == 'Demon Form' and context.turn <= 3:
