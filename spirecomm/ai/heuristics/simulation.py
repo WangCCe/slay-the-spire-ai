@@ -3009,10 +3009,12 @@ class FastCombatSimulator:
         if self._apply_double_tap(state, card):
             return
 
+        card_name = _canonical_card_name(card)
+
         # Block skills - apply frail multiplier if player has frail
         if hasattr(card, 'block') and card.block is not None and card.block > 0:
             block_gain = card.block
-            logger.debug(f"[BLOCK_SKILL] Using card.block attribute: {block_gain} for {card.card_id}")
+            logger.debug(f"[BLOCK_SKILL] Using card.block attribute: {block_gain} for {card_name}")
             block_gain = self._apply_card_block_modifiers(block_gain, state)
             self._add_player_block(state, block_gain)
         else:
@@ -3025,14 +3027,13 @@ class FastCombatSimulator:
                     x_energy_spent=x_energy_spent,
                 )
                 if block_gain > 0:
-                    logger.debug(f"[BLOCK_X] X-block calculated: {block_gain} for {card.card_id}")
+                    logger.debug(f"[BLOCK_X] X-block calculated: {block_gain} for {card_name}")
                     # Apply frail multiplier
                     block_gain = self._apply_card_block_modifiers(block_gain, state)
                     self._add_player_block(state, block_gain)
                 else:
                     # Not an X-block card - try to get block from game data
                     # (needed because Card objects don't have block attribute set)
-                    card_name = _canonical_card_name(card)
                     card_data = game_data_loader.get_card_data(card_name)
                     if card_data:
                         block_data = dict(card_data)
@@ -3046,23 +3047,23 @@ class FastCombatSimulator:
                                 base_data['name'] = card_name
                                 unupgraded_block = game_data_loader._parse_card_block(base_data)
                                 if unupgraded_block is not None and base_block != unupgraded_block:
-                                    logger.debug(f"[BLOCK_UPGRADE_PARSED] {card.card_id} (upgrades={upgrades}): {base_block} block")
+                                    logger.debug(f"[BLOCK_UPGRADE_PARSED] {card_name} (upgrades={upgrades}): {base_block} block")
                                 else:
                                     # Some upgrades (for example Armaments+) improve the non-block effect.
                                     # Only apply a manual bonus when the card is explicitly mapped.
                                     upgrade_bonus = BLOCK_UPGRADE_BONUS.get(card_name)
                                     if upgrade_bonus is not None:
                                         base_block += upgrade_bonus
-                                        logger.debug(f"[BLOCK_UPGRADE] {card.card_id} (upgrades={upgrades}): {base_block} block (+{upgrade_bonus})")
+                                        logger.debug(f"[BLOCK_UPGRADE] {card_name} (upgrades={upgrades}): {base_block} block (+{upgrade_bonus})")
                                     else:
-                                        logger.debug(f"[BLOCK_UPGRADE_NO_BLOCK_CHANGE] {card.card_id} (upgrades={upgrades}): {base_block} block")
+                                        logger.debug(f"[BLOCK_UPGRADE_NO_BLOCK_CHANGE] {card_name} (upgrades={upgrades}): {base_block} block")
                             else:
-                                logger.debug(f"[BLOCK_BASE] {card.card_id} (upgrades={upgrades}): {base_block} block")
+                                logger.debug(f"[BLOCK_BASE] {card_name} (upgrades={upgrades}): {base_block} block")
 
                             block_gain = self._apply_card_block_modifiers(base_block, state)
                             self._add_player_block(state, block_gain)
                         else:
-                            logger.debug(f"[BLOCK_NONE] No block found for {card.card_id}")
+                            logger.debug(f"[BLOCK_NONE] No block found for {card_name}")
                     else:
                         logger.debug(f"[BLOCK_NODATA] No card data found for {card_name}")
         if _canonical_card_name(card) == 'Rage':
