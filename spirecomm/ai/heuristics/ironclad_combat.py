@@ -38,7 +38,7 @@ from .card_upgrades import (
     known_damage_upgrade_bonus,
     perfected_strike_bonus_per_strike,
 )
-from .combat_state import card_play_key, player_block_value
+from .combat_state import card_play_key, mark_card_played, player_block_value
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
@@ -346,7 +346,7 @@ class IroncladCombatPlanner(CombatPlanner):
                                     state, card, target, target_idx, context=context
                                 )
                                 new_state_copy = copy.deepcopy(new_state)
-                                new_state_copy.played_card_uuids.add(card_uuid)
+                                mark_card_played(new_state_copy.played_card_uuids, card)
 
                                 # Set primary target on first attack
                                 if state.primary_target is None and target_idx is not None:
@@ -376,7 +376,7 @@ class IroncladCombatPlanner(CombatPlanner):
                             new_state = self.simulator.simulate_card_play(
                                 state, card, target, target_idx, context=context
                             )
-                            new_state.played_card_uuids.add(card_uuid)
+                            mark_card_played(new_state.played_card_uuids, card)
 
                             # Set primary target on first attack
                             if state.primary_target is None and target_idx is not None:
@@ -407,7 +407,7 @@ class IroncladCombatPlanner(CombatPlanner):
                         new_state = self.simulator.simulate_card_play(
                             state, card, target, target_idx, context=context
                         )
-                        new_state.played_card_uuids.add(card_uuid)
+                        mark_card_played(new_state.played_card_uuids, card)
 
                         # === NEW: Set primary target on first attack ===
                         # If this is the first attack (no primary target yet), set it

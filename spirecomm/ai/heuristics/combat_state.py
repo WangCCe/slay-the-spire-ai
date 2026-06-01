@@ -9,6 +9,15 @@ def card_play_key(card: Any):
     return getattr(card, 'uuid', None) or id(card)
 
 
+def mark_card_played(played_cards: set, card: Any) -> None:
+    if card is None:
+        return
+    key = card_play_key(card)
+    if key is not None:
+        played_cards.add(key)
+    played_cards.add(id(card))
+
+
 def power_name(power: Any):
     return (
         getattr(power, 'name', None)

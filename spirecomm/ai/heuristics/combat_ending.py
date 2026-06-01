@@ -18,6 +18,7 @@ from ..decision.base import DecisionContext
 from .combat_state import (
     card_play_key,
     draw_pile_count,
+    mark_card_played,
     monster_power_amount,
     player_block_value,
     player_debuff_stacks,
@@ -313,7 +314,6 @@ class CombatEndingDetector:
             damage_needed = monster.current_hp + monster.block
             while damage_needed > 0:
                 best_card = None
-                best_card_uuid = None
                 best_cost = 0
                 best_damage = 0
                 best_priority = None
@@ -349,7 +349,6 @@ class CombatEndingDetector:
                     priority = (1 if refunds_energy else 0, damage, -cost)
                     if best_priority is None or priority > best_priority:
                         best_card = card
-                        best_card_uuid = card_uuid
                         best_cost = cost
                         best_damage = damage
                         best_priority = priority
@@ -358,7 +357,7 @@ class CombatEndingDetector:
                     break
 
                 sequence.append(self._play_card_action(best_card, monster))
-                played_cards.add(best_card_uuid)
+                mark_card_played(played_cards, best_card)
                 remaining_energy -= best_cost
                 damage_needed -= best_damage
 
@@ -1363,7 +1362,7 @@ class CombatEndingDetector:
                     if self._base_card_name(best_card) == 'Fiend Fire':
                         played_cards.update(sequence_card_keys)
                     else:
-                        played_cards.add(card_play_key(best_card))
+                        mark_card_played(played_cards, best_card)
                     remaining_energy -= best_cost
                     damage_needed -= best_damage
 

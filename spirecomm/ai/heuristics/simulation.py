@@ -25,6 +25,7 @@ from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.combat_state import (
     card_play_key,
     draw_pile_count,
+    mark_card_played,
     player_debuff_stacks,
     player_has_power,
     player_power_amount,
@@ -1538,10 +1539,7 @@ class FastCombatSimulator:
 
     def _mark_cards_unavailable(self, state: SimulationState, cards: List[Card]):
         for card in cards:
-            card_key = card_play_key(card)
-            if card_key is not None:
-                state.played_card_uuids.add(card_key)
-            state.played_card_uuids.add(id(card))
+            mark_card_played(state.played_card_uuids, card)
 
     def _effect_text_for_upgrade(self, description: str, upgraded: bool) -> str:
         return _select_effect_text_for_upgrade(description, upgraded)
@@ -5455,7 +5453,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                                     # Simulate playing this card with each target
                                     new_state = self.simulator.simulate_card_play(state, card, target, context=context)
                                     new_state_copy = copy.deepcopy(new_state)
-                                    new_state_copy.played_card_uuids.add(card_idx)
+                                    mark_card_played(new_state_copy.played_card_uuids, card)
 
                                     # Create action
                                     action = PlayCardAction(card=card, target_monster=target)
@@ -5480,7 +5478,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
                                 # Simulate playing this card
                                 new_state = self.simulator.simulate_card_play(state, card, target, context=context)
-                                new_state.played_card_uuids.add(card_idx)
+                                mark_card_played(new_state.played_card_uuids, card)
 
                                 # Create action
                                 if target:
@@ -5509,7 +5507,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
                             # Simulate playing this card
                             new_state = self.simulator.simulate_card_play(state, card, target, context=context)
-                            new_state.played_card_uuids.add(card_idx)
+                            mark_card_played(new_state.played_card_uuids, card)
 
                             # Create action
                             if target:
