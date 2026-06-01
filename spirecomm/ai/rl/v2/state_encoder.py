@@ -10,6 +10,7 @@ from spirecomm.spire.card import Card
 from spirecomm.spire.character import Intent
 from spirecomm.spire.screen import ScreenType
 from spirecomm.ai.heuristics.card_costs import raw_card_cost
+from spirecomm.ai.heuristics.card_types import card_type_name
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 
@@ -296,24 +297,13 @@ class StateEncoderV2:
         return [1.0 if tag in tags else 0.0 for tag in self.TAGS]
 
     def _encode_card_type(self, card_type) -> List[float]:
-        card_type_name = self._card_type_name(card_type)
+        normalized_card_type = card_type_name(card_type)
         return [
-            1.0 if card_type_name == "ATTACK" else 0.0,
-            1.0 if card_type_name == "SKILL" else 0.0,
-            1.0 if card_type_name == "POWER" else 0.0,
-            1.0 if card_type_name in ("STATUS", "CURSE") else 0.0,
+            1.0 if normalized_card_type == "ATTACK" else 0.0,
+            1.0 if normalized_card_type == "SKILL" else 0.0,
+            1.0 if normalized_card_type == "POWER" else 0.0,
+            1.0 if normalized_card_type in ("STATUS", "CURSE") else 0.0,
         ]
-
-    @staticmethod
-    def _card_type_name(card_type) -> str:
-        if card_type is None:
-            return ""
-        if hasattr(card_type, "name"):
-            return str(card_type.name).upper()
-        value = str(card_type).upper()
-        if value.startswith("CARDTYPE."):
-            return value.split(".", 1)[1]
-        return value
 
     def _encode_player_class(self, player_class) -> List[float]:
         player_class_name = self._player_class_name(player_class)

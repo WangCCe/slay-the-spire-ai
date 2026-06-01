@@ -9,6 +9,7 @@ from typing import Dict, List, Tuple, Optional, TYPE_CHECKING
 from spirecomm.spire.card import Card
 from spirecomm.data.loader import game_data_loader
 from spirecomm.ai.heuristics.card_names import canonical_card_name, card_data_key
+from spirecomm.ai.heuristics.card_types import card_type_name
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 import re
 
@@ -76,18 +77,6 @@ class DeckAnalyzer:
     @staticmethod
     def _card_name(card: Card) -> str:
         return canonical_card_name(card)
-
-    @staticmethod
-    def _card_type_name(card: Card) -> str:
-        card_type = getattr(card, 'type', None)
-        if card_type is None:
-            return ''
-        if hasattr(card_type, 'name'):
-            return str(card_type.name).upper()
-        value = str(card_type).upper()
-        if value.startswith('CARDTYPE.'):
-            return value.split('.', 1)[1]
-        return value
 
     @staticmethod
     def _canonical_card_set(cards) -> set:
@@ -316,9 +305,9 @@ class DeckAnalyzer:
         stats = {
             'size': len(deck),
             'avg_cost': sum(normalized_base_cost(c) for c in deck) / len(deck) if deck else 0,
-            'attack_count': sum(1 for c in deck if self._card_type_name(c) == 'ATTACK'),
-            'skill_count': sum(1 for c in deck if self._card_type_name(c) == 'SKILL'),
-            'power_count': sum(1 for c in deck if self._card_type_name(c) == 'POWER'),
+            'attack_count': sum(1 for c in deck if card_type_name(c) == 'ATTACK'),
+            'skill_count': sum(1 for c in deck if card_type_name(c) == 'SKILL'),
+            'power_count': sum(1 for c in deck if card_type_name(c) == 'POWER'),
             'curse_count': sum(1 for c in deck if self._card_name(c) in self.normalized_bad_curses),
             'upgraded_count': sum(1 for c in deck if is_card_upgraded(c)),
             'archetype': self.get_archetype(context),
@@ -351,15 +340,15 @@ class DeckAnalyzer:
         deck = context.game.deck
 
         if card_type == 'attack':
-            attack_count = sum(1 for c in deck if self._card_type_name(c) == 'ATTACK')
+            attack_count = sum(1 for c in deck if card_type_name(c) == 'ATTACK')
             return attack_count < len(deck) * 0.4  # Don't want more than 40% attacks
 
         elif card_type == 'skill':
-            skill_count = sum(1 for c in deck if self._card_type_name(c) == 'SKILL')
+            skill_count = sum(1 for c in deck if card_type_name(c) == 'SKILL')
             return skill_count < len(deck) * 0.5
 
         elif card_type == 'power':
-            power_count = sum(1 for c in deck if self._card_type_name(c) == 'POWER')
+            power_count = sum(1 for c in deck if card_type_name(c) == 'POWER')
             return power_count < 5  # Powers are rare, cap at 5
 
         elif card_type in self.card_categories:

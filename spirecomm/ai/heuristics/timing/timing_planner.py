@@ -19,6 +19,7 @@ from spirecomm.ai.heuristics.card_costs import (
     whirlwind_damage,
     x_effect_energy,
 )
+from spirecomm.ai.heuristics.card_types import card_type_name
 from spirecomm.ai.heuristics.simulation import BLOCK_UPGRADE_BONUS, _known_damage_upgrade_bonus
 from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_upgraded
 from spirecomm.data.loader import game_data_loader
@@ -27,18 +28,6 @@ logger = logging.getLogger(__name__)
 
 TARGETED_LETHAL_MAX_CARDS = 8
 TARGETED_LETHAL_MAX_MONSTERS = 4
-
-
-def _card_type_name(card) -> str:
-    card_type = getattr(card, 'type', None)
-    if card_type is None:
-        return ''
-    if hasattr(card_type, 'name'):
-        return str(card_type.name).upper()
-    value = str(card_type).upper()
-    if value.startswith('CARDTYPE.'):
-        return value.split('.', 1)[1]
-    return value
 
 
 class TimingAwareCombatPlanner:
@@ -803,7 +792,7 @@ class TimingAwareCombatPlanner:
 
     def _estimate_card_damage(self, card, context, available_energy=None) -> int:
         """Estimate card damage for timing decisions from methods or parsed data."""
-        card_type = _card_type_name(card)
+        card_type = card_type_name(card)
         if card_type and card_type != 'ATTACK':
             return 0
 

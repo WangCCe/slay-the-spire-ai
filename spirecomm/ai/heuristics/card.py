@@ -16,6 +16,7 @@ from spirecomm.ai.priorities import Priority, SilentPriority, IroncladPriority, 
 from spirecomm.ai.heuristics.deck import DeckAnalyzer
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.ai.heuristics.card_names import canonical_card_name, card_data_key
+from spirecomm.ai.heuristics.card_types import card_type_name
 from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count
 
 
@@ -92,18 +93,6 @@ class SynergyCardEvaluator(CardEvaluator):
     @staticmethod
     def _card_name(card: Card) -> str:
         return canonical_card_name(card)
-
-    @staticmethod
-    def _card_type_name(card: Card) -> str:
-        card_type = getattr(card, 'type', None)
-        if card_type is None:
-            return ''
-        if hasattr(card_type, 'name'):
-            return str(card_type.name).upper()
-        value = str(card_type).upper()
-        if value.startswith('CARDTYPE.'):
-            return value.split('.', 1)[1]
-        return value
 
     def evaluate_card(self, card: Card, context: DecisionContext) -> float:
         """
@@ -339,7 +328,7 @@ class SynergyCardEvaluator(CardEvaluator):
                             'iron wave', 'flame barrier', 'protect']
         
         # Check card type first
-        if self._card_type_name(card) == 'SKILL':
+        if card_type_name(card) == 'SKILL':
             # Get card information from game data
             card_data = game_data_loader.get_card_data(self._card_data_key(card))
             if card_data:
@@ -355,7 +344,7 @@ class SynergyCardEvaluator(CardEvaluator):
     def _is_offensive_card(self, card: Card) -> bool:
         """Check if card is primarily offensive."""
         # Check if card type is ATTACK
-        if self._card_type_name(card) == 'ATTACK':
+        if card_type_name(card) == 'ATTACK':
             return True
         
         # Check card data for offensive effects

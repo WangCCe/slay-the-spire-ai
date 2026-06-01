@@ -7,6 +7,7 @@ import numpy as np
 from typing import List, Tuple
 from spirecomm.ai.heuristics.card_costs import raw_card_cost
 from spirecomm.ai.heuristics.card_names import canonical_card_name
+from spirecomm.ai.heuristics.card_types import card_type_name
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 from spirecomm.spire.game import Game
 from spirecomm.spire.card import Card
@@ -82,7 +83,7 @@ class StateEncoder:
     def _encode_single_card(self, card: Card) -> List[float]:
         damage, block = self._extract_card_damage_block(card)
 
-        card_type_name = self._card_type_name(getattr(card, 'type', None))
+        normalized_card_type = card_type_name(getattr(card, 'type', None))
 
         card_id_hash = 0.0
         card_key = self._card_hash_key(card)
@@ -98,10 +99,10 @@ class StateEncoder:
             min(raw_card_cost(card), 3) / 3.0,
             min(damage, 30) / 30.0,
             min(block, 20) / 20.0,
-            1.0 if card_type_name == 'ATTACK' else 0.0,
-            1.0 if card_type_name == 'SKILL' else 0.0,
-            1.0 if card_type_name == 'POWER' else 0.0,
-            1.0 if card_type_name in ('STATUS', 'CURSE') else 0.0,
+            1.0 if normalized_card_type == 'ATTACK' else 0.0,
+            1.0 if normalized_card_type == 'SKILL' else 0.0,
+            1.0 if normalized_card_type == 'POWER' else 0.0,
+            1.0 if normalized_card_type in ('STATUS', 'CURSE') else 0.0,
             1.0 if is_card_upgraded(card) else 0.0,
             0.0,  # is_ethereal (not exposed)
             1.0 if (hasattr(card, 'exhausts') and card.exhausts) else 0.0,
@@ -110,17 +111,6 @@ class StateEncoder:
             1.0 if card_name in weak_cards else 0.0,
             1.0 if card_name in vulnerable_cards else 0.0,
         ]
-
-    @staticmethod
-    def _card_type_name(card_type) -> str:
-        if card_type is None:
-            return ''
-        if hasattr(card_type, 'name'):
-            return str(card_type.name).upper()
-        value = str(card_type).upper()
-        if value.startswith('CARDTYPE.'):
-            return value.split('.', 1)[1]
-        return value
 
     @staticmethod
     def _card_rarity_name(rarity) -> str:
@@ -480,15 +470,15 @@ class StateEncoder:
         cost = self._safe_int(cost, default=0)
 
         card_type = getattr(card, 'type', None)
-        card_type_name = self._card_type_name(card_type)
+        normalized_card_type = card_type_name(card_type)
         type_flags = [0.0, 0.0, 0.0, 0.0]
-        if card_type_name == 'ATTACK':
+        if normalized_card_type == 'ATTACK':
             type_flags[0] = 1.0
-        elif card_type_name == 'SKILL':
+        elif normalized_card_type == 'SKILL':
             type_flags[1] = 1.0
-        elif card_type_name == 'POWER':
+        elif normalized_card_type == 'POWER':
             type_flags[2] = 1.0
-        elif card_type_name in ('STATUS', 'CURSE'):
+        elif normalized_card_type in ('STATUS', 'CURSE'):
             type_flags[3] = 1.0
 
         rarity = getattr(card, 'rarity', None)

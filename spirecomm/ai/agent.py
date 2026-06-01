@@ -6,7 +6,6 @@ from datetime import datetime
 
 from spirecomm.spire.game import Game
 from spirecomm.spire.character import Intent, PlayerClass
-import spirecomm.spire.card
 from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
 from spirecomm.ai.incoming_damage import (
@@ -21,6 +20,7 @@ from spirecomm.ai.heuristics.simulation import (
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
+from spirecomm.ai.heuristics.card_types import card_type_name, is_attack_card
 from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count, is_card_upgraded
 
 # Note: Logging is configured in main.py to write to ai_debug.log
@@ -97,21 +97,6 @@ class SimpleAgent:
             return ""
         return canonical_card_name(card).replace("_", " ")
 
-    @staticmethod
-    def _card_type_name(card) -> str:
-        card_type = getattr(card, "type", None)
-        if card_type is None:
-            return ""
-        if hasattr(card_type, "name"):
-            return str(card_type.name).upper()
-        value = str(card_type).upper()
-        if value.startswith("CARDTYPE."):
-            return value.split(".", 1)[1]
-        return value
-
-    def _is_attack_card(self, card) -> bool:
-        return self._card_type_name(card) == "ATTACK"
-
     def _get_upgrade_bonus(self, card):
         if is_card_upgraded(card):
             return 0
@@ -122,7 +107,7 @@ class SimpleAgent:
         if base_name in BLOCK_UPGRADE_BONUS:
             bonus += BLOCK_UPGRADE_BONUS[base_name]
         if bonus == 0:
-            card_type = self._card_type_name(card)
+            card_type = card_type_name(card)
             if card_type == "ATTACK":
                 bonus = 2
             elif card_type == "SKILL":
@@ -524,12 +509,12 @@ class SimpleAgent:
         zero_cost_attacks = [
             card
             for card in zero_cost_cards
-            if self._is_attack_card(card)
+            if is_attack_card(card)
         ]
         zero_cost_non_attacks = [
             card
             for card in zero_cost_cards
-            if not self._is_attack_card(card)
+            if not is_attack_card(card)
         ]
         nonzero_cost_cards = [
             card
@@ -552,7 +537,7 @@ class SimpleAgent:
             attack_cards = [
                 card
                 for card in playable_cards
-                if self._is_attack_card(card)
+                if is_attack_card(card)
             ]
             if attack_cards:
                 import logging
@@ -597,7 +582,7 @@ class SimpleAgent:
             if (
                 len(aoe_cards) > 0
                 and self.many_monsters_alive()
-                and self._is_attack_card(card_to_play)
+                and is_attack_card(card_to_play)
             ):
                 card_to_play = self.priorities.get_best_card_to_play(aoe_cards)
         elif len(zero_cost_attacks) > 0:
@@ -615,7 +600,7 @@ class SimpleAgent:
             ]
             if len(available_monsters) == 0:
                 return EndTurnAction()
-            if self._is_attack_card(card_to_play):
+            if is_attack_card(card_to_play):
                 target = self.get_low_hp_target()
             else:
                 target = self.get_high_hp_target()
