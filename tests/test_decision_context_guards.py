@@ -448,6 +448,21 @@ def test_compute_threat_counts_actual_attack_debuff_intent_as_debuff_threat():
     assert context.compute_threat(monster) == 17
 
 
+def test_compute_threat_accepts_string_numeric_monster_fields():
+    monster = SimpleNamespace(
+        name="Jaw Worm",
+        intent=Intent.ATTACK_DEBUFF,
+        move_adjusted_damage="7",
+        move_hits="2",
+        strength="2",
+        current_hp="75",
+        max_hp="100",
+    )
+    context = DecisionContext.__new__(DecisionContext)
+
+    assert context.compute_threat(monster) == 31
+
+
 def test_compute_threat_counts_actual_debuff_intent_as_debuff_threat():
     monster = SimpleNamespace(
         name="Acid Slime (L)",
@@ -499,6 +514,28 @@ def test_compute_threat_v2_counts_actual_debuff_intent_as_debuff_threat(monkeypa
     context.monsters_alive = [monster]
 
     assert context.compute_threat_v2(monster) == 10
+
+
+def test_compute_threat_v2_accepts_string_numeric_monster_fields(monkeypatch):
+    monkeypatch.setattr(
+        decision_base,
+        "game_data_loader",
+        _FakeEnhancedMonsterDataLoader(),
+    )
+    monster = SimpleNamespace(
+        name="Jaw Worm",
+        intent=Intent.ATTACK,
+        move_adjusted_damage="7",
+        move_hits="2",
+        strength="2",
+        current_hp="75",
+        max_hp="100",
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.turn = 1
+    context.monsters_alive = [monster]
+
+    assert context.compute_threat_v2(monster) == 18
 
 
 def test_compute_threat_v2_does_not_count_debuff_intent_as_party_buff(monkeypatch):

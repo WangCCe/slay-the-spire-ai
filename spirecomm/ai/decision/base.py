@@ -273,8 +273,9 @@ class DecisionContext:
             threat += self._move_damage_contribution(monster)
 
             # Add current Strength to damage
-            if hasattr(monster, 'strength') and monster.strength > 0:
-                threat += monster.strength * hits
+            strength = self._safe_int(getattr(monster, 'strength', 0), 0)
+            if strength > 0:
+                threat += strength * hits
         return threat
 
     def compute_threat(self, monster) -> int:
@@ -344,7 +345,9 @@ class DecisionContext:
 
         # 5. High HP threat (more HP = more dangerous if left alive)
         if hasattr(monster, 'current_hp') and hasattr(monster, 'max_hp'):
-            hp_ratio = monster.current_hp / max(monster.max_hp, 1)
+            current_hp = self._safe_float(getattr(monster, 'current_hp', 0), 0.0)
+            max_hp = self._safe_float(getattr(monster, 'max_hp', 0), 0.0)
+            hp_ratio = current_hp / max(max_hp, 1)
             if hp_ratio > 0.5:  # Monster above 50% HP
                 threat += int(hp_ratio * 5)  # Up to +5 for high HP
 
@@ -393,13 +396,15 @@ class DecisionContext:
 
         # ===== Component 2: Future threat (predict next 2-3 moves) =====
         # Get monster HP percentage for phase detection
-        if hasattr(monster, 'current_hp') and hasattr(monster, 'max_hp') and monster.max_hp > 0:
-            monster_hp_percent = monster.current_hp / monster.max_hp
+        if hasattr(monster, 'current_hp') and hasattr(monster, 'max_hp'):
+            current_hp = self._safe_float(getattr(monster, 'current_hp', 0), 0.0)
+            max_hp = self._safe_float(getattr(monster, 'max_hp', 0), 0.0)
+            monster_hp_percent = current_hp / max_hp if max_hp > 0 else 1.0
         else:
             monster_hp_percent = 1.0
 
         # Get current Strength for scaling
-        current_strength = getattr(monster, 'strength', 0)
+        current_strength = self._safe_int(getattr(monster, 'strength', 0), 0)
 
         # Predict future moves using Wiki patterns
         predicted_moves = game_data_loader.predict_monster_moves(
