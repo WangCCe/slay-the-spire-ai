@@ -9,7 +9,7 @@ from spirecomm.ai.heuristics.card_costs import raw_card_cost
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_upgrades import is_card_upgraded
 from spirecomm.spire.game import Game
-from spirecomm.spire.card import Card, CardType, CardRarity
+from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster, PlayerClass, Intent
 from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 
@@ -118,6 +118,17 @@ class StateEncoder:
             return str(card_type.name).upper()
         value = str(card_type).upper()
         if value.startswith('CARDTYPE.'):
+            return value.split('.', 1)[1]
+        return value
+
+    @staticmethod
+    def _card_rarity_name(rarity) -> str:
+        if rarity is None:
+            return ''
+        if hasattr(rarity, 'name'):
+            return str(rarity.name).upper()
+        value = str(rarity).upper()
+        if value.startswith('CARDRARITY.'):
             return value.split('.', 1)[1]
         return value
 
@@ -457,25 +468,27 @@ class StateEncoder:
         cost = self._safe_int(cost, default=0)
 
         card_type = getattr(card, 'type', None)
+        card_type_name = self._card_type_name(card_type)
         type_flags = [0.0, 0.0, 0.0, 0.0]
-        if card_type == CardType.ATTACK:
+        if card_type_name == 'ATTACK':
             type_flags[0] = 1.0
-        elif card_type == CardType.SKILL:
+        elif card_type_name == 'SKILL':
             type_flags[1] = 1.0
-        elif card_type == CardType.POWER:
+        elif card_type_name == 'POWER':
             type_flags[2] = 1.0
-        elif card_type in (CardType.STATUS, CardType.CURSE):
+        elif card_type_name in ('STATUS', 'CURSE'):
             type_flags[3] = 1.0
 
         rarity = getattr(card, 'rarity', None)
+        rarity_name = self._card_rarity_name(rarity)
         rarity_flags = [0.0, 0.0, 0.0, 0.0]
-        if rarity == CardRarity.BASIC:
+        if rarity_name == 'BASIC':
             rarity_flags[0] = 1.0
-        elif rarity == CardRarity.COMMON:
+        elif rarity_name == 'COMMON':
             rarity_flags[1] = 1.0
-        elif rarity == CardRarity.UNCOMMON:
+        elif rarity_name == 'UNCOMMON':
             rarity_flags[2] = 1.0
-        elif rarity == CardRarity.RARE:
+        elif rarity_name == 'RARE':
             rarity_flags[3] = 1.0
 
         upgrades_flag = 1.0 if is_card_upgraded(card) else 0.0

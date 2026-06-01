@@ -97,6 +97,18 @@ def test_rl_card_reward_features_infer_upgrade_flag_from_suffix():
     assert features[11] == 1.0
 
 
+def test_rl_card_reward_features_accept_string_type_and_rarity():
+    encoder = StateEncoder()
+    card = _card("Cleave")
+    card.type = "ATTACK"
+    card.rarity = "UNCOMMON"
+
+    features = encoder._encode_card_reward_card(card)
+
+    assert features[1] == 1.0
+    assert features[7] == 1.0
+
+
 def test_rl_state_encoder_intent_encoding_accepts_string_representations():
     encoder = StateEncoder()
 
