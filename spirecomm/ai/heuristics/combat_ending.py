@@ -1768,11 +1768,20 @@ class CombatEndingDetector:
     def _get_player_debuff_stacks(self, context: DecisionContext, power_name: str) -> int:
         return player_debuff_stacks(context, power_name)
 
+    @staticmethod
+    def _safe_int(value, default: int = 0) -> int:
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
     def _all_alive_targets_poisoned(self, context: DecisionContext) -> bool:
         monsters = getattr(context, 'monsters_alive', []) or []
         alive_monsters = [
             monster for monster in monsters
-            if getattr(monster, 'current_hp', 0) > 0
+            if self._safe_int(getattr(monster, 'current_hp', 0), default=0) > 0
         ]
         if not alive_monsters:
             return False

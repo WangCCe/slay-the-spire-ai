@@ -9997,6 +9997,16 @@ def test_lethal_detector_counts_bane_second_hit_against_poisoned_target(monkeypa
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["bane"]
 
 
+def test_lethal_detector_bane_poison_check_accepts_numeric_string_hp():
+    dead_poisoned = _louse(current_hp="0")
+    dead_poisoned.powers = [SimpleNamespace(power_name="Poison", amount=1)]
+    live_poisoned = _louse(current_hp="12")
+    live_poisoned.powers = [SimpleNamespace(power_name="Poison", amount=1)]
+    context = _combat_context([], energy=0, monsters=[dead_poisoned, live_poisoned])
+
+    assert CombatEndingDetector()._all_alive_targets_poisoned(context)
+
+
 def test_lethal_detector_counts_bane_second_hit_only_for_poisoned_target(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
