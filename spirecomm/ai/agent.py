@@ -5,6 +5,7 @@ import sys
 from datetime import datetime
 
 from spirecomm.spire.game import Game
+from spirecomm.spire.identifiers import potion_id
 from spirecomm.spire.character import Intent, PlayerClass
 from spirecomm.spire.screen import RestOption, reward_type_name
 from spirecomm.communication.action import *
@@ -1267,11 +1268,7 @@ class TurnPlanSignature:
     def _potion_signature(potions):
         potion_signatures = []
         for index, potion in enumerate(potions or []):
-            potion_identity = (
-                getattr(potion, "potion_id", None)
-                or getattr(potion, "id", None)
-                or getattr(potion, "name", None)
-            )
+            potion_identity = potion_id(potion)
             potion_signatures.append(
                 (
                     index,

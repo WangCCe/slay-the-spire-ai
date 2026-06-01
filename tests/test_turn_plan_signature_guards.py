@@ -225,6 +225,17 @@ def test_turn_plan_signature_distinguishes_potion_inventory_changes():
     assert available_signature != spent_signature
 
 
+def test_turn_plan_signature_distinguishes_string_potion_inventory_changes():
+    fire_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike")], potions=["Fire Potion"])
+    )
+    empty_slot_signature = TurnPlanSignature(
+        _game([_card("Strike_R", "Strike")], potions=["Potion Slot"])
+    )
+
+    assert fire_signature != empty_slot_signature
+
+
 def test_should_replan_when_potion_inventory_changes():
     agent = OptimizedAgent.__new__(OptimizedAgent)
     agent.current_plan_signature = TurnPlanSignature(
