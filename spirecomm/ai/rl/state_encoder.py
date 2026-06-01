@@ -253,7 +253,7 @@ class StateEncoder:
                         potion_hash = self._stable_hash(str(potion), 30) / 30.0
                     except Exception:
                         potion_hash = 0.0
-                    can_use = 0.0
+                    can_use = 1.0 if potion_can_use(potion) else 0.0
 
                 features.extend([potion_hash, 1.0, can_use])
             else:
