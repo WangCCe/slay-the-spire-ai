@@ -132,6 +132,26 @@ class _StringHibernationMonsterDataLoader:
         return {"type": "hibernation", "hibernation_turns": "3"}
 
 
+class _StringPhaseChangeMonsterDataLoader:
+    def get_enhanced_monster_data(self, monster_name):
+        return {"name": monster_name}
+
+    def predict_monster_moves(self, monster_name, turn, monster_hp_percent):
+        return []
+
+    def get_monster_threat_profile(self, monster_name):
+        return {
+            "phase2_threat": "30",
+            "base_threat": "20",
+        }
+
+    def get_monster_special_mechanics(self, monster_name):
+        return {
+            "type": "phase_change",
+            "phases": [{"hp_threshold": "60", "phase": "2"}],
+        }
+
+
 def _context_for_deck(deck):
     context = DecisionContext.__new__(DecisionContext)
     context.game = SimpleNamespace(deck=deck)
@@ -699,6 +719,28 @@ def test_compute_threat_v2_accepts_string_numeric_hibernation_profile(monkeypatc
     context.monsters_alive = [lagavulin]
 
     assert context.compute_threat_v2(lagavulin) == 9
+
+
+def test_compute_threat_v2_accepts_string_numeric_phase_change_profile(monkeypatch):
+    monkeypatch.setattr(
+        decision_base,
+        "game_data_loader",
+        _StringPhaseChangeMonsterDataLoader(),
+    )
+    champ = SimpleNamespace(
+        name="Champ",
+        intent=Intent.NONE,
+        move_adjusted_damage=0,
+        move_hits=1,
+        strength=0,
+        current_hp=200,
+        max_hp=400,
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.turn = 1
+    context.monsters_alive = [champ]
+
+    assert context.compute_threat_v2(champ) == 16
 
 
 def test_compute_threat_v2_does_not_count_debuff_intent_as_party_buff(monkeypatch):

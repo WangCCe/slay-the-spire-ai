@@ -501,14 +501,15 @@ class DecisionContext:
                 current_phase = 1
                 for phase in phases:
                     if 'hp_threshold' in phase:
-                        if monster_hp_percent < (phase['hp_threshold'] / 100.0):
-                            current_phase = phase.get('phase', 2)
+                        hp_threshold = self._safe_float(phase.get('hp_threshold'), 0.0)
+                        if monster_hp_percent < (hp_threshold / 100.0):
+                            current_phase = self._safe_int(phase.get('phase', 2), 2)
                             break
 
                 # Add phase-specific threat
                 phase_threat_key = f'phase{current_phase}_threat'
                 if threat_profile and phase_threat_key in threat_profile:
-                    phase_threat = threat_profile[phase_threat_key]
+                    phase_threat = self._safe_float(threat_profile[phase_threat_key], 0.0)
                     threat += int(phase_threat * 0.5)  # Moderate weight for phase threat
 
             # Death split threat (prioritize AOE)
