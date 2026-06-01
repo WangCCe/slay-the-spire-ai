@@ -4510,6 +4510,27 @@ def test_damage_potion_score_accepts_numeric_string_monster_hp():
     assert HeuristicCombatPlanner()._score_potion(potion, context, state) == 20
 
 
+def test_damage_potion_target_accepts_numeric_string_hp_for_lethal():
+    killable = SimpleNamespace(name="Low HP Slime", current_hp="7")
+    dangerous = SimpleNamespace(name="High HP Slime", current_hp="20")
+    potion = SimpleNamespace(effect_type="damage", effect_value=10)
+    context = SimpleNamespace(
+        monsters_alive=[killable, dangerous],
+        compute_threat=lambda monster: 100 if monster is dangerous else 1,
+    )
+
+    assert HeuristicCombatPlanner()._find_best_potion_target(potion, context) is killable
+
+
+def test_debuff_potion_target_orders_numeric_string_hp_numerically():
+    lower_hp = SimpleNamespace(name="Nine HP Slime", current_hp="9")
+    higher_hp = SimpleNamespace(name="Twelve HP Slime", current_hp="12")
+    potion = SimpleNamespace(effect_type="debuff_weak")
+    context = SimpleNamespace(monsters_alive=[lower_hp, higher_hp])
+
+    assert HeuristicCombatPlanner()._find_best_potion_target(potion, context) is higher_hp
+
+
 def test_damage_potion_score_does_not_treat_vulnerable_as_lethal():
     monster = SimpleNamespace(
         name="Lagavulin",

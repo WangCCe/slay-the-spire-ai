@@ -5831,11 +5831,11 @@ class HeuristicCombatPlanner(CombatPlanner):
         # For direct damage potions, prefer immediate lethal before threat.
         if self._is_damage_potion(potion):
             if getattr(potion, 'effect_type', None) == 'damage':
-                damage = getattr(potion, 'effect_value', 0) or 0
+                damage = self._non_negative_int(getattr(potion, 'effect_value', 0))
                 killable_targets = [
                     monster
                     for monster in context.monsters_alive
-                    if damage >= getattr(monster, 'current_hp', 0)
+                    if damage >= self._non_negative_int(getattr(monster, 'current_hp', 0))
                 ]
                 if killable_targets:
                     return max(killable_targets, key=lambda m: context.compute_threat(m))
@@ -5843,7 +5843,10 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         # For debuff potions, target high-HP monsters to maximize debuff value
         elif potion.effect_type.startswith('debuff_'):
-            return max(context.monsters_alive, key=lambda m: m.current_hp)
+            return max(
+                context.monsters_alive,
+                key=lambda m: self._non_negative_int(getattr(m, 'current_hp', 0)),
+            )
 
         # Default: highest threat
         return max(context.monsters_alive, key=lambda m: context.compute_threat(m))
