@@ -27,7 +27,7 @@ from spirecomm.ai.incoming_damage import (
     known_unknown_move_immediate_damage,
 )
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
-from spirecomm.ai.heuristics.card_types import card_requires_target
+from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
 from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
 from spirecomm.spire.character import PlayerClass
 from spirecomm.spire.identifiers import potion_id
@@ -1452,14 +1452,7 @@ class CombatRLAgent:
         if card is None:
             return False
 
-        card_type = getattr(card, "type", None)
-        if card_type is None:
-            card_type = getattr(card, "card_type", None)
-        if getattr(card_type, "name", "").upper() == "POWER":
-            return True
-        if str(getattr(card_type, "value", "")).upper() == "POWER":
-            return True
-        return str(card_type).upper().endswith("POWER")
+        return card_type_name(card) == "POWER"
 
     @staticmethod
     def _alive_monsters(game: Game):

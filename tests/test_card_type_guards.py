@@ -27,6 +27,13 @@ def test_card_type_matchers_accept_namespaced_strings():
     assert is_attack_card(card) is True
 
 
+def test_card_type_matchers_accept_card_type_attribute():
+    card = SimpleNamespace(card_type="CardType.ATTACK")
+
+    assert card_type_name(card) == "ATTACK"
+    assert is_attack_card(card) is True
+
+
 def test_card_requires_target_infers_name_only_targeted_attacks():
     strike = SimpleNamespace(name="Strike", type="CardType.ATTACK")
 

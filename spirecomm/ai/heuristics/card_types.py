@@ -38,7 +38,14 @@ def card_type_name(card_or_type) -> str:
     """Return a normalized card type name such as ``ATTACK`` or ``SKILL``."""
     if card_or_type is None:
         return ""
-    card_type = getattr(card_or_type, "type", card_or_type)
+    if hasattr(card_or_type, "type"):
+        card_type = getattr(card_or_type, "type")
+        if card_type is None and hasattr(card_or_type, "card_type"):
+            card_type = getattr(card_or_type, "card_type")
+    elif hasattr(card_or_type, "card_type"):
+        card_type = getattr(card_or_type, "card_type")
+    else:
+        card_type = card_or_type
     if card_type is None:
         return ""
     if hasattr(card_type, "name"):
