@@ -28,6 +28,7 @@ from spirecomm.spire.screen import ScreenType, RestOption, reward_type_name
 from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id
 from spirecomm.ai.heuristics.card_types import card_is_playable, card_requires_target
+from spirecomm.ai.heuristics.potions import game_real_potions
 
 from . import action_space as space
 
@@ -597,7 +598,9 @@ class ActionEncoderV2:
                     mask[self.encode_play_card(card_idx, 0)] = True
 
         if getattr(game, "potion_available", True):
-            for potion_idx, potion in enumerate((game.potions or [])[:space.MAX_POTION_SLOTS]):
+            raw_potions = getattr(game, "potions", None)
+            potions = raw_potions if raw_potions is not None else game_real_potions(game)
+            for potion_idx, potion in enumerate((potions or [])[:space.MAX_POTION_SLOTS]):
                 if potion_id(potion) == "Potion Slot":
                     continue
                 if hasattr(potion, "can_use") and not potion.can_use:
