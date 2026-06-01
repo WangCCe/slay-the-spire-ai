@@ -2697,6 +2697,24 @@ def test_ironclad_fallback_damage_uses_canonical_name_for_counted_upgrades(monke
     assert damage == 11
 
 
+def test_ironclad_fallback_damage_accepts_string_damage_attribute():
+    card = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        has_target=True,
+        cost=1,
+        upgrades=0,
+    )
+    card.damage = "6"
+    context = SimpleNamespace(strength=2)
+
+    damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(card, context)
+
+    assert damage == 8
+
+
 def test_ironclad_fallback_damage_applies_all_searing_blow_upgrades(monkeypatch):
     card = Card(
         card_id="Searing Blow",

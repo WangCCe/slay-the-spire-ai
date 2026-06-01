@@ -127,6 +127,13 @@ class IroncladCombatPlanner(CombatPlanner):
         logger.info("[TIMING_INIT] IroncladCombatPlanner initialized with timing awareness")
 
     @staticmethod
+    def _non_negative_int(value) -> int:
+        try:
+            return max(0, int(value or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
     def _is_aoe_attack(card: Card) -> bool:
         return canonical_card_name(card) in AOE_ATTACK_CARDS
 
@@ -1066,9 +1073,7 @@ class IroncladCombatPlanner(CombatPlanner):
             energy = x_effect_energy(card, getattr(context, 'energy_available', 0), context)
             return whirlwind_damage(card, energy, getattr(context, 'strength', 0))
 
-        base_damage = getattr(card, 'damage', 0)
-        if base_damage is None:
-            base_damage = 0
+        base_damage = self._non_negative_int(getattr(card, 'damage', 0))
         parsed_card_data_name = None
 
         if base_damage == 0 or not hasattr(card, 'damage'):
