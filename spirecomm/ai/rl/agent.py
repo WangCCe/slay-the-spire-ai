@@ -26,6 +26,7 @@ from spirecomm.ai.incoming_damage import (
     known_unknown_move_has_no_immediate_damage,
     known_unknown_move_immediate_damage,
 )
+from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
 from spirecomm.spire.character import PlayerClass
 
@@ -1535,10 +1536,8 @@ class CombatRLAgent:
         for index, card in enumerate(getattr(game, "hand", []) or []):
             if hasattr(card, "is_playable") and not getattr(card, "is_playable", False):
                 continue
-            cost = getattr(card, "cost", None)
-            cost_for_turn = getattr(card, "cost_for_turn", None)
-            effective_cost = cost_for_turn if cost_for_turn is not None else cost
-            if effective_cost is not None and effective_cost >= 0 and effective_cost > energy:
+            effective_cost = effective_card_cost(card, energy)
+            if effective_cost > energy:
                 continue
             playable.append((index, card))
         return playable

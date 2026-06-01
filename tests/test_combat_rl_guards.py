@@ -190,6 +190,13 @@ def test_energy_guard_replaces_wasteful_end_turn_with_play_card():
     assert replacement.target_index == 0
 
 
+def test_rl_playable_cards_parse_string_turn_cost():
+    card = SimpleNamespace(is_playable=True, cost=3, cost_for_turn="2", has_target=True)
+    game = _game(hand=[card], player=SimpleNamespace(energy=1))
+
+    assert CombatRLAgent._playable_cards(game, energy=1) == []
+
+
 def test_wasteful_end_turn_hands_rest_of_turn_to_fallback():
     card = SimpleNamespace(is_playable=True, cost=1, has_target=True)
     game = _game(hand=[card], monsters=[_monster(hp=30, damage=8, index=0)])

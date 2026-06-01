@@ -201,6 +201,23 @@ def test_legacy_combat_mask_skips_cards_without_player_energy():
     assert not any(mask[: encoder.USE_POTION_OFFSET])
 
 
+def test_legacy_combat_mask_parses_string_turn_cost():
+    encoder = ActionEncoder()
+    card = _card(has_target=True)
+    card.cost = 3
+    card.cost_for_turn = "2"
+    game = _combat_game(
+        hand=[card],
+        player=SimpleNamespace(energy=1),
+        end_available=True,
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert mask[encoder.END_TURN_ACTION]
+    assert not any(mask[: encoder.USE_POTION_OFFSET])
+
+
 def test_legacy_potion_decoder_falls_back_for_unusable_potion():
     encoder = ActionEncoder()
     potion = _potion("Fire Potion")

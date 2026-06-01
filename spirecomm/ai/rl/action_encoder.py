@@ -5,6 +5,8 @@ Converts between discrete action indices (0-999) and Slay the Spire Action objec
 """
 
 from typing import List, Optional, Tuple
+
+from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.spire.game import Game
 from spirecomm.communication.action import (
     PlayCardAction,
@@ -742,14 +744,19 @@ class ActionEncoder:
                     # Check if card is playable (skip curses like Dazed)
                     if hasattr(card, "is_playable") and not card.is_playable:
                         continue
-                    cost = (
-                        card.cost_for_turn
-                        if hasattr(card, "cost_for_turn")
-                        else getattr(card, "cost", None)
-                    )
+                    raw_cost = getattr(card, "cost_for_turn", None)
+                    if raw_cost is None:
+                        raw_cost = getattr(card, "cost", None)
                     player = getattr(game, "player", None)
                     energy = getattr(player, "energy", None)
-                    if cost is None or energy is None or energy < cost:
+                    if raw_cost is None or energy is None:
+                        continue
+                    try:
+                        available_energy = int(energy)
+                    except (TypeError, ValueError):
+                        continue
+                    cost = effective_card_cost(card, available_energy)
+                    if cost > available_energy:
                         continue
                     if hasattr(card, "has_target") and not card.has_target:
                         action_idx = self.encode_play_card(card_idx, 0)
