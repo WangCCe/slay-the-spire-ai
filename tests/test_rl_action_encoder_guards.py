@@ -10,6 +10,7 @@ from spirecomm.communication.action import (
     PlayCardAction,
     PotionAction,
 )
+from spirecomm.spire.card import CardType
 from spirecomm.spire.screen import ScreenType
 
 
@@ -353,3 +354,58 @@ def test_legacy_card_decoder_keeps_valid_targeted_card():
     assert isinstance(action, PlayCardAction)
     assert action.card_index == 0
     assert action.target_index == 0
+
+
+def test_legacy_card_decoder_infers_target_for_name_only_attack_without_has_target():
+    encoder = ActionEncoder()
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        is_playable=True,
+    )
+    game = _combat_game(
+        hand=[strike],
+        monsters=[SimpleNamespace(current_hp=10, is_gone=False, half_dead=False)],
+        player=SimpleNamespace(energy=1),
+        end_available=True,
+    )
+
+    action = encoder.decode_action(encoder.encode_play_card(0, 0), game)
+    mask = encoder.get_action_mask(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index == 0
+    assert mask[encoder.encode_play_card(0, 0)]
+
+
+def test_legacy_card_mask_ignores_misleading_aoe_target_flag():
+    encoder = ActionEncoder()
+    cleave = SimpleNamespace(
+        name="Cleave",
+        type=CardType.ATTACK,
+        cost=1,
+        cost_for_turn=1,
+        has_target=True,
+        is_playable=True,
+    )
+    game = _combat_game(
+        hand=[cleave],
+        monsters=[
+            SimpleNamespace(current_hp=10, is_gone=False, half_dead=False),
+            SimpleNamespace(current_hp=10, is_gone=False, half_dead=False),
+        ],
+        player=SimpleNamespace(energy=1),
+        end_available=True,
+    )
+
+    action = encoder.decode_action(encoder.encode_play_card(0, 0), game)
+    mask = encoder.get_action_mask(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index is None
+    assert mask[encoder.encode_play_card(0, 0)]
+    assert not mask[encoder.encode_play_card(0, 1)]

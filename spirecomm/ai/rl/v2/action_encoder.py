@@ -27,6 +27,7 @@ from spirecomm.communication.action import (
 from spirecomm.spire.screen import ScreenType, RestOption, reward_type_name
 from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id
+from spirecomm.ai.heuristics.card_types import card_requires_target
 
 from . import action_space as space
 
@@ -306,7 +307,7 @@ class ActionEncoderV2:
         if hasattr(card, "is_playable") and not card.is_playable:
             return self._fallback_combat_action(game)
 
-        if getattr(card, "has_target", False):
+        if card_requires_target(card):
             target_index = self._map_alive_target(game, target_slot)
             if target_index is None:
                 return self._fallback_combat_action(game)
@@ -589,7 +590,7 @@ class ActionEncoderV2:
             for card_idx, card in enumerate(hand[:space.MAX_CARD_SLOTS]):
                 if hasattr(card, "is_playable") and not card.is_playable:
                     continue
-                if getattr(card, "has_target", False):
+                if card_requires_target(card):
                     for target_index in alive_targets:
                         mask[self.encode_play_card(card_idx, target_index)] = True
                 else:

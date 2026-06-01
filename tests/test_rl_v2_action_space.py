@@ -14,6 +14,7 @@ from spirecomm.communication.action import (
     PotionAction,
     ProceedAction,
 )
+from spirecomm.spire.card import CardType
 from spirecomm.spire.screen import RewardType, ScreenType
 
 
@@ -182,6 +183,56 @@ def test_combat_decoder_keeps_valid_card_and_potion_actions():
     assert isinstance(potion_action, PotionAction)
     assert potion_action.potion_index == 0
     assert potion_action.target_index == 0
+
+
+def test_combat_mask_and_decoder_infer_target_for_name_only_attack_without_has_target():
+    encoder = ActionEncoderV2()
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        is_playable=True,
+    )
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[strike],
+        monsters=[_make_monster()],
+    )
+
+    mask = encoder.get_action_mask(game)
+    action = encoder.decode_action(space.encode_play_card(0, 1), game)
+
+    assert not mask[space.encode_play_card(0, 0)]
+    assert mask[space.encode_play_card(0, 1)]
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index == 0
+
+
+def test_combat_mask_and_decoder_ignore_misleading_aoe_target_flag():
+    encoder = ActionEncoderV2()
+    cleave = SimpleNamespace(
+        name="Cleave",
+        type=CardType.ATTACK,
+        has_target=True,
+        is_playable=True,
+    )
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[cleave],
+        monsters=[_make_monster(), _make_monster()],
+    )
+
+    mask = encoder.get_action_mask(game)
+    action = encoder.decode_action(space.encode_play_card(0, 0), game)
+
+    assert mask[space.encode_play_card(0, 0)]
+    assert not mask[space.encode_play_card(0, 1)]
+    assert not mask[space.encode_play_card(0, 2)]
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index is None
 
 
 def test_combat_decoder_falls_back_for_unavailable_potion_slot():

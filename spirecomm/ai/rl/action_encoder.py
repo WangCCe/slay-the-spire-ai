@@ -7,6 +7,7 @@ Converts between discrete action indices (0-999) and Slay the Spire Action objec
 from typing import List, Optional, Tuple
 
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
+from spirecomm.ai.heuristics.card_types import card_requires_target
 from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id
 from spirecomm.spire.screen import reward_type_name
@@ -359,7 +360,7 @@ class ActionEncoder:
         if hasattr(card, "is_playable") and not card.is_playable:
             return self._fallback_combat_action(game)
 
-        if hasattr(card, "has_target") and card.has_target:
+        if card_requires_target(card):
             monsters = getattr(game, "monsters", []) or []
             if monster_index < 0 or monster_index >= min(
                 len(monsters),
@@ -371,6 +372,8 @@ class ActionEncoder:
                 return self._fallback_combat_action(game)
             return PlayCardAction(card_index=card_index, target_index=monster_index)
 
+        if monster_index != 0:
+            return self._fallback_combat_action(game)
         return PlayCardAction(card_index=card_index, target_index=None)
 
     def _decode_potion_action(self, potion_index: int, monster_index: int, game: Game):
@@ -754,15 +757,15 @@ class ActionEncoder:
                     cost = effective_card_cost(card, available_energy)
                     if cost > available_energy:
                         continue
-                    if hasattr(card, "has_target") and not card.has_target:
-                        action_idx = self.encode_play_card(card_idx, 0)
-                        mask[action_idx] = True
-                    else:
+                    if card_requires_target(card):
                         for monster_idx, monster in enumerate(monsters):
                             if not self._is_targetable_monster(monster):
                                 continue
                             action_idx = self.encode_play_card(card_idx, monster_idx)
                             mask[action_idx] = True
+                    else:
+                        action_idx = self.encode_play_card(card_idx, 0)
+                        mask[action_idx] = True
 
             # Use potion actions (only if potions are available AND can_use=True)
             if getattr(game, "potion_available", True):
