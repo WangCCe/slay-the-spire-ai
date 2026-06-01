@@ -29,7 +29,7 @@ from spirecomm.ai.heuristics.card_costs import (
     x_effect_energy,
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
-from spirecomm.ai.heuristics.card_types import card_type_name
+from spirecomm.ai.heuristics.card_types import card_type_name, is_attack_card
 from spirecomm.ai.heuristics.card_upgrades import (
     DAMAGE_UPGRADE_BONUS,
     card_upgrade_count,
@@ -1543,7 +1543,7 @@ class FastCombatSimulator:
             exhausted_cards = [
                 hand_card
                 for hand_card in self._unplayed_hand_cards(state, context, exclude_card=card)
-                if getattr(hand_card, 'type', None) != CardType.ATTACK
+                if not is_attack_card(hand_card)
             ]
             state.exhaust_events += len(exhausted_cards)
             self._mark_cards_unavailable(state, exhausted_cards)
@@ -3337,7 +3337,7 @@ class FastCombatSimulator:
         exhausted_cards = [
             hand_card
             for hand_card in self._unplayed_hand_cards(state, context, exclude_card=card)
-            if getattr(hand_card, 'type', None) != CardType.ATTACK
+            if not is_attack_card(hand_card)
         ]
         exhausted_count = len(exhausted_cards)
         if exhausted_count <= 0:

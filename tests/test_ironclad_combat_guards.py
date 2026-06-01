@@ -5232,6 +5232,35 @@ def test_second_wind_gains_block_for_each_non_attack_card_exhausted():
     assert result.exhaust_events == 2
 
 
+def test_second_wind_keeps_string_attack_cards():
+    second_wind = _card(
+        "Second Wind",
+        "Second Wind",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.type = "ATTACK"
+    context = _combat_context(
+        [second_wind, defend, strike],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        second_wind,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 5
+    assert result.exhaust_events == 1
+
+
 def test_second_wind_applies_card_block_modifiers_per_exhausted_card():
     second_wind = _card(
         "Second Wind",
@@ -6582,6 +6611,43 @@ def test_sever_soul_exhausts_non_attacks_for_feel_no_pain(monkeypatch):
 
     assert result.exhaust_events == 2
     assert result.player_block == 6
+
+
+def test_sever_soul_keeps_string_attack_cards(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "sever soul": {
+            "name": "Sever Soul",
+            "description": "Exhaust all non-Attack cards in your hand.\nDeal 16 damage.",
+        },
+    }
+    loader._wiki_data = {
+        "sever soul": {
+            "name": "Sever Soul",
+            "text": "#Exhaust all non-Attack cards in your hand.\nDeal [16|22] damage.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    sever_soul = _card("Sever Soul", "Sever Soul", cost=2)
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.type = "ATTACK"
+    context = _combat_context(
+        [sever_soul, defend, strike],
+        energy=2,
+        monsters=[_louse(current_hp=100)],
+    )
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        sever_soul,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.exhaust_events == 1
 
 
 def test_sever_soul_marks_exhausted_non_attacks_unavailable_for_later_search(monkeypatch):
