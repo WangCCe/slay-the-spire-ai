@@ -23,6 +23,7 @@ from spirecomm.ai.incoming_damage import (
     known_unknown_move_immediate_damage,
 )
 from spirecomm.ai.monster_names import canonical_live_monster_name
+from spirecomm.ai.heuristics.combat_state import power_amount
 from spirecomm.data.loader import game_data_loader
 
 
@@ -688,13 +689,6 @@ class DecisionContext:
             for attr in ('relic_id', 'name')
         )
 
-    @staticmethod
-    def _power_matches(power, power_id: str) -> bool:
-        for attr in ('power_id', 'power_name', 'name'):
-            if getattr(power, attr, None) == power_id:
-                return True
-        return False
-
     def _get_player_power_amount(self, power_id: str) -> int:
         """
         Get amount of specific player power.
@@ -705,12 +699,9 @@ class DecisionContext:
         Returns:
             Amount of the power, or 0 if not found
         """
-        if not hasattr(self.game, 'player') or not hasattr(self.game.player, 'powers'):
-            return 0
-        for power in self.game.player.powers:
-            if self._power_matches(power, power_id):
-                return power.amount if hasattr(power, 'amount') else 0
-        return 0
+        player = getattr(self.game, 'player', None)
+        powers = getattr(player, 'powers', []) if player is not None else []
+        return power_amount(powers, power_id, 0)
 
     def _get_monster_power_amount(self, monster: Monster, power_id: str) -> int:
         """
@@ -723,12 +714,7 @@ class DecisionContext:
         Returns:
             Amount of the power, or 0 if not found
         """
-        if not hasattr(monster, 'powers'):
-            return 0
-        for power in monster.powers:
-            if self._power_matches(power, power_id):
-                return power.amount if hasattr(power, 'amount') else 0
-        return 0
+        return power_amount(getattr(monster, 'powers', []), power_id, 0)
 
     def __repr__(self) -> str:
         return (f"DecisionContext(hp={self.player_hp_pct:.2f}, energy={self.energy_available}, "

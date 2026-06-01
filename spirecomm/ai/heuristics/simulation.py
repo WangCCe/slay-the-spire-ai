@@ -27,6 +27,7 @@ from spirecomm.ai.heuristics.combat_state import (
     player_debuff_stacks,
     player_has_power,
     player_power_amount,
+    power_amount,
     power_name,
 )
 from spirecomm.ai.heuristics.card_costs import (
@@ -558,14 +559,7 @@ class SimulationState:
         )
 
     def _get_monster_power_amount(self, monster: Any, power_name: str) -> int:
-        if not hasattr(monster, 'powers'):
-            return 0
-
-        for power in monster.powers:
-            if self._power_name(power) == power_name:
-                amount = getattr(power, 'amount', None)
-                return amount if amount is not None else 1
-        return 0
+        return power_amount(getattr(monster, 'powers', []), power_name, 1)
 
     def _get_monster_power_amount_any(self, monster: Any, *power_names: str) -> int:
         """Get a monster power amount while accepting display-name/id variants."""

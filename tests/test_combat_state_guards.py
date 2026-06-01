@@ -6,6 +6,7 @@ from spirecomm.ai.heuristics.combat_state import (
     player_has_power,
     player_debuff_stacks,
     player_power_amount,
+    power_amount,
     power_name,
     player_block_value,
 )
@@ -59,6 +60,21 @@ def test_power_name_reads_known_power_identifier_fields_in_order():
     assert power_name(SimpleNamespace(power_name="PowerName", power_id="PowerId")) == "PowerName"
     assert power_name(SimpleNamespace(power_id="PowerId")) == "PowerId"
     assert power_name(SimpleNamespace()) is None
+
+
+def test_power_amount_reads_named_power_with_configurable_missing_amount():
+    powers = [
+        SimpleNamespace(power_name="Strength", amount=3),
+        SimpleNamespace(power_id="Vulnerable"),
+        SimpleNamespace(name="Display", power_id="Dexterity", amount=2),
+    ]
+
+    assert power_amount(powers, "Strength") == 3
+    assert power_amount(powers, "Vulnerable", missing_amount=1) == 1
+    assert power_amount(powers, "Vulnerable", missing_amount=0) == 0
+    assert power_amount(powers, "Dexterity") == 2
+    assert power_amount(powers, "Missing", missing_amount=1) == 0
+    assert power_amount(None, "Strength", missing_amount=1) == 0
 
 
 def test_player_power_amount_reads_player_powers_with_zero_default_amount():

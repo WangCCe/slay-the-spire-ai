@@ -11,9 +11,16 @@ def power_name(power: Any):
     )
 
 
-def _power_amount(powers, name: str, missing_amount: int) -> int:
+def power_matches(power: Any, name: str) -> bool:
+    return any(
+        getattr(power, attr, None) == name
+        for attr in ('name', 'power_name', 'power_id')
+    )
+
+
+def power_amount(powers, name: str, missing_amount: int = 0) -> int:
     for power in powers or []:
-        if power_name(power) == name:
+        if power_matches(power, name):
             amount = getattr(power, 'amount', None)
             return amount if amount is not None else missing_amount
     return 0
@@ -22,19 +29,19 @@ def _power_amount(powers, name: str, missing_amount: int) -> int:
 def player_power_amount(context: Any, name: str) -> int:
     player = getattr(getattr(context, 'game', None), 'player', None)
     powers = getattr(player, 'powers', []) if player is not None else []
-    return _power_amount(powers, name, 0)
+    return power_amount(powers, name, 0)
 
 
 def player_debuff_stacks(context: Any, name: str) -> int:
     player = getattr(getattr(context, 'game', None), 'player', None)
     powers = getattr(player, 'powers', []) if player is not None else []
-    return _power_amount(powers, name, 1)
+    return power_amount(powers, name, 1)
 
 
 def player_has_power(context: Any, name: str) -> bool:
     player = getattr(getattr(context, 'game', None), 'player', None)
     powers = getattr(player, 'powers', []) if player is not None else []
-    return any(power_name(power) == name for power in powers)
+    return any(power_matches(power, name) for power in powers)
 
 
 def monster_power_amount(monster: Any, name: str) -> int:
@@ -46,7 +53,7 @@ def monster_power_amount(monster: Any, name: str) -> int:
             return 0
 
     powers = getattr(monster, 'powers', []) or []
-    return _power_amount(powers, name, 1)
+    return power_amount(powers, name, 1)
 
 
 def player_block_value(context: Any) -> int:
