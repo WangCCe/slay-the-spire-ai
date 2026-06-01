@@ -54,6 +54,17 @@ class _PreferCostlyAttackPriority:
         return cards[0]
 
 
+class _FirstPlayablePriority:
+    def is_card_aoe(self, card):
+        return False
+
+    def is_card_defensive(self, card):
+        return False
+
+    def get_best_card_to_play(self, cards):
+        return cards[0]
+
+
 def test_shop_purges_upgraded_strike_before_buying_good_card():
     agent = _agent(
         screen_type=ScreenType.SHOP_SCREEN,
@@ -134,6 +145,14 @@ def test_upgrade_candidate_treats_none_upgrades_as_unupgraded():
     )
 
 
+def test_upgrade_bonus_accepts_string_attack_type():
+    agent = _agent(deck=[])
+    string_attack = _playable_card("Mystery Attack", "ATTACK", cost=1)
+    enum_attack = _playable_card("Mystery Attack", CardType.ATTACK, cost=1)
+
+    assert agent._get_upgrade_bonus(string_attack) == agent._get_upgrade_bonus(enum_attack)
+
+
 def test_play_card_action_treats_turn_cost_zero_non_attack_as_free():
     free_inflame = _playable_card("Inflame", CardType.POWER, cost=1, cost_for_turn=0)
     strike = _playable_card("Strike_R", CardType.ATTACK, cost=1, cost_for_turn=1)
@@ -149,3 +168,37 @@ def test_play_card_action_treats_turn_cost_zero_non_attack_as_free():
 
     assert isinstance(action, PlayCardAction)
     assert action.card is free_inflame
+
+
+def test_play_card_action_targets_low_hp_with_string_attack_type():
+    strike = _playable_card("Strike_R", "ATTACK", cost=1)
+    strike.has_target = True
+    low_hp = SimpleNamespace(
+        current_hp=1,
+        max_hp=10,
+        half_dead=False,
+        is_gone=False,
+        intent="DEFEND",
+        move_adjusted_damage=0,
+    )
+    high_hp = SimpleNamespace(
+        current_hp=20,
+        max_hp=20,
+        half_dead=False,
+        is_gone=False,
+        intent="DEFEND",
+        move_adjusted_damage=0,
+    )
+    agent = _agent(
+        hand=[strike],
+        monsters=[high_hp, low_hp],
+        player=SimpleNamespace(block=0, energy=1),
+        act=1,
+    )
+    agent.priorities = _FirstPlayablePriority()
+
+    action = agent.get_play_card_action()
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card is strike
+    assert action.target_monster is low_hp

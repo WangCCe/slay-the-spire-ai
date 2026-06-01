@@ -97,6 +97,21 @@ class SimpleAgent:
             return ""
         return canonical_card_name(card).replace("_", " ")
 
+    @staticmethod
+    def _card_type_name(card) -> str:
+        card_type = getattr(card, "type", None)
+        if card_type is None:
+            return ""
+        if hasattr(card_type, "name"):
+            return str(card_type.name).upper()
+        value = str(card_type).upper()
+        if value.startswith("CARDTYPE."):
+            return value.split(".", 1)[1]
+        return value
+
+    def _is_attack_card(self, card) -> bool:
+        return self._card_type_name(card) == "ATTACK"
+
     def _get_upgrade_bonus(self, card):
         if is_card_upgraded(card):
             return 0
@@ -107,12 +122,12 @@ class SimpleAgent:
         if base_name in BLOCK_UPGRADE_BONUS:
             bonus += BLOCK_UPGRADE_BONUS[base_name]
         if bonus == 0:
-            card_type = getattr(card, "type", None)
-            if card_type == spirecomm.spire.card.CardType.ATTACK:
+            card_type = self._card_type_name(card)
+            if card_type == "ATTACK":
                 bonus = 2
-            elif card_type == spirecomm.spire.card.CardType.SKILL:
+            elif card_type == "SKILL":
                 bonus = 2
-            elif card_type == spirecomm.spire.card.CardType.POWER:
+            elif card_type == "POWER":
                 bonus = 1
             else:
                 bonus = 1
@@ -509,12 +524,12 @@ class SimpleAgent:
         zero_cost_attacks = [
             card
             for card in zero_cost_cards
-            if card.type == spirecomm.spire.card.CardType.ATTACK
+            if self._is_attack_card(card)
         ]
         zero_cost_non_attacks = [
             card
             for card in zero_cost_cards
-            if card.type != spirecomm.spire.card.CardType.ATTACK
+            if not self._is_attack_card(card)
         ]
         nonzero_cost_cards = [
             card
@@ -537,7 +552,7 @@ class SimpleAgent:
             attack_cards = [
                 card
                 for card in playable_cards
-                if card.type == spirecomm.spire.card.CardType.ATTACK
+                if self._is_attack_card(card)
             ]
             if attack_cards:
                 import logging
@@ -582,7 +597,7 @@ class SimpleAgent:
             if (
                 len(aoe_cards) > 0
                 and self.many_monsters_alive()
-                and card_to_play.type == spirecomm.spire.card.CardType.ATTACK
+                and self._is_attack_card(card_to_play)
             ):
                 card_to_play = self.priorities.get_best_card_to_play(aoe_cards)
         elif len(zero_cost_attacks) > 0:
@@ -600,7 +615,7 @@ class SimpleAgent:
             ]
             if len(available_monsters) == 0:
                 return EndTurnAction()
-            if card_to_play.type == spirecomm.spire.card.CardType.ATTACK:
+            if self._is_attack_card(card_to_play):
                 target = self.get_low_hp_target()
             else:
                 target = self.get_high_hp_target()
