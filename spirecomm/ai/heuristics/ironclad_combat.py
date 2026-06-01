@@ -1157,8 +1157,8 @@ class IroncladCombatPlanner(CombatPlanner):
 
     def _known_attack_damage_for_bonus(self, card: Card) -> int:
         """Return known attack damage for strategic bonuses without generic fallback."""
-        card_type = getattr(card, 'type', None)
-        if card_type is not None and card_type != CardType.ATTACK:
+        card_type = card_type_name(card)
+        if card_type and card_type != 'ATTACK':
             return 0
 
         base_damage = getattr(card, 'damage', 0)

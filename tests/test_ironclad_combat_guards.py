@@ -8471,6 +8471,21 @@ def test_ironclad_planner_corruption_cost_handles_string_skill_type():
     assert cost == 0
 
 
+def test_ironclad_known_attack_damage_bonus_accepts_string_attack_type(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "iron wave": {
+            "name": "Iron Wave",
+            "description": "Gain 5 Block. Deal 5 damage.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+    iron_wave = _card("Iron Wave", "Iron Wave", cost=1)
+    iron_wave.type = "ATTACK"
+
+    assert IroncladCombatPlanner()._known_attack_damage_for_bonus(iron_wave) == 5
+
+
 def test_demon_form_does_not_add_strength_on_the_turn_it_is_played():
     demon_form = _card(
         "Demon Form",
