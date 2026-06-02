@@ -239,6 +239,13 @@ def _canonical_monster_id(monster_id):
     )
 
 
+def _non_negative_float(value) -> float:
+    try:
+        return max(0.0, float(value or 0))
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def get_monster_info(monster_id):
     """
     Get monster information from the database.
@@ -293,7 +300,8 @@ def evaluate_monster_threat(monster, context):
         threat += 1
     
     # Add threat based on current HP percentage
-    if context.player_hp_pct < 0.5:
+    player_hp_pct = _non_negative_float(getattr(context, 'player_hp_pct', 0))
+    if player_hp_pct < 0.5:
         threat *= 1.5
     
     # Special handling for monsters with scaling damage

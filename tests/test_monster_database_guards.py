@@ -22,6 +22,18 @@ def test_monster_database_threat_ignores_non_attack_stale_damage():
     assert evaluate_monster_threat(monster, context) == 1
 
 
+def test_monster_database_threat_accepts_string_player_hp_pct():
+    monster = SimpleNamespace(
+        monster_id="Louse",
+        intent=Intent.ATTACK,
+        move_adjusted_damage=7,
+    )
+    enum_context = SimpleNamespace(player_hp_pct=0.4)
+    string_context = SimpleNamespace(player_hp_pct="0.4")
+
+    assert evaluate_monster_threat(monster, string_context) == evaluate_monster_threat(monster, enum_context)
+
+
 def test_monster_database_threat_scales_live_gremlin_nob_id():
     monster = SimpleNamespace(
         name="Gremlin Nob",
