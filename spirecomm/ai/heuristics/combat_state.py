@@ -56,7 +56,11 @@ def power_amount(powers, name: str, missing_amount: int = 0) -> int:
     for power in powers or []:
         if power_matches(power, name):
             amount = getattr(power, 'amount', None)
-            return amount if amount is not None else missing_amount
+            value = amount if amount is not None else missing_amount
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return 0
     return 0
 
 

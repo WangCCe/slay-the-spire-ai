@@ -135,6 +135,16 @@ def test_power_amount_reads_named_power_with_configurable_missing_amount():
     assert power_amount(None, "Strength", missing_amount=1) == 0
 
 
+def test_power_amount_coerces_numeric_strings_and_preserves_negative_values():
+    powers = [
+        SimpleNamespace(power_id="Poison", amount="2"),
+        SimpleNamespace(power_id="Strength", amount="-1"),
+    ]
+
+    assert power_amount(powers, "Poison") == 2
+    assert power_amount(powers, "Strength") == -1
+
+
 def test_player_power_amount_reads_player_powers_with_zero_default_amount():
     context = SimpleNamespace(
         game=SimpleNamespace(
