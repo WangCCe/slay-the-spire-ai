@@ -10203,6 +10203,18 @@ def test_lethal_detector_counts_vulnerable_damage_on_single_target():
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["strike-vulnerable"]
 
 
+def test_lethal_detector_accepts_string_vulnerable_stacks_on_single_target():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike-vulnerable"
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=8)])
+    context.vulnerable_stacks[0] = "1"
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["strike-vulnerable"]
+
+
 def test_lethal_detector_applies_vulnerable_rounding_per_attack_hit(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

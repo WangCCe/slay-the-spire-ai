@@ -182,7 +182,7 @@ class CombatEndingDetector:
             # Log vulnerable-related intermediate values for verification
             vulnerable_targets = []
             for i, monster in enumerate(context.monsters_alive):
-                stacks = context.vulnerable_stacks.get(i, 0)
+                stacks = self._monster_vulnerable_stacks(context, i)
                 if stacks > 0:
                     vulnerable_targets.append(
                         f"idx={i}, stacks={stacks}, hp={monster.current_hp}, block={monster.block}"
@@ -442,7 +442,7 @@ class CombatEndingDetector:
         )
         for monster_idx, monster in enumerate(context.monsters_alive):
             damage = base_damage
-            if context.vulnerable_stacks.get(monster_idx, 0) > 0:
+            if self._monster_vulnerable_stacks(context, monster_idx) > 0:
                 damage = self._apply_vulnerable_to_card_damage(
                     card,
                     context,
@@ -587,13 +587,16 @@ class CombatEndingDetector:
 
     def _monster_vulnerable_stacks(self, context: DecisionContext, monster_idx: int) -> int:
         vulnerable_stacks = getattr(context, 'vulnerable_stacks', {}) or {}
-        stacks = vulnerable_stacks.get(monster_idx, 0)
-        if stacks:
+        stacks = self._safe_int(vulnerable_stacks.get(monster_idx, 0), default=0)
+        if stacks > 0:
             return stacks
 
         monsters = getattr(context, 'monsters_alive', []) or []
         if 0 <= monster_idx < len(monsters):
-            return self._get_monster_power_amount(monsters[monster_idx], 'Vulnerable')
+            return self._safe_int(
+                self._get_monster_power_amount(monsters[monster_idx], 'Vulnerable'),
+                default=0,
+            )
         return 0
 
     def _monster_poison_stacks(self, context: DecisionContext, monster_idx: int) -> int:
@@ -1483,7 +1486,7 @@ class CombatEndingDetector:
                     damage,
                     available_energy,
                 )
-                if len(context.monsters_alive) == 1 and context.vulnerable_stacks.get(0, 0) > 0:
+                if len(context.monsters_alive) == 1 and self._monster_vulnerable_stacks(context, 0) > 0:
                     damage = self._apply_vulnerable_to_card_damage(
                         card,
                         context,
@@ -1553,7 +1556,7 @@ class CombatEndingDetector:
         total = 0
         for monster_idx, _monster in enumerate(context.monsters_alive):
             damage = base_damage
-            if context.vulnerable_stacks.get(monster_idx, 0) > 0:
+            if self._monster_vulnerable_stacks(context, monster_idx) > 0:
                 damage = self._apply_vulnerable_to_card_damage(
                     card,
                     context,
