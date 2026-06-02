@@ -154,6 +154,20 @@ def test_timing_lethal_check_accepts_string_turn_for_dynamic_card_damage(monkeyp
     assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_damage_estimate_rejects_nonfinite_strength():
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        damage=6,
+        cost=1,
+        cost_for_turn=1,
+        is_playable=True,
+    )
+    context = SimpleNamespace(turn=1, strength=float("inf"))
+
+    assert TimingAwareCombatPlanner()._estimate_card_damage(strike, context) == 6
+
+
 def test_timing_lethal_check_accepts_numeric_string_monster_hp_and_block(monkeypatch):
     monkeypatch.setattr(
         timing_planner,
@@ -866,6 +880,17 @@ def test_timing_vulnerable_target_check_accepts_numeric_string_hp():
     assert TimingAwareCombatPlanner()._all_alive_targets_vulnerable(
         context,
         [dead_target, live_target],
+    )
+
+
+def test_timing_vulnerable_target_check_ignores_nonfinite_hp():
+    invalid_target = SimpleNamespace(current_hp=float("inf"), block=0)
+    live_target = SimpleNamespace(current_hp=12, block=0)
+    context = SimpleNamespace(vulnerable_stacks={1: 1})
+
+    assert TimingAwareCombatPlanner()._all_alive_targets_vulnerable(
+        context,
+        [invalid_target, live_target],
     )
 
 

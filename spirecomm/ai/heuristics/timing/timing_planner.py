@@ -41,6 +41,7 @@ from spirecomm.ai.heuristics.card_upgrades import (
     perfected_strike_bonus_per_strike,
 )
 from spirecomm.data.loader import game_data_loader
+from spirecomm.spire.numeric import coerce_int
 
 logger = logging.getLogger(__name__)
 
@@ -806,13 +807,7 @@ class TimingAwareCombatPlanner:
 
     @staticmethod
     def _non_negative_int(value) -> int:
-        try:
-            return max(0, int(value or 0))
-        except (TypeError, ValueError):
-            try:
-                return max(0, int(float(value or 0)))
-            except (TypeError, ValueError, OverflowError):
-                return 0
+        return max(0, coerce_int(value or 0, 0))
 
     def _estimate_card_damage(self, card, context, available_energy=None) -> int:
         """Estimate card damage for timing decisions from methods or parsed data."""
@@ -923,15 +918,7 @@ class TimingAwareCombatPlanner:
 
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:
-        if value is None:
-            return default
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            try:
-                return int(float(value))
-            except (TypeError, ValueError, OverflowError):
-                return default
+        return coerce_int(value, default)
 
     def _monster_effective_hp(self, monster) -> int:
         return max(
