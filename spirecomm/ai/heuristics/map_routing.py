@@ -70,6 +70,13 @@ class AdaptiveMapRouter:
         except (TypeError, ValueError):
             return 0.0
 
+    @staticmethod
+    def _non_negative_int(value) -> int:
+        try:
+            return max(0, int(value or 0))
+        except (TypeError, ValueError):
+            return 0
+
     def calculate_node_priority(self, node: Node, context: DecisionContext) -> int:
         """
         Calculate dynamic priority for a map node.
@@ -82,8 +89,8 @@ class AdaptiveMapRouter:
         symbol = node.symbol
         base_priority = self.BASE_NODE_PRIORITIES.get(symbol, 0)
         hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
-        act = context.act
-        floor = getattr(context, 'floor', 0) or 0
+        act = self._non_negative_int(getattr(context, 'act', 0))
+        floor = self._non_negative_int(getattr(context, 'floor', 0))
 
         # Act 1: Character-specific strategies
         if act == 1:
@@ -205,7 +212,7 @@ class AdaptiveMapRouter:
         elif hp_pct < 0.65:
             score -= 2
 
-        floor = getattr(context, "floor", 0) or 0
+        floor = self._non_negative_int(getattr(context, "floor", 0))
         if floor <= 6:
             score -= 2
         elif floor >= 10:
@@ -250,6 +257,9 @@ class AdaptiveMapRouter:
 
     def _adjust_for_hp(self, symbol: str, base: int, hp_pct: float, act: int = None, floor: int = None) -> int:
         """Generic HP-based adjustments."""
+        act = self._non_negative_int(act) if act is not None else None
+        floor = self._non_negative_int(floor) if floor is not None else None
+
         # Critical HP: prioritize survival
         if hp_pct < 0.25:
             if symbol == 'R':
@@ -316,7 +326,7 @@ class AdaptiveMapRouter:
         """Score REST option."""
         score = 50
         hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
-        floor = context.floor if hasattr(context, 'floor') else 0
+        floor = self._non_negative_int(getattr(context, 'floor', 0))
 
         # Is this pre-boss?
         is_pre_boss = (floor % 17) in [15, 16]
@@ -335,7 +345,7 @@ class AdaptiveMapRouter:
 
     def _should_force_rest(self, context: DecisionContext) -> tuple[bool, str]:
         hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
-        floor = getattr(context, 'floor', 0) or 0
+        floor = self._non_negative_int(getattr(context, 'floor', 0))
         is_pre_boss = (floor % 17) in (15, 16)
 
         if hp_pct < 0.5:

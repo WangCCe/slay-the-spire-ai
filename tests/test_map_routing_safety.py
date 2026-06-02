@@ -62,6 +62,20 @@ def test_map_router_node_priority_accepts_string_hp_pct():
     assert string_priority == enum_priority
 
 
+def test_map_router_node_priority_accepts_string_act_and_floor():
+    router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
+    enum_context = _context(act=1, floor=6, hp_pct=1.0)
+    string_context = _context(act="1", floor="6", hp_pct=1.0)
+
+    enum_priority = router.calculate_node_priority(SimpleNamespace(symbol="E"), enum_context)
+    try:
+        string_priority = router.calculate_node_priority(SimpleNamespace(symbol="E"), string_context)
+    except TypeError:
+        string_priority = "type-error"
+
+    assert string_priority == enum_priority
+
+
 def test_map_router_pre_boss_high_hp_allows_high_value_smith():
     router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
     context = _context(
@@ -112,6 +126,26 @@ def test_map_router_campfire_accepts_string_hp_pct():
     assert option == RestOption.SMITH
 
 
+def test_map_router_campfire_accepts_string_floor_for_pre_boss_rest():
+    router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
+    enum_context = _context(floor=15, hp_pct=0.74, deck=[_card("Bash")])
+    string_context = _context(floor="15", hp_pct=0.74, deck=[_card("Bash")])
+
+    enum_option = router.choose_campfire_option(
+        [RestOption.REST, RestOption.SMITH],
+        enum_context,
+    )
+    try:
+        string_option = router.choose_campfire_option(
+            [RestOption.REST, RestOption.SMITH],
+            string_context,
+        )
+    except TypeError:
+        string_option = "type-error"
+
+    assert string_option == enum_option
+
+
 def test_map_router_pre_boss_moderate_hp_still_forces_rest():
     router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
     context = _context(
@@ -135,6 +169,19 @@ def test_map_router_pre_boss_moderate_hp_still_forces_rest():
     )
 
     assert option == RestOption.REST
+
+
+def test_act1_elite_readiness_accepts_string_floor():
+    router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="aggressive")
+    enum_context = _context(floor=9, hp_pct=0.9)
+    string_context = _context(floor="9", hp_pct=0.9)
+
+    try:
+        string_readiness = router._act_1_elite_readiness_score(string_context)
+    except TypeError:
+        string_readiness = "type-error"
+
+    assert string_readiness == router._act_1_elite_readiness_score(enum_context)
 
 
 def test_map_router_counts_none_upgrades_as_upgradeable():
