@@ -3971,6 +3971,38 @@ def test_ironclad_low_scaling_check_uses_live_monster_id_for_threat_profile(monk
     assert monster_loader.profile_names == ["Red Slaver"]
 
 
+def test_lagavulin_strategy_accepts_string_turn_for_siphon_pressure():
+    planner = IroncladCombatPlanner()
+
+    int_context = _combat_context([], energy=0, monsters=[_lagavulin()])
+    int_context.turn = 6
+    int_initial = SimulationState(int_context)
+    int_final = int_initial.clone()
+    int_final.total_damage_dealt = 10
+    int_score = planner._apply_lagavulin_strategy(
+        [],
+        int_initial,
+        int_final,
+        int_context,
+        0.0,
+    )
+
+    string_context = _combat_context([], energy=0, monsters=[_lagavulin()])
+    string_context.turn = "6"
+    string_initial = SimulationState(string_context)
+    string_final = string_initial.clone()
+    string_final.total_damage_dealt = 10
+    string_score = planner._apply_lagavulin_strategy(
+        [],
+        string_initial,
+        string_final,
+        string_context,
+        0.0,
+    )
+
+    assert string_score == int_score
+
+
 def test_a20_elite_aggression_uses_context_ascension_level():
     context = _combat_context([], energy=0, monsters=[_gremlin_nob()])
     context.turn = 1

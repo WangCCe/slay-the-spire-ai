@@ -1988,7 +1988,7 @@ class IroncladCombatPlanner(CombatPlanner):
         if not hasattr(context, 'turn'):
             return score
 
-        turn = context.turn
+        turn = self._non_negative_int(context.turn)
 
         # Calculate Siphon Soul count (starts turn 6, happens every 3 turns)
         if turn < 6:
