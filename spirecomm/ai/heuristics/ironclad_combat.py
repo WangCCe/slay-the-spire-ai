@@ -1624,6 +1624,7 @@ class IroncladCombatPlanner(CombatPlanner):
         card_id = canonical_card_name(card)
         incoming_damage = self._non_negative_float(getattr(context, 'incoming_damage', 0))
         turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
+        context_strength = self._non_negative_int(getattr(context, 'strength', 0))
 
         # Check if fighting Gremlins or other weak monsters that require aggressive play
         aggressive_mode = False
@@ -1670,9 +1671,9 @@ class IroncladCombatPlanner(CombatPlanner):
             # Increase attack priority for aggressive mode against Gremlins
             if aggressive_mode:
                 base_attack_priority = 900
-            
+
             if card_id == 'Reaper' and len(context.monsters_alive) >= 2:
-                return 900 if context.strength >= 5 else base_attack_priority
+                return 900 if context_strength >= 5 else base_attack_priority
             if card_id == 'Body Slam' and context.game.player.block >= 20:
                 return 950
             return base_attack_priority

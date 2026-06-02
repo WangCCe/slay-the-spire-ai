@@ -13059,6 +13059,34 @@ def test_ironclad_fallback_priority_accepts_string_attack_type():
     assert planner._get_card_priority(strike, context) == 700
 
 
+def test_ironclad_fallback_priority_accepts_string_strength_for_reaper():
+    reaper = _card(
+        "Reaper",
+        "Reaper",
+        card_type=CardType.ATTACK,
+        cost=2,
+        has_target=False,
+    )
+    context = _combat_context(
+        [reaper],
+        energy=2,
+        monsters=[_louse(current_hp=100), _louse(current_hp=100)],
+    )
+    context.strength = "5"
+    planner = IroncladCombatPlanner()
+    planner._get_monster_info = lambda _monster: {
+        "recommended_strategy": "balanced",
+        "threat_level": 2,
+    }
+
+    try:
+        priority = planner._get_card_priority(reaper, context)
+    except TypeError:
+        priority = "type-error"
+
+    assert priority == 900
+
+
 def test_ironclad_fallback_priority_accepts_string_player_hp_for_aggressive_defense():
     defend = _card(
         "Defend_R",
