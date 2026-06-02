@@ -210,7 +210,9 @@ class SynergyCardEvaluator(CardEvaluator):
         modifier = 1.0
 
         # Energy efficiency
-        available_energy = getattr(context, 'energy_available', 0)
+        available_energy = self._non_negative_int(
+            getattr(context, 'energy_available', 0)
+        )
         cost = effective_card_cost(card, available_energy)
         if cost > 0 and available_energy > 0:
             energy_ratio = available_energy / cost

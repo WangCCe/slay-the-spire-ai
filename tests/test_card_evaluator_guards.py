@@ -265,6 +265,33 @@ def test_context_modifier_uses_turn_cost_for_energy_efficiency():
     assert evaluator._calculate_context_modifier(zero_for_turn, context, None) == 1.2
 
 
+def test_context_modifier_accepts_string_energy_available():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    strike = Card(
+        "Strike_R",
+        "Strike",
+        CardType.ATTACK,
+        CardRarity.BASIC,
+        cost=1,
+        cost_for_turn=1,
+    )
+    enum_context = SimpleNamespace(
+        energy_available=3,
+        player_hp_pct=0.5,
+        monsters_alive=[],
+    )
+    string_context = SimpleNamespace(
+        energy_available="3",
+        player_hp_pct=0.5,
+        monsters_alive=[],
+    )
+
+    assert (
+        evaluator._calculate_context_modifier(strike, string_context, None)
+        == evaluator._calculate_context_modifier(strike, enum_context, None)
+    )
+
+
 def test_context_modifier_handles_missing_card_cost_as_zero():
     evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
     context = SimpleNamespace(
