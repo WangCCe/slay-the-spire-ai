@@ -9,6 +9,18 @@ import spirecomm.spire.screen
 from spirecomm.spire.identifiers import potion_id, relic_id
 
 
+def _safe_int(value, default=0):
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        try:
+            return int(float(value))
+        except (TypeError, ValueError, OverflowError):
+            return default
+
+
 class RoomPhase(Enum):
     COMBAT = 1,
     EVENT = 2,
@@ -72,19 +84,19 @@ class Game:
     def from_json(cls, json_state, available_commands):
         game = cls()
         game.current_action = json_state.get("current_action", None)
-        game.current_hp = json_state.get("current_hp")
-        game.max_hp = json_state.get("max_hp")
-        game.floor = json_state.get("floor")
-        game.act = json_state.get("act")
-        game.gold = json_state.get("gold")
-        game.seed = json_state.get("seed")
+        game.current_hp = _safe_int(json_state.get("current_hp"), 0)
+        game.max_hp = _safe_int(json_state.get("max_hp"), 0)
+        game.floor = _safe_int(json_state.get("floor"), 0)
+        game.act = _safe_int(json_state.get("act"), 0)
+        game.gold = _safe_int(json_state.get("gold"), 0)
+        game.seed = _safe_int(json_state.get("seed"), 0)
         # Handle None class field (can happen on game over or special screens)
         class_name = json_state.get("class")
         if class_name is not None:
             game.character = spirecomm.spire.character.PlayerClass[class_name]
         else:
             game.character = None
-        game.ascension_level = json_state.get("ascension_level")
+        game.ascension_level = _safe_int(json_state.get("ascension_level"), 0)
 
         # Handle list fields that may be None
         relics_data = json_state.get("relics")
@@ -151,8 +163,11 @@ class Game:
                 game.card_in_play = combat_state.get("card_in_play", None)
                 if game.card_in_play is not None:
                     game.card_in_play = spirecomm.spire.card.Card.from_json(game.card_in_play)
-                game.turn = combat_state.get("turn", 0)
-                game.cards_discarded_this_turn = combat_state.get("cards_discarded_this_turn", 0)
+                game.turn = _safe_int(combat_state.get("turn", 0), 0)
+                game.cards_discarded_this_turn = _safe_int(
+                    combat_state.get("cards_discarded_this_turn", 0),
+                    0,
+                )
 
         # Available Commands
 
