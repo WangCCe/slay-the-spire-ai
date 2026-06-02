@@ -103,7 +103,10 @@ class ActionEncoder:
         try:
             return int(value)
         except (TypeError, ValueError):
-            return default
+            try:
+                return int(float(value))
+            except (TypeError, ValueError, OverflowError):
+                return default
 
     def encode_play_card(self, card_index: int, monster_index: int) -> int:
         """
@@ -348,7 +351,10 @@ class ActionEncoder:
         try:
             return int(value)
         except (TypeError, ValueError):
-            return default
+            try:
+                return int(float(value))
+            except (TypeError, ValueError, OverflowError):
+                return default
 
     @classmethod
     def _is_targetable_monster(cls, monster) -> bool:
@@ -774,9 +780,8 @@ class ActionEncoder:
                     energy = getattr(player, "energy", None)
                     if raw_cost is None or energy is None:
                         continue
-                    try:
-                        available_energy = int(energy)
-                    except (TypeError, ValueError):
+                    available_energy = self._safe_int(energy, default=None)
+                    if available_energy is None:
                         continue
                     cost = effective_card_cost(card, available_energy)
                     if cost > available_energy:
