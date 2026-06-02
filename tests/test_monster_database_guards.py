@@ -601,6 +601,12 @@ def test_lagavulin_predicts_awake_cycle_after_hibernation_turns():
     ]
 
 
+def test_lagavulin_hibernation_accepts_string_turn():
+    database = EnhancedMonsterDatabase()
+
+    assert database.is_hibernating("Lagavulin", "3") == database.is_hibernating("Lagavulin", 3)
+
+
 def test_single_move_gremlins_predict_their_only_move():
     database = EnhancedMonsterDatabase()
 

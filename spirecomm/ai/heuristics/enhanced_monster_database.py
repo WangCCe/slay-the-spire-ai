@@ -22,6 +22,13 @@ from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 from spirecomm.ai.monster_names import LIVE_MONSTER_ID_TO_WIKI_NAME, normalize_monster_id
 
 
+def _non_negative_int(value) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 class EnhancedMonsterDatabase:
     """
     Enhanced monster database with Wiki-extracted data.
@@ -1585,6 +1592,7 @@ class EnhancedMonsterDatabase:
         mechanics = self.get_special_mechanics(monster_name)
         if mechanics and mechanics.get("type") == "hibernation":
             hibernation_turns = mechanics.get("hibernation_turns", 3)
+            current_turn = _non_negative_int(current_turn)
             return current_turn <= hibernation_turns
         return False
 
