@@ -6,6 +6,7 @@ from spirecomm.ai.heuristics.card_costs import (
     playable_card_cost_after_refund,
     raw_card_cost,
 )
+from spirecomm.spire.card import Card
 
 
 def _card(name="Dropkick", cost=1):
@@ -41,3 +42,26 @@ def test_effective_card_cost_after_refund_accepts_decimal_string_inputs():
         available_energy="2.0",
         energy_refund="1.0",
     ) == 1
+
+
+def test_card_from_json_coerces_decimal_string_cost_fields():
+    card = Card.from_json(
+        {
+            "id": "Blood for Blood",
+            "name": "Blood for Blood",
+            "type": "ATTACK",
+            "rarity": "UNCOMMON",
+            "upgrades": 0,
+            "has_target": True,
+            "cost": "4.0",
+            "costForTurn": "2.0",
+            "misc": "3.0",
+            "price": "75.0",
+            "uuid": "blood-1",
+        }
+    )
+
+    assert card.cost == 4
+    assert card.cost_for_turn == 2
+    assert card.misc == 3
+    assert card.price == 75

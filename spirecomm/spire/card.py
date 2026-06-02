@@ -67,11 +67,15 @@ class Card:
             rarity=CardRarity[json_object["rarity"]],
             upgrades=upgrades,
             has_target=json_object["has_target"],
-            cost=json_object["cost"],
-            cost_for_turn=json_object.get("costForTurn"),  # Actual cost this turn (modified by relics like Snecko Eye)
+            cost=_safe_int(json_object["cost"], 0),
+            cost_for_turn=(
+                _safe_int(json_object.get("costForTurn"), 0)
+                if json_object.get("costForTurn") is not None
+                else None
+            ),  # Actual cost this turn (modified by relics like Snecko Eye)
             uuid=json_object["uuid"],
-            misc=json_object.get("misc", 0),
-            price=json_object.get("price", 0),
+            misc=_safe_int(json_object.get("misc", 0), 0),
+            price=_safe_int(json_object.get("price", 0), 0),
             is_playable=json_object.get("is_playable", False),
             exhausts=json_object.get("exhausts", False)
         )
