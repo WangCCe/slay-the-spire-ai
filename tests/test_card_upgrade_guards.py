@@ -29,6 +29,16 @@ def test_card_upgrade_count_uses_counted_display_suffix():
     assert known_damage_upgrade_bonus(searing_blow_plus_two, "Searing Blow") == 9
 
 
+def test_card_upgrade_count_accepts_decimal_string_upgrade_field():
+    bash_plus = _card("Bash", upgrades="1.0")
+    defend_plus = _card("Defend", upgrades="1.0")
+
+    assert card_upgrade_count(bash_plus) == 1
+    assert is_card_upgraded(bash_plus) is True
+    assert known_damage_upgrade_bonus(bash_plus, "Bash") == 2
+    assert known_block_upgrade_bonus(defend_plus, "Defend") == 3
+
+
 def test_known_block_upgrade_bonus_uses_shared_mapping_and_upgrade_count():
     shrug_plus = _card("Shrug It Off+1", upgrades=1)
 

@@ -7,6 +7,18 @@ from typing import Any
 _UPGRADE_SUFFIX_RE = re.compile(r'\+(\d*)$')
 
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        try:
+            return int(float(value))
+        except (TypeError, ValueError, OverflowError):
+            return default
+
+
 # Attack card upgrade damage bonuses. Cards with special dynamic handling
 # still appear here when callers need a conservative fallback from base text.
 DAMAGE_UPGRADE_BONUS = {
@@ -130,11 +142,7 @@ def _upgrade_count_from_name(card: Any) -> int:
 
 def card_upgrade_count(card: Any) -> int:
     """Return a non-negative integer upgrade count for partially populated card objects."""
-    parsed = 0
-    try:
-        parsed = max(0, int(getattr(card, 'upgrades', 0) or 0))
-    except (TypeError, ValueError):
-        parsed = 0
+    parsed = max(0, _safe_int(getattr(card, 'upgrades', 0) or 0, 0))
     return parsed or _upgrade_count_from_name(card)
 
 
