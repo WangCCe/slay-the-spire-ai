@@ -76,6 +76,14 @@ class GameTracker:
         self.decision_confidences: List[float] = []  # List of confidence scores
         self.fallback_count: int = 0
 
+    def _safe_int(self, value: Any, default: int = 0) -> int:
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
     def start_combat(self, floor: int, act: int, room_type: str, start_turn: int = 0, current_hp: int = None):
         """
         Record the start of a combat.
@@ -231,9 +239,11 @@ class GameTracker:
             self.final_score = final_state.score
 
         if hasattr(final_state, 'current_hp') and hasattr(final_state, 'max_hp'):
-            self.current_hp_at_death = final_state.current_hp
-            if final_state.current_hp is not None and final_state.max_hp is not None and final_state.max_hp > 0:
-                self.death_hp_pct = final_state.current_hp / final_state.max_hp
+            current_hp = self._safe_int(final_state.current_hp)
+            max_hp = self._safe_int(final_state.max_hp)
+            self.current_hp_at_death = current_hp
+            if max_hp > 0:
+                self.death_hp_pct = current_hp / max_hp
             else:
                 self.death_hp_pct = 0.0
 
