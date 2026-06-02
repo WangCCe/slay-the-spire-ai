@@ -2,21 +2,11 @@ from enum import Enum
 import logging
 import re
 
+from spirecomm.spire.numeric import coerce_int
+
 logger = logging.getLogger(__name__)
 
 _UPGRADE_SUFFIX_RE = re.compile(r"\+(\d*)$")
-
-
-def _safe_int(value, default=0):
-    if value is None:
-        return default
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        try:
-            return int(float(value))
-        except (TypeError, ValueError, OverflowError):
-            return default
 
 
 class CardType(Enum):
@@ -54,7 +44,7 @@ class Card:
 
     @classmethod
     def from_json(cls, json_object):
-        upgrades = max(0, _safe_int(json_object.get("upgrades", 0) or 0, 0))
+        upgrades = max(0, coerce_int(json_object.get("upgrades", 0) or 0, 0))
         name = json_object.get("name", "")
         upgrade_suffix = _UPGRADE_SUFFIX_RE.search(name)
         if upgrades == 0 and upgrade_suffix:
@@ -67,15 +57,15 @@ class Card:
             rarity=CardRarity[json_object["rarity"]],
             upgrades=upgrades,
             has_target=json_object["has_target"],
-            cost=_safe_int(json_object["cost"], 0),
+            cost=coerce_int(json_object["cost"], 0),
             cost_for_turn=(
-                _safe_int(json_object.get("costForTurn"), 0)
+                coerce_int(json_object.get("costForTurn"), 0)
                 if json_object.get("costForTurn") is not None
                 else None
             ),  # Actual cost this turn (modified by relics like Snecko Eye)
             uuid=json_object["uuid"],
-            misc=_safe_int(json_object.get("misc", 0), 0),
-            price=_safe_int(json_object.get("price", 0), 0),
+            misc=coerce_int(json_object.get("misc", 0), 0),
+            price=coerce_int(json_object.get("price", 0), 0),
             is_playable=json_object.get("is_playable", False),
             exhausts=json_object.get("exhausts", False)
         )

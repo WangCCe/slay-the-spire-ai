@@ -1,5 +1,8 @@
 # Potion effect metadata lookup table.
 # Values are based on the local StSExporter potion export.
+from spirecomm.spire.numeric import coerce_int
+
+
 POTION_EFFECTS = {
     "Ancient Potion": {"effect_type": "artifact", "effect_value": 1, "target_type": "self"},
     "Attack Potion": {"effect_type": "card_choice_attack", "effect_value": 0, "target_type": "none"},
@@ -48,18 +51,6 @@ def _compact_identifier(value):
     return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
 
 
-def _safe_int(value, default=0):
-    if value is None:
-        return default
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        try:
-            return int(float(value))
-        except (TypeError, ValueError, OverflowError):
-            return default
-
-
 POTION_EFFECTS_BY_ID = {
     _compact_identifier(name): effects for name, effects in POTION_EFFECTS.items()
 }
@@ -105,5 +96,5 @@ class Potion:
             can_use=json_object.get("can_use", False),
             can_discard=json_object.get("can_discard", False),
             requires_target=json_object.get("requires_target", False),
-            price=_safe_int(json_object.get("price", 0), 0)
+            price=coerce_int(json_object.get("price", 0), 0)
         )

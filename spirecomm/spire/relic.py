@@ -1,13 +1,4 @@
-def _safe_int(value, default=0):
-    if value is None:
-        return default
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        try:
-            return int(float(value))
-        except (TypeError, ValueError, OverflowError):
-            return default
+from spirecomm.spire.numeric import coerce_int
 
 
 class Relic:
@@ -23,6 +14,6 @@ class Relic:
         return cls(
             json_object["id"],
             json_object["name"],
-            _safe_int(json_object["counter"], 0),
-            _safe_int(json_object.get("price", 0), 0),
+            coerce_int(json_object["counter"], 0),
+            coerce_int(json_object.get("price", 0), 0),
         )
