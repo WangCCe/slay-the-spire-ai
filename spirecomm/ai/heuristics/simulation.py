@@ -5281,7 +5281,10 @@ class HeuristicCombatPlanner(CombatPlanner):
         logger.debug(f"Act: {context.act if hasattr(context, 'act') else 1}")
         logger.debug(f"Turn: {context.turn if hasattr(context, 'turn') else 1}")
         logger.debug(f"Playable cards: {len(context.playable_cards)}")
-        logger.debug(f"Energy available: {context.energy_available if hasattr(context, 'energy_available') else 3}")
+        energy_available = self._non_negative_int(
+            getattr(context, 'energy_available', 3)
+        )
+        logger.debug(f"Energy available: {energy_available}")
 
         # === Adaptive beam width by act ===
         # Act 1: 12 (simple enemies, less search needed)
@@ -5307,11 +5310,7 @@ class HeuristicCombatPlanner(CombatPlanner):
         )
 
         # Extra energy beyond base 3
-        extra_energy = (
-            max(0, context.energy_available - 3)
-            if hasattr(context, 'energy_available')
-            else 0
-        )
+        extra_energy = max(0, energy_available - 3)
 
         # Calculate adaptive depth: base 3 + bonuses
         # More cards, zero-cost cards, or extra energy → deeper search

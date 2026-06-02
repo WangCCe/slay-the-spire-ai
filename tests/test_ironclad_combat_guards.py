@@ -109,6 +109,23 @@ def test_ironclad_plan_turn_accepts_string_player_hp_pct_in_opening_log():
     assert planner.plan_turn(context) == []
 
 
+def test_heuristic_plan_turn_accepts_string_energy_available():
+    strike = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        cost=1,
+        is_playable=True,
+    )
+    context = _combat_context([strike], energy="4", monsters=[_louse(current_hp=50)])
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+    planner._simple_plan = lambda _context: []
+
+    assert planner.plan_turn(context) == []
+    assert planner.max_depth >= 1
+
+
 def test_ironclad_get_confidence_accepts_string_player_hp_pct():
     strike = Card(
         card_id="Strike_R",
