@@ -39,6 +39,21 @@ def test_card_upgrade_count_accepts_decimal_string_upgrade_field():
     assert known_block_upgrade_bonus(defend_plus, "Defend") == 3
 
 
+def test_card_upgrade_count_rejects_nonfinite_upgrade_field():
+    bash = _card("Bash", upgrades=float("inf"))
+
+    assert card_upgrade_count(bash) == 0
+    assert is_card_upgraded(bash) is False
+    assert known_damage_upgrade_bonus(bash, "Bash") == 0
+
+
+def test_card_upgrade_count_uses_display_suffix_after_nonfinite_upgrade_field():
+    searing_blow_plus_two = _card("Searing Blow+2", upgrades=float("inf"))
+
+    assert card_upgrade_count(searing_blow_plus_two) == 2
+    assert known_damage_upgrade_bonus(searing_blow_plus_two, "Searing Blow") == 9
+
+
 def test_known_block_upgrade_bonus_uses_shared_mapping_and_upgrade_count():
     shrug_plus = _card("Shrug It Off+1", upgrades=1)
 

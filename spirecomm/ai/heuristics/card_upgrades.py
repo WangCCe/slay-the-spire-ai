@@ -3,20 +3,14 @@
 import re
 from typing import Any
 
+from spirecomm.spire.numeric import coerce_int
+
 
 _UPGRADE_SUFFIX_RE = re.compile(r'\+(\d*)$')
 
 
 def _safe_int(value: Any, default: int = 0) -> int:
-    if value is None:
-        return default
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        try:
-            return int(float(value))
-        except (TypeError, ValueError, OverflowError):
-            return default
+    return coerce_int(value, default)
 
 
 # Attack card upgrade damage bonuses. Cards with special dynamic handling
