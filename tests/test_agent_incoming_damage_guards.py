@@ -8,6 +8,19 @@ from spirecomm.spire.character import Intent
 from spirecomm.spire.potion import Potion
 
 
+class _PriorityStub:
+    AOE_CARD_NAMES = ()
+
+    def is_card_aoe(self, _card):
+        return False
+
+    def is_card_defensive(self, card):
+        return getattr(card, "card_id", "") == "Defend"
+
+    def get_best_card_to_play(self, cards):
+        return cards[0]
+
+
 def _agent_with_monsters(monsters):
     agent = SimpleAgent.__new__(SimpleAgent)
     agent.game = SimpleNamespace(monsters=monsters, act=1)
@@ -52,6 +65,45 @@ def test_simple_agent_target_helpers_accept_numeric_string_hp():
     assert agent.get_high_hp_target() is high
 
 
+def test_simple_agent_defense_filter_accepts_numeric_string_block_and_act():
+    defend = SimpleNamespace(
+        card_id="Defend",
+        name="Defend",
+        type="SKILL",
+        cost=1,
+        is_playable=True,
+        has_target=False,
+    )
+    strike = SimpleNamespace(
+        card_id="Strike_R",
+        name="Strike",
+        type="ATTACK",
+        cost=1,
+        is_playable=True,
+        has_target=True,
+    )
+    monster = SimpleNamespace(
+        current_hp=20,
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=12,
+        move_hits=1,
+    )
+    agent = SimpleAgent.__new__(SimpleAgent)
+    agent.priorities = _PriorityStub()
+    agent.game = SimpleNamespace(
+        hand=[defend, strike],
+        monsters=[monster],
+        player=SimpleNamespace(block="20", energy=3),
+        act="1",
+    )
+
+    action = agent.get_play_card_action()
+
+    assert action.card is strike
+
+
 def test_simple_agent_incoming_damage_clamps_negative_live_move_damage_to_zero():
     monster = SimpleNamespace(
         current_hp=20,
@@ -89,6 +141,21 @@ def test_simple_agent_incoming_damage_estimates_unknown_intent_by_act():
     )
 
     assert _agent_with_monsters([monster]).get_incoming_damage() == 5
+
+
+def test_simple_agent_incoming_damage_accepts_numeric_string_act_for_unknown_intent():
+    monster = SimpleNamespace(
+        current_hp=20,
+        is_gone=False,
+        half_dead=False,
+        intent=Intent.UNKNOWN,
+        move_adjusted_damage=None,
+        move_hits=1,
+    )
+    agent = _agent_with_monsters([monster])
+    agent.game.act = "2"
+
+    assert agent.get_incoming_damage() == 10
 
 
 def test_simple_agent_incoming_damage_counts_known_unknown_damage_move():

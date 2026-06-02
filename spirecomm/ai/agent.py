@@ -475,14 +475,18 @@ class SimpleAgent:
         return False
 
     @staticmethod
-    def _monster_current_hp(monster, default=0):
-        value = getattr(monster, "current_hp", None)
-        if value is None:
-            return default
+    def _safe_int(value, default=0):
         try:
             return int(value)
         except (TypeError, ValueError):
             return default
+
+    @classmethod
+    def _monster_current_hp(cls, monster, default=0):
+        value = getattr(monster, "current_hp", None)
+        if value is None:
+            return default
+        return cls._safe_int(value, default=default)
 
     @classmethod
     def _is_live_monster(cls, monster):
@@ -525,7 +529,7 @@ class SimpleAgent:
                         continue
                     if known_unknown_move_has_no_immediate_damage(monster):
                         continue
-                    incoming_damage += 5 * self.game.act
+                    incoming_damage += 5 * self._safe_int(getattr(self.game, "act", 1), default=1)
         return incoming_damage
 
     def get_low_hp_target(self):
@@ -612,13 +616,16 @@ class SimpleAgent:
                     return PlayCardAction(card=card_to_play, target_monster=target)
                 return PlayCardAction(card=card_to_play)
         incoming_damage = self.get_incoming_damage()
-        if self.game.player.block > incoming_damage - (self.game.act + 4):
+        player_block = self._safe_int(getattr(self.game.player, "block", 0))
+        act = self._safe_int(getattr(self.game, "act", 1), default=1)
+        defense_threshold = incoming_damage - (act + 4)
+        if player_block > defense_threshold:
             import logging
 
             logging.info(
-                f"[SIMPLE_AGENT_DEFENSE] Skipping defensive cards - block={self.game.player.block}, "
-                f"incoming={incoming_damage}, threshold={incoming_damage - (self.game.act + 4)}, "
-                f"act={self.game.act}"
+                f"[SIMPLE_AGENT_DEFENSE] Skipping defensive cards - block={player_block}, "
+                f"incoming={incoming_damage}, threshold={defense_threshold}, "
+                f"act={act}"
             )
             offensive_cards = [
                 card
