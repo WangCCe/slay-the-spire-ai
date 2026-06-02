@@ -9,6 +9,7 @@ import copy
 import logging
 import re
 import time
+from types import SimpleNamespace
 from typing import List, Dict, Tuple, Optional, Any
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster, Intent
@@ -574,6 +575,7 @@ class SimulationState:
         self.status_cards_added = 0  # Future draw-pile/discard pollution
         self.dazed_cards_added = 0  # Chosen Hex / Sentries / Reckless Charge-style pollution
         self.hex_non_attack_triggers = 0
+        self.added_hand_cards = []
         self.rampage_damage_bonus_by_card = {}
 
     def _get_player_debuff_stacks(self, context: DecisionContext, power_name: str) -> int:
@@ -780,6 +782,8 @@ class SimulationState:
                 value = value.copy()
             elif name == 'rampage_damage_bonus_by_card':
                 value = value.copy()
+            elif name == 'added_hand_cards':
+                value = value.copy()
             setattr(new_state, name, value)
         return new_state
 
@@ -853,6 +857,13 @@ class SimulationState:
             self.hex_non_attack_triggers,
             tuple(
                 sorted(
+                    card_identity_for_key(card)
+                    for card in getattr(self, 'added_hand_cards', [])
+                    if not is_card_played(self.played_card_uuids, card)
+                )
+            ),
+            tuple(
+                sorted(
                     (sortable_text(card_key), bonus)
                     for card_key, bonus in self.rampage_damage_bonus_by_card.items()
                 )
@@ -918,7 +929,7 @@ class SimulationState:
                 sortable_text(getattr(c, 'cost', 0)),
                 sortable_text(getattr(c, 'cost_for_turn', getattr(c, 'cost', 0))),
             )
-            for c in playable_cards
+            for c in list(playable_cards or []) + list(getattr(self, 'added_hand_cards', []))
             if not is_card_played(self.played_card_uuids, c)
         ))
 
@@ -1570,6 +1581,7 @@ class FastCombatSimulator:
         hand_cards = getattr(getattr(context, 'game', None), 'hand', None)
         if not hand_cards:
             hand_cards = getattr(context, 'playable_cards', [])
+        hand_cards = list(hand_cards or []) + list(getattr(state, 'added_hand_cards', []))
 
         cards = []
         exclude_key = card_play_key(exclude_card)
@@ -1584,6 +1596,7 @@ class FastCombatSimulator:
 
     def _mark_cards_unavailable(self, state: SimulationState, cards: List[Card]):
         for card in cards:
+            self._record_added_hand_status_exhausted(state, card)
             mark_card_played(state.played_card_uuids, card)
 
     def _effect_text_for_upgrade(self, description: str, upgraded: bool) -> str:
@@ -2027,15 +2040,83 @@ class FastCombatSimulator:
             return
 
         description = self._get_card_effect_text(card_name, card_data)
+        upgraded = is_card_upgraded(card)
         counts = self._extract_card_status_pollution(
             description,
-            is_card_upgraded(card),
+            upgraded,
         )
         if counts['total'] <= 0:
             return
 
         state.status_cards_added += counts['total']
         state.dazed_cards_added += counts['dazed']
+        self._add_hand_status_cards(
+            state,
+            self._extract_hand_status_additions(description, upgraded),
+        )
+
+    def _extract_hand_status_additions(
+        self,
+        description: str,
+        upgraded: bool = False,
+    ) -> Dict[str, int]:
+        text = self._effect_text_for_upgrade(description, upgraded).lower()
+        text = text.replace('#', '').replace('*', '')
+        status_patterns = {
+            'dazed': r'dazed',
+            'burn': r'burns?',
+            'slimed': r'slimed',
+            'wound': r'wounds?',
+        }
+        counts = {}
+        for status, pattern in status_patterns.items():
+            total = 0
+            for match in re.finditer(
+                rf'\badd\s+(?:(\d+)|a|an)\s+{pattern}\s+(?:into|to)\s+your\s+hand\b',
+                text,
+                re.IGNORECASE,
+            ):
+                total += int(match.group(1) or 1)
+            counts[status] = total
+        return counts
+
+    def _add_hand_status_cards(self, state: SimulationState, counts: Dict[str, int]):
+        if not hasattr(state, 'added_hand_cards'):
+            state.added_hand_cards = []
+        status_names = {
+            'dazed': 'Dazed',
+            'burn': 'Burn',
+            'slimed': 'Slimed',
+            'wound': 'Wound',
+        }
+        for status, count in counts.items():
+            status_name = status_names.get(status)
+            if not status_name or count <= 0:
+                continue
+            for _ in range(count):
+                unique_index = len(state.added_hand_cards)
+                state.added_hand_cards.append(
+                    SimpleNamespace(
+                        card_id=status_name,
+                        name=status_name,
+                        card_type='STATUS',
+                        type='STATUS',
+                        cost=-2,
+                        cost_for_turn=-2,
+                        has_target=False,
+                        is_playable=False,
+                        uuid=f"sim-hand-{status}-{unique_index}",
+                        simulated_added_status=status,
+                    )
+                )
+
+    def _record_added_hand_status_exhausted(self, state: SimulationState, card: Card):
+        status = getattr(card, 'simulated_added_status', None)
+        if not status:
+            return
+        state.status_cards_added = max(0, getattr(state, 'status_cards_added', 0) - 1)
+        if status == 'dazed':
+            state.dazed_cards_added = max(0, getattr(state, 'dazed_cards_added', 0) - 1)
 
     def _extract_debuff_stacks(self, description: str, keyword: str, upgraded: bool) -> Optional[int]:
         """Extract debuff stacks from card description for a keyword."""

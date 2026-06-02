@@ -6496,6 +6496,123 @@ def test_counted_upgraded_block_skill_uses_upgrade_block_value(monkeypatch):
     assert result.dazed_cards_added == 0
 
 
+def test_power_through_wounds_are_available_to_followup_second_wind(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "power through": {
+            "name": "Power Through",
+            "description": "Gain 15 Block.\nAdd 2 Wounds into your hand.",
+        }
+    }
+    loader._wiki_data = {
+        "power through": {
+            "name": "Power Through",
+            "text": "Gain [15|20] #Block.\nAdd 2 #Wounds into your hand.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    power_through = _card(
+        "Power Through",
+        "Power Through",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    second_wind = _card(
+        "Second Wind",
+        "Second Wind",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    context = _combat_context(
+        [power_through, second_wind],
+        energy=2,
+        monsters=[_louse(current_hp=100)],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    after_power_through = simulator.simulate_card_play(
+        SimulationState(context),
+        power_through,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        after_power_through,
+        second_wind,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 25
+    assert result.exhaust_events == 2
+    assert result.status_cards_added == 0
+
+
+def test_power_through_wounds_are_available_to_followup_fiend_fire(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "description": "Exhaust your hand. Deal 7 damage for each card Exhausted. Exhaust.",
+        },
+        "power through": {
+            "name": "Power Through",
+            "description": "Gain 15 Block.\nAdd 2 Wounds into your hand.",
+        },
+    }
+    loader._wiki_data = {
+        "fiend fire": {
+            "name": "Fiend Fire",
+            "text": "#Exhaust your hand.\nDeal [7|10] damage for each card #Exhausted.\n#Exhaust.",
+        },
+        "power through": {
+            "name": "Power Through",
+            "text": "Gain [15|20] #Block.\nAdd 2 #Wounds into your hand.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    power_through = _card(
+        "Power Through",
+        "Power Through",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    fiend_fire = _card("Fiend Fire", "Fiend Fire", cost=2)
+    context = _combat_context(
+        [power_through, fiend_fire],
+        energy=3,
+        monsters=[_louse(current_hp=100)],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    after_power_through = simulator.simulate_card_play(
+        SimulationState(context),
+        power_through,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        after_power_through,
+        fiend_fire,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 14
+    assert result.damage_instances == 2
+    assert result.exhaust_events == 3
+    assert result.status_cards_added == 0
+
+
 def test_block_skill_ignores_stale_zero_block_attribute(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
