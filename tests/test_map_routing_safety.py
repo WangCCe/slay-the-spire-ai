@@ -51,11 +51,47 @@ def test_conservative_act2_elite_penalty_blocks_future_reward_bait():
     assert elite_priority <= -1000
 
 
+def test_map_router_node_priority_accepts_string_hp_pct():
+    router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="aggressive")
+    enum_context = _context(act=2, floor=22, hp_pct=0.9)
+    string_context = _context(act=2, floor=22, hp_pct="0.9")
+
+    enum_priority = router.calculate_node_priority(SimpleNamespace(symbol="E"), enum_context)
+    string_priority = router.calculate_node_priority(SimpleNamespace(symbol="E"), string_context)
+
+    assert string_priority == enum_priority
+
+
 def test_map_router_pre_boss_high_hp_allows_high_value_smith():
     router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
     context = _context(
         floor=15,
         hp_pct=0.9,
+        deck=[
+            _card("Bash"),
+            _card("Shockwave"),
+            _card("Pommel Strike"),
+            _card("Shrug It Off"),
+            _card("Battle Trance"),
+            _card("Headbutt"),
+            _card("Inflame"),
+            _card("Anger"),
+        ],
+    )
+
+    option = router.choose_campfire_option(
+        [RestOption.REST, RestOption.SMITH],
+        context,
+    )
+
+    assert option == RestOption.SMITH
+
+
+def test_map_router_campfire_accepts_string_hp_pct():
+    router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
+    context = _context(
+        floor=15,
+        hp_pct="0.9",
         deck=[
             _card("Bash"),
             _card("Shockwave"),

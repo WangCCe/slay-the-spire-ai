@@ -63,6 +63,13 @@ class AdaptiveMapRouter:
     def _compact_identifier(value) -> str:
         return "".join(ch for ch in str(value or "") if ch.isalnum()).lower()
 
+    @staticmethod
+    def _non_negative_float(value) -> float:
+        try:
+            return max(0.0, float(value or 0))
+        except (TypeError, ValueError):
+            return 0.0
+
     def calculate_node_priority(self, node: Node, context: DecisionContext) -> int:
         """
         Calculate dynamic priority for a map node.
@@ -74,7 +81,7 @@ class AdaptiveMapRouter:
         """
         symbol = node.symbol
         base_priority = self.BASE_NODE_PRIORITIES.get(symbol, 0)
-        hp_pct = context.player_hp_pct
+        hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
         act = context.act
         floor = getattr(context, 'floor', 0) or 0
 
@@ -192,9 +199,10 @@ class AdaptiveMapRouter:
             ),
         )
         score += min(2, max(0, len(relics) - 1))
-        if context.player_hp_pct >= 0.85:
+        hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
+        if hp_pct >= 0.85:
             score += 1
-        elif context.player_hp_pct < 0.65:
+        elif hp_pct < 0.65:
             score -= 2
 
         floor = getattr(context, "floor", 0) or 0
@@ -276,10 +284,11 @@ class AdaptiveMapRouter:
         if RestOption.REST in options:
             force_rest, reason = self._should_force_rest(context)
             if force_rest:
+                hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
                 logging.getLogger(__name__).info(
                     "[REST_GUARD] Map router forcing REST reason=%s hp_pct=%.1f%% floor=%s",
                     reason,
-                    context.player_hp_pct * 100,
+                    hp_pct * 100,
                     getattr(context, "floor", 0),
                 )
                 return RestOption.REST
@@ -306,7 +315,7 @@ class AdaptiveMapRouter:
     def _score_rest_option(self, context: DecisionContext) -> int:
         """Score REST option."""
         score = 50
-        hp_pct = context.player_hp_pct
+        hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
         floor = context.floor if hasattr(context, 'floor') else 0
 
         # Is this pre-boss?
@@ -325,7 +334,7 @@ class AdaptiveMapRouter:
         return score
 
     def _should_force_rest(self, context: DecisionContext) -> tuple[bool, str]:
-        hp_pct = context.player_hp_pct
+        hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
         floor = getattr(context, 'floor', 0) or 0
         is_pre_boss = (floor % 17) in (15, 16)
 
@@ -338,7 +347,7 @@ class AdaptiveMapRouter:
     def _score_smith_option(self, context: DecisionContext) -> int:
         """Score SMITH option."""
         score = 40
-        hp_pct = context.player_hp_pct
+        hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
 
         # Need HP to afford not healing
         if hp_pct > 0.6:
@@ -385,7 +394,7 @@ class AdaptiveMapRouter:
     def _score_dig_option(self, context: DecisionContext) -> int:
         """Score DIG option."""
         score = 20
-        hp_pct = context.player_hp_pct
+        hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
 
         # Need to be healthy to risk it
         if hp_pct < 0.5:
