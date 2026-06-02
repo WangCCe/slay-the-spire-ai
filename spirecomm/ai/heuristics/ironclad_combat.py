@@ -1621,6 +1621,7 @@ class IroncladCombatPlanner(CombatPlanner):
         card_type = card_type_name(card)
         card_id = canonical_card_name(card)
         incoming_damage = self._non_negative_float(getattr(context, 'incoming_damage', 0))
+        turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
 
         # Check if fighting Gremlins or other weak monsters that require aggressive play
         aggressive_mode = False
@@ -1640,9 +1641,9 @@ class IroncladCombatPlanner(CombatPlanner):
         if card_type == 'POWER':
             if self._has_awakened_one(context):
                 return -200
-            if card_id == 'Demon Form' and context.turn <= 3:
+            if card_id == 'Demon Form' and turn <= 3:
                 return 1000
-            return 600 if context.turn <= 3 else 400
+            return 600 if turn <= 3 else 400
 
         # Draw cards
         if self._is_draw_card(card):

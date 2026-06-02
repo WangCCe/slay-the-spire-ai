@@ -260,6 +260,34 @@ def test_ironclad_card_priority_accepts_string_incoming_damage_for_defense():
     assert string_score == enum_score
 
 
+def test_ironclad_card_priority_accepts_string_turn_for_power_cards():
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    string_demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    planner = IroncladCombatPlanner()
+
+    enum_context = _combat_context([demon_form], energy=3, monsters=[_louse(current_hp=50)])
+    enum_context.turn = 2
+    enum_score = planner._get_card_priority(demon_form, enum_context)
+
+    string_context = _combat_context([string_demon_form], energy=3, monsters=[_louse(current_hp=50)])
+    string_context.turn = "2"
+    string_score = planner._get_card_priority(string_demon_form, string_context)
+
+    assert string_score == enum_score
+
+
 def _louse(current_hp=50):
     return Monster(
         name="Louse",
