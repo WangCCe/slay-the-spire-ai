@@ -189,6 +189,22 @@ def test_simple_agent_incoming_damage_counts_known_unknown_damage_move():
     assert agent.get_incoming_damage() == 30
 
 
+def test_incoming_damage_numeric_helpers_ignore_nonfinite_values():
+    assert incoming_damage.numeric_damage_value([3, float("inf"), -2]) == 3
+    assert incoming_damage.positive_hit_count(float("inf")) == 1
+
+
+def test_unknown_move_immediate_damage_defaults_nonfinite_hits_to_one():
+    move = {
+        "move_id": 9,
+        "intent": "UNKNOWN",
+        "damage": 7,
+        "hits": float("inf"),
+    }
+
+    assert incoming_damage.move_data_immediate_unknown_damage(move) == 7
+
+
 def test_simple_agent_incoming_damage_ignores_known_no_damage_unknown_moves():
     monsters = [
         SimpleNamespace(

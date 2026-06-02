@@ -7,6 +7,7 @@ from typing import Any
 from spirecomm.ai.intent_utils import intent_is_attack, intent_is_unknown
 from spirecomm.ai.monster_names import canonical_live_monster_name, monster_field
 from spirecomm.data.loader import game_data_loader
+from spirecomm.spire.numeric import coerce_int
 
 
 def _monster_field(monster: Any, field_name: str, default: Any = None) -> Any:
@@ -17,17 +18,11 @@ def numeric_damage_value(value: Any) -> int:
     if isinstance(value, (list, tuple)):
         values = [numeric_damage_value(item) for item in value]
         return max(values) if values else 0
-    try:
-        return max(0, int(value or 0))
-    except (TypeError, ValueError):
-        return 0
+    return max(0, coerce_int(value or 0, 0))
 
 
 def positive_hit_count(value: Any) -> int:
-    try:
-        return max(1, int(value or 1))
-    except (TypeError, ValueError):
-        return 1
+    return max(1, coerce_int(value or 1, 1))
 
 
 def move_data_immediate_unknown_damage(move: Any) -> int:
