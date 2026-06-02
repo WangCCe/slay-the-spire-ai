@@ -7,6 +7,7 @@ from datetime import datetime
 from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id
 from spirecomm.spire.character import Intent, PlayerClass
+from spirecomm.spire.numeric import coerce_int
 from spirecomm.spire.screen import RestOption, reward_type_name
 from spirecomm.communication.action import *
 from spirecomm.ai.incoming_damage import (
@@ -121,15 +122,6 @@ class SimpleAgent:
             return default
         try:
             return float(value)
-        except (TypeError, ValueError):
-            return default
-
-    @staticmethod
-    def _safe_int(value, default=0):
-        if value is None:
-            return default
-        try:
-            return int(value)
         except (TypeError, ValueError):
             return default
 
@@ -476,13 +468,7 @@ class SimpleAgent:
 
     @staticmethod
     def _safe_int(value, default=0):
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            try:
-                return int(float(value))
-            except (TypeError, ValueError, OverflowError):
-                return default
+        return coerce_int(value, default)
 
     @classmethod
     def _monster_current_hp(cls, monster, default=0):

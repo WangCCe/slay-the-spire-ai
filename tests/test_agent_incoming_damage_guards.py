@@ -130,6 +130,32 @@ def test_simple_agent_incoming_damage_accepts_decimal_string_damage_and_hits():
     assert _agent_with_monsters([monster]).get_incoming_damage() == 14
 
 
+def test_simple_agent_incoming_damage_ignores_nonfinite_live_move_damage():
+    monster = SimpleNamespace(
+        current_hp=20,
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=float("inf"),
+        move_hits=2,
+    )
+
+    assert _agent_with_monsters([monster]).get_incoming_damage() == 0
+
+
+def test_simple_agent_incoming_damage_defaults_nonfinite_live_move_hits_to_one():
+    monster = SimpleNamespace(
+        current_hp=20,
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=7,
+        move_hits=float("inf"),
+    )
+
+    assert _agent_with_monsters([monster]).get_incoming_damage() == 7
+
+
 def test_simple_agent_incoming_damage_ignores_non_attack_intents():
     monster = SimpleNamespace(
         current_hp=20,
