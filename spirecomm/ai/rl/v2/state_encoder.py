@@ -346,7 +346,7 @@ class StateEncoderV2:
         amount = 0.0
         for power in powers or []:
             if any(power_matches(power, power_id) for power_id in power_ids):
-                amount = getattr(power, "amount", 0) or 0
+                amount = self._safe_float(getattr(power, "amount", 0), 0.0)
                 break
         if keyword_name in ("Strength", "Dexterity"):
             return float(np.tanh(amount / 10.0))

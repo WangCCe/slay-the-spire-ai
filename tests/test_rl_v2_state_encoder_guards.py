@@ -56,3 +56,19 @@ def test_state_encoder_rejects_nonfinite_numeric_inputs():
     encoded = StateEncoderV2(id_mapper=_IdMapper()).encode(game)
 
     assert np.isfinite(encoded.continuous).all()
+
+
+def test_state_encoder_coerces_power_amounts_before_keyword_encoding():
+    encoder = StateEncoderV2(id_mapper=_IdMapper())
+
+    strength = encoder._encode_keyword(
+        [SimpleNamespace(power_id="Strength", amount="2.0")],
+        "Strength",
+    )
+    poison = encoder._encode_keyword(
+        [SimpleNamespace(power_id="Poison", amount="nan")],
+        "Poison",
+    )
+
+    assert np.isclose(strength, np.tanh(0.2))
+    assert poison == 0.0
