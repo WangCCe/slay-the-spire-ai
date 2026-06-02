@@ -9298,6 +9298,27 @@ def test_fast_score_gives_setup_bonus_to_string_power_cards(monkeypatch):
     assert score == simulation.FASTSCORE_POWER_BONUS + simulation.FASTSCORE_POWER_EARLY_BONUS
 
 
+def test_fast_score_power_bonus_accepts_string_turn(monkeypatch):
+    monkeypatch.setattr(HeuristicCombatPlanner, "_calculate_x_block", lambda *_args, **_kwargs: 0, raising=False)
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    context = _combat_context([demon_form], energy=3, monsters=[_louse(current_hp=100)])
+    context.turn = "1"
+
+    score = HeuristicCombatPlanner().fast_score_action(
+        demon_form,
+        SimulationState(context),
+        context,
+    )
+
+    assert score == simulation.FASTSCORE_POWER_BONUS + simulation.FASTSCORE_POWER_EARLY_BONUS
+
+
 def test_fast_score_rage_counts_string_attack_cards(monkeypatch):
     monkeypatch.setattr(HeuristicCombatPlanner, "_calculate_x_block", lambda *_args, **_kwargs: 0, raising=False)
     rage = _card("Rage", "Rage", card_type=CardType.SKILL, cost=0, has_target=False)

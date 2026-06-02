@@ -6356,8 +6356,10 @@ class HeuristicCombatPlanner(CombatPlanner):
         # Baseline power bonus to avoid pruning setup cards
         if normalized_card_type == 'POWER':
             power_bonus = FASTSCORE_POWER_BONUS
-            if hasattr(context, 'turn') and context.turn <= 2:
-                power_bonus += FASTSCORE_POWER_EARLY_BONUS
+            if hasattr(context, 'turn'):
+                context_turn = self._non_negative_int(context.turn) or 1
+                if context_turn <= 2:
+                    power_bonus += FASTSCORE_POWER_EARLY_BONUS
             score += power_bonus
 
         # Attack bonus when monsters alive
