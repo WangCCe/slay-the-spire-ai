@@ -109,10 +109,12 @@ class ActionEncoderV2:
 
     @staticmethod
     def _can_afford_purge(game: Game, screen) -> bool:
-        try:
-            gold = int(getattr(game, "gold", 0) or 0)
-            purge_cost = int(getattr(screen, "purge_cost", 0) or 0)
-        except Exception:
+        gold = ActionEncoderV2._safe_int(getattr(game, "gold", 0) or 0, default=None)
+        purge_cost = ActionEncoderV2._safe_int(
+            getattr(screen, "purge_cost", 0) or 0,
+            default=None,
+        )
+        if gold is None or purge_cost is None:
             return False
         return gold >= purge_cost
 
