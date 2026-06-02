@@ -618,7 +618,10 @@ class StateEncoder:
         try:
             return int(value)
         except (TypeError, ValueError):
-            return default
+            try:
+                return int(float(value))
+            except (TypeError, ValueError, OverflowError):
+                return default
 
     @staticmethod
     def _safe_float(value, default=0.0):

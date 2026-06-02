@@ -235,6 +235,16 @@ def test_rl_card_reward_features_accept_string_magic_number():
     assert features[14] == 3 / 20
 
 
+def test_rl_card_reward_features_accept_decimal_string_cost():
+    encoder = StateEncoder()
+    card = _card("Cleave")
+    card.cost_for_turn = "2.0"
+
+    features = encoder._encode_card_reward_card(card)
+
+    assert features[0] == 2 / 3
+
+
 def test_rl_state_encoder_player_class_features_accept_strings():
     encoder = StateEncoder()
 
@@ -431,6 +441,23 @@ def test_rl_state_encoder_combat_piles_accepts_string_discard_count():
         exhaust_pile=[],
         limbo=[],
         cards_discarded_this_turn="4",
+        card_in_play=None,
+        potions=[],
+        potion_available=False,
+        are_potions_full=lambda: False,
+    )
+
+    features = encoder._encode_combat_piles(game)
+
+    assert features[2] == 0.4
+
+
+def test_rl_state_encoder_combat_piles_accepts_decimal_string_discard_count():
+    encoder = StateEncoder()
+    game = SimpleNamespace(
+        exhaust_pile=[],
+        limbo=[],
+        cards_discarded_this_turn="4.0",
         card_in_play=None,
         potions=[],
         potion_available=False,
