@@ -3205,6 +3205,26 @@ def test_enemy_lookahead_depth_counts_future_unknown_damage_move():
     assert simulator._needs_multi_turn_enemy_lookahead(state, context) is True
 
 
+def test_enemy_lookahead_depth_accepts_string_context_turn(monkeypatch):
+    class FakeLoader:
+        def predict_monster_moves(self, _monster_name, current_turn, _hp_percent, **_kwargs):
+            if current_turn != 1:
+                return [{"move": {"intent": "BUFF"}}]
+            return [
+                {"move": {"intent": "BUFF"}},
+                {"move": {"intent": "ATTACK", "damage": 8, "hits": 1}},
+            ]
+
+    monkeypatch.setattr(simulation, "game_data_loader", FakeLoader())
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=50)])
+    context.turn = "1"
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._current_monster_move = lambda *_args, **_kwargs: {"intent": "BUFF"}
+
+    assert simulator._needs_multi_turn_enemy_lookahead(state, context) is True
+
+
 def test_awakened_lagavulin_attack_is_not_marked_hibernating():
     context = _combat_context([], energy=0, monsters=[_lagavulin()])
     context.turn = 6
