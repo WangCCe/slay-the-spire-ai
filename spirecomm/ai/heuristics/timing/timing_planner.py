@@ -820,7 +820,8 @@ class TimingAwareCombatPlanner:
         if hasattr(card, 'damage_for'):
             try:
                 strength = getattr(context, 'strength', 0)
-                return max(0, int(card.damage_for(getattr(context, 'turn', 1), strength)))
+                turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
+                return max(0, int(card.damage_for(turn, strength)))
             except Exception:
                 pass
 
