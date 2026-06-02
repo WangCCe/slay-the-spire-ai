@@ -1056,6 +1056,52 @@ def test_timing_planner_cache_invalidates_when_player_hp_changes():
     assert [call[1] for call in strategy.calls] == [60, 10]
 
 
+def test_timing_planner_cache_invalidates_when_player_block_status_changes():
+    class StaticClassifier:
+        def classify_turn(self, _context):
+            return TimingContext(
+                turn_timing=TurnTiming.SAFE,
+                current_damage=0,
+                balance_weights=BalanceWeights.safe_turn_weights(),
+            )
+
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL)
+    defend.uuid = "same-defend"
+    defend.block = 5
+
+    class BlockEstimatingPlanner:
+        def __init__(self, timing_planner):
+            self.timing_planner = timing_planner
+            self.calls = []
+
+        def set_timing_context(self, timing_context):
+            self.timing_context = timing_context
+
+        def plan_turn(self, context):
+            block = self.timing_planner._estimate_card_block(defend, context)
+            self.calls.append(block)
+            return [block]
+
+    def context_for_powers(powers):
+        return SimpleNamespace(
+            turn=1,
+            energy_available=1,
+            game=SimpleNamespace(player=SimpleNamespace(block=0, powers=powers)),
+            playable_cards=[defend],
+            monsters_alive=[SimpleNamespace(current_hp=20, block=0, monster_index=0)],
+        )
+
+    planner = TimingAwareCombatPlanner(classifier=StaticClassifier())
+    base_planner = BlockEstimatingPlanner(planner)
+    planner.base_planner = base_planner
+
+    assert planner.plan_with_timing(context_for_powers([])) == [5]
+    assert planner.plan_with_timing(
+        context_for_powers([SimpleNamespace(power_name="Dexterity", amount=2)])
+    ) == [7]
+    assert base_planner.calls == [5, 7]
+
+
 def test_timing_planner_applies_injected_balance_strategy():
     classifier_weights = BalanceWeights(
         damage_weight=1.0,

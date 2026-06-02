@@ -197,7 +197,9 @@ class TimingAwareCombatPlanner:
             self._player_hp_cache_key(context),
             player_block_value(context),
             player_power_amount(context, 'Strength'),
+            player_power_amount(context, 'Dexterity'),
             player_debuff_stacks(context, 'Weak'),
+            player_debuff_stacks(context, 'Frail'),
             self._status_map_cache_key(getattr(context, 'vulnerable_stacks', {})),
             tuple(
                 self._card_cache_key(card)
