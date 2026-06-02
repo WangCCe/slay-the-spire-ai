@@ -55,6 +55,17 @@ def test_rl_step_reward_uses_observed_floor_delta_after_reset():
     assert reward == calc.FLOOR_REWARD_SCALE
 
 
+def test_rl_step_reward_accepts_numeric_string_floor_delta():
+    calc = RewardCalculator()
+    info = {}
+
+    reward = calc.calculate_step_reward(_game("10"), _game("9"), debug_info=info)
+
+    assert info["floor_advanced"] is True
+    assert info["progress_reward"] == calc.FLOOR_REWARD_SCALE
+    assert reward == calc.FLOOR_REWARD_SCALE
+
+
 def test_rl_reward_power_amount_accepts_name_only_power():
     calc = RewardCalculator()
     entity = SimpleNamespace(powers=[SimpleNamespace(name="Vulnerable", amount=2)])

@@ -144,10 +144,11 @@ class RewardCalculator:
         """Calculate reward for game progression."""
         reward = 0.0
         if floor_advanced:
-            floor_before = self.last_floor if previous_floor is None else previous_floor
-            floors_gained = max(0, game.floor - floor_before)
+            floor_before = self._safe_int(self.last_floor if previous_floor is None else previous_floor)
+            current_floor = self._safe_int(getattr(game, "floor", 0), default=floor_before)
+            floors_gained = max(0, current_floor - floor_before)
             reward += floors_gained * self.FLOOR_REWARD_SCALE
-            self.last_floor = game.floor
+            self.last_floor = current_floor
         if elite_killed:
             reward += self.ELITE_REWARD
             self.elites_killed += 1
@@ -439,14 +440,16 @@ class RewardCalculator:
         # === PROGRESSION REWARDS ===
         # Floor advancement
         if hasattr(current_game, 'floor') and hasattr(last_game, 'floor'):
-            floor_advanced = current_game.floor > last_game.floor
+            current_floor = self._safe_int(current_game.floor)
+            last_floor = self._safe_int(last_game.floor)
+            floor_advanced = current_floor > last_floor
             if floor_advanced:
                 progress_reward = self.calculate_progression_reward(
                     current_game,
                     floor_advanced=True,
                     elite_killed=False,  # TODO: detect elite kills
                     boss_killed=False,   # TODO: detect boss kills
-                    previous_floor=last_game.floor
+                    previous_floor=last_floor
                 )
                 reward += progress_reward
                 if info is not None:
