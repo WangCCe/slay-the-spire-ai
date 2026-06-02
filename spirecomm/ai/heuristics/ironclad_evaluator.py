@@ -214,7 +214,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         - HP < 40%: Bonus for defensive cards
         """
         modifier = 1.0
-        hp_pct = context.player_hp_pct
+        hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
         card_id = self._card_name(card)
 
         if hp_pct < 0.3:

@@ -669,6 +669,13 @@ def test_ironclad_evaluator_treats_counted_upgraded_immolate_as_immolate():
     assert counted_score == immolate_score
 
 
+def test_ironclad_evaluator_hp_modifier_accepts_string_hp_pct():
+    evaluator = IroncladCardEvaluator()
+    context = SimpleNamespace(player_hp_pct="0.2")
+
+    assert evaluator._calculate_hp_aware_modifier(_card("Offering", cost=0), context) == 0.1
+
+
 def test_ironclad_energy_curve_parses_string_card_costs():
     deck = [_card("Strike_R", cost=1) for _ in range(10)]
     context = DecisionContext(SimpleNamespace(deck=deck, act=1))
