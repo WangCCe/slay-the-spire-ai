@@ -12,6 +12,7 @@ from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
 from spirecomm.spire.card import CardRarity
 from spirecomm.spire.character import PlayerClass
+from spirecomm.spire.numeric import coerce_int
 from spirecomm.ai.heuristics.combat_state import power_amount
 from spirecomm.ai.priorities import (
     Priority,
@@ -85,13 +86,27 @@ class RewardCalculator:
 
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:
+        return coerce_int(value, default)
+
+    @staticmethod
+    def _finite_int(value) -> Optional[int]:
+        if value is None:
+            return None
         try:
-            return int(value)
-        except (TypeError, ValueError):
-            try:
-                return int(float(value))
-            except (TypeError, ValueError, OverflowError):
-                return default
+            numeric = float(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if not math.isfinite(numeric):
+            return None
+        try:
+            return int(numeric)
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+    def _monster_hp_value(self, monster) -> Optional[int]:
+        if not hasattr(monster, "current_hp"):
+            return None
+        return self._finite_int(getattr(monster, "current_hp", None))
 
     @staticmethod
     def _is_truthy(value: str) -> bool:
@@ -277,14 +292,14 @@ class RewardCalculator:
                 info["monster_count_last"] = len(last_monsters)
                 info["monster_count_current"] = len(current_monsters)
                 last_total_hp = sum(
-                    self._safe_int(getattr(m, "current_hp", 0))
-                    for m in last_monsters
-                    if hasattr(m, "current_hp")
+                    hp
+                    for hp in (self._monster_hp_value(m) for m in last_monsters)
+                    if hp is not None
                 )
                 current_total_hp = sum(
-                    self._safe_int(getattr(m, "current_hp", 0))
-                    for m in current_monsters
-                    if hasattr(m, "current_hp")
+                    hp
+                    for hp in (self._monster_hp_value(m) for m in current_monsters)
+                    if hp is not None
                 )
                 info["total_monster_hp_delta"] = last_total_hp - current_total_hp
 
@@ -296,7 +311,7 @@ class RewardCalculator:
                 else:
                     key = idx
                 if hasattr(monster, 'current_hp'):
-                    current_monster_hp[key] = self._safe_int(monster.current_hp)
+                    current_monster_hp[key] = self._monster_hp_value(monster)
 
             # Compare with last state to detect damage and kills
             for idx, last_monster in enumerate(last_monsters):
@@ -305,12 +320,16 @@ class RewardCalculator:
                 else:
                     key = idx
 
-                last_hp = self._safe_int(getattr(last_monster, 'current_hp', 0))
+                last_hp = self._monster_hp_value(last_monster)
+                if last_hp is None:
+                    continue
                 was_vulnerable = self._get_power_amount(last_monster, "Vulnerable") > 0
 
                 # Check if monster still exists
                 if key in current_monster_hp:
                     current_hp = current_monster_hp[key]
+                    if current_hp is None:
+                        continue
 
                     # Monster took damage
                     if current_hp < last_hp:
@@ -332,12 +351,12 @@ class RewardCalculator:
 
             # Check if all monsters are now dead
             if len(current_monsters) > 0:
-                all_alive = any(
-                    self._safe_int(getattr(m, 'current_hp', 0)) > 0
-                    for m in current_monsters
-                    if hasattr(m, 'current_hp')
-                )
-                all_monsters_killed = not all_alive
+                current_hp_values = [
+                    hp for hp in current_monster_hp.values() if hp is not None
+                ]
+                if current_hp_values:
+                    all_alive = any(hp > 0 for hp in current_hp_values)
+                    all_monsters_killed = not all_alive
 
             # Track HP lost
             hp_lost = 0
@@ -410,8 +429,8 @@ class RewardCalculator:
             finishing_kills = 0
             if had_alive_monsters:
                 for monster in last_monsters:
-                    monster_hp = self._safe_int(getattr(monster, "current_hp", 0))
-                    if hasattr(monster, "current_hp") and monster_hp > 0:
+                    monster_hp = self._monster_hp_value(monster)
+                    if monster_hp is not None and monster_hp > 0:
                         finishing_damage += monster_hp
                         finishing_kills += 1
                         if self._get_power_amount(monster, "Vulnerable") > 0:
@@ -571,7 +590,8 @@ class RewardCalculator:
 
     def _had_alive_monsters(self, monsters: Iterable) -> bool:
         for monster in monsters:
-            if hasattr(monster, 'current_hp') and self._safe_int(monster.current_hp) > 0:
+            monster_hp = self._monster_hp_value(monster)
+            if monster_hp is not None and monster_hp > 0:
                 return True
         return False
 

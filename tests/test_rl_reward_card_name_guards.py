@@ -106,6 +106,41 @@ def test_rl_step_reward_accepts_numeric_string_monster_hp_for_damage_delta():
     assert reward == 5 * calc.DAMAGE_REWARD_SCALE
 
 
+def test_rl_step_reward_ignores_nonfinite_monster_hp_for_damage_delta():
+    calc = RewardCalculator()
+    info = {}
+    last_game = _combat_game([
+        SimpleNamespace(monster_index=0, current_hp=float("inf"), powers=[]),
+    ])
+    current_game = _combat_game([
+        SimpleNamespace(monster_index=0, current_hp=float("inf"), powers=[]),
+    ])
+
+    reward = calc.calculate_step_reward(current_game, last_game, debug_info=info)
+
+    assert info["damage_dealt"] == 0
+    assert info["total_monster_hp_delta"] == 0
+    assert info["all_monsters_killed"] is False
+    assert reward == 0
+
+
+def test_rl_step_reward_rejects_nonfinite_floor_and_gold_deltas():
+    calc = RewardCalculator()
+    info = {}
+
+    reward = calc.calculate_step_reward(
+        _game(float("inf"), gold=float("inf")),
+        _game(9, gold=32),
+        debug_info=info,
+    )
+
+    assert info["floor_advanced"] is False
+    assert info["progress_reward"] == 0
+    assert info["gold_reward"] == 0
+    assert info["acquisition_reward"] == 0
+    assert reward == 0
+
+
 def test_rl_step_reward_accepts_numeric_string_turn_delta():
     calc = RewardCalculator()
     info = {}
