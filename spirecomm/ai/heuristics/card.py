@@ -239,7 +239,8 @@ class SynergyCardEvaluator(CardEvaluator):
                 getattr(getattr(context, 'game', None), 'current_hp', 1),
                 default=1.0,
             )
-            incoming_threat = context.incoming_damage / player_hp
+            incoming_damage = self._non_negative_float(getattr(context, 'incoming_damage', 0))
+            incoming_threat = incoming_damage / player_hp
 
             if self._is_defensive_card(card):
                 if incoming_threat > 0.3:
