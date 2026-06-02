@@ -10,6 +10,7 @@ from typing import Optional
 
 from spirecomm.ai.intent_utils import monster_intends_attack
 from spirecomm.ai.monster_names import canonical_live_monster_name
+from spirecomm.spire.numeric import coerce_float, coerce_int
 
 from .models import (
     TurnTiming,
@@ -270,27 +271,18 @@ class CombatBalanceStrategy:
 
     @staticmethod
     def _coerce_float(value, default: float = 0.0) -> float:
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return default
+        return coerce_float(value, default)
 
     @staticmethod
     def _coerce_int(value, default: int = 0) -> int:
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            try:
-                return int(float(value))
-            except (TypeError, ValueError, OverflowError):
-                return default
+        return coerce_int(value, default)
 
     @staticmethod
     def _is_live_monster(monster) -> bool:
         return (
             CombatBalanceStrategy._coerce_float(
                 getattr(monster, 'current_hp', 1),
-                default=1.0,
+                default=0.0,
             ) > 0
             and not getattr(monster, 'is_gone', False)
             and not getattr(monster, 'half_dead', False)

@@ -40,6 +40,50 @@ def test_balance_strategy_current_damage_handles_numeric_string_monster_hp():
     assert CombatBalanceStrategy()._estimate_current_damage(context) == 12
 
 
+def test_balance_strategy_current_damage_rejects_nonfinite_monster_hp():
+    invalid_hp = SimpleNamespace(
+        current_hp=float("inf"),
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=99,
+        move_hits=1,
+    )
+    attacking_monster = SimpleNamespace(
+        current_hp=12,
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=6,
+        move_hits=1,
+    )
+    context = SimpleNamespace(monsters_alive=[invalid_hp, attacking_monster])
+
+    assert CombatBalanceStrategy()._estimate_current_damage(context) == 6
+
+
+def test_balance_strategy_current_damage_defaults_nonfinite_hits_without_aborting():
+    invalid_hits = SimpleNamespace(
+        current_hp=20,
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=7,
+        move_hits=float("inf"),
+    )
+    attacking_monster = SimpleNamespace(
+        current_hp=12,
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=6,
+        move_hits=1,
+    )
+    context = SimpleNamespace(monsters_alive=[invalid_hits, attacking_monster])
+
+    assert CombatBalanceStrategy()._estimate_current_damage(context) == 13
+
+
 def test_balance_strategy_current_damage_accepts_decimal_string_damage_and_hits():
     monster = SimpleNamespace(
         current_hp=20,
