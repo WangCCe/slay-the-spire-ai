@@ -225,6 +225,16 @@ def test_rl_card_reward_features_accept_card_type_attribute():
     assert features[3] == 1.0
 
 
+def test_rl_card_reward_features_accept_string_magic_number():
+    encoder = StateEncoder()
+    card = _card("Armaments")
+    card.properties = [SimpleNamespace(magic_number="3")]
+
+    features = encoder._encode_card_reward_card(card)
+
+    assert features[14] == 3 / 20
+
+
 def test_rl_state_encoder_player_class_features_accept_strings():
     encoder = StateEncoder()
 

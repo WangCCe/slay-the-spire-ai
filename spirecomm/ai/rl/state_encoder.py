@@ -541,7 +541,8 @@ class StateEncoder:
             try:
                 for prop in card.properties:
                     if hasattr(prop, 'magic_number'):
-                        magic_number = min(abs(getattr(prop, 'magic_number', 0)), 20) / 20.0
+                        amount = self._safe_float(getattr(prop, 'magic_number', 0), default=0.0)
+                        magic_number = min(abs(amount), 20) / 20.0
                         break
             except:
                 pass
