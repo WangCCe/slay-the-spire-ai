@@ -221,6 +221,30 @@ def test_combo_detection_rewards_second_combo_piece_when_first_is_in_deck():
     assert evaluator._detect_combo_potential(limit_break, context, None) >= 25
 
 
+def test_combo_detection_accepts_numeric_string_player_block():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    body_slam = Card(
+        "Body Slam",
+        "Body Slam",
+        CardType.ATTACK,
+        CardRarity.UNCOMMON,
+        cost=1,
+    )
+    enum_context = SimpleNamespace(
+        game=SimpleNamespace(deck=[], player=SimpleNamespace(block=21)),
+        deck_archetype="strength",
+    )
+    string_context = SimpleNamespace(
+        game=SimpleNamespace(deck=[], player=SimpleNamespace(block="21")),
+        deck_archetype="strength",
+    )
+
+    assert (
+        evaluator._detect_combo_potential(body_slam, string_context, None)
+        == evaluator._detect_combo_potential(body_slam, enum_context, None)
+    )
+
+
 def test_apotheosis_combo_counts_none_upgrades_as_unupgraded():
     evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
     apotheosis = Card(

@@ -351,7 +351,9 @@ class SynergyCardEvaluator(CardEvaluator):
         elif context.deck_archetype == 'strength':
             if card_name == 'Body Slam':
                 # Body Slam with high block synergy
-                if context.game.player.block > 20:
+                player = getattr(context.game, 'player', None)
+                player_block = self._non_negative_int(getattr(player, 'block', 0))
+                if player_block > 20:
                     combo_score += 15
 
         return combo_score
