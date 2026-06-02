@@ -420,7 +420,10 @@ class RLAgentV2:
         try:
             return int(value)
         except (TypeError, ValueError):
-            return default
+            try:
+                return int(float(value))
+            except (TypeError, ValueError, OverflowError):
+                return default
 
     def reset(self) -> None:
         self.last_game = None
