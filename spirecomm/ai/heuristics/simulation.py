@@ -12,6 +12,7 @@ import time
 from typing import List, Dict, Tuple, Optional, Any
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster, Intent
+from spirecomm.spire.numeric import coerce_int
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.incoming_damage import (
     known_unknown_move_has_no_immediate_damage,
@@ -388,17 +389,11 @@ class SimulationState:
 
     @staticmethod
     def _non_negative_int(value) -> int:
-        try:
-            return max(0, int(value or 0))
-        except (TypeError, ValueError):
-            return 0
+        return max(0, coerce_int(value or 0, 0))
 
     @staticmethod
     def _int_value(value) -> int:
-        try:
-            return int(value or 0)
-        except (TypeError, ValueError):
-            return 0
+        return coerce_int(value or 0, 0)
 
     def __init__(self, context: DecisionContext):
         """Initialize simulation state from decision context."""
@@ -466,6 +461,12 @@ class SimulationState:
         # Monster state (each monster tracked independently)
         self.monsters = []
         for i, monster in enumerate(context.monsters_alive):
+            monster_max_hp = self._non_negative_int(getattr(monster, 'max_hp', 0))
+            monster_hp_default = monster_max_hp if monster_max_hp > 0 else 0
+            monster_hp = max(
+                0,
+                coerce_int(getattr(monster, 'current_hp', monster_hp_default), monster_hp_default),
+            )
             mode_shift = (
                 self._get_monster_power_amount(monster, 'Mode Shift')
                 or self._get_monster_power_amount(monster, 'ModeShift')
@@ -473,8 +474,8 @@ class SimulationState:
             monster_state = {
                 'monster_id': getattr(monster, 'monster_id', ''),
                 'name': monster.name,
-                'hp': self._non_negative_int(monster.current_hp),
-                'max_hp': self._non_negative_int(monster.max_hp),
+                'hp': monster_hp,
+                'max_hp': monster_max_hp,
                 'block': self._non_negative_int(monster.block if hasattr(monster, 'block') else 0),
                 'intent': monster.intent if hasattr(monster, 'intent') else None,
                 'move_id': getattr(monster, 'move_id', None),

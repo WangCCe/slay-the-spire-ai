@@ -1024,6 +1024,18 @@ def test_simulation_state_coerces_string_monster_hp_and_block():
     assert state.monsters[0]["block"] == 3
 
 
+def test_simulation_state_rejects_nonfinite_monster_current_hp_as_unknown():
+    target = _louse(current_hp=20)
+    target.current_hp = float("inf")
+    target.max_hp = 50
+    context = _combat_context([], energy=0, monsters=[target])
+
+    state = SimulationState(context)
+
+    assert state.monsters[0]["hp"] == 50
+    assert state.monsters[0]["max_hp"] == 50
+
+
 def test_simulation_state_coerces_string_monster_move_adjusted_damage():
     target = _louse(current_hp=20)
     target.move_adjusted_damage = "12"
@@ -1086,6 +1098,41 @@ def test_simulation_state_coerces_string_player_energy_and_strength():
 
     assert state.player_energy == 3
     assert state.player_strength == -2
+
+
+def test_simulation_state_rejects_nonfinite_numeric_context_values():
+    target = _louse(current_hp=20)
+    target.block = float("inf")
+    target.move_adjusted_damage = float("inf")
+    target.move_base_damage = float("inf")
+    target.move_hits = float("inf")
+    target.strength = float("inf")
+    context = _combat_context([], energy=float("inf"), monsters=[target])
+    context.game.current_hp = float("inf")
+    context.game.max_hp = float("inf")
+    context.game.player.block = float("inf")
+    context.strength = float("inf")
+    context.vulnerable_stacks[0] = float("inf")
+    context.weak_stacks[0] = float("inf")
+    context.frail_stacks[0] = float("inf")
+    context.thorns_stacks[0] = float("inf")
+
+    state = SimulationState(context)
+
+    assert state.player_hp == 0
+    assert state.player_max_hp == 0
+    assert state.player_block == 0
+    assert state.player_energy == 0
+    assert state.player_strength == 0
+    assert state.monsters[0]["block"] == 0
+    assert state.monsters[0]["move_adjusted_damage"] == 0
+    assert state.monsters[0]["move_base_damage"] == 0
+    assert state.monsters[0]["move_hits"] == 0
+    assert state.monsters[0]["strength"] == 0
+    assert state.monsters[0]["vulnerable"] == 0
+    assert state.monsters[0]["weak"] == 0
+    assert state.monsters[0]["frail"] == 0
+    assert state.monsters[0]["thorns"] == 0
 
 
 def test_simulate_card_play_accepts_name_only_upgraded_attack_from_data(monkeypatch):
