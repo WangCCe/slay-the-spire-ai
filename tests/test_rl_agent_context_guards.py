@@ -132,6 +132,15 @@ def test_rl_agent_terminal_check_accepts_decimal_string_player_hp():
     assert RLAgent._is_terminal(dead_game) is True
 
 
+def test_rl_agent_terminal_check_rejects_nonfinite_player_hp():
+    game = SimpleNamespace(
+        screen_type=None,
+        player=SimpleNamespace(current_hp=float("inf")),
+    )
+
+    assert RLAgent._is_terminal(game) is False
+
+
 def test_rl_agent_hand_select_confirm_bypass_accepts_string_num_cards():
     from spirecomm.spire.screen import ScreenType
 

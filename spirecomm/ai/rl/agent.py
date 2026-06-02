@@ -36,6 +36,7 @@ from spirecomm.ai.heuristics.potions import (
 from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
 from spirecomm.spire.character import PlayerClass
 from spirecomm.spire.identifiers import potion_id
+from spirecomm.spire.numeric import coerce_int
 
 logger = logging.getLogger(__name__)
 
@@ -450,15 +451,7 @@ class RLAgent:
 
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:
-        if value is None:
-            return default
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            try:
-                return int(float(value))
-            except (TypeError, ValueError, OverflowError):
-                return default
+        return coerce_int(value, default)
 
     def reset(self) -> None:
         """Reset agent state for new episode."""
@@ -1485,15 +1478,7 @@ class CombatRLAgent:
 
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:
-        if value is None:
-            return default
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            try:
-                return int(float(value))
-            except (TypeError, ValueError, OverflowError):
-                return default
+        return coerce_int(value, default)
 
     @staticmethod
     def _alive_monsters(game: Game):

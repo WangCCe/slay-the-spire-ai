@@ -243,6 +243,22 @@ def test_rl_incoming_damage_accepts_decimal_string_damage_and_hits():
     assert CombatRLAgent._incoming_damage(game) == 14
 
 
+def test_rl_incoming_damage_ignores_nonfinite_live_move_damage():
+    monster = _monster(hp=25, damage=float("inf"))
+    monster.move_hits = 2
+    game = _game(monsters=[monster])
+
+    assert CombatRLAgent._incoming_damage(game) == 0
+
+
+def test_rl_incoming_damage_defaults_nonfinite_live_move_hits_to_one():
+    monster = _monster(hp=25, damage=7)
+    monster.move_hits = float("inf")
+    game = _game(monsters=[monster])
+
+    assert CombatRLAgent._incoming_damage(game) == 7
+
+
 def test_rl_incoming_damage_ignores_non_attack_intents():
     monster = _monster(hp=25, damage=7)
     monster.intent = "Intent.DEBUFF"
