@@ -676,6 +676,20 @@ def test_ironclad_evaluator_hp_modifier_accepts_string_hp_pct():
     assert evaluator._calculate_hp_aware_modifier(_card("Offering", cost=0), context) == 0.1
 
 
+def test_ironclad_evaluator_archetype_bonus_accepts_string_archetype_score():
+    evaluator = IroncladCardEvaluator()
+    card = _card("Cleave", cost=1)
+    enum_context = SimpleNamespace(deck_archetype="strength", archetype_score=0.6)
+    string_context = SimpleNamespace(deck_archetype="strength", archetype_score="0.6")
+
+    try:
+        string_bonus = evaluator._calculate_archetype_bonus(card, string_context)
+    except TypeError:
+        string_bonus = "type-error"
+
+    assert string_bonus == evaluator._calculate_archetype_bonus(card, enum_context)
+
+
 def test_ironclad_energy_curve_parses_string_card_costs():
     deck = [_card("Strike_R", cost=1) for _ in range(10)]
     context = DecisionContext(SimpleNamespace(deck=deck, act=1))

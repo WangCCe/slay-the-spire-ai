@@ -266,7 +266,8 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
 
         # Small penalty for cards that don't fit archetype
         # (only if archetype is well-established)
-        if context.archetype_score > 0.5:
+        archetype_score = self._non_negative_float(getattr(context, 'archetype_score', 0))
+        if archetype_score > 0.5:
             return -10
 
         return 0.0
