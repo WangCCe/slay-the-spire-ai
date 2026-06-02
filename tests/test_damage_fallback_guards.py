@@ -1886,6 +1886,26 @@ def test_target_estimation_uses_known_upgrade_damage_for_basic_card_ids(monkeypa
     assert target is killable
 
 
+def test_target_estimation_accepts_numeric_string_monster_hp_and_block_for_lethal():
+    card = SimpleNamespace(
+        card_id="Strike_R",
+        name="Strike",
+        type="ATTACK",
+        damage=8,
+    )
+    killable = SimpleNamespace(current_hp="6", block="2")
+    dangerous = SimpleNamespace(current_hp=30, block=0)
+    context = SimpleNamespace(
+        monsters_alive=[killable, dangerous],
+        player=SimpleNamespace(strength=0),
+        compute_threat=lambda monster: 100 if monster is dangerous else 1,
+    )
+
+    target = HeuristicCombatPlanner()._find_best_target(card, context)
+
+    assert target is killable
+
+
 def test_damage_potion_target_prefers_lethal_before_threat():
     potion = SimpleNamespace(effect_type="damage", effect_value=20)
     killable = SimpleNamespace(current_hp=15)

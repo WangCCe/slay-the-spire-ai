@@ -5999,8 +5999,14 @@ class HeuristicCombatPlanner(CombatPlanner):
     ) -> int:
         simulated = self._simulated_target_state(context, state, target)
         if simulated is not None:
-            return max(0, simulated.get('hp', 0)) + max(0, simulated.get('block', 0))
-        return getattr(target, 'current_hp', 0) + getattr(target, 'block', 0)
+            return (
+                self._non_negative_int(simulated.get('hp', 0))
+                + self._non_negative_int(simulated.get('block', 0))
+            )
+        return (
+            self._non_negative_int(getattr(target, 'current_hp', 0))
+            + self._non_negative_int(getattr(target, 'block', 0))
+        )
 
     def _target_current_hp(
         self,
@@ -6010,8 +6016,8 @@ class HeuristicCombatPlanner(CombatPlanner):
     ) -> int:
         simulated = self._simulated_target_state(context, state, target)
         if simulated is not None:
-            return max(0, simulated.get('hp', 0))
-        return getattr(target, 'current_hp', 0)
+            return self._non_negative_int(simulated.get('hp', 0))
+        return self._non_negative_int(getattr(target, 'current_hp', 0))
 
     def _rank_targets(
         self,
