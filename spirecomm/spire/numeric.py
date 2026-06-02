@@ -18,7 +18,7 @@ def coerce_int(value, default=0):
         return default
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         try:
             return int(float(value))
         except (TypeError, ValueError, OverflowError):
