@@ -1436,6 +1436,10 @@ class CombatEndingDetector:
         """
         total_damage = 0
         energy_used = 0
+        available_energy = max(
+            0,
+            self._safe_int(getattr(context, 'energy_available', 0), default=0),
+        )
 
         # Sort attack cards by damage efficiency (damage per energy)
         attack_cards = []
@@ -1446,34 +1450,34 @@ class CombatEndingDetector:
                         card,
                         context,
                         0,
-                        context.energy_available,
+                        available_energy,
                     )
                 else:
-                    cost = effective_card_cost(card, context.energy_available)
+                    cost = effective_card_cost(card, available_energy)
                 damage = self._get_card_damage(
                     card,
                     context,
-                    available_energy=context.energy_available,
+                    available_energy=available_energy,
                 )
                 damage = self._apply_player_weak_to_card_damage(
                     card,
                     context,
                     damage,
-                    context.energy_available,
+                    available_energy,
                 )
                 if len(context.monsters_alive) == 1 and context.vulnerable_stacks.get(0, 0) > 0:
                     damage = self._apply_vulnerable_to_card_damage(
                         card,
                         context,
                         damage,
-                        context.energy_available,
+                        available_energy,
                     )
                 elif self._is_aoe_attack(card):
                     damage = self._aoe_damage_potential(
                         card,
                         context,
                         damage,
-                        context.energy_available,
+                        available_energy,
                     )
                 logger.info(f"[LETHAL_CALC] {card.name}: cost={cost}, damage={damage}, eff={damage/cost if cost > 0 else 'inf'}")
                 if cost > 0:
@@ -1487,7 +1491,7 @@ class CombatEndingDetector:
             selected_energy = 0
             selected_cards = []
             for card, cost, damage, _ in candidates:
-                if selected_energy + cost <= context.energy_available:
+                if selected_energy + cost <= available_energy:
                     selected_damage += damage
                     selected_energy += cost
                     selected_cards.append(card.name)
@@ -1518,7 +1522,7 @@ class CombatEndingDetector:
         else:
             total_damage, energy_used, selected = greedy_total(attack_cards)
 
-        logger.info(f"[LETHAL_CALC] Selected: {selected}, total_damage={total_damage}, energy_used={energy_used}/{context.energy_available}")
+        logger.info(f"[LETHAL_CALC] Selected: {selected}, total_damage={total_damage}, energy_used={energy_used}/{available_energy}")
         return total_damage
 
     def _aoe_damage_potential(
