@@ -327,8 +327,9 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         else:
             modifier = 1.0  # Good balance
 
+        act = self._non_negative_int(getattr(context, 'act', 0))
         if (
-            context.act == 1
+            act == 1
             and self._card_name(card) in self.ACT_1_SURVIVAL_BLOCK
             and self._act_1_survival_gap(context)[0]
         ):
@@ -344,11 +345,12 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         - Damage cards (to kill elites)
         - Win condition cards (Demon Form, Limit Break, Barricade)
         """
-        if context.act != 1:
+        act = self._non_negative_int(getattr(context, 'act', 0))
+        if act != 1:
             return 0.0
 
         deck_size = len(context.game.deck) if hasattr(context.game, 'deck') else 10
-        floor = getattr(context, 'floor', 0) or 0
+        floor = self._non_negative_int(getattr(context, 'floor', 0))
         bonus = 0.0
         card_id = self._card_name(card)
 
@@ -382,12 +384,13 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
 
     def _act_1_survival_gap(self, context: DecisionContext) -> tuple:
         """Return whether Act 1 needs non-basic block before adding more attacks."""
-        if context.act != 1:
+        act = self._non_negative_int(getattr(context, 'act', 0))
+        if act != 1:
             return (False, 0, 0)
 
         deck = list(getattr(context.game, 'deck', []) or [])
         deck_ids = [self._card_name(c) for c in deck]
-        floor = getattr(context, 'floor', 0) or 0
+        floor = self._non_negative_int(getattr(context, 'floor', 0))
 
         block_support = sum(1 for card_id in deck_ids if card_id in self.BLOCK_SUPPORT)
         frontload = sum(1 for card_id in deck_ids if card_id in self.ACT_1_FRONTLOAD_COVERAGE)

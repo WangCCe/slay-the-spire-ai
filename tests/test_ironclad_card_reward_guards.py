@@ -690,6 +690,53 @@ def test_ironclad_evaluator_archetype_bonus_accepts_string_archetype_score():
     assert string_bonus == evaluator._calculate_archetype_bonus(card, enum_context)
 
 
+def test_ironclad_evaluator_act_1_bonus_accepts_string_act():
+    evaluator = IroncladCardEvaluator()
+    deck = [_card("Strike_R"), _card("Strike_R"), _card("Defend_R"), _card("Defend_R"), _card("Bash", cost=2)]
+    enum_context = SimpleNamespace(game=SimpleNamespace(deck=deck), act=1, floor=5)
+    string_context = SimpleNamespace(game=SimpleNamespace(deck=deck), act="1", floor=5)
+
+    assert (
+        evaluator._calculate_act_1_bonus(_card("Pommel Strike", cost=1), string_context)
+        == evaluator._calculate_act_1_bonus(_card("Pommel Strike", cost=1), enum_context)
+    )
+
+
+def test_ironclad_evaluator_act_1_bonus_accepts_string_floor():
+    evaluator = IroncladCardEvaluator()
+    deck = [_card("Strike_R") for _ in range(14)]
+    enum_context = SimpleNamespace(game=SimpleNamespace(deck=deck), act=1, floor=5)
+    string_context = SimpleNamespace(game=SimpleNamespace(deck=deck), act=1, floor="5")
+
+    try:
+        string_bonus = evaluator._calculate_act_1_bonus(_card("Pommel Strike", cost=1), string_context)
+    except TypeError:
+        string_bonus = "type-error"
+
+    assert string_bonus == evaluator._calculate_act_1_bonus(_card("Pommel Strike", cost=1), enum_context)
+
+
+def test_ironclad_evaluator_survival_gap_accepts_string_act_and_floor():
+    evaluator = IroncladCardEvaluator()
+    deck = [_card("Strike_R"), _card("Strike_R"), _card("Defend_R"), _card("Defend_R"), _card("Bash", cost=2)]
+    enum_context = SimpleNamespace(game=SimpleNamespace(deck=deck), act=1, floor=4)
+    string_context = SimpleNamespace(game=SimpleNamespace(deck=deck), act="1", floor="4")
+
+    assert evaluator._act_1_survival_gap(string_context) == evaluator._act_1_survival_gap(enum_context)
+
+
+def test_ironclad_energy_curve_survival_floor_accepts_string_act():
+    evaluator = IroncladCardEvaluator()
+    deck = [_card("Pommel Strike", cost=1) for _ in range(10)]
+    enum_context = SimpleNamespace(game=SimpleNamespace(deck=deck), act=1, floor=5)
+    string_context = SimpleNamespace(game=SimpleNamespace(deck=deck), act="1", floor=5)
+
+    assert (
+        evaluator._evaluate_energy_curve(_card("Shrug It Off", cost=1), string_context)
+        == evaluator._evaluate_energy_curve(_card("Shrug It Off", cost=1), enum_context)
+    )
+
+
 def test_ironclad_energy_curve_parses_string_card_costs():
     deck = [_card("Strike_R", cost=1) for _ in range(10)]
     context = DecisionContext(SimpleNamespace(deck=deck, act=1))
