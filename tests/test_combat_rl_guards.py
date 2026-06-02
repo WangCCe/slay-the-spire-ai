@@ -442,6 +442,58 @@ def test_awakened_one_power_guard_replaces_rl_power_with_non_power_card():
     assert action.target_index == 0
 
 
+def test_awakened_one_power_guard_accepts_decimal_string_card_index():
+    demon_form = SimpleNamespace(
+        name="Demon Form",
+        card_id="Demon Form",
+        type=CardType.POWER,
+        is_playable=True,
+        cost=3,
+        has_target=False,
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    game = _game(
+        floor=50,
+        turn=3,
+        player=SimpleNamespace(energy=3),
+        hand=[demon_form, strike],
+        monsters=[
+            _monster(
+                hp=300,
+                damage=18,
+                index=0,
+                name="Awakened One",
+                monster_id="AwakenedOne",
+            )
+        ],
+        room_type="MonsterRoomBoss",
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index="0.0")
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index == 0
+
+
 def test_havoc_guard_replaces_rl_havoc_with_safer_card():
     havoc = SimpleNamespace(
         name="Havoc",

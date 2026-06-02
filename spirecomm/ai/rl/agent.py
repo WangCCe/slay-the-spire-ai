@@ -1434,9 +1434,11 @@ class CombatRLAgent:
         if card is not None:
             return card
 
-        try:
-            card_index = int(getattr(action, "card_index", -1))
-        except Exception:
+        card_index = CombatRLAgent._safe_int(
+            getattr(action, "card_index", -1),
+            default=-1,
+        )
+        if card_index < 0:
             return None
         hand = getattr(game, "hand", []) or []
         if 0 <= card_index < len(hand):
