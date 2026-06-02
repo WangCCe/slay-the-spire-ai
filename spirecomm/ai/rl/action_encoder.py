@@ -11,6 +11,7 @@ from spirecomm.ai.heuristics.card_types import card_is_playable, card_requires_t
 from spirecomm.ai.heuristics.potions import game_real_potions
 from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id
+from spirecomm.spire.numeric import coerce_int
 from spirecomm.spire.screen import reward_type_name
 from spirecomm.communication.action import (
     PlayCardAction,
@@ -98,15 +99,7 @@ class ActionEncoder:
 
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:
-        if value is None:
-            return default
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            try:
-                return int(float(value))
-            except (TypeError, ValueError, OverflowError):
-                return default
+        return coerce_int(value, default)
 
     def encode_play_card(self, card_index: int, monster_index: int) -> int:
         """
@@ -346,15 +339,7 @@ class ActionEncoder:
 
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:
-        if value is None:
-            return default
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            try:
-                return int(float(value))
-            except (TypeError, ValueError, OverflowError):
-                return default
+        return coerce_int(value, default)
 
     @classmethod
     def _is_targetable_monster(cls, monster) -> bool:

@@ -285,6 +285,44 @@ def test_legacy_combat_mask_accepts_decimal_string_energy():
     assert mask[encoder.encode_play_card(0, 0)]
 
 
+def test_legacy_combat_mask_rejects_nonfinite_energy():
+    encoder = ActionEncoder()
+    card = _card(has_target=True)
+    card.cost = 1
+    card.cost_for_turn = 1
+    game = _combat_game(
+        hand=[card],
+        player=SimpleNamespace(energy=float("inf")),
+        monsters=[SimpleNamespace(current_hp=10, is_gone=False, half_dead=False)],
+        end_available=True,
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert mask[encoder.END_TURN_ACTION]
+    assert not any(mask[: encoder.USE_POTION_OFFSET])
+
+
+def test_legacy_combat_mask_rejects_nonfinite_monster_hp():
+    encoder = ActionEncoder()
+    card = _card(has_target=True)
+    card.cost = 1
+    card.cost_for_turn = 1
+    game = _combat_game(
+        hand=[card],
+        player=SimpleNamespace(energy=1),
+        monsters=[
+            SimpleNamespace(current_hp=float("inf"), is_gone=False, half_dead=False)
+        ],
+        end_available=True,
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert mask[encoder.END_TURN_ACTION]
+    assert not any(mask[: encoder.USE_POTION_OFFSET])
+
+
 def test_legacy_hand_select_mask_accepts_string_num_cards_for_confirm():
     encoder = ActionEncoder()
     game = _game(
