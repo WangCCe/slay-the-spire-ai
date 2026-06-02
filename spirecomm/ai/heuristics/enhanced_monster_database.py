@@ -1498,6 +1498,7 @@ class EnhancedMonsterDatabase:
         Returns:
             Future threat score (higher = more dangerous)
         """
+        current_turn = _non_negative_int(current_turn) or 1
         threat_profile = self.get_threat_profile(monster_name)
         special_mechanics = self.get_special_mechanics(monster_name)
         predicted_moves = self.predict_next_moves(monster_name, current_turn, monster_hp_percent)

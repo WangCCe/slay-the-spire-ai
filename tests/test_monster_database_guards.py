@@ -624,6 +624,23 @@ def test_lagavulin_predictions_accept_string_current_turn():
     assert string_predictions == int_predictions
 
 
+def test_lagavulin_future_threat_accepts_string_current_turn():
+    database = EnhancedMonsterDatabase()
+
+    string_threat = database.calculate_future_threat(
+        "Lagavulin",
+        current_turn="4",
+        monster_hp_percent=1.0,
+    )
+    int_threat = database.calculate_future_threat(
+        "Lagavulin",
+        current_turn=4,
+        monster_hp_percent=1.0,
+    )
+
+    assert string_threat == int_threat
+
+
 def test_single_move_gremlins_predict_their_only_move():
     database = EnhancedMonsterDatabase()
 
