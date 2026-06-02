@@ -7,17 +7,24 @@ from .card_names import canonical_card_name
 from .card_upgrades import is_card_upgraded
 
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        try:
+            return int(float(value))
+        except (TypeError, ValueError, OverflowError):
+            return default
+
+
 def raw_card_cost(card) -> int:
     """Return the raw game cost, preserving -1 for X-cost cards."""
     cost = getattr(card, "cost_for_turn", None)
     if cost is None:
         cost = getattr(card, "cost", 0)
-    if cost is None:
-        return 0
-    try:
-        return int(cost)
-    except (TypeError, ValueError):
-        return 0
+    return _safe_int(cost, 0)
 
 
 def is_x_cost_card(card) -> bool:
@@ -35,10 +42,7 @@ def effective_card_cost(card, available_energy: Optional[int] = None) -> int:
     if cost < 0:
         if available_energy is None:
             return 0
-        try:
-            return max(0, int(available_energy))
-        except (TypeError, ValueError):
-            return 0
+        return max(0, _safe_int(available_energy, 0))
     return max(0, cost)
 
 
@@ -53,10 +57,7 @@ def effective_card_cost_after_refund(
     available_energy: Optional[int] = None,
     energy_refund: int = 0,
 ) -> int:
-    try:
-        refund = max(0, int(energy_refund))
-    except (TypeError, ValueError):
-        refund = 0
+    refund = max(0, _safe_int(energy_refund, 0))
     return max(0, effective_card_cost(card, available_energy) - refund)
 
 
@@ -73,10 +74,7 @@ def playable_card_cost_after_refund(
     """
     upfront_cost = effective_card_cost(card, available_energy)
     if available_energy is not None:
-        try:
-            energy = max(0, int(available_energy))
-        except (TypeError, ValueError):
-            energy = 0
+        energy = max(0, _safe_int(available_energy, 0))
         if upfront_cost > energy:
             return upfront_cost
 
