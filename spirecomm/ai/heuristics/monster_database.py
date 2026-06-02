@@ -11,6 +11,7 @@ This module provides a database of monster characteristics, including:
 
 from spirecomm.ai.intent_utils import monster_intends_attack
 from spirecomm.ai.monster_names import normalize_monster_id
+from spirecomm.spire.numeric import coerce_float, coerce_int
 
 # Monster database mapping monster IDs to their characteristics
 MONSTER_DATABASE = {
@@ -240,17 +241,11 @@ def _canonical_monster_id(monster_id):
 
 
 def _non_negative_float(value) -> float:
-    try:
-        return max(0.0, float(value or 0))
-    except (TypeError, ValueError):
-        return 0.0
+    return max(0.0, coerce_float(value or 0, 0.0))
 
 
 def _non_negative_int(value) -> int:
-    try:
-        return max(0, int(value or 0))
-    except (TypeError, ValueError):
-        return 0
+    return max(0, coerce_int(value or 0, 0))
 
 
 def get_monster_info(monster_id):

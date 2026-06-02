@@ -77,6 +77,34 @@ def test_monster_database_threat_accepts_string_turn_for_scaling_monsters():
     assert evaluate_monster_threat(monster, string_context) == evaluate_monster_threat(monster, enum_context)
 
 
+def test_monster_database_threat_rejects_nonfinite_turn_for_scaling_monsters():
+    monster = SimpleNamespace(
+        name="Gremlin Nob",
+        monster_id="GremlinNob",
+        intent=Intent.ATTACK,
+        move_adjusted_damage=14,
+    )
+    baseline_context = SimpleNamespace(player_hp_pct=1.0, turn=0)
+    nonfinite_context = SimpleNamespace(player_hp_pct=1.0, turn=float("inf"))
+
+    assert evaluate_monster_threat(monster, nonfinite_context) == evaluate_monster_threat(
+        monster,
+        baseline_context,
+    )
+
+
+def test_monster_database_threat_rejects_nonfinite_move_damage():
+    monster = SimpleNamespace(
+        name="Gremlin Nob",
+        monster_id="GremlinNob",
+        intent=Intent.ATTACK,
+        move_adjusted_damage=float("inf"),
+    )
+    context = SimpleNamespace(player_hp_pct=1.0, turn=0)
+
+    assert evaluate_monster_threat(monster, context) == 4
+
+
 def test_monster_database_info_accepts_normalized_live_ids():
     assert get_monster_info("FungiBeast")["recommended_strategy"] == "apply_weak"
     assert get_monster_info("Slime_Boss")["recommended_strategy"] == "kill_all_small"
