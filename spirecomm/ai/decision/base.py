@@ -11,7 +11,7 @@ from typing import List, Optional, Dict, Any
 from spirecomm.spire.game import Game
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster
-from spirecomm.spire.numeric import coerce_float
+from spirecomm.spire.numeric import coerce_float, coerce_int
 from spirecomm.communication.action import Action
 from spirecomm.ai.intent_utils import (
     intent_tokens,
@@ -178,15 +178,7 @@ class DecisionContext:
 
     @staticmethod
     def _safe_int(value, default=0):
-        if value is None:
-            return default
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            try:
-                return int(float(value))
-            except (TypeError, ValueError, OverflowError):
-                return default
+        return coerce_int(value, default)
 
     @classmethod
     def _monster_is_alive(cls, monster) -> bool:

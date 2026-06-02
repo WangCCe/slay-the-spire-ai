@@ -589,6 +589,34 @@ def test_decision_context_safe_float_rejects_nonfinite_strings():
     assert DecisionContext._safe_float("-inf", default=7.0) == 7.0
 
 
+def test_decision_context_safe_int_rejects_nonfinite_floats():
+    assert DecisionContext._safe_int(float("nan"), default=7) == 7
+    assert DecisionContext._safe_int(float("inf"), default=7) == 7
+    assert DecisionContext._safe_int(float("-inf"), default=7) == 7
+
+
+def test_decision_context_defaults_nonfinite_runtime_int_fields():
+    game = SimpleNamespace(
+        current_hp=40,
+        max_hp=80,
+        player=SimpleNamespace(energy=float("inf"), powers=[]),
+        turn=float("inf"),
+        floor=float("-inf"),
+        act=float("inf"),
+        monsters=[],
+        deck=[],
+        hand=[],
+        relics=[],
+    )
+
+    context = DecisionContext(game)
+
+    assert context.energy_available == 3
+    assert context.turn == 1
+    assert context.floor == 0
+    assert context.act == 1
+
+
 def test_base_immediate_threat_clamps_negative_live_move_damage_to_zero():
     monster = SimpleNamespace(
         move_adjusted_damage=-3,
