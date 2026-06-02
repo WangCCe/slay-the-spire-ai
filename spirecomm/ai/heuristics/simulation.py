@@ -983,6 +983,7 @@ class FastCombatSimulator:
             New simulation state after playing the card
         """
         new_state = state.clone()
+        mark_card_played(new_state.played_card_uuids, card)
         card_type = card_type_name(card)
 
         # Use actual cost (for Snecko Eye and other cost modifiers). X-cost

@@ -3836,6 +3836,54 @@ def test_single_card_exhaust_skill_marks_exhausted_sentinel_unavailable(monkeypa
     assert result.player_energy == 2
 
 
+def test_sequential_simulation_keeps_played_card_out_of_hand_exhaust(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "true grit": {
+            "name": "True Grit",
+            "description": "Gain 7 Block.\nExhaust 1 card at random.",
+        }
+    }
+    loader._wiki_data = {
+        "true grit": {
+            "name": "True Grit",
+            "text": "Gain [7|9] #Block.\n#Exhaust 1 card at random.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike-card"
+    true_grit = _card("True Grit", "True Grit", card_type=CardType.SKILL, cost=1, has_target=False)
+    sentinel = _card("Sentinel", "Sentinel", card_type=CardType.SKILL, cost=1, has_target=False)
+    sentinel.uuid = "sentinel-card"
+    context = _combat_context(
+        [strike, true_grit, sentinel],
+        energy=2,
+        monsters=[_louse(current_hp=100)],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+    result = simulator.simulate_card_play(
+        state,
+        true_grit,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.exhaust_events == 1
+    assert "sentinel-card" in result.played_card_uuids
+    assert result.energy_gained == 2
+    assert result.player_energy == 2
+
+
 def test_dark_embrace_draws_for_exhaust_events(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
