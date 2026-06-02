@@ -117,20 +117,27 @@ class GameTracker:
             end_turn: Current game turn when combat ends (if None, uses manual turn tracking)
         """
         if self.current_combat:
-            self.current_combat['hp_at_end'] = hp_remaining
+            hp_remaining_value = self._safe_int(hp_remaining)
+            max_hp_value = self._safe_int(max_hp)
+            self.current_combat['hp_at_end'] = hp_remaining_value
 
             # Use hp_at_start if recorded, otherwise fall back to max_hp approximation
             if self.current_combat['hp_at_start'] is None:
-                self.current_combat['hp_at_start'] = max_hp
+                self.current_combat['hp_at_start'] = max_hp_value
+            else:
+                self.current_combat['hp_at_start'] = self._safe_int(self.current_combat['hp_at_start'])
 
             # Calculate HP loss for this combat and accumulate
-            hp_loss_this_combat = max(0, self.current_combat['hp_at_start'] - hp_remaining)
+            hp_loss_this_combat = max(0, self.current_combat['hp_at_start'] - hp_remaining_value)
             self.total_hp_loss_accumulated += hp_loss_this_combat
 
             # Calculate turns from start_turn and end_turn if provided
             if end_turn is not None and 'start_turn' in self.current_combat:
                 # Turns = end_turn - start_turn + 1 (first turn counts as 1)
-                self.current_combat['turns'] = max(1, end_turn - self.current_combat['start_turn'] + 1)
+                start_turn = self._safe_int(self.current_combat['start_turn'])
+                end_turn_value = self._safe_int(end_turn, default=start_turn)
+                self.current_combat['start_turn'] = start_turn
+                self.current_combat['turns'] = max(1, end_turn_value - start_turn + 1)
 
             # Track kills
             if self.current_combat['room_type'] == 'elite':
