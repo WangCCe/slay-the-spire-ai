@@ -387,9 +387,8 @@ class ActionEncoderV2:
                 target_index = getattr(target_monster, "monster_index", None)
         if target_index is None:
             return 0
-        try:
-            target_index = int(target_index)
-        except Exception:
+        target_index = ActionEncoderV2._safe_int(target_index, default=None)
+        if target_index is None:
             return 0
         if target_index < 0:
             return 0

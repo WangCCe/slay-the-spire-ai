@@ -79,6 +79,18 @@ def test_encode_play_card_action_accepts_numeric_string_card_index():
     assert action_index == space.encode_play_card(0, 0)
 
 
+def test_encode_play_card_action_accepts_decimal_string_target_index():
+    encoder = ActionEncoderV2()
+    game = _make_game(screen_type=None, in_combat=True, hand=[_make_card()])
+
+    action_index = encoder.encode_action(
+        PlayCardAction(card_index=0, target_index="0.0"),
+        game,
+    )
+
+    assert action_index == space.encode_play_card(0, 1)
+
+
 def test_encode_potion_action_accepts_numeric_string_potion_index():
     encoder = ActionEncoderV2()
     potion = SimpleNamespace(
