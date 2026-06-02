@@ -10787,6 +10787,26 @@ def test_lethal_detector_bane_poison_check_accepts_numeric_string_hp():
     assert CombatEndingDetector()._all_alive_targets_poisoned(context)
 
 
+def test_lethal_detector_bane_poison_check_rejects_nonfinite_hp():
+    invalid_hp = _louse(current_hp=float("inf"))
+    invalid_hp.powers = []
+    live_poisoned = _louse(current_hp=12)
+    live_poisoned.powers = [SimpleNamespace(power_name="Poison", amount=1)]
+    context = _combat_context([], energy=0, monsters=[invalid_hp, live_poisoned])
+
+    assert CombatEndingDetector()._all_alive_targets_poisoned(context)
+
+
+def test_lethal_detector_context_player_hp_rejects_nonfinite_values():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=12)])
+    context.player_hp = float("inf")
+    context.player_hp_pct = float("inf")
+    detector = CombatEndingDetector()
+
+    assert detector._context_player_hp(context) == 0
+    assert detector._context_player_hp_pct(context) == 0.0
+
+
 def test_lethal_detector_counts_bane_second_hit_only_for_poisoned_target(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

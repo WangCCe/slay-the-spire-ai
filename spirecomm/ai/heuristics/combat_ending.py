@@ -11,6 +11,7 @@ from dataclasses import dataclass, replace
 from typing import List, Tuple, Optional
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster
+from spirecomm.spire.numeric import coerce_float, coerce_int
 from spirecomm.communication.action import PlayCardAction
 from spirecomm.ai.intent_utils import intent_is_attack
 from spirecomm.data.loader import game_data_loader
@@ -1842,21 +1843,11 @@ class CombatEndingDetector:
 
     @staticmethod
     def _safe_float(value, default: float = 0.0) -> float:
-        if value is None:
-            return default
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return default
+        return coerce_float(value, default)
 
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:
-        if value is None:
-            return default
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return default
+        return coerce_int(value, default)
 
     def _all_alive_targets_poisoned(self, context: DecisionContext) -> bool:
         monsters = getattr(context, 'monsters_alive', []) or []
