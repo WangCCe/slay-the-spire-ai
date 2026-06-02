@@ -246,6 +246,13 @@ def _non_negative_float(value) -> float:
         return 0.0
 
 
+def _non_negative_int(value) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 def get_monster_info(monster_id):
     """
     Get monster information from the database.
@@ -307,20 +314,21 @@ def evaluate_monster_threat(monster, context):
     
     # Special handling for monsters with scaling damage
     # These monsters become more dangerous as the battle progresses
-    
+    context_turn = _non_negative_int(getattr(context, 'turn', 0))
+
     # Cultist: threat increases with turn number
     # because Cultist's damage scales with Strength (gained from Ritual)
-    if monster_id == "Cultist" and hasattr(context, 'turn'):
-        threat += context.turn
-    
+    if monster_id == "Cultist" and context_turn:
+        threat += context_turn
+
     # Gremlin Nob: threat increases with turn number
     # because Gremlin Nob gains Strength when using Bash
-    if monster_id == "Gremlin Nob" and hasattr(context, 'turn'):
-        threat += context.turn * 1.5
-    
+    if monster_id == "Gremlin Nob" and context_turn:
+        threat += context_turn * 1.5
+
     # Lagavulin: threat increases with turn number
     # because after hibernation it deals massive damage (18-22)
-    if monster_id == "Lagavulin" and hasattr(context, 'turn'):
-        threat += context.turn * 2
+    if monster_id == "Lagavulin" and context_turn:
+        threat += context_turn * 2
     
     return threat
