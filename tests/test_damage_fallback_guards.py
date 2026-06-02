@@ -2568,6 +2568,54 @@ def test_fast_score_values_upgraded_rage_block_per_attack():
     assert upgraded_score == base_score + 6
 
 
+def test_fast_score_counts_multi_hit_attack_damage(monkeypatch):
+    pummel = Card(
+        card_id="Pummel",
+        name="Pummel",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.UNCOMMON,
+        has_target=True,
+        cost=1,
+    )
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"name": "Pummel", "description": "Deal 2 damage 4 times."}
+        if card_name == "Pummel"
+        else None,
+    )
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: 2,
+    )
+    state = SimpleNamespace(
+        monsters=[{"is_gone": False}],
+        player_hp=50,
+        player_energy=3,
+        player_strength=0,
+        player_weak=0,
+        player_block=0,
+        added_hand_cards=[],
+        played_card_uuids=set(),
+        rampage_damage_bonus_by_card={},
+    )
+    context = SimpleNamespace(
+        playable_cards=[pummel],
+        player_class="IRONCLAD",
+        turn=1,
+        energy_available=3,
+        game=SimpleNamespace(player=SimpleNamespace(powers=[])),
+    )
+
+    score = HeuristicCombatPlanner().fast_score_action(pummel, state, context)
+
+    assert score == (
+        simulation.FASTSCORE_ATTACK_BONUS
+        + 8 * simulation.FASTSCORE_DAMAGE_MULTIPLIER
+    )
+
+
 def test_fast_simulator_falls_back_when_x_damage_calculation_returns_none(monkeypatch):
     monkeypatch.setattr(
         simulation.game_data_loader,

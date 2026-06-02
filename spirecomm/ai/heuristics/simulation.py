@@ -6700,19 +6700,12 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         # Base damage estimate with AOE multiplier
         base_damage = 0
-        if hasattr(card, 'damage') and card.damage:
-            base_damage = card.damage
-        elif card_is_attack:
-            # Fallback: use game data for damage
-            card_data = game_data_loader.get_card_data(card_name)
-            if card_data:
-                parsed_damage = game_data_loader._parse_card_damage(card_data)
-                if parsed_damage is not None:
-                    base_damage = parsed_damage + card_upgrade_helpers.known_damage_upgrade_bonus(card, card_name)
-
-            # Check for X-damage cards and calculate dynamically
-            if base_damage == 0:
-                base_damage = self._calculate_x_damage(card, state, context)
+        if card_is_attack:
+            base_damage = self._estimate_attack_damage_without_simulation(
+                card,
+                context,
+                state=state,
+            )
 
         # Apply AOE multiplier for multi-target attacks
         if is_aoe and num_monsters > 1:
