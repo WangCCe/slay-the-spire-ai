@@ -543,7 +543,7 @@ class RewardCalculator:
 
         # Check if player is still alive at game over
         # (if game over but player HP > 0, likely won)
-        if self._safe_attr(game, 'player', 'current_hp', default=0) > 0:
+        if self._safe_int(self._safe_attr(game, 'player', 'current_hp', default=0)) > 0:
             return True
 
         # Default: assume defeat

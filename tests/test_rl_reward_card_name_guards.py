@@ -146,3 +146,14 @@ def test_rl_victory_detection_accepts_numeric_string_final_floor():
     )
 
     assert calc._is_victory(game) is True
+
+
+def test_rl_victory_detection_accepts_numeric_string_alive_player_hp():
+    calc = RewardCalculator()
+    game = SimpleNamespace(
+        screen_type="GAME_OVER",
+        floor=10,
+        player=SimpleNamespace(current_hp="1"),
+    )
+
+    assert calc._is_victory(game) is True
