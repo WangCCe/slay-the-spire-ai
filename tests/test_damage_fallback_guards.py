@@ -1981,6 +1981,40 @@ def test_target_estimation_accepts_numeric_string_monster_hp_and_block_for_letha
     assert target is killable
 
 
+def test_target_estimation_counts_multi_hit_damage_for_lethal(monkeypatch):
+    card = Card(
+        card_id="Pummel",
+        name="Pummel",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.UNCOMMON,
+        has_target=True,
+        cost=1,
+    )
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"name": "Pummel", "description": "Deal 2 damage 4 times."}
+        if card_name == "Pummel"
+        else None,
+    )
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: 2,
+    )
+    high_threat_multi_hit_kill = SimpleNamespace(current_hp=8, block=0, threat=100)
+    low_threat_single_hit_kill = SimpleNamespace(current_hp=2, block=0, threat=1)
+    context = SimpleNamespace(
+        monsters_alive=[high_threat_multi_hit_kill, low_threat_single_hit_kill],
+        player=SimpleNamespace(strength=0),
+        compute_threat=lambda monster: monster.threat,
+    )
+
+    target = HeuristicCombatPlanner()._find_best_target(card, context)
+
+    assert target is high_threat_multi_hit_kill
+
+
 def test_damage_potion_target_prefers_lethal_before_threat():
     potion = SimpleNamespace(effect_type="damage", effect_value=20)
     killable = SimpleNamespace(current_hp=15)
@@ -2782,6 +2816,46 @@ def test_generic_prune_targets_falls_back_when_damage_parse_returns_none(monkeyp
     )
 
     assert pruned == [(monster, 10)]
+
+
+def test_generic_prune_targets_counts_multi_hit_damage_for_lethal(monkeypatch):
+    card = Card(
+        card_id="Pummel",
+        name="Pummel",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.UNCOMMON,
+        has_target=True,
+        cost=1,
+    )
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "get_card_data",
+        lambda card_name: {"name": "Pummel", "description": "Deal 2 damage 4 times."}
+        if card_name == "Pummel"
+        else None,
+    )
+    monkeypatch.setattr(
+        simulation.game_data_loader,
+        "_parse_card_damage",
+        lambda card_data: 2,
+    )
+    high_threat_multi_hit_kill = SimpleNamespace(current_hp=8, block=0, threat=100)
+    low_threat_single_hit_kill = SimpleNamespace(current_hp=2, block=0, threat=1)
+    context = SimpleNamespace(
+        monsters_alive=[high_threat_multi_hit_kill, low_threat_single_hit_kill],
+        player=SimpleNamespace(strength=0),
+    )
+
+    pruned = HeuristicCombatPlanner()._prune_targets(
+        card,
+        [
+            (high_threat_multi_hit_kill, high_threat_multi_hit_kill.threat),
+            (low_threat_single_hit_kill, low_threat_single_hit_kill.threat),
+        ],
+        context,
+    )
+
+    assert pruned[0] == (high_threat_multi_hit_kill, high_threat_multi_hit_kill.threat)
 
 
 def test_generic_find_best_target_falls_back_when_damage_parse_returns_none(monkeypatch):

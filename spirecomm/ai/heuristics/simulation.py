@@ -29,6 +29,7 @@ from spirecomm.ai.heuristics.combat_state import (
     draw_pile_count,
     is_card_played,
     mark_card_played,
+    player_block_value,
     player_debuff_stacks,
     player_has_power,
     player_power_amount,
@@ -6139,6 +6140,198 @@ class HeuristicCombatPlanner(CombatPlanner):
             return self._non_negative_int(simulated.get('hp', 0))
         return self._non_negative_int(getattr(target, 'current_hp', 0))
 
+    def _context_player_strength(
+        self,
+        context: DecisionContext,
+        state: Optional[SimulationState] = None,
+    ) -> int:
+        if state is not None and hasattr(state, 'player_strength'):
+            return coerce_int(getattr(state, 'player_strength', 0) or 0, 0)
+        if hasattr(context, 'strength'):
+            return coerce_int(getattr(context, 'strength', 0) or 0, 0)
+        player = getattr(context, 'player', None)
+        if player is None:
+            player = getattr(getattr(context, 'game', None), 'player', None)
+        return coerce_int(getattr(player, 'strength', 0) or 0, 0)
+
+    def _target_index(self, context: DecisionContext, target: Monster) -> Optional[int]:
+        for idx, monster in enumerate(getattr(context, 'monsters_alive', []) or []):
+            if monster is target:
+                return idx
+        return None
+
+    def _target_indexed_stack(
+        self,
+        context: DecisionContext,
+        target_idx: Optional[int],
+        stack_attr: str,
+    ) -> int:
+        if target_idx is None:
+            return 0
+        stacks = getattr(context, stack_attr, {})
+        if isinstance(stacks, dict):
+            return self._non_negative_int(stacks.get(target_idx, 0))
+        if isinstance(stacks, (list, tuple)) and target_idx < len(stacks):
+            return self._non_negative_int(stacks[target_idx])
+        return 0
+
+    def _target_power_stack(
+        self,
+        target: Monster,
+        power: str,
+        direct_attr: str,
+    ) -> int:
+        direct = getattr(target, direct_attr, None)
+        if direct is not None:
+            return self._non_negative_int(direct)
+        return self._non_negative_int(power_amount(getattr(target, 'powers', []), power, 1))
+
+    def _fallback_target_state(
+        self,
+        context: DecisionContext,
+        state: Optional[SimulationState],
+        target: Monster,
+    ) -> dict:
+        simulated = self._simulated_target_state(context, state, target)
+        if simulated is not None:
+            return simulated
+
+        target_idx = self._target_index(context, target)
+        return {
+            'hp': self._target_current_hp(context, state, target),
+            'block': self._non_negative_int(getattr(target, 'block', 0)),
+            'vulnerable': (
+                self._target_indexed_stack(context, target_idx, 'vulnerable_stacks')
+                or self._target_power_stack(target, 'Vulnerable', 'vulnerable')
+            ),
+            'weak': (
+                self._target_indexed_stack(context, target_idx, 'weak_stacks')
+                or self._target_power_stack(target, 'Weak', 'weak')
+            ),
+            'poison': self._target_power_stack(target, 'Poison', 'poison'),
+            'slow_stacks': (
+                self._target_power_stack(target, 'Slow', 'slow_stacks')
+                or self._target_power_stack(target, 'SlowPower', 'slow_stacks')
+            ),
+        }
+
+    def _estimate_attack_damage_without_simulation(
+        self,
+        card: Card,
+        context: DecisionContext,
+        state: Optional[SimulationState] = None,
+        target: Optional[Monster] = None,
+    ) -> int:
+        card_name = _canonical_card_name(card)
+        strength = self._context_player_strength(context, state)
+        estimator_state = state or SimpleNamespace(
+            player_strength=strength,
+            player_block=player_block_value(context),
+            player_energy=self._non_negative_int(getattr(context, 'energy_available', 0)),
+            player_weak=player_debuff_stacks(context, 'Weak'),
+            added_hand_cards=[],
+            played_card_uuids=set(),
+            rampage_damage_bonus_by_card={},
+        )
+
+        dynamic_damage_card = card_name in {'Body Slam', 'Mind Blast', 'Whirlwind'}
+        base_damage = self._non_negative_int(getattr(card, 'damage', 0))
+        if dynamic_damage_card:
+            base_damage = self.simulator._calculate_x_damage(
+                card,
+                estimator_state,
+                context,
+                per_hit=card_name == 'Whirlwind',
+            )
+
+        if base_damage == 0 and not dynamic_damage_card:
+            try:
+                card_data = game_data_loader.get_card_data(card_name)
+                if card_data:
+                    parsed_damage = game_data_loader._parse_card_damage(card_data)
+                    if parsed_damage is not None:
+                        base_damage = (
+                            parsed_damage
+                            + card_upgrade_helpers.known_damage_upgrade_bonus(card, card_name)
+                        )
+            except Exception:
+                base_damage = 0
+
+        if base_damage == 0 and not dynamic_damage_card:
+            base_damage = 6
+
+        if state is not None:
+            base_damage += self.simulator._rampage_damage_bonus(state, card)
+
+        target_state = (
+            self._fallback_target_state(context, state, target)
+            if target is not None
+            else {}
+        )
+        per_hit_damage = self.simulator._calculate_attack_damage(
+            card,
+            base_damage,
+            estimator_state,
+            context,
+        )
+        per_hit_damage = self.simulator._apply_weak_damage(
+            per_hit_damage,
+            getattr(estimator_state, 'player_weak', 0),
+        )
+        per_hit_damage = self.simulator._apply_vulnerable_damage(per_hit_damage, target_state)
+        per_hit_damage = self.simulator._apply_slow_attack_damage(per_hit_damage, target_state)
+
+        hit_count = self.simulator._get_attack_hit_count(card, estimator_state, context)
+        hit_count = self.simulator._get_attack_hit_count_against_monster(
+            card,
+            hit_count,
+            target_state,
+        )
+        return max(0, per_hit_damage) * max(0, hit_count)
+
+    def _estimate_attack_damage_to_target(
+        self,
+        card: Card,
+        context: DecisionContext,
+        state: Optional[SimulationState],
+        target: Monster,
+        target_idx: Optional[int] = None,
+    ) -> int:
+        before = self._target_effective_hp(context, state, target)
+        if before <= 0:
+            return 0
+
+        if target_idx is None:
+            target_idx = self._target_index(context, target)
+
+        if (
+            state is not None
+            and hasattr(state, 'clone')
+            and target_idx is not None
+            and 0 <= target_idx < len(getattr(state, 'monsters', []))
+        ):
+            result = self.simulator.simulate_card_play(
+                state.clone(),
+                card,
+                target=target,
+                target_index=target_idx,
+                context=context,
+            )
+            if target_idx < len(getattr(result, 'monsters', [])):
+                monster = result.monsters[target_idx]
+                after = (
+                    self._non_negative_int(monster.get('hp', 0))
+                    + self._non_negative_int(monster.get('block', 0))
+                )
+                return max(0, before - after)
+
+        return self._estimate_attack_damage_without_simulation(
+            card,
+            context,
+            state=state,
+            target=target,
+        )
+
     def _rank_targets(
         self,
         card: Card,
@@ -6225,38 +6418,18 @@ class HeuristicCombatPlanner(CombatPlanner):
         is_attack = is_attack_card(card)
 
         if is_attack:
-            # Estimate damage for attack cards
-            base_damage = getattr(card, 'damage', 0)
-            if base_damage is None:
-                base_damage = 0
-            if base_damage == 0 or not hasattr(card, 'damage'):
-                try:
-                    card_name = _canonical_card_name(card)
-                    card_data = game_data_loader.get_card_data(card_name)
-                    if card_data:
-                        parsed_damage = game_data_loader._parse_card_damage(card_data)
-                        if parsed_damage is not None:
-                            base_damage = parsed_damage + card_upgrade_helpers.known_damage_upgrade_bonus(card, card_name)
-                except:
-                    pass
-
-            if base_damage == 0:
-                base_damage = 6  # Fallback
-
-            # Add player strength
-            player_strength = getattr(
-                state,
-                'player_strength',
-                getattr(getattr(context, 'player', None), 'strength', 0),
-            )
-            total_damage = base_damage + player_strength
-
             # Separate killable and non-killable targets
             killable = []
             non_killable = []
             for monster, threat in ranked_targets:
                 effective_hp = self._target_effective_hp(context, state, monster)
-                if total_damage >= effective_hp:
+                estimated_damage = self._estimate_attack_damage_to_target(
+                    card,
+                    context,
+                    state,
+                    monster,
+                )
+                if estimated_damage >= effective_hp:
                     killable.append((monster, threat))
                 else:
                     non_killable.append((monster, threat))
@@ -6371,39 +6544,18 @@ class HeuristicCombatPlanner(CombatPlanner):
         is_attack = is_attack_card(card)
 
         if is_attack:
-            # Estimate damage for this attack
-            base_damage = getattr(card, 'damage', 0)
-            if base_damage is None:
-                base_damage = 0
-
-            # Try to get damage from game data
-            if base_damage == 0 or not hasattr(card, 'damage'):
-                try:
-                    card_name = _canonical_card_name(card)
-                    card_data = game_data_loader.get_card_data(card_name)
-                    if card_data:
-                        parsed_damage = game_data_loader._parse_card_damage(card_data)
-                        if parsed_damage is not None:
-                            base_damage = parsed_damage + card_upgrade_helpers.known_damage_upgrade_bonus(card, card_name)
-                except:
-                    pass
-
-            if base_damage == 0:
-                base_damage = 6  # Fallback estimate
-
-            # Add player strength
-            player_strength = getattr(
-                state,
-                'player_strength',
-                getattr(getattr(context, 'player', None), 'strength', 0),
-            )
-            total_damage = base_damage + player_strength
-
             # Find killable targets
             killable_targets = []
-            for _idx, monster, _simulated_monster in target_options:
+            for idx, monster, _simulated_monster in target_options:
                 effective_hp = self._target_effective_hp(context, state, monster)
-                if total_damage >= effective_hp:
+                estimated_damage = self._estimate_attack_damage_to_target(
+                    card,
+                    context,
+                    state,
+                    monster,
+                    target_idx=idx,
+                )
+                if estimated_damage >= effective_hp:
                     killable_targets.append(monster)
 
             if killable_targets:
