@@ -319,6 +319,87 @@ def test_ironclad_card_priority_accepts_string_turn_for_power_cards():
     assert string_score == enum_score
 
 
+def test_ironclad_card_priority_rejects_nonfinite_incoming_damage_for_defense():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    baseline_defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    planner = IroncladCombatPlanner()
+
+    baseline_context = _combat_context([baseline_defend], energy=1, monsters=[_louse(current_hp=50)])
+    baseline_context.incoming_damage = 0
+    baseline_score = planner._get_card_priority(baseline_defend, baseline_context)
+
+    nonfinite_context = _combat_context([defend], energy=1, monsters=[_louse(current_hp=50)])
+    nonfinite_context.incoming_damage = float("inf")
+    nonfinite_score = planner._get_card_priority(defend, nonfinite_context)
+
+    assert nonfinite_score == baseline_score
+
+
+def test_ironclad_card_priority_rejects_nonfinite_turn_for_power_cards():
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    baseline_demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    planner = IroncladCombatPlanner()
+
+    baseline_context = _combat_context([baseline_demon_form], energy=3, monsters=[_louse(current_hp=50)])
+    baseline_context.turn = 1
+    baseline_score = planner._get_card_priority(baseline_demon_form, baseline_context)
+
+    nonfinite_context = _combat_context([demon_form], energy=3, monsters=[_louse(current_hp=50)])
+    nonfinite_context.turn = float("inf")
+    nonfinite_score = planner._get_card_priority(demon_form, nonfinite_context)
+
+    assert nonfinite_score == baseline_score
+
+
+def test_ironclad_context_ascension_level_rejects_nonfinite_game_value():
+    context = SimpleNamespace(game=SimpleNamespace(ascension_level=float("inf")))
+
+    assert IroncladCombatPlanner._context_ascension_level(context) == 0
+
+
+def test_ironclad_get_confidence_rejects_nonfinite_numeric_context():
+    strike = _card("Strike_R", "Strike", cost=1)
+    baseline_strike = _card("Strike_R", "Strike", cost=1)
+    planner = IroncladCombatPlanner()
+    planner.combat_ending_detector.can_kill_all = lambda _context: False
+
+    baseline_context = _combat_context([baseline_strike], energy=0, monsters=[_louse(current_hp=50)])
+    baseline_context.player_hp_pct = 0
+    baseline_context.act = 0
+    baseline_confidence = planner.get_confidence(baseline_context)
+
+    nonfinite_context = _combat_context([strike], energy=float("inf"), monsters=[_louse(current_hp=50)])
+    nonfinite_context.player_hp_pct = float("inf")
+    nonfinite_context.act = float("inf")
+    nonfinite_confidence = planner.get_confidence(nonfinite_context)
+
+    assert nonfinite_confidence == baseline_confidence
+
+
 def _louse(current_hp=50):
     return Monster(
         name="Louse",

@@ -45,6 +45,7 @@ from ..decision.base import DecisionContext
 from spirecomm.ai.monster_names import canonical_live_monster_name
 from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.character import Monster
+from spirecomm.spire.numeric import coerce_float, coerce_int
 from spirecomm.communication.action import Action, PlayCardAction
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
@@ -128,17 +129,11 @@ class IroncladCombatPlanner(CombatPlanner):
 
     @staticmethod
     def _non_negative_int(value) -> int:
-        try:
-            return max(0, int(value or 0))
-        except (TypeError, ValueError):
-            return 0
+        return max(0, coerce_int(value or 0, 0))
 
     @staticmethod
     def _non_negative_float(value) -> float:
-        try:
-            return max(0.0, float(value or 0))
-        except (TypeError, ValueError):
-            return 0.0
+        return max(0.0, coerce_float(value or 0, 0.0))
 
     @staticmethod
     def _is_aoe_attack(card: Card) -> bool:
@@ -148,10 +143,10 @@ class IroncladCombatPlanner(CombatPlanner):
     def _context_ascension_level(context: DecisionContext) -> int:
         game = getattr(context, 'game', None)
         if game is not None and hasattr(game, 'ascension_level'):
-            return int(getattr(game, 'ascension_level') or 0)
+            return max(0, coerce_int(getattr(game, 'ascension_level') or 0, 0))
         if hasattr(context, 'ascension_level'):
-            return int(getattr(context, 'ascension_level') or 0)
-        return int(getattr(context, 'ascension', 0) or 0)
+            return max(0, coerce_int(getattr(context, 'ascension_level') or 0, 0))
+        return max(0, coerce_int(getattr(context, 'ascension', 0) or 0, 0))
 
     @staticmethod
     def _combat_hp_damage_so_far(context: DecisionContext) -> int:
