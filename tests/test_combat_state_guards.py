@@ -39,6 +39,13 @@ def test_player_block_value_clamps_missing_invalid_or_negative_values():
     assert player_block_value(None) == 0
 
 
+def test_player_block_value_rejects_nonfinite_values():
+    assert player_block_value(SimpleNamespace(player_block=float("inf"))) == 0
+    assert player_block_value(
+        SimpleNamespace(game=SimpleNamespace(player=SimpleNamespace(block=float("inf"))))
+    ) == 0
+
+
 def test_draw_pile_count_prefers_game_draw_pile_length():
     context = SimpleNamespace(
         game=SimpleNamespace(draw_pile=[object(), object(), object()]),
@@ -58,6 +65,11 @@ def test_draw_pile_count_clamps_missing_invalid_or_negative_values():
     assert draw_pile_count(SimpleNamespace(draw_pile_size="not-a-number")) == 0
     assert draw_pile_count(SimpleNamespace()) == 0
     assert draw_pile_count(None) == 0
+
+
+def test_draw_pile_count_rejects_nonfinite_numeric_values():
+    assert draw_pile_count(SimpleNamespace(game=SimpleNamespace(draw_pile=float("inf")))) == 0
+    assert draw_pile_count(SimpleNamespace(draw_pile_size=float("inf"))) == 0
 
 
 def test_card_play_key_prefers_uuid_and_keeps_uuidless_duplicates_distinct():
@@ -217,3 +229,7 @@ def test_monster_power_amount_clamps_invalid_direct_amounts():
     assert monster_power_amount(SimpleNamespace(frail="not-a-number"), "Frail") == 0
     assert monster_power_amount(SimpleNamespace(), "Artifact") == 0
     assert monster_power_amount(None, "Artifact") == 0
+
+
+def test_monster_power_amount_rejects_nonfinite_direct_amount():
+    assert monster_power_amount(SimpleNamespace(weak=float("inf")), "Weak") == 0

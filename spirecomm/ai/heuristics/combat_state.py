@@ -84,10 +84,7 @@ def player_has_power(context: Any, name: str) -> bool:
 def monster_power_amount(monster: Any, name: str) -> int:
     direct_amount = getattr(monster, name.lower(), None)
     if direct_amount is not None:
-        try:
-            return max(0, int(direct_amount))
-        except (TypeError, ValueError):
-            return 0
+        return max(0, coerce_int(direct_amount, 0))
 
     powers = getattr(monster, 'powers', []) or []
     return power_amount(powers, name, 1)
@@ -99,10 +96,7 @@ def player_block_value(context: Any) -> int:
         player = getattr(getattr(context, 'game', None), 'player', None)
         block = getattr(player, 'block', 0)
 
-    try:
-        return max(0, int(block or 0))
-    except (TypeError, ValueError):
-        return 0
+    return max(0, coerce_int(block or 0, 0))
 
 
 def draw_pile_count(context: Any) -> int:
@@ -113,17 +107,11 @@ def draw_pile_count(context: Any) -> int:
             try:
                 return max(0, len(draw_pile))
             except TypeError:
-                try:
-                    return max(0, int(draw_pile))
-                except (TypeError, ValueError):
-                    return 0
+                return max(0, coerce_int(draw_pile, 0))
 
     for owner in (game, context):
         size = getattr(owner, 'draw_pile_size', None)
         if size is not None:
-            try:
-                return max(0, int(size))
-            except (TypeError, ValueError):
-                return 0
+            return max(0, coerce_int(size, 0))
 
     return 0
