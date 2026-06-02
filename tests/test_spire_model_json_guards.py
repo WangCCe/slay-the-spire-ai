@@ -1,6 +1,57 @@
+from spirecomm.spire.character import Monster, Player
 from spirecomm.spire.power import Power
 from spirecomm.spire.potion import Potion
 from spirecomm.spire.relic import Relic
+
+
+def test_player_from_json_coerces_decimal_string_numeric_fields():
+    player = Player.from_json(
+        {
+            "max_hp": "80.0",
+            "current_hp": "70.0",
+            "block": "5.0",
+            "energy": "3.0",
+            "powers": [],
+            "orbs": [],
+        }
+    )
+
+    assert player.max_hp == 80
+    assert player.current_hp == 70
+    assert player.block == 5
+    assert player.energy == 3
+
+
+def test_monster_from_json_coerces_decimal_string_numeric_fields():
+    monster = Monster.from_json(
+        {
+            "name": "Jaw Worm",
+            "id": "JawWorm",
+            "max_hp": "44.0",
+            "current_hp": "31.0",
+            "block": "6.0",
+            "intent": "ATTACK",
+            "half_dead": False,
+            "is_gone": False,
+            "move_id": "2.0",
+            "last_move_id": "1.0",
+            "second_last_move_id": "0.0",
+            "move_base_damage": "11.0",
+            "move_adjusted_damage": "13.0",
+            "move_hits": "2.0",
+            "powers": [],
+        }
+    )
+
+    assert monster.max_hp == 44
+    assert monster.current_hp == 31
+    assert monster.block == 6
+    assert monster.move_id == 2
+    assert monster.last_move_id == 1
+    assert monster.second_last_move_id == 0
+    assert monster.move_base_damage == 11
+    assert monster.move_adjusted_damage == 13
+    assert monster.move_hits == 2
 
 
 def test_power_from_json_coerces_decimal_string_numeric_fields():

@@ -3,6 +3,18 @@ from enum import Enum
 from spirecomm.spire.power import Power
 
 
+def _safe_int(value, default=0):
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        try:
+            return int(float(value))
+        except (TypeError, ValueError, OverflowError):
+            return default
+
+
 class Intent(Enum):
     ATTACK = 1
     ATTACK_BUFF = 2
@@ -70,7 +82,12 @@ class Player(Character):
 
     @classmethod
     def from_json(cls, json_object):
-        player = cls(json_object["max_hp"], json_object["current_hp"], json_object["block"], json_object["energy"])
+        player = cls(
+            _safe_int(json_object["max_hp"], 0),
+            _safe_int(json_object["current_hp"], 0),
+            _safe_int(json_object["block"], 0),
+            _safe_int(json_object["energy"], 0),
+        )
         player.powers = [Power.from_json(json_power) for json_power in json_object["powers"]]
         player.orbs = [Orb.from_json(orb) for orb in json_object["orbs"]]
         return player
@@ -97,18 +114,26 @@ class Monster(Character):
     def from_json(cls, json_object):
         name = json_object["name"]
         monster_id = json_object["id"]
-        max_hp = json_object["max_hp"]
-        current_hp = json_object["current_hp"]
-        block = json_object["block"]
+        max_hp = _safe_int(json_object["max_hp"], 0)
+        current_hp = _safe_int(json_object["current_hp"], 0)
+        block = _safe_int(json_object["block"], 0)
         intent = Intent[json_object["intent"]]
         half_dead = json_object["half_dead"]
         is_gone = json_object["is_gone"]
-        move_id = json_object.get("move_id", -1)
-        last_move_id = json_object.get("last_move_id", None)
-        second_last_move_id = json_object.get("second_last_move_id", None)
-        move_base_damage = json_object.get("move_base_damage", 0)
-        move_adjusted_damage = json_object.get("move_adjusted_damage", 0)
-        move_hits = json_object.get("move_hits", 0)
+        move_id = _safe_int(json_object.get("move_id", -1), -1)
+        last_move_id = (
+            _safe_int(json_object.get("last_move_id"), 0)
+            if json_object.get("last_move_id") is not None
+            else None
+        )
+        second_last_move_id = (
+            _safe_int(json_object.get("second_last_move_id"), 0)
+            if json_object.get("second_last_move_id") is not None
+            else None
+        )
+        move_base_damage = _safe_int(json_object.get("move_base_damage", 0), 0)
+        move_adjusted_damage = _safe_int(json_object.get("move_adjusted_damage", 0), 0)
+        move_hits = _safe_int(json_object.get("move_hits", 0), 0)
         monster = cls(name, monster_id, max_hp, current_hp, block, intent, half_dead, is_gone, move_id, last_move_id, second_last_move_id, move_base_damage, move_adjusted_damage, move_hits)
         monster.powers = [Power.from_json(json_power) for json_power in json_object["powers"]]
         return monster
