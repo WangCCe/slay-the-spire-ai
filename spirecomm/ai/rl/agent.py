@@ -1534,11 +1534,11 @@ class CombatRLAgent:
             damage = getattr(monster, "move_adjusted_damage", None)
             if damage is None:
                 damage = getattr(monster, "move_base_damage", 0) or 0
-            try:
-                hits = max(1, int(getattr(monster, "move_hits", 1) or 1))
-                total += max(0, int(damage)) * hits
-            except Exception:
-                pass
+            hits = max(
+                1,
+                CombatRLAgent._safe_int(getattr(monster, "move_hits", 1), default=1),
+            )
+            total += max(0, CombatRLAgent._safe_int(damage, default=0)) * hits
         return total
 
     @classmethod

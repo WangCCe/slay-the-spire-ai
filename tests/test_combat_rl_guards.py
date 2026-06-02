@@ -235,6 +235,14 @@ def test_rl_incoming_damage_clamps_negative_live_move_hits_to_one():
     assert CombatRLAgent._incoming_damage(game) == 7
 
 
+def test_rl_incoming_damage_accepts_decimal_string_damage_and_hits():
+    monster = _monster(hp=25, damage="7.0")
+    monster.move_hits = "2.0"
+    game = _game(monsters=[monster])
+
+    assert CombatRLAgent._incoming_damage(game) == 14
+
+
 def test_rl_incoming_damage_ignores_non_attack_intents():
     monster = _monster(hp=25, damage=7)
     monster.intent = "Intent.DEBUFF"
