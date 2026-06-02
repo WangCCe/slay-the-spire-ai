@@ -171,6 +171,28 @@ def test_potion_guard_skips_safe_combat():
     assert _agent()._maybe_use_potion_guard(game) is None
 
 
+def test_potion_guard_accepts_decimal_string_player_hp():
+    potion = SimpleNamespace(
+        potion_id="Fire Potion",
+        name="Fire Potion",
+        can_use=True,
+        requires_target=True,
+        effect_type="damage",
+    )
+    game = _game(
+        potions=[potion],
+        monsters=[_monster(hp=50, damage=20, index=0)],
+        current_hp="30.0",
+        max_hp="80.0",
+    )
+
+    action = _agent()._maybe_use_potion_guard(game)
+
+    assert isinstance(action, PotionAction)
+    assert action.potion is potion
+    assert action.target_index == 0
+
+
 def test_rl_incoming_damage_clamps_negative_live_move_damage_to_zero():
     monster = _monster(hp=25, damage=-1)
     monster.move_hits = 3

@@ -1149,8 +1149,11 @@ class CombatRLAgent:
             return None
 
         incoming = self._incoming_damage(game)
-        current_hp = max(int(getattr(game, "current_hp", 0) or 0), 1)
-        max_hp = max(int(getattr(game, "max_hp", current_hp) or current_hp), 1)
+        current_hp = max(self._safe_int(getattr(game, "current_hp", 0), default=0), 1)
+        max_hp = max(
+            self._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
+            1,
+        )
         hp_pct = current_hp / max_hp
         room_type = str(getattr(game, "room_type", "") or "")
         is_elite = "Elite" in room_type
@@ -1482,7 +1485,10 @@ class CombatRLAgent:
         try:
             return int(value)
         except (TypeError, ValueError):
-            return default
+            try:
+                return int(float(value))
+            except (TypeError, ValueError, OverflowError):
+                return default
 
     @staticmethod
     def _alive_monsters(game: Game):
