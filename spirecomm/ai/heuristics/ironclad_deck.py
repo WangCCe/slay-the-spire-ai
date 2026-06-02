@@ -124,6 +124,13 @@ class IroncladDeckStrategy:
     def _card_name(card: Card) -> str:
         return canonical_card_name(card)
 
+    @staticmethod
+    def _non_negative_float(value) -> float:
+        try:
+            return max(0.0, float(value or 0))
+        except (TypeError, ValueError):
+            return 0.0
+
     def should_pick_card(self, card: Card, context: DecisionContext) -> Tuple[bool, str]:
         """
         Decide if we should pick a card.
@@ -147,9 +154,10 @@ class IroncladDeckStrategy:
             return (False, f"Card '{card_id}' is suboptimal")
 
         # Rule 3: HP risk assessment
-        if context.player_hp_pct < 0.4:
+        player_hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
+        if player_hp_pct < 0.4:
             if card_id in self.HP_COST_CARDS:
-                return (False, f"Too risky at {context.player_hp_pct*100:.0f}% HP")
+                return (False, f"Too risky at {player_hp_pct*100:.0f}% HP")
 
         if context.act == 1 and card_id in {'Brutality', 'Combust'}:
             current_count = sum(

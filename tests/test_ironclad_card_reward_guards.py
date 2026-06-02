@@ -121,6 +121,27 @@ def test_ironclad_deck_quality_treats_none_upgrades_as_base_card():
     assert 0.0 <= strategy.get_deck_health_score(context) <= 1.0
 
 
+def test_ironclad_strategy_rejects_hp_cost_card_at_string_low_hp():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+    ]
+    agent = _agent_for_reward([], deck, hp=28, max_hp=80)
+    context = DecisionContext(agent.game)
+    context.player_hp_pct = "0.35"
+
+    should_pick, reason = IroncladDeckStrategy().should_pick_card(
+        _card("Offering", cost=0),
+        context,
+    )
+
+    assert not should_pick
+    assert "35% HP" in reason
+
+
 def test_ironclad_strategy_can_take_carnage_despite_legacy_zero_copy_cap():
     deck = [
         _card("Strike_R"),
