@@ -422,7 +422,34 @@ class CombatEndingDetector:
         return card_id in AOE_ATTACK_NAMES
 
     def _is_all_enemy_debuff_card(self, card: Card) -> bool:
-        return self._base_card_name(card) == 'Shockwave'
+        if self._base_card_name(card) == 'Shockwave':
+            return True
+        if not any(
+            debuff == 'vulnerable' and stacks > 0
+            for debuff, stacks in self._card_debuff_effects_applied(card)
+        ):
+            return False
+
+        try:
+            return bool(
+                game_data_loader._is_card_aoe(
+                    {
+                        'name': getattr(card, 'name', self._base_card_name(card)),
+                        'description': self._card_effect_text(card),
+                    }
+                )
+            )
+        except Exception:
+            effect_text = (
+                self._card_effect_text(card)
+                .replace('\\n', '\n')
+                .replace('#', '')
+                .lower()
+            )
+            return any(
+                keyword in effect_text
+                for keyword in ('all enemies', 'every enemy', 'each enemy')
+            )
 
     def _aoe_card_kills_all(
         self,
@@ -839,7 +866,10 @@ class CombatEndingDetector:
     def _is_lethal_vulnerable_support_card(self, card: Card) -> bool:
         if card_type_name(card) != 'SKILL':
             return False
-        return self._is_all_enemy_debuff_card(card)
+        return any(
+            debuff == 'vulnerable' and stacks > 0
+            for debuff, stacks in self._card_debuff_effects_applied(card)
+        )
 
     def _find_targeted_lethal_sequence(
         self,
@@ -1032,31 +1062,43 @@ class CombatEndingDetector:
                     if cost > state.energy:
                         continue
 
-                    next_vulnerable, next_artifact = self._vulnerable_state_after_card(
-                        card,
-                        context,
-                        state.vulnerable,
-                        state.artifact,
-                        state.hp,
-                        None,
-                    )
-                    if next_vulnerable == state.vulnerable and next_artifact == state.artifact:
-                        continue
-
-                    vulnerable_gain = sum(next_vulnerable) - sum(state.vulnerable)
-                    artifact_reduced = sum(state.artifact) - sum(next_artifact)
-                    candidates.append(
-                        _TargetedLethalCandidate(
-                            priority=(0, 0, vulnerable_gain + artifact_reduced, -cost),
-                            card_pos=card_pos,
-                            monster_idx=None,
-                            next_state=state.after_spending(
-                                cost,
-                                vulnerable=next_vulnerable,
-                                artifact=next_artifact,
-                            ),
+                    if self._is_all_enemy_debuff_card(card):
+                        support_targets = (None,)
+                    elif self._card_requires_target(card):
+                        support_targets = tuple(
+                            monster_idx
+                            for monster_idx, hp in enumerate(state.hp)
+                            if hp > 0
                         )
-                    )
+                    else:
+                        support_targets = (None,)
+
+                    for target_idx in support_targets:
+                        next_vulnerable, next_artifact = self._vulnerable_state_after_card(
+                            card,
+                            context,
+                            state.vulnerable,
+                            state.artifact,
+                            state.hp,
+                            target_idx,
+                        )
+                        if next_vulnerable == state.vulnerable and next_artifact == state.artifact:
+                            continue
+
+                        vulnerable_gain = sum(next_vulnerable) - sum(state.vulnerable)
+                        artifact_reduced = sum(state.artifact) - sum(next_artifact)
+                        candidates.append(
+                            _TargetedLethalCandidate(
+                                priority=(0, 0, vulnerable_gain + artifact_reduced, -cost),
+                                card_pos=card_pos,
+                                monster_idx=target_idx,
+                                next_state=state.after_spending(
+                                    cost,
+                                    vulnerable=next_vulnerable,
+                                    artifact=next_artifact,
+                                ),
+                            )
+                        )
                     continue
 
                 if self._is_aoe_attack(card):

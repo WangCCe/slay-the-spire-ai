@@ -11705,6 +11705,102 @@ def test_lethal_detector_uses_shockwave_vulnerable_before_followup(monkeypatch):
     assert sequence[0].target_monster is None
 
 
+def test_lethal_detector_uses_upgraded_trip_vulnerable_before_followups(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "trip": {
+            "name": "Trip",
+            "description": "Apply 2 Vulnerable.",
+        },
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    loader._wiki_data = {
+        "trip": {
+            "name": "Trip",
+            "text": "Apply 2 #Vulnerable| to ALL enemies].",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    trip = _card(
+        "Trip",
+        "Trip+",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=True,
+        upgrades=1,
+    )
+    trip.type = "SKILL"
+    trip.uuid = "trip-plus"
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_1.uuid = "strike-1"
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    strike_2.uuid = "strike-2"
+    context = _combat_context(
+        [trip, strike_1, strike_2],
+        energy=2,
+        monsters=[_louse(current_hp=18)],
+    )
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    sequence = detector.find_lethal_sequence(context)
+    assert [action.card.uuid for action in sequence] == [
+        "trip-plus",
+        "strike-1",
+        "strike-2",
+    ]
+    assert sequence[0].target_monster is None
+
+
+def test_lethal_detector_targets_trip_vulnerable_before_followups(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "trip": {
+            "name": "Trip",
+            "description": "Apply 2 Vulnerable.",
+        },
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    loader._wiki_data = {
+        "trip": {
+            "name": "Trip",
+            "text": "Apply 2 #Vulnerable| to ALL enemies].",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    trip = _card(
+        "Trip",
+        "Trip",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=True,
+    )
+    trip.type = "SKILL"
+    trip.uuid = "trip"
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_1.uuid = "strike-1"
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    strike_2.uuid = "strike-2"
+    target = _louse(current_hp=18)
+    context = _combat_context(
+        [trip, strike_1, strike_2],
+        energy=2,
+        monsters=[target],
+    )
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    sequence = detector.find_lethal_sequence(context)
+    assert [action.card.uuid for action in sequence] == [
+        "trip",
+        "strike-1",
+        "strike-2",
+    ]
+    assert sequence[0].target_monster is target
+
+
 def test_lethal_detector_treats_active_corruption_shockwave_as_zero_cost(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
