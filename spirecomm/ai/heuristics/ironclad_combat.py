@@ -521,7 +521,8 @@ class IroncladCombatPlanner(CombatPlanner):
         # AOE cards - no targeting needed
         # Reaper is AOE heal - prioritize when multiple monsters alive and we have Strength
         if card_id == 'Reaper':
-            if len(state.monsters) >= 2 and context.strength >= 3:
+            context_strength = self._non_negative_int(getattr(context, 'strength', 0))
+            if len(state.monsters) >= 2 and context_strength >= 3:
                 # Best case: multiple targets + good Strength
                 return None, None  # AOE
             elif len(state.monsters) == 1:
@@ -925,7 +926,8 @@ class IroncladCombatPlanner(CombatPlanner):
             return True
 
         # Special case: Reaper with good Strength
-        if card_id == 'Reaper' and context.strength >= 3:
+        context_strength = self._non_negative_int(getattr(context, 'strength', 0))
+        if card_id == 'Reaper' and context_strength >= 3:
             return True
 
         # Default: use AOE if 3+ targets

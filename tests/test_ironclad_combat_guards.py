@@ -5085,6 +5085,34 @@ def test_primary_target_selection_clears_zero_hp_stale_simulated_monster():
     assert state.primary_target is None
 
 
+def test_reaper_target_selection_accepts_string_strength_for_aoe():
+    reaper = _card(
+        "Reaper",
+        "Reaper",
+        card_type=CardType.ATTACK,
+        cost=2,
+        has_target=False,
+    )
+    context = _combat_context(
+        [reaper],
+        energy=2,
+        monsters=[_louse(current_hp=40), _louse(current_hp=40)],
+    )
+    context.strength = "3"
+
+    try:
+        target, target_idx = IroncladCombatPlanner()._choose_target_for_card(
+            reaper,
+            context,
+            SimulationState(context),
+        )
+    except TypeError:
+        target, target_idx = "type-error", "type-error"
+
+    assert target is None
+    assert target_idx is None
+
+
 def test_standard_targeting_uses_parsed_damage_for_plain_card_lethals(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -5525,6 +5553,22 @@ def test_aoe_decision_ignores_zero_hp_stale_simulated_monsters():
     state.monsters[0]["is_gone"] = False
 
     assert not IroncladCombatPlanner()._should_use_aoe("Cleave", context, state)
+
+
+def test_aoe_decision_accepts_string_strength_for_reaper():
+    context = _combat_context(
+        [],
+        monsters=[_louse(current_hp=40), _louse(current_hp=40)],
+    )
+    context.strength = "3"
+    state = SimulationState(context)
+
+    try:
+        should_use_aoe = IroncladCombatPlanner()._should_use_aoe("Reaper", context, state)
+    except TypeError:
+        should_use_aoe = "type-error"
+
+    assert should_use_aoe is True
 
 
 def test_rank_targets_ignores_zero_hp_stale_simulated_monsters():
