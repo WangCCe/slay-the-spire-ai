@@ -101,10 +101,11 @@ class ActionEncoderV2:
         price = getattr(item, "price", None)
         if price is None:
             return True
-        try:
-            return int(getattr(game, "gold", 0) or 0) >= int(price)
-        except Exception:
+        gold = ActionEncoderV2._safe_int(getattr(game, "gold", 0) or 0, default=None)
+        price = ActionEncoderV2._safe_int(price, default=None)
+        if gold is None or price is None:
             return False
+        return gold >= price
 
     @staticmethod
     def _can_afford_purge(game: Game, screen) -> bool:
@@ -136,7 +137,10 @@ class ActionEncoderV2:
         try:
             return int(value)
         except (TypeError, ValueError):
-            return default
+            try:
+                return int(float(value))
+            except (TypeError, ValueError, OverflowError):
+                return default
 
     def _is_unclaimable_combat_reward(self, game: Game, reward) -> bool:
         is_potion_reward = reward_type_name(reward) == "POTION"

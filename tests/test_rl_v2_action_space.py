@@ -448,6 +448,26 @@ def test_shop_mask_hides_unaffordable_purchases_and_purge():
     assert not mask[space.SHOP_OFFSET + 4]
 
 
+def test_shop_mask_accepts_decimal_string_gold_and_price():
+    encoder = ActionEncoderV2()
+    cheap_card = SimpleNamespace(name="Pommel Strike", price="30.0")
+    screen = SimpleNamespace(
+        cards=[cheap_card],
+        relics=[],
+        potions=[],
+        purge_available=False,
+    )
+    game = _make_game(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=screen,
+        gold="40.0",
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert mask[space.SHOP_OFFSET]
+
+
 def test_shop_encoder_rejects_unaffordable_buy_card_action():
     encoder = ActionEncoderV2()
     expensive_card = SimpleNamespace(name="Inflame", price=75)
