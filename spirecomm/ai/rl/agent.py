@@ -1564,10 +1564,7 @@ class CombatRLAgent:
         energy = getattr(player, "energy", None)
         if energy is None:
             energy = getattr(game, "energy", 0)
-        try:
-            return int(energy or 0)
-        except Exception:
-            return 0
+        return CombatRLAgent._safe_int(energy, default=0)
 
     @staticmethod
     def _playable_cards(game: Game, energy: int):
