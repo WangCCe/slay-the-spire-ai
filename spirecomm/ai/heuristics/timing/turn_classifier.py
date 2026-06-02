@@ -10,6 +10,7 @@ from typing import List, Dict, Any, Optional, Tuple
 
 from spirecomm.ai.intent_utils import intent_is_attack
 from spirecomm.ai.monster_names import canonical_live_monster_name, monster_field
+from spirecomm.spire.numeric import coerce_int
 
 from .models import (
     TurnTiming,
@@ -677,7 +678,7 @@ class TurnTimingClassifier:
     def _resolve_move_strength_gain(self, move: Dict[str, Any], ascension_level: int) -> int:
         value = move.get('strength_gain', 0)
         if isinstance(value, (int, float)):
-            strength_gain = int(value)
+            strength_gain = self._coerce_int(value, default=0)
         else:
             return 0
 
@@ -693,7 +694,10 @@ class TurnTimingClassifier:
                     continue
                 modifier = ascension_modifiers.get(f"{threshold}+", {})
                 if isinstance(modifier, dict) and 'strength_gain' in modifier:
-                    return int(modifier['strength_gain'])
+                    return self._coerce_int(
+                        modifier.get('strength_gain'),
+                        default=strength_gain,
+                    )
                 break
 
         return strength_gain
@@ -722,13 +726,15 @@ class TurnTimingClassifier:
                 player_hp = context.game.current_hp or 0
             elif hasattr(context, 'player_hp'):
                 player_hp = context.player_hp or 0
-            return ((int(player_hp) // 12) + 1) * 6
+            player_hp = self._coerce_int(player_hp, default=0)
+            return ((player_hp // 12) + 1) * 6
 
         if 'current player hp divided by 12' in effect:
             player_hp = getattr(context, 'player_hp', 0) or 0
             if hasattr(context, 'game') and hasattr(context.game, 'current_hp'):
                 player_hp = context.game.current_hp or player_hp
-            return ((int(player_hp) // 12) + 1) * 6
+            player_hp = self._coerce_int(player_hp, default=0)
+            return ((player_hp // 12) + 1) * 6
 
         return 0
 
@@ -761,7 +767,7 @@ class TurnTimingClassifier:
             return None
 
         formula_type = formula.get('type')
-        turn = int(target_turn or 1)
+        turn = self._coerce_int(target_turn or 1, default=1)
 
         if formula_type == 'linear_by_turn':
             base = self._coerce_int(formula.get('base'), default=0)
@@ -789,7 +795,7 @@ class TurnTimingClassifier:
             return None
 
         divisor = max(1, self._coerce_int(formula.get('divisor'), default=1))
-        turn = max(1, int(target_turn or 1))
+        turn = max(1, self._coerce_int(target_turn or 1, default=1))
         hits = (turn + divisor - 1) // divisor
         min_hits = self._coerce_damage_value(formula.get('min_hits'))
         max_hits = self._coerce_damage_value(formula.get('max_hits'))
@@ -805,7 +811,7 @@ class TurnTimingClassifier:
         if isinstance(value, bool):
             return int(value)
         if isinstance(value, (int, float)):
-            return int(value)
+            return coerce_int(value, default=None)
         if isinstance(value, dict):
             for key in ('max', 'damage', 'normal', 'base', 'min'):
                 if key in value:
@@ -818,10 +824,7 @@ class TurnTimingClassifier:
                 if damage is not None
             ]
             return max(numeric_values) if numeric_values else None
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return None
+        return coerce_int(value, default=None)
 
     def _coerce_int(self, value, default: int = 0) -> int:
         coerced = self._coerce_damage_value(value)
@@ -843,8 +846,8 @@ class TurnTimingClassifier:
 
     def _context_ascension_level(self, context) -> int:
         if hasattr(context, 'game') and hasattr(context.game, 'ascension_level'):
-            return int(context.game.ascension_level or 0)
-        return int(getattr(context, 'ascension_level', 0) or 0)
+            return self._coerce_int(context.game.ascension_level, default=0)
+        return self._coerce_int(getattr(context, 'ascension_level', 0), default=0)
 
     def _applicable_ascension_modifiers(
         self,
@@ -915,9 +918,10 @@ class TurnTimingClassifier:
                 logger.debug(f"[ASCENSION_DAMAGE] {monster_name} A{ascension_level}+: "
                            f"damage {base_damage} -> {adjusted_damage}")
             elif 'damage_bonus' in mods:
-                adjusted_damage += mods['damage_bonus']
+                damage_bonus = self._coerce_int(mods.get('damage_bonus'), default=0)
+                adjusted_damage += damage_bonus
                 logger.debug(f"[ASCENSION_DAMAGE] {monster_name} A{ascension_level}+: "
-                           f"damage {base_damage} + {mods['damage_bonus']} = {adjusted_damage}")
+                           f"damage {base_damage} + {damage_bonus} = {adjusted_damage}")
 
             return adjusted_damage
 
@@ -976,7 +980,7 @@ class TurnTimingClassifier:
                     else:
                         ritual_value = ritual_value_dict.get('normal', 3)
                 else:
-                    ritual_value = int(ritual_value_dict) if ritual_value_dict else 3
+                    ritual_value = self._coerce_int(ritual_value_dict, default=3)
 
                 # Ritual triggers at end of each turn
                 # Cultist: Turn 1 buff, Turn 1 end +3 Str, Turn 2 attack with +3, Turn 2 end +3 Str, etc.

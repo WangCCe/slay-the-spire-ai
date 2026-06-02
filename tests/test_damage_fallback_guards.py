@@ -3582,6 +3582,94 @@ def test_classify_turn_accepts_string_turn_for_imminent_spike(monkeypatch):
     assert timing_context.current_turn_offset() == 1
 
 
+def test_classify_turn_ignores_nonfinite_monster_hp_for_timing_hints(monkeypatch):
+    class TimingHintLoader:
+        def __init__(self):
+            self.hint_names = []
+
+        def get_monster_timing_hints(self, monster_name):
+            self.hint_names.append(monster_name)
+            if monster_name == "Red Slaver":
+                return {"always_classify_as": "SAFE"}
+            return None
+
+        def predict_monster_moves(self, _monster_name, _current_turn, _hp_percent):
+            return []
+
+    timing_loader = TimingHintLoader()
+    monkeypatch.setattr(data_loader, "game_data_loader", timing_loader)
+    classifier = TurnTimingClassifier()
+    monster = SimpleNamespace(
+        name="Slaver",
+        monster_id="SlaverRed",
+        intent="ATTACK",
+        move_adjusted_damage=0,
+        move_hits=1,
+        current_hp=float("inf"),
+        max_hp=60,
+        strength=0,
+    )
+    context = SimpleNamespace(turn=1, monsters_alive=[monster])
+
+    timing_context = classifier.classify_turn(context)
+
+    assert timing_context.turn_timing == TurnTiming.SAFE
+    assert timing_loader.hint_names == ["Red Slaver"]
+
+
+def test_damage_curve_ignores_nonfinite_predicted_strength_gain(monkeypatch):
+    class FutureAttackLoader:
+        def get_monster_timing_hints(self, _monster_name):
+            return {}
+
+        def predict_monster_moves(self, _monster_name, current_turn, _hp_percent):
+            if current_turn != 1:
+                return []
+            return [
+                {
+                    "turn": 1,
+                    "move": {
+                        "name": "Corrupt Grow",
+                        "intent": "BUFF",
+                        "strength_gain": float("inf"),
+                    },
+                },
+                {
+                    "turn": 2,
+                    "move": {
+                        "name": "Heavy Stab",
+                        "intent": "ATTACK",
+                        "damage": 10,
+                        "hits": 1,
+                    },
+                },
+            ]
+
+    monkeypatch.setattr(data_loader, "game_data_loader", FutureAttackLoader())
+    classifier = TurnTimingClassifier()
+    monster = SimpleNamespace(
+        name="Red Slaver",
+        monster_id="SlaverRed",
+        current_hp=45,
+        max_hp=60,
+        strength=0,
+    )
+    context = SimpleNamespace(
+        turn=1,
+        monsters_alive=[monster],
+        game=SimpleNamespace(ascension_level=0),
+    )
+
+    damage_curve = classifier._calculate_damage_curve(
+        context,
+        [monster],
+        current_turn=1,
+        look_ahead=1,
+    )
+
+    assert damage_curve == [10]
+
+
 def test_combat_mode_hibernation_accepts_string_context_turn(monkeypatch):
     class HibernationOnlyLoader:
         def is_monster_summoner(self, _monster_name):
