@@ -1332,7 +1332,7 @@ class IroncladCombatPlanner(CombatPlanner):
         initial_turn_block = initial_state.turn_block()
         final_turn_block = final_state.turn_block()
         block_gained = final_turn_block - initial_turn_block
-        incoming_damage = context.incoming_damage
+        incoming_damage = self._non_negative_float(getattr(context, 'incoming_damage', 0))
 
         if block_penalty and block_gained > 0:
             # Heavily penalize block against monsters with scaling/dangerous mechanics
