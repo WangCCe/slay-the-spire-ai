@@ -918,6 +918,33 @@ def test_timing_lethal_sequence_uses_planner_loader_for_setup_cards(monkeypatch)
     assert [action.target_monster for action in actions] == [monster, monster, monster]
 
 
+def test_timing_planner_accepts_explicit_card_data_loader():
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "practice strike": {
+            "name": "Practice Strike",
+            "description": "Deal 11 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    strike = _card("Practice Strike", "Practice Strike", cost=1)
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[strike],
+        monsters_alive=[SimpleNamespace(current_hp=11, block=0)],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+    planner = TimingAwareCombatPlanner(data_loader=loader)
+
+    assert planner._can_kill_all_this_turn(context, timing_ctx)
+
+
 def test_timing_lethal_check_uses_dropkick_energy_refund(monkeypatch):
     loader = _loader_with_basic_ironclad_cards()
     loader._cards["dropkick"] = {

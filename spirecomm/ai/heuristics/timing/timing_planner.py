@@ -68,7 +68,8 @@ class TimingAwareCombatPlanner:
         self,
         base_planner=None,
         classifier: Optional[TurnTimingClassifier] = None,
-        strategy: Optional[CombatBalanceStrategy] = None
+        strategy: Optional[CombatBalanceStrategy] = None,
+        data_loader=None,
     ):
         """
         Initialize timing-aware planner.
@@ -77,11 +78,13 @@ class TimingAwareCombatPlanner:
             base_planner: Existing FastCombatSimulator to enhance (None = standalone)
             classifier: Turn timing classifier (default: create new)
             strategy: Balance strategy (default: create new)
+            data_loader: Card/monster data loader (default: module loader)
         """
         self.base_planner = base_planner
         self.classifier = classifier or TurnTimingClassifier()
         self.strategy = strategy or CombatBalanceStrategy()
-        self.combat_ending_detector = CombatEndingDetector(game_data_loader)
+        self.game_data_loader = data_loader or game_data_loader
+        self.combat_ending_detector = CombatEndingDetector(self.game_data_loader)
 
         # Cache for timing analysis (per turn)
         self._timing_cache = {}
@@ -814,9 +817,9 @@ class TimingAwareCombatPlanner:
         """Check card data for damage that applies to every monster."""
         try:
             card_name = canonical_card_name(card)
-            card_data = game_data_loader.get_card_data(card_name)
+            card_data = self.game_data_loader.get_card_data(card_name)
             if card_data:
-                return game_data_loader._is_card_aoe(card_data)
+                return self.game_data_loader._is_card_aoe(card_data)
         except Exception:
             pass
 
@@ -857,9 +860,9 @@ class TimingAwareCombatPlanner:
         base_damage = self._non_negative_int(getattr(card, 'damage', 0))
         if base_damage <= 0:
             try:
-                card_data = game_data_loader.get_card_data(card_name)
+                card_data = self.game_data_loader.get_card_data(card_name)
                 if card_data:
-                    parsed_damage = game_data_loader._parse_card_damage(card_data)
+                    parsed_damage = self.game_data_loader._parse_card_damage(card_data)
                     if parsed_damage is not None:
                         base_damage = parsed_damage + known_damage_upgrade_bonus(card, card_name)
             except Exception:
@@ -1031,9 +1034,9 @@ class TimingAwareCombatPlanner:
         if block <= 0:
             try:
                 card_name = canonical_card_name(card)
-                card_data = game_data_loader.get_card_data(card_name)
+                card_data = self.game_data_loader.get_card_data(card_name)
                 if card_data:
-                    parsed_block = game_data_loader._parse_card_block(card_data)
+                    parsed_block = self.game_data_loader._parse_card_block(card_data)
                     if parsed_block is not None:
                         block = parsed_block
                         if is_card_upgraded(card):
