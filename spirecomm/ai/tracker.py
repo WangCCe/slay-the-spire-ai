@@ -9,6 +9,8 @@ and decision quality.
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
+from spirecomm.spire.numeric import coerce_int
+
 
 class GameTracker:
     """
@@ -77,15 +79,7 @@ class GameTracker:
         self.fallback_count: int = 0
 
     def _safe_int(self, value: Any, default: int = 0) -> int:
-        if value is None:
-            return default
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            try:
-                return int(float(value))
-            except (TypeError, ValueError, OverflowError):
-                return default
+        return coerce_int(value, default)
 
     def start_combat(self, floor: int, act: int, room_type: str, start_turn: int = 0, current_hp: int = None):
         """
