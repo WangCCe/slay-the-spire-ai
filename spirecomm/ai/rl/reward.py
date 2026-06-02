@@ -494,7 +494,7 @@ class RewardCalculator:
 
         # Gold acquisition (small reward)
         if hasattr(current_game, 'gold') and hasattr(last_game, 'gold'):
-            gold_gained = current_game.gold - last_game.gold
+            gold_gained = self._safe_int(current_game.gold) - self._safe_int(last_game.gold)
             if gold_gained > 0:
                 gold_reward = self.calculate_acquisition_reward(
                     current_game,

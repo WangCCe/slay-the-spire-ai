@@ -19,14 +19,14 @@ def test_rl_card_priority_score_treats_counted_upgraded_cards_as_base_cards():
     assert upgraded_score == base_score
 
 
-def _game(floor):
+def _game(floor, gold=0):
     return SimpleNamespace(
         floor=floor,
         in_combat=False,
         screen_type=ScreenType.MAP,
         deck=[],
         relics=[],
-        gold=0,
+        gold=gold,
         player=SimpleNamespace(current_hp=70, max_hp=80),
     )
 
@@ -71,6 +71,22 @@ def test_rl_reward_power_amount_accepts_name_only_power():
     entity = SimpleNamespace(powers=[SimpleNamespace(name="Vulnerable", amount=2)])
 
     assert calc._get_power_amount(entity, "Vulnerable") == 2
+
+
+def test_rl_step_reward_accepts_numeric_string_gold_delta():
+    calc = RewardCalculator()
+    info = {}
+
+    reward = calc.calculate_step_reward(
+        _game(10, gold="42"),
+        _game(10, gold="32"),
+        debug_info=info,
+    )
+
+    expected = 10 * calc.GOLD_REWARD_SCALE
+    assert info["gold_reward"] == expected
+    assert info["acquisition_reward"] == expected
+    assert reward == expected
 
 
 def test_rl_step_reward_accepts_numeric_string_monster_hp_for_damage_delta():
