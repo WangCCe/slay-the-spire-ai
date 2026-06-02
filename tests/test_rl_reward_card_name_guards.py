@@ -77,3 +77,14 @@ def test_rl_step_reward_accepts_numeric_string_monster_hp_for_damage_delta():
     assert info["damage_dealt"] == 5
     assert info["total_monster_hp_delta"] == 5
     assert reward == 5 * calc.DAMAGE_REWARD_SCALE
+
+
+def test_rl_victory_detection_accepts_numeric_string_final_floor():
+    calc = RewardCalculator()
+    game = SimpleNamespace(
+        screen_type="GAME_OVER",
+        floor="55",
+        player=SimpleNamespace(current_hp=0),
+    )
+
+    assert calc._is_victory(game) is True

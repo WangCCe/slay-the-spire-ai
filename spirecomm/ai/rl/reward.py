@@ -530,7 +530,7 @@ class RewardCalculator:
             return True
 
         # Check if reached high floor (defeated final boss)
-        if hasattr(game, 'floor') and game.floor >= 55:
+        if self._safe_int(getattr(game, 'floor', 0), default=0) >= 55:
             return True
 
         # Check if player is still alive at game over
