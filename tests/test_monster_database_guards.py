@@ -204,6 +204,56 @@ def test_donu_deca_member_predictions_follow_fixed_alternating_patterns():
     ]
 
 
+def test_enhanced_database_predictions_reject_nonfinite_current_turn():
+    database = EnhancedMonsterDatabase()
+
+    baseline = database.predict_next_moves(
+        "Jaw Worm",
+        current_turn=1,
+        monster_hp_percent=1.0,
+    )
+    predictions = database.predict_next_moves(
+        "Jaw Worm",
+        current_turn=float("inf"),
+        monster_hp_percent=1.0,
+    )
+
+    assert predictions == baseline
+
+
+def test_enhanced_database_big_attack_pattern_rejects_nonfinite_damage():
+    database = EnhancedMonsterDatabase()
+    database._data["Bad Damage"] = {
+        "moves": [
+            {"name": "Bad Data", "intent": "ATTACK", "damage": float("inf")},
+            {
+                "name": "Real Hit",
+                "intent": "ATTACK",
+                "damage": {"normal": float("inf"), "base": 21},
+            },
+        ],
+        "pattern": {},
+    }
+
+    big_attacks = database.get_big_attack_pattern("Bad Damage")
+
+    assert [attack["damage"] for attack in big_attacks] == [21]
+
+
+def test_enhanced_database_calculate_future_threat_rejects_nonfinite_move_hits():
+    database = EnhancedMonsterDatabase()
+    database.get_threat_profile = lambda _monster_name: {"base_threat": 20}
+    database.get_special_mechanics = lambda _monster_name: {}
+    database.predict_next_moves = lambda *_args, **_kwargs: [
+        {
+            "move": {"name": "Bad Hits", "intent": "ATTACK", "damage": 10, "hits": float("inf")},
+            "confidence": 1.0,
+        }
+    ]
+
+    assert database.calculate_future_threat("Bad Hits", current_turn=1, monster_hp_percent=1.0) == 23
+
+
 def test_monster_predictions_use_ascension_opening_overrides():
     database = EnhancedMonsterDatabase()
 

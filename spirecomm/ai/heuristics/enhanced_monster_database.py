@@ -20,13 +20,11 @@ from pathlib import Path
 
 from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 from spirecomm.ai.monster_names import LIVE_MONSTER_ID_TO_WIKI_NAME, normalize_monster_id
+from spirecomm.spire.numeric import coerce_float, coerce_int
 
 
 def _non_negative_int(value) -> int:
-    try:
-        return max(0, int(value or 0))
-    except (TypeError, ValueError):
-        return 0
+    return max(0, coerce_int(value or 0, 0))
 
 
 class EnhancedMonsterDatabase:
@@ -1499,6 +1497,8 @@ class EnhancedMonsterDatabase:
             Future threat score (higher = more dangerous)
         """
         current_turn = _non_negative_int(current_turn) or 1
+        monster_hp_percent = max(0.0, coerce_float(monster_hp_percent, 1.0))
+        current_strength = coerce_int(current_strength, 0)
         threat_profile = self.get_threat_profile(monster_name)
         special_mechanics = self.get_special_mechanics(monster_name)
         predicted_moves = self.predict_next_moves(monster_name, current_turn, monster_hp_percent)
@@ -1506,31 +1506,34 @@ class EnhancedMonsterDatabase:
         if not threat_profile:
             return 20  # Default threat
 
-        threat = threat_profile.get("base_threat", 20)
+        threat = coerce_float(threat_profile.get("base_threat", 20), 20.0)
 
         # Add scaling threat
-        scaling_threat = threat_profile.get("scaling_threat", 0)
+        scaling_threat = coerce_float(threat_profile.get("scaling_threat", 0), 0.0)
         if scaling_threat > 0:
             # Estimate turns to kill based on HP
-            estimated_ttd = int(10 * monster_hp_percent)  # Rough estimate
+            estimated_ttd = coerce_int(10 * monster_hp_percent, 10)  # Rough estimate
             threat += scaling_threat * estimated_ttd
 
         # Add Strength scaling threat
         if special_mechanics:
             mech_type = special_mechanics.get("type", "")
             if mech_type == "strength_scaler" or "ritual" in mech_type.lower():
-                strength_scaling_threat = threat_profile.get("strength_scaling_threat", 4.0)
+                strength_scaling_threat = coerce_float(
+                    threat_profile.get("strength_scaling_threat", 4.0),
+                    4.0,
+                )
                 threat += strength_scaling_threat * current_strength
 
         # Add threat from predicted moves
         for prediction in predicted_moves:
             move = prediction["move"]
-            confidence = prediction["confidence"]
+            confidence = coerce_float(prediction.get("confidence", 0.0), 0.0)
 
             # Add damage-based threat
             damage = self._numeric_damage_value(move.get("damage", 0))
             if damage > 0:
-                hits = move.get("hits", 1)
+                hits = _non_negative_int(move.get("hits", 1)) or 1
                 total_damage = damage * hits
                 threat += total_damage * 0.3 * confidence
 
@@ -1540,7 +1543,7 @@ class EnhancedMonsterDatabase:
 
             # Add summon threat
             if "summons" in move:
-                summon_threat = threat_profile.get("summoning_threat", 15)
+                summon_threat = coerce_float(threat_profile.get("summoning_threat", 15), 15.0)
                 threat += summon_threat * confidence
 
         # Special mechanics threat
@@ -1549,7 +1552,7 @@ class EnhancedMonsterDatabase:
 
             # Summoner threat
             if mech_type == "summoner":
-                summon_threat = threat_profile.get("summoning_threat", 20)
+                summon_threat = coerce_float(threat_profile.get("summoning_threat", 20), 20.0)
                 threat += summon_threat
 
             # Phase change threat
@@ -1558,20 +1561,29 @@ class EnhancedMonsterDatabase:
                 if phase:
                     phase_threat_key = f"phase{phase}_threat"
                     if phase_threat_key in threat_profile:
-                        threat += threat_profile[phase_threat_key] - threat_profile.get("base_threat", 20)
+                        threat += (
+                            coerce_float(threat_profile[phase_threat_key], threat)
+                            - coerce_float(threat_profile.get("base_threat", 20), 20.0)
+                        )
 
             # Hibernation threat
             if mech_type == "hibernation":
                 # Check if monster is still sleeping (turn < hibernation_turns)
                 hibernation_turns = special_mechanics.get("hibernation_turns", 3)
                 if current_turn <= hibernation_turns:
-                    hibernation_threat = threat_profile.get("hibernation_threat", threat // 4)
+                    hibernation_threat = coerce_float(
+                        threat_profile.get("hibernation_threat", threat // 4),
+                        threat // 4,
+                    )
                     threat = hibernation_threat
                 else:
-                    awakened_threat = threat_profile.get("awakened_threat", threat * 1.5)
+                    awakened_threat = coerce_float(
+                        threat_profile.get("awakened_threat", threat * 1.5),
+                        threat * 1.5,
+                    )
                     threat = awakened_threat
 
-        return int(threat)
+        return coerce_int(threat, 20)
 
     def _get_current_phase(self, special_mechanics: Dict, monster_hp_percent: float) -> Optional[int]:
         """Helper to determine current phase based on HP."""
@@ -1753,19 +1765,23 @@ class EnhancedMonsterDatabase:
         return big_attacks
 
     def _numeric_damage_value(self, damage: Any) -> int:
-        if isinstance(damage, (int, float)):
-            return int(damage)
-        if isinstance(damage, dict):
-            for key in ("max", "normal", "base", "min"):
-                value = damage.get(key)
-                if isinstance(value, (int, float)):
-                    return int(value)
-            numeric_values = [
-                value for value in damage.values()
-                if isinstance(value, (int, float))
-            ]
-            return int(max(numeric_values, default=0))
-        return 0
+        value = self._optional_numeric_damage_value(damage)
+        return value if value is not None else 0
+
+    def _optional_numeric_damage_value(self, damage: Any) -> Optional[int]:
+        if not isinstance(damage, dict):
+            return coerce_int(damage, None)
+
+        numeric_values = []
+        for key in ("max", "normal", "base", "min"):
+            value = coerce_int(damage.get(key), None)
+            if value is not None:
+                return value
+        for value in damage.values():
+            coerced = coerce_int(value, None)
+            if coerced is not None:
+                numeric_values.append(coerced)
+        return max(numeric_values, default=None)
 
     def get_all_monsters(self) -> List[str]:
         """Get list of all monster names in the database."""
