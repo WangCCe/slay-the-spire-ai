@@ -479,7 +479,10 @@ class SimpleAgent:
         try:
             return int(value)
         except (TypeError, ValueError):
-            return default
+            try:
+                return int(float(value))
+            except (TypeError, ValueError, OverflowError):
+                return default
 
     @classmethod
     def _monster_current_hp(cls, monster, default=0):
@@ -498,20 +501,14 @@ class SimpleAgent:
 
     @staticmethod
     def _positive_move_hits(monster):
-        try:
-            return max(1, int(getattr(monster, "move_hits", 1) or 1))
-        except (TypeError, ValueError):
-            return 1
+        return max(1, SimpleAgent._safe_int(getattr(monster, "move_hits", 1), 1))
 
     @classmethod
     def _move_damage_contribution(cls, monster):
         damage = getattr(monster, "move_adjusted_damage", None)
         if damage is None:
             return 0
-        try:
-            return max(0, int(damage)) * cls._positive_move_hits(monster)
-        except (TypeError, ValueError):
-            return 0
+        return max(0, cls._safe_int(damage, 0)) * cls._positive_move_hits(monster)
 
     def get_incoming_damage(self):
         incoming_damage = 0
