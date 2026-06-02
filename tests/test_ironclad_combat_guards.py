@@ -3262,6 +3262,31 @@ def test_lagavulin_negated_attack_intent_does_not_wake_hibernation(monkeypatch):
     assert not state.monsters[0].get("is_awakened", False)
 
 
+def test_lagavulin_hibernation_accepts_string_state_turn(monkeypatch):
+    monkeypatch.setattr(
+        game_data_loader,
+        "get_enhanced_monster_data",
+        lambda _monster_name: {"special_mechanics": {"type": "hibernation"}},
+    )
+    monkeypatch.setattr(
+        game_data_loader,
+        "is_monster_hibernating",
+        lambda _monster_name, turn: turn == 1,
+    )
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_lagavulin(intent="NOT_ATTACK", move_adjusted_damage=0)],
+    )
+    context.turn = "1"
+    state = SimulationState(context)
+
+    FastCombatSimulator(SynergyCardEvaluator())._handle_hibernation(state, state.monsters[0])
+
+    assert state.monsters[0].get("is_hibernating", False)
+    assert not state.monsters[0].get("is_awakened", False)
+
+
 def test_lagavulin_hibernation_handler_uses_live_monster_id(monkeypatch):
     class CanonicalOnlyHibernationLoader:
         def __init__(self):

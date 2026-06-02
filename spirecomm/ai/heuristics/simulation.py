@@ -398,7 +398,7 @@ class SimulationState:
 
     def __init__(self, context: DecisionContext):
         """Initialize simulation state from decision context."""
-        self.turn = getattr(context, 'turn', 1)
+        self.turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
 
         # Player state
         self.player_hp = self._non_negative_int(context.game.current_hp)
