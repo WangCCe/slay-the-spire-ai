@@ -5636,10 +5636,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
     @staticmethod
     def _non_negative_int(value) -> int:
-        try:
-            return max(0, int(value or 0))
-        except (TypeError, ValueError):
-            return 0
+        return max(0, coerce_int(value or 0, 0))
 
     @staticmethod
     def _is_live_monster_object(monster) -> bool:
@@ -5651,10 +5648,7 @@ class HeuristicCombatPlanner(CombatPlanner):
 
     @staticmethod
     def _positive_live_move_hits(monster) -> int:
-        try:
-            return max(1, int(getattr(monster, 'move_hits', 1) or 1))
-        except (TypeError, ValueError):
-            return 1
+        return max(1, coerce_int(getattr(monster, 'move_hits', 1) or 1, 1))
 
     def _get_incoming_damage(self, context: DecisionContext) -> int:
         """Calculate total incoming damage from all monsters."""
@@ -5689,10 +5683,11 @@ class HeuristicCombatPlanner(CombatPlanner):
                             "known_no_damage_unknown"
                         )
                         continue
-                    incoming += 5 * context.act
+                    fallback_act = self._non_negative_int(getattr(context, 'act', 1)) or 1
+                    incoming += 5 * fallback_act
                     debug_entries.append(
                         f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "
-                        f"adjusted=None fallback=act*5({5 * context.act})"
+                        f"adjusted=None fallback=act*5({5 * fallback_act})"
                     )
                 else:
                     debug_entries.append(

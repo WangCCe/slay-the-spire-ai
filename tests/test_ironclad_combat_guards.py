@@ -144,6 +144,57 @@ def test_heuristic_plan_turn_accepts_string_act():
     assert planner.beam_width >= 1
 
 
+def test_heuristic_plan_turn_rejects_nonfinite_energy_and_act():
+    strike = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        cost=1,
+        is_playable=True,
+    )
+    context = _combat_context([strike], energy=float("inf"), monsters=[_louse(current_hp=50)])
+    context.act = float("inf")
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+    planner._simple_plan = lambda _context: []
+
+    assert planner.plan_turn(context) == []
+    assert planner.beam_width == simulation.BEAM_WIDTH_ACT1
+    assert planner.max_depth == 1
+
+
+def test_heuristic_incoming_damage_rejects_nonfinite_move_hits():
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+    monster = _louse(current_hp=50)
+    monster.move_hits = float("inf")
+    context = _combat_context([], energy=0, monsters=[monster])
+    context.game.monsters = [monster]
+
+    assert planner._get_incoming_damage(context) == 7
+
+
+def test_heuristic_unknown_intent_fallback_rejects_nonfinite_act():
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+    monster = Monster(
+        name="Unknown Beast",
+        monster_id="UnknownBeast",
+        max_hp=30,
+        current_hp=30,
+        block=0,
+        intent=Intent.UNKNOWN,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=None,
+        move_hits=1,
+    )
+    context = _combat_context([], energy=0, monsters=[monster])
+    context.game.monsters = [monster]
+    context.act = float("inf")
+
+    assert planner._get_incoming_damage(context) == 5
+
+
 def test_heuristic_get_confidence_accepts_string_energy_available():
     strike = Card(
         card_id="Strike_R",
