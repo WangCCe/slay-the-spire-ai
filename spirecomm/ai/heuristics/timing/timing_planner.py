@@ -40,6 +40,7 @@ from spirecomm.ai.heuristics.card_upgrades import (
     known_damage_upgrade_bonus,
     perfected_strike_bonus_per_strike,
 )
+from spirecomm.ai.heuristics.combat_ending import CombatEndingDetector
 from spirecomm.data.loader import game_data_loader
 from spirecomm.spire.numeric import coerce_int
 
@@ -80,6 +81,7 @@ class TimingAwareCombatPlanner:
         self.base_planner = base_planner
         self.classifier = classifier or TurnTimingClassifier()
         self.strategy = strategy or CombatBalanceStrategy()
+        self.combat_ending_detector = CombatEndingDetector()
 
         # Cache for timing analysis (per turn)
         self._timing_cache = {}
@@ -175,6 +177,10 @@ class TimingAwareCombatPlanner:
             if not playable_cards:
                 return False
 
+            complete_sequence = self._find_combat_ending_lethal_sequence(context)
+            if complete_sequence:
+                return True
+
             targeted_sequence = self._find_targeted_lethal_sequence(
                 context,
                 playable_cards,
@@ -254,6 +260,10 @@ class TimingAwareCombatPlanner:
 
             if not playable_cards or not monsters:
                 return []
+
+            complete_sequence = self._find_combat_ending_lethal_sequence(context)
+            if complete_sequence:
+                return complete_sequence
 
             targeted_sequence = self._find_targeted_lethal_sequence(
                 context,
@@ -344,6 +354,13 @@ class TimingAwareCombatPlanner:
 
         except Exception as e:
             logger.warning(f"[LETHAL_SEQUENCE] Failed: {e}")
+            return []
+
+    def _find_combat_ending_lethal_sequence(self, context) -> List:
+        try:
+            return self.combat_ending_detector.find_lethal_sequence(context)
+        except Exception as e:
+            logger.debug("[TIMING_PLANNER] CombatEndingDetector fallback failed: %s", e)
             return []
 
     def _fallback_plan(self, context, timing_ctx: TimingContext) -> List:

@@ -838,6 +838,38 @@ def test_timing_lethal_check_applies_single_target_vulnerable(monkeypatch):
     assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_lethal_sequence_uses_bash_vulnerable_before_followup(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    bash = _card("Bash", "Bash", cost=2)
+    bash.uuid = "bash"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    monster = SimpleNamespace(current_hp=17, block=0, monster_index=0)
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=3,
+        playable_cards=[bash, strike],
+        monsters_alive=[monster],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+    planner = TimingAwareCombatPlanner()
+
+    assert planner._can_kill_all_this_turn(context, timing_ctx)
+    actions = planner._generate_lethal_sequence(context)
+    assert [action.card.uuid for action in actions] == ["bash", "strike"]
+    assert [action.target_monster for action in actions] == [monster, monster]
+
+
 def test_timing_lethal_check_uses_dropkick_energy_refund(monkeypatch):
     loader = _loader_with_basic_ironclad_cards()
     loader._cards["dropkick"] = {
