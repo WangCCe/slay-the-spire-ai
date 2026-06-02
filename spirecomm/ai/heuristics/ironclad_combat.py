@@ -1375,6 +1375,11 @@ class IroncladCombatPlanner(CombatPlanner):
         context_player_hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
         context_turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
         context_strength = self._non_negative_int(getattr(context, 'strength', 0))
+        context_deck_size = (
+            self._non_negative_int(getattr(context, 'deck_size', 0))
+            if hasattr(context, 'deck_size')
+            else None
+        )
 
         # 5. Strategic bonus for card types
         for action in sequence:
@@ -1529,7 +1534,7 @@ class IroncladCombatPlanner(CombatPlanner):
                     # Battle Trance: critical card draw
                     score += 30  # High value for consistency
                     # More valuable with small decks
-                    if hasattr(context, 'deck_size') and context.deck_size <= 20:
+                    if context_deck_size is not None and context_deck_size <= 20:
                         score += 15
                 
                 elif card_id == 'Double Tap':
