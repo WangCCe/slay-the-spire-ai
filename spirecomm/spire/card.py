@@ -7,6 +7,18 @@ logger = logging.getLogger(__name__)
 _UPGRADE_SUFFIX_RE = re.compile(r"\+(\d*)$")
 
 
+def _safe_int(value, default=0):
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        try:
+            return int(float(value))
+        except (TypeError, ValueError, OverflowError):
+            return default
+
+
 class CardType(Enum):
     ATTACK = 1
     SKILL = 2
@@ -42,10 +54,7 @@ class Card:
 
     @classmethod
     def from_json(cls, json_object):
-        try:
-            upgrades = max(0, int(json_object.get("upgrades", 0) or 0))
-        except (TypeError, ValueError):
-            upgrades = 0
+        upgrades = max(0, _safe_int(json_object.get("upgrades", 0) or 0, 0))
         name = json_object.get("name", "")
         upgrade_suffix = _UPGRADE_SUFFIX_RE.search(name)
         if upgrades == 0 and upgrade_suffix:

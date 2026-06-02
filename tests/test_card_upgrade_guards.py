@@ -99,3 +99,20 @@ def test_card_from_json_normalizes_string_zero_before_suffix_inference():
     )
 
     assert card.upgrades == 1
+
+
+def test_card_from_json_accepts_decimal_string_upgrade_field():
+    card = Card.from_json(
+        {
+            "id": "Bash",
+            "name": "Bash",
+            "type": "ATTACK",
+            "rarity": "BASIC",
+            "upgrades": "1.0",
+            "has_target": True,
+            "cost": 2,
+            "uuid": "bash-1",
+        }
+    )
+
+    assert card.upgrades == 1
