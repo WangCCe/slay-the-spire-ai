@@ -48,6 +48,18 @@ def _compact_identifier(value):
     return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
 
 
+def _safe_int(value, default=0):
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        try:
+            return int(float(value))
+        except (TypeError, ValueError, OverflowError):
+            return default
+
+
 POTION_EFFECTS_BY_ID = {
     _compact_identifier(name): effects for name, effects in POTION_EFFECTS.items()
 }
@@ -93,5 +105,5 @@ class Potion:
             can_use=json_object.get("can_use", False),
             can_discard=json_object.get("can_discard", False),
             requires_target=json_object.get("requires_target", False),
-            price=json_object.get("price", 0)
+            price=_safe_int(json_object.get("price", 0), 0)
         )
