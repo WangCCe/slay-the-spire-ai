@@ -13348,6 +13348,64 @@ def test_ironclad_fallback_priority_values_bash_before_body_slam_with_current_bl
     assert IroncladCombatPlanner()._get_card_priority(bash, context) == 850
 
 
+def test_ironclad_fallback_priority_accepts_string_player_block_for_body_slam(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "body slam": {
+            "name": "Body Slam",
+            "description": "Deal damage equal to your current Block.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+
+    body_slam = _card("Body Slam", "Body Slam", cost=1)
+    context = _combat_context(
+        [body_slam],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.game.player.block = "20"
+
+    try:
+        priority = IroncladCombatPlanner()._get_card_priority(body_slam, context)
+    except TypeError:
+        priority = "type-error"
+
+    assert priority == 950
+
+
+def test_ironclad_fallback_priority_accepts_string_player_block_for_iron_wave():
+    iron_wave = _card(
+        "Iron Wave",
+        "Iron Wave",
+        card_type=CardType.ATTACK,
+        cost=1,
+    )
+    enum_context = _combat_context(
+        [iron_wave],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+    enum_context.incoming_damage = 12
+    enum_context.game.player.block = 5
+
+    string_context = _combat_context(
+        [iron_wave],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+    string_context.incoming_damage = 12
+    string_context.game.player.block = "5"
+
+    planner = IroncladCombatPlanner()
+    try:
+        string_priority = planner._get_card_priority(iron_wave, string_context)
+    except TypeError:
+        string_priority = "type-error"
+
+    assert string_priority == planner._get_card_priority(iron_wave, enum_context)
+
+
 def test_ironclad_fallback_priority_values_bash_before_perfected_strike_with_strike_deck(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

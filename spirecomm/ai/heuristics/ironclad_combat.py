@@ -1633,6 +1633,7 @@ class IroncladCombatPlanner(CombatPlanner):
         incoming_damage = self._non_negative_float(getattr(context, 'incoming_damage', 0))
         turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
         context_strength = self._non_negative_int(getattr(context, 'strength', 0))
+        context_player_block = player_block_value(context)
 
         # Check if fighting Gremlins or other weak monsters that require aggressive play
         aggressive_mode = False
@@ -1668,7 +1669,7 @@ class IroncladCombatPlanner(CombatPlanner):
         if card_id == 'Iron Wave':
             # Iron Wave is excellent hybrid card - value it highly
             # Always good, but even better when we need block
-            if incoming_damage > context.game.player.block:
+            if incoming_damage > context_player_block:
                 return 850  # High priority when we need block
             return 750  # Still good when we don't need block
 
@@ -1682,7 +1683,7 @@ class IroncladCombatPlanner(CombatPlanner):
 
             if card_id == 'Reaper' and len(context.monsters_alive) >= 2:
                 return 900 if context_strength >= 5 else base_attack_priority
-            if card_id == 'Body Slam' and context.game.player.block >= 20:
+            if card_id == 'Body Slam' and context_player_block >= 20:
                 return 950
             return base_attack_priority
 
@@ -1697,7 +1698,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 # Otherwise, lower defense priority
                 return 100
             # Normal mode - use defense when needed
-            return 700 if incoming_damage > context.game.player.block else 200
+            return 700 if incoming_damage > context_player_block else 200
 
         return 400
         
