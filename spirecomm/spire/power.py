@@ -1,6 +1,18 @@
 import spirecomm.spire.card
 
 
+def _safe_int(value, default=0):
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        try:
+            return int(float(value))
+        except (TypeError, ValueError, OverflowError):
+            return default
+
+
 class Power:
 
     def __init__(self, power_id, name, amount, damage=0, misc=0, just_applied=False, card=None):
@@ -16,9 +28,9 @@ class Power:
     def from_json(cls, json_object):
         power_id = json_object["id"]
         name = json_object["name"]
-        amount = json_object["amount"]
-        damage = json_object.get("damage", 0)
-        misc = json_object.get("misc", 0)
+        amount = _safe_int(json_object["amount"], 0)
+        damage = _safe_int(json_object.get("damage", 0), 0)
+        misc = _safe_int(json_object.get("misc", 0), 0)
         just_applied = json_object.get("just_applied", False)
         card = json_object.get("card", None)
         if card is not None:
