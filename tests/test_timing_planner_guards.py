@@ -1254,6 +1254,20 @@ def test_timing_damage_estimate_accepts_string_damage_field():
     assert damage == 8
 
 
+def test_timing_damage_estimate_accepts_decimal_string_damage_field():
+    card = SimpleNamespace(
+        card_id="Custom Attack",
+        name="Custom Attack",
+        type=CardType.ATTACK,
+        damage="6.0",
+    )
+    context = SimpleNamespace(turn=1, strength=2, energy_available=1)
+
+    damage = TimingAwareCombatPlanner()._estimate_card_damage(card, context)
+
+    assert damage == 8
+
+
 def test_timing_block_estimate_accepts_string_block_field():
     card = SimpleNamespace(
         card_id="Defend_R",
@@ -1265,6 +1279,14 @@ def test_timing_block_estimate_accepts_string_block_field():
     block = TimingAwareCombatPlanner()._estimate_card_block(card)
 
     assert block == 5
+
+
+def test_timing_monster_effective_hp_accepts_decimal_string_hp_and_block():
+    monster = SimpleNamespace(current_hp="20.0", block="3.0")
+
+    hp = TimingAwareCombatPlanner()._monster_effective_hp(monster)
+
+    assert hp == 23
 
 
 def test_timing_fallback_applies_frail_to_block_scores(monkeypatch):

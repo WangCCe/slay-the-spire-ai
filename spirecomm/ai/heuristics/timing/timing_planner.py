@@ -809,7 +809,10 @@ class TimingAwareCombatPlanner:
         try:
             return max(0, int(value or 0))
         except (TypeError, ValueError):
-            return 0
+            try:
+                return max(0, int(float(value or 0)))
+            except (TypeError, ValueError, OverflowError):
+                return 0
 
     def _estimate_card_damage(self, card, context, available_energy=None) -> int:
         """Estimate card damage for timing decisions from methods or parsed data."""
@@ -925,7 +928,10 @@ class TimingAwareCombatPlanner:
         try:
             return int(value)
         except (TypeError, ValueError):
-            return default
+            try:
+                return int(float(value))
+            except (TypeError, ValueError, OverflowError):
+                return default
 
     def _monster_effective_hp(self, monster) -> int:
         return max(
