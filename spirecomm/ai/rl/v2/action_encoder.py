@@ -27,6 +27,7 @@ from spirecomm.communication.action import (
 from spirecomm.spire.screen import ScreenType, RestOption, reward_type_name
 from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id
+from spirecomm.spire.numeric import coerce_int
 from spirecomm.ai.heuristics.card_types import card_is_playable, card_requires_target
 from spirecomm.ai.heuristics.potions import game_real_potions
 
@@ -134,15 +135,7 @@ class ActionEncoderV2:
 
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:
-        if value is None:
-            return default
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            try:
-                return int(float(value))
-            except (TypeError, ValueError, OverflowError):
-                return default
+        return coerce_int(value, default)
 
     def _is_unclaimable_combat_reward(self, game: Game, reward) -> bool:
         is_potion_reward = reward_type_name(reward) == "POTION"

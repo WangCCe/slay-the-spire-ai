@@ -80,6 +80,18 @@ def test_encode_play_card_action_accepts_numeric_string_card_index():
     assert action_index == space.encode_play_card(0, 0)
 
 
+def test_encode_play_card_action_rejects_nonfinite_card_index():
+    encoder = ActionEncoderV2()
+    game = _make_game(screen_type=None, in_combat=True, hand=[_make_card()])
+
+    action_index = encoder.encode_action(
+        PlayCardAction(card_index=float("inf"), target_index=None),
+        game,
+    )
+
+    assert action_index is None
+
+
 def test_encode_play_card_action_accepts_decimal_string_target_index():
     encoder = ActionEncoderV2()
     game = _make_game(screen_type=None, in_combat=True, hand=[_make_card()])
@@ -492,6 +504,26 @@ def test_shop_mask_accepts_decimal_string_gold_and_price():
     mask = encoder.get_action_mask(game)
 
     assert mask[space.SHOP_OFFSET]
+
+
+def test_shop_mask_rejects_nonfinite_gold_and_price():
+    encoder = ActionEncoderV2()
+    card = SimpleNamespace(name="Pommel Strike", price=float("inf"))
+    screen = SimpleNamespace(
+        cards=[card],
+        relics=[],
+        potions=[],
+        purge_available=False,
+    )
+    game = _make_game(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=screen,
+        gold=float("inf"),
+    )
+
+    mask = encoder.get_action_mask(game)
+
+    assert not mask[space.SHOP_OFFSET]
 
 
 def test_shop_mask_accepts_decimal_string_gold_and_purge_cost():
