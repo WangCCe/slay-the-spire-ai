@@ -699,10 +699,11 @@ class IroncladCombatPlanner(CombatPlanner):
         # 2. Hibernation handling - ignore Lagavulin while sleeping
         hibernating_monsters = []
         awake_monsters = []
+        context_turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
         for i, monster, monster_state in alive_monsters:
             if i < len(context.monsters_alive):
                 monster_name = canonical_live_monster_name(monster)
-                if game_data_loader.is_monster_hibernating(monster_name, context.turn):
+                if game_data_loader.is_monster_hibernating(monster_name, context_turn):
                     hibernating_monsters.append((i, monster, monster_state))
                 else:
                     awake_monsters.append((i, monster, monster_state))

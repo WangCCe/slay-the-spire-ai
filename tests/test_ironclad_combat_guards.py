@@ -5218,6 +5218,49 @@ def test_v2_targeting_treats_string_attack_as_attack(monkeypatch):
     assert target_idx == 1
 
 
+def test_v2_targeting_accepts_string_turn_for_hibernation_filter(monkeypatch):
+    class FakeMonsterLoader:
+        def is_monster_summoner(self, _monster_name):
+            return False
+
+        def get_monster_minions(self, _monster_name):
+            return []
+
+        def is_monster_hibernating(self, monster_name, turn):
+            return monster_name == "Lagavulin" and turn == 1
+
+        def does_monster_have_death_split(self, _monster_name):
+            return False
+
+        def does_monster_have_phase_change(self, _monster_name):
+            return False
+
+        def is_monster_duo_boss(self, _monster_name):
+            return False
+
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", FakeMonsterLoader())
+    strike = _card("Strike_R", "Strike", cost=1)
+    sleeping_lagavulin = _lagavulin(intent="NOT_ATTACK", move_adjusted_damage=0)
+    awake_louse = _louse(current_hp=40)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[sleeping_lagavulin, awake_louse],
+    )
+    context.turn = "1"
+    context.compute_threat_v2 = lambda monster: 100 if monster is sleeping_lagavulin else 1
+    state = SimulationState(context)
+
+    target, target_idx = IroncladCombatPlanner()._choose_target_for_card_v2(
+        strike,
+        context,
+        state,
+    )
+
+    assert target is awake_louse
+    assert target_idx == 1
+
+
 def test_v2_split_targeting_uses_parsed_damage_for_plain_cards(monkeypatch):
     class FakeMonsterLoader:
         def is_monster_summoner(self, _monster_name):
