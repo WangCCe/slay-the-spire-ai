@@ -4300,6 +4300,26 @@ def test_a20_elite_aggression_counts_killed_sentry_progress():
     assert score == 0.0
 
 
+def test_a20_elite_aggression_rejects_nonfinite_monster_hp_progress():
+    unknown_hp_sentry = _sentry(current_hp=39)
+    unknown_hp_sentry.current_hp = float("inf")
+    context = _combat_context([], energy=0, monsters=[unknown_hp_sentry])
+    context.turn = 3
+    initial_state = SimpleNamespace(total_damage_dealt=0)
+    final_state = SimpleNamespace(total_damage_dealt=0)
+    planner = IroncladCombatPlanner()
+
+    score = planner._apply_a20_early_aggression(
+        [],
+        initial_state,
+        final_state,
+        context,
+        0.0,
+    )
+
+    assert score == -150.0
+
+
 def test_slime_boss_strategy_treats_counted_upgraded_cleave_as_aoe():
     cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
     cleave.damage = 8

@@ -158,7 +158,11 @@ class IroncladCombatPlanner(CombatPlanner):
             current_hp = getattr(monster, 'current_hp', None)
             if max_hp is None or current_hp is None:
                 continue
-            damage_so_far += max(0, int(max_hp) - max(0, int(current_hp)))
+            max_hp = coerce_int(max_hp, 0)
+            if max_hp <= 0:
+                continue
+            current_hp = coerce_int(current_hp, max_hp)
+            damage_so_far += max(0, max_hp - max(0, current_hp))
         return damage_so_far
 
     @staticmethod
