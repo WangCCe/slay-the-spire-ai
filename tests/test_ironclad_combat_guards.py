@@ -4024,6 +4024,36 @@ def test_a20_elite_aggression_uses_context_ascension_level():
     assert score == -50.0
 
 
+def test_a20_elite_aggression_accepts_string_turn_for_early_penalty():
+    planner = IroncladCombatPlanner()
+
+    int_context = _combat_context([], energy=0, monsters=[_gremlin_nob()])
+    int_context.turn = 1
+    int_initial = SimulationState(int_context)
+    int_final = int_initial.clone()
+    int_score = planner._apply_a20_early_aggression(
+        [],
+        int_initial,
+        int_final,
+        int_context,
+        0.0,
+    )
+
+    string_context = _combat_context([], energy=0, monsters=[_gremlin_nob()])
+    string_context.turn = "1"
+    string_initial = SimulationState(string_context)
+    string_final = string_initial.clone()
+    string_score = planner._apply_a20_early_aggression(
+        [],
+        string_initial,
+        string_final,
+        string_context,
+        0.0,
+    )
+
+    assert string_score == int_score == -50.0
+
+
 def test_a20_elite_aggression_counts_killed_sentry_progress():
     killed_sentry = _sentry(current_hp=39)
     killed_sentry.current_hp = 0

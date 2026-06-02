@@ -2242,7 +2242,7 @@ class IroncladCombatPlanner(CombatPlanner):
         if not hasattr(context, 'turn'):
             return score
 
-        turn = context.turn
+        turn = self._non_negative_int(context.turn)
         damage_dealt = final_state.total_damage_dealt - initial_state.total_damage_dealt
 
         # Turn 1: At least some damage (8+)
