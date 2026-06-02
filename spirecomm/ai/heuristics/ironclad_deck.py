@@ -131,6 +131,13 @@ class IroncladDeckStrategy:
         except (TypeError, ValueError):
             return 0.0
 
+    @staticmethod
+    def _non_negative_int(value) -> int:
+        try:
+            return max(0, int(value or 0))
+        except (TypeError, ValueError):
+            return 0
+
     def should_pick_card(self, card: Card, context: DecisionContext) -> Tuple[bool, str]:
         """
         Decide if we should pick a card.
@@ -142,6 +149,7 @@ class IroncladDeckStrategy:
         deck_size = len(context.game.deck) if hasattr(context.game, 'deck') else 10
         archetype = self.archetype_manager.detect_archetype(context)
         card_id = self._card_name(card)
+        act = self._non_negative_int(getattr(context, 'act', 0))
 
         # Rule 1: Deck size limit
         if deck_size >= 20:
@@ -159,7 +167,7 @@ class IroncladDeckStrategy:
             if card_id in self.HP_COST_CARDS:
                 return (False, f"Too risky at {player_hp_pct*100:.0f}% HP")
 
-        if context.act == 1 and card_id in {'Brutality', 'Combust'}:
+        if act == 1 and card_id in {'Brutality', 'Combust'}:
             current_count = sum(
                 1 for c in context.game.deck if self._card_name(c) == card_id
             )
@@ -179,12 +187,12 @@ class IroncladDeckStrategy:
                 return (False, reason)
 
         # Rule 5: Act 1 frontload first, engines only with support
-        if context.act == 1:
+        if act == 1:
             supported, reason = self._act_1_card_supported(card, context)
             if not supported:
                 return (False, reason)
 
-        if context.act == 1 and deck_size <= 13:
+        if act == 1 and deck_size <= 13:
             # Prioritize damage in Act 1
             if card_id in self.ACT_1_DAMAGE_PRIORITY:
                 return (True, f"Act 1 damage priority (deck size: {deck_size})")
@@ -285,7 +293,8 @@ class IroncladDeckStrategy:
                 base_priority = min(10, base_priority + 1)
 
         # Adjust based on game act
-        if context.act == 1:
+        act = self._non_negative_int(getattr(context, 'act', 0))
+        if act == 1:
             # Prioritize consistency in Act 1
             if card_id in ['Bash', 'Iron Wave', 'Pommel Strike']:
                 base_priority = min(10, base_priority + 1)

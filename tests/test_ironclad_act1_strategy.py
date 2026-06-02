@@ -55,6 +55,42 @@ def test_act1_deck_strategy_rejects_unsupported_payoffs():
     assert strategy.should_pick_card(_card("Pommel Strike"), context)[0] is True
 
 
+def test_act1_deck_strategy_accepts_string_act_for_engine_support_filter():
+    strategy = IroncladDeckStrategy()
+    enum_context = _context(deck=[_card("Strike_R"), _card("Defend_R"), _card("Bash")])
+    string_context = _context(deck=[_card("Strike_R"), _card("Defend_R"), _card("Bash")])
+    string_context.act = "1"
+
+    assert (
+        strategy.should_pick_card(_card("Feel No Pain"), string_context)
+        == strategy.should_pick_card(_card("Feel No Pain"), enum_context)
+    )
+
+
+def test_act1_deck_strategy_accepts_string_act_for_duplicate_self_damage_power():
+    strategy = IroncladDeckStrategy()
+    enum_context = _context(deck=[_card("Strike_R"), _card("Defend_R"), _card("Brutality")])
+    string_context = _context(deck=[_card("Strike_R"), _card("Defend_R"), _card("Brutality")])
+    string_context.act = "1"
+
+    assert (
+        strategy.should_pick_card(_card("Brutality"), string_context)
+        == strategy.should_pick_card(_card("Brutality"), enum_context)
+    )
+
+
+def test_act1_deck_strategy_accepts_string_act_for_upgrade_priority():
+    strategy = IroncladDeckStrategy()
+    enum_context = _context(deck=[_card("Strike_R"), _card("Defend_R"), _card("Bash")])
+    string_context = _context(deck=[_card("Strike_R"), _card("Defend_R"), _card("Bash")])
+    string_context.act = "1"
+
+    assert strategy.get_upgrade_priority(_card("Bash"), string_context) == strategy.get_upgrade_priority(
+        _card("Bash"),
+        enum_context,
+    )
+
+
 def test_aggressive_elite_route_is_gated_until_deck_is_ready():
     router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="aggressive")
     elite_node = SimpleNamespace(symbol="E")
