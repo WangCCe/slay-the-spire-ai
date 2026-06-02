@@ -46,6 +46,24 @@ def test_monster_database_threat_scales_live_gremlin_nob_id():
     assert evaluate_monster_threat(monster, context) == 11
 
 
+def test_monster_database_threat_accepts_string_move_adjusted_damage():
+    enum_monster = SimpleNamespace(
+        name="Gremlin Nob",
+        monster_id="GremlinNob",
+        intent=Intent.ATTACK,
+        move_adjusted_damage=14,
+    )
+    string_monster = SimpleNamespace(
+        name="Gremlin Nob",
+        monster_id="GremlinNob",
+        intent=Intent.ATTACK,
+        move_adjusted_damage="14",
+    )
+    context = SimpleNamespace(player_hp_pct=1.0, turn=4)
+
+    assert evaluate_monster_threat(string_monster, context) == evaluate_monster_threat(enum_monster, context)
+
+
 def test_monster_database_info_accepts_normalized_live_ids():
     assert get_monster_info("FungiBeast")["recommended_strategy"] == "apply_weak"
     assert get_monster_info("Slime_Boss")["recommended_strategy"] == "kill_all_small"

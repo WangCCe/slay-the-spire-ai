@@ -284,9 +284,10 @@ def evaluate_monster_threat(monster, context):
     # Add threat based on current attack power
     counts_attack_power = monster_intends_attack(monster)
     if counts_attack_power and hasattr(monster, 'move_adjusted_damage'):
-        if monster.move_adjusted_damage > 15:
+        move_adjusted_damage = _non_negative_float(getattr(monster, 'move_adjusted_damage', 0))
+        if move_adjusted_damage > 15:
             threat += 2
-        elif monster.move_adjusted_damage > 10:
+        elif move_adjusted_damage > 10:
             threat += 1
     
     # Add threat based on special abilities
