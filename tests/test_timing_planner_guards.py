@@ -650,6 +650,34 @@ def test_timing_lethal_check_applies_heavy_blade_strength_multiplier(monkeypatch
     assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_lethal_check_accepts_numeric_string_strength(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    heavy_blade = _card("Heavy Blade", "Heavy Blade+", cost=2)
+    heavy_blade.upgrades = 1
+    heavy_blade.uuid = "heavy-blade"
+    context = SimpleNamespace(
+        turn=1,
+        strength="3",
+        energy_available=3,
+        playable_cards=[strike, heavy_blade],
+        monsters_alive=[SimpleNamespace(current_hp=37, block=0)],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
+
+
 def test_timing_lethal_check_counts_perfected_strike_deck_scaling(monkeypatch):
     monkeypatch.setattr(
         timing_planner,

@@ -819,14 +819,14 @@ class TimingAwareCombatPlanner:
 
         if hasattr(card, 'damage_for'):
             try:
-                strength = getattr(context, 'strength', 0)
+                strength = self._non_negative_int(getattr(context, 'strength', 0))
                 turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
                 return max(0, int(card.damage_for(turn, strength)))
             except Exception:
                 pass
 
         card_name = canonical_card_name(card)
-        strength = getattr(context, 'strength', 0)
+        strength = self._non_negative_int(getattr(context, 'strength', 0))
         energy_for_x = (
             getattr(context, 'energy_available', 0)
             if available_energy is None
