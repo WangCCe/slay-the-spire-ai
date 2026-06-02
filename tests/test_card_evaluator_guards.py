@@ -316,6 +316,25 @@ def test_context_modifier_accepts_string_energy_available():
     )
 
 
+def test_context_modifier_rejects_nonfinite_energy_available():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    strike = Card(
+        "Strike_R",
+        "Strike",
+        CardType.ATTACK,
+        CardRarity.BASIC,
+        cost=1,
+        cost_for_turn=1,
+    )
+    context = SimpleNamespace(
+        energy_available=float("inf"),
+        player_hp_pct=0.5,
+        monsters_alive=[],
+    )
+
+    assert evaluator._calculate_context_modifier(strike, context, None) == 1.0
+
+
 def test_context_modifier_handles_missing_card_cost_as_zero():
     evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
     context = SimpleNamespace(
@@ -397,6 +416,29 @@ def test_context_modifier_accepts_numeric_string_low_monster_hp():
     assert evaluator._calculate_context_modifier(strike, context, None) == 1.3
 
 
+def test_context_modifier_ignores_nonfinite_low_monster_hp():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    context = SimpleNamespace(
+        energy_available=1,
+        player_hp_pct=0.5,
+        incoming_damage=0,
+        game=SimpleNamespace(current_hp=80),
+        monsters_alive=[
+            SimpleNamespace(current_hp=float("inf")),
+        ],
+    )
+    strike = Card(
+        "Strike_R",
+        "Strike",
+        CardType.ATTACK,
+        CardRarity.BASIC,
+        cost=1,
+        cost_for_turn=1,
+    )
+
+    assert evaluator._calculate_context_modifier(strike, context, None) == 1.0
+
+
 def test_context_modifier_accepts_numeric_string_player_hp_for_threat_ratio():
     evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
     context = SimpleNamespace(
@@ -437,3 +479,41 @@ def test_context_modifier_accepts_numeric_string_incoming_damage_for_threat_rati
     )
 
     assert evaluator._calculate_context_modifier(defend, context, None) == 1.5
+
+
+def test_context_modifier_rejects_nonfinite_incoming_damage_for_threat_ratio():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    context = SimpleNamespace(
+        energy_available=1,
+        player_hp_pct=0.5,
+        incoming_damage=float("inf"),
+        game=SimpleNamespace(current_hp=80),
+        monsters_alive=[SimpleNamespace(current_hp=40)],
+    )
+    defend = Card(
+        "Defend_R",
+        "Defend",
+        CardType.SKILL,
+        CardRarity.BASIC,
+        cost=1,
+        cost_for_turn=1,
+    )
+
+    assert evaluator._calculate_context_modifier(defend, context, None) == 0.6
+
+
+def test_combo_detection_rejects_nonfinite_player_block():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    body_slam = Card(
+        "Body Slam",
+        "Body Slam",
+        CardType.ATTACK,
+        CardRarity.UNCOMMON,
+        cost=1,
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(deck=[], player=SimpleNamespace(block=float("inf"))),
+        deck_archetype="strength",
+    )
+
+    assert evaluator._detect_combo_potential(body_slam, context, None) == 0

@@ -18,6 +18,7 @@ from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.ai.heuristics.card_names import canonical_card_name, card_data_key
 from spirecomm.ai.heuristics.card_types import card_type_name
 from spirecomm.ai.heuristics.card_upgrades import card_upgrade_count
+from spirecomm.spire.numeric import coerce_float, coerce_int
 
 
 class SynergyCardEvaluator(CardEvaluator):
@@ -65,26 +66,17 @@ class SynergyCardEvaluator(CardEvaluator):
         self.load_legacy_priorities(player_class)
 
     @staticmethod
-    def _non_negative_int(value) -> int:
-        try:
-            return max(0, int(value or 0))
-        except (TypeError, ValueError):
-            return 0
+    def _non_negative_int(value, default: int = 0) -> int:
+        return max(0, coerce_int(value, default))
 
     @staticmethod
     def _positive_float(value, default: float = 1.0) -> float:
-        try:
-            numeric = float(value)
-        except (TypeError, ValueError):
-            return default
+        numeric = coerce_float(value, default)
         return numeric if numeric > 0 else default
 
     @staticmethod
     def _non_negative_float(value) -> float:
-        try:
-            return max(0.0, float(value or 0))
-        except (TypeError, ValueError):
-            return 0.0
+        return max(0.0, coerce_float(value or 0, 0.0))
 
     def load_legacy_priorities(self, player_class):
         """Load baseline scores from legacy priority lists."""
@@ -257,7 +249,10 @@ class SynergyCardEvaluator(CardEvaluator):
                 low_hp_monsters = [
                     m
                     for m in context.monsters_alive
-                    if self._non_negative_int(getattr(m, 'current_hp', 0)) < 20
+                    if self._non_negative_int(
+                        getattr(m, 'current_hp', 0),
+                        default=999,
+                    ) < 20
                 ]
                 if len(low_hp_monsters) > 0:
                     modifier *= 1.3
