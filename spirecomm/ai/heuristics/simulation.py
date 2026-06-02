@@ -4004,7 +4004,7 @@ class FastCombatSimulator:
         self._prediction_context = context
         self._prediction_monsters = state.monsters
         try:
-            current_turn = getattr(context, 'turn', 1)
+            current_turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
             player_artifact = max(0, getattr(state, 'player_artifact', 0))
             for step in range(look_ahead):
                 for monster in state.monsters:

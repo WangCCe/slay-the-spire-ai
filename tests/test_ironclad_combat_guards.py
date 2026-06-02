@@ -1802,6 +1802,43 @@ def test_enemy_status_lookahead_counts_sentry_bolt_dazed_cards():
     assert status["total"] == 4
 
 
+def test_enemy_status_lookahead_accepts_string_context_turn(monkeypatch):
+    class FakeLoader:
+        def predict_monster_moves(self, _monster_name, turn, _hp_percent, **_kwargs):
+            return [
+                {
+                    "turn": int(turn) + 1,
+                    "move": {
+                        "intent": "ATTACK_DEBUFF",
+                        "dazed_count": 2,
+                    },
+                }
+            ]
+
+    monkeypatch.setattr(simulation, "game_data_loader", FakeLoader())
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._current_monster_move = lambda *_args, **_kwargs: {"intent": "BUFF"}
+
+    int_context = _combat_context([], energy=0, monsters=[_sentry(move_id=1)])
+    int_context.turn = 1
+    int_status = simulator.simulate_enemy_status_lookahead(
+        SimulationState(int_context),
+        int_context,
+        look_ahead=2,
+    )
+
+    string_context = _combat_context([], energy=0, monsters=[_sentry(move_id=1)])
+    string_context.turn = "1"
+    string_status = simulator.simulate_enemy_status_lookahead(
+        SimulationState(string_context),
+        string_context,
+        look_ahead=2,
+    )
+
+    assert int_status["dazed"] == 2
+    assert string_status == int_status
+
+
 def test_enemy_status_card_extraction_uses_count_and_added_aliases_without_effect_text():
     counts = FastCombatSimulator(SynergyCardEvaluator())._extract_move_status_cards(
         {
