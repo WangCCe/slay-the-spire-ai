@@ -953,10 +953,7 @@ class FastCombatSimulator:
 
     @staticmethod
     def _non_negative_int(value) -> int:
-        try:
-            return max(0, int(value or 0))
-        except (TypeError, ValueError):
-            return 0
+        return max(0, coerce_int(value or 0, 0))
 
     def simulate_card_play(self, state: SimulationState, card: Card,
                           target: Optional[Monster] = None,
@@ -1073,7 +1070,8 @@ class FastCombatSimulator:
             if not self._is_live_monster_state(monster):
                 continue
 
-            strength_gain = int(monster.get('skill_strength_gain', 0) or 0)
+            strength_gain = self._non_negative_int(monster.get('skill_strength_gain', 0))
+            monster['skill_strength_gain'] = strength_gain
             if strength_gain <= 0:
                 continue
 
@@ -1095,7 +1093,8 @@ class FastCombatSimulator:
             if not self._is_live_monster_state(monster):
                 continue
 
-            strength_gain = int(monster.get('power_strength_gain', 0) or 0)
+            strength_gain = self._non_negative_int(monster.get('power_strength_gain', 0))
+            monster['power_strength_gain'] = strength_gain
             if strength_gain <= 0:
                 continue
 
@@ -1118,17 +1117,19 @@ class FastCombatSimulator:
                 continue
             if not monster.get('slow_active', False):
                 continue
-            monster['slow_stacks'] = int(monster.get('slow_stacks', 0) or 0) + 1
+            monster['slow_stacks'] = self._non_negative_int(monster.get('slow_stacks', 0)) + 1
 
     def _apply_hex_card_pollution(self, state: SimulationState, card_type):
         """Chosen's Hex adds Dazed to the draw pile whenever a non-Attack is played."""
-        if getattr(state, 'player_hex', 0) <= 0:
+        player_hex = self._non_negative_int(getattr(state, 'player_hex', 0))
+        state.player_hex = player_hex
+        if player_hex <= 0:
             return
         normalized_card_type = card_type_name(card_type)
         if not normalized_card_type or normalized_card_type == 'ATTACK':
             return
 
-        dazed_added = max(1, int(state.player_hex))
+        dazed_added = max(1, player_hex)
         state.dazed_cards_added += dazed_added
         state.status_cards_added += dazed_added
         state.hex_non_attack_triggers += 1
@@ -2809,26 +2810,32 @@ class FastCombatSimulator:
 
     def _apply_reactive_monster_block(self, monster: dict):
         """Apply non-lethal attack-damage reactions such as Curl Up and Malleable."""
-        curl_up_block = int(monster.get('curl_up_block', 0) or 0)
+        curl_up_block = self._non_negative_int(monster.get('curl_up_block', 0))
+        monster['curl_up_block'] = curl_up_block
         if curl_up_block > 0 and not monster.get('curl_up_used', False):
             monster['block'] += curl_up_block
             monster['curl_up_used'] = True
             monster['curl_up_block'] = 0
 
-        malleable_block = int(monster.get('malleable_block', 0) or 0)
+        malleable_block = self._non_negative_int(monster.get('malleable_block', 0))
+        monster['malleable_block'] = malleable_block
         if malleable_block > 0:
             monster['block'] += malleable_block
             monster['malleable_block'] = malleable_block + 1
 
     def _apply_flight_damage_reduction(self, monster: dict, damage: int) -> int:
         """Apply Byrd Flight's attack damage reduction."""
-        if int(monster.get('flight_stacks', 0) or 0) <= 0:
+        flight_stacks = self._non_negative_int(monster.get('flight_stacks', 0))
+        monster['flight_stacks'] = flight_stacks
+        if flight_stacks <= 0:
             return damage
         return max(0, int(damage * 0.5))
 
     def _apply_monster_intangible_damage_cap(self, monster: dict, damage: int) -> int:
         """Apply monster Intangible's per-hit damage cap."""
-        if int(monster.get('intangible', 0) or 0) <= 0:
+        intangible = self._non_negative_int(monster.get('intangible', 0))
+        monster['intangible'] = intangible
+        if intangible <= 0:
             return damage
         if damage <= 0:
             return 0
@@ -2836,7 +2843,8 @@ class FastCombatSimulator:
 
     def _apply_flight_hit(self, monster: dict):
         """Count down Byrd Flight and stun the monster when it is knocked down."""
-        flight_stacks = int(monster.get('flight_stacks', 0) or 0)
+        flight_stacks = self._non_negative_int(monster.get('flight_stacks', 0))
+        monster['flight_stacks'] = flight_stacks
         if flight_stacks <= 0:
             return
 
@@ -2852,7 +2860,8 @@ class FastCombatSimulator:
 
     def _apply_reactive_monster_strength(self, monster: dict):
         """Apply non-lethal attack-damage Strength reactions such as Angry."""
-        strength_gain = int(monster.get('hit_strength_gain', 0) or 0)
+        strength_gain = self._non_negative_int(monster.get('hit_strength_gain', 0))
+        monster['hit_strength_gain'] = strength_gain
         if strength_gain <= 0:
             return
 
@@ -2868,7 +2877,8 @@ class FastCombatSimulator:
         if not self._is_guardian(monster):
             return
 
-        mode_shift = monster.get('mode_shift', 0)
+        mode_shift = self._non_negative_int(monster.get('mode_shift', 0))
+        monster['mode_shift'] = mode_shift
         if mode_shift <= 0:
             return
 

@@ -1500,6 +1500,32 @@ def test_hex_adds_dazed_pollution_for_non_attack_cards(monkeypatch):
     assert attack_result.status_cards_added == 0
 
 
+def test_simulator_rejects_nonfinite_hex_counter():
+    defend = _card(
+        "Defend",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    context = _combat_context([defend], energy=1, monsters=[_louse(current_hp=100)])
+    state = SimulationState(context)
+    state.player_hex = float("inf")
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        defend,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.dazed_cards_added == 0
+    assert result.status_cards_added == 0
+    assert result.hex_non_attack_triggers == 0
+    assert result.player_hex == 0
+
+
 def test_hex_status_pollution_is_scored_as_a_cost(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -1732,6 +1758,36 @@ def test_malleable_gains_increasing_block_after_each_nonlethal_attack_damage():
     assert state.monsters[0]["malleable_block"] == 5
 
 
+def test_simulator_rejects_nonfinite_malleable_block_counter():
+    snake_plant = Monster(
+        name="Snake Plant",
+        monster_id="SnakePlant",
+        max_hp=50,
+        current_hp=50,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=21,
+        move_hits=3,
+    )
+    snake_plant.powers = [SimpleNamespace(power_name="Malleable", amount=3)]
+    context = _combat_context([], energy=0, monsters=[snake_plant])
+    state = SimulationState(context)
+    state.monsters[0]["malleable_block"] = float("inf")
+
+    FastCombatSimulator(SynergyCardEvaluator())._deal_damage_to_monster(
+        state,
+        state.monsters[0],
+        6,
+    )
+
+    assert state.monsters[0]["hp"] == 44
+    assert state.monsters[0]["block"] == 0
+    assert state.monsters[0]["malleable_block"] == 0
+
+
 def test_byrd_flight_halves_attack_damage_and_counts_down():
     context = _combat_context([], energy=0, monsters=[_byrd(flight=3)])
     state = SimulationState(context)
@@ -1757,6 +1813,21 @@ def test_byrd_flight_knockdown_stuns_current_attack():
     assert simulator._estimate_incoming_damage(state.monsters) == 0
 
 
+def test_simulator_rejects_nonfinite_flight_counter():
+    context = _combat_context([], energy=0, monsters=[_byrd(flight=3)])
+    state = SimulationState(context)
+    state.monsters[0]["flight_stacks"] = float("inf")
+
+    FastCombatSimulator(SynergyCardEvaluator())._deal_damage_to_monster(
+        state,
+        state.monsters[0],
+        8,
+    )
+
+    assert state.monsters[0]["hp"] == 22
+    assert state.monsters[0]["flight_stacks"] == 0
+
+
 def test_monster_intangible_caps_attack_damage_to_one():
     context = _combat_context([], energy=0, monsters=[_nemesis(intangible=1)])
     state = SimulationState(context)
@@ -1766,6 +1837,22 @@ def test_monster_intangible_caps_attack_damage_to_one():
 
     assert state.monsters[0]["hp"] == 184
     assert state.total_damage_dealt == 1
+
+
+def test_simulator_rejects_nonfinite_intangible_counter():
+    context = _combat_context([], energy=0, monsters=[_nemesis(intangible=1)])
+    state = SimulationState(context)
+    state.monsters[0]["intangible"] = float("inf")
+
+    FastCombatSimulator(SynergyCardEvaluator())._deal_damage_to_monster(
+        state,
+        state.monsters[0],
+        40,
+    )
+
+    assert state.monsters[0]["hp"] == 145
+    assert state.monsters[0]["intangible"] == 0
+    assert state.total_damage_dealt == 40
 
 
 def test_monster_intangible_caps_non_attack_damage_to_one():
@@ -1809,6 +1896,24 @@ def test_giant_head_slow_increments_on_each_card_and_boosts_attack_damage():
     assert result.monsters[0]["slow_stacks"] == 2
     assert result.monsters[0]["hp"] == 476
     assert result.total_damage_dealt == 24
+
+
+def test_simulator_rejects_nonfinite_slow_counter():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_giant_head()])
+    state = SimulationState(context)
+    state.monsters[0]["slow_stacks"] = float("inf")
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["slow_stacks"] == 1
+    assert result.monsters[0]["hp"] == 494
 
 
 def test_state_key_distinguishes_giant_head_slow_stacks():
@@ -2349,6 +2454,22 @@ def test_simulation_state_rejects_nonfinite_skill_reactive_strength_amount():
     state = SimulationState(context)
 
     assert state.monsters[0]["skill_strength_gain"] == 0
+
+
+def test_simulator_rejects_nonfinite_skill_reactive_strength_counter():
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
+    context = _combat_context([defend], energy=1, monsters=[_gremlin_nob()])
+    state = SimulationState(context)
+    state.monsters[0]["skill_strength_gain"] = float("inf")
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        defend,
+        context=context,
+    )
+
+    assert result.monsters[0]["skill_strength_gain"] == 0
+    assert result.monsters[0]["strength"] == 0
 
 
 def test_state_key_distinguishes_monster_strength_changes():
@@ -9680,6 +9801,30 @@ def test_simulation_state_rejects_nonfinite_power_reactive_strength_amount():
     assert state.monsters[0]["power_strength_gain"] == 0
 
 
+def test_simulator_rejects_nonfinite_power_reactive_strength_counter():
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    context = _combat_context([demon_form], energy=3, monsters=[_awakened_one()])
+    state = SimulationState(context)
+    state.monsters[0]["power_strength_gain"] = float("inf")
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        demon_form,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.monsters[0]["power_strength_gain"] == 0
+    assert result.monsters[0]["strength"] == 0
+
+
 def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -12249,6 +12394,23 @@ def test_guardian_mode_shift_adds_block_and_sharp_hide_after_threshold():
     assert result.monsters[0]["block"] == 20
     assert result.monsters[0]["thorns"] == 3
     assert result.player_hp == 80
+
+
+def test_simulator_rejects_nonfinite_guardian_mode_shift_counter():
+    context = _combat_context([], energy=0, monsters=[_guardian(mode_shift=5)])
+    state = SimulationState(context)
+    state.monsters[0]["mode_shift"] = float("inf")
+
+    FastCombatSimulator(SynergyCardEvaluator())._deal_damage_to_monster(
+        state,
+        state.monsters[0],
+        6,
+    )
+
+    assert state.monsters[0]["hp"] == 234
+    assert state.monsters[0]["mode_shift"] == 0
+    assert state.monsters[0]["block"] == 0
+    assert state.monsters[0]["thorns"] == 0
 
 
 def test_guardian_sharp_hide_applies_to_attacks_after_mode_shift_trigger():
