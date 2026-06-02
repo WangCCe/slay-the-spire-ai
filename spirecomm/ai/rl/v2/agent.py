@@ -13,6 +13,7 @@ import torch
 from spirecomm.communication.action import EndTurnAction, StartGameAction, StateAction
 from spirecomm.spire.character import PlayerClass
 from spirecomm.spire.game import Game
+from spirecomm.spire.numeric import coerce_int
 
 from spirecomm.ai.heuristics.card_types import card_type_name
 from spirecomm.ai.rl.reward import RewardCalculator
@@ -415,15 +416,7 @@ class RLAgentV2:
 
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:
-        if value is None:
-            return default
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            try:
-                return int(float(value))
-            except (TypeError, ValueError, OverflowError):
-                return default
+        return coerce_int(value, default)
 
     def reset(self) -> None:
         self.last_game = None

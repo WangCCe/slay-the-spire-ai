@@ -74,3 +74,12 @@ def test_rl_v2_terminal_check_accepts_decimal_string_player_hp():
 
     assert RLAgentV2._is_terminal(alive_game) is False
     assert RLAgentV2._is_terminal(dead_game) is True
+
+
+def test_rl_v2_terminal_check_rejects_nonfinite_player_hp():
+    game = SimpleNamespace(
+        screen_type=None,
+        player=SimpleNamespace(current_hp=float("inf")),
+    )
+
+    assert RLAgentV2._is_terminal(game) is False
