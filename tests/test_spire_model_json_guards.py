@@ -2,6 +2,7 @@ from spirecomm.spire.character import Monster, Player
 from spirecomm.spire.power import Power
 from spirecomm.spire.potion import Potion
 from spirecomm.spire.relic import Relic
+from spirecomm.spire.screen import GridSelectScreen, HandSelectScreen, ShopScreen
 
 
 def test_player_from_json_coerces_decimal_string_numeric_fields():
@@ -97,3 +98,47 @@ def test_relic_from_json_coerces_decimal_string_numeric_fields():
 
     assert relic.counter == 9
     assert relic.price == 150
+
+
+def test_shop_screen_from_json_coerces_decimal_string_purge_cost():
+    screen = ShopScreen.from_json(
+        {
+            "cards": [],
+            "relics": [],
+            "potions": [],
+            "purge_available": True,
+            "purge_cost": "75.0",
+        }
+    )
+
+    assert screen.purge_cost == 75
+
+
+def test_grid_select_screen_from_json_coerces_decimal_string_num_cards():
+    screen = GridSelectScreen.from_json(
+        {
+            "cards": [],
+            "selected_cards": [],
+            "num_cards": "2.0",
+            "any_number": False,
+            "confirm_up": False,
+            "for_upgrade": False,
+            "for_transform": False,
+            "for_purge": True,
+        }
+    )
+
+    assert screen.num_cards == 2
+
+
+def test_hand_select_screen_from_json_coerces_decimal_string_num_cards():
+    screen = HandSelectScreen.from_json(
+        {
+            "hand": [],
+            "selected": [],
+            "max_cards": "2.0",
+            "can_pick_zero": False,
+        }
+    )
+
+    assert screen.num_cards == 2

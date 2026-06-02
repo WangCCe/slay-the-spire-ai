@@ -6,6 +6,18 @@ from spirecomm.spire.relic import Relic
 from spirecomm.spire.map import Node
 
 
+def _safe_int(value, default=0):
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        try:
+            return int(float(value))
+        except (TypeError, ValueError, OverflowError):
+            return default
+
+
 class ScreenType(Enum):
     EVENT = 1
     CHEST = 2
@@ -272,7 +284,7 @@ class ShopScreen(Screen):
         relics = [Relic.from_json(relic) for relic in json_object.get("relics")]
         potions = [Potion.from_json(potion) for potion in json_object.get("potions")]
         purge_available = json_object.get("purge_available")
-        purge_cost = json_object.get("purge_cost")
+        purge_cost = _safe_int(json_object.get("purge_cost"), 0)
         return cls(cards, relics, potions, purge_available, purge_cost)
 
 
@@ -296,7 +308,7 @@ class GridSelectScreen(Screen):
     def from_json(cls, json_object):
         cards = [Card.from_json(card) for card in json_object.get("cards")]
         selected_cards = [Card.from_json(card) for card in json_object.get("selected_cards")]
-        num_cards = json_object.get("num_cards")
+        num_cards = _safe_int(json_object.get("num_cards"), 0)
         any_number = json_object.get("any_number", False)
         confirm_up = json_object.get("confirm_up")
         for_upgrade = json_object.get("for_upgrade")
@@ -346,7 +358,7 @@ class HandSelectScreen(Screen):
     def from_json(cls, json_object):
         cards = [Card.from_json(card) for card in json_object.get("hand")]
         selected_cards = [Card.from_json(card) for card in json_object.get("selected")]
-        num_cards = json_object.get("max_cards")
+        num_cards = _safe_int(json_object.get("max_cards"), 0)
         can_pick_zero = json_object.get("can_pick_zero")
         return cls(cards, selected_cards, num_cards, can_pick_zero)
 
