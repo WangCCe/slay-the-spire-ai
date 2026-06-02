@@ -81,7 +81,7 @@ class TimingAwareCombatPlanner:
         self.base_planner = base_planner
         self.classifier = classifier or TurnTimingClassifier()
         self.strategy = strategy or CombatBalanceStrategy()
-        self.combat_ending_detector = CombatEndingDetector()
+        self.combat_ending_detector = CombatEndingDetector(game_data_loader)
 
         # Cache for timing analysis (per turn)
         self._timing_cache = {}

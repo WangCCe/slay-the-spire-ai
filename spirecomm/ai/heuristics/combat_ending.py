@@ -101,9 +101,9 @@ class CombatEndingDetector:
     - Considers AOE vs single-target efficiency
     """
 
-    def __init__(self):
+    def __init__(self, data_loader=None):
         """Initialize the combat ending detector."""
-        pass
+        self.game_data_loader = data_loader or game_data_loader
 
     @staticmethod
     def _base_card_name(card: Card) -> str:
@@ -432,7 +432,7 @@ class CombatEndingDetector:
 
         try:
             return bool(
-                game_data_loader._is_card_aoe(
+                self.game_data_loader._is_card_aoe(
                     {
                         'name': getattr(card, 'name', self._base_card_name(card)),
                         'description': self._card_effect_text(card),
@@ -716,10 +716,10 @@ class CombatEndingDetector:
         card_name = self._base_card_name(card)
 
         try:
-            wiki_data = getattr(game_data_loader, '_wiki_data', None)
-            if wiki_data is None and hasattr(game_data_loader, '_load_wiki_data'):
-                game_data_loader._load_wiki_data()
-                wiki_data = getattr(game_data_loader, '_wiki_data', None)
+            wiki_data = getattr(self.game_data_loader, '_wiki_data', None)
+            if wiki_data is None and hasattr(self.game_data_loader, '_load_wiki_data'):
+                self.game_data_loader._load_wiki_data()
+                wiki_data = getattr(self.game_data_loader, '_wiki_data', None)
             if wiki_data:
                 wiki_entry = wiki_data.get(card_name.lower())
                 if wiki_entry and wiki_entry.get('text'):
@@ -727,7 +727,7 @@ class CombatEndingDetector:
         except Exception:
             pass
 
-        card_data = game_data_loader.get_card_data(card_name) or {}
+        card_data = self.game_data_loader.get_card_data(card_name) or {}
         for key in ('description', 'text'):
             value = card_data.get(key)
             if value:
@@ -1736,11 +1736,11 @@ class CombatEndingDetector:
             display_name = f"{card_name}{upgrade_suffix}"
         base_damage = 0
 
-        card_data = game_data_loader.get_card_data(card_name)
+        card_data = self.game_data_loader.get_card_data(card_name)
         if card_data:
             damage_data = dict(card_data)
             damage_data['name'] = display_name
-            base_damage = game_data_loader._parse_card_damage(damage_data) or 0
+            base_damage = self.game_data_loader._parse_card_damage(damage_data) or 0
             base_damage = self._apply_known_damage_upgrade_fallback(
                 card,
                 card_name,
@@ -1799,7 +1799,7 @@ class CombatEndingDetector:
 
         base_damage_data = dict(card_data)
         base_damage_data['name'] = card_name
-        base_damage = game_data_loader._parse_card_damage(base_damage_data) or 0
+        base_damage = self.game_data_loader._parse_card_damage(base_damage_data) or 0
         if parsed_damage > 0 and parsed_damage == base_damage:
             return parsed_damage + upgrade_bonus
         return parsed_damage

@@ -870,6 +870,54 @@ def test_timing_lethal_sequence_uses_bash_vulnerable_before_followup(monkeypatch
     assert [action.target_monster for action in actions] == [monster, monster]
 
 
+def test_timing_lethal_sequence_uses_planner_loader_for_setup_cards(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "practice debuff": {
+            "name": "Practice Debuff",
+            "description": "Apply 2 Vulnerable.",
+        },
+        "strike": {"name": "Strike", "description": "Deal 6 damage."},
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(timing_planner, "game_data_loader", loader, raising=False)
+    setup = _card(
+        "Practice Debuff",
+        "Practice Debuff",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=True,
+    )
+    setup.uuid = "setup"
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_1.uuid = "strike-1"
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    strike_2.uuid = "strike-2"
+    monster = SimpleNamespace(current_hp=18, block=0, monster_index=0)
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=2,
+        playable_cards=[setup, strike_1, strike_2],
+        monsters_alive=[monster],
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+    planner = TimingAwareCombatPlanner()
+
+    assert planner._can_kill_all_this_turn(context, timing_ctx)
+    actions = planner._generate_lethal_sequence(context)
+    assert [action.card.uuid for action in actions] == [
+        "setup",
+        "strike-1",
+        "strike-2",
+    ]
+    assert [action.target_monster for action in actions] == [monster, monster, monster]
+
+
 def test_timing_lethal_check_uses_dropkick_energy_refund(monkeypatch):
     loader = _loader_with_basic_ironclad_cards()
     loader._cards["dropkick"] = {
