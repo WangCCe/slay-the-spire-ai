@@ -2375,6 +2375,34 @@ def test_simulation_state_tracks_orb_walker_end_turn_strength_gain():
     assert asc17_state.monsters[0]["end_turn_strength_gain"] == 5
 
 
+def test_simulation_state_orb_walker_strength_gain_rejects_nonfinite_ascension():
+    context = _combat_context([], energy=0, monsters=[_orb_walker()])
+    context.ascension_level = float("inf")
+    context.game.ascension_level = float("inf")
+
+    state = SimulationState(context)
+
+    assert state.monsters[0]["end_turn_strength_gain"] == 3
+
+
+def test_simulation_state_orb_walker_strength_gain_rejects_nonfinite_data(monkeypatch):
+    class NonfiniteOrbWalkerLoader:
+        def get_enhanced_monster_data(self, _monster_name):
+            return {
+                "special_mechanics": {
+                    "type": "strength_up",
+                    "strength_gain": float("inf"),
+                }
+            }
+
+    monkeypatch.setattr(simulation, "game_data_loader", NonfiniteOrbWalkerLoader())
+    context = _combat_context([], energy=0, monsters=[_orb_walker()])
+
+    state = SimulationState(context)
+
+    assert state.monsters[0]["end_turn_strength_gain"] == 0
+
+
 def test_enemy_lookahead_applies_orb_walker_strength_up_to_future_attacks():
     context = _combat_context([], energy=0, monsters=[_orb_walker()])
     simulator = FastCombatSimulator(SynergyCardEvaluator())

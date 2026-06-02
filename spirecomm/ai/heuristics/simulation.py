@@ -738,7 +738,7 @@ class SimulationState:
 
     def _resolve_ascension_value(self, value: Any, context: DecisionContext) -> int:
         if isinstance(value, (int, float)):
-            return max(0, int(value))
+            return self._non_negative_int(value)
         if not isinstance(value, dict):
             return 0
 
@@ -754,14 +754,14 @@ class SimulationState:
                 resolved = value[key]
 
         if isinstance(resolved, (int, float)):
-            return max(0, int(resolved))
+            return self._non_negative_int(resolved)
         return 0
 
     @staticmethod
     def _context_ascension_level(context: DecisionContext) -> int:
         if hasattr(context, 'game') and hasattr(context.game, 'ascension_level'):
-            return int(context.game.ascension_level or 0)
-        return int(getattr(context, 'ascension_level', 0) or 0)
+            return max(0, coerce_int(context.game.ascension_level or 0, 0))
+        return max(0, coerce_int(getattr(context, 'ascension_level', 0) or 0, 0))
 
     def _power_name(self, power: Any) -> Optional[str]:
         return power_name(power)
