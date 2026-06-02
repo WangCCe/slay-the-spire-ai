@@ -995,6 +995,69 @@ def test_timing_planner_cache_invalidates_when_same_turn_state_changes():
     assert base_planner.calls == [("first-defend",), ("second-wind",)]
 
 
+def test_timing_planner_applies_injected_balance_strategy():
+    classifier_weights = BalanceWeights(
+        damage_weight=1.0,
+        block_weight=1.0,
+        kill_bonus=10.0,
+        lethal_detection=True,
+        block_threshold=0,
+        opportunistic_attack=True,
+    )
+    strategy_weights = BalanceWeights(
+        damage_weight=0.25,
+        block_weight=4.0,
+        kill_bonus=5.0,
+        lethal_detection=True,
+        block_threshold=12,
+        opportunistic_attack=False,
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=classifier_weights,
+    )
+
+    class StaticClassifier:
+        def classify_turn(self, _context):
+            return timing_ctx
+
+    class FixedStrategy:
+        def __init__(self):
+            self.calls = []
+
+        def get_balance_weights(self, timing, context, received_timing_ctx):
+            self.calls.append((timing, context, received_timing_ctx))
+            return strategy_weights
+
+    class CapturingPlanner:
+        def set_timing_context(self, timing_context):
+            self.timing_context = timing_context
+
+        def plan_turn(self, _context):
+            return []
+
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL)
+    defend.uuid = "defend"
+    context = SimpleNamespace(
+        turn=1,
+        energy_available=1,
+        playable_cards=[defend],
+        monsters_alive=[SimpleNamespace(current_hp=20, block=0, monster_index=0)],
+    )
+    base_planner = CapturingPlanner()
+    strategy = FixedStrategy()
+    planner = TimingAwareCombatPlanner(
+        base_planner=base_planner,
+        classifier=StaticClassifier(),
+        strategy=strategy,
+    )
+
+    assert planner.plan_with_timing(context) == []
+    assert base_planner.timing_context.balance_weights is strategy_weights
+    assert strategy.calls == [(TurnTiming.SAFE, context, timing_ctx)]
+
+
 def test_timing_lethal_check_uses_dropkick_energy_refund(monkeypatch):
     loader = _loader_with_basic_ironclad_cards()
     loader._cards["dropkick"] = {

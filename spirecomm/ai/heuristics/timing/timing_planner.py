@@ -110,6 +110,7 @@ class TimingAwareCombatPlanner:
 
         # Step 1: Classify turn timing
         timing_ctx = self.classifier.classify_turn(context)
+        self._apply_balance_strategy(timing_ctx, context)
 
         # Log timing classification
         logger.info(
@@ -146,6 +147,20 @@ class TimingAwareCombatPlanner:
         self._cached_actions = actions
         self._current_turn = current_turn
         self._current_cache_key = cache_key
+
+    def _apply_balance_strategy(self, timing_ctx: TimingContext, context) -> None:
+        try:
+            weights = self.strategy.get_balance_weights(
+                timing_ctx.turn_timing,
+                context,
+                timing_ctx,
+            )
+        except Exception as exc:
+            logger.warning("[TIMING_PLANNER] Balance strategy failed: %s", exc)
+            return
+
+        if weights is not None:
+            timing_ctx.balance_weights = weights
 
     def _timing_cache_key(self, context):
         """Fingerprint the state that can affect timing-aware combat plans."""
