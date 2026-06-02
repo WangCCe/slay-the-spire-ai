@@ -5631,12 +5631,17 @@ class HeuristicCombatPlanner(CombatPlanner):
         debug_entries = []
         for monster in context.game.monsters:
             if self._is_live_monster_object(monster):
-                adjusted_damage = monster.move_adjusted_damage
+                raw_adjusted_damage = getattr(monster, 'move_adjusted_damage', None)
+                adjusted_damage = (
+                    None
+                    if raw_adjusted_damage is None
+                    else self._non_negative_int(raw_adjusted_damage)
+                )
                 if adjusted_damage is not None and monster_intends_attack(monster):
                     incoming += max(0, adjusted_damage) * self._positive_live_move_hits(monster)
                     debug_entries.append(
                         f"{monster.name}[{monster.monster_id}|move={monster.move_id}]:intent={monster.intent} "
-                        f"adjusted={monster.move_adjusted_damage} hits={monster.move_hits}"
+                        f"adjusted={adjusted_damage} hits={monster.move_hits}"
                     )
                 elif intent_is_unknown(getattr(monster, 'intent', None)):
                     known_damage = known_unknown_move_immediate_damage(monster)
