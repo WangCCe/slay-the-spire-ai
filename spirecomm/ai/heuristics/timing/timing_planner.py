@@ -86,9 +86,9 @@ class TimingAwareCombatPlanner:
         self.game_data_loader = data_loader or game_data_loader
         self.combat_ending_detector = CombatEndingDetector(self.game_data_loader)
 
-        # Cache for timing analysis (per turn)
-        self._timing_cache = {}
+        # Cache full action plans only while the observed decision state is unchanged.
         self._current_turn = 0
+        self._current_cache_key = None
 
     def plan_with_timing(self, context) -> List:
         """
@@ -104,7 +104,8 @@ class TimingAwareCombatPlanner:
         """
         # Check cache first
         current_turn = getattr(context, 'turn', 1)
-        if current_turn == self._current_turn and hasattr(self, '_cached_actions'):
+        cache_key = self._timing_cache_key(context)
+        if cache_key == self._current_cache_key and hasattr(self, '_cached_actions'):
             return self._cached_actions
 
         # Step 1: Classify turn timing
@@ -122,8 +123,7 @@ class TimingAwareCombatPlanner:
         if self._can_kill_all_this_turn(context, timing_ctx):
             logger.info("[TIMING_PLANNER] Lethal detected - all-in attack sequence")
             actions = self._generate_lethal_sequence(context)
-            self._cached_actions = actions
-            self._current_turn = current_turn
+            self._cache_actions(cache_key, current_turn, actions)
             return actions
 
         # Step 3: Use base planner with timing weights
@@ -139,9 +139,89 @@ class TimingAwareCombatPlanner:
             actions = self._fallback_plan(context, timing_ctx)
 
         # Cache and return
+        self._cache_actions(cache_key, current_turn, actions)
+        return actions
+
+    def _cache_actions(self, cache_key, current_turn, actions):
         self._cached_actions = actions
         self._current_turn = current_turn
-        return actions
+        self._current_cache_key = cache_key
+
+    def _timing_cache_key(self, context):
+        """Fingerprint the state that can affect timing-aware combat plans."""
+        return (
+            getattr(context, 'game_id', None),
+            getattr(context, 'combat_id', None),
+            getattr(context, 'act', None),
+            getattr(context, 'floor', None),
+            self._non_negative_int(getattr(context, 'turn', 1)),
+            self._non_negative_int(getattr(context, 'energy_available', 0)),
+            self._non_negative_int(getattr(context, 'strength', 0)),
+            player_block_value(context),
+            player_power_amount(context, 'Strength'),
+            player_debuff_stacks(context, 'Weak'),
+            self._status_map_cache_key(getattr(context, 'vulnerable_stacks', {})),
+            tuple(
+                self._card_cache_key(card)
+                for card in getattr(context, 'playable_cards', []) or []
+            ),
+            tuple(
+                self._monster_cache_key(index, monster)
+                for index, monster in enumerate(
+                    getattr(context, 'monsters_alive', []) or []
+                )
+            ),
+        )
+
+    @staticmethod
+    def _card_cache_key(card):
+        try:
+            card_name = canonical_card_name(card)
+        except Exception:
+            card_name = getattr(card, 'name', None) or getattr(card, 'card_id', None)
+
+        return (
+            card_play_key(card),
+            card_name,
+            card_upgrade_count(card),
+            getattr(card, 'type', None),
+            getattr(card, 'card_type', None),
+            getattr(card, 'cost', None),
+            getattr(card, 'cost_for_turn', None),
+            bool(getattr(card, 'is_playable', True)),
+            bool(getattr(card, 'has_target', True)),
+        )
+
+    @staticmethod
+    def _monster_cache_key(index, monster):
+        return (
+            getattr(monster, 'monster_index', index),
+            (
+                getattr(monster, 'monster_id', None)
+                or getattr(monster, 'id', None)
+                or getattr(monster, 'name', None)
+            ),
+            coerce_int(getattr(monster, 'current_hp', 0), 0),
+            coerce_int(getattr(monster, 'block', 0), 0),
+            str(getattr(monster, 'intent', None)),
+            coerce_int(getattr(monster, 'move_base_damage', 0), 0),
+            coerce_int(getattr(monster, 'move_hits', 0), 0),
+            bool(getattr(monster, 'is_gone', False)),
+            bool(getattr(monster, 'half_dead', False)),
+            monster_power_amount(monster, 'Vulnerable'),
+            monster_power_amount(monster, 'Weak'),
+        )
+
+    @staticmethod
+    def _status_map_cache_key(status_map):
+        if not isinstance(status_map, dict):
+            return ()
+        return tuple(
+            sorted(
+                (str(key), coerce_int(value, 0))
+                for key, value in status_map.items()
+            )
+        )
 
     def get_timing_context(self, context) -> TimingContext:
         """

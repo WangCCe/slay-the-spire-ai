@@ -945,6 +945,56 @@ def test_timing_planner_accepts_explicit_card_data_loader():
     assert planner._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_planner_cache_invalidates_when_same_turn_state_changes():
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.SAFE,
+        current_damage=0,
+        balance_weights=BalanceWeights.safe_turn_weights(),
+    )
+
+    class StaticClassifier:
+        def classify_turn(self, _context):
+            return timing_ctx
+
+    class EchoPlanner:
+        def __init__(self):
+            self.calls = []
+
+        def set_timing_context(self, timing_context):
+            self.timing_context = timing_context
+
+        def plan_turn(self, context):
+            card_ids = tuple(card.uuid for card in context.playable_cards)
+            self.calls.append(card_ids)
+            return [card_ids[0]]
+
+    first_card = _card("Defend_R", "Defend", card_type=CardType.SKILL)
+    first_card.uuid = "first-defend"
+    second_card = _card("Second Wind", "Second Wind", card_type=CardType.SKILL)
+    second_card.uuid = "second-wind"
+    first_context = SimpleNamespace(
+        turn=1,
+        energy_available=1,
+        playable_cards=[first_card],
+        monsters_alive=[SimpleNamespace(current_hp=20, block=0, monster_index=0)],
+    )
+    second_context = SimpleNamespace(
+        turn=1,
+        energy_available=1,
+        playable_cards=[second_card],
+        monsters_alive=[SimpleNamespace(current_hp=35, block=0, monster_index=0)],
+    )
+    base_planner = EchoPlanner()
+    planner = TimingAwareCombatPlanner(
+        base_planner=base_planner,
+        classifier=StaticClassifier(),
+    )
+
+    assert planner.plan_with_timing(first_context) == ["first-defend"]
+    assert planner.plan_with_timing(second_context) == ["second-wind"]
+    assert base_planner.calls == [("first-defend",), ("second-wind",)]
+
+
 def test_timing_lethal_check_uses_dropkick_energy_refund(monkeypatch):
     loader = _loader_with_basic_ironclad_cards()
     loader._cards["dropkick"] = {
