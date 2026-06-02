@@ -413,9 +413,8 @@ class ActionEncoderV2:
             choice_index = self._resolve_choice_index(action, game)
         if choice_index is None:
             return None
-        try:
-            choice_index = int(choice_index)
-        except Exception:
+        choice_index = self._safe_int(choice_index, default=None)
+        if choice_index is None:
             return None
 
         offset = self._offset_for_screen(screen_type)

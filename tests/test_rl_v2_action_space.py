@@ -7,6 +7,7 @@ from spirecomm.communication.action import (
     BuyCardAction,
     BuyPotionAction,
     BuyPurgeAction,
+    ChooseAction,
     CombatRewardAction,
     EndTurnAction,
     LeaveAction,
@@ -429,6 +430,19 @@ def test_map_choice_truncation():
         assert mask[space.MAP_OFFSET + idx]
     for idx in range(3, space.MAP_COUNT):
         assert not mask[space.MAP_OFFSET + idx]
+
+
+def test_encode_choose_action_accepts_decimal_string_choice_index():
+    encoder = ActionEncoderV2()
+    game = _make_game(
+        screen_type=ScreenType.EVENT,
+        choice_available=True,
+        choice_list=["leave", "fight"],
+    )
+
+    action_index = encoder.encode_action(ChooseAction("1.0"), game)
+
+    assert action_index == space.EVENT_OFFSET + 1
 
 
 def test_shop_mask_hides_unaffordable_purchases_and_purge():
