@@ -607,6 +607,23 @@ def test_lagavulin_hibernation_accepts_string_turn():
     assert database.is_hibernating("Lagavulin", "3") == database.is_hibernating("Lagavulin", 3)
 
 
+def test_lagavulin_predictions_accept_string_current_turn():
+    database = EnhancedMonsterDatabase()
+
+    string_predictions = database.predict_next_moves(
+        "Lagavulin",
+        current_turn="4",
+        monster_hp_percent=1.0,
+    )
+    int_predictions = database.predict_next_moves(
+        "Lagavulin",
+        current_turn=4,
+        monster_hp_percent=1.0,
+    )
+
+    assert string_predictions == int_predictions
+
+
 def test_single_move_gremlins_predict_their_only_move():
     database = EnhancedMonsterDatabase()
 

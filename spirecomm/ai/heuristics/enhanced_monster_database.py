@@ -327,6 +327,7 @@ class EnhancedMonsterDatabase:
         Returns:
             List of predicted moves for next 3 turns
         """
+        current_turn = _non_negative_int(current_turn) or 1
         pattern = self.get_pattern(monster_name)
         moves = self.get_moves(monster_name)
         special_mechanics = self.get_special_mechanics(monster_name)
