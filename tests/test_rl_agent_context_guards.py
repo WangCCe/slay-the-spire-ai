@@ -118,6 +118,20 @@ def test_rl_agent_terminal_done_accepts_numeric_string_player_hp():
     assert agent.trainer.last_done is True
 
 
+def test_rl_agent_terminal_check_accepts_decimal_string_player_hp():
+    alive_game = SimpleNamespace(
+        screen_type=None,
+        player=SimpleNamespace(current_hp="12.0"),
+    )
+    dead_game = SimpleNamespace(
+        screen_type=None,
+        player=SimpleNamespace(current_hp="0.0"),
+    )
+
+    assert RLAgent._is_terminal(alive_game) is False
+    assert RLAgent._is_terminal(dead_game) is True
+
+
 def test_rl_agent_hand_select_confirm_bypass_accepts_string_num_cards():
     from spirecomm.spire.screen import ScreenType
 

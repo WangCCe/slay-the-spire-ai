@@ -455,7 +455,10 @@ class RLAgent:
         try:
             return int(value)
         except (TypeError, ValueError):
-            return default
+            try:
+                return int(float(value))
+            except (TypeError, ValueError, OverflowError):
+                return default
 
     def reset(self) -> None:
         """Reset agent state for new episode."""
