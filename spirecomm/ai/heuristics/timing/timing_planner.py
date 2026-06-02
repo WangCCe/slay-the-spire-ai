@@ -162,6 +162,28 @@ class TimingAwareCombatPlanner:
         if weights is not None:
             timing_ctx.balance_weights = weights
 
+    @staticmethod
+    def _player_hp_cache_key(context):
+        game = getattr(context, 'game', None)
+        player = getattr(context, 'player', None) or getattr(game, 'player', None)
+
+        current_hp = getattr(context, 'player_hp', None)
+        if current_hp is None:
+            current_hp = getattr(game, 'current_hp', None)
+        if current_hp is None and player is not None:
+            current_hp = getattr(player, 'current_hp', None)
+
+        max_hp = getattr(context, 'player_max_hp', None)
+        if max_hp is None:
+            max_hp = getattr(game, 'max_hp', None)
+        if max_hp is None and player is not None:
+            max_hp = getattr(player, 'max_hp', None)
+
+        return (
+            coerce_int(current_hp, 0),
+            coerce_int(max_hp, 0),
+        )
+
     def _timing_cache_key(self, context):
         """Fingerprint the state that can affect timing-aware combat plans."""
         return (
@@ -172,6 +194,7 @@ class TimingAwareCombatPlanner:
             self._non_negative_int(getattr(context, 'turn', 1)),
             self._non_negative_int(getattr(context, 'energy_available', 0)),
             self._non_negative_int(getattr(context, 'strength', 0)),
+            self._player_hp_cache_key(context),
             player_block_value(context),
             player_power_amount(context, 'Strength'),
             player_debuff_stacks(context, 'Weak'),
