@@ -551,6 +551,38 @@ def test_decision_context_accepts_string_numeric_runtime_fields():
     assert context.monsters_alive == [monster]
 
 
+def test_decision_context_accepts_decimal_string_monster_damage_fields():
+    monster = SimpleNamespace(
+        name="Cultist",
+        monster_id="Cultist",
+        is_gone=False,
+        half_dead=False,
+        current_hp="24.0",
+        max_hp="48.0",
+        intent=Intent.ATTACK,
+        move_adjusted_damage="6.0",
+        move_hits="2.0",
+        powers=[],
+    )
+    game = SimpleNamespace(
+        current_hp=40,
+        max_hp=80,
+        player=SimpleNamespace(energy=3, powers=[]),
+        turn=2,
+        floor=3,
+        act=1,
+        monsters=[monster],
+        deck=[],
+        hand=[],
+        relics=[],
+    )
+
+    context = DecisionContext(game)
+
+    assert context.incoming_damage == 12
+    assert context.monsters_alive == [monster]
+
+
 def test_base_immediate_threat_clamps_negative_live_move_damage_to_zero():
     monster = SimpleNamespace(
         move_adjusted_damage=-3,
