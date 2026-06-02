@@ -63,20 +63,28 @@ def power_amount(powers, name: str, missing_amount: int = 0) -> int:
     return 0
 
 
+def _context_player(context: Any):
+    player = getattr(context, 'player', None)
+    if player is not None:
+        return player
+
+    return getattr(getattr(context, 'game', None), 'player', None)
+
+
 def player_power_amount(context: Any, name: str) -> int:
-    player = getattr(getattr(context, 'game', None), 'player', None)
+    player = _context_player(context)
     powers = getattr(player, 'powers', []) if player is not None else []
     return power_amount(powers, name, 0)
 
 
 def player_debuff_stacks(context: Any, name: str) -> int:
-    player = getattr(getattr(context, 'game', None), 'player', None)
+    player = _context_player(context)
     powers = getattr(player, 'powers', []) if player is not None else []
     return power_amount(powers, name, 1)
 
 
 def player_has_power(context: Any, name: str) -> bool:
-    player = getattr(getattr(context, 'game', None), 'player', None)
+    player = _context_player(context)
     powers = getattr(player, 'powers', []) if player is not None else []
     return any(power_matches(power, name) for power in powers)
 
@@ -93,7 +101,7 @@ def monster_power_amount(monster: Any, name: str) -> int:
 def player_block_value(context: Any) -> int:
     block = getattr(context, 'player_block', None)
     if block is None:
-        player = getattr(getattr(context, 'game', None), 'player', None)
+        player = _context_player(context)
         block = getattr(player, 'block', 0)
 
     return max(0, coerce_int(block or 0, 0))

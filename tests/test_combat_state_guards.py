@@ -32,6 +32,12 @@ def test_player_block_value_falls_back_to_game_player_block():
     assert player_block_value(context) == 7
 
 
+def test_player_block_value_falls_back_to_context_player_block():
+    context = SimpleNamespace(player=SimpleNamespace(block="9"))
+
+    assert player_block_value(context) == 9
+
+
 def test_player_block_value_clamps_missing_invalid_or_negative_values():
     assert player_block_value(SimpleNamespace(player_block=-4)) == 0
     assert player_block_value(SimpleNamespace(player_block="not-a-number")) == 0
@@ -208,6 +214,22 @@ def test_player_has_power_checks_presence_independent_of_amount():
     assert player_has_power(context, "Missing") is False
     assert player_has_power(SimpleNamespace(), "Rupture") is False
     assert player_has_power(None, "Rupture") is False
+
+
+def test_player_power_helpers_read_context_player_powers():
+    context = SimpleNamespace(
+        player=SimpleNamespace(
+            powers=[
+                SimpleNamespace(power_name="Strength", amount=3),
+                SimpleNamespace(name="Weak", amount=2),
+                SimpleNamespace(power_id="Rupture"),
+            ]
+        )
+    )
+
+    assert player_power_amount(context, "Strength") == 3
+    assert player_debuff_stacks(context, "Weak") == 2
+    assert player_has_power(context, "Rupture") is True
 
 
 def test_monster_power_amount_prefers_direct_amount_then_power_amount():
