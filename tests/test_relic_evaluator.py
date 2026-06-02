@@ -52,6 +52,36 @@ def test_relic_context_modifier_accepts_string_player_hp_pct():
     )
 
 
+def test_relic_context_modifier_accepts_string_floor_for_endgame_bonus():
+    from spirecomm.ai.heuristics.relic import RelicEvaluator
+
+    evaluator = RelicEvaluator()
+    relic_data = {"description": "Deal damage to bosses and elites."}
+    enum_context = SimpleNamespace(player_hp_pct=0.75, act=3, floor=41)
+    string_context = SimpleNamespace(player_hp_pct=0.75, act=3, floor="41")
+
+    try:
+        string_modifier = evaluator._calculate_context_modifier(relic_data, string_context)
+    except TypeError:
+        string_modifier = "type-error"
+
+    assert string_modifier == evaluator._calculate_context_modifier(relic_data, enum_context)
+
+
+def test_relic_context_modifier_accepts_string_act_for_endgame_scaling_bonus():
+    from spirecomm.ai.heuristics.relic import RelicEvaluator
+
+    evaluator = RelicEvaluator()
+    relic_data = {"description": "Gain strength every turn."}
+    enum_context = SimpleNamespace(player_hp_pct=0.75, act=3, floor=20)
+    string_context = SimpleNamespace(player_hp_pct=0.75, act="3", floor=20)
+
+    assert (
+        evaluator._calculate_context_modifier(relic_data, string_context)
+        == evaluator._calculate_context_modifier(relic_data, enum_context)
+    )
+
+
 def test_imports():
     """Test that all components can be imported."""
     print("Testing imports...")

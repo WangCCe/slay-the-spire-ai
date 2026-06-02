@@ -93,6 +93,13 @@ class RelicEvaluator(DecisionEngine):
         except (TypeError, ValueError):
             return 0.0
 
+    @staticmethod
+    def _non_negative_int(value) -> int:
+        try:
+            return max(0, int(value or 0))
+        except (TypeError, ValueError):
+            return 0
+
     def evaluate(self, context: DecisionContext) -> Dict[str, float]:
         """
         Evaluate all relics in the current game context.
@@ -307,6 +314,8 @@ class RelicEvaluator(DecisionEngine):
         """
         description = relic_data.get('description', '').lower()
         modifier = 0.0
+        act = self._non_negative_int(getattr(context, 'act', 0))
+        floor = self._non_negative_int(getattr(context, 'floor', 0))
         
         # HP-based modifiers
         if any(term in description for term in ['heal', 'regenerate', 'recover']):
@@ -315,17 +324,17 @@ class RelicEvaluator(DecisionEngine):
             modifier += (1.0 - hp_pct) * 0.5
         
         # Act-based modifiers
-        if context.act == 1:
+        if act == 1:
             # In Act 1, focus on survival and consistency
             if any(term in description for term in ['block', 'heal', 'damage']):
                 modifier += 0.3
-        elif context.act == 3:
+        elif act == 3:
             # In Act 3, focus on scaling and endgame power
             if 'scaling' in description or any(term in description for term in ['strength', 'dexterity', 'poison']):
                 modifier += 0.5
-        
+
         # Floor-based modifiers
-        if context.floor > 40:  # Near endgame
+        if floor > 40:  # Near endgame
             if any(term in description for term in ['boss', 'elite', 'damage']):
                 modifier += 0.4
         
