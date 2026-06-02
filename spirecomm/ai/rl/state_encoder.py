@@ -19,6 +19,7 @@ from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id, relic_id
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster, PlayerClass, Intent
+from spirecomm.spire.numeric import coerce_float
 from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 
 _UPGRADE_SUFFIX_RE = re.compile(r'\+\d*$')
@@ -625,12 +626,7 @@ class StateEncoder:
 
     @staticmethod
     def _safe_float(value, default=0.0):
-        if value is None:
-            return default
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return default
+        return coerce_float(value, default)
 
     @staticmethod
     def _get_power_amount(powers, power_id):
