@@ -345,6 +345,32 @@ def test_rl_state_encoder_context_accepts_string_hand_select_requirement():
     assert features[20] == 1.0
 
 
+def test_rl_state_encoder_monster_move_ids_reject_nonfinite_floats():
+    encoder = StateEncoder()
+    monster = SimpleNamespace(
+        monster_id="Cultist",
+        name="Cultist",
+        max_hp=50,
+        current_hp=20,
+        block=0,
+        intent="Intent.ATTACK",
+        move_adjusted_damage=6,
+        move_hits=1,
+        powers=[],
+        move_id=float("inf"),
+        last_move_id=float("-inf"),
+        second_last_move_id=float("nan"),
+        is_gone=False,
+        is_minion=False,
+        half_dead=False,
+    )
+
+    features = encoder._encode_single_monster(monster)
+
+    assert len(features) == 30
+    assert features[20:23] == [0.0, 0.0, 0.0]
+
+
 def test_rl_state_encoder_power_amount_accepts_name_only_power():
     encoder = StateEncoder()
 
