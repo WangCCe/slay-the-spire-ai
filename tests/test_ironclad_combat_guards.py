@@ -12357,6 +12357,61 @@ def test_ironclad_sequence_score_accepts_string_player_hp_pct_for_immolate():
     assert string_score == enum_score
 
 
+def test_ironclad_sequence_score_accepts_string_strength_for_reaper_bonus():
+    reaper = _card(
+        "Reaper",
+        "Reaper",
+        card_type=CardType.ATTACK,
+        cost=2,
+        has_target=False,
+    )
+    string_reaper = _card(
+        "Reaper",
+        "Reaper",
+        card_type=CardType.ATTACK,
+        cost=2,
+        has_target=False,
+    )
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+
+    enum_context = _combat_context(
+        [reaper],
+        energy=2,
+        monsters=[_louse(current_hp=100), _louse(current_hp=100)],
+    )
+    enum_context.strength = 3
+    enum_initial = SimulationState(enum_context)
+    enum_final = enum_initial.clone()
+    enum_score = planner._score_sequence(
+        [PlayCardAction(card=reaper)],
+        enum_initial,
+        enum_final,
+        enum_context,
+    )
+
+    string_context = _combat_context(
+        [string_reaper],
+        energy=2,
+        monsters=[_louse(current_hp=100), _louse(current_hp=100)],
+    )
+    string_context.strength = "3"
+    string_initial = SimulationState(string_context)
+    string_final = string_initial.clone()
+    try:
+        string_score = planner._score_sequence(
+            [PlayCardAction(card=string_reaper)],
+            string_initial,
+            string_final,
+            string_context,
+        )
+    except TypeError:
+        string_score = "type-error"
+
+    assert string_score == enum_score
+
+
 def test_ironclad_sequence_score_accepts_name_only_skill_against_gremlin_nob():
     defend = SimpleNamespace(
         name="Defend",

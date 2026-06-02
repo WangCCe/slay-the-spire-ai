@@ -1372,6 +1372,7 @@ class IroncladCombatPlanner(CombatPlanner):
         score += final_state.energy_gained * 4
         context_player_hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
         context_turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
+        context_strength = self._non_negative_int(getattr(context, 'strength', 0))
 
         # 5. Strategic bonus for card types
         for action in sequence:
@@ -1448,17 +1449,17 @@ class IroncladCombatPlanner(CombatPlanner):
                         score += per_card * upgradeable
 
                 # Limit Break with high strength
-                if card_id == 'Limit Break' and context.strength >= 5:
+                if card_id == 'Limit Break' and context_strength >= 5:
                     score += 40
 
                 # Reaper - huge heal potential with Strength
                 if card_id == 'Reaper':
                     # Value scales with Strength and number of monsters
                     monster_count = len(context.monsters_alive)
-                    if context.strength >= 3 and monster_count >= 2:
+                    if context_strength >= 3 and monster_count >= 2:
                         # Optimal Reaper usage
                         score += 60
-                    elif context.strength >= 5 and monster_count >= 1:
+                    elif context_strength >= 5 and monster_count >= 1:
                         # Still good with high Strength
                         score += 40
                     # Low strength/single target - minimal bonus
@@ -1510,7 +1511,7 @@ class IroncladCombatPlanner(CombatPlanner):
                     # Rage: provides scaling damage boost
                     score += 20  # Base bonus for scaling potential
                     # More valuable with high strength
-                    if context.strength >= 5:
+                    if context_strength >= 5:
                         score += 15
                 
                 elif card_id == 'Whirlwind':
