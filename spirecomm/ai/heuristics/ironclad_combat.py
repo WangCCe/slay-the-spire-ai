@@ -1370,6 +1370,7 @@ class IroncladCombatPlanner(CombatPlanner):
         score += final_state.cards_drawn * 3
         score += final_state.energy_gained * 4
         context_player_hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
+        context_turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
 
         # 5. Strategic bonus for card types
         for action in sequence:
@@ -1380,14 +1381,14 @@ class IroncladCombatPlanner(CombatPlanner):
                 card_type = card_type_name(card)
 
                 if card_type == "POWER":
-                    if context.turn <= 2:
+                    if context_turn <= 2:
                         power_bonus = POWER_BONUS_EARLY
-                    elif context.turn <= 4:
+                    elif context_turn <= 4:
                         power_bonus = POWER_BONUS_MID
                     else:
                         power_bonus = POWER_BONUS_LATE
                     score += power_bonus
-                    logger.debug(f"[POWER_BONUS] +{power_bonus} for {raw_card_id} on turn {context.turn}")
+                    logger.debug(f"[POWER_BONUS] +{power_bonus} for {raw_card_id} on turn {context_turn}")
 
                     if has_awakened_one and not all_killed:
                         score -= AWAKENED_ONE_POWER_PENALTY
@@ -1427,7 +1428,7 @@ class IroncladCombatPlanner(CombatPlanner):
                     logger.info(f"[SKILL_PENALTY] Applied -50 for {card_id} (SKILL) against Gremlin Nob")
 
                 # Powers are valuable early
-                if card_id == 'Demon Form' and context.turn <= 3:
+                if card_id == 'Demon Form' and context_turn <= 3:
                     score += 50
 
                 # Draw cards help consistency

@@ -11941,6 +11941,52 @@ def test_ironclad_sequence_score_accepts_string_power_type():
     assert string_score == enum_score
 
 
+def test_ironclad_sequence_score_accepts_string_turn_for_power_bonus():
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    string_demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+
+    enum_context = _combat_context([demon_form], energy=3, monsters=[_louse(current_hp=100)])
+    enum_context.turn = 2
+    enum_initial = SimulationState(enum_context)
+    enum_final = enum_initial.clone()
+    enum_final.energy_spent = 3
+    enum_score = planner._score_sequence(
+        [PlayCardAction(card=demon_form)],
+        enum_initial,
+        enum_final,
+        enum_context,
+    )
+
+    string_context = _combat_context([string_demon_form], energy=3, monsters=[_louse(current_hp=100)])
+    string_context.turn = "2"
+    string_initial = SimulationState(string_context)
+    string_final = string_initial.clone()
+    string_final.energy_spent = 3
+    string_score = planner._score_sequence(
+        [PlayCardAction(card=string_demon_form)],
+        string_initial,
+        string_final,
+        string_context,
+    )
+
+    assert string_score == enum_score
+
+
 def test_ironclad_sequence_score_accepts_string_skill_type_against_gremlin_nob():
     defend = _card(
         "Defend_R",
