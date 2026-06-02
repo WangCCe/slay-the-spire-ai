@@ -814,6 +814,24 @@ def test_simulation_state_coerces_string_monster_base_damage_and_hits():
     assert state.monsters[0]["move_hits"] == 2
 
 
+def test_simulation_state_coerces_string_monster_stacks_and_strength():
+    target = _louse(current_hp=20)
+    target.strength = "-1"
+    context = _combat_context([], energy=0, monsters=[target])
+    context.vulnerable_stacks[0] = "2"
+    context.weak_stacks[0] = "1"
+    context.frail_stacks[0] = "3"
+    context.thorns_stacks[0] = "4"
+
+    state = SimulationState(context)
+
+    assert state.monsters[0]["vulnerable"] == 2
+    assert state.monsters[0]["weak"] == 1
+    assert state.monsters[0]["frail"] == 3
+    assert state.monsters[0]["thorns"] == 4
+    assert state.monsters[0]["strength"] == -1
+
+
 def test_simulation_state_coerces_string_player_hp_and_block():
     context = _combat_context([], energy=0, monsters=[_louse(current_hp=20)])
     context.game.current_hp = "31"

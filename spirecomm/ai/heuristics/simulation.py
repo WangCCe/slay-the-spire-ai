@@ -477,11 +477,19 @@ class SimulationState:
                 'is_gone': monster.is_gone,
                 'half_dead': monster.half_dead,
                 'is_minion': self._has_monster_power_any(monster, 'Minion', 'MinionPower'),
-                'vulnerable': context.vulnerable_stacks.get(i, 0),  # Vulnerable stacks (by index)
-                'weak': context.weak_stacks.get(i, 0),  # Weak stacks (by index)
-                'frail': context.frail_stacks.get(i, 0),  # Frail stacks (by index)
+                'vulnerable': self._non_negative_int(
+                    context.vulnerable_stacks.get(i, 0)
+                ),  # Vulnerable stacks (by index)
+                'weak': self._non_negative_int(
+                    context.weak_stacks.get(i, 0)
+                ),  # Weak stacks (by index)
+                'frail': self._non_negative_int(
+                    context.frail_stacks.get(i, 0)
+                ),  # Frail stacks (by index)
                 'poison': self._get_monster_power_amount(monster, 'Poison'),
-                'thorns': context.thorns_stacks.get(i, 0),  # Thorns/反伤 stacks (by index)
+                'thorns': self._non_negative_int(
+                    context.thorns_stacks.get(i, 0)
+                ),  # Thorns/反伤 stacks (by index)
                 'artifact': self._get_monster_power_amount(monster, 'Artifact'),
                 'move_base_damage': self._non_negative_int(
                     getattr(monster, 'move_base_damage', 0)
@@ -490,7 +498,7 @@ class SimulationState:
                     getattr(monster, 'move_adjusted_damage', 0)
                 ),
                 'move_hits': self._non_negative_int(getattr(monster, 'move_hits', 1)),
-                'strength': monster.strength if hasattr(monster, 'strength') else 0,
+                'strength': self._int_value(getattr(monster, 'strength', 0)),
                 'skill_strength_gain': self._get_monster_skill_strength_gain(monster, context),
                 'power_strength_gain': self._get_monster_power_strength_gain(monster),
                 'end_turn_strength_gain': self._get_monster_end_turn_strength_gain(
