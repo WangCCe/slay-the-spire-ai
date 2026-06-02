@@ -40,6 +40,20 @@ def test_balance_strategy_current_damage_handles_numeric_string_monster_hp():
     assert CombatBalanceStrategy()._estimate_current_damage(context) == 12
 
 
+def test_balance_strategy_current_damage_accepts_decimal_string_damage_and_hits():
+    monster = SimpleNamespace(
+        current_hp=20,
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.ATTACK",
+        move_adjusted_damage="7.0",
+        move_hits="2.0",
+    )
+    context = SimpleNamespace(monsters_alive=[monster])
+
+    assert CombatBalanceStrategy()._estimate_current_damage(context) == 14
+
+
 def test_balance_strategy_current_damage_clamps_negative_damage_and_hits():
     negative_damage = SimpleNamespace(
         current_hp=20,

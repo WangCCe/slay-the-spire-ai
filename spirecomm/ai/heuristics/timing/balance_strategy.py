@@ -276,6 +276,16 @@ class CombatBalanceStrategy:
             return default
 
     @staticmethod
+    def _coerce_int(value, default: int = 0) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            try:
+                return int(float(value))
+            except (TypeError, ValueError, OverflowError):
+                return default
+
+    @staticmethod
     def _is_live_monster(monster) -> bool:
         return (
             CombatBalanceStrategy._coerce_float(
@@ -288,17 +298,11 @@ class CombatBalanceStrategy:
 
     @staticmethod
     def _positive_move_hits(monster) -> int:
-        try:
-            return max(1, int(getattr(monster, 'move_hits', 1) or 1))
-        except (TypeError, ValueError):
-            return 1
+        return max(1, CombatBalanceStrategy._coerce_int(getattr(monster, 'move_hits', 1), 1))
 
     @classmethod
     def _move_damage_contribution(cls, monster) -> int:
-        try:
-            damage = max(0, int(getattr(monster, 'move_adjusted_damage', 0) or 0))
-        except (TypeError, ValueError):
-            damage = 0
+        damage = max(0, cls._coerce_int(getattr(monster, 'move_adjusted_damage', 0), 0))
         return damage * cls._positive_move_hits(monster)
 
     def _estimate_current_damage(self, context) -> int:
