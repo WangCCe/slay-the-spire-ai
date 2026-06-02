@@ -31,7 +31,7 @@ def _game(floor):
     )
 
 
-def _combat_game(monsters, player_hp=70, turn=1):
+def _combat_game(monsters, player_hp=70, turn=1, max_hp=80):
     return SimpleNamespace(
         floor=1,
         in_combat=True,
@@ -41,7 +41,7 @@ def _combat_game(monsters, player_hp=70, turn=1):
         gold=0,
         turn=turn,
         monsters=monsters,
-        player=SimpleNamespace(current_hp=player_hp, max_hp=80, energy=3, block=0),
+        player=SimpleNamespace(current_hp=player_hp, max_hp=max_hp, energy=3, block=0),
     )
 
 
@@ -103,6 +103,22 @@ def test_rl_step_reward_accepts_numeric_string_turn_delta():
     assert info["turn_ended"] is True
     assert info["combat_reward"] == calc.TURN_END_PENALTY
     assert reward == calc.TURN_END_PENALTY
+
+
+def test_rl_step_reward_accepts_numeric_string_player_max_hp_for_hp_loss_penalty():
+    calc = RewardCalculator()
+    info = {}
+
+    reward = calc.calculate_step_reward(
+        _combat_game([], player_hp="60", max_hp="80"),
+        _combat_game([], player_hp="70", max_hp="80"),
+        debug_info=info,
+    )
+
+    expected = -calc.HP_LOSS_PENALTY * (10 / 80)
+    assert info["hp_lost"] == 10
+    assert info["combat_reward"] == expected
+    assert reward == expected
 
 
 def test_rl_victory_detection_accepts_numeric_string_final_floor():

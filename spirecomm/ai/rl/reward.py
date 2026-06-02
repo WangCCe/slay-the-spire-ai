@@ -129,6 +129,7 @@ class RewardCalculator:
             reward += self.ALL_LETHAL_BONUS
         if hp_lost > 0:
             max_hp = self._safe_attr(game, 'player', 'max_hp') or self._safe_attr(game, 'max_hp')
+            max_hp = self._safe_int(max_hp, default=0)
             if max_hp:
                 hp_loss_ratio = hp_lost / max(max_hp, 1)
                 reward -= self.HP_LOSS_PENALTY * hp_loss_ratio
