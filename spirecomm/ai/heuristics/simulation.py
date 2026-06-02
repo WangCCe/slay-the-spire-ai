@@ -389,6 +389,13 @@ class SimulationState:
         except (TypeError, ValueError):
             return 0
 
+    @staticmethod
+    def _int_value(value) -> int:
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
     def __init__(self, context: DecisionContext):
         """Initialize simulation state from decision context."""
         self.turn = getattr(context, 'turn', 1)
@@ -407,8 +414,8 @@ class SimulationState:
             self._get_player_power_amount(context, 'Metallicize')
             + plated_armor
         )
-        self.player_energy = context.energy_available
-        self.player_strength = context.strength
+        self.player_energy = self._non_negative_int(context.energy_available)
+        self.player_strength = self._int_value(context.strength)
         self.player_temp_strength = 0
         self.player_ritual = self._get_player_power_amount(context, 'Ritual')
         self.player_regen = max(

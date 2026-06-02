@@ -828,6 +828,16 @@ def test_simulation_state_coerces_string_player_hp_and_block():
     assert state.turn_block() == 5
 
 
+def test_simulation_state_coerces_string_player_energy_and_strength():
+    context = _combat_context([], energy="3", monsters=[_louse(current_hp=20)])
+    context.strength = "-2"
+
+    state = SimulationState(context)
+
+    assert state.player_energy == 3
+    assert state.player_strength == -2
+
+
 def test_simulate_card_play_accepts_name_only_upgraded_attack_from_data(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
