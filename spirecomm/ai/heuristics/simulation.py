@@ -3722,7 +3722,7 @@ class FastCombatSimulator:
                 lookahead_state.player_max_hp
             )
             total_future_damage = 0
-            current_turn = getattr(context, 'turn', 1)
+            current_turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
 
             player_vulnerable = lookahead_state.player_vulnerable
             player_weak = lookahead_state.player_weak

@@ -2726,6 +2726,33 @@ def test_enemy_lookahead_counts_constrict_move_future_constricted_loss():
     assert future_damage == 10 + int(10 * simulation.LOOKAHEAD_DAMAGE_DISCOUNT)
 
 
+def test_enemy_lookahead_accepts_string_context_turn_for_current_attack():
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._current_monster_move = lambda *_args, **_kwargs: {
+        "intent": "ATTACK",
+        "damage": 10,
+        "hits": 1,
+    }
+
+    int_context = _combat_context([], energy=0, monsters=[_louse(current_hp=50)])
+    int_context.turn = 1
+    int_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(int_context),
+        int_context,
+        look_ahead=1,
+    )
+
+    string_context = _combat_context([], energy=0, monsters=[_louse(current_hp=50)])
+    string_context.turn = "1"
+    string_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(string_context),
+        string_context,
+        look_ahead=1,
+    )
+
+    assert string_damage == int_damage == 10
+
+
 def test_transient_shifting_reduces_current_attack_after_attack_damage():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context([strike], energy=1, monsters=[_transient_attack()])
