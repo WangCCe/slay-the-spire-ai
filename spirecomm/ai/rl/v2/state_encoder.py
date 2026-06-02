@@ -9,6 +9,7 @@ from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id, relic_id
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Intent
+from spirecomm.spire.numeric import coerce_float
 from spirecomm.spire.screen import ScreenType
 from spirecomm.ai.heuristics.card_costs import raw_card_cost
 from spirecomm.ai.heuristics.card_types import card_is_playable, card_type_name
@@ -361,9 +362,4 @@ class StateEncoderV2:
 
     @staticmethod
     def _safe_float(value, default: float = 0.0) -> float:
-        if value is None:
-            return default
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return default
+        return coerce_float(value, default)
