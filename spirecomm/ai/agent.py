@@ -274,8 +274,13 @@ class SimpleAgent:
             if not hasattr(card, "price") or not hasattr(card, "card_id"):
                 return False
 
-            if gold >= card.price and not self.priorities.should_skip(card):
-                if not screen.purge_available or gold - card.price >= purge_cost:
+            gold = self._safe_int(gold, 0)
+            price = self._safe_int(card.price, None)
+            if price is None:
+                return False
+
+            if gold >= price and not self.priorities.should_skip(card):
+                if not screen.purge_available or gold - price >= purge_cost:
                     return True
         except Exception as e:
             card_id = getattr(card, "card_id", "UNKNOWN")
@@ -288,7 +293,12 @@ class SimpleAgent:
     def _should_buy_relic(self, relic, gold):
         """Determine if a relic should be purchased."""
         try:
-            if gold >= relic.price and relic.price <= gold * 0.7:
+            gold = self._safe_int(gold, 0)
+            price = self._safe_int(getattr(relic, "price", None), None)
+            if price is None:
+                return False
+
+            if gold >= price and price <= gold * 0.7:
                 useful_relics = [
                     "Burning Blood",
                     "Barricade",
@@ -301,7 +311,7 @@ class SimpleAgent:
                     "Cloak Clasp",
                     "Gremlin Horn",
                 ]
-                if relic.name in useful_relics or gold >= relic.price + 50:
+                if relic.name in useful_relics or gold >= price + 50:
                     return True
         except Exception as e:
             relic_name = getattr(relic, "name", "UNKNOWN")
@@ -728,7 +738,7 @@ class SimpleAgent:
             return BossRewardAction(best_boss_relic)
         elif self.game.screen_type == ScreenType.SHOP_SCREEN:
             try:
-                gold = self.game.gold
+                gold = self._safe_int(getattr(self.game, "gold", 0), 0)
                 screen = self.game.screen
 
                 cancel_available = getattr(self.game, "cancel_available", False)
@@ -755,7 +765,9 @@ class SimpleAgent:
 
                 # Priority 1: Purge (card removal) if needed and affordable
                 purge_cost = (
-                    screen.purge_cost if screen.purge_available else float("inf")
+                    self._safe_int(screen.purge_cost, float("inf"))
+                    if screen.purge_available
+                    else float("inf")
                 )
                 if screen.purge_available and gold >= purge_cost:
                     strikes = [
@@ -779,7 +791,12 @@ class SimpleAgent:
                             return BuyCardAction(card)
                 else:
                     for card in valid_cards:
-                        if gold >= card.price and not self.priorities.should_skip(card):
+                        price = self._safe_int(getattr(card, "price", None), None)
+                        if (
+                            price is not None
+                            and gold >= price
+                            and not self.priorities.should_skip(card)
+                        ):
                             self.shop_purchase_made = True
                             return BuyCardAction(card)
 
@@ -798,7 +815,8 @@ class SimpleAgent:
                 ):
                     for potion in screen.potions:
                         try:
-                            if gold >= potion.price:
+                            price = self._safe_int(getattr(potion, "price", None), None)
+                            if price is not None and gold >= price:
                                 useful_potions = [
                                     "Healing Potion",
                                     "Strength Potion",

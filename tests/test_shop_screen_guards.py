@@ -2,8 +2,11 @@ from types import SimpleNamespace
 
 from spirecomm.ai.agent import SimpleAgent
 from spirecomm.communication.action import (
+    BuyCardAction,
+    BuyPotionAction,
     CancelAction,
     ChooseShopkeeperAction,
+    ChooseAction,
     LeaveAction,
     ProceedAction,
     WaitAction,
@@ -15,8 +18,35 @@ def _agent_for_shop(**game_overrides):
     agent = SimpleAgent.__new__(SimpleAgent)
     agent.visited_shop = False
     agent.shop_purchase_made = False
+    agent._leaving_shop_room = False
+    agent._shop_exit_waits = 0
     agent.game = SimpleNamespace(**game_overrides)
     return agent
+
+
+def _shop_card(card_id, price):
+    return SimpleNamespace(card_id=card_id, name=card_id, price=price, upgrades=0)
+
+
+class _BuyEverythingPriority:
+    def should_skip(self, _card):
+        return False
+
+    def get_sorted_cards(self, cards):
+        return cards
+
+
+class _BuyEverythingUnsortedPriority:
+    def should_skip(self, _card):
+        return False
+
+
+class _SkipCardsPriority:
+    def should_skip(self, _card):
+        return True
+
+    def get_sorted_cards(self, cards):
+        return cards
 
 
 def test_shop_screen_exit_uses_leave_when_not_in_purchase_transition():
@@ -32,6 +62,107 @@ def test_shop_screen_exit_uses_leave_when_not_in_purchase_transition():
     action = agent.handle_screen()
 
     assert isinstance(action, LeaveAction)
+
+
+def test_shop_screen_purge_accepts_string_gold_and_purge_cost():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[_shop_card("Offering", price="50")],
+            relics=[],
+            potions=[],
+            purge_available=True,
+            purge_cost="75",
+        ),
+        gold="200",
+        deck=[_shop_card("Strike_R", price=0)],
+        cancel_available=False,
+        proceed_available=False,
+        available_commands=["choose", "potion", "key", "click", "wait", "state"],
+    )
+    agent.priorities = _BuyEverythingPriority()
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.name == "purge"
+
+
+def test_shop_screen_buy_card_accepts_string_gold_and_price():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[_shop_card("Offering", price="50")],
+            relics=[],
+            potions=[],
+            purge_available=False,
+        ),
+        gold="200",
+        deck=[],
+        cancel_available=False,
+        proceed_available=False,
+        available_commands=["choose", "potion", "key", "click", "wait", "state"],
+    )
+    agent.priorities = _BuyEverythingPriority()
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, BuyCardAction)
+    assert action.name == "Offering"
+
+
+def test_shop_screen_buy_card_accepts_string_gold_without_sorted_priority():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[_shop_card("Offering", price="50")],
+            relics=[],
+            potions=[],
+            purge_available=False,
+        ),
+        gold="200",
+        deck=[],
+        cancel_available=False,
+        proceed_available=False,
+        available_commands=["choose", "potion", "key", "click", "wait", "state"],
+    )
+    agent.priorities = _BuyEverythingUnsortedPriority()
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, BuyCardAction)
+    assert action.name == "Offering"
+
+
+def test_shop_screen_buy_potion_accepts_string_gold_and_price():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[_shop_card("Skip Me", price="1")],
+            relics=[],
+            potions=[SimpleNamespace(name="Fire Potion", price="75")],
+            purge_available=False,
+        ),
+        gold="200",
+        deck=[],
+        are_potions_full=lambda: False,
+        cancel_available=False,
+        proceed_available=False,
+        available_commands=["choose", "potion", "key", "click", "wait", "state"],
+    )
+    agent.priorities = _SkipCardsPriority()
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, BuyPotionAction)
+    assert action.name == "Fire Potion"
+
+
+def test_shop_relic_helper_accepts_string_gold_and_price():
+    agent = _agent_for_shop()
+    relic = SimpleNamespace(name="Burning Blood", price="100")
+
+    assert agent._should_buy_relic(relic, gold="200") is True
 
 
 def test_shop_screen_exit_uses_proceed_when_that_is_the_available_exit():
