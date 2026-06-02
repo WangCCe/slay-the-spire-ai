@@ -2281,11 +2281,14 @@ class IroncladCombatPlanner(CombatPlanner):
         """
         # Base confidence
         confidence = 0.7
+        available_energy = self._non_negative_int(
+            getattr(context, 'energy_available', 0)
+        )
 
         # Higher with more energy (more options)
-        if context.energy_available >= 3:
+        if available_energy >= 3:
             confidence += 0.1
-        elif context.energy_available == 1:
+        elif available_energy == 1:
             confidence -= 0.2
 
         # Higher with HP safety

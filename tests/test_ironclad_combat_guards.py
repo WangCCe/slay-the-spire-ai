@@ -185,6 +185,35 @@ def test_ironclad_get_confidence_accepts_string_player_hp_pct():
     assert string_confidence == enum_confidence
 
 
+def test_ironclad_get_confidence_accepts_string_energy_available():
+    strike = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        cost=1,
+        is_playable=True,
+    )
+    string_strike = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        cost=1,
+        is_playable=True,
+    )
+    planner = IroncladCombatPlanner()
+    planner.combat_ending_detector.can_kill_all = lambda _context: False
+
+    enum_context = _combat_context([strike], energy=3, monsters=[_louse(current_hp=50)])
+    enum_confidence = planner.get_confidence(enum_context)
+
+    string_context = _combat_context([string_strike], energy="3", monsters=[_louse(current_hp=50)])
+    string_confidence = planner.get_confidence(string_context)
+
+    assert string_confidence == enum_confidence
+
+
 def test_ironclad_card_priority_accepts_string_incoming_damage_for_defense():
     defend = _card(
         "Defend_R",
