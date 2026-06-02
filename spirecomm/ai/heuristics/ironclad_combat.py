@@ -2311,7 +2311,8 @@ class IroncladCombatPlanner(CombatPlanner):
             confidence -= 0.2
 
         # Higher in Act 1 (more familiar)
-        if context.act == 1:
+        act = self._non_negative_int(getattr(context, 'act', 0))
+        if act == 1:
             confidence += 0.1
 
         # Higher with lethal detected
