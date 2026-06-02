@@ -55,7 +55,10 @@ class TurnTimingClassifier:
         """
         try:
             # Get basic turn info
-            current_turn = getattr(context, 'turn', 1)
+            current_turn = max(
+                1,
+                self._coerce_int(getattr(context, 'turn', 1), default=1),
+            )
             monsters = getattr(context, 'monsters_alive', [])
 
             if not monsters:
@@ -108,7 +111,11 @@ class TurnTimingClassifier:
 
         except Exception as e:
             logger.warning(f"[TIMING_CLASSIFIER] Classification failed: {e}")
-            return self._create_default_context(getattr(context, 'turn', 1))
+            current_turn = max(
+                1,
+                self._coerce_int(getattr(context, 'turn', 1), default=1),
+            )
+            return self._create_default_context(current_turn)
 
     def _analyze_monster_timing(
         self,
@@ -1120,7 +1127,10 @@ class TurnTimingClassifier:
         try:
             from spirecomm.data.loader import game_data_loader
 
-            current_turn = getattr(context, 'turn', 1)
+            current_turn = max(
+                1,
+                self._coerce_int(getattr(context, 'turn', 1), default=1),
+            )
             monsters = getattr(context, 'monsters_alive', [])
 
             for monster in monsters:

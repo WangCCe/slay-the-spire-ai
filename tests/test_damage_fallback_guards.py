@@ -3489,6 +3489,51 @@ def test_spike_imminent_uses_live_monster_id_for_predicted_moves(monkeypatch):
     assert prediction_loader.names == ["Red Slaver"]
 
 
+def test_classify_turn_accepts_string_turn_for_imminent_spike(monkeypatch):
+    class FutureSpikeLoader:
+        def get_monster_timing_hints(self, _monster_name):
+            return {}
+
+        def predict_monster_moves(self, _monster_name, current_turn, _hp_percent):
+            if current_turn != 1:
+                return []
+            return [
+                {
+                    "turn": 2,
+                    "move": {
+                        "name": "Heavy Stab",
+                        "intent": "ATTACK",
+                        "damage": 20,
+                        "hits": 1,
+                    },
+                }
+            ]
+
+    monkeypatch.setattr(data_loader, "game_data_loader", FutureSpikeLoader())
+    classifier = TurnTimingClassifier()
+    monster = SimpleNamespace(
+        name="Red Slaver",
+        monster_id="SlaverRed",
+        intent="ATTACK",
+        move_adjusted_damage=5,
+        move_hits=1,
+        current_hp=45,
+        max_hp=60,
+        strength=0,
+    )
+    context = SimpleNamespace(
+        turn="1",
+        monsters_alive=[monster],
+        game=SimpleNamespace(ascension_level=0),
+    )
+
+    timing_context = classifier.classify_turn(context)
+
+    assert timing_context.turn_timing == TurnTiming.PREPARATION
+    assert timing_context.future_damage_curve[0] == 20
+    assert timing_context.current_turn_offset() == 1
+
+
 def test_future_strength_prediction_uses_live_id_for_louse_grow(monkeypatch):
     class CanonicalOnlyLoader:
         def get_enhanced_monster_data(self, monster_name):
