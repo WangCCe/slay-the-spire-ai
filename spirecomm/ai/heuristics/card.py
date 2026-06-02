@@ -408,7 +408,8 @@ class SynergyCardEvaluator(CardEvaluator):
         confidence += max_score * 0.3
 
         # Stable HP increases confidence
-        if 0.4 <= context.player_hp_pct <= 0.8:
+        player_hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
+        if 0.4 <= player_hp_pct <= 0.8:
             confidence += 0.1
 
         # Reasonable deck size

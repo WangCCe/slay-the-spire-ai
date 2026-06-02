@@ -305,6 +305,24 @@ def test_context_modifier_accepts_numeric_string_player_hp_pct():
     assert evaluator._calculate_context_modifier(defend, context, None) == 2.0
 
 
+def test_card_evaluator_confidence_accepts_numeric_string_player_hp_pct():
+    evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
+    evaluator.deck_analyzer.get_archetype_score = lambda _context: {"strength": 0.5}
+    deck = [
+        Card("Strike_R", "Strike", CardType.ATTACK, CardRarity.BASIC, cost=1),
+    ] * 10
+    enum_context = SimpleNamespace(
+        player_hp_pct=0.5,
+        game=SimpleNamespace(deck=deck),
+    )
+    string_context = SimpleNamespace(
+        player_hp_pct="0.5",
+        game=SimpleNamespace(deck=deck),
+    )
+
+    assert evaluator.get_confidence(string_context) == evaluator.get_confidence(enum_context)
+
+
 def test_context_modifier_accepts_numeric_string_low_monster_hp():
     evaluator = SynergyCardEvaluator(player_class="IRONCLAD")
     context = SimpleNamespace(
