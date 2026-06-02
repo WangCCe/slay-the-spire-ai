@@ -13990,6 +13990,118 @@ def test_live_buff_intent_does_not_resolve_to_debuff_move(monkeypatch):
     assert move["name"] == "Actual Buff"
 
 
+def test_prediction_formula_damage_rejects_nonfinite_values():
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    assert simulator._formula_damage_value(
+        {
+            "type": "linear_by_turn",
+            "base": float("inf"),
+            "per_turn": 3,
+            "turn_offset": 0,
+        },
+        target_turn=2,
+    ) == 6
+    assert simulator._formula_damage_value(
+        {
+            "type": "linear_after_turn",
+            "base": 5,
+            "increment": 3,
+            "first_turn": 1,
+            "max_bonus": float("inf"),
+        },
+        target_turn=4,
+    ) == 14
+
+
+def test_prediction_formula_hits_rejects_nonfinite_values():
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    assert simulator._formula_hit_count(
+        {
+            "type": "ceil_turn_divisor",
+            "divisor": float("inf"),
+            "min_hits": float("inf"),
+            "max_hits": float("inf"),
+        },
+        target_turn=float("inf"),
+    ) == 1
+
+
+def test_prediction_numeric_damage_rejects_nonfinite_values():
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    assert simulator._numeric_damage_value(float("inf")) == 0
+    assert simulator._numeric_damage_value({"normal": float("inf"), "base": 7}) == 7
+    assert simulator._numeric_damage_value({"max": float("inf"), "fallback": 5}) == 5
+
+
+def test_prediction_move_hit_count_rejects_nonfinite_fallback():
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    assert simulator._move_hit_count({"hits": float("inf")}) == 1
+    assert simulator._move_hit_count({"move_hits": "2"}) == 2
+
+
+def test_prediction_ascension_modifiers_reject_nonfinite_values():
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    context = _combat_context([], monsters=[_louse()])
+    move = {
+        "damage": 4,
+        "ascension_modifiers": {"2+": {"damage_bonus": 5}},
+    }
+
+    context.game.ascension_level = float("inf")
+    assert simulator._apply_ascension_move_value(move, context, "damage", 4) == 4
+
+    context.game.ascension_level = 2
+    move["ascension_modifiers"]["2+"] = {"damage_bonus": float("inf")}
+    assert simulator._apply_ascension_move_value(move, context, "damage", 4) == 4
+
+    move["ascension_modifiers"]["2+"] = {"damage": float("inf")}
+    assert simulator._apply_ascension_move_value(move, context, "damage", 4) == 4
+
+
+def test_prediction_death_split_data_rejects_nonfinite_values(monkeypatch):
+    class FakeLoader:
+        def get_enhanced_monster_data(self, monster_name):
+            if monster_name == "Inf Count":
+                return {
+                    "name": monster_name,
+                    "special_mechanics": {
+                        "type": "death_split",
+                        "split_count": float("inf"),
+                    },
+                }
+            return {
+                "name": monster_name,
+                "special_mechanics": {
+                    "type": "death_split",
+                    "splits_into": ["Small Slime"],
+                    "split_threshold_percent": float("inf"),
+                },
+            }
+
+    monkeypatch.setattr(simulation, "game_data_loader", FakeLoader())
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    assert simulator._get_death_split_info({"name": "Inf Count", "hp": 10, "max_hp": 20}) is None
+    assert simulator._get_death_split_info(
+        {"name": "Inf Threshold", "hp": 10, "max_hp": 20}
+    ) == (50.0, ["Small Slime"])
+
+
+def test_prediction_strongest_known_attack_damage_rejects_nonfinite_hits(monkeypatch):
+    class FakeLoader:
+        def get_monster_moves(self, _monster_name):
+            return [{"intent": "ATTACK", "damage": 7, "hits": float("inf")}]
+
+    monkeypatch.setattr(simulation, "game_data_loader", FakeLoader())
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    assert simulator._strongest_known_attack_damage("Bad Hits") == 7
+
+
 def test_potion_target_state_index_prefers_live_monster_id_over_same_name():
     state = SimpleNamespace(
         monsters=[

@@ -12,7 +12,7 @@ import time
 from typing import List, Dict, Tuple, Optional, Any
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster, Intent
-from spirecomm.spire.numeric import coerce_int
+from spirecomm.spire.numeric import coerce_float, coerce_int
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.incoming_damage import (
     known_unknown_move_has_no_immediate_damage,
@@ -4402,10 +4402,10 @@ class FastCombatSimulator:
             modifier = ascension_modifiers.get(f"{threshold}+", {})
             if isinstance(modifier, dict):
                 if key in modifier:
-                    value = self._numeric_damage_value(modifier.get(key))
+                    value = self._optional_numeric_damage_value(modifier.get(key))
                     return value if value is not None else base_value
                 if key == 'damage' and 'damage_bonus' in modifier:
-                    bonus = self._numeric_damage_value(modifier.get('damage_bonus'))
+                    bonus = self._optional_numeric_damage_value(modifier.get('damage_bonus'))
                     return base_value + bonus if bonus is not None else base_value
             break
 
@@ -4413,8 +4413,8 @@ class FastCombatSimulator:
 
     def _context_ascension_level(self, context: DecisionContext) -> int:
         if hasattr(context, 'game') and hasattr(context.game, 'ascension_level'):
-            return int(context.game.ascension_level or 0)
-        return int(getattr(context, 'ascension_level', 0) or 0)
+            return max(0, coerce_int(context.game.ascension_level or 0, 0))
+        return max(0, coerce_int(getattr(context, 'ascension_level', 0) or 0, 0))
 
     def _context_other_enemy_count(
         self,
@@ -4492,10 +4492,13 @@ class FastCombatSimulator:
 
     @staticmethod
     def _is_live_context_monster(monster: Any) -> bool:
-        hp = monster_field(
-            monster,
-            'current_hp',
-            monster_field(monster, 'hp', 1),
+        hp = coerce_int(
+            monster_field(
+                monster,
+                'current_hp',
+                monster_field(monster, 'hp', 1),
+            ),
+            0,
         )
         return (
             not monster_field(monster, 'is_gone', False)
@@ -4510,29 +4513,29 @@ class FastCombatSimulator:
         formula_hits = self._formula_hit_count(move.get('hits_formula'), target_turn)
         if formula_hits is not None:
             return formula_hits
-        return move.get('hits', move.get('move_hits', 1)) or 1
+        return max(1, coerce_int(move.get('hits', move.get('move_hits', 1)) or 1, 1))
 
     def _formula_damage_value(self, formula: Any, target_turn: Optional[int]) -> Optional[int]:
         if not isinstance(formula, dict):
             return None
 
         formula_type = formula.get('type')
-        turn = int(target_turn or 1)
+        turn = max(1, coerce_int(target_turn or 1, 1))
 
         if formula_type == 'linear_by_turn':
-            base = int(formula.get('base', 0) or 0)
-            per_turn = int(formula.get('per_turn', 0) or 0)
-            turn_offset = int(formula.get('turn_offset', 0) or 0)
+            base = coerce_int(formula.get('base', 0) or 0, 0)
+            per_turn = coerce_int(formula.get('per_turn', 0) or 0, 0)
+            turn_offset = coerce_int(formula.get('turn_offset', 0) or 0, 0)
             return base + per_turn * max(0, turn + turn_offset)
 
         if formula_type == 'linear_after_turn':
-            base = int(formula.get('base', 0) or 0)
-            increment = int(formula.get('increment', 0) or 0)
-            first_turn = int(formula.get('first_turn', 1) or 1)
+            base = coerce_int(formula.get('base', 0) or 0, 0)
+            increment = coerce_int(formula.get('increment', 0) or 0, 0)
+            first_turn = max(1, coerce_int(formula.get('first_turn', 1) or 1, 1))
             bonus = increment * max(0, turn - first_turn)
-            max_bonus = formula.get('max_bonus')
-            if isinstance(max_bonus, (int, float)):
-                bonus = min(bonus, int(max_bonus))
+            max_bonus = coerce_int(formula.get('max_bonus'), None)
+            if max_bonus is not None:
+                bonus = min(bonus, max_bonus)
             return base + bonus
 
         return None
@@ -4543,31 +4546,35 @@ class FastCombatSimulator:
         if formula.get('type') != 'ceil_turn_divisor':
             return None
 
-        divisor = max(1, int(formula.get('divisor', 1) or 1))
-        turn = max(1, int(target_turn or 1))
+        divisor = max(1, coerce_int(formula.get('divisor', 1) or 1, 1))
+        turn = max(1, coerce_int(target_turn or 1, 1))
         hits = (turn + divisor - 1) // divisor
-        min_hits = formula.get('min_hits')
-        max_hits = formula.get('max_hits')
-        if isinstance(min_hits, (int, float)):
-            hits = max(hits, int(min_hits))
-        if isinstance(max_hits, (int, float)):
-            hits = min(hits, int(max_hits))
-        return hits
+        min_hits = coerce_int(formula.get('min_hits'), None)
+        max_hits = coerce_int(formula.get('max_hits'), None)
+        if min_hits is not None:
+            hits = max(hits, min_hits)
+        if max_hits is not None:
+            hits = min(hits, max_hits)
+        return max(0, hits)
 
     def _numeric_damage_value(self, damage: Any) -> int:
-        if isinstance(damage, (int, float)):
-            return int(damage)
-        if isinstance(damage, dict):
-            for key in ('max', 'normal', 'base', 'min'):
-                value = damage.get(key)
-                if isinstance(value, (int, float)):
-                    return int(value)
-            numeric_values = [
-                value for value in damage.values()
-                if isinstance(value, (int, float))
-            ]
-            return int(max(numeric_values, default=0))
-        return 0
+        value = self._optional_numeric_damage_value(damage)
+        return value if value is not None else 0
+
+    def _optional_numeric_damage_value(self, damage: Any) -> Optional[int]:
+        if not isinstance(damage, dict):
+            return coerce_int(damage, None)
+
+        numeric_values = []
+        for key in ('max', 'normal', 'base', 'min'):
+            value = coerce_int(damage.get(key), None)
+            if value is not None:
+                return value
+        for value in damage.values():
+            coerced = coerce_int(value, None)
+            if coerced is not None:
+                numeric_values.append(coerced)
+        return max(numeric_values, default=None)
 
     def _hexaghost_divider_damage(self, player_hp: int) -> int:
         return ((max(0, player_hp) // 12) + 1) * 6
@@ -4583,7 +4590,7 @@ class FastCombatSimulator:
                 new_monsters.append(monster)
                 continue
 
-            split_hp = max(0, int(monster.get('hp', 0)))
+            split_hp = max(0, coerce_int(monster.get('hp', 0), 0))
             if split_hp <= 0:
                 gone_monster = monster.copy()
                 gone_monster['is_gone'] = True
@@ -4592,7 +4599,7 @@ class FastCombatSimulator:
 
             monster_name = monster.get('name', 'Unknown')
             threshold, split_names = split_info
-            max_hp = monster.get('max_hp', split_hp)
+            max_hp = max(0, coerce_int(monster.get('max_hp', split_hp), split_hp))
             hp_percent = (split_hp / max_hp * 100) if max_hp > 0 else 0
             logger.info(
                 "[DEATH_SPLIT] Materializing %s at %.1f%% HP (threshold: %s%%) into %s",
@@ -4629,7 +4636,7 @@ class FastCombatSimulator:
         split_names = special_mechanics.get('splits_into') or []
         if not split_names:
             split_count = special_mechanics.get('split_count', 0)
-            split_names = [monster_name] * int(split_count)
+            split_names = [monster_name] * max(0, coerce_int(split_count, 0))
         if not split_names:
             return None
         split_names = [self._canonical_monster_name(name) for name in split_names]
@@ -4641,7 +4648,7 @@ class FastCombatSimulator:
             or special_mechanics.get('split_threshold')
             or 50
         )
-        threshold = float(threshold)
+        threshold = coerce_float(threshold, 50.0)
         if threshold <= 1:
             threshold *= 100
 
@@ -4658,8 +4665,8 @@ class FastCombatSimulator:
             return False
 
         threshold, _split_names = split_info
-        hp = monster.get('hp', 0)
-        max_hp = monster.get('max_hp', hp)
+        hp = max(0, coerce_int(monster.get('hp', 0), 0))
+        max_hp = max(0, coerce_int(monster.get('max_hp', hp), hp))
         if hp <= 0 or max_hp <= 0:
             return False
 
@@ -4697,7 +4704,7 @@ class FastCombatSimulator:
             damage = self._numeric_damage_value(move.get('damage'))
             if not intent_is_attack(move.get('intent', '')) or damage <= 0:
                 continue
-            hits = move.get('hits', move.get('move_hits', 1)) or 1
+            hits = self._move_hit_count(move)
             damage_values.append(int(damage * hits))
         return max(damage_values, default=0)
 
