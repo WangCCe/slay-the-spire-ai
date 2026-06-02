@@ -139,6 +139,24 @@ class IroncladCombatPlanner(CombatPlanner):
     def _is_aoe_attack(card: Card) -> bool:
         return canonical_card_name(card) in AOE_ATTACK_CARDS
 
+    def _simulate_planner_card_play(
+        self,
+        state: SimulationState,
+        card: Card,
+        target: Optional[Monster] = None,
+        target_idx: Optional[int] = None,
+        context: Optional[DecisionContext] = None,
+    ) -> SimulationState:
+        new_state = self.simulator.simulate_card_play(
+            state,
+            card,
+            target,
+            target_idx,
+            context=context,
+        )
+        mark_card_played(new_state.played_card_uuids, card)
+        return new_state
+
     @staticmethod
     def _context_ascension_level(context: DecisionContext) -> int:
         game = getattr(context, 'game', None)
@@ -354,11 +372,10 @@ class IroncladCombatPlanner(CombatPlanner):
 
                             for target, target_idx, threat in targets_to_explore:
                                 # Simulate
-                                new_state = self.simulator.simulate_card_play(
+                                new_state = self._simulate_planner_card_play(
                                     state, card, target, target_idx, context=context
                                 )
                                 new_state_copy = copy.deepcopy(new_state)
-                                mark_card_played(new_state_copy.played_card_uuids, card)
 
                                 # Set primary target on first attack
                                 if state.primary_target is None and target_idx is not None:
@@ -385,10 +402,9 @@ class IroncladCombatPlanner(CombatPlanner):
                             target, target_idx = self._choose_target_for_card(card, context, state)
 
                             # Simulate
-                            new_state = self.simulator.simulate_card_play(
+                            new_state = self._simulate_planner_card_play(
                                 state, card, target, target_idx, context=context
                             )
-                            mark_card_played(new_state.played_card_uuids, card)
 
                             # Set primary target on first attack
                             if state.primary_target is None and target_idx is not None:
@@ -416,10 +432,9 @@ class IroncladCombatPlanner(CombatPlanner):
                         target, target_idx = self._choose_target_for_card(card, context, state)
 
                         # Simulate
-                        new_state = self.simulator.simulate_card_play(
+                        new_state = self._simulate_planner_card_play(
                             state, card, target, target_idx, context=context
                         )
-                        mark_card_played(new_state.played_card_uuids, card)
 
                         # === NEW: Set primary target on first attack ===
                         # If this is the first attack (no primary target yet), set it

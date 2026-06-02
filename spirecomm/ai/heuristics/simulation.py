@@ -5263,6 +5263,22 @@ class HeuristicCombatPlanner(CombatPlanner):
         self.player_class = player_class
         self.act = act  # Store act for reference
 
+    def _simulate_planner_card_play(
+        self,
+        state: SimulationState,
+        card: Card,
+        target: Optional[Monster] = None,
+        context: Optional[DecisionContext] = None,
+    ) -> SimulationState:
+        new_state = self.simulator.simulate_card_play(
+            state,
+            card,
+            target,
+            context=context,
+        )
+        mark_card_played(new_state.played_card_uuids, card)
+        return new_state
+
     @staticmethod
     def _card_cost_for_state(card, state: SimulationState) -> int:
         cost = effective_card_cost(card, state.player_energy)
@@ -5508,9 +5524,8 @@ class HeuristicCombatPlanner(CombatPlanner):
 
                                 for target, _ in targets_to_explore:
                                     # Simulate playing this card with each target
-                                    new_state = self.simulator.simulate_card_play(state, card, target, context=context)
+                                    new_state = self._simulate_planner_card_play(state, card, target, context=context)
                                     new_state_copy = copy.deepcopy(new_state)
-                                    mark_card_played(new_state_copy.played_card_uuids, card)
 
                                     # Create action
                                     action = PlayCardAction(card=card, target_monster=target)
@@ -5534,8 +5549,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                                 )
 
                                 # Simulate playing this card
-                                new_state = self.simulator.simulate_card_play(state, card, target, context=context)
-                                mark_card_played(new_state.played_card_uuids, card)
+                                new_state = self._simulate_planner_card_play(state, card, target, context=context)
 
                                 # Create action
                                 if target:
@@ -5563,8 +5577,7 @@ class HeuristicCombatPlanner(CombatPlanner):
                             )
 
                             # Simulate playing this card
-                            new_state = self.simulator.simulate_card_play(state, card, target, context=context)
-                            mark_card_played(new_state.played_card_uuids, card)
+                            new_state = self._simulate_planner_card_play(state, card, target, context=context)
 
                             # Create action
                             if target:
