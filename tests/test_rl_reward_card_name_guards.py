@@ -90,6 +90,21 @@ def test_rl_step_reward_accepts_numeric_string_monster_hp_for_damage_delta():
     assert reward == 5 * calc.DAMAGE_REWARD_SCALE
 
 
+def test_rl_step_reward_accepts_numeric_string_turn_delta():
+    calc = RewardCalculator()
+    info = {}
+
+    reward = calc.calculate_step_reward(
+        _combat_game([], turn="10"),
+        _combat_game([], turn="9"),
+        debug_info=info,
+    )
+
+    assert info["turn_ended"] is True
+    assert info["combat_reward"] == calc.TURN_END_PENALTY
+    assert reward == calc.TURN_END_PENALTY
+
+
 def test_rl_victory_detection_accepts_numeric_string_final_floor():
     calc = RewardCalculator()
     game = SimpleNamespace(

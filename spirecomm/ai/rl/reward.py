@@ -349,15 +349,19 @@ class RewardCalculator:
 
             # Detect turn end (turn number increased)
             turn_ended = False
-            if (hasattr(current_game, 'turn') and hasattr(last_game, 'turn') and
-                current_game.turn > last_game.turn):
-                turn_ended = True
+            current_turn = None
+            last_turn = None
+            if hasattr(current_game, 'turn') and hasattr(last_game, 'turn'):
+                current_turn = self._safe_int(current_game.turn, default=None)
+                last_turn = self._safe_int(last_game.turn, default=None)
+                if current_turn is not None and last_turn is not None and current_turn > last_turn:
+                    turn_ended = True
 
             if info is not None:
                 # Energy spent and block delta only make sense within the same turn.
                 last_energy = self._safe_attr(last_game, 'player', 'energy', default=0)
                 current_energy = self._safe_attr(current_game, 'player', 'energy', default=0)
-                if hasattr(current_game, 'turn') and hasattr(last_game, 'turn') and current_game.turn == last_game.turn:
+                if current_turn is not None and last_turn is not None and current_turn == last_turn:
                     info["energy_spent"] = max(0, int(last_energy) - int(current_energy))
                     last_block = self._safe_attr(last_game, 'player', 'block', default=0)
                     current_block = self._safe_attr(current_game, 'player', 'block', default=0)
