@@ -121,6 +121,22 @@ def test_rl_step_reward_accepts_numeric_string_turn_delta():
     assert reward == calc.TURN_END_PENALTY
 
 
+def test_rl_step_reward_accepts_decimal_string_energy_and_block_info():
+    calc = RewardCalculator()
+    info = {}
+    last_game = _combat_game([], turn="2.0")
+    current_game = _combat_game([], turn="2.0")
+    last_game.player.energy = "3.0"
+    current_game.player.energy = "1.0"
+    last_game.player.block = "4.0"
+    current_game.player.block = "9.0"
+
+    calc.calculate_step_reward(current_game, last_game, debug_info=info)
+
+    assert info["energy_spent"] == 2
+    assert info["block_delta"] == 5
+
+
 def test_rl_step_reward_accepts_numeric_string_player_max_hp_for_hp_loss_penalty():
     calc = RewardCalculator()
     info = {}

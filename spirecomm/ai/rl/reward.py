@@ -88,7 +88,10 @@ class RewardCalculator:
         try:
             return int(value)
         except (TypeError, ValueError):
-            return default
+            try:
+                return int(float(value))
+            except (TypeError, ValueError, OverflowError):
+                return default
 
     @staticmethod
     def _is_truthy(value: str) -> bool:
@@ -363,10 +366,15 @@ class RewardCalculator:
                 last_energy = self._safe_attr(last_game, 'player', 'energy', default=0)
                 current_energy = self._safe_attr(current_game, 'player', 'energy', default=0)
                 if current_turn is not None and last_turn is not None and current_turn == last_turn:
-                    info["energy_spent"] = max(0, int(last_energy) - int(current_energy))
+                    info["energy_spent"] = max(
+                        0,
+                        self._safe_int(last_energy) - self._safe_int(current_energy),
+                    )
                     last_block = self._safe_attr(last_game, 'player', 'block', default=0)
                     current_block = self._safe_attr(current_game, 'player', 'block', default=0)
-                    info["block_delta"] = int(current_block) - int(last_block)
+                    info["block_delta"] = (
+                        self._safe_int(current_block) - self._safe_int(last_block)
+                    )
 
             # Calculate combat reward
             combat_reward = self.calculate_combat_reward(
