@@ -3,20 +3,14 @@
 import re
 from typing import Any, Optional
 
+from spirecomm.spire.numeric import coerce_int
+
 from .card_names import canonical_card_name
 from .card_upgrades import is_card_upgraded
 
 
 def _safe_int(value: Any, default: int = 0) -> int:
-    if value is None:
-        return default
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        try:
-            return int(float(value))
-        except (TypeError, ValueError, OverflowError):
-            return default
+    return coerce_int(value, default)
 
 
 def raw_card_cost(card) -> int:

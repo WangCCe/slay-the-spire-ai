@@ -28,10 +28,23 @@ def test_raw_card_cost_accepts_decimal_string_cost_for_turn():
     assert effective_card_cost(card, available_energy=3) == 2
 
 
+def test_raw_card_cost_rejects_nonfinite_cost_for_turn():
+    card = _card(cost=float("inf"))
+
+    assert raw_card_cost(card) == 0
+    assert effective_card_cost(card, available_energy=3) == 0
+
+
 def test_x_cost_effective_card_cost_accepts_decimal_string_available_energy():
     card = _card(name="Whirlwind", cost="-1.0")
 
     assert effective_card_cost(card, available_energy="3.0") == 3
+
+
+def test_x_cost_effective_card_cost_rejects_nonfinite_available_energy():
+    card = _card(name="Whirlwind", cost=-1)
+
+    assert effective_card_cost(card, available_energy=float("inf")) == 0
 
 
 def test_effective_card_cost_after_refund_accepts_decimal_string_inputs():
@@ -42,6 +55,17 @@ def test_effective_card_cost_after_refund_accepts_decimal_string_inputs():
         available_energy="2.0",
         energy_refund="1.0",
     ) == 1
+
+
+def test_playable_card_cost_after_refund_rejects_nonfinite_available_energy():
+    assert (
+        playable_card_cost_after_refund(
+            _card(),
+            available_energy=float("inf"),
+            energy_refund=1,
+        )
+        == 1
+    )
 
 
 def test_card_from_json_coerces_decimal_string_cost_fields():
