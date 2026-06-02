@@ -2288,9 +2288,10 @@ class IroncladCombatPlanner(CombatPlanner):
             confidence -= 0.2
 
         # Higher with HP safety
-        if context.player_hp_pct > 0.7:
+        player_hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
+        if player_hp_pct > 0.7:
             confidence += 0.1
-        elif context.player_hp_pct < 0.3:
+        elif player_hp_pct < 0.3:
             confidence -= 0.2
 
         # Higher in Act 1 (more familiar)
