@@ -583,6 +583,12 @@ def test_decision_context_accepts_decimal_string_monster_damage_fields():
     assert context.monsters_alive == [monster]
 
 
+def test_decision_context_safe_float_rejects_nonfinite_strings():
+    assert DecisionContext._safe_float("nan", default=7.0) == 7.0
+    assert DecisionContext._safe_float("inf", default=7.0) == 7.0
+    assert DecisionContext._safe_float("-inf", default=7.0) == 7.0
+
+
 def test_base_immediate_threat_clamps_negative_live_move_damage_to_zero():
     monster = SimpleNamespace(
         move_adjusted_damage=-3,
