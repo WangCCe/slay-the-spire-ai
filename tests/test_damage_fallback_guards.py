@@ -3329,6 +3329,34 @@ def test_safe_window_detection_counts_scripted_strength_gain_before_attack(monke
     ]
 
 
+def test_attack_strength_prediction_accepts_numeric_string_current_strength(monkeypatch):
+    class NoEnhancedDataLoader:
+        def get_enhanced_monster_data(self, _monster_name):
+            return None
+
+    monkeypatch.setattr(data_loader, "game_data_loader", NoEnhancedDataLoader())
+    classifier = TurnTimingClassifier()
+    monster = SimpleNamespace(name="Unknown", current_hp=20, max_hp=20, strength="2")
+    predictions = [
+        {
+            "turn": 2,
+            "move": {
+                "name": "Grow",
+                "intent": "BUFF",
+                "strength_gain": 3,
+            },
+        },
+    ]
+
+    assert classifier._predict_attack_strength(
+        monster,
+        predictions,
+        current_turn=2,
+        target_turn=3,
+        context=SimpleNamespace(game=SimpleNamespace(ascension_level=0)),
+    ) == 5
+
+
 def test_damage_curve_uses_live_monster_id_for_predicted_moves(monkeypatch):
     class CanonicalOnlyPredictionLoader:
         def __init__(self):

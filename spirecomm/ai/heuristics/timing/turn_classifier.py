@@ -635,7 +635,7 @@ class TurnTimingClassifier:
         target_turn: int,
         context,
     ) -> int:
-        current_strength = getattr(monster, 'strength', 0)
+        current_strength = self._coerce_int(getattr(monster, 'strength', 0), default=0)
         ascension_level = self._context_ascension_level(context)
         scripted_strength = self._predict_strength_from_move_sequence(
             anchored_predictions,
@@ -661,7 +661,7 @@ class TurnTimingClassifier:
         current_strength: int,
         ascension_level: int,
     ) -> int:
-        predicted_strength = current_strength
+        predicted_strength = self._coerce_int(current_strength, default=0)
         for prediction in predictions:
             turn = prediction.get('turn')
             if not isinstance(turn, int):
@@ -948,6 +948,8 @@ class TurnTimingClassifier:
         """
         try:
             from spirecomm.data.loader import game_data_loader
+
+            current_strength = self._coerce_int(current_strength, default=0)
 
             # Get monster's special mechanics
             monster_name = canonical_live_monster_name(monster)
