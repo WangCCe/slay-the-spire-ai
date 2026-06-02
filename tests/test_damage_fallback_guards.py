@@ -3534,6 +3534,48 @@ def test_classify_turn_accepts_string_turn_for_imminent_spike(monkeypatch):
     assert timing_context.current_turn_offset() == 1
 
 
+def test_combat_mode_hibernation_accepts_string_context_turn(monkeypatch):
+    class HibernationOnlyLoader:
+        def is_monster_summoner(self, _monster_name):
+            return False
+
+        def does_monster_have_phase_change(self, _monster_name):
+            return False
+
+        def is_monster_hibernating(self, _monster_name, turn):
+            return turn == 1
+
+        def does_monster_have_death_split(self, _monster_name):
+            return False
+
+        def is_monster_duo_boss(self, _monster_name):
+            return False
+
+        def get_monster_threat_profile(self, _monster_name):
+            return {}
+
+        def get_monster_type(self, _monster_name):
+            return "normal"
+
+    monkeypatch.setattr(simulation, "game_data_loader", HibernationOnlyLoader())
+    context = SimpleNamespace(
+        turn="1",
+        monsters_alive=[
+            SimpleNamespace(
+                name="Sleeper",
+                monster_id="Sleeper",
+                current_hp=40,
+                max_hp=40,
+            )
+        ],
+    )
+
+    assert (
+        simulation.select_combat_mode_with_monster_data(context)
+        == simulation.CombatMode.SEMI_AGGRESSIVE
+    )
+
+
 def test_future_strength_prediction_uses_live_id_for_louse_grow(monkeypatch):
     class CanonicalOnlyLoader:
         def get_enhanced_monster_data(self, monster_name):

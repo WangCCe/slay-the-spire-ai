@@ -269,6 +269,10 @@ def select_combat_mode_with_monster_data(context) -> CombatMode:
     has_time_pressure = False
     has_duo_boss = False
     has_death_split = False
+    try:
+        context_turn = max(1, int(getattr(context, 'turn', 1) or 1))
+    except (TypeError, ValueError):
+        context_turn = 1
 
     elite_count = 0
     boss_count = 0
@@ -285,7 +289,7 @@ def select_combat_mode_with_monster_data(context) -> CombatMode:
             has_phase_change = True
 
         # Check for hibernation
-        if game_data_loader.is_monster_hibernating(monster_name, context.turn):
+        if game_data_loader.is_monster_hibernating(monster_name, context_turn):
             has_hibernating = True
 
         # Check for death split
