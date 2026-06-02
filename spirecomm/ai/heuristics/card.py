@@ -79,6 +79,13 @@ class SynergyCardEvaluator(CardEvaluator):
             return default
         return numeric if numeric > 0 else default
 
+    @staticmethod
+    def _non_negative_float(value) -> float:
+        try:
+            return max(0.0, float(value or 0))
+        except (TypeError, ValueError):
+            return 0.0
+
     def load_legacy_priorities(self, player_class):
         """Load baseline scores from legacy priority lists."""
         if player_class == 'THE_SILENT' or player_class is None:
@@ -214,13 +221,14 @@ class SynergyCardEvaluator(CardEvaluator):
             modifier *= 1.2
 
         # HP-dependent modifiers
-        if context.player_hp_pct < 0.3:
+        player_hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
+        if player_hp_pct < 0.3:
             # Critical HP: prioritize defensive cards and healing
             if self._is_defensive_card(card):
                 modifier *= 2.0
             elif self._is_offensive_card(card):
                 modifier *= 0.7  # Less valuable when dying
-        elif context.player_hp_pct > 0.8:
+        elif player_hp_pct > 0.8:
             # High HP: can afford to be aggressive
             if self._is_offensive_card(card):
                 modifier *= 1.2
