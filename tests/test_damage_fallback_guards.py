@@ -690,6 +690,81 @@ def test_upgraded_block_skills_use_fallback_bonus_without_wiki(monkeypatch):
         assert state.player_block == expected_block, card_name
 
 
+def test_panic_button_blocks_later_direct_card_block(monkeypatch):
+    monkeypatch.setattr(
+        simulation,
+        "game_data_loader",
+        _BaseOnlyBlockLoader(
+            {
+                "Defend": "Gain 5 Block.",
+                "Panic Button": "Gain 30 Block. You cannot gain Block from cards for 2 turns.",
+            }
+        ),
+    )
+    simulator = FastCombatSimulator(None)
+    state = _simple_skill_state()
+    context = SimpleNamespace(energy_available=3)
+
+    panic_button = Card(
+        card_id="Panic Button",
+        name="Panic Button",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.UNCOMMON,
+        has_target=False,
+        cost=0,
+    )
+    defend = Card(
+        card_id="Defend_R",
+        name="Defend",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.BASIC,
+        has_target=False,
+        cost=1,
+    )
+
+    simulator._apply_skill(state, panic_button, context=context)
+    simulator._apply_skill(state, defend, context=context)
+
+    assert state.player_block == 30
+
+
+def test_panic_button_does_not_block_entrench_multiplier(monkeypatch):
+    monkeypatch.setattr(
+        simulation,
+        "game_data_loader",
+        _BaseOnlyBlockLoader(
+            {
+                "Panic Button": "Gain 30 Block. You cannot gain Block from cards for 2 turns.",
+            }
+        ),
+    )
+    simulator = FastCombatSimulator(None)
+    state = _simple_skill_state()
+    context = SimpleNamespace(energy_available=3)
+
+    panic_button = Card(
+        card_id="Panic Button",
+        name="Panic Button",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.UNCOMMON,
+        has_target=False,
+        cost=0,
+    )
+    entrench = Card(
+        card_id="Entrench",
+        name="Entrench",
+        card_type=CardType.SKILL,
+        rarity=CardRarity.UNCOMMON,
+        has_target=False,
+        cost=2,
+    )
+
+    simulator._apply_skill(state, panic_button, context=context)
+    simulator._apply_skill(state, entrench, context=context)
+
+    assert state.player_block == 60
+
+
 def test_skill_simulation_applies_temporary_targeted_strength_loss(monkeypatch):
     card = Card(
         card_id="Dark Shackles",

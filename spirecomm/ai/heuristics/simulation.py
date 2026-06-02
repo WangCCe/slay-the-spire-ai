@@ -443,6 +443,10 @@ class SimulationState:
             self._has_player_power(context, 'No Draw')
             or self._has_player_power(context, 'NoDraw')
         )
+        self.card_block_blocked = any(
+            self._get_player_debuff_stacks(context, power_name) > 0
+            for power_name in ('No Block', 'NoBlock', 'NoBlockPower')
+        )
         self.double_tap_charges = 0
         self.corruption_active = self._has_player_power(context, 'Corruption')
         self.feel_no_pain_block_per_exhaust = self._get_player_power_amount(context, 'Feel No Pain')
@@ -831,6 +835,7 @@ class SimulationState:
             self.player_constricted,
             self.rage_block_per_attack,
             self.draw_blocked,
+            self.card_block_blocked,
             self.double_tap_charges,
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
@@ -1508,6 +1513,7 @@ class FastCombatSimulator:
         self._add_player_block(
             state,
             self._apply_card_block_modifiers(block_gain, state),
+            from_card=True,
         )
 
     def _apply_attack_exhaust_effects(
@@ -2070,8 +2076,15 @@ class FastCombatSimulator:
             return int(block * 0.75)
         return block
 
-    def _add_player_block(self, state: SimulationState, block_gain: int):
+    def _add_player_block(
+        self,
+        state: SimulationState,
+        block_gain: int,
+        from_card: bool = False,
+    ):
         if block_gain <= 0:
+            return
+        if from_card and getattr(state, 'card_block_blocked', False):
             return
         state.player_block += block_gain
         self._apply_juggernaut_block_damage(state)
@@ -3008,7 +3021,7 @@ class FastCombatSimulator:
         if block_gain > 0:
             logger.debug(f"[BLOCK_SKILL] Using card.block attribute: {block_gain} for {card_name}")
             block_gain = self._apply_card_block_modifiers(block_gain, state)
-            self._add_player_block(state, block_gain)
+            self._add_player_block(state, block_gain, from_card=True)
         else:
             # Check for X-block cards first
             if context is not None:
@@ -3022,7 +3035,7 @@ class FastCombatSimulator:
                     logger.debug(f"[BLOCK_X] X-block calculated: {block_gain} for {card_name}")
                     # Apply frail multiplier
                     block_gain = self._apply_card_block_modifiers(block_gain, state)
-                    self._add_player_block(state, block_gain)
+                    self._add_player_block(state, block_gain, from_card=True)
                 else:
                     # Not an X-block card - try to get block from game data
                     # (needed because Card objects don't have block attribute set)
@@ -3053,7 +3066,7 @@ class FastCombatSimulator:
                                 logger.debug(f"[BLOCK_BASE] {card_name} (upgrades={upgrades}): {base_block} block")
 
                             block_gain = self._apply_card_block_modifiers(base_block, state)
-                            self._add_player_block(state, block_gain)
+                            self._add_player_block(state, block_gain, from_card=True)
                         else:
                             logger.debug(f"[BLOCK_NONE] No block found for {card_name}")
                     else:
@@ -3061,6 +3074,8 @@ class FastCombatSimulator:
         if _canonical_card_name(card) == 'Rage':
             rage_gain = 5 if is_card_upgraded(card) else 3
             state.rage_block_per_attack += rage_gain
+        if card_name == 'Panic Button':
+            state.card_block_blocked = True
 
         self._apply_strength_skill(state, card, target_index)
         self._apply_energy_gain_skill(state, card)
@@ -3358,7 +3373,7 @@ class FastCombatSimulator:
         block_per_card = 7 if is_card_upgraded(card) else 5
         block_gain = self._apply_card_block_modifiers(block_per_card, state)
         for _ in range(exhausted_count):
-            self._add_player_block(state, block_gain)
+            self._add_player_block(state, block_gain, from_card=True)
         state.exhaust_events += exhausted_count
         self._mark_cards_unavailable(state, exhausted_cards)
         self._apply_sentinel_exhaust_energy(state, exhausted_cards)
