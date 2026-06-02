@@ -2341,6 +2341,16 @@ def test_gremlin_nob_skill_strength_recomputes_weak_adjusted_attack_damage():
     ) == 7
 
 
+def test_simulation_state_rejects_nonfinite_skill_reactive_strength_amount():
+    nob = _gremlin_nob()
+    nob.powers[0].amount = float("inf")
+    context = _combat_context([], energy=0, monsters=[nob])
+
+    state = SimulationState(context)
+
+    assert state.monsters[0]["skill_strength_gain"] == 0
+
+
 def test_state_key_distinguishes_monster_strength_changes():
     defend = _card("Defend_R", "Defend", card_type=CardType.SKILL, cost=1, has_target=False)
     context = _combat_context([defend], energy=1, monsters=[_gremlin_nob()])
@@ -2395,6 +2405,16 @@ def test_simulation_state_tracks_live_monster_ritual_strength_gain():
     assert state.state_key(context.playable_cards) != no_ritual_state.state_key(
         context.playable_cards
     )
+
+
+def test_simulation_state_rejects_nonfinite_ritual_power_amount():
+    cultist = _cultist_ritual(ritual=3)
+    cultist.powers[0].amount = float("inf")
+    context = _combat_context([], energy=0, monsters=[cultist])
+
+    state = SimulationState(context)
+
+    assert state.monsters[0]["end_turn_strength_gain"] == 0
 
 
 def test_enemy_lookahead_applies_live_cultist_ritual_to_future_attacks():
@@ -9622,6 +9642,16 @@ def test_awakened_one_curiosity_gains_strength_when_power_is_played():
     assert result.monsters[0]["move_adjusted_damage"] == 19
 
 
+def test_simulation_state_rejects_nonfinite_power_reactive_strength_amount():
+    awakened_one = _awakened_one()
+    awakened_one.powers = [SimpleNamespace(power_name="Curiosity", amount=float("inf"))]
+    context = _combat_context([], energy=0, monsters=[awakened_one])
+
+    state = SimulationState(context)
+
+    assert state.monsters[0]["power_strength_gain"] == 0
+
+
 def test_fast_score_does_not_apply_aoe_multiplier_to_carnage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -12158,6 +12188,16 @@ def test_guardian_mode_shift_power_is_tracked_in_simulation_state():
     state = SimulationState(context)
 
     assert state.monsters[0]["mode_shift"] == 12
+
+
+def test_simulation_state_rejects_nonfinite_guardian_mode_shift_amount():
+    guardian = _guardian(mode_shift=12)
+    guardian.powers[0].amount = float("inf")
+    context = _combat_context([], energy=0, monsters=[guardian])
+
+    state = SimulationState(context)
+
+    assert state.monsters[0]["mode_shift"] == 0
 
 
 def test_guardian_mode_shift_adds_block_and_sharp_hide_after_threshold():

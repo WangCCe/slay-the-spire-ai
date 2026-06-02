@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from spirecomm.spire.numeric import coerce_int
+
 
 def card_play_key(card: Any):
     if card is None:
@@ -57,10 +59,7 @@ def power_amount(powers, name: str, missing_amount: int = 0) -> int:
         if power_matches(power, name):
             amount = getattr(power, 'amount', None)
             value = amount if amount is not None else missing_amount
-            try:
-                return int(value)
-            except (TypeError, ValueError):
-                return 0
+            return coerce_int(value, 0)
     return 0
 
 

@@ -619,10 +619,7 @@ class SimulationState:
                 amount = getattr(power, 'amount', None)
                 if amount is None:
                     return 1
-                try:
-                    return max(0, int(amount))
-                except (TypeError, ValueError):
-                    return 0
+                return self._non_negative_int(amount)
         return 0
 
     def _has_monster_power_any(self, monster: Any, *power_names: str) -> bool:
@@ -655,7 +652,7 @@ class SimulationState:
             power_name = str(self._power_name(power) or '').lower()
             if power_name in {'anger', 'enrage'}:
                 amount = getattr(power, 'amount', None)
-                return max(0, int(amount)) if amount is not None else 2
+                return self._non_negative_int(amount) if amount is not None else 2
 
         monster_id = str(getattr(monster, 'monster_id', ''))
         monster_name = str(getattr(monster, 'name', ''))
@@ -670,7 +667,7 @@ class SimulationState:
             if mechanics.get('type') == 'skill_reactive_strength':
                 data_gain = mechanics.get('skill_strength_gain', strength_gain)
                 if isinstance(data_gain, (int, float)) and not isinstance(data_gain, bool):
-                    strength_gain = max(0, int(data_gain))
+                    strength_gain = self._non_negative_int(data_gain)
 
                 modifiers = mechanics.get('ascension_modifiers', {})
                 if context is not None and isinstance(modifiers, dict):
@@ -694,7 +691,7 @@ class SimulationState:
                                 isinstance(modified_gain, (int, float))
                                 and not isinstance(modified_gain, bool)
                             ):
-                                strength_gain = max(0, int(modified_gain))
+                                strength_gain = self._non_negative_int(modified_gain)
                         break
             return max(0, strength_gain)
         return 0
@@ -705,7 +702,7 @@ class SimulationState:
             power_name = str(self._power_name(power) or '').lower()
             if 'curiosity' in power_name:
                 amount = getattr(power, 'amount', None)
-                return max(0, int(amount)) if amount is not None else 1
+                return self._non_negative_int(amount) if amount is not None else 1
         return 0
 
     def _get_monster_end_turn_strength_gain(
