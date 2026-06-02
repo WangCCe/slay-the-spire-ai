@@ -477,7 +477,9 @@ class SimulationState:
                 'thorns': context.thorns_stacks.get(i, 0),  # Thorns/反伤 stacks (by index)
                 'artifact': self._get_monster_power_amount(monster, 'Artifact'),
                 'move_base_damage': monster.move_base_damage if hasattr(monster, 'move_base_damage') else 0,
-                'move_adjusted_damage': monster.move_adjusted_damage if hasattr(monster, 'move_adjusted_damage') else 0,
+                'move_adjusted_damage': self._non_negative_int(
+                    getattr(monster, 'move_adjusted_damage', 0)
+                ),
                 'move_hits': monster.move_hits if hasattr(monster, 'move_hits') else 1,
                 'strength': monster.strength if hasattr(monster, 'strength') else 0,
                 'skill_strength_gain': self._get_monster_skill_strength_gain(monster, context),

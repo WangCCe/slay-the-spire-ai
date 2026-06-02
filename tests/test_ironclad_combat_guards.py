@@ -792,6 +792,16 @@ def test_simulation_state_coerces_string_monster_hp_and_block():
     assert state.monsters[0]["block"] == 3
 
 
+def test_simulation_state_coerces_string_monster_move_adjusted_damage():
+    target = _louse(current_hp=20)
+    target.move_adjusted_damage = "12"
+    context = _combat_context([], energy=0, monsters=[target])
+
+    state = SimulationState(context)
+
+    assert state.monsters[0]["move_adjusted_damage"] == 12
+
+
 def test_simulation_state_coerces_string_player_hp_and_block():
     context = _combat_context([], energy=0, monsters=[_louse(current_hp=20)])
     context.game.current_hp = "31"
