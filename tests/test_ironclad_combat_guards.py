@@ -9469,6 +9469,15 @@ def test_lethal_detector_affordable_damage_accepts_string_energy_available():
     assert detector._calculate_affordable_damage(string_context) == detector._calculate_affordable_damage(int_context)
 
 
+def test_lethal_detector_sequence_accepts_string_energy_available():
+    whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
+    context = _combat_context([whirlwind], energy="3", monsters=[_louse(current_hp=15)])
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.card_id for action in detector.find_lethal_sequence(context)] == ["Whirlwind"]
+
+
 def test_lethal_detector_applies_chemical_x_to_whirlwind_damage():
     whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
     context = _combat_context([whirlwind], energy=3, monsters=[_louse(current_hp=50)])

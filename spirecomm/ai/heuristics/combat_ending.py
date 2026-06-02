@@ -157,6 +157,10 @@ class CombatEndingDetector:
         """
         try:
             logger.info("[LETHAL_ENTRY] can_kill_all() called")
+            available_energy = max(
+                0,
+                self._safe_int(getattr(context, 'energy_available', 0), default=0),
+            )
 
             if not context.monsters_alive:
                 logger.info("[LETHAL_ENTRY] No monsters alive, returning True")
@@ -200,7 +204,11 @@ class CombatEndingDetector:
             )
 
             # Step 4: Validate targeting (single-target vs AOE constraints)
-            targeting_feasible = self._can_target_all_monsters(context, affordable_damage)
+            targeting_feasible = self._can_target_all_monsters(
+                context,
+                affordable_damage,
+                available_energy,
+            )
 
             # Low HP must not suppress a deterministic kill. The margin and
             # targeting checks already keep this detector conservative.
@@ -221,12 +229,12 @@ class CombatEndingDetector:
             proven_aoe_cleanup = bool(self._find_aoe_cleanup_sequence(
                 context,
                 attack_cards,
-                context.energy_available,
+                available_energy,
             ))
             proven_targeted_sequence = bool(self._find_targeted_lethal_sequence(
                 context,
                 attack_cards,
-                context.energy_available,
+                available_energy,
             ))
             exact_sequence_search_applicable = self._can_use_exact_lethal_sequence(
                 context,
@@ -295,7 +303,10 @@ class CombatEndingDetector:
         remaining_monsters = context.monsters_alive.copy()
         remaining_monster_indices = list(range(len(remaining_monsters)))
         played_cards = set()
-        remaining_energy = context.energy_available
+        remaining_energy = max(
+            0,
+            self._safe_int(getattr(context, 'energy_available', 0), default=0),
+        )
 
         # Sort monsters by HP (kill weakest first)
         combined = list(zip(remaining_monsters, remaining_monster_indices))
@@ -306,7 +317,14 @@ class CombatEndingDetector:
         # Get attack cards sorted by damage
         attack_cards = [c for c in context.playable_cards
                        if is_attack_card(c)]
-        attack_cards.sort(key=lambda c: self._get_card_damage(c, context), reverse=True)
+        attack_cards.sort(
+            key=lambda c: self._get_card_damage(
+                c,
+                context,
+                available_energy=remaining_energy,
+            ),
+            reverse=True,
+        )
 
         for card in attack_cards:
             cost = effective_card_cost(card, remaining_energy)
@@ -394,7 +412,7 @@ class CombatEndingDetector:
             logger.info(f"[LETHAL_SEQUENCE] Constructed sequence with {len(sequence)} cards: {', '.join(card_names)}")
         else:
             logger.warning(f"[LETHAL_SEQUENCE] Construction failed: greedy approach returned empty sequence")
-            logger.warning(f"[LETHAL_SEQUENCE] Debug: attacks={len(attack_cards)}, energy={context.energy_available}")
+            logger.warning(f"[LETHAL_SEQUENCE] Debug: attacks={len(attack_cards)}, energy={remaining_energy}")
 
         return sequence
 
@@ -1545,7 +1563,12 @@ class CombatEndingDetector:
             total += damage
         return total
 
-    def _can_target_all_monsters(self, context: DecisionContext, affordable_damage: int) -> bool:
+    def _can_target_all_monsters(
+        self,
+        context: DecisionContext,
+        affordable_damage: int,
+        available_energy: Optional[int] = None,
+    ) -> bool:
         """
         Check if targeting constraints allow killing all monsters.
 
@@ -1560,6 +1583,11 @@ class CombatEndingDetector:
             True if targeting is feasible, False otherwise
         """
         num_monsters = len(context.monsters_alive)
+        available_energy = (
+            max(0, self._safe_int(getattr(context, 'energy_available', 0), default=0))
+            if available_energy is None
+            else max(0, self._safe_int(available_energy, default=0))
+        )
 
         # Count attacks by targeting behavior
         attack_cards = []
@@ -1575,18 +1603,18 @@ class CombatEndingDetector:
                     single_target_count += 1
 
         for card in aoe_cards:
-            cost = effective_card_cost(card, getattr(context, 'energy_available', 0))
-            if cost <= getattr(context, 'energy_available', 0) and self._aoe_card_kills_all(
+            cost = effective_card_cost(card, available_energy)
+            if cost <= available_energy and self._aoe_card_kills_all(
                 card,
                 context,
-                getattr(context, 'energy_available', 0),
+                available_energy,
             ):
                 return True
 
         if aoe_cards and self._find_aoe_cleanup_sequence(
             context,
             attack_cards,
-            getattr(context, 'energy_available', 0),
+            available_energy,
         ):
             return True
 
