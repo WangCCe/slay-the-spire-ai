@@ -82,7 +82,10 @@ class GameTracker:
         try:
             return int(value)
         except (TypeError, ValueError):
-            return default
+            try:
+                return int(float(value))
+            except (TypeError, ValueError, OverflowError):
+                return default
 
     def start_combat(self, floor: int, act: int, room_type: str, start_turn: int = 0, current_hp: int = None):
         """
