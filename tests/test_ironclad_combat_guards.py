@@ -126,6 +126,24 @@ def test_heuristic_plan_turn_accepts_string_energy_available():
     assert planner.max_depth >= 1
 
 
+def test_heuristic_plan_turn_accepts_string_act():
+    strike = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        cost=1,
+        is_playable=True,
+    )
+    context = _combat_context([strike], energy=3, monsters=[_louse(current_hp=50)])
+    context.act = "1"
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+    planner._simple_plan = lambda _context: []
+
+    assert planner.plan_turn(context) == []
+    assert planner.beam_width >= 1
+
+
 def test_heuristic_get_confidence_accepts_string_energy_available():
     strike = Card(
         card_id="Strike_R",

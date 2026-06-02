@@ -5291,8 +5291,9 @@ class HeuristicCombatPlanner(CombatPlanner):
         # Act 2: 18 (moderate complexity)
         # Act 3: 25 (high complexity, elites/bosses)
         if hasattr(context, 'act'):
+            act = self._non_negative_int(getattr(context, 'act', 1)) or 1
             adaptive_width = [BEAM_WIDTH_ACT1, BEAM_WIDTH_ACT2, BEAM_WIDTH_ACT3]
-            self.beam_width = adaptive_width[min(context.act - 1, 2)] if context.act <= 3 else BEAM_WIDTH_ACT3
+            self.beam_width = adaptive_width[min(act - 1, 2)] if act <= 3 else BEAM_WIDTH_ACT3
 
         # === Adaptive max_depth by hand size and energy ===
         playable_count = len(context.playable_cards)
