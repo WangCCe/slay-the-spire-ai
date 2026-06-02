@@ -323,11 +323,12 @@ class StateEncoder:
             getattr(player, 'energy', 0.0) if player else 0.0,
             default=0.0,
         )
+        turn = self._safe_float(getattr(game, 'turn', 0.0), default=0.0)
 
         return [
             *[1.0 if room_type == rt else 0.0 for rt in
               ["MONSTER", "EVENT", "SHOP", "REST", "TREASURE", "BOSS"]],
-            min((game.turn if hasattr(game, 'turn') else 0), 20) / 20.0,
+            min(turn, 20) / 20.0,
             1.0 if combat_screen else 0.0,
             1.0 if combat_reward else 0.0,
             1.0 if hand_select else 0.0,

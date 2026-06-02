@@ -276,6 +276,25 @@ def test_rl_state_encoder_context_accepts_string_energy():
     assert features[25] == 0.8
 
 
+def test_rl_state_encoder_context_accepts_string_turn():
+    encoder = StateEncoder()
+    game = SimpleNamespace(
+        room_type="MONSTER",
+        screen_type=None,
+        in_combat=True,
+        choice_list=[],
+        choice_available=False,
+        available_commands=[],
+        turn="7",
+        hand=[],
+        player=SimpleNamespace(energy=3),
+    )
+
+    features = encoder._encode_context(game)
+
+    assert features[6] == 7 / 20
+
+
 def test_rl_state_encoder_context_accepts_string_hand_select_requirement():
     from spirecomm.spire.screen import ScreenType
 
