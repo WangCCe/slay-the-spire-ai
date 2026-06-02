@@ -85,7 +85,14 @@ class RelicEvaluator(DecisionEngine):
                 'retain': 1.1,      # Retain synergy
             },
         }
-    
+
+    @staticmethod
+    def _non_negative_float(value) -> float:
+        try:
+            return max(0.0, float(value or 0))
+        except (TypeError, ValueError):
+            return 0.0
+
     def evaluate(self, context: DecisionContext) -> Dict[str, float]:
         """
         Evaluate all relics in the current game context.
@@ -304,7 +311,8 @@ class RelicEvaluator(DecisionEngine):
         # HP-based modifiers
         if any(term in description for term in ['heal', 'regenerate', 'recover']):
             # More valuable when HP is low
-            modifier += (1.0 - context.player_hp_pct) * 0.5
+            hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
+            modifier += (1.0 - hp_pct) * 0.5
         
         # Act-based modifiers
         if context.act == 1:

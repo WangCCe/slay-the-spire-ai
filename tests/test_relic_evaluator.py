@@ -38,6 +38,20 @@ def test_relic_evaluator_accepts_name_only_relics(monkeypatch):
     assert scores["Burning Blood"] > 0
 
 
+def test_relic_context_modifier_accepts_string_player_hp_pct():
+    from spirecomm.ai.heuristics.relic import RelicEvaluator
+
+    evaluator = RelicEvaluator()
+    relic_data = {"description": "Heal 6 HP at the end of combat."}
+    enum_context = SimpleNamespace(player_hp_pct=0.25, act=2, floor=15)
+    string_context = SimpleNamespace(player_hp_pct="0.25", act=2, floor=15)
+
+    assert (
+        evaluator._calculate_context_modifier(relic_data, string_context)
+        == evaluator._calculate_context_modifier(relic_data, enum_context)
+    )
+
+
 def test_imports():
     """Test that all components can be imported."""
     print("Testing imports...")
