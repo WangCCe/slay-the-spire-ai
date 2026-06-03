@@ -19,3 +19,4 @@ def test_potion_action_execute_uses_get_real_potions_without_raw_potions():
     assert len(queued_actions) == 1
     assert isinstance(queued_actions[0], WaitAction)
     assert queued_actions[0].timeout == 1
+    assert queued_actions[0].requires_game_ready

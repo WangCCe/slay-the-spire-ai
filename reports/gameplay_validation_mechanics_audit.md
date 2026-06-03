@@ -57,3 +57,14 @@
 - Regression: `test_potion_action_execute_uses_get_real_potions_without_raw_potions` now asserts both the `potion use 0` command and the queued `WaitAction`.
 - Verification after fix: focused regression red `1 failed` for missing queued wait, then green `1 passed`; `tests/test_combat_rl_guards.py` `36 passed`; full pytest `1459 passed`.
 - Next candidate: rerun bounded validation from `50ce48e Stabilize potion action updates` and verify whether completed run files now show non-empty potion usage when logs select PotionAction; if potion records remain empty, inspect sent command/effect confirmation at the CommunicationMod boundary before changing potion selection policy.
+
+## Round 6 - 2026-06-03
+
+- Preflight: git clean at `3d7164b Consolidate round five audit note`; full pytest baseline with disabled pytest cache and unique basetemp -> `1459 passed`.
+- Validation: controlled CommunicationMod fresh run from `3d7164b`; `restart_sts_modded.ps1 -FreshRun` moved the leftover `IRONCLAD.autosave` from the manually stopped Round 5 batch before launch.
+- Outcome before stopping for a focused fix: no Ironclad `victory=true`; completed new run `1780460697.run` died at floor 16 to Hexaghost and still reported `potions_floor_usage=[]`. Runtime logs from the same run selected `PotionAction` for Block Potion/Fear Potion; the following in-progress run also selected Dexterity Potion and Skill Potion before the batch was manually stopped for the focused fix.
+- Failure type: potion command wait sequencing. The first potion-action stabilization fix queued `WaitAction(timeout=1)`, but `WaitAction` defaults to `requires_game_ready=False`, so the main loop could send `potion use ...` and `wait 1` back-to-back in the same action drain before the potion command response restored `game_is_ready`. That did not actually prove a post-potion state refresh.
+- Fix: the wait queued by `PotionAction.execute()` is now ready-gated by setting `requires_game_ready=True`, so the coordinator waits for the potion command response before sending the stabilizing `wait 1`.
+- Regression: `test_potion_action_execute_uses_get_real_potions_without_raw_potions` now asserts the queued `WaitAction` is `requires_game_ready=True`.
+- Verification after fix: focused regression red `1 failed` on the non-ready-gated wait, then green `1 passed`; `tests/test_combat_rl_guards.py` `36 passed`; full pytest `1459 passed`.
+- Next candidate: rerun bounded validation from the ready-gated potion wait commit. If completed run files still show zero potion usage after logged PotionAction decisions, add direct command/effect instrumentation at `PotionAction.execute()` and CommunicationMod response handling before changing gameplay potion policy.
