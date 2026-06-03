@@ -89,3 +89,13 @@
 - Regression: `test_play_card_action_requests_state_when_uuid_card_left_hand` reproduced the exception path red and now asserts the safe `state` request.
 - Verification after fix: focused stale-card regression `1 passed`; related action/RL guard tests `40 passed`; full pytest `1462 passed`.
 - Next candidate: rerun bounded validation from this stale-card guard commit and check whether HAND_SELECT stale confirm errors still occur without aborting runs. If they recur but no longer crash, inspect the Elixir/HAND_SELECT selection loop as a separate focused target.
+
+## Round 9 - 2026-06-03
+
+- Preflight: git clean at `0208f87 Guard stale queued card actions`; post-commit full pytest baseline -> `1462 passed`.
+- Validation: controlled CommunicationMod fresh run with Windows Python. The batch was stopped manually after the selected repeated-error issue was attributed. Before stopping, it completed 3 visible `.run` files with no `victory=true`: `1780466186.run` died at floor 16 to Slime Boss, `1780466237.run` died at floor 16 to The Guardian, and `1780466425.run` died at floor 33 to Automaton.
+- Failure type: repeated command-error propagation. Stale `confirm` commands still occurred after HAND_SELECT or screen transitions, but the immediate damage was that the same `Invalid command: confirm` error was passed through `Coordinator.receive_game_state_update()` to `CombatRLAgent.handle_error()` on consecutive state updates. That incremented `rl_failure_count` three times for one stale-confirm episode, disabled RL for the rest of the run, and polluted the validation signal.
+- Fix: coordinator command-error handling now deduplicates consecutive identical errors until a clean state arrives. It clears the queue, processes the first distinct error through `error_callback`, suppresses repeated identical errors, clears `last_error`, and requests `state` when no recovery action is queued.
+- Regression: `test_repeated_command_error_is_handled_once_and_resyncs_state` reproduced two consecutive `Invalid command: confirm` messages red and now asserts one callback plus two state resyncs.
+- Verification after fix: focused repeated-error regression `1 passed`; related coordinator/card/action tests `10 passed`; full pytest `1463 passed`.
+- Next candidate: rerun bounded validation from this coordinator error-dedupe commit. If stale confirms still occur but no longer disable RL, inspect the source of repeated HAND_SELECT confirms; if no protocol errors recur, return to Act 1 boss failure attribution.

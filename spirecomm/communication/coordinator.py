@@ -120,6 +120,7 @@ class Coordinator:
         self._deferred_state_callback_pending = False
         self._deferred_state_callback_message_count = 0
         self._sent_message_count = 0
+        self._last_command_error = None
         self.pending_seed = None
 
     def _maybe_queue_stability_wait(self):
@@ -385,6 +386,7 @@ class Coordinator:
                 f"[STATE_UPDATE] game_is_ready: {old_ready}→{self.game_is_ready}, action_queue_size={len(self.action_queue)}"
             )
             if self.last_error is None:
+                self._last_command_error = None
                 self.in_game = communication_state.get("in_game")
                 # Get game_state (may be empty dict when not in game, e.g., Neow screen)
                 game_state = communication_state.get("game_state", {})
@@ -455,13 +457,25 @@ class Coordinator:
                 if self.last_error is not None:
                     self._deferred_state_callback_pending = False
                     self.action_queue.clear()
-                    new_action = self.error_callback(self.last_error)
+                    current_error = self.last_error
+                    repeated_error = current_error == self._last_command_error
+                    self._last_command_error = current_error
+                    self.last_error = None
+                    new_action = None
+                    if repeated_error:
+                        logging.warning(
+                            "[COMMAND_ERROR] Suppressing repeated error: %s",
+                            current_error,
+                        )
+                    else:
+                        new_action = self.error_callback(current_error)
                     if new_action is not None:
                         self.add_action_to_queue(new_action)
+                    elif repeated_error:
+                        self.send_message("state", wait_for_response=False)
                     else:
-                        import logging
-
-                        logging.warning("error_callback returned None - ignoring")
+                        logging.warning("error_callback returned None - requesting state")
+                        self.send_message("state", wait_for_response=False)
                 elif self.in_game:
                     if len(self.action_queue) == 0:
                         import logging

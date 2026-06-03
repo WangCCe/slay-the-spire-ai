@@ -23,6 +23,7 @@ def _coordinator_without_threads():
     coordinator._stability_wait_done = False
     coordinator._stability_wait_screens = set()
     coordinator._stability_wait_timeout = 5
+    coordinator._last_command_error = None
     coordinator.pending_seed = None
     coordinator.error_callback = lambda error: None
     coordinator.out_of_game_callback = lambda: None
@@ -54,6 +55,35 @@ def _event_state_message():
             },
         }
     )
+
+
+def _command_error_message(error="Invalid command: confirm"):
+    return json.dumps(
+        {
+            "ready_for_command": False,
+            "in_game": True,
+            "error": error,
+            "available_commands": ["play", "end", "wait", "state"],
+        }
+    )
+
+
+def test_repeated_command_error_is_handled_once_and_resyncs_state():
+    coordinator = _coordinator_without_threads()
+    errors = []
+    coordinator.error_callback = lambda error: errors.append(error) or None
+    coordinator.input_queue.put(_command_error_message())
+    coordinator.input_queue.put(_command_error_message())
+
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+
+    assert errors == ["Invalid command: confirm"]
+    assert coordinator.last_error is None
+    assert [coordinator.output_queue.get_nowait(), coordinator.output_queue.get_nowait()] == [
+        "state",
+        "state",
+    ]
 
 
 def test_deferred_callback_runs_after_noop_optional_confirm_drains_queue():
