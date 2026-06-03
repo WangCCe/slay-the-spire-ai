@@ -79,3 +79,13 @@
 - Regression: `test_potion_guard_saves_energy_potion_on_safe_boss_turn` reproduced the unsafe boss-turn Energy Potion use and failed red; `test_potion_guard_uses_energy_potion_under_current_turn_pressure` keeps the lethal-pressure positive path.
 - Verification after fix: focused Energy Potion tests `2 passed`; `tests/test_combat_rl_guards.py` `38 passed`; full pytest `1461 passed`.
 - Next candidate: rerun bounded validation from this energy-potion conservation commit and inspect repeated Guardian/Slime Boss deaths, especially whether saved Energy Potion appears in late lethal boss turns and whether the missing marker-without-run observation recurs.
+
+## Round 8 - 2026-06-03
+
+- Preflight: git clean at `ff577d4 Conserve energy potions for pressure turns`; post-commit full pytest baseline -> `1461 passed`.
+- Validation: controlled CommunicationMod fresh run with Windows Python. The batch was stopped manually after the selected crash was attributed, so it intentionally did not reach the 20-game bound. Before stopping, it wrote 3 AI markers and 2 completed `.run` files: `1780465389.run` died at floor 16 to Slime Boss and `1780465520.run` died at floor 25 to Snake Plant.
+- Failure type: stale queued card action crash. During game #1 on floor 10, Elixir opened HAND_SELECT, stale card-select confirms produced invalid confirm errors, RL then played True Grit, and fallback planned Burning Pact from the latest hand. Before the queued `PlayCardAction` executed, the bound card UUID was no longer in `last_game_state.hand`, so `PlayCardAction.execute()` raised `Specified card for CardAction is not in hand`, aborting `play_one_game` and causing the batch loop to resume mid-run as game #2.
+- Fix: when a UUID-bound `PlayCardAction` no longer finds that UUID in the latest hand, execution now logs a warning, sends `state`, and returns without sending a stale `play` command or raising. This lets the next state callback replan from the actual game state instead of failing the run.
+- Regression: `test_play_card_action_requests_state_when_uuid_card_left_hand` reproduced the exception path red and now asserts the safe `state` request.
+- Verification after fix: focused stale-card regression `1 passed`; related action/RL guard tests `40 passed`; full pytest `1462 passed`.
+- Next candidate: rerun bounded validation from this stale-card guard commit and check whether HAND_SELECT stale confirm errors still occur without aborting runs. If they recur but no longer crash, inspect the Elixir/HAND_SELECT selection loop as a separate focused target.

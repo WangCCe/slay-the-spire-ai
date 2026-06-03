@@ -1,5 +1,7 @@
 import time
 
+import logging
+
 from spirecomm.spire.screen import ScreenType, reward_type_name
 
 
@@ -68,7 +70,11 @@ class PlayCardAction(Action):
                         self.card_index = idx
                         break
                 else:
-                    raise Exception("Specified card for CardAction is not in hand")
+                    logging.warning(
+                        "Specified card for CardAction is not in hand; requesting state"
+                    )
+                    coordinator.send_message("state")
+                    return
             else:
                 # If card doesn't have uuid, try to use card_index if provided
                 if self.card_index >= 0:
