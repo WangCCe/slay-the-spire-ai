@@ -9,6 +9,7 @@ import logging
 from typing import List, Dict, Any, Optional, Tuple
 
 from spirecomm.ai.intent_utils import intent_is_attack
+from spirecomm.ai.heuristics.combat_state import player_hp_values
 from spirecomm.ai.monster_names import canonical_live_monster_name, monster_field
 from spirecomm.spire.numeric import coerce_int
 
@@ -721,27 +722,13 @@ class TurnTimingClassifier:
         move_name = str(move.get('name', '')).lower()
         effect = str(move.get('effect', '')).lower()
         if monster_name.lower() == 'hexaghost' and move_name == 'divider':
-            player_hp = self._context_player_hp(context)
+            player_hp, _max_hp = player_hp_values(context)
             return ((player_hp // 12) + 1) * 6
 
         if 'current player hp divided by 12' in effect:
-            player_hp = self._context_player_hp(context)
+            player_hp, _max_hp = player_hp_values(context)
             return ((player_hp // 12) + 1) * 6
 
-        return 0
-
-    def _context_player_hp(self, context) -> int:
-        game = getattr(context, 'game', None)
-        player = getattr(context, 'player', None)
-        candidates = (
-            getattr(game, 'current_hp', None),
-            getattr(context, 'player_hp', None),
-            getattr(player, 'current_hp', None),
-        )
-        for candidate in candidates:
-            hp = self._coerce_damage_value(candidate)
-            if hp is not None:
-                return max(0, hp)
         return 0
 
     def _resolve_move_hits(

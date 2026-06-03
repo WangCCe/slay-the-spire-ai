@@ -107,6 +107,47 @@ def player_block_value(context: Any) -> int:
     return max(0, coerce_int(block or 0, 0))
 
 
+def _coerce_non_negative_int_or_none(value):
+    if value is None:
+        return None
+    coerced = coerce_int(value, None)
+    if coerced is None:
+        return None
+    return max(0, coerced)
+
+
+def _first_non_negative_int(candidates, default: int = 0) -> int:
+    for candidate in candidates:
+        value = _coerce_non_negative_int_or_none(candidate)
+        if value is not None:
+            return value
+    return default
+
+
+def player_hp_values(context: Any) -> tuple[int, int]:
+    game = getattr(context, 'game', None)
+    context_player = getattr(context, 'player', None)
+    game_player = getattr(game, 'player', None)
+
+    current_hp = _first_non_negative_int(
+        (
+            getattr(game, 'current_hp', None),
+            getattr(context, 'player_hp', None),
+            getattr(context_player, 'current_hp', None),
+            getattr(game_player, 'current_hp', None),
+        )
+    )
+    max_hp = _first_non_negative_int(
+        (
+            getattr(game, 'max_hp', None),
+            getattr(context, 'player_max_hp', None),
+            getattr(context_player, 'max_hp', None),
+            getattr(game_player, 'max_hp', None),
+        )
+    )
+    return current_hp, max_hp
+
+
 def draw_pile_count(context: Any) -> int:
     game = getattr(context, 'game', None)
     for owner in (game, context):

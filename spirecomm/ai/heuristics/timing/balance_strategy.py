@@ -9,6 +9,7 @@ import logging
 from typing import Optional
 
 from spirecomm.ai.intent_utils import monster_intends_attack
+from spirecomm.ai.heuristics.combat_state import player_hp_values
 from spirecomm.ai.monster_names import canonical_live_monster_name
 from spirecomm.spire.numeric import coerce_float, coerce_int
 
@@ -259,24 +260,8 @@ class CombatBalanceStrategy:
     def _get_player_hp_percent(self, context) -> float:
         """Get player HP as a percentage (0.0-1.0)."""
         try:
-            game = getattr(context, 'game', None)
-            player = getattr(context, 'player', None) or getattr(game, 'player', None)
-
-            current_hp = getattr(player, 'current_hp', None) if player else None
-            if current_hp is None:
-                current_hp = getattr(context, 'player_hp', None)
-            if current_hp is None:
-                current_hp = getattr(game, 'current_hp', None)
-
-            max_hp = getattr(player, 'max_hp', None) if player else None
-            if max_hp is None:
-                max_hp = getattr(context, 'player_max_hp', None)
-            if max_hp is None:
-                max_hp = getattr(game, 'max_hp', None)
-
-            if current_hp is not None and max_hp is not None:
-                current_hp = self._coerce_float(current_hp)
-                max_hp = max(self._coerce_float(max_hp, default=1.0), 1.0)
+            current_hp, max_hp = player_hp_values(context)
+            if max_hp > 0:
                 return max(0.0, current_hp / max_hp)
         except Exception:
             pass

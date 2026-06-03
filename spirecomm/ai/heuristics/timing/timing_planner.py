@@ -16,6 +16,7 @@ from spirecomm.ai.heuristics.combat_state import (
     monster_power_amount,
     player_block_value,
     player_debuff_stacks,
+    player_hp_values,
     player_power_amount,
 )
 from spirecomm.ai.heuristics.card_names import canonical_card_name
@@ -164,25 +165,7 @@ class TimingAwareCombatPlanner:
 
     @staticmethod
     def _player_hp_cache_key(context):
-        game = getattr(context, 'game', None)
-        player = getattr(context, 'player', None) or getattr(game, 'player', None)
-
-        current_hp = getattr(context, 'player_hp', None)
-        if current_hp is None:
-            current_hp = getattr(game, 'current_hp', None)
-        if current_hp is None and player is not None:
-            current_hp = getattr(player, 'current_hp', None)
-
-        max_hp = getattr(context, 'player_max_hp', None)
-        if max_hp is None:
-            max_hp = getattr(game, 'max_hp', None)
-        if max_hp is None and player is not None:
-            max_hp = getattr(player, 'max_hp', None)
-
-        return (
-            coerce_int(current_hp, 0),
-            coerce_int(max_hp, 0),
-        )
+        return player_hp_values(context)
 
     def _timing_cache_key(self, context):
         """Fingerprint the state that can affect timing-aware combat plans."""

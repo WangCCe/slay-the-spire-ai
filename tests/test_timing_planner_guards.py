@@ -1056,6 +1056,67 @@ def test_timing_planner_cache_invalidates_when_player_hp_changes():
     assert [call[1] for call in strategy.calls] == [60, 10]
 
 
+def test_timing_planner_cache_invalidates_when_game_hp_changes_with_stale_context_hp():
+    class StaticClassifier:
+        def classify_turn(self, _context):
+            return TimingContext(
+                turn_timing=TurnTiming.SAFE,
+                current_damage=0,
+                balance_weights=BalanceWeights.safe_turn_weights(),
+            )
+
+    class GameHpSensitiveStrategy:
+        def get_balance_weights(self, _timing, context, _received_timing_ctx):
+            return BalanceWeights(
+                damage_weight=1.0,
+                block_weight=1.0,
+                kill_bonus=10.0,
+                lethal_detection=True,
+                block_threshold=99 if context.game.current_hp <= 10 else 0,
+                opportunistic_attack=True,
+            )
+
+    class ThresholdPlanner:
+        def __init__(self):
+            self.calls = []
+
+        def set_timing_context(self, timing_context):
+            self.timing_context = timing_context
+
+        def plan_turn(self, context):
+            self.calls.append(context.game.current_hp)
+            return [self.timing_context.balance_weights.block_threshold]
+
+    defend = _card("Defend_R", "Defend", card_type=CardType.SKILL)
+    defend.uuid = "same-defend"
+
+    def context_for_game_hp(current_hp):
+        return SimpleNamespace(
+            turn=1,
+            energy_available=1,
+            game=SimpleNamespace(
+                current_hp=current_hp,
+                max_hp=80,
+                player=SimpleNamespace(block=0, powers=[]),
+            ),
+            player_hp=80,
+            player_max_hp=80,
+            playable_cards=[defend],
+            monsters_alive=[SimpleNamespace(current_hp=20, block=0, monster_index=0)],
+        )
+
+    base_planner = ThresholdPlanner()
+    planner = TimingAwareCombatPlanner(
+        base_planner=base_planner,
+        classifier=StaticClassifier(),
+        strategy=GameHpSensitiveStrategy(),
+    )
+
+    assert planner.plan_with_timing(context_for_game_hp(60)) == [0]
+    assert planner.plan_with_timing(context_for_game_hp(10)) == [99]
+    assert base_planner.calls == [60, 10]
+
+
 def test_timing_planner_cache_invalidates_when_player_block_status_changes():
     class StaticClassifier:
         def classify_turn(self, _context):
