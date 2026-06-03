@@ -411,3 +411,65 @@ Baseline decision:
   `checkpoints\rl_combat_model_ep39_steps10991.pth`.
 - After training, rerun the same eval protocol and compare against this baseline
   on win rate, average/median floor, death distribution, and protocol signals.
+
+## Training Slice T1 - 2026-06-04
+
+- Start: `2026-06-04T02:16:36+08:00`
+- Launch: controlled `restart_sts_modded.ps1 -FreshRun`
+- Repo commit at launch: `4fa2cc7 Record clean fixed eval baseline`
+- Command:
+  `scripts/run_training_batch.py --max-games 5 --phase conservative --restart-guidance --truncate-log-after-backup`
+- Result: stopped early after a stale card-select `choose` command crossed
+  back to a rest-state frame.
+- Completed `.run` files before stop: 3
+- Wins: 0
+- Win rate: 0.0%
+- Average floor: 20.3
+- Median floor: 16
+- Max floor: 27
+
+Death distribution before stop:
+
+| Count | Killed by |
+| ---: | --- |
+| 1 | Sentry and Sphere |
+| 1 | Slime Boss |
+| 1 | The Guardian |
+
+Training/checkpoint signal:
+
+- The batch loaded `checkpoints\rl_combat_model_ep39_steps10991.pth`.
+- It saved at least `rl_combat_model_ep1_steps11074.pth` and
+  `rl_combat_model_ep4_steps11143.pth` before the stop.
+- These checkpoints are not promoted; this slice did not complete a clean
+  train-plus-eval comparison.
+
+Protocol signal:
+
+- `Invalid command: choose`: 1 event at `2026-06-04 02:18:52`.
+- Live logs showed `CardSelectAction` selecting `Fiend Fire` from a smith
+  grid, then the game returning to `REST` while a delayed choose response still
+  arrived. The current advertised commands were
+  `[potion, proceed, key, click, wait, state]`, so a queued or late
+  `ChooseAction` needed to resync instead of sending `choose 0`.
+
+Follow-up fix:
+
+- `ChooseAction.execute()` now checks current `available_commands` and requests
+  `state` instead of sending `choose` when the action is stale for the current
+  screen.
+- Regression:
+  `test_choose_action_requests_state_when_choose_command_is_stale`.
+
+Verification:
+
+- Red: the new regression failed against the old behavior with
+  `sent_messages == ["choose 0"]`.
+- Green focused: card-select guard tests -> 6 passed.
+- Green related: card-select, deferred-state, event-choice, shop-screen, and
+  RL v2 action-space tests -> 71 passed.
+- Green full suite: 1479 passed.
+
+Next step: commit the stale choose guard, then rerun the same 5-game training
+slice from the new commit. Only after a clean training slice should the workflow
+return to the fixed 20-game eval comparison against Batch 7.

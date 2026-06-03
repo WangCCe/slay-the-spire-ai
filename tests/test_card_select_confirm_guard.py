@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 from spirecomm.communication.action import (
     CardSelectAction,
+    ChooseAction,
     KeyAction,
     OptionalCardSelectConfirmAction,
 )
@@ -125,3 +126,17 @@ def test_stale_card_select_confirm_skips_after_screen_changes():
     OptionalCardSelectConfirmAction(allow_stale_selection=True).execute(coordinator)
 
     assert coordinator.sent_messages == []
+
+
+def test_choose_action_requests_state_when_choose_command_is_stale():
+    coordinator = FakeCoordinator(
+        SimpleNamespace(
+            screen_type=ScreenType.REST,
+            available_commands=["potion", "proceed", "key", "click", "wait", "state"],
+            screen=SimpleNamespace(),
+        )
+    )
+
+    ChooseAction(choice_index=0).execute(coordinator)
+
+    assert coordinator.sent_messages == ["state"]

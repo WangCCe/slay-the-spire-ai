@@ -382,6 +382,17 @@ class ChooseAction(Action):
         return False
 
     def execute(self, coordinator):
+        available_commands = getattr(
+            coordinator.last_game_state, "available_commands", None
+        )
+        if available_commands is not None and "choose" not in available_commands:
+            logging.warning(
+                "ChooseAction is stale for current commands %s; requesting state",
+                available_commands,
+            )
+            coordinator.send_message("state")
+            return
+
         if self.name is not None:
             coordinator.send_message(
                 "{} {}".format(self.command, self.name), wait_for_response=False
