@@ -539,3 +539,77 @@ Decision:
   checkpoint, then compare against Fixed Baseline Batch 7.
 - Do not promote the checkpoint unless eval improves win/floor or failure
   distribution without adding protocol or mechanics risk.
+
+## Post-Training Eval Batch 1 - 2026-06-04
+
+- Start: `2026-06-04T02:48:09+08:00`
+- Launch: controlled `restart_sts_modded.ps1 -FreshRun`
+- Repo commit at launch: `da3410f Record clean training slice`
+- Checkpoint under eval: `checkpoints\rl_combat_model_ep9_steps11848.pth`
+- Command:
+  `scripts/run_training_batch.py --eval --max-games 20 --phase conservative --restart-guidance --truncate-log-after-backup`
+- Result: completed 20 `.run` files and post-analysis.
+- Wins: 0
+- Win rate: 0.0%
+- Average floor: 21.7
+- Median floor: 16
+- Max floor: 33
+- Average playtime: 103.4 seconds
+
+Death distribution:
+
+| Count | Killed by |
+| ---: | --- |
+| 6 | The Guardian |
+| 3 | Champ |
+| 3 | Hexaghost |
+| 2 | Slime Boss |
+| 1 | 3 Cultists |
+| 1 | Centurion and Healer |
+| 1 | Chosen |
+| 1 | Cultist and Chosen |
+| 1 | Sentry and Sphere |
+| 1 | Shelled Parasite and Fungi |
+
+Baseline comparison:
+
+| Metric | Fixed Baseline Batch 7 | Post-Training Eval 1 | Decision signal |
+| --- | ---: | ---: | --- |
+| Wins | 0 | 0 | no win-rate gain |
+| Average floor | 23.0 | 21.7 | worse |
+| Median floor | 22.5 | 16 | worse |
+| Max floor | 33 | 33 | unchanged |
+| Average playtime | 120.2s | 103.4s | shorter runs |
+| Act 1 boss deaths | 9/20 | 11/20 | worse |
+
+Protocol signal:
+
+- `Invalid command:*`: 0 matching events in `communication_mod_errors.log`
+  for this eval slice.
+- `Traceback`: 0 matching events in `communication_mod_errors.log` for this
+  eval slice.
+- `CombatRLAgent error`: 0 matching events in `communication_mod_errors.log`
+  for this eval slice.
+- `ai_debug.log` was truncated at launch and was clean through the first
+  several games, but reached the 10MB log ceiling before the eval ended. The
+  final protocol check therefore relies on `communication_mod_errors.log` plus
+  `.run` completion.
+
+Promotion decision:
+
+- Do not promote `rl_combat_model_ep9_steps11848.pth`.
+- The clean training slice proved the protocol guard repairs were enough to
+  run bounded continued training, but the follow-up eval did not improve the
+  fixed baseline and shifted the failure distribution toward earlier Act 1
+  boss deaths.
+
+Next candidate:
+
+- Pause further blind continued-training slices.
+- Inspect the repeated Act 1 boss failures, especially the six Guardian losses,
+  for a concrete decision/mechanics pattern: deck before boss, potion handling,
+  rest-vs-smith choices, and whether combat actions over-block or under-damage
+  during Guardian mode changes.
+- Only write a focused regression if those run/log slices identify a specific
+  high-confidence decision or mechanics bug; otherwise treat this as a training
+  effectiveness blocker rather than a protocol blocker.
