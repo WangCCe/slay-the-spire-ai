@@ -45,3 +45,15 @@
 - Regression: `test_potion_guard_saves_healing_potion_when_hp_is_high`; positive guard `test_potion_guard_uses_healing_potion_to_survive_lethal_turn`.
 - Verification after fix: focused healing-potion regressions `2 passed`; `tests/test_combat_rl_guards.py` `36 passed`; full pytest `1459 passed`.
 - Next candidate: rerun bounded validation from `ce442d7` plus this potion fix and inspect remaining Act 1 boss deaths, especially low-HP boss turns where saved potion use, fallback takeover, and current-turn lethal scoring interact.
+
+## Round 5 - 2026-06-03
+
+- Preflight: git clean at `ce442d7 Confirm stale hand select screens`.
+- Baseline: full pytest with disabled pytest cache and unique basetemp -> `1459 passed`.
+- Validation: controlled CommunicationMod fresh run with Windows Python using `scripts/run_training_batch.py --eval --max-games 20 --phase conservative --restart-guidance`.
+- Outcome before stopping for a focused fix: no Ironclad `victory=true`; completed new runs were `1780459104.run` (floor 33, Automaton), `1780459171.run` (floor 16, Hexaghost), `1780459248.run` (floor 16, Hexaghost), `1780459332.run` (floor 16, Hexaghost), `1780459476.run` (floor 33, Automaton), `1780459530.run` (floor 6, 3 Sentries), `1780459773.run` (floor 31, Centurion and Healer), and `1780459835.run` (floor 16, Slime Boss). All completed run files reported `potions_floor_usage=[]`.
+- Failure type: potion action execution/state-stability risk. Runtime logs selected `PotionAction` repeatedly, including guard-selected Block/Elixir/Energy/Blessing/Smoke Bomb/Strength/Dexterity potions, but completed run records still reported zero potion usage. The action execution path sent the potion command without queuing any explicit state-stabilizing wait, so subsequent callbacks could continue from stale combat state immediately after a potion action.
+- Fix: `PotionAction.execute()` now queues `WaitAction(timeout=1)` after potion use/discard commands, matching the stabilization pattern already used for shop potion purchases and forcing a state update opportunity before the next decision.
+- Regression: `test_potion_action_execute_uses_get_real_potions_without_raw_potions` now asserts both the `potion use 0` command and the queued `WaitAction`.
+- Verification after fix: focused regression red `1 failed` for missing queued wait, then green `1 passed`; `tests/test_combat_rl_guards.py` `36 passed`; full pytest `1459 passed`.
+- Next candidate: rerun bounded validation after `PotionAction` stabilization and verify whether completed run files now show non-empty potion usage when logs select PotionAction; if potion records remain empty, inspect sent command/effect confirmation at the CommunicationMod boundary before changing potion selection policy.

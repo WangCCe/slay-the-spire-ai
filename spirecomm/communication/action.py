@@ -139,6 +139,7 @@ class PotionAction(Action):
         if self.target_index is not None:
             arguments.append(str(self.target_index))
         coordinator.send_message(" ".join(arguments))
+        coordinator.add_action_to_queue(WaitAction(timeout=1))
 
 
 class EndTurnAction(Action):
