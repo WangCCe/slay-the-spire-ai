@@ -1240,7 +1240,7 @@ class CombatRLAgent:
             or "energy" in name
             or "swift" in name
         ):
-            if incoming >= 12 or is_elite or is_boss:
+            if incoming >= 12:
                 score = 45
         else:
             if incoming >= 18 or is_elite or is_boss:

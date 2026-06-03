@@ -238,6 +238,51 @@ def test_potion_guard_uses_healing_potion_to_survive_lethal_turn():
     assert action.potion is potion
 
 
+def test_potion_guard_saves_energy_potion_on_safe_boss_turn():
+    potion = SimpleNamespace(
+        potion_id="EnergyPotion",
+        name="Energy Potion",
+        can_use=True,
+        requires_target=False,
+        effect_type="energy",
+    )
+    game = _game(
+        potions=[potion],
+        monsters=[_monster(hp=250, damage=0, index=0, name="The Guardian")],
+        current_hp=68,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        turn=1,
+    )
+
+    assert _agent()._maybe_use_potion_guard(game) is None
+
+
+def test_potion_guard_uses_energy_potion_under_current_turn_pressure():
+    potion = SimpleNamespace(
+        potion_id="EnergyPotion",
+        name="Energy Potion",
+        can_use=True,
+        requires_target=False,
+        effect_type="energy",
+    )
+    game = _game(
+        potions=[potion],
+        monsters=[_monster(hp=120, damage=32, index=0, name="The Guardian")],
+        current_hp=8,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        turn=19,
+    )
+
+    action = _agent()._maybe_use_potion_guard(game)
+
+    assert isinstance(action, PotionAction)
+    assert action.potion is potion
+
+
 def test_rl_incoming_damage_clamps_negative_live_move_damage_to_zero():
     monster = _monster(hp=25, damage=-1)
     monster.move_hits = 3
