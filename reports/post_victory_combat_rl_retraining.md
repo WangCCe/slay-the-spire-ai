@@ -613,3 +613,66 @@ Next candidate:
 - Only write a focused regression if those run/log slices identify a specific
   high-confidence decision or mechanics bug; otherwise treat this as a training
   effectiveness blocker rather than a protocol blocker.
+
+## Guardian-Loss Focused Audit - 2026-06-04
+
+Preflight:
+
+- Git status was clean before the audit.
+- Latest commit: `18a5f63 Record post-training eval diagnostic`.
+- CommunicationMod command remained on Windows Python through
+  `scripts/run_training_batch.py --eval --max-games 20 --phase conservative --restart-guidance --truncate-log-after-backup`.
+- Full pytest baseline with isolated repo-local basetemp passed:
+  `1479 passed in 62.14s`.
+
+Fixed Guardian sample:
+
+| Run | Boss start log | Boss HP entry | Boss turns | Boss potion signal | Main observation |
+| --- | --- | ---: | ---: | --- | --- |
+| `1780512868.run` | `ai_debug.log.2:64254` | 80/80 | 8 | Boss had no `POTION_GUARD`; earlier potions were used or replaced before boss. | Strong block cards existed, but the fight still dropped to 19 HP by turn 6 and died after low-damage hands. |
+| `1780512940.run` | `ai_debug.log.2:70944` | 79/80 | 11 | Used `Ancient Potion` at boss start; earlier `Explosive Potion` was used before boss. | Very low damage output; by turn 11 it was at 5 HP with Guardian still 112 effective HP. |
+| `1780514262.run` | `ai_debug.log:24351` | 80/80 | 11 | No boss potion signal in the covered window. | Multiple RL `EndTurnAction` decisions were rescued by `ENERGY_GUARD`; final turn died while still far from a clean lethal. |
+| `1780514354.run` | `ai_debug.log:37186` | 78/80 | 12 | Used `Explosive Potion` and `Flex Potion` at boss start. | Potions did fire despite `.run` `potions_floor_usage=[]`; the `.run` usage field is not reliable for this question. |
+| `1780514414.run` | `ai_debug.log:48065` | 80/80 | 8 | No boss potion signal; only `.run` potion was `Regen Potion`. | The deck lacked enough scaling/damage density and died quickly despite full HP. |
+| `1780514486.run` | `ai_debug.log:55576` | 39/80 | 6 | No boss potion signal; earlier logs show `Fire Potion` used at floor 13 and another RL `PotionAction` at floor 14. | Entered boss too low; turn 5 was 17/80 HP with 41 predicted damage over the next two turns. |
+
+Audit findings:
+
+- No CommunicationMod protocol blocker was found for this eval slice. The
+  current error log did not expose a matching traceback or invalid-command
+  chain for these Guardian deaths.
+- The `.run` `potions_floor_usage` field cannot be used as authoritative
+  potion-use evidence. `1780514354.run` has empty usage in `.run`, but
+  runtime logs show boss-opening `Explosive Potion` and `Flex Potion`; other
+  samples also show potions being used before the boss.
+- Potion guard is not the selected regression target. The strongest apparent
+  case, `1780514486.run`, was explained by prior potion use before Guardian,
+  not by available Fire/Block potions being ignored in the boss fight.
+- Guardian mode-change damage was not the selected regression target. The
+  logged incoming and lookahead values were plausible for the observed intents;
+  no single impossible damage or block estimate repeated across the sample.
+- The repeated tactical pattern is RL returning `EndTurnAction` with playable
+  cards and energy, then `ENERGY_GUARD` handing the rest of the turn to the
+  fallback planner. That guard prevents immediate blunders, but it means the
+  trained combat policy is not carrying Guardian turns by itself.
+
+Diagnosis:
+
+- No focused red regression was written in this audit round because the six
+  fixed samples did not identify one high-confidence mechanics or protocol bug.
+- The blocker is training/decision effectiveness after the guard repairs, not
+  a confirmed mechanics-correctness defect. The post-training checkpoint should
+  remain unpromoted.
+- Continuing blind training would hide the issue rather than explain it. The
+  next smallest validation target is to instrument or replay Guardian boss
+  states around RL `EndTurnAction` decisions and compare RL's chosen action
+  distribution against the fallback sequence, especially turns where the player
+  has energy, playable cards, and low HP.
+
+Next candidate:
+
+- Do not start another training slice yet.
+- Add a focused decision-diagnostic test or offline replay harness only if it
+  can reproduce a specific Guardian-state action-ranking error from the logged
+  state. Otherwise treat the next work item as model evaluation/feature
+  diagnosis rather than mechanics repair.
