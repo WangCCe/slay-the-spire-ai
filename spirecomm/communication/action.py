@@ -109,11 +109,17 @@ class PlayCardAction(Action):
         if self.target_monster is not None:
             self.target_index = self.target_monster.monster_index
         if self.target_index is None:
-            coordinator.send_message("{} {}".format(self.command, hand_card_index))
+            message = "{} {}".format(self.command, hand_card_index)
         else:
-            coordinator.send_message(
-                "{} {} {}".format(self.command, hand_card_index, self.target_index)
+            message = "{} {} {}".format(
+                self.command, hand_card_index, self.target_index
             )
+        coordinator.send_message(message)
+        add_action_to_queue = getattr(coordinator, "add_action_to_queue", None)
+        if callable(add_action_to_queue):
+            wait_action = WaitAction(timeout=1)
+            wait_action.requires_game_ready = True
+            add_action_to_queue(wait_action)
 
 
 class PotionAction(Action):

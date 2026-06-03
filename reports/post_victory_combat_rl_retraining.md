@@ -88,3 +88,52 @@ fix, then rerun the same 20-game eval protocol from the fixed commit. If that
 eval has no protocol-boundary blocker, use it as the retraining baseline and
 start the first small continued-training slice from
 `rl_combat_model_ep39_steps10991.pth`.
+
+## Fixed Baseline Batch 2 - 2026-06-03
+
+- Start: `2026-06-03T23:11:12+08:00`
+- Launch: controlled `restart_sts_modded.ps1 -FreshRun`
+- Repo commit: `fd3181a Guard stale queued card plays`
+- Result: stopped early after the stale-play blocker reproduced again.
+- Completed `.run` files before stop: 6
+- Wins: 0
+- Win rate: 0.0%
+- Average floor: 19.7
+- Median floor: 16
+- Max floor: 33
+
+Death distribution before stop:
+
+| Count | Killed by |
+| ---: | --- |
+| 2 | Collector |
+| 2 | The Guardian |
+| 1 | Hexaghost |
+| 1 | Slime Boss |
+
+Protocol signal:
+
+- `Invalid command: play`: 1 event at `2026-06-03 23:14:52`.
+- The prior stale-command guard was insufficient. Live logs showed
+  `[ENERGY_GUARD]` replacing an RL `EndTurnAction` with `PlayCardAction`, then
+  continuing fallback turn takeover and issuing another `PlayCardAction` before
+  the post-play state boundary had stabilized. CommunicationMod then reported
+  `COMBAT_REWARD` plus a delayed `Invalid command: play`.
+
+Follow-up fix:
+
+- `PlayCardAction.execute()` now queues a ready-gated `WaitAction(timeout=1)`
+  after every successful `play`, matching the serialization already used for
+  potion actions. This prevents immediate next callbacks from chaining another
+  play off a stale post-action state.
+- Regression: `test_play_card_action_queues_ready_wait_after_successful_play`.
+
+Verification:
+
+- Red: the new regression failed because no post-play wait was queued.
+- Green focused: `tests/test_play_card_action_guards.py` -> 3 passed.
+- Green related: play-card, combat-RL, and combat-reward guard tests -> 46 passed.
+
+Next step: rerun the same 20-game eval protocol from the new fixed commit. Do
+not begin continued training until the eval baseline is clean of this protocol
+blocker.
