@@ -1141,6 +1141,17 @@ def test_simulation_state_coerces_string_player_hp_and_block():
     assert state.turn_block() == 5
 
 
+def test_simulation_state_prefers_context_player_block_field():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=20)])
+    context.player_block = "18"
+    context.game.player.block = 0
+
+    state = SimulationState(context)
+
+    assert state.player_block == 18
+    assert state.turn_block() == 18
+
+
 def test_simulation_state_coerces_string_player_energy_and_strength():
     context = _combat_context([], energy="3", monsters=[_louse(current_hp=20)])
     context.strength = "-2"
