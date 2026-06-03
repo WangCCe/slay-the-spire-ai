@@ -24,6 +24,7 @@ from .combat_state import (
     monster_power_amount,
     player_block_value,
     player_debuff_stacks,
+    player_hp_values,
 )
 from .card_names import canonical_card_name
 from .card_costs import (
@@ -793,22 +794,12 @@ class CombatEndingDetector:
         return 0
 
     def _context_player_hp(self, context: DecisionContext) -> int:
-        hp = getattr(context, 'player_hp', None)
-        if hp is None:
-            hp = getattr(getattr(context, 'game', None), 'current_hp', 0)
-        return max(0, int(self._safe_float(hp, 0.0)))
+        hp, _ = player_hp_values(context)
+        return hp
 
     def _context_player_hp_pct(self, context: DecisionContext) -> float:
-        hp_pct = getattr(context, 'player_hp_pct', None)
-        if hp_pct is not None:
-            return max(0.0, self._safe_float(hp_pct, 0.0))
-
-        game = getattr(context, 'game', None)
-        hp = getattr(context, 'player_hp', getattr(game, 'current_hp', 0))
-        max_hp = getattr(context, 'player_max_hp', getattr(game, 'max_hp', 0))
-        hp_value = self._safe_float(hp, 0.0)
-        max_hp_value = self._safe_float(max_hp, 0.0)
-        return max(0.0, hp_value / max_hp_value) if max_hp_value > 0 else 0.0
+        hp, max_hp = player_hp_values(context)
+        return max(0.0, hp / max_hp) if max_hp > 0 else 0.0
 
     def _context_corruption_active(self, context: DecisionContext) -> bool:
         return self._get_player_debuff_stacks(context, 'Corruption') > 0

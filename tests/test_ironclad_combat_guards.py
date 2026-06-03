@@ -10488,6 +10488,17 @@ def test_lethal_detector_skip_defense_accepts_numeric_string_player_hp_pct():
     assert CombatEndingDetector().should_skip_defense(context) is True
 
 
+def test_lethal_detector_skip_defense_prefers_game_hp_over_stale_context_pct():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=5)])
+    context.game.current_hp = 6
+    context.game.max_hp = 80
+    context.player_hp = 80
+    context.player_hp_pct = 1.0
+
+    assert CombatEndingDetector().should_skip_defense(context) is False
+
+
 def test_lethal_detector_allows_exact_single_target_kill(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -11375,9 +11386,12 @@ def test_lethal_detector_bane_poison_check_rejects_nonfinite_hp():
     assert CombatEndingDetector()._all_alive_targets_poisoned(context)
 
 
-def test_lethal_detector_context_player_hp_rejects_nonfinite_values():
+def test_lethal_detector_player_hp_rejects_nonfinite_values():
     context = _combat_context([], energy=0, monsters=[_louse(current_hp=12)])
+    context.game.current_hp = float("inf")
+    context.game.max_hp = float("inf")
     context.player_hp = float("inf")
+    context.player_max_hp = float("inf")
     context.player_hp_pct = float("inf")
     detector = CombatEndingDetector()
 
@@ -12545,6 +12559,36 @@ def test_lethal_detector_rejects_bloodletting_energy_when_hp_would_hit_zero(monk
     context.game.current_hp = 3
     context.player_hp = 3
     context.player_hp_pct = 3 / 80
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
+
+
+def test_lethal_detector_rejects_hp_cost_lethal_when_game_hp_is_stale_in_context(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    offering = _card(
+        "Offering",
+        "Offering",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [offering, strike_1, strike_2],
+        energy=0,
+        monsters=[_louse(current_hp=12)],
+    )
+    context.game.current_hp = 3
+    context.game.max_hp = 80
+    context.player_hp = 80
+    context.player_hp_pct = 1.0
 
     detector = CombatEndingDetector()
 
