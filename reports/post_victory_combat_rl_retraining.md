@@ -178,3 +178,64 @@ Verification:
 
 Next step: commit the exact-command guard fix, then rerun the same 20-game eval
 protocol from that commit. Training remains paused.
+
+## Fixed Baseline Batch 4 - 2026-06-03/04
+
+- Start: `2026-06-03T23:49:13+08:00`
+- Launch: controlled `restart_sts_modded.ps1 -FreshRun`
+- Repo commit: `0e10cea Guard stale exit commands`
+- Result: stopped early after a shop exit serialization blocker reproduced.
+- Completed `.run` files before stop: 10
+- Wins: 0
+- Win rate: 0.0%
+- Average floor: 23.5
+- Median floor: 22.5
+- Max floor: 33
+
+Death distribution before stop:
+
+| Count | Killed by |
+| ---: | --- |
+| 4 | The Guardian |
+| 1 | Automaton |
+| 1 | Centurion and Healer |
+| 1 | Chosen and Byrds |
+| 1 | Sentry and Sphere |
+| 1 | Shelled Parasite and Fungi |
+| 1 | Snake Plant |
+
+Protocol signal:
+
+- `Invalid command: leave`: 1 event at `2026-06-04 00:10:25`.
+- `Invalid command: proceed`: 1 event at `2026-06-04 00:10:26`.
+- Live logs showed `SHOP_SCREEN` buying a potion, then returning consecutive
+  shop-exit actions across a transition frame. The first `CancelAction`
+  advanced the state; the next exit action still sent `leave` while
+  CommunicationMod advertised `proceed`. The subsequent `SHOP_ROOM` state then
+  repeated `ProceedAction` while the room only advertised `return`.
+
+Follow-up fix:
+
+- `LeaveAction.execute()` now checks current `available_commands` and requests
+  `state` instead of sending stale `leave`.
+- `CancelAction.execute()`, `LeaveAction.execute()`, and
+  `ProceedAction.execute()` now queue a ready-gated `WaitAction(timeout=1)`
+  after a successful exit command, matching the serialization used for card
+  play and potion actions.
+- Regressions:
+  `test_cancel_action_queues_ready_wait_after_successful_exit_alias`,
+  `test_leave_action_requests_state_when_leave_command_is_stale`,
+  `test_leave_action_queues_ready_wait_after_successful_leave`, and
+  `test_proceed_action_queues_ready_wait_after_successful_proceed`.
+
+Verification:
+
+- Red: the four new regressions failed against the old behavior.
+- Green focused: action guards -> 10 passed.
+- Green related: play-card, potion, shop-screen, and RL v2 action-space tests
+  -> 63 passed.
+- Green full suite: 1476 passed.
+
+Next step: commit the shop-exit serialization fix, then rerun the same
+20-game eval protocol from the new fixed commit. Training remains paused until
+the eval baseline completes without protocol or mechanics blockers.

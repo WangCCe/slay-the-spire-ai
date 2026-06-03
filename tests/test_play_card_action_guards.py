@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from spirecomm.communication.action import (
     CancelAction,
+    LeaveAction,
     PlayCardAction,
     ProceedAction,
     WaitAction,
@@ -84,6 +85,35 @@ def test_cancel_action_uses_current_return_command_alias():
     assert sent_messages == ["return"]
 
 
+def test_cancel_action_queues_ready_wait_after_successful_exit_alias():
+    sent_messages = []
+    queued_actions = []
+    coordinator = SimpleNamespace(
+        last_game_state=SimpleNamespace(
+            available_commands=[
+                "choose",
+                "potion",
+                "leave",
+                "key",
+                "click",
+                "wait",
+                "state",
+            ],
+            screen_type=ScreenType.SHOP_SCREEN,
+        ),
+        send_message=sent_messages.append,
+        add_action_to_queue=queued_actions.append,
+    )
+
+    CancelAction().execute(coordinator)
+
+    assert sent_messages == ["leave"]
+    assert len(queued_actions) == 1
+    assert isinstance(queued_actions[0], WaitAction)
+    assert queued_actions[0].timeout == 1
+    assert queued_actions[0].requires_game_ready is True
+
+
 def test_cancel_action_requests_state_when_cancel_group_is_stale():
     sent_messages = []
     coordinator = SimpleNamespace(
@@ -107,6 +137,58 @@ def test_cancel_action_requests_state_when_cancel_group_is_stale():
     assert sent_messages == ["state"]
 
 
+def test_leave_action_requests_state_when_leave_command_is_stale():
+    sent_messages = []
+    coordinator = SimpleNamespace(
+        last_game_state=SimpleNamespace(
+            available_commands=[
+                "choose",
+                "potion",
+                "proceed",
+                "key",
+                "click",
+                "wait",
+                "state",
+            ],
+            screen_type=ScreenType.SHOP_SCREEN,
+        ),
+        send_message=sent_messages.append,
+    )
+
+    LeaveAction().execute(coordinator)
+
+    assert sent_messages == ["state"]
+
+
+def test_leave_action_queues_ready_wait_after_successful_leave():
+    sent_messages = []
+    queued_actions = []
+    coordinator = SimpleNamespace(
+        last_game_state=SimpleNamespace(
+            available_commands=[
+                "choose",
+                "potion",
+                "leave",
+                "key",
+                "click",
+                "wait",
+                "state",
+            ],
+            screen_type=ScreenType.SHOP_SCREEN,
+        ),
+        send_message=sent_messages.append,
+        add_action_to_queue=queued_actions.append,
+    )
+
+    LeaveAction().execute(coordinator)
+
+    assert sent_messages == ["leave"]
+    assert len(queued_actions) == 1
+    assert isinstance(queued_actions[0], WaitAction)
+    assert queued_actions[0].timeout == 1
+    assert queued_actions[0].requires_game_ready is True
+
+
 def test_proceed_action_requests_state_when_proceed_is_stale():
     sent_messages = []
     coordinator = SimpleNamespace(
@@ -128,3 +210,32 @@ def test_proceed_action_requests_state_when_proceed_is_stale():
     ProceedAction().execute(coordinator)
 
     assert sent_messages == ["state"]
+
+
+def test_proceed_action_queues_ready_wait_after_successful_proceed():
+    sent_messages = []
+    queued_actions = []
+    coordinator = SimpleNamespace(
+        last_game_state=SimpleNamespace(
+            available_commands=[
+                "choose",
+                "potion",
+                "proceed",
+                "key",
+                "click",
+                "wait",
+                "state",
+            ],
+            screen_type=ScreenType.SHOP_ROOM,
+        ),
+        send_message=sent_messages.append,
+        add_action_to_queue=queued_actions.append,
+    )
+
+    ProceedAction().execute(coordinator)
+
+    assert sent_messages == ["proceed"]
+    assert len(queued_actions) == 1
+    assert isinstance(queued_actions[0], WaitAction)
+    assert queued_actions[0].timeout == 1
+    assert queued_actions[0].requires_game_ready is True

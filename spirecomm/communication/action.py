@@ -20,6 +20,14 @@ def _has_potion_space(game_state):
     return True
 
 
+def _queue_ready_wait(coordinator, timeout=1):
+    add_action_to_queue = getattr(coordinator, "add_action_to_queue", None)
+    if callable(add_action_to_queue):
+        wait_action = WaitAction(timeout=timeout)
+        wait_action.requires_game_ready = True
+        add_action_to_queue(wait_action)
+
+
 class Action:
     """A base class for an action to take in Slay the Spire"""
 
@@ -204,6 +212,7 @@ class ProceedAction(Action):
             for command in ("proceed", "confirm"):
                 if command in available_commands:
                     coordinator.send_message(command)
+                    _queue_ready_wait(coordinator)
                     return
             logging.warning(
                 "ProceedAction is stale for current commands %s; requesting state",
@@ -212,6 +221,7 @@ class ProceedAction(Action):
             coordinator.send_message("state")
             return
         super().execute(coordinator)
+        _queue_ready_wait(coordinator)
 
 
 class LeaveAction(Action):
@@ -219,6 +229,20 @@ class LeaveAction(Action):
 
     def __init__(self):
         super().__init__("leave")
+
+    def execute(self, coordinator):
+        game_state = getattr(coordinator, "last_game_state", None)
+        available_commands = getattr(game_state, "available_commands", None)
+        if available_commands is not None and "leave" not in available_commands:
+            logging.warning(
+                "LeaveAction is stale for current commands %s; requesting state",
+                available_commands,
+            )
+            coordinator.send_message("state")
+            return
+
+        super().execute(coordinator)
+        _queue_ready_wait(coordinator)
 
 
 class ConfirmAction(Action):
@@ -241,6 +265,7 @@ class CancelAction(Action):
             for command in ("cancel", "leave", "return", "skip"):
                 if command in available_commands:
                     coordinator.send_message(command)
+                    _queue_ready_wait(coordinator)
                     return
             logging.warning(
                 "CancelAction is stale for current commands %s; requesting state",
@@ -249,6 +274,7 @@ class CancelAction(Action):
             coordinator.send_message("state")
             return
         super().execute(coordinator)
+        _queue_ready_wait(coordinator)
 
 
 class WaitAction(Action):
