@@ -3367,6 +3367,22 @@ def test_damage_curve_handles_hexaghost_divider_formula_without_warning(caplog):
     assert "[DAMAGE_CURVE] Calculation failed" not in caplog.text
 
 
+def test_hexaghost_divider_falls_back_to_context_player_hp_when_game_hp_invalid():
+    classifier = TurnTimingClassifier()
+    context = SimpleNamespace(
+        game=SimpleNamespace(current_hp=float("inf"), ascension_level=0),
+        player_hp=35,
+    )
+
+    damage = classifier._resolve_move_damage(
+        "Hexaghost",
+        {"name": "Divider", "intent": "ATTACK"},
+        context,
+    )
+
+    assert damage == 18
+
+
 def test_nested_monster_probability_tables_predict_moves_without_dict_sort_error():
     database = EnhancedMonsterDatabase()
 
@@ -6672,6 +6688,7 @@ def test_beam_search_keeps_best_scoring_sequence_across_depths():
 
 
 def test_beam_search_retargets_after_simulated_monster_death(monkeypatch):
+    monkeypatch.setattr(simulation, "TIMEOUT_BUDGET", 5.0)
     loader = data_loader.GameDataLoader(auto_load=False)
     loader._cards = {
         "strike": {

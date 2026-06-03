@@ -721,21 +721,27 @@ class TurnTimingClassifier:
         move_name = str(move.get('name', '')).lower()
         effect = str(move.get('effect', '')).lower()
         if monster_name.lower() == 'hexaghost' and move_name == 'divider':
-            player_hp = 0
-            if hasattr(context, 'game') and hasattr(context.game, 'current_hp'):
-                player_hp = context.game.current_hp or 0
-            elif hasattr(context, 'player_hp'):
-                player_hp = context.player_hp or 0
-            player_hp = self._coerce_int(player_hp, default=0)
+            player_hp = self._context_player_hp(context)
             return ((player_hp // 12) + 1) * 6
 
         if 'current player hp divided by 12' in effect:
-            player_hp = getattr(context, 'player_hp', 0) or 0
-            if hasattr(context, 'game') and hasattr(context.game, 'current_hp'):
-                player_hp = context.game.current_hp or player_hp
-            player_hp = self._coerce_int(player_hp, default=0)
+            player_hp = self._context_player_hp(context)
             return ((player_hp // 12) + 1) * 6
 
+        return 0
+
+    def _context_player_hp(self, context) -> int:
+        game = getattr(context, 'game', None)
+        player = getattr(context, 'player', None)
+        candidates = (
+            getattr(game, 'current_hp', None),
+            getattr(context, 'player_hp', None),
+            getattr(player, 'current_hp', None),
+        )
+        for candidate in candidates:
+            hp = self._coerce_damage_value(candidate)
+            if hp is not None:
+                return max(0, hp)
         return 0
 
     def _resolve_move_hits(
