@@ -501,6 +501,12 @@ class Coordinator:
                     self.clear_actions()
                 else:
                     self._deferred_state_callback_pending = False
+                    if len(self.action_queue) > 0:
+                        logging.info(
+                            "[OUT_OF_GAME] Clearing %s stale queued actions before start callback",
+                            len(self.action_queue),
+                        )
+                        self.clear_actions()
                     new_action = self.out_of_game_callback()
                     if new_action is not None:
                         if (

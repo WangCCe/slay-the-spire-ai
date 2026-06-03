@@ -239,3 +239,64 @@ Verification:
 Next step: commit the shop-exit serialization fix, then rerun the same
 20-game eval protocol from the new fixed commit. Training remains paused until
 the eval baseline completes without protocol or mechanics blockers.
+
+## Fixed Baseline Batch 5 - 2026-06-04
+
+- Start: `2026-06-04T00:23:07+08:00`
+- Launch: controlled `restart_sts_modded.ps1 -FreshRun`
+- Repo commit: `5632865 Serialize shop exit commands`
+- Result: stopped early after a queue-boundary blocker crossed the game-over
+  to next-run startup boundary.
+- Completed `.run` files before stop: 12
+- Wins: 0
+- Win rate: 0.0%
+- Average floor: 24.6
+- Median floor: 23
+- Max floor: 33
+
+Death distribution before stop:
+
+| Count | Killed by |
+| ---: | --- |
+| 2 | Champ |
+| 2 | Collector |
+| 1 | 3 Cultists |
+| 1 | Automaton |
+| 1 | Cultist and Chosen |
+| 1 | Hexaghost |
+| 1 | Large Slime |
+| 1 | Slime Boss |
+| 1 | Snake Plant |
+| 1 | The Guardian |
+
+Protocol signal:
+
+- `Invalid command: wait`: 1 event at `2026-06-04 00:50:54`.
+- `Invalid command: play`: 1 late event at `2026-06-04 00:51:23`.
+- The `wait` event had a clear queue-leak signature: after `GAME_OVER`, a
+  ready-gated `WaitAction` remained at the front of the queue. The next update
+  reported `in_game=False` with only `[start, state]` available, but the stale
+  wait executed before the newly queued `StartGameAction`.
+- The `play` event arrived after the state had already transitioned to
+  `COMBAT_REWARD`; it is recorded as the next candidate if it reproduces after
+  the out-of-game queue leak is removed.
+
+Follow-up fix:
+
+- `Coordinator.receive_game_state_update()` now clears stale queued actions
+  before invoking the out-of-game callback and queuing the next start action.
+- Regression:
+  `test_out_of_game_update_clears_stale_ready_wait_before_start_action`.
+
+Verification:
+
+- Red: the new regression failed with a queue of
+  `[WaitAction, StartGameAction]`.
+- Green focused: deferred/coordinator callback tests -> 6 passed.
+- Green related: deferred, startup, play-card, shop-screen, and potion action
+  tests -> 33 passed.
+- Green full suite: 1477 passed.
+
+Next step: commit the out-of-game queue cleanup, then rerun the same 20-game
+eval protocol. If `Invalid command: play` recurs without the stale wait leak,
+pause again and diagnose play-response ordering as the next focused blocker.

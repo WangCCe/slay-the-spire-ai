@@ -3,8 +3,14 @@ import json
 import queue
 from types import SimpleNamespace
 
-from spirecomm.communication.action import ChooseAction, OptionalCardSelectConfirmAction
+from spirecomm.communication.action import (
+    ChooseAction,
+    OptionalCardSelectConfirmAction,
+    StartGameAction,
+    WaitAction,
+)
 from spirecomm.communication.coordinator import Coordinator
+from spirecomm.spire.character import PlayerClass
 from spirecomm.spire.screen import ScreenType
 
 
@@ -68,6 +74,17 @@ def _command_error_message(error="Invalid command: confirm"):
     )
 
 
+def _out_of_game_start_ready_message():
+    return json.dumps(
+        {
+            "ready_for_command": True,
+            "in_game": False,
+            "available_commands": ["start", "state"],
+            "game_state": {},
+        }
+    )
+
+
 def test_repeated_command_error_is_handled_once_and_resyncs_state():
     coordinator = _coordinator_without_threads()
     errors = []
@@ -84,6 +101,18 @@ def test_repeated_command_error_is_handled_once_and_resyncs_state():
         "state",
         "state",
     ]
+
+
+def test_out_of_game_update_clears_stale_ready_wait_before_start_action():
+    coordinator = _coordinator_without_threads()
+    coordinator.action_queue.append(WaitAction(timeout=1))
+    coordinator.out_of_game_callback = lambda: StartGameAction(PlayerClass.IRONCLAD)
+    coordinator.input_queue.put(_out_of_game_start_ready_message())
+
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+
+    assert len(coordinator.action_queue) == 1
+    assert isinstance(coordinator.action_queue[0], StartGameAction)
 
 
 def test_deferred_callback_runs_after_noop_optional_confirm_drains_queue():
