@@ -131,3 +131,13 @@
 - Regression: `test_potion_guard_saves_utility_choice_potion_on_safe_boss_turn` reproduced the boss-opening `Attack Potion` use red; `test_potion_guard_uses_utility_choice_potion_under_current_turn_pressure` preserves the high-pressure positive path.
 - Verification after fix: focused utility-choice tests `2 passed`; `tests/test_combat_rl_guards.py` `41 passed`; full pytest with disabled cache provider and repo-local basetemp passed `1467 passed`.
 - Next candidate: rerun bounded validation from this commit. If potion noise drops, inspect dominant remaining boss failures, especially floor 50 Donu/Deca and repeated Act 1 boss deaths where RL opens with `EndTurnAction` and fallback takeover must carry the whole turn.
+
+## Round 13 - 2026-06-03
+
+- Preflight: git clean at `f50c3c5 Conserve utility potions for pressure turns`; CommunicationMod config still used Windows Python with `scripts/run_training_batch.py --eval --max-games 20 --phase conservative --restart-guidance`.
+- Baseline: full pytest with disabled cache provider and repo-local basetemp passed `1467 passed`.
+- Validation: controlled CommunicationMod fresh run started at 17:17 CST. The batch reached a successful Ironclad validation game before the 20-game bound, so the automation was stopped with `restart_sts_modded.ps1 -SkipLaunch` after confirming the run record.
+- Outcome: goal stop condition reached. `1780479519.run` recorded `floor_reached=51`, `victory=true`, score `664`, ascension `0`, character `IRONCLAD`, playtime `203`, with no `killed_by`.
+- Failure/fix selection: no new fix was selected because the audit objective was satisfied by the victory record. Earlier non-victory games in the same batch still showed deaths to Act 1 bosses and Act 2 fights, and logs contained a few low-pressure boss potion uses for setup/status potions, but those remain candidates rather than blockers after the successful run.
+- Verification after outcome: the victory `.run` was parsed directly from `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1780479519.run`; the validation processes were stopped cleanly and no new gameplay batch was launched.
+- Next candidate if continuing beyond the first-win goal: inspect low-pressure boss use of setup/status potions such as `Flex Potion`, `Fear Potion`, `Liquid Bronze`, and `Ancient Potion`, separating burst/status tools from permanent scaling before writing any policy regression.
