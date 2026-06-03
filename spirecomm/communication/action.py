@@ -264,9 +264,10 @@ class ClickAction(Action):
 class KeyAction(Action):
     """An action to send a key command to CommunicationMod (e.g., confirm with enter)"""
 
-    def __init__(self, key):
-        super().__init__("key", requires_game_ready=False)
+    def __init__(self, key, requires_game_ready=False, wait_for_response=False):
+        super().__init__("key", requires_game_ready=requires_game_ready)
         self.key = key
+        self.wait_for_response = wait_for_response
 
     def execute(self, coordinator):
         import logging
@@ -279,7 +280,10 @@ class KeyAction(Action):
             screen_type,
             available,
         )
-        coordinator.send_message(f"{self.command} {self.key}", wait_for_response=False)
+        coordinator.send_message(
+            f"{self.command} {self.key}",
+            wait_for_response=self.wait_for_response,
+        )
 
 
 class ChooseAction(Action):
@@ -451,8 +455,8 @@ class BossRewardAction(ChooseAction):
 class OptionalCardSelectConfirmAction(Action):
     """An action to click confirm on a hand or grid select screen, only if available"""
 
-    def __init__(self, allow_stale_selection=False):
-        super().__init__("confirm", requires_game_ready=False)
+    def __init__(self, allow_stale_selection=False, requires_game_ready=False):
+        super().__init__("confirm", requires_game_ready=requires_game_ready)
         self.allow_stale_selection = allow_stale_selection
 
     def execute(self, coordinator):
@@ -555,9 +559,18 @@ class CardSelectAction(Action):
                 else:
                     coordinator.add_action_to_queue(KeyAction(f"CARD_{index + 1}"))
             else:
-                coordinator.add_action_to_queue(KeyAction(f"CARD_{index + 1}"))
+                coordinator.add_action_to_queue(
+                    KeyAction(
+                        f"CARD_{index + 1}",
+                        requires_game_ready=True,
+                        wait_for_response=True,
+                    )
+                )
         coordinator.add_action_to_queue(
-            OptionalCardSelectConfirmAction(allow_stale_selection=True)
+            OptionalCardSelectConfirmAction(
+                allow_stale_selection=True,
+                requires_game_ready=(screen_type == ScreenType.HAND_SELECT),
+            )
         )
 
 

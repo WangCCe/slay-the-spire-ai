@@ -99,3 +99,13 @@
 - Regression: `test_repeated_command_error_is_handled_once_and_resyncs_state` reproduced two consecutive `Invalid command: confirm` messages red and now asserts one callback plus two state resyncs.
 - Verification after fix: focused repeated-error regression `1 passed`; related coordinator/card/action tests `10 passed`; full pytest `1463 passed`.
 - Next candidate: rerun bounded validation from this coordinator error-dedupe commit. If stale confirms still occur but no longer disable RL, inspect the source of repeated HAND_SELECT confirms; if no protocol errors recur, return to Act 1 boss failure attribution.
+
+## Round 10 - 2026-06-03
+
+- Preflight: git clean at `5300275 Deduplicate repeated command errors`; post-commit full pytest baseline -> `1463 passed`.
+- Validation: controlled CommunicationMod fresh run with Windows Python. The batch was stopped manually after the remaining HAND_SELECT stale-confirm source was attributed. Before stopping, it completed 7 visible `.run` files with no `victory=true`; all seven died at floor 16 to Act 1 bosses, dominated by Slime Boss.
+- Failure type: HAND_SELECT command pacing. The coordinator dedupe fix worked: repeated `Invalid command: confirm` responses were suppressed instead of three-striking RL. The source still remained: `CardSelectAction` queued multiple HAND_SELECT `KeyAction`s and an optional stale confirm, all with `requires_game_ready=False`, so a single callback could send several card keys and `confirm` before any state response reflected the selections. That produced repeated stale confirm errors in game #8.
+- Fix: `KeyAction` now supports explicit ready gating and response waiting. `CardSelectAction` uses ready-gated, response-waiting key commands for HAND_SELECT only, and the final optional HAND_SELECT confirm is also ready-gated. GRID selection keeps its existing immediate stale-confirm behavior.
+- Regression: `test_hand_select_card_select_waits_between_keys_and_confirm` reproduced the old immediate HAND_SELECT queue red and now asserts key actions plus final confirm require game readiness, with HAND_SELECT keys waiting for responses.
+- Verification after fix: focused HAND_SELECT queue regression `1 passed`; related card/coordinator/action tests `11 passed`; full pytest `1464 passed`.
+- Next candidate: rerun bounded validation from this HAND_SELECT pacing commit. If protocol errors stop, attribute the repeated Act 1 boss deaths; if HAND_SELECT confirm errors persist, inspect whether `SimpleAgent.handle_screen()` is reselecting too many cards before selected-card state updates arrive.
