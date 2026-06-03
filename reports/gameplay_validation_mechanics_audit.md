@@ -23,3 +23,15 @@
 - Regression: `test_hand_select_only_selects_remaining_required_cards`.
 - Verification after fix: focused regression `1 passed`; related card-select/agent/RL context tests `27 passed`; full pytest `1456 passed`.
 - Next candidate: restart bounded validation after this commit and inspect remaining floor 16 boss deaths, especially RL EndTurnAction choices that force fallback takeover at low HP.
+
+## Round 3 - 2026-06-03
+
+- Preflight: git clean at `94d9c9e Respect remaining hand select count`.
+- Baseline: full pytest with isolated `STS_AI_LOG_FILE`, disabled pytest cache, and unique basetemp -> 1456 passed.
+- Validation: controlled CommunicationMod fresh run with Windows Python; log reached `Max games reached (20); exiting.`
+- Outcome: no Ironclad `victory=true`. Visible new run files after the fresh start were 19 deaths: Act 1 boss deaths to The Guardian/Hexaghost dominated, with later deaths to Collector, Champ, Cultist and Chosen, Sentry and Sphere, and Gremlin Gang.
+- Failure type: HAND_SELECT no longer over-selected, but the queued optional confirm skipped HAND_SELECT confirmations when `confirm` was already available and `confirm_up` was false. Logs showed repeated HAND_SELECT callbacks and repeated `KEY action: key=CARD_*` selections followed by `Skipping optional card-select confirm`.
+- Fix: allow stale optional card-select confirm on HAND_SELECT only when the `confirm` command is actually available, while preserving the existing guard that avoids confirming HAND_SELECT screens without confirm.
+- Regression: `test_stale_card_select_confirm_fires_for_hand_select_with_confirm_available`.
+- Verification after fix: focused regression `1 passed`; related card-select/agent tests `23 passed`; full pytest `1457 passed`.
+- Next candidate: rerun bounded validation and inspect repeated Act 1 boss deaths, especially low-HP Hexaghost/Guardian turns where RL ends turn and fallback takeover chooses defensive or setup lines that still leave lethal current-turn damage.

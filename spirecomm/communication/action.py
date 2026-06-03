@@ -456,8 +456,16 @@ class OptionalCardSelectConfirmAction(Action):
         confirm_up = bool(getattr(screen, "confirm_up", False)) if screen else False
         stale_selection_screen = (
             self.allow_stale_selection
-            and screen_type == ScreenType.GRID
-            and any(command in available for command in ["choose", "key", "click"])
+            and (
+                (
+                    screen_type == ScreenType.GRID
+                    and any(command in available for command in ["choose", "key", "click"])
+                )
+                or (
+                    screen_type == ScreenType.HAND_SELECT
+                    and "confirm" in available
+                )
+            )
         )
         if ("confirm" in available and confirm_up) or stale_selection_screen:
             if stale_selection_screen and not ("confirm" in available and confirm_up):
