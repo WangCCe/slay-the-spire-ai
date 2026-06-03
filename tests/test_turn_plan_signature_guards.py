@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from spirecomm.ai.agent import OptimizedAgent, TurnPlanSignature
+from spirecomm.communication.action import PlayCardAction
 from spirecomm.spire.character import Intent
 
 
@@ -308,3 +309,48 @@ def test_should_replan_when_potion_inventory_changes():
 
     assert agent.should_replan(empty_signature)
     assert agent.should_replan(spent_signature)
+
+
+def test_optimized_agent_continues_cached_sequence_after_played_card_leaves_hand(monkeypatch):
+    first_card = _card("Heavy Blade", "Heavy Blade", uuid="heavy-blade", cost=2)
+    second_card = _card("Offering", "Offering", uuid="offering", cost=0)
+    first_action = PlayCardAction(card=first_card)
+    second_action = PlayCardAction(card=second_card)
+    planned_context = SimpleNamespace(act=1, threat_category=None, turn=3, floor=14)
+
+    class FixedPlanner:
+        def __init__(self):
+            self.calls = 0
+
+        def plan_turn(self, _context):
+            self.calls += 1
+            return [first_action, second_action]
+
+    monkeypatch.setattr("spirecomm.ai.agent.DecisionContext", lambda _game: planned_context)
+    monkeypatch.setattr(
+        "spirecomm.ai.heuristics.simulation.select_combat_mode_with_monster_data",
+        lambda _context: "test-mode",
+    )
+
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.game = _game([first_card, second_card])
+    agent.game.play_available = True
+    agent.current_action_sequence = []
+    agent.current_action_index = 0
+    agent.current_plan_signature = None
+    agent.replan_count_this_turn = 0
+    agent._current_combat_mode = "test-mode"
+    agent.combat_planner = FixedPlanner()
+    agent.game_tracker = None
+    agent.decision_history = []
+    agent.player_class = "IRONCLAD"
+
+    first = agent._get_optimized_play_card_action()
+    assert first is first_action
+
+    agent.game = _game([second_card])
+    agent.game.play_available = True
+    second = agent._get_optimized_play_card_action()
+
+    assert second is second_action
+    assert agent.combat_planner.calls == 1

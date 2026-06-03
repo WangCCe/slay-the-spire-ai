@@ -1599,6 +1599,14 @@ class OptimizedAgent(SimpleAgent):
             if self.current_action_sequence and self.current_action_index < len(
                 self.current_action_sequence
             ):
+                # Continue planned card sequences when the next planned action is
+                # still available. Playing earlier cards changes hand/energy by
+                # design, so signature mismatch alone cannot invalidate a plan.
+                action = self.current_action_sequence[self.current_action_index]
+                if self._cached_sequence_action_available(action):
+                    self.current_action_index += 1
+                    return action
+
                 # 检查缓存是否失效
                 if self.should_replan(current_signature):
                     # 缓存失效 - 需要重新规划
@@ -1606,26 +1614,9 @@ class OptimizedAgent(SimpleAgent):
                     self.current_action_sequence = []
                     self.current_action_index = 0
                 else:
-                    # 缓存有效 - 继续执行序列
-                    action = self.current_action_sequence[self.current_action_index]
-                    self.current_action_index += 1
-
-                    # 验证动作仍然可执行
-                    if isinstance(action, PlayCardAction):
-                        card_uuid = (
-                            getattr(action.card, "uuid", None) if action.card else None
-                        )
-                        hand_uuids = [
-                            getattr(c, "uuid", None)
-                            for c in self.game.hand
-                            if hasattr(c, "uuid")
-                        ]
-                        if card_uuid and card_uuid in hand_uuids:
-                            return action
-                        else:
-                            # 卡不在手上了（不应该发生），重置序列
-                            self.current_action_sequence = []
-                            self.current_action_index = 0
+                    # 动作不再可执行，重置序列
+                    self.current_action_sequence = []
+                    self.current_action_index = 0
 
             # 规划新序列（首次规划或缓存失效后）
             context = DecisionContext(self.game)
@@ -1726,6 +1717,7 @@ class OptimizedAgent(SimpleAgent):
                         pass
 
                 # 返回第一个动作
+                self.current_action_index = 1
                 return action_sequence[0]
 
             # 没有规划的动作 - 结束回合
@@ -1745,6 +1737,43 @@ class OptimizedAgent(SimpleAgent):
             )
             self.current_action_sequence = []
             return super().get_play_card_action()
+
+    def _cached_sequence_action_available(self, action):
+        if isinstance(action, PlayCardAction):
+            hand = getattr(self.game, "hand", []) or []
+            card = getattr(action, "card", None)
+            card_uuid = getattr(card, "uuid", None) if card is not None else None
+            if card_uuid is not None:
+                for idx, hand_card in enumerate(hand):
+                    if getattr(hand_card, "uuid", None) == card_uuid:
+                        action.card = hand_card
+                        action.card_index = idx
+                        return True
+                return False
+
+            if 0 <= getattr(action, "card_index", -1) < len(hand):
+                return True
+
+            if card is not None:
+                try:
+                    action.card_index = hand.index(card)
+                    return True
+                except (ValueError, AttributeError):
+                    return False
+
+            return False
+
+        if isinstance(action, PotionAction):
+            potion = getattr(action, "potion", None)
+            if potion is None:
+                return getattr(action, "potion_index", -1) >= 0
+            potions = getattr(self.game, "potions", None)
+            if potions is None:
+                get_real_potions = getattr(self.game, "get_real_potions", None)
+                potions = get_real_potions() if callable(get_real_potions) else []
+            return potion in (potions or [])
+
+        return True
 
     def should_replan(self, current_signature):
         """
