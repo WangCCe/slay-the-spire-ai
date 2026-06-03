@@ -1205,6 +1205,23 @@ class CombatRLAgent:
         score = 0
         if effect_type == "exhaust_hand_select" or name == "elixir":
             return 0
+        utility_choice_effects = {
+            "add_miracle",
+            "add_shiv",
+            "card_choice_attack",
+            "card_choice_colorless",
+            "card_choice_power",
+            "card_choice_skill",
+            "discard_draw",
+            "duplicate_next_card",
+            "fill_potion_slots",
+            "play_top_cards",
+            "return_discard_card",
+            "stance_choice",
+            "upgrade_hand",
+        }
+        if effect_type in utility_choice_effects:
+            return 35 if incoming >= 18 else 0
         if (
             effect_type in ("heal", "heal_percent", "regen", "fairy", "max_hp")
             or "heal" in name
