@@ -35,3 +35,13 @@
 - Regression: `test_stale_card_select_confirm_fires_for_hand_select_with_confirm_available`.
 - Verification after fix: focused regression `1 passed`; related card-select/agent tests `23 passed`; full pytest `1457 passed`.
 - Next candidate: rerun bounded validation and inspect repeated Act 1 boss deaths, especially low-HP Hexaghost/Guardian turns where RL ends turn and fallback takeover chooses defensive or setup lines that still leave lethal current-turn damage.
+
+## Round 4 - 2026-06-03
+
+- Preflight: `ce442d7 Confirm stale hand select screens`; same completed CommunicationMod batch was used for follow-up attribution before launching the next bounded validation.
+- Baseline evidence: latest visible run from that batch, `1780458068.run`, died at floor 16 to Hexaghost with no `victory=true` in the batch.
+- Failure type: healing-potion conservation risk. Logs showed `[POTION_GUARD] Using Blood Potion: incoming=16 hp=73/80 room=MonsterRoom monsters=3`, spending the run's only percent-heal potion in a high-HP normal fight. The later Hexaghost lethal turn ended at 9 HP before 24 incoming; keeping Blood Potion would have enabled survival with the already-selected 10 block line. Run potion usage fields were not treated as authoritative because logs showed the actual potion usage.
+- Fix: healing/regen/fairy potion scoring now requires immediate lethal pressure, low-HP pressure, or moderate boss pressure. Damage, block, energy, and other potion classes keep the existing dangerous-combat thresholds.
+- Regression: `test_potion_guard_saves_healing_potion_when_hp_is_high`; positive guard `test_potion_guard_uses_healing_potion_to_survive_lethal_turn`.
+- Verification after fix: focused healing-potion regressions `2 passed`; `tests/test_combat_rl_guards.py` `36 passed`; full pytest `1459 passed`.
+- Next candidate: rerun bounded validation from `ce442d7` plus this potion fix and inspect remaining Act 1 boss deaths, especially low-HP boss turns where saved potion use, fallback takeover, and current-turn lethal scoring interact.

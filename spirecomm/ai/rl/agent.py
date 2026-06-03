@@ -1167,7 +1167,15 @@ class CombatRLAgent:
 
         scored = []
         for index, potion in enumerate(potions):
-            score = self._score_potion_for_guard(potion, incoming, hp_pct, is_elite, is_boss, len(alive_monsters))
+            score = self._score_potion_for_guard(
+                potion,
+                incoming,
+                current_hp,
+                hp_pct,
+                is_elite,
+                is_boss,
+                len(alive_monsters),
+            )
             if score > 0:
                 scored.append((score, index, potion))
 
@@ -1191,7 +1199,7 @@ class CombatRLAgent:
         return PotionAction(True, potion=potion)
 
     @staticmethod
-    def _score_potion_for_guard(potion, incoming, hp_pct, is_elite, is_boss, monster_count) -> int:
+    def _score_potion_for_guard(potion, incoming, current_hp, hp_pct, is_elite, is_boss, monster_count) -> int:
         effect_type = str(getattr(potion, "effect_type", "") or "")
         name = str(getattr(potion, "name", "") or "").lower()
         score = 0
@@ -1201,7 +1209,11 @@ class CombatRLAgent:
             or "regen" in name
             or "fairy" in name
         ):
-            if hp_pct <= 0.5 or incoming >= 12:
+            if (
+                incoming >= current_hp
+                or (hp_pct <= 0.45 and (incoming > 0 or is_elite or is_boss))
+                or (is_boss and hp_pct <= 0.55 and incoming >= 8)
+            ):
                 score = 80
         elif effect_type in (
             "block",

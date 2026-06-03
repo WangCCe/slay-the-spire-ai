@@ -193,6 +193,51 @@ def test_potion_guard_accepts_decimal_string_player_hp():
     assert action.target_index == 0
 
 
+def test_potion_guard_saves_healing_potion_when_hp_is_high():
+    potion = SimpleNamespace(
+        potion_id="BloodPotion",
+        name="Blood Potion",
+        can_use=True,
+        requires_target=False,
+        effect_type="heal_percent",
+    )
+    game = _game(
+        potions=[potion],
+        monsters=[
+            _monster(hp=25, damage=6, index=0),
+            _monster(hp=20, damage=5, index=1),
+            _monster(hp=18, damage=5, index=2),
+        ],
+        current_hp=73,
+        max_hp=80,
+        room_type="MonsterRoom",
+    )
+
+    assert _agent()._maybe_use_potion_guard(game) is None
+
+
+def test_potion_guard_uses_healing_potion_to_survive_lethal_turn():
+    potion = SimpleNamespace(
+        potion_id="BloodPotion",
+        name="Blood Potion",
+        can_use=True,
+        requires_target=False,
+        effect_type="heal_percent",
+    )
+    game = _game(
+        potions=[potion],
+        monsters=[_monster(hp=180, damage=24, index=0)],
+        current_hp=9,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+    )
+
+    action = _agent()._maybe_use_potion_guard(game)
+
+    assert isinstance(action, PotionAction)
+    assert action.potion is potion
+
+
 def test_rl_incoming_damage_clamps_negative_live_move_damage_to_zero():
     monster = _monster(hp=25, damage=-1)
     monster.move_hits = 3
