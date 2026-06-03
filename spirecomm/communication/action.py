@@ -61,6 +61,16 @@ class PlayCardAction(Action):
         self.target_monster = target_monster
 
     def execute(self, coordinator):
+        game_state = getattr(coordinator, "last_game_state", None)
+        available_commands = getattr(game_state, "available_commands", None)
+        if available_commands is not None and "play" not in available_commands:
+            logging.warning(
+                "PlayCardAction is stale for current commands %s; requesting state",
+                available_commands,
+            )
+            coordinator.send_message("state")
+            return
+
         if self.card is not None:
             card_uuid = getattr(self.card, "uuid", None)
             if card_uuid is not None:
