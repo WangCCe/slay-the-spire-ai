@@ -936,11 +936,23 @@ class SimpleAgent:
             )
             if not can_select:
                 return ProceedAction()
+            screen = self.game.screen
+            num_required = max(0, self._safe_int(getattr(screen, "num_cards", 0), 0))
+            selected_cards = list(getattr(screen, "selected_cards", []) or [])
+            num_remaining = max(0, num_required - len(selected_cards))
+            if num_remaining == 0:
+                return ConfirmAction()
+            selected_ids = {id(card) for card in selected_cards}
+            available_cards = [
+                card for card in screen.cards if id(card) not in selected_ids
+            ]
+            if not available_cards:
+                return ProceedAction()
             # Usually, we don't want to choose the whole hand for a hand select. 3 seems like a good compromise.
-            num_cards = min(self.game.screen.num_cards, 3)
+            num_cards = min(num_remaining, 3)
             return CardSelectAction(
                 self.priorities.get_cards_for_action(
-                    self.game.current_action, self.game.screen.cards, num_cards
+                    self.game.current_action, available_cards, num_cards
                 )
             )
         else:

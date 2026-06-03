@@ -498,3 +498,22 @@ def test_combat_reward_skips_string_card_type_after_card_reward_skip():
 
     assert isinstance(action, CombatRewardAction)
     assert action.combat_reward is gold_reward
+
+
+def test_hand_select_only_selects_remaining_required_cards():
+    cards = [_card(f"Card {index}") for index in range(5)]
+    agent = _agent(
+        screen_type=ScreenType.HAND_SELECT,
+        screen=SimpleNamespace(
+            cards=cards,
+            selected_cards=[cards[0]],
+            num_cards=3,
+        ),
+        choice_available=True,
+        current_action="exhaust",
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CardSelectAction)
+    assert len(action.cards) == 2

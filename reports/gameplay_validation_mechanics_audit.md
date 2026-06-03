@@ -11,3 +11,15 @@
 - Regression: `test_optimized_agent_continues_cached_sequence_after_played_card_leaves_hand`.
 - Verification after fix: focused related tests `56 passed`; full pytest `1454 passed`.
 - Next candidate: inspect post-fix bounded validation for remaining Act 1 boss deaths and late Act 2 boss deaths, especially low-HP turns where fallback selects zero-damage setup cards or Havoc before lethal/defense.
+
+## Round 2 - 2026-06-03
+
+- Preflight: git clean at `c35d6df Penalize lethal current combat lines`.
+- Baseline: full pytest with an isolated `STS_AI_LOG_FILE`, disabled pytest cache, and unique basetemp -> 1455 passed before changes.
+- Validation: controlled CommunicationMod restart with Windows Python ran `scripts/run_training_batch.py --eval --max-games 20 --phase conservative --restart-guidance`.
+- Outcome before interruption: no Ironclad `victory=true`; new completed runs were `1780455201.run` (floor 19, killed by Shell Parasite) and `1780455267.run` (floor 16, killed by Slime Boss).
+- Failure type: HAND_SELECT selection-count mismatch during a floor 16 boss state. The game already had one selected card with `max_cards=3`, but `SimpleAgent.handle_screen()` still requested three more cards. `CardSelectAction` rejected the action with `Too many cards selected (provided 3, max 2)`, and the batch loop repeatedly retried the same in-game screen without producing further `.run` records.
+- Fix: HAND_SELECT now computes remaining required cards as `num_cards - len(selected_cards)`, avoids reselecting already-selected card objects, and confirms when the required count is already satisfied.
+- Regression: `test_hand_select_only_selects_remaining_required_cards`.
+- Verification after fix: focused regression `1 passed`; related card-select/agent/RL context tests `27 passed`; full pytest `1456 passed`.
+- Next candidate: restart bounded validation after this commit and inspect remaining floor 16 boss deaths, especially RL EndTurnAction choices that force fallback takeover at low HP.
