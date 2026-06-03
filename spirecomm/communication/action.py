@@ -197,6 +197,22 @@ class ProceedAction(Action):
     def __init__(self):
         super().__init__("proceed")
 
+    def execute(self, coordinator):
+        game_state = getattr(coordinator, "last_game_state", None)
+        available_commands = getattr(game_state, "available_commands", None)
+        if available_commands is not None:
+            for command in ("proceed", "confirm"):
+                if command in available_commands:
+                    coordinator.send_message(command)
+                    return
+            logging.warning(
+                "ProceedAction is stale for current commands %s; requesting state",
+                available_commands,
+            )
+            coordinator.send_message("state")
+            return
+        super().execute(coordinator)
+
 
 class LeaveAction(Action):
     """An action to use the CommunicationMod 'Leave' command (e.g., leave shop)"""
@@ -217,6 +233,22 @@ class CancelAction(Action):
 
     def __init__(self):
         super().__init__("cancel")
+
+    def execute(self, coordinator):
+        game_state = getattr(coordinator, "last_game_state", None)
+        available_commands = getattr(game_state, "available_commands", None)
+        if available_commands is not None:
+            for command in ("cancel", "leave", "return", "skip"):
+                if command in available_commands:
+                    coordinator.send_message(command)
+                    return
+            logging.warning(
+                "CancelAction is stale for current commands %s; requesting state",
+                available_commands,
+            )
+            coordinator.send_message("state")
+            return
+        super().execute(coordinator)
 
 
 class WaitAction(Action):

@@ -137,3 +137,44 @@ Verification:
 Next step: rerun the same 20-game eval protocol from the new fixed commit. Do
 not begin continued training until the eval baseline is clean of this protocol
 blocker.
+
+## Fixed Baseline Batch 3 - 2026-06-03
+
+- Start: `2026-06-03T23:36:16+08:00`
+- Launch: controlled `restart_sts_modded.ps1 -FreshRun`
+- Repo commit: `ab957e6 Serialize card plays after command`
+- Result: stopped early after a shop command-boundary blocker reproduced.
+- Completed `.run` files before stop: 1
+- Wins: 0
+- Run: `1780501050.run`, floor 16, killed by Slime Boss.
+
+Protocol signal:
+
+- `Invalid command: cancel`: 1 event at `2026-06-03 23:39:45`.
+- `Invalid command: proceed`: 1 event at `2026-06-03 23:39:45`.
+- Live logs showed `SHOP_SCREEN` buying a potion, then attempting `cancel` when
+  CommunicationMod only advertised `[choose, potion, proceed, key, click, wait,
+  state]`, followed by attempting `proceed` when the room only advertised
+  `[choose, potion, return, key, click, wait, state]`.
+
+Follow-up fix:
+
+- `CancelAction.execute()` now resolves the exact current cancel-group command
+  from `cancel`, `leave`, `return`, or `skip`, and requests `state` when no
+  cancel-group command is currently available.
+- `ProceedAction.execute()` now sends `proceed` or `confirm` only when currently
+  advertised, and requests `state` otherwise.
+- Regressions:
+  `test_cancel_action_uses_current_return_command_alias`,
+  `test_cancel_action_requests_state_when_cancel_group_is_stale`, and
+  `test_proceed_action_requests_state_when_proceed_is_stale`.
+
+Verification:
+
+- Red: all three new regressions failed against the old fixed-command behavior.
+- Green focused: action guards -> 6 passed.
+- Green shop/basic focused: 32 passed.
+- Green RL action-space focused: 69 passed.
+
+Next step: commit the exact-command guard fix, then rerun the same 20-game eval
+protocol from that commit. Training remains paused.

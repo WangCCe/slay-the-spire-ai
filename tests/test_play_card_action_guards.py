@@ -1,6 +1,11 @@
 from types import SimpleNamespace
 
-from spirecomm.communication.action import PlayCardAction, WaitAction
+from spirecomm.communication.action import (
+    CancelAction,
+    PlayCardAction,
+    ProceedAction,
+    WaitAction,
+)
 from spirecomm.spire.screen import ScreenType
 
 
@@ -54,3 +59,72 @@ def test_play_card_action_queues_ready_wait_after_successful_play():
     assert isinstance(queued_actions[0], WaitAction)
     assert queued_actions[0].timeout == 1
     assert queued_actions[0].requires_game_ready is True
+
+
+def test_cancel_action_uses_current_return_command_alias():
+    sent_messages = []
+    coordinator = SimpleNamespace(
+        last_game_state=SimpleNamespace(
+            available_commands=[
+                "choose",
+                "potion",
+                "return",
+                "key",
+                "click",
+                "wait",
+                "state",
+            ],
+            screen_type=ScreenType.SHOP_ROOM,
+        ),
+        send_message=sent_messages.append,
+    )
+
+    CancelAction().execute(coordinator)
+
+    assert sent_messages == ["return"]
+
+
+def test_cancel_action_requests_state_when_cancel_group_is_stale():
+    sent_messages = []
+    coordinator = SimpleNamespace(
+        last_game_state=SimpleNamespace(
+            available_commands=[
+                "choose",
+                "potion",
+                "proceed",
+                "key",
+                "click",
+                "wait",
+                "state",
+            ],
+            screen_type=ScreenType.SHOP_SCREEN,
+        ),
+        send_message=sent_messages.append,
+    )
+
+    CancelAction().execute(coordinator)
+
+    assert sent_messages == ["state"]
+
+
+def test_proceed_action_requests_state_when_proceed_is_stale():
+    sent_messages = []
+    coordinator = SimpleNamespace(
+        last_game_state=SimpleNamespace(
+            available_commands=[
+                "choose",
+                "potion",
+                "return",
+                "key",
+                "click",
+                "wait",
+                "state",
+            ],
+            screen_type=ScreenType.SHOP_ROOM,
+        ),
+        send_message=sent_messages.append,
+    )
+
+    ProceedAction().execute(coordinator)
+
+    assert sent_messages == ["state"]
