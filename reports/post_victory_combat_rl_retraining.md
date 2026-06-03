@@ -473,3 +473,69 @@ Verification:
 Next step: commit the stale choose guard, then rerun the same 5-game training
 slice from the new commit. Only after a clean training slice should the workflow
 return to the fixed 20-game eval comparison against Batch 7.
+
+## Training Slice T1 Retry - 2026-06-04
+
+- Start: `2026-06-04T02:37:36+08:00`
+- Launch: controlled `restart_sts_modded.ps1 -FreshRun`
+- Repo commit at launch: `647cdfd Guard stale choose commands`
+- Pytest baseline at launch commit: 1479 passed.
+- Command:
+  `scripts/run_training_batch.py --max-games 5 --phase conservative --restart-guidance --truncate-log-after-backup`
+- Result: completed 5 `.run` files and reached the configured max-games exit.
+- Wins: 0
+- Win rate: 0.0%
+- Average floor: 16.8
+- Median floor: 16
+- Max floor: 18
+- Average playtime: 73.8 seconds
+
+Death distribution:
+
+| Count | Killed by |
+| ---: | --- |
+| 3 | The Guardian |
+| 1 | 3 Byrds |
+| 1 | Hexaghost |
+
+Run files:
+
+| Run | Floor | Result |
+| --- | ---: | --- |
+| `1780511979.run` | 18 | killed by 3 Byrds |
+| `1780512060.run` | 16 | killed by The Guardian |
+| `1780512130.run` | 16 | killed by Hexaghost |
+| `1780512201.run` | 16 | killed by The Guardian |
+| `1780512286.run` | 16 | killed by The Guardian |
+
+Training/checkpoint signal:
+
+- The batch loaded and backed up
+  `checkpoints\rl_combat_model_ep6_steps11308.pth`.
+- New combat checkpoints written during the slice:
+  `rl_combat_model_ep1_steps11436.pth`,
+  `rl_combat_model_ep3_steps11542.pth`,
+  `rl_combat_model_ep5_steps11635.pth`,
+  `rl_combat_model_ep7_steps11732.pth`, and
+  `rl_combat_model_ep9_steps11848.pth`.
+- No checkpoint is promoted yet; this slice only proves the stale choose guard
+  allowed bounded training to complete cleanly.
+
+Protocol signal:
+
+- `Invalid command:*`: 0 matching events in the current truncated
+  `ai_debug.log` for this slice.
+- `Traceback`: 0 matching events in the current truncated `ai_debug.log` for
+  this slice.
+- `CombatRLAgent error`: 0 matching events in the current truncated
+  `ai_debug.log` for this slice.
+- `TRANSITION_LATE_COMMAND_ERROR`: 0 matching events in the current truncated
+  `ai_debug.log` for this slice.
+- `Max games reached (5); exiting.` observed at `2026-06-04 02:44:50`.
+
+Decision:
+
+- Proceed to the fixed 20-game eval protocol from the latest trained combat RL
+  checkpoint, then compare against Fixed Baseline Batch 7.
+- Do not promote the checkpoint unless eval improves win/floor or failure
+  distribution without adding protocol or mechanics risk.
