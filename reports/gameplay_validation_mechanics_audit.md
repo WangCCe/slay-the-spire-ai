@@ -109,3 +109,14 @@
 - Regression: `test_hand_select_card_select_waits_between_keys_and_confirm` reproduced the old immediate HAND_SELECT queue red and now asserts key actions plus final confirm require game readiness, with HAND_SELECT keys waiting for responses.
 - Verification after fix: focused HAND_SELECT queue regression `1 passed`; related card/coordinator/action tests `11 passed`; full pytest `1464 passed`.
 - Next candidate: rerun bounded validation from this HAND_SELECT pacing commit. If protocol errors stop, attribute the repeated Act 1 boss deaths; if HAND_SELECT confirm errors persist, inspect whether `SimpleAgent.handle_screen()` is reselecting too many cards before selected-card state updates arrive.
+
+## Round 11 - 2026-06-03
+
+- Preflight: git clean at `18189dd Gate hand select key confirms`; post-commit full pytest baseline -> `1464 passed`.
+- Validation: controlled CommunicationMod fresh run with Windows Python reached `Max games reached (20); exiting.` The batch produced 20 AI markers and 19 visible completed `.run` files; none had `victory=true`.
+- Outcome: visible deaths included four Hexaghost, four The Guardian, two Slime Boss, one 3 Sentries, and several Act 2 boss/event deaths. The highest-floor visible failures were floor 33 Champ/Automaton/Collector and floor 31 Sentry and Sphere.
+- Failure type: unsafe automatic Elixir use. With protocol errors quiet, logs showed `[POTION_GUARD] Using Elixir` twice in ordinary dangerous combats. The latest selected failure was `1780470582.run`, which died on floor 27 to Colosseum Slavers after guard-used Elixir opened HAND_SELECT on turn 1, exhausted three selected cards, and left only `Bloodletting` plus `Blood for Blood`; the turn ended with `energy_remaining=4` and an empty hand before the run died four turns later.
+- Fix: potion guard scoring now refuses `exhaust_hand_select` / `Elixir` in automatic danger-guard use, so Elixir no longer falls through to the generic unknown-potion positive score for `incoming >= 18`, elite, or boss states.
+- Regression: `test_potion_guard_does_not_auto_use_elixir_hand_select_potion` reproduced the Colosseum-style high-incoming state red, then passed after the scoring guard.
+- Verification after fix: focused regression `1 passed`; `tests/test_combat_rl_guards.py` `39 passed`; default full pytest first hit a Windows temp permission error (`C:\Users\20571\AppData\Local\Temp\pytest-of-20571`), then isolated full pytest with repo-local basetemp and disabled cache provider passed `1465 passed`.
+- Next candidate: rerun bounded validation from this Elixir guard commit. If potion policy remains the clearest signal, inspect boss-opening debuff use such as `Weak Potion` on Hexaghost turn 1 with only `incoming=5`; otherwise return to the dominant Act 1 boss deaths and late Act 2/3 boss failures.

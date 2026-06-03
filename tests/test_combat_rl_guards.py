@@ -283,6 +283,30 @@ def test_potion_guard_uses_energy_potion_under_current_turn_pressure():
     assert action.potion is potion
 
 
+def test_potion_guard_does_not_auto_use_elixir_hand_select_potion():
+    potion = SimpleNamespace(
+        potion_id="ElixirPotion",
+        name="Elixir",
+        can_use=True,
+        requires_target=False,
+        effect_type="exhaust_hand_select",
+    )
+    game = _game(
+        potions=[potion],
+        monsters=[
+            _monster(hp=52, damage=10, index=0, name="Blue Slaver"),
+            _monster(hp=48, damage=10, index=1, name="Red Slaver"),
+        ],
+        current_hp=46,
+        max_hp=85,
+        room_type="EventRoom",
+        floor=27,
+        turn=1,
+    )
+
+    assert _agent()._maybe_use_potion_guard(game) is None
+
+
 def test_rl_incoming_damage_clamps_negative_live_move_damage_to_zero():
     monster = _monster(hp=25, damage=-1)
     monster.move_hits = 3

@@ -1203,6 +1203,8 @@ class CombatRLAgent:
         effect_type = str(getattr(potion, "effect_type", "") or "")
         name = str(getattr(potion, "name", "") or "").lower()
         score = 0
+        if effect_type == "exhaust_hand_select" or name == "elixir":
+            return 0
         if (
             effect_type in ("heal", "heal_percent", "regen", "fairy", "max_hp")
             or "heal" in name
