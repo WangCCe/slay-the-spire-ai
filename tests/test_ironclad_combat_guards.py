@@ -13429,6 +13429,45 @@ def test_ironclad_sequence_score_accepts_string_incoming_damage_for_block_value(
     assert string_score == enum_score
 
 
+def test_ironclad_sequence_score_hard_penalizes_current_turn_lethal_incoming():
+    strike = _card("Strike_R", "Strike", cost=1)
+    planner = IroncladCombatPlanner()
+    planner.simulator._get_enemy_lookahead_depth = lambda *_args, **_kwargs: 0
+    planner.simulator.simulate_enemy_lookahead = lambda *_args, **_kwargs: 0
+
+    context = _combat_context([strike], energy=1, monsters=[_hexaghost(current_hp=50)])
+    context.game.current_hp = 7
+    context.player_hp = 7
+    context.player_hp_pct = 7 / 80
+    context.incoming_damage = 18
+    context.turn = 14
+    context.floor = 16
+    initial = SimulationState(context)
+    reckless_final = initial.clone()
+    reckless_final.total_damage_dealt = 12
+    reckless_final.energy_spent = 1
+
+    score = planner._score_sequence(
+        [PlayCardAction(card=strike)],
+        initial,
+        reckless_final,
+        context,
+    )
+
+    assert score < -500
+
+    intangible_final = reckless_final.clone()
+    intangible_final.player_intangible = 1
+    intangible_score = planner._score_sequence(
+        [PlayCardAction(card=strike)],
+        initial,
+        intangible_final,
+        context,
+    )
+
+    assert intangible_score > -500
+
+
 def test_armaments_bonus_does_not_count_itself_when_uuid_is_missing():
     armaments_with_uuid = _card(
         "Armaments",

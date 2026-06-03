@@ -1364,6 +1364,65 @@ class IroncladCombatPlanner(CombatPlanner):
             # Already safe - minimal value
             score += block_gained * 0.5
 
+        current_turn_incoming = incoming_damage
+        try:
+            live_monsters = [
+                monster
+                for monster in final_state.monsters
+                if self._is_live_monster_state(monster)
+            ]
+            live_attackers = [
+                monster
+                for monster in live_monsters
+                if (
+                    intent_is_attack(monster.get('intent'))
+                    or self._non_negative_float(monster.get('move_adjusted_damage', 0)) > 0
+                )
+            ]
+            if not live_attackers and incoming_damage > 0 and final_state.monsters_killed == 0:
+                live_attackers = live_monsters
+
+            if live_attackers:
+                if final_state.monsters_killed > 0:
+                    survivor_incoming = self.simulator._estimate_incoming_damage(
+                        final_state.monsters,
+                        getattr(final_state, 'player_vulnerable_added', 0),
+                        getattr(final_state, 'player_intangible', 0),
+                    )
+                    if survivor_incoming > 0:
+                        current_turn_incoming = min(current_turn_incoming, survivor_incoming)
+
+                if getattr(final_state, 'player_intangible', 0) > 0 and current_turn_incoming > 0:
+                    intangible_damage_cap = sum(
+                        max(1, self._non_negative_int(monster.get('move_hits', 1)))
+                        for monster in live_attackers
+                    )
+                    if intangible_damage_cap > 0:
+                        current_turn_incoming = min(current_turn_incoming, intangible_damage_cap)
+            else:
+                current_turn_incoming = 0
+        except Exception as e:
+            logger.warning("[CURRENT_LETHAL_PENALTY] Failed to adjust current incoming: %s", e)
+
+        current_hp = self._non_negative_float(
+            getattr(
+                final_state,
+                'player_hp',
+                getattr(context, 'player_hp', getattr(getattr(context, 'game', None), 'current_hp', 0)),
+            )
+        )
+        unblocked_current_damage = max(0.0, current_turn_incoming - final_turn_block)
+        if not all_killed and current_hp > 0 and unblocked_current_damage >= current_hp:
+            lethal_penalty = 1000 + unblocked_current_damage * W_DEATHRISK
+            score -= lethal_penalty
+            logger.info(
+                "[CURRENT_LETHAL_PENALTY] -%.1f score: incoming=%.1f block=%s hp=%.1f",
+                lethal_penalty,
+                current_turn_incoming,
+                final_turn_block,
+                current_hp,
+            )
+
         # 3.5. Future damage penalty (multi-turn enemy lookahead)
         try:
             lookahead_turns = self.simulator._get_enemy_lookahead_depth(final_state, context)
