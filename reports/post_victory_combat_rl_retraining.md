@@ -358,3 +358,56 @@ Verification:
 Next step: commit the transition-late play handling, then rerun the same
 20-game eval protocol from the new fixed commit. Training remains paused until
 the baseline completes cleanly.
+
+## Fixed Baseline Batch 7 - 2026-06-04
+
+- Start: `2026-06-04T01:25:34+08:00`
+- Launch: controlled `restart_sts_modded.ps1 -FreshRun`
+- Repo commit: `883560f Resync late play errors after combat`
+- Result: completed 20 `.run` files and batch post-analysis.
+- Wins: 0
+- Win rate: 0.0%
+- Average floor: 23.0
+- Median floor: 22.5
+- Max floor: 33
+- Average playtime: 120.2 seconds
+
+Death distribution:
+
+| Count | Killed by |
+| ---: | --- |
+| 6 | Hexaghost |
+| 3 | Collector |
+| 2 | Chosen and Byrds |
+| 2 | Cultist and Chosen |
+| 2 | Sentry and Sphere |
+| 2 | Slime Boss |
+| 1 | Champ |
+| 1 | Slavers |
+| 1 | The Guardian |
+
+Protocol signal:
+
+- `Invalid command:*`: 0 matching events in available logs for this batch.
+- `CombatRLAgent error`: 0 matching events in available logs for this batch.
+- `TRANSITION_LATE_COMMAND_ERROR`: 0 matching events in available logs for this
+  batch.
+- `communication_mod_errors.log` showed the expected batch command and
+  post-analysis path, with no traceback in the inspected tail.
+
+Observability caveat:
+
+- `ai_debug.log` reached the 10MB limit and stopped showing new writes after
+  `2026-06-04 01:53:32`, while `.run` files continued through
+  `2026-06-04 02:07:46`. This baseline is usable for `.run` outcome metrics and
+  available-log protocol checks, but future eval slices should keep this log
+  coverage gap in mind.
+
+Baseline decision:
+
+- This is the first clean fixed eval baseline after the post-victory guard
+  fixes.
+- Proceed to the first small continued-training slice from
+  `checkpoints\rl_combat_model_ep39_steps10991.pth`.
+- After training, rerun the same eval protocol and compare against this baseline
+  on win rate, average/median floor, death distribution, and protocol signals.
