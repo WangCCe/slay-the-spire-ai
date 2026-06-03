@@ -300,3 +300,61 @@ Verification:
 Next step: commit the out-of-game queue cleanup, then rerun the same 20-game
 eval protocol. If `Invalid command: play` recurs without the stale wait leak,
 pause again and diagnose play-response ordering as the next focused blocker.
+
+## Fixed Baseline Batch 6 - 2026-06-04
+
+- Start: `2026-06-04T01:04:29+08:00`
+- Launch: controlled `restart_sts_modded.ps1 -FreshRun`
+- Repo commit: `28ddb95 Clear stale actions before next run`
+- Result: stopped early after the late `play` command error reproduced without
+  the prior out-of-game `wait` leak.
+- Completed `.run` files before stop: 6
+- Wins: 0
+- Win rate: 0.0%
+- Average floor: 21.8
+- Median floor: 18
+- Max floor: 33
+
+Death distribution before stop:
+
+| Count | Killed by |
+| ---: | --- |
+| 2 | Collector |
+| 1 | Centurion and Healer |
+| 1 | Gremlin Gang |
+| 1 | Hexaghost |
+| 1 | The Guardian |
+
+Protocol signal:
+
+- `Invalid command: wait`: 0 events after the out-of-game queue cleanup.
+- `Invalid command: play`: 1 event at `2026-06-04 01:13:26`.
+- The play error arrived after the coordinator had already observed
+  `ScreenType.COMBAT_REWARD` with available commands
+  `[proceed, key, click, wait, state]`. The run continued through reward, map,
+  and rest states; this identified a transition-late command error rather than
+  a fresh in-combat action selection problem.
+
+Follow-up fix:
+
+- `Coordinator` now classifies `Invalid command: play` received while the last
+  known state is `COMBAT_REWARD` and `play` is no longer advertised as a
+  transition-late command error.
+- Transition-late play errors request `state` directly and do not call the
+  agent error callback, preventing a recoverable ordering artifact from being
+  counted as a `CombatRLAgent error`.
+- Regression:
+  `test_late_play_error_on_combat_reward_resyncs_without_error_callback`.
+
+Verification:
+
+- Red: the new regression failed because the old path called
+  `error_callback`.
+- Green focused: deferred/coordinator callback tests -> 7 passed.
+- Green related: deferred, startup, play-card, combat-reward, and live batch
+  diagnostics tests -> 25 passed after rerunning with workspace basetemp.
+- Green full suite: 1478 passed.
+
+Next step: commit the transition-late play handling, then rerun the same
+20-game eval protocol from the new fixed commit. Training remains paused until
+the baseline completes cleanly.

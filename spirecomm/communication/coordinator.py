@@ -138,6 +138,28 @@ class Coordinator:
             return True
         return False
 
+    @staticmethod
+    def _invalid_command_name(error):
+        if not isinstance(error, str):
+            return None
+        prefix = "Invalid command: "
+        if not error.startswith(prefix):
+            return None
+        command = error[len(prefix):].split(".", 1)[0].strip()
+        return command or None
+
+    def _is_transition_late_command_error(self, error):
+        command = self._invalid_command_name(error)
+        if command != "play":
+            return False
+
+        game = getattr(self, "last_game_state", None)
+        if getattr(game, "screen_type", None) != ScreenType.COMBAT_REWARD:
+            return False
+
+        available_commands = getattr(game, "available_commands", None) or []
+        return command not in available_commands
+
     def check_communication_threads(self):
         """Check if stdin/stdout communication threads are still alive.
 
@@ -446,9 +468,12 @@ class Coordinator:
                     import logging
                     logging.info(f"[GAME_OVER] Saved state with HP: current={self.game_over_state.current_hp}/{self.game_over_state.max_hp}")
             import logging
+            callback_error = self.last_error
+            if self._is_transition_late_command_error(callback_error):
+                callback_error = "<transition-late command error>"
             logging.info(
                 f"[CALLBACK_CHECK] perform_callbacks={perform_callbacks}, "
-                f"last_error={self.last_error}, "
+                f"last_error={callback_error}, "
                 f"in_game={self.in_game}, "
                 f"queue_size={len(self.action_queue)}, "
                 f"screen={getattr(self.last_game_state, 'screen_type', 'None') if self.last_game_state else 'None'}"
@@ -459,10 +484,20 @@ class Coordinator:
                     self.action_queue.clear()
                     current_error = self.last_error
                     repeated_error = current_error == self._last_command_error
+                    transition_late_error = self._is_transition_late_command_error(
+                        current_error
+                    )
                     self._last_command_error = current_error
                     self.last_error = None
                     new_action = None
-                    if repeated_error:
+                    if transition_late_error:
+                        command = self._invalid_command_name(current_error)
+                        logging.warning(
+                            "[TRANSITION_LATE_COMMAND_ERROR] command=%s screen=%s; requesting state",
+                            command,
+                            getattr(self.last_game_state, "screen_type", None),
+                        )
+                    elif repeated_error:
                         logging.warning(
                             "[COMMAND_ERROR] Suppressing repeated error: %s",
                             current_error,
@@ -471,7 +506,7 @@ class Coordinator:
                         new_action = self.error_callback(current_error)
                     if new_action is not None:
                         self.add_action_to_queue(new_action)
-                    elif repeated_error:
+                    elif transition_late_error or repeated_error:
                         self.send_message("state", wait_for_response=False)
                     else:
                         logging.warning("error_callback returned None - requesting state")

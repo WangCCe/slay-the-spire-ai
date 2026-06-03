@@ -103,6 +103,27 @@ def test_repeated_command_error_is_handled_once_and_resyncs_state():
     ]
 
 
+def test_late_play_error_on_combat_reward_resyncs_without_error_callback():
+    coordinator = _coordinator_without_threads()
+    errors = []
+    coordinator.error_callback = lambda error: errors.append(error) or None
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.COMBAT_REWARD,
+        available_commands=["proceed", "key", "click", "wait", "state"],
+    )
+    coordinator.input_queue.put(
+        _command_error_message(
+            "Invalid command: play. Possible commands: [proceed, key, click, wait, state]"
+        )
+    )
+
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+
+    assert errors == []
+    assert coordinator.last_error is None
+    assert coordinator.output_queue.get_nowait() == "state"
+
+
 def test_out_of_game_update_clears_stale_ready_wait_before_start_action():
     coordinator = _coordinator_without_threads()
     coordinator.action_queue.append(WaitAction(timeout=1))
