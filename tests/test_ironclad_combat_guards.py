@@ -12730,6 +12730,66 @@ def test_guardian_mode_shift_power_is_tracked_in_simulation_state():
     assert state.monsters[0]["mode_shift"] == 12
 
 
+def test_guardian_zero_incoming_window_values_attack_over_block_draw():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    shrug = _card(
+        "Shrug It Off",
+        "Shrug It Off",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    shrug.uuid = "shrug"
+    guardian = _guardian(current_hp=218)
+    guardian.intent = Intent.STRONG_DEBUFF
+    guardian.move_id = 7
+    guardian.move_adjusted_damage = 0
+    guardian.move_hits = 0
+    context = _combat_context([shrug, strike], energy=1, monsters=[guardian])
+    context.incoming_damage = 0
+    context.turn = 3
+    context.floor = 16
+    context.act = 1
+    context.player_hp = 57
+    context.player_hp_pct = 57 / 80
+    context.game.current_hp = 57
+    context.game.max_hp = 80
+    context.game.player.block = 0
+    planner = IroncladCombatPlanner()
+    initial_state = SimulationState(context)
+
+    strike_state = planner.simulator.simulate_card_play(
+        initial_state.clone(),
+        strike,
+        target=guardian,
+        target_index=0,
+        context=context,
+    )
+    shrug_state = planner.simulator.simulate_card_play(
+        initial_state.clone(),
+        shrug,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    strike_score = planner._score_sequence(
+        [PlayCardAction(card=strike, target_monster=guardian)],
+        initial_state,
+        strike_state,
+        context,
+    )
+    shrug_score = planner._score_sequence(
+        [PlayCardAction(card=shrug)],
+        initial_state,
+        shrug_state,
+        context,
+    )
+
+    assert strike_score > shrug_score
+
+
 def test_simulation_state_rejects_nonfinite_guardian_mode_shift_amount():
     guardian = _guardian(mode_shift=12)
     guardian.powers[0].amount = float("inf")

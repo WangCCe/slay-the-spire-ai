@@ -1268,6 +1268,7 @@ class IroncladCombatPlanner(CombatPlanner):
         has_awakened_one = self._has_awakened_one(context)
         lagavulin_hibernating = self._is_lagavulin_hibernating(context)
         has_lagavulin = self._has_lagavulin(context)
+        has_guardian = self._has_guardian(context)
         
         # Determine if we should prioritize attack over defense
         # These monsters have scaling damage or dangerous mechanics
@@ -1350,6 +1351,11 @@ class IroncladCombatPlanner(CombatPlanner):
         final_turn_block = final_state.turn_block()
         block_gained = final_turn_block - initial_turn_block
         incoming_damage = self._non_negative_float(getattr(context, 'incoming_damage', 0))
+        guardian_free_damage_window = (
+            has_guardian
+            and incoming_damage <= initial_turn_block
+            and not all_killed
+        )
 
         if block_penalty and block_gained > 0:
             # Heavily penalize block against monsters with scaling/dangerous mechanics
@@ -1360,6 +1366,10 @@ class IroncladCombatPlanner(CombatPlanner):
             # Defense is temporary (blocks 1 turn), attack is permanent (kills monsters)
             block_value = 3 if self._is_low_scaling_encounter(context) else 2
             score += min(block_gained, incoming_damage) * block_value
+        elif guardian_free_damage_window and damage <= 0:
+            # Guardian windows with no incoming damage are opportunities to push mode shift.
+            # Do not let pure block/draw padding beat an available attack in those turns.
+            pass
         else:
             # Already safe - minimal value
             score += block_gained * 0.5
@@ -1515,7 +1525,13 @@ class IroncladCombatPlanner(CombatPlanner):
 
                 # Draw cards help consistency
                 if self._is_draw_card(card):
-                    score += 15
+                    if guardian_free_damage_window and damage <= 0:
+                        logger.info(
+                            "[GUARDIAN_PRESSURE] Suppressed draw bonus for zero-damage %s in free damage window",
+                            raw_card_id,
+                        )
+                    else:
+                        score += 15
 
                 # Armaments: value upgrades proportional to available targets
                 if card_id == 'Armaments':
@@ -1881,6 +1897,21 @@ class IroncladCombatPlanner(CombatPlanner):
             True if any Gremlin Nob is alive
         """
         return any(self._is_gremlin_nob(monster) for monster in context.monsters_alive)
+
+    def _has_guardian(self, context: DecisionContext) -> bool:
+        """Return True if The Guardian is alive in the current combat."""
+        for monster in getattr(context, "monsters_alive", []) or []:
+            identifiers = [
+                getattr(monster, "monster_id", ""),
+                getattr(monster, "name", ""),
+            ]
+            for identifier in identifiers:
+                normalized = "".join(
+                    ch for ch in str(identifier).lower() if ch.isalnum()
+                )
+                if "theguardian" in normalized or normalized == "guardian":
+                    return True
+        return False
 
     def _has_awakened_one(self, context: DecisionContext) -> bool:
         """Return True if Awakened One is alive in the current combat."""
