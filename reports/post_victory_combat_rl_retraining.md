@@ -829,3 +829,76 @@ Next candidate:
 - A focused regression should wait for one concrete replayable decision risk
   from those boss logs, such as unsafe end-turn acceptance, under-valued
   frontload before Slime split, or Hexaghost burn/setup turn evaluation.
+
+## Act 1 Boss Replay: Pre-Boss Potion Preservation - 2026-06-04
+
+Preflight:
+
+- Git status was clean at `69c9e64 Record Guardian post-fix validation`.
+- CommunicationMod command used Windows Python in eval mode:
+  `D:\anaconda\envs\stsai\python.exe scripts/run_training_batch.py --eval
+  --max-games 20 --phase conservative --restart-guidance
+  --truncate-log-after-backup`.
+- Full pytest baseline with Windows Python, disabled pytest cache provider,
+  isolated `STS_AI_LOG_FILE`, and repo-local basetemp passed:
+  `1480 passed in 39.51s`.
+
+Replay source:
+
+- Replayed the 10 Act 1 boss deaths from the post mode-shift validation batch:
+  five Hexaghost deaths and five Slime Boss deaths.
+- Boss windows were located by `.run` timestamp plus AI marker and the nearest
+  preceding `[TRACKING] Starting combat: floor=16, type=boss` line in
+  `ai_debug.log.2` / `ai_debug.log.1`.
+
+Attribution:
+
+| Boss | Runs | RL EndTurn | ENERGY_GUARD takeover | Boss potion actions |
+| --- | ---: | ---: | ---: | ---: |
+| Hexaghost | 5 | 65 | 62 | 2 |
+| Slime Boss | 5 | 48 | 49 | 4 |
+
+- The first pass showed frequent RL `EndTurnAction` during boss fights, but
+  the existing `ENERGY_GUARD` usually replaced those with fallback actions.
+  That made raw boss EndTurn frequency a weak standalone regression target.
+- The stronger replayable risk was potion timing before the boss. Two short
+  Slime Boss deaths had no boss-window potion action because RL had already
+  spent potions in earlier Act 1 hallway fights:
+  - `1780534784.run`: RL used `PotionAction` on floors 10 and 12; the remaining
+    Energy Potion was then used by `POTION_GUARD` on floor 14 under 21 incoming.
+    The run died to Slime Boss in 8 turns.
+  - `1780535146.run`: RL used `PotionAction` on floors 5, 10, and 11, then
+    reached Slime Boss with no boss-window potion action and died in 6 turns.
+- `.run` `potions_floor_usage` was not reliable for this replay; the action
+  source needed to come from `ai_debug.log` (`RL returned: PotionAction`,
+  `POTION_GUARD`, and callback lines).
+
+Fix:
+
+- Added `POTION_SAVE_GUARD` in `CombatRLAgent` to block RL-returned
+  `PotionAction` in low-risk Act 1 hallway fights before the boss.
+- The guard does not block boss rooms, elite rooms, or high-danger hallway
+  states. When it blocks a low-value potion, it hands the rest of the turn to a
+  non-potion fallback action so RL cannot immediately retry the same potion.
+
+Regression:
+
+- `test_rl_potion_action_is_blocked_in_low_risk_act1_hallway_before_boss`
+  reproduced the current behavior red: a low-risk floor 10 hallway combat
+  accepted RL's `PotionAction` instead of saving the potion for the Act 1 boss.
+
+Verification after fix:
+
+- Focused regression: `1 passed`.
+- Combat RL guard suite: `42 passed`.
+- Full pytest with Windows Python, disabled pytest cache provider, isolated
+  `STS_AI_LOG_FILE`, and repo-local basetemp: `1481 passed in 34.09s`.
+
+Next candidate:
+
+- Rerun bounded Ironclad validation from this commit and check whether Slime
+  Boss / Hexaghost deaths show fewer pre-boss potion burns and more boss-window
+  potion actions.
+- If Act 1 boss deaths persist, replay the remaining boss turns for fallback
+  card-order quality, especially Slime Boss split timing and Hexaghost
+  burn/setup turns. Do not train until this decision signal is clean.

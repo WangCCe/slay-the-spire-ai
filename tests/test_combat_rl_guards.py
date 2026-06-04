@@ -352,6 +352,56 @@ def test_potion_guard_does_not_auto_use_elixir_hand_select_potion():
     assert _agent()._maybe_use_potion_guard(game) is None
 
 
+def test_rl_potion_action_is_blocked_in_low_risk_act1_hallway_before_boss():
+    potion = SimpleNamespace(
+        potion_id="ExplosivePotion",
+        name="Explosive Potion",
+        can_use=True,
+        requires_target=False,
+        effect_type="damage",
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    game = _game(
+        potions=[potion],
+        monsters=[_monster(hp=34, damage=5, index=0, name="Louse")],
+        current_hp=70,
+        max_hp=80,
+        room_type="MonsterRoom",
+        floor=10,
+        act=1,
+        player=SimpleNamespace(energy=3),
+        hand=[strike],
+    )
+    calls = {"rl": 0, "fallback": 0}
+
+    def rl_decide(_game):
+        calls["rl"] += 1
+        return PotionAction(True, potion=potion)
+
+    def fallback_decide(_game):
+        calls["fallback"] += 1
+        return PlayCardAction(card_index=0, target_index=0)
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=rl_decide)
+    agent.fallback_agent = SimpleNamespace(get_next_action_in_game=fallback_decide)
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert calls == {"rl": 1, "fallback": 1}
+
+
 def test_rl_incoming_damage_clamps_negative_live_move_damage_to_zero():
     monster = _monster(hp=25, damage=-1)
     monster.move_hits = 3

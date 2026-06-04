@@ -1090,6 +1090,24 @@ class CombatRLAgent:
                     self.rl_failure_count = 0
                     logger.info("[HAVOC_GUARD] No safe replacement found; allowing Havoc")
                     return action
+                elif self._should_override_low_value_potion(action, game):
+                    replacement = self._get_non_potion_fallback(game)
+                    if replacement is not None:
+                        from spirecomm.communication.action import EndTurnAction
+
+                        self.rl_failure_count = 0
+                        if not isinstance(replacement, EndTurnAction):
+                            self._fallback_turn_key = self._combat_turn_key(game)
+                        logger.info(
+                            "[POTION_SAVE_GUARD] Replacing low-value RL potion with %s on floor=%s turn=%s",
+                            self._describe_combat_action(replacement, game),
+                            getattr(game, "floor", None),
+                            getattr(game, "turn", None),
+                        )
+                        return replacement
+                    self.rl_failure_count = 0
+                    logger.info("[POTION_SAVE_GUARD] No replacement found; allowing PotionAction")
+                    return action
                 elif self._is_valid_combat_action(action, game):
                     logger.info(f"[CombatRLAgent] RL action validated, returning it")
                     # Valid action for current combat context
@@ -1266,6 +1284,45 @@ class CombatRLAgent:
                 score = 35
         return score
 
+    def _should_override_low_value_potion(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PotionAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PotionAction):
+            return False
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return False
+        if not getattr(game, "in_combat", False):
+            return False
+
+        room_type = str(getattr(game, "room_type", "") or "")
+        if "Boss" in room_type or "Elite" in room_type:
+            return False
+
+        floor = self._safe_int(getattr(game, "floor", 0), default=0)
+        act = self._safe_int(getattr(game, "act", 1), default=1)
+        if act != 1 or floor <= 0 or floor >= 16:
+            return False
+
+        alive_monsters = self._alive_monsters(game)
+        if not alive_monsters:
+            return False
+
+        incoming = self._incoming_damage(game)
+        current_hp = max(self._safe_int(getattr(game, "current_hp", 0), default=0), 1)
+        max_hp = max(
+            self._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
+            1,
+        )
+        hp_pct = current_hp / max_hp
+        high_danger = (
+            incoming >= current_hp
+            or incoming >= max(18, current_hp * 0.45)
+            or (hp_pct <= 0.45 and incoming > 0)
+            or (len(alive_monsters) >= 2 and incoming >= 10)
+        )
+        return not high_danger
+
     def _should_override_wasteful_end_turn(self, action: Action, game: Game) -> bool:
         from spirecomm.communication.action import EndTurnAction
         from spirecomm.spire.screen import ScreenType
@@ -1325,6 +1382,25 @@ class CombatRLAgent:
             logger.debug("[ENERGY_GUARD] Fallback action failed: %s", exc)
 
         return self._first_playable_card_action(game)
+
+    def _get_non_potion_fallback(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import EndTurnAction, PotionAction
+
+        try:
+            fallback_action = self.fallback_agent.get_next_action_in_game(game)
+            if (
+                fallback_action is not None
+                and not isinstance(fallback_action, PotionAction)
+                and self._is_valid_combat_action(fallback_action, game)
+            ):
+                return fallback_action
+        except Exception as exc:
+            logger.debug("[POTION_SAVE_GUARD] Fallback action failed: %s", exc)
+
+        replacement = self._first_playable_card_action(game)
+        if replacement is not None:
+            return replacement
+        return EndTurnAction()
 
     def _first_playable_card_action(
         self,
