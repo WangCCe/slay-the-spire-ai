@@ -939,6 +939,7 @@ class CombatRLAgent:
             "cleave",
         }
     )
+    LOW_VALUE_STATUS_CARDS = frozenset({"slimed"})
 
     def __init__(
         self,
@@ -1192,6 +1193,24 @@ class CombatRLAgent:
                         return self._with_combat_action_context(replacement, game)
                     self.rl_failure_count = 0
                     logger.info("[HAVOC_GUARD] No safe replacement found; allowing Havoc")
+                    return action
+                elif self._should_override_low_value_status_card(action, game):
+                    replacement = self._get_status_card_safe_replacement(game)
+                    if replacement is not None:
+                        from spirecomm.communication.action import EndTurnAction
+
+                        self.rl_failure_count = 0
+                        if not isinstance(replacement, EndTurnAction):
+                            self._fallback_turn_key = self._combat_turn_key(game)
+                        logger.info(
+                            "[STATUS_CARD_GUARD] Replacing low-value status card with %s on floor=%s turn=%s",
+                            self._describe_combat_action(replacement, game),
+                            getattr(game, "floor", None),
+                            getattr(game, "turn", None),
+                        )
+                        return self._with_combat_action_context(replacement, game)
+                    self.rl_failure_count = 0
+                    logger.info("[STATUS_CARD_GUARD] No safe replacement found; allowing status card")
                     return action
                 elif self._should_override_low_value_potion(action, game):
                     replacement = self._get_non_potion_fallback(game)
@@ -1802,6 +1821,62 @@ class CombatRLAgent:
         if not isinstance(action, PlayCardAction):
             return False
         return self._card_matches_normalized_names(self._card_for_action(action, game), {"havoc"})
+
+    def _should_override_low_value_status_card(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return False
+        if not getattr(game, "in_combat", False):
+            return False
+        if not self._is_low_value_status_action(action, game):
+            return False
+        return self._has_non_status_playable_card(game)
+
+    def _get_status_card_safe_replacement(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import EndTurnAction, PlayCardAction
+
+        try:
+            fallback_action = self.fallback_agent.get_next_action_in_game(game)
+            if (
+                isinstance(fallback_action, PlayCardAction)
+                and not self._is_low_value_status_action(fallback_action, game)
+                and self._is_valid_combat_action(fallback_action, game)
+            ):
+                return fallback_action
+        except Exception as exc:
+            logger.debug("[STATUS_CARD_GUARD] Fallback action failed: %s", exc)
+
+        replacement = self._first_playable_card_action(
+            game,
+            excluded_card_names=self.LOW_VALUE_STATUS_CARDS,
+        )
+        if replacement is not None:
+            return replacement
+        return EndTurnAction()
+
+    def _is_low_value_status_action(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        return self._card_matches_normalized_names(
+            self._card_for_action(action, game),
+            self.LOW_VALUE_STATUS_CARDS,
+        )
+
+    def _has_non_status_playable_card(self, game: Game) -> bool:
+        energy = self._player_energy(game)
+        for _, card in self._playable_cards(game, energy):
+            if not self._card_matches_normalized_names(
+                card,
+                self.LOW_VALUE_STATUS_CARDS,
+            ):
+                return True
+        return False
 
     def _describe_combat_action(self, action: Action, game: Game) -> str:
         from spirecomm.communication.action import PlayCardAction, PotionAction
