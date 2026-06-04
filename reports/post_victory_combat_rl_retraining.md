@@ -729,3 +729,103 @@ Next candidate:
   persist, replay the logged low-HP Guardian turns around RL `EndTurnAction`
   versus fallback sequences; do not start another training slice until the
   replay says the mechanics signal is clean.
+
+## Guardian Mode-Shift Post-Fix Validation - 2026-06-04
+
+Preflight:
+
+- Git status was clean at `e484845 Cancel Guardian attacks after mode shift`.
+- CommunicationMod command used Windows Python:
+  `D:\anaconda\envs\stsai\python.exe scripts/run_training_batch.py --eval
+  --max-games 20 --phase conservative --restart-guidance
+  --truncate-log-after-backup`.
+- Full pytest baseline with Windows Python, disabled pytest cache provider,
+  isolated `STS_AI_LOG_FILE`, and repo-local basetemp passed:
+  `1480 passed in 36.46s`.
+
+Validation:
+
+- Controlled `restart_sts_modded.ps1 -FreshRun` launch from the mechanics-fix
+  commit.
+- The batch reached `Max games reached (20); exiting.` and wrote 20 AI markers
+  plus 20 completed Ironclad `.run` files after the pre-batch cutoff
+  `1780514686.run`.
+- No Ironclad `victory=true` was found in this bounded batch.
+
+Completed runs:
+
+| Run | Floor | Result |
+| --- | ---: | --- |
+| `1780533681.run` | 33 | killed by Champ |
+| `1780533748.run` | 16 | killed by Hexaghost |
+| `1780533936.run` | 33 | killed by Champ |
+| `1780534040.run` | 16 | killed by Hexaghost |
+| `1780534114.run` | 16 | killed by The Guardian |
+| `1780534183.run` | 16 | killed by Slime Boss |
+| `1780534261.run` | 16 | killed by Slime Boss |
+| `1780534353.run` | 16 | killed by Slime Boss |
+| `1780534454.run` | 28 | killed by Shelled Parasite and Fungi |
+| `1780534523.run` | 16 | killed by Hexaghost |
+| `1780534652.run` | 24 | killed by 3 Cultists |
+| `1780534715.run` | 16 | killed by Hexaghost |
+| `1780534784.run` | 16 | killed by Slime Boss |
+| `1780534836.run` | 10 | killed by Blue Slaver |
+| `1780534895.run` | 16 | killed by The Guardian |
+| `1780534992.run` | 19 | killed by 3 Byrds |
+| `1780535070.run` | 16 | killed by Hexaghost |
+| `1780535146.run` | 16 | killed by Slime Boss |
+| `1780535262.run` | 24 | killed by Centurion and Healer |
+| `1780535320.run` | 10 | killed by Red Slaver |
+
+Death distribution:
+
+| Count | Killed by |
+| ---: | --- |
+| 5 | Hexaghost |
+| 5 | Slime Boss |
+| 2 | Champ |
+| 2 | The Guardian |
+| 1 | 3 Byrds |
+| 1 | 3 Cultists |
+| 1 | Blue Slaver |
+| 1 | Centurion and Healer |
+| 1 | Red Slaver |
+| 1 | Shelled Parasite and Fungi |
+
+Comparison:
+
+| Metric | Pre-fix post-training eval | Post mode-shift fix |
+| --- | ---: | ---: |
+| Wins | 0 | 0 |
+| Guardian deaths | 6/20 | 2/20 |
+| Act 1 boss deaths | 11/20 | 12/20 |
+| Average floor | 21.7 | 18.6 |
+| Max floor | 33 | 33 |
+
+Attribution:
+
+- The Guardian-specific failure rate dropped from 6/20 to 2/20 after the
+  mode-shift mechanics fix, so the fix appears to have reduced the repeated
+  Guardian death signal.
+- The batch did not improve overall survival. Hexaghost and Slime Boss absorbed
+  the Act 1 boss pressure, and the average floor fell to 18.6 despite the lower
+  Guardian count.
+- The two remaining Guardian deaths were not a repeat of the fixed mode-shift
+  damage bug. `1780534114.run` died after taking 75 damage over 9 Guardian
+  turns with a block-heavy/low-output deck, and `1780534895.run` died after
+  taking 70 damage over 14 Guardian turns. Logs for both fights mainly showed
+  repeated RL `EndTurnAction` decisions rescued by `ENERGY_GUARD`, rather than
+  a clear impossible incoming-damage or mode-shift continuation signal.
+- `communication_mod_errors.log` did not show a new current-batch traceback or
+  invalid-command chain in the tail; the batch ended through the normal
+  max-games path.
+
+Next candidate:
+
+- Do not start another training slice from this evidence. The next focused
+  validation target should be Act 1 boss decision quality, especially
+  Hexaghost/Slime Boss fights where RL repeatedly ends turn and fallback
+  takeover carries the combat.
+- A focused regression should wait for one concrete replayable decision risk
+  from those boss logs, such as unsafe end-turn acceptance, under-valued
+  frontload before Slime split, or Hexaghost burn/setup turn evaluation.
