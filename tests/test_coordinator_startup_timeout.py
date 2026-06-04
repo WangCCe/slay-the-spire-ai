@@ -57,3 +57,60 @@ def test_idle_in_game_wait_requests_state_for_event_result_pages():
     coordinator._request_state_during_idle_wait(1)
 
     assert sent_messages == [("state", False)]
+
+
+def test_play_one_game_ignores_transient_out_of_game_without_game_over():
+    coordinator = object.__new__(Coordinator)
+    coordinator.game_is_ready = True
+    coordinator.in_game = True
+    coordinator.last_game_state = SimpleNamespace(screen_type=ScreenType.COMBAT_REWARD)
+    coordinator.pending_seed = None
+    coordinator.game_over_state = None
+    coordinator.action_queue = []
+    coordinator.STARTUP_MAX_WAIT_ATTEMPTS = 3
+    coordinator.STARTUP_CONSECUTIVE_TIMEOUT_LIMIT = 3
+    coordinator.IN_GAME_CONSECUTIVE_TIMEOUT_LIMIT = 3
+    sent_messages = []
+    executed_actions = []
+    states = ["transient", "resumed", "game_over"]
+
+    coordinator.state_change_callback = lambda game_state: None
+    coordinator.clear_actions = lambda: coordinator.action_queue.clear()
+    coordinator.check_communication_threads = lambda: True
+    coordinator.execute_next_action_if_ready = (
+        lambda: executed_actions.append(coordinator.action_queue.pop(0))
+        if coordinator.action_queue
+        else None
+    )
+    coordinator.execute_next_action = lambda: None
+    coordinator._run_deferred_state_callback_if_idle = lambda: False
+    coordinator.send_message = (
+        lambda message, wait_for_response=True: sent_messages.append(
+            (message, wait_for_response)
+        )
+    )
+
+    def receive_game_state_update(block=False, perform_callbacks=True):
+        state = states.pop(0)
+        if state == "transient":
+            coordinator.in_game = False
+            coordinator.last_game_state = SimpleNamespace(
+                screen_type=ScreenType.COMBAT_REWARD
+            )
+            coordinator.action_queue.append("stale_start_game")
+        elif state == "resumed":
+            coordinator.in_game = True
+            coordinator.last_game_state = SimpleNamespace(screen_type=ScreenType.MAP)
+        else:
+            coordinator.in_game = False
+            coordinator.last_game_state = SimpleNamespace(
+                screen_type=ScreenType.GAME_OVER,
+                screen=SimpleNamespace(victory=True),
+            )
+        return True
+
+    coordinator.receive_game_state_update = receive_game_state_update
+
+    assert coordinator.play_one_game(PlayerClass.IRONCLAD, ascension_level=0) is True
+    assert ("state", False) in sent_messages
+    assert executed_actions == []

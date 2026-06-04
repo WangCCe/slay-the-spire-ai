@@ -87,6 +87,7 @@ class Coordinator:
     STARTUP_MAX_WAIT_ATTEMPTS = 60
     STARTUP_CONSECUTIVE_TIMEOUT_LIMIT = 45
     IN_GAME_CONSECUTIVE_TIMEOUT_LIMIT = 10
+    TRANSIENT_OUT_OF_GAME_UPDATE_LIMIT = 5
 
     def __init__(self):
         self.input_queue = queue.Queue()
@@ -266,6 +267,15 @@ class Coordinator:
                 consecutive_timeouts,
             )
             self._request_state_during_idle_wait(consecutive_timeouts)
+
+    def _current_game_over_state(self):
+        for game_state in (
+            getattr(self, "game_over_state", None),
+            getattr(self, "last_game_state", None),
+        ):
+            if getattr(game_state, "screen_type", None) == ScreenType.GAME_OVER:
+                return game_state
+        return None
 
     def _queue_state_change_callback_action(self, deferred=False):
         import logging
@@ -672,7 +682,51 @@ class Coordinator:
         import logging
         logging.info(f"[PLAY_ONE_GAME] Entering main game loop, in_game={self.in_game}, screen={getattr(self.last_game_state, 'screen_type', 'None') if self.last_game_state else 'None'}")
 
-        while self.in_game:
+        transient_out_of_game_updates = 0
+        while True:
+            if not self.in_game:
+                if self._current_game_over_state() is not None:
+                    break
+
+                transient_out_of_game_updates += 1
+                if (
+                    transient_out_of_game_updates
+                    > self.TRANSIENT_OUT_OF_GAME_UPDATE_LIMIT
+                ):
+                    raise Exception(
+                        "Game reported out-of-game without GAME_OVER for "
+                        f"{transient_out_of_game_updates} consecutive updates. "
+                        "Refusing to count a non-terminal run."
+                    )
+
+                logging.warning(
+                    "[PLAY_ONE_GAME] Ignoring transient out-of-game state without "
+                    "GAME_OVER. screen=%s attempt=%s/%s; requesting state",
+                    getattr(self.last_game_state, "screen_type", None),
+                    transient_out_of_game_updates,
+                    self.TRANSIENT_OUT_OF_GAME_UPDATE_LIMIT,
+                )
+                self._deferred_state_callback_pending = False
+                if len(self.action_queue) > 0:
+                    logging.info(
+                        "[PLAY_ONE_GAME] Clearing %s queued actions from "
+                        "non-terminal out-of-game transition",
+                        len(self.action_queue),
+                    )
+                    self.clear_actions()
+                self.send_message("state", wait_for_response=False)
+                state_update = self.receive_game_state_update(
+                    block=True,
+                    perform_callbacks=True,
+                )
+                if state_update:
+                    last_update_time = time.time()
+                    consecutive_timeouts = 0
+                else:
+                    consecutive_timeouts += 1
+                continue
+
+            transient_out_of_game_updates = 0
             # Check if communication threads are still alive (detect game crashes)
             if not self.check_communication_threads():
                 raise EOFError("Communication Mod connection lost (game crashed)")
@@ -697,6 +751,13 @@ class Coordinator:
             logging.info(
                 f"[MAIN_LOOP] after receive, state_update={state_update is not None}, queue_size={len(self.action_queue)}, game_is_ready={self.game_is_ready}"
             )
+
+            if not self.in_game:
+                logging.warning(
+                    "[MAIN_LOOP] Received out-of-game update; deferring queued "
+                    "actions until terminal or transient state is resolved"
+                )
+                continue
 
             # Execute action after receiving update
             self.execute_next_action_if_ready()
@@ -759,13 +820,9 @@ class Coordinator:
                         f"Last action may have caused the game to hang."
                     )
 
-        # Return victory status (handle case where screen isn't GAME_OVER)
-        if hasattr(self.last_game_state, "screen_type"):
-            if self.last_game_state.screen_type == ScreenType.GAME_OVER:
-                return self.last_game_state.screen.victory
-            else:
-                # Game ended but not at GAME_OVER screen
-                # Assume defeat if we're out of game
-                return False
-        else:
-            return False
+        # Return the saved terminal state if a later menu transition overwrote
+        # last_game_state.
+        game_over_state = self._current_game_over_state()
+        if game_over_state is not None:
+            return game_over_state.screen.victory
+        return False
