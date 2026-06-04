@@ -912,9 +912,11 @@ class CombatRLAgent:
         "feelnopain",
         "evolve",
         "metallicize",
+        "carnage",
     )
     HEXAGHOST_LOW_VALUE_SETUP_CARDS = frozenset(
         {
+            "bash",
             "defend",
             "truegrit",
             "shrugitoff",
@@ -1531,6 +1533,11 @@ class CombatRLAgent:
 
     def _get_non_end_turn_fallback(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction, PotionAction
+
+        if self._is_hexaghost_opening_setup_window(game):
+            replacement = self._get_hexaghost_setup_replacement(game)
+            if replacement is not None:
+                return replacement
 
         try:
             fallback_action = self.fallback_agent.get_next_action_in_game(game)
