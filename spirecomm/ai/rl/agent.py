@@ -1069,7 +1069,7 @@ class CombatRLAgent:
             from spirecomm.communication.action import EndTurnAction, PotionAction
 
             if isinstance(fallback_action, PotionAction):
-                replacement = self._first_playable_card_action(game)
+                replacement = self._get_energy_guard_takeover_potion_replacement(game)
                 if replacement is not None:
                     logger.info(
                         "[ENERGY_GUARD] Replacing takeover PotionAction with %s",
@@ -1518,6 +1518,14 @@ class CombatRLAgent:
         if replacement is not None:
             return replacement
         return EndTurnAction()
+
+    def _get_energy_guard_takeover_potion_replacement(self, game: Game) -> Optional[Action]:
+        if self._is_hexaghost_opening_setup_window(game):
+            replacement = self._get_hexaghost_setup_replacement(game)
+            if replacement is not None:
+                return replacement
+
+        return self._first_playable_card_action(game)
 
     def _first_playable_card_action(
         self,
