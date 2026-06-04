@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from spirecomm.communication.action import (
     CancelAction,
+    EndTurnAction,
     LeaveAction,
     PlayCardAction,
     ProceedAction,
@@ -60,6 +61,27 @@ def test_play_card_action_queues_ready_wait_after_successful_play():
     assert isinstance(queued_actions[0], WaitAction)
     assert queued_actions[0].timeout == 1
     assert queued_actions[0].requires_game_ready is True
+
+
+def test_end_turn_action_requests_state_when_turn_snapshot_is_stale():
+    sent_messages = []
+    action = EndTurnAction()
+    action.expected_floor = 20
+    action.expected_turn = 1
+    coordinator = SimpleNamespace(
+        last_game_state=SimpleNamespace(
+            floor=20,
+            turn=2,
+            player=SimpleNamespace(energy=3),
+            hand=[SimpleNamespace(name="Strike")],
+            available_commands=["play", "end", "state"],
+        ),
+        send_message=sent_messages.append,
+    )
+
+    action.execute(coordinator)
+
+    assert sent_messages == ["state"]
 
 
 def test_cancel_action_uses_current_return_command_alias():

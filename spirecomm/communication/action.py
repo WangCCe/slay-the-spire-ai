@@ -177,8 +177,10 @@ class PotionAction(Action):
 class EndTurnAction(Action):
     """An action to end your turn"""
 
-    def __init__(self):
+    def __init__(self, expected_floor=None, expected_turn=None):
         super().__init__("end")
+        self.expected_floor = expected_floor
+        self.expected_turn = expected_turn
 
     def execute(self, coordinator):
         import logging
@@ -189,6 +191,21 @@ class EndTurnAction(Action):
         turn = getattr(game, "turn", None) if game else None
         floor = getattr(game, "floor", None) if game else None
         hand_size = len(getattr(game, "hand", []) or [])
+        if (
+            (self.expected_floor is not None and floor != self.expected_floor)
+            or (self.expected_turn is not None and turn != self.expected_turn)
+        ):
+            logging.warning(
+                "[TURN_END_GUARD] stale EndTurnAction expected floor=%s turn=%s; current floor=%s turn=%s energy=%s hand=%s; requesting state",
+                self.expected_floor,
+                self.expected_turn,
+                floor,
+                turn,
+                energy,
+                hand_size,
+            )
+            coordinator.send_message("state")
+            return
         logging.info(
             "[TURN_END] floor=%s turn=%s energy_remaining=%s hand=%s",
             floor,

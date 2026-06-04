@@ -617,6 +617,31 @@ def test_wasteful_end_turn_hands_rest_of_turn_to_fallback():
     assert calls == {"rl": 1, "fallback": 2}
 
 
+def test_rl_end_turn_action_is_stamped_with_combat_turn_context():
+    game = _game(
+        floor=20,
+        turn=1,
+        player=SimpleNamespace(energy=0),
+        hand=[],
+        monsters=[_monster(hp=24, damage=0, index=0)],
+    )
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=lambda _game: EndTurnAction())
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, EndTurnAction)
+    assert action.expected_floor == 20
+    assert action.expected_turn == 1
+
+
 def test_awakened_one_power_guard_replaces_rl_power_with_non_power_card():
     demon_form = SimpleNamespace(
         name="Demon Form",

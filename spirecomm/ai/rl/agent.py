@@ -1026,7 +1026,9 @@ class CombatRLAgent:
                 getattr(game, "floor", None),
                 getattr(game, "turn", None),
             )
-            return self.fallback_agent.get_next_action_in_game(game)
+            return self._with_combat_action_context(
+                self.fallback_agent.get_next_action_in_game(game), game
+            )
 
         if self.use_rl_for_combat and self._is_rl_context(game):
             potion_action = self._maybe_use_potion_guard(game)
@@ -1036,6 +1038,7 @@ class CombatRLAgent:
             logger.info(f"[CombatRLAgent] Calling RL agent for decision")
             try:
                 action = self.rl_agent.get_next_action_in_game(game)
+                action = self._with_combat_action_context(action, game)
 
                 logger.info("[CombatRLAgent] RL returned: %s", self._describe_combat_action(action, game))
 
@@ -1051,7 +1054,7 @@ class CombatRLAgent:
                             "[ENERGY_GUARD] Replacing EndTurnAction with %s and handing off rest of turn",
                             type(replacement).__name__,
                         )
-                        return replacement
+                        return self._with_combat_action_context(replacement, game)
                     logger.info("[ENERGY_GUARD] No safe replacement found; allowing EndTurnAction")
                     return action
                 elif self._should_override_awakened_one_power(action, game):
@@ -1067,11 +1070,11 @@ class CombatRLAgent:
                             getattr(game, "floor", None),
                             getattr(game, "turn", None),
                         )
-                        return replacement
+                        return self._with_combat_action_context(replacement, game)
                     logger.info("[AWAKENED_POWER_GUARD] No replacement found; ending turn")
                     from spirecomm.communication.action import EndTurnAction
 
-                    return EndTurnAction()
+                    return self._with_combat_action_context(EndTurnAction(), game)
                 elif self._should_override_risky_havoc(action, game):
                     replacement = self._get_havoc_safe_replacement(game)
                     if replacement is not None:
@@ -1086,7 +1089,7 @@ class CombatRLAgent:
                             getattr(game, "floor", None),
                             getattr(game, "turn", None),
                         )
-                        return replacement
+                        return self._with_combat_action_context(replacement, game)
                     self.rl_failure_count = 0
                     logger.info("[HAVOC_GUARD] No safe replacement found; allowing Havoc")
                     return action
@@ -1104,7 +1107,7 @@ class CombatRLAgent:
                             getattr(game, "floor", None),
                             getattr(game, "turn", None),
                         )
-                        return replacement
+                        return self._with_combat_action_context(replacement, game)
                     self.rl_failure_count = 0
                     logger.info("[POTION_SAVE_GUARD] No replacement found; allowing PotionAction")
                     return action
@@ -1121,7 +1124,7 @@ class CombatRLAgent:
                             self.fallback_agent, "skipped_cards"
                         ):
                             self.fallback_agent.skipped_cards = True
-                    return action
+                    return self._with_combat_action_context(action, game)
                 else:
                     # Invalid action type
                     logger.warning(f"RL agent returned non-combat action during combat, falling back to OptimizedAgent")
@@ -1138,7 +1141,18 @@ class CombatRLAgent:
                 self.use_rl_for_combat = False
 
         # Fallback to OptimizedAgent
-        return self.fallback_agent.get_next_action_in_game(game)
+        return self._with_combat_action_context(
+            self.fallback_agent.get_next_action_in_game(game), game
+        )
+
+    @staticmethod
+    def _with_combat_action_context(action: Optional[Action], game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import EndTurnAction
+
+        if isinstance(action, EndTurnAction):
+            action.expected_floor = getattr(game, "floor", None)
+            action.expected_turn = getattr(game, "turn", None)
+        return action
 
     def _maybe_use_potion_guard(self, game: Game) -> Optional[Action]:
         """Use a potion in dangerous combat states before high-exploration RL acts."""
