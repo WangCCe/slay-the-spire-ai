@@ -868,6 +868,67 @@ def test_awakened_one_power_guard_accepts_decimal_string_energy():
     assert action.target_index == 0
 
 
+def test_hexaghost_setup_guard_prioritizes_shockwave_over_empty_block():
+    true_grit = SimpleNamespace(
+        name="True Grit",
+        card_id="True Grit",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    shockwave = SimpleNamespace(
+        name="Shockwave",
+        card_id="Shockwave",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=2,
+        has_target=False,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    game = _game(
+        floor=16,
+        turn=1,
+        player=SimpleNamespace(energy=3),
+        hand=[true_grit, shockwave, defend],
+        monsters=[
+            _monster(
+                hp=250,
+                damage=0,
+                index=0,
+                name="Hexaghost",
+                monster_id="Hexaghost",
+            )
+        ],
+        room_type="MonsterRoomBoss",
+    )
+    game.monsters[0].intent = "Intent.BUFF"
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=lambda _game: PlayCardAction(card_index=0))
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (16, 1)
+
+
 def test_havoc_guard_replaces_rl_havoc_with_safer_card():
     havoc = SimpleNamespace(
         name="Havoc",

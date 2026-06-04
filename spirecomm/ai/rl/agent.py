@@ -902,6 +902,28 @@ class CombatRLAgent:
     """
 
     ACT1_BOSS_IDENTIFIERS = frozenset({"slimeboss", "hexaghost", "theguardian"})
+    HEXAGHOST_SETUP_PRIORITY = (
+        "shockwave",
+        "corruption",
+        "darkembrace",
+        "firebreathing",
+        "inflame",
+        "demonform",
+        "feelnopain",
+        "evolve",
+        "metallicize",
+    )
+    HEXAGHOST_LOW_VALUE_SETUP_CARDS = frozenset(
+        {
+            "defend",
+            "truegrit",
+            "shrugitoff",
+            "flamebarrier",
+            "ghostlyarmor",
+            "powerthrough",
+            "impervious",
+        }
+    )
 
     def __init__(
         self,
@@ -1077,6 +1099,21 @@ class CombatRLAgent:
                     from spirecomm.communication.action import EndTurnAction
 
                     return self._with_combat_action_context(EndTurnAction(), game)
+                elif self._should_override_hexaghost_setup_action(action, game):
+                    replacement = self._get_hexaghost_setup_replacement(game)
+                    if replacement is not None:
+                        self.rl_failure_count = 0
+                        self._fallback_turn_key = self._combat_turn_key(game)
+                        logger.info(
+                            "[HEXAGHOST_SETUP_GUARD] Replacing RL setup-window action with %s on floor=%s turn=%s",
+                            self._describe_combat_action(replacement, game),
+                            getattr(game, "floor", None),
+                            getattr(game, "turn", None),
+                        )
+                        return self._with_combat_action_context(replacement, game)
+                    self.rl_failure_count = 0
+                    logger.info("[HEXAGHOST_SETUP_GUARD] No setup replacement found; allowing action")
+                    return action
                 elif self._should_override_risky_havoc(action, game):
                     replacement = self._get_havoc_safe_replacement(game)
                     if replacement is not None:
@@ -1473,6 +1510,57 @@ class CombatRLAgent:
         card = self._card_for_action(action, game)
         return self._is_power_card(card)
 
+    def _should_override_hexaghost_setup_action(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return False
+        if not self._is_hexaghost_opening_setup_window(game):
+            return False
+
+        card = self._card_for_action(action, game)
+        if not self._is_low_value_hexaghost_setup_card(card):
+            return False
+        return self._get_hexaghost_setup_replacement(game) is not None
+
+    def _get_hexaghost_setup_replacement(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+
+        energy = self._player_energy(game)
+        playable = self._playable_cards(game, energy)
+        if not playable:
+            return None
+
+        target_index = self._best_monster_index(game)
+        for setup_name in self.HEXAGHOST_SETUP_PRIORITY:
+            for card_index, card in playable:
+                if not self._card_matches_normalized_names(card, {setup_name}):
+                    continue
+                if card_requires_target(card):
+                    if target_index is None:
+                        continue
+                    return PlayCardAction(card_index=card_index, target_index=target_index)
+                return PlayCardAction(card_index=card_index)
+        return None
+
+    def _is_hexaghost_opening_setup_window(self, game: Game) -> bool:
+        if self._safe_int(getattr(game, "turn", 0), default=0) != 1:
+            return False
+        if not self._has_hexaghost(game):
+            return False
+        if not self._is_boss_combat(game):
+            return False
+        return self._incoming_damage(game) <= 0
+
+    def _is_low_value_hexaghost_setup_card(self, card) -> bool:
+        return self._card_matches_normalized_names(
+            card,
+            self.HEXAGHOST_LOW_VALUE_SETUP_CARDS,
+        )
+
     def _should_override_risky_havoc(self, action: Action, game: Game) -> bool:
         from spirecomm.communication.action import PlayCardAction
         from spirecomm.spire.screen import ScreenType
@@ -1689,6 +1777,17 @@ class CombatRLAgent:
                     ch for ch in str(identifier).lower() if ch.isalnum()
                 )
                 if "awakenedone" in normalized:
+                    return True
+        return False
+
+    @classmethod
+    def _has_hexaghost(cls, game: Game) -> bool:
+        for monster in cls._alive_monsters(game):
+            for identifier in (
+                getattr(monster, "monster_id", ""),
+                getattr(monster, "name", ""),
+            ):
+                if "hexaghost" in cls._normalize_identifier(identifier):
                     return True
         return False
 
