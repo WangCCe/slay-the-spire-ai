@@ -1065,8 +1065,21 @@ class CombatRLAgent:
                 getattr(game, "floor", None),
                 getattr(game, "turn", None),
             )
+            fallback_action = self.fallback_agent.get_next_action_in_game(game)
+            from spirecomm.communication.action import EndTurnAction, PotionAction
+
+            if isinstance(fallback_action, PotionAction):
+                replacement = self._first_playable_card_action(game)
+                if replacement is not None:
+                    logger.info(
+                        "[ENERGY_GUARD] Replacing takeover PotionAction with %s",
+                        self._describe_combat_action(replacement, game),
+                    )
+                    return self._with_combat_action_context(replacement, game)
+                logger.info("[ENERGY_GUARD] Suppressing takeover PotionAction; ending turn")
+                return self._with_combat_action_context(EndTurnAction(), game)
             return self._with_combat_action_context(
-                self.fallback_agent.get_next_action_in_game(game), game
+                fallback_action, game
             )
 
         if self.use_rl_for_combat and self._is_rl_context(game):

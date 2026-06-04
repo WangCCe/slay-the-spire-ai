@@ -612,6 +612,61 @@ def test_energy_guard_fallback_does_not_spend_potion_on_safe_boss_window():
     assert replacement.target_index == 0
 
 
+def test_energy_guard_takeover_does_not_spend_potion_on_safe_boss_window():
+    potion = SimpleNamespace(
+        potion_id="AttackPotion",
+        name="Attack Potion",
+        can_use=True,
+        requires_target=False,
+        effect_type="card_choice_attack",
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    game = _game(
+        hand=[strike],
+        potions=[potion],
+        monsters=[
+            _monster(
+                hp=240,
+                damage=0,
+                index=0,
+                name="The Guardian",
+                monster_id="TheGuardian",
+            )
+        ],
+        current_hp=80,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=1,
+        player=SimpleNamespace(energy=2),
+    )
+
+    agent = _agent()
+    agent._fallback_turn_key = (16, 1)
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PotionAction(True, potion=potion)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index == 0
+
+
 def test_energy_guard_targets_name_only_attack_without_has_target():
     strike = SimpleNamespace(
         name="Strike",
