@@ -929,6 +929,69 @@ def test_hexaghost_setup_guard_prioritizes_shockwave_over_empty_block():
     assert agent._fallback_turn_key == (16, 1)
 
 
+def test_slime_boss_setup_guard_prioritizes_thunderclap_before_strike():
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    thunderclap = SimpleNamespace(
+        name="Thunderclap",
+        card_id="Thunderclap",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    iron_wave = SimpleNamespace(
+        name="Iron Wave",
+        card_id="Iron Wave",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    game = _game(
+        floor=16,
+        turn=1,
+        player=SimpleNamespace(energy=3),
+        hand=[strike, thunderclap, iron_wave],
+        monsters=[
+            _monster(
+                hp=140,
+                damage=0,
+                index=0,
+                name="Slime Boss",
+                monster_id="SlimeBoss",
+            )
+        ],
+        room_type="MonsterRoomBoss",
+    )
+    game.monsters[0].intent = "Intent.BUFF"
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0, target_index=0)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (16, 1)
+
+
 def test_havoc_guard_replaces_rl_havoc_with_safer_card():
     havoc = SimpleNamespace(
         name="Havoc",

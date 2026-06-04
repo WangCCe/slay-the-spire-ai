@@ -924,6 +924,21 @@ class CombatRLAgent:
             "impervious",
         }
     )
+    SLIME_BOSS_VULNERABLE_SETUP_PRIORITY = (
+        "thunderclap",
+        "bash",
+        "uppercut",
+        "shockwave",
+    )
+    SLIME_BOSS_LOW_VALUE_BEFORE_VULNERABLE = frozenset(
+        {
+            "strike",
+            "defend",
+            "ironwave",
+            "dropkick",
+            "cleave",
+        }
+    )
 
     def __init__(
         self,
@@ -1113,6 +1128,21 @@ class CombatRLAgent:
                         return self._with_combat_action_context(replacement, game)
                     self.rl_failure_count = 0
                     logger.info("[HEXAGHOST_SETUP_GUARD] No setup replacement found; allowing action")
+                    return action
+                elif self._should_override_slime_boss_vulnerable_setup_action(action, game):
+                    replacement = self._get_slime_boss_vulnerable_setup_replacement(game)
+                    if replacement is not None:
+                        self.rl_failure_count = 0
+                        self._fallback_turn_key = self._combat_turn_key(game)
+                        logger.info(
+                            "[SLIME_VULN_GUARD] Replacing RL pre-vulnerable action with %s on floor=%s turn=%s",
+                            self._describe_combat_action(replacement, game),
+                            getattr(game, "floor", None),
+                            getattr(game, "turn", None),
+                        )
+                        return self._with_combat_action_context(replacement, game)
+                    self.rl_failure_count = 0
+                    logger.info("[SLIME_VULN_GUARD] No vulnerable setup replacement found; allowing action")
                     return action
                 elif self._should_override_risky_havoc(action, game):
                     replacement = self._get_havoc_safe_replacement(game)
@@ -1561,6 +1591,59 @@ class CombatRLAgent:
             self.HEXAGHOST_LOW_VALUE_SETUP_CARDS,
         )
 
+    def _should_override_slime_boss_vulnerable_setup_action(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return False
+        if not self._is_slime_boss_vulnerable_setup_window(game):
+            return False
+
+        card = self._card_for_action(action, game)
+        if not self._card_matches_normalized_names(
+            card,
+            self.SLIME_BOSS_LOW_VALUE_BEFORE_VULNERABLE,
+        ):
+            return False
+        return self._get_slime_boss_vulnerable_setup_replacement(game) is not None
+
+    def _get_slime_boss_vulnerable_setup_replacement(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+
+        energy = self._player_energy(game)
+        playable = self._playable_cards(game, energy)
+        if not playable:
+            return None
+
+        target_index = self._best_monster_index(game)
+        for setup_name in self.SLIME_BOSS_VULNERABLE_SETUP_PRIORITY:
+            for card_index, card in playable:
+                if not self._card_matches_normalized_names(card, {setup_name}):
+                    continue
+                if card_requires_target(card):
+                    if target_index is None:
+                        continue
+                    return PlayCardAction(card_index=card_index, target_index=target_index)
+                return PlayCardAction(card_index=card_index)
+        return None
+
+    def _is_slime_boss_vulnerable_setup_window(self, game: Game) -> bool:
+        if self._safe_int(getattr(game, "turn", 0), default=0) > 3:
+            return False
+        if not self._has_slime_boss(game):
+            return False
+        if not self._is_boss_combat(game):
+            return False
+
+        target_index = self._best_monster_index(game)
+        monsters = getattr(game, "monsters", []) or []
+        if target_index is None or target_index >= len(monsters):
+            return False
+        return self._monster_vulnerable_stacks(monsters[target_index]) <= 0
+
     def _should_override_risky_havoc(self, action: Action, game: Game) -> bool:
         from spirecomm.communication.action import PlayCardAction
         from spirecomm.spire.screen import ScreenType
@@ -1790,6 +1873,30 @@ class CombatRLAgent:
                 if "hexaghost" in cls._normalize_identifier(identifier):
                     return True
         return False
+
+    @classmethod
+    def _has_slime_boss(cls, game: Game) -> bool:
+        for monster in cls._alive_monsters(game):
+            for identifier in (
+                getattr(monster, "monster_id", ""),
+                getattr(monster, "name", ""),
+            ):
+                if "slimeboss" in cls._normalize_identifier(identifier):
+                    return True
+        return False
+
+    @classmethod
+    def _monster_vulnerable_stacks(cls, monster) -> int:
+        for power in getattr(monster, "powers", []) or []:
+            identifiers = (
+                getattr(power, "power_id", None),
+                getattr(power, "power_name", None),
+                getattr(power, "name", None),
+            )
+            if not any("vulnerable" in cls._normalize_identifier(value) for value in identifiers):
+                continue
+            return cls._safe_int(getattr(power, "amount", 0), default=0)
+        return 0
 
     @staticmethod
     def _player_energy(game: Game) -> int:
