@@ -163,6 +163,7 @@ TIMEOUT_BUDGET = 0.15  # Seconds (150ms budget for beam search) - increased from
 
 GUARDIAN_MODE_SHIFT_BLOCK = 20
 GUARDIAN_SHARP_HIDE = 3
+GUARDIAN_DEFENSIVE_MODE_MOVE_ID = 4
 
 
 # =============================================================================
@@ -2981,6 +2982,11 @@ class FastCombatSimulator:
         if mode_shift == 0:
             monster['block'] += GUARDIAN_MODE_SHIFT_BLOCK
             monster['thorns'] = max(monster.get('thorns', 0), GUARDIAN_SHARP_HIDE)
+            monster['intent'] = Intent.BUFF
+            monster['move_id'] = GUARDIAN_DEFENSIVE_MODE_MOVE_ID
+            monster['move_base_damage'] = 0
+            monster['move_adjusted_damage'] = 0
+            monster['move_hits'] = 0
 
     def _is_guardian(self, monster: dict) -> bool:
         monster_id = str(monster.get('monster_id', ''))

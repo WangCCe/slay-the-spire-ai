@@ -12763,6 +12763,28 @@ def test_guardian_mode_shift_adds_block_and_sharp_hide_after_threshold():
     assert result.player_hp == 80
 
 
+def test_guardian_mode_shift_cancels_current_attack_damage_after_threshold():
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[_guardian(mode_shift=5)],
+    )
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["mode_shift"] == 0
+    assert simulator._estimate_incoming_damage(result.monsters) == 0
+    assert simulator.simulate_enemy_lookahead(result, context, look_ahead=1) == 0
+
+
 def test_simulator_rejects_nonfinite_guardian_mode_shift_counter():
     context = _combat_context([], energy=0, monsters=[_guardian(mode_shift=5)])
     state = SimulationState(context)

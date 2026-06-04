@@ -676,3 +676,56 @@ Next candidate:
   can reproduce a specific Guardian-state action-ranking error from the logged
   state. Otherwise treat the next work item as model evaluation/feature
   diagnosis rather than mechanics repair.
+
+## Guardian Mode-Shift Mechanics Replay - 2026-06-04
+
+Preflight:
+
+- Git status was clean before this replay audit.
+- Latest commit: `340b4c5 Record Guardian loss audit`.
+- Full pytest baseline with Windows Python, disabled pytest cache provider,
+  isolated `STS_AI_LOG_FILE`, and repo-local basetemp passed:
+  `1479 passed in 51.46s`.
+
+Failure type:
+
+- The fixed six-Guardian-loss sample did not expose an impossible incoming
+  damage line by itself, but the Guardian mode-change question produced a
+  focused replay state: The Guardian on an attack intent with `Mode Shift` at
+  5, then a Strike that crosses the threshold.
+- Current simulation correctly set `mode_shift=0`, added 20 block, and enabled
+  Sharp Hide, but left the old attack intent/damage fields in place. As a
+  result `_estimate_incoming_damage()` still returned 20 after the mode shift,
+  and the planner could undervalue attacking into Defensive Mode because it
+  believed the old attack would still land this turn.
+
+Fix:
+
+- When Guardian Mode Shift reaches zero, the simulator now switches the
+  monster state to the Guardian `Defensive Mode` move (`move_id=4`,
+  `Intent.BUFF`) and clears `move_base_damage`, `move_adjusted_damage`, and
+  `move_hits`.
+- This keeps the existing immediate block and Sharp Hide behavior, while making
+  current-turn scoring and enemy lookahead agree that the old attack is
+  cancelled.
+
+Regression:
+
+- `test_guardian_mode_shift_cancels_current_attack_damage_after_threshold`
+  reproduced the bug red: after triggering mode shift, incoming damage was
+  still estimated as 20.
+
+Verification after fix:
+
+- Focused regression: `1 passed`.
+- Guardian mode-shift focused set:
+  `7 passed, 503 deselected`.
+- Full pytest with Windows Python, disabled pytest cache provider, isolated
+  `STS_AI_LOG_FILE`, and repo-local basetemp: `1480 passed in 44.63s`.
+
+Next candidate:
+
+- Rerun bounded Guardian validation from this mechanics fix. If Guardian deaths
+  persist, replay the logged low-HP Guardian turns around RL `EndTurnAction`
+  versus fallback sequences; do not start another training slice until the
+  replay says the mechanics signal is clean.
