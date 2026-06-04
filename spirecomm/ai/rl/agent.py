@@ -1144,6 +1144,24 @@ class CombatRLAgent:
                     self.rl_failure_count = 0
                     logger.info("[SLIME_VULN_GUARD] No vulnerable setup replacement found; allowing action")
                     return action
+                elif self._should_override_unproductive_double_tap(action, game):
+                    replacement = self._get_double_tap_safe_replacement(game)
+                    if replacement is not None:
+                        from spirecomm.communication.action import EndTurnAction
+
+                        self.rl_failure_count = 0
+                        if not isinstance(replacement, EndTurnAction):
+                            self._fallback_turn_key = self._combat_turn_key(game)
+                        logger.info(
+                            "[DOUBLE_TAP_GUARD] Replacing unproductive Double Tap with %s on floor=%s turn=%s",
+                            self._describe_combat_action(replacement, game),
+                            getattr(game, "floor", None),
+                            getattr(game, "turn", None),
+                        )
+                        return self._with_combat_action_context(replacement, game)
+                    self.rl_failure_count = 0
+                    logger.info("[DOUBLE_TAP_GUARD] No safe replacement found; allowing action")
+                    return action
                 elif self._should_override_risky_havoc(action, game):
                     replacement = self._get_havoc_safe_replacement(game)
                     if replacement is not None:
@@ -1643,6 +1661,85 @@ class CombatRLAgent:
         if target_index is None or target_index >= len(monsters):
             return False
         return self._monster_vulnerable_stacks(monsters[target_index]) <= 0
+
+    def _should_override_unproductive_double_tap(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return False
+        if not getattr(game, "in_combat", False):
+            return False
+
+        card = self._card_for_action(action, game)
+        if not self._card_matches_normalized_names(card, {"doubletap"}):
+            return False
+
+        energy = self._player_energy(game)
+        remaining_energy = energy - effective_card_cost(card, energy)
+        if remaining_energy < 0:
+            return False
+
+        action_index = self._safe_int(getattr(action, "card_index", -1), default=-1)
+        if self._has_playable_attack_after_double_tap(game, remaining_energy, action_index):
+            return False
+        return self._get_double_tap_safe_replacement(game) is not None
+
+    def _has_playable_attack_after_double_tap(
+        self,
+        game: Game,
+        remaining_energy: int,
+        double_tap_index: int,
+    ) -> bool:
+        target_index = self._best_monster_index(game)
+        for card_index, card in enumerate(getattr(game, "hand", []) or []):
+            if card_index == double_tap_index:
+                continue
+            if hasattr(card, "is_playable") and not getattr(card, "is_playable", False):
+                continue
+            if card_type_name(card) != "ATTACK":
+                continue
+            if effective_card_cost(card, remaining_energy) > remaining_energy:
+                continue
+            if card_requires_target(card) and target_index is None:
+                continue
+            return True
+        return False
+
+    def _get_double_tap_safe_replacement(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import EndTurnAction
+
+        try:
+            fallback_action = self.fallback_agent.get_next_action_in_game(game)
+            if (
+                fallback_action is not None
+                and not isinstance(fallback_action, EndTurnAction)
+                and not self._is_double_tap_action(fallback_action, game)
+                and self._is_valid_combat_action(fallback_action, game)
+            ):
+                return fallback_action
+        except Exception as exc:
+            logger.debug("[DOUBLE_TAP_GUARD] Fallback action failed: %s", exc)
+
+        replacement = self._first_playable_card_action(
+            game,
+            excluded_card_names={"doubletap"},
+        )
+        if replacement is not None:
+            return replacement
+        return EndTurnAction()
+
+    def _is_double_tap_action(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        return self._card_matches_normalized_names(
+            self._card_for_action(action, game),
+            {"doubletap"},
+        )
 
     def _should_override_risky_havoc(self, action: Action, game: Game) -> bool:
         from spirecomm.communication.action import PlayCardAction
