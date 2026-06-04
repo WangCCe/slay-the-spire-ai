@@ -901,6 +901,8 @@ class CombatRLAgent:
     Fallback: If RL fails, immediately falls back to OptimizedAgent for all decisions.
     """
 
+    ACT1_BOSS_IDENTIFIERS = frozenset({"slimeboss", "hexaghost", "theguardian"})
+
     def __init__(
         self,
         player_class: PlayerClass = PlayerClass.IRONCLAD,
@@ -1185,7 +1187,7 @@ class CombatRLAgent:
         hp_pct = current_hp / max_hp
         room_type = str(getattr(game, "room_type", "") or "")
         is_elite = "Elite" in room_type
-        is_boss = "Boss" in room_type
+        is_boss = self._is_boss_combat(game, alive_monsters)
         high_danger = (
             incoming >= current_hp
             or incoming >= max(18, current_hp * 0.45)
@@ -1588,6 +1590,26 @@ class CombatRLAgent:
                 return True
             if any(normalized.startswith(name) for name in normalized_names):
                 return True
+        return False
+
+    @classmethod
+    def _is_boss_combat(cls, game: Game, alive_monsters=None) -> bool:
+        room_type = str(getattr(game, "room_type", "") or "")
+        if "Boss" in room_type:
+            return True
+
+        floor = cls._safe_int(getattr(game, "floor", 0), default=0)
+        if floor != 16:
+            return False
+
+        monsters = alive_monsters if alive_monsters is not None else cls._alive_monsters(game)
+        for monster in monsters:
+            for value in (
+                getattr(monster, "monster_id", None),
+                getattr(monster, "name", None),
+            ):
+                if cls._normalize_identifier(value) in cls.ACT1_BOSS_IDENTIFIERS:
+                    return True
         return False
 
     @staticmethod

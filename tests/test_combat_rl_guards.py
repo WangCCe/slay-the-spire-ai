@@ -105,6 +105,40 @@ def test_potion_guard_infers_missing_potion_available_from_usable_potion():
     assert action.target_index == 0
 
 
+def test_potion_guard_treats_act1_boss_monster_as_boss_with_generic_room_type():
+    potion = SimpleNamespace(
+        potion_id="FearPotion",
+        name="Fear Potion",
+        can_use=True,
+        requires_target=True,
+        effect_type="debuff_vulnerable",
+    )
+    game = _game(
+        potions=[potion],
+        monsters=[
+            _monster(
+                hp=140,
+                damage=0,
+                index=0,
+                name="Slime Boss",
+                monster_id="SlimeBoss",
+            )
+        ],
+        current_hp=65,
+        max_hp=80,
+        room_type="MonsterRoom",
+        floor=16,
+        turn=1,
+        act=1,
+    )
+
+    action = _agent()._maybe_use_potion_guard(game)
+
+    assert isinstance(action, PotionAction)
+    assert action.potion is potion
+    assert action.target_index == 0
+
+
 def test_potion_guard_uses_get_real_potions_when_raw_potions_are_missing():
     potion = SimpleNamespace(
         potion_id="Fire Potion",
