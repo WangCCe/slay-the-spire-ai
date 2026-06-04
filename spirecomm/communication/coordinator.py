@@ -121,6 +121,9 @@ class Coordinator:
         self._deferred_state_callback_pending = False
         self._deferred_state_callback_message_count = 0
         self._sent_message_count = 0
+        self._last_sent_message = None
+        self._combat_action_settle_pending = False
+        self._combat_action_settle_timeout = 1
         self._last_command_error = None
         self.pending_seed = None
 
@@ -160,6 +163,49 @@ class Coordinator:
 
         available_commands = getattr(game, "available_commands", None) or []
         return command not in available_commands
+
+    @staticmethod
+    def _sent_combat_action_command(message):
+        if not isinstance(message, str):
+            return False
+        command = message.split(" ", 1)[0]
+        return command in {"play", "potion"}
+
+    def _mark_combat_action_settle_if_needed(self, sent_before):
+        if getattr(self, "_sent_message_count", 0) <= sent_before:
+            return
+        if not self._sent_combat_action_command(
+            getattr(self, "_last_sent_message", None)
+        ):
+            return
+        self._combat_action_settle_pending = True
+
+    def _maybe_queue_combat_action_settle_wait(self):
+        if not getattr(self, "_combat_action_settle_pending", False):
+            return False
+
+        game = getattr(self, "last_game_state", None)
+        screen_type = getattr(game, "screen_type", None)
+        if not self.in_game or not getattr(game, "in_combat", False):
+            self._combat_action_settle_pending = False
+            return False
+        if screen_type not in (None, ScreenType.NONE):
+            self._combat_action_settle_pending = False
+            return False
+
+        import logging
+
+        self._combat_action_settle_pending = False
+        timeout = getattr(self, "_combat_action_settle_timeout", 1)
+        logging.info(
+            "[COMBAT_ACTION_SETTLE] screen=%s floor=%s turn=%s; inserting wait=%s",
+            screen_type,
+            getattr(game, "floor", None),
+            getattr(game, "turn", None),
+            timeout,
+        )
+        self.add_action_to_queue(WaitAction(timeout=timeout))
+        return True
 
     def check_communication_threads(self):
         """Check if stdin/stdout communication threads are still alive.
@@ -206,6 +252,7 @@ class Coordinator:
             f"[SEND_MESSAGE] {message}, game_is_ready was={self.game_is_ready}, wait_for_response={wait_for_response}"
         )
         self._sent_message_count = getattr(self, "_sent_message_count", 0) + 1
+        self._last_sent_message = message
         self.output_queue.put(message)
         if wait_for_response:
             self.game_is_ready = False
@@ -325,7 +372,9 @@ class Coordinator:
         logging.info(
             f"[ACTION_QUEUE] Executing {action.__class__.__name__}, queue_size={len(self.action_queue)}"
         )
+        sent_before = getattr(self, "_sent_message_count", 0)
         action.execute(self)
+        self._mark_combat_action_settle_if_needed(sent_before)
 
     def execute_next_action_if_ready(self):
         """Immediately execute the next action in the action queue, if ready to do so
@@ -525,7 +574,8 @@ class Coordinator:
                     if len(self.action_queue) == 0:
                         import logging
                         self._deferred_state_callback_pending = False
-                        self._queue_state_change_callback_action()
+                        if not self._maybe_queue_combat_action_settle_wait():
+                            self._queue_state_change_callback_action()
                     else:
                         import logging
 

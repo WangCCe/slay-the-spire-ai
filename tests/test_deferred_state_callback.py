@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from spirecomm.communication.action import (
     ChooseAction,
     OptionalCardSelectConfirmAction,
+    PlayCardAction,
     StartGameAction,
     WaitAction,
 )
@@ -81,6 +82,23 @@ def _out_of_game_start_ready_message():
             "in_game": False,
             "available_commands": ["start", "state"],
             "game_state": {},
+        }
+    )
+
+
+def _stale_none_combat_message():
+    return json.dumps(
+        {
+            "ready_for_command": True,
+            "in_game": True,
+            "available_commands": ["play", "end", "potion", "wait", "state"],
+            "game_state": {
+                "screen_type": "NONE",
+                "room_phase": "COMBAT",
+                "floor": 18,
+                "act": 2,
+                "class": "IRONCLAD",
+            },
         }
     )
 
@@ -209,3 +227,41 @@ def test_event_choose_can_execute_when_choice_command_is_available_but_ready_fal
 
     assert coordinator.output_queue.get_nowait() == "choose 0"
     assert len(coordinator.action_queue) == 0
+
+
+def test_stale_none_combat_frame_after_play_waits_instead_of_calling_agent():
+    coordinator = _coordinator_without_threads()
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.NONE,
+        available_commands=["play", "end", "potion", "wait", "state"],
+        hand=[],
+        floor=18,
+        turn=3,
+        in_combat=True,
+    )
+    calls = []
+
+    def callback(game):
+        calls.append(game.screen_type)
+        return ChooseAction(0)
+
+    coordinator.state_change_callback = callback
+    coordinator.action_queue.append(PlayCardAction(card_index=0))
+
+    coordinator.execute_next_action_if_ready()
+    assert coordinator.output_queue.get_nowait() == "play 1"
+    assert isinstance(coordinator.action_queue[0], WaitAction)
+
+    coordinator.input_queue.put(_stale_none_combat_message())
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+    assert calls == []
+
+    coordinator.execute_next_action_if_ready()
+    assert coordinator.output_queue.get_nowait() == "wait 1"
+
+    coordinator.input_queue.put(_stale_none_combat_message())
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+
+    assert calls == []
+    assert len(coordinator.action_queue) == 1
+    assert isinstance(coordinator.action_queue[0], WaitAction)
