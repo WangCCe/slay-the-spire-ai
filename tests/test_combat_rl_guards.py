@@ -386,6 +386,39 @@ def test_potion_guard_does_not_auto_use_elixir_hand_select_potion():
     assert _agent()._maybe_use_potion_guard(game) is None
 
 
+def test_potion_guard_saves_boss_setup_potions_in_healthy_act1_hallway():
+    fear = SimpleNamespace(
+        potion_id="FearPotion",
+        name="Fear Potion",
+        can_use=True,
+        requires_target=True,
+        effect_type="debuff_vulnerable",
+    )
+    strength = SimpleNamespace(
+        potion_id="StrengthPotion",
+        name="Strength Potion",
+        can_use=True,
+        requires_target=False,
+        effect_type="buff_strength",
+    )
+    game = _game(
+        potions=[fear, strength],
+        monsters=[
+            _monster(hp=24, damage=7, index=0, name="Gremlin Wizard"),
+            _monster(hp=22, damage=7, index=1, name="Mad Gremlin"),
+            _monster(hp=20, damage=7, index=2, name="Fat Gremlin"),
+        ],
+        current_hp=73,
+        max_hp=80,
+        room_type="MonsterRoom",
+        floor=10,
+        act=1,
+        turn=1,
+    )
+
+    assert _agent()._maybe_use_potion_guard(game) is None
+
+
 def test_rl_potion_action_is_blocked_in_low_risk_act1_hallway_before_boss():
     potion = SimpleNamespace(
         potion_id="ExplosivePotion",

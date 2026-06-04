@@ -941,6 +941,34 @@ class CombatRLAgent:
             "cleave",
         }
     )
+    ACT1_BOSS_SETUP_POTION_EFFECTS = frozenset(
+        {
+            "artifact",
+            "buff_strength",
+            "card_choice_attack",
+            "card_choice_power",
+            "debuff_vulnerable",
+            "debuff_weak",
+            "duplicate_next_card",
+            "ritual",
+            "temp_strength",
+            "upgrade_hand",
+        }
+    )
+    ACT1_BOSS_SETUP_POTION_IDS = frozenset(
+        {
+            "ancientpotion",
+            "attackpotion",
+            "blessingoftheforge",
+            "duplicationpotion",
+            "fearpotion",
+            "flexpotion",
+            "powerpotion",
+            "steroidpotion",
+            "strengthpotion",
+            "weakpotion",
+        }
+    )
     LOW_VALUE_STATUS_CARDS = frozenset({"slimed"})
     URGENT_ETHEREAL_ATTACKS = frozenset({"carnage"})
     LOW_VALUE_BEFORE_URGENT_ETHEREAL = frozenset(
@@ -1345,6 +1373,25 @@ class CombatRLAgent:
 
         scored = []
         for index, potion in enumerate(potions):
+            if self._should_save_act1_boss_setup_potion(
+                potion,
+                game,
+                incoming,
+                current_hp,
+                hp_pct,
+                is_elite,
+                is_boss,
+            ):
+                logger.info(
+                    "[POTION_GUARD] Saving %s for Act 1 boss: incoming=%s hp=%s/%s room=%s monsters=%s",
+                    getattr(potion, "name", "UNKNOWN"),
+                    incoming,
+                    current_hp,
+                    max_hp,
+                    room_type,
+                    len(alive_monsters),
+                )
+                continue
             score = self._score_potion_for_guard(
                 potion,
                 incoming,
@@ -1375,6 +1422,45 @@ class CombatRLAgent:
         if getattr(potion, "requires_target", False):
             return PotionAction(True, potion=potion, target_index=target_index)
         return PotionAction(True, potion=potion)
+
+    @classmethod
+    def _should_save_act1_boss_setup_potion(
+        cls,
+        potion,
+        game: Game,
+        incoming: int,
+        current_hp: int,
+        hp_pct: float,
+        is_elite: bool,
+        is_boss: bool,
+    ) -> bool:
+        if is_elite or is_boss:
+            return False
+
+        act = cls._safe_int(getattr(game, "act", 1), default=1)
+        floor = cls._safe_int(getattr(game, "floor", 0), default=0)
+        if act != 1 or floor <= 0 or floor >= 16:
+            return False
+
+        if incoming >= current_hp:
+            return False
+        if hp_pct <= 0.45 and incoming > 0:
+            return False
+        if hp_pct < 0.70:
+            return False
+        if incoming >= max(24, current_hp * 0.45):
+            return False
+
+        effect_type = str(getattr(potion, "effect_type", "") or "")
+        identifiers = {
+            cls._normalize_identifier(getattr(potion, "potion_id", "")),
+            cls._normalize_identifier(getattr(potion, "name", "")),
+            cls._normalize_identifier(potion_id(potion)),
+        }
+        return (
+            effect_type in cls.ACT1_BOSS_SETUP_POTION_EFFECTS
+            or bool(identifiers & cls.ACT1_BOSS_SETUP_POTION_IDS)
+        )
 
     @staticmethod
     def _score_potion_for_guard(potion, incoming, current_hp, hp_pct, is_elite, is_boss, monster_count) -> int:
