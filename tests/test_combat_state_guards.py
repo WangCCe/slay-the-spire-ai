@@ -153,6 +153,12 @@ def test_power_amount_reads_named_power_with_configurable_missing_amount():
     assert power_amount(None, "Strength", missing_amount=1) == 0
 
 
+def test_power_amount_matches_protocol_id_without_display_spacing():
+    powers = [SimpleNamespace(power_id="SharpHide", amount=3)]
+
+    assert power_amount(powers, "Sharp Hide") == 3
+
+
 def test_power_amount_coerces_numeric_strings_and_preserves_negative_values():
     powers = [
         SimpleNamespace(power_id="Poison", amount="2"),

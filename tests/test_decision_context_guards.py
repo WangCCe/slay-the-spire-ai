@@ -466,6 +466,37 @@ def test_decision_context_accepts_power_name_only_objects():
     assert context.weak_stacks[0] == 1
 
 
+def test_decision_context_tracks_guardian_sharp_hide_power_id_as_thorns():
+    guardian = SimpleNamespace(
+        name="The Guardian",
+        monster_id="TheGuardian",
+        is_gone=False,
+        half_dead=False,
+        current_hp=112,
+        max_hp=240,
+        intent=Intent.DEFEND,
+        move_adjusted_damage=0,
+        move_hits=1,
+        powers=[SimpleNamespace(power_id="SharpHide", amount=3)],
+    )
+    game = SimpleNamespace(
+        current_hp=25,
+        max_hp=80,
+        player=SimpleNamespace(energy=3, powers=[]),
+        turn=5,
+        floor=16,
+        act=1,
+        monsters=[guardian],
+        deck=[],
+        hand=[],
+        relics=[],
+    )
+
+    context = DecisionContext(game)
+
+    assert context.thorns_stacks[0] == 3
+
+
 def test_decision_context_accepts_relic_strings_and_names():
     game = SimpleNamespace(
         current_hp=70,

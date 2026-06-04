@@ -47,9 +47,18 @@ def power_signature(power: Any):
     return (power_identifier(power), getattr(power, 'amount', None))
 
 
+def _normalized_power_key(value: Any) -> str:
+    if value is None:
+        return ""
+    return "".join(ch for ch in str(value).lower() if ch.isalnum())
+
+
 def power_matches(power: Any, name: str) -> bool:
+    target = _normalized_power_key(name)
+    if not target:
+        return False
     return any(
-        getattr(power, attr, None) == name
+        _normalized_power_key(getattr(power, attr, None)) == target
         for attr in ('name', 'power_name', 'power_id')
     )
 
