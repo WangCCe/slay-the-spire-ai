@@ -25,6 +25,30 @@ def positive_hit_count(value: Any) -> int:
     return max(1, coerce_int(value or 1, 1))
 
 
+def _normalized_identifier(value: Any) -> str:
+    return ''.join(ch for ch in str(value or '').lower() if ch.isalnum())
+
+
+def live_unknown_move_has_no_immediate_damage(monster: Any) -> bool:
+    if not intent_is_unknown(_monster_field(monster, 'intent')):
+        return False
+
+    identifiers = (
+        _monster_field(monster, 'monster_id'),
+        _monster_field(monster, 'name'),
+        canonical_live_monster_name(monster),
+    )
+    if not any('hexaghost' in _normalized_identifier(value) for value in identifiers):
+        return False
+
+    move_id = coerce_int(_monster_field(monster, 'move_id'), default=-1)
+    if move_id not in (0, 5):
+        return False
+    if positive_hit_count(_monster_field(monster, 'move_hits', 1)) > 1:
+        return False
+    return numeric_damage_value(_monster_field(monster, 'move_adjusted_damage', 0)) <= 5
+
+
 def move_data_immediate_unknown_damage(move: Any) -> int:
     if not isinstance(move, dict):
         return 0
@@ -40,6 +64,9 @@ def move_data_immediate_unknown_damage(move: Any) -> int:
 
 def known_unknown_move_immediate_damage(monster: Any) -> int:
     if not intent_is_unknown(_monster_field(monster, 'intent')):
+        return 0
+
+    if live_unknown_move_has_no_immediate_damage(monster):
         return 0
 
     live_damage = numeric_damage_value(_monster_field(monster, 'move_adjusted_damage', 0))
@@ -65,6 +92,9 @@ def known_unknown_move_immediate_damage(monster: Any) -> int:
 def known_unknown_move_has_no_immediate_damage(monster: Any) -> bool:
     if not intent_is_unknown(_monster_field(monster, 'intent')):
         return False
+
+    if live_unknown_move_has_no_immediate_damage(monster):
+        return True
 
     move_id = _monster_field(monster, 'move_id')
     if move_id is None:

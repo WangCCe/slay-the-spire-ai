@@ -215,6 +215,23 @@ def test_simple_agent_incoming_damage_counts_known_unknown_damage_move():
     assert agent.get_incoming_damage() == 30
 
 
+def test_simple_agent_incoming_damage_ignores_live_hexaghost_opening_activate_damage():
+    monster = SimpleNamespace(
+        name="Hexaghost",
+        monster_id="Hexaghost",
+        current_hp=250,
+        max_hp=250,
+        is_gone=False,
+        half_dead=False,
+        intent=Intent.UNKNOWN,
+        move_id=5,
+        move_adjusted_damage=5,
+        move_hits=1,
+    )
+
+    assert _agent_with_monsters([monster]).get_incoming_damage() == 0
+
+
 def test_incoming_damage_numeric_helpers_ignore_nonfinite_values():
     assert incoming_damage.numeric_damage_value([3, float("inf"), -2]) == 3
     assert incoming_damage.positive_hit_count(float("inf")) == 1
