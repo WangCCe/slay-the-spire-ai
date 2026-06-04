@@ -940,6 +940,16 @@ class CombatRLAgent:
         }
     )
     LOW_VALUE_STATUS_CARDS = frozenset({"slimed"})
+    URGENT_ETHEREAL_ATTACKS = frozenset({"carnage"})
+    LOW_VALUE_BEFORE_URGENT_ETHEREAL = frozenset(
+        {
+            "strike",
+            "defend",
+            "armaments",
+            "truegrit",
+            "shrugitoff",
+        }
+    )
 
     def __init__(
         self,
@@ -1157,6 +1167,21 @@ class CombatRLAgent:
                         return self._with_combat_action_context(replacement, game)
                     self.rl_failure_count = 0
                     logger.info("[SLIME_VULN_GUARD] No vulnerable setup replacement found; allowing action")
+                    return action
+                elif self._should_override_urgent_ethereal_attack(action, game):
+                    replacement = self._get_urgent_ethereal_attack_replacement(game, action)
+                    if replacement is not None:
+                        self.rl_failure_count = 0
+                        self._fallback_turn_key = self._combat_turn_key(game)
+                        logger.info(
+                            "[ETHEREAL_ATTACK_GUARD] Replacing low-value action with %s on floor=%s turn=%s",
+                            self._describe_combat_action(replacement, game),
+                            getattr(game, "floor", None),
+                            getattr(game, "turn", None),
+                        )
+                        return self._with_combat_action_context(replacement, game)
+                    self.rl_failure_count = 0
+                    logger.info("[ETHEREAL_ATTACK_GUARD] No urgent ethereal replacement found; allowing action")
                     return action
                 elif self._should_override_unproductive_double_tap(action, game):
                     replacement = self._get_double_tap_safe_replacement(game)
@@ -1701,6 +1726,68 @@ class CombatRLAgent:
         if target_index is None or target_index >= len(monsters):
             return False
         return self._monster_vulnerable_stacks(monsters[target_index]) <= 0
+
+    def _should_override_urgent_ethereal_attack(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return False
+        if not getattr(game, "in_combat", False):
+            return False
+        if not self._is_boss_combat(game):
+            return False
+        if self._is_urgent_ethereal_attack_action(action, game):
+            return False
+
+        card = self._card_for_action(action, game)
+        if not self._card_matches_normalized_names(
+            card,
+            self.LOW_VALUE_BEFORE_URGENT_ETHEREAL,
+        ):
+            return False
+        return self._get_urgent_ethereal_attack_replacement(game, action) is not None
+
+    def _get_urgent_ethereal_attack_replacement(
+        self,
+        game: Game,
+        current_action: Optional[Action] = None,
+    ) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+
+        energy = self._player_energy(game)
+        playable = self._playable_cards(game, energy)
+        if not playable:
+            return None
+
+        target_index = self._best_monster_index(game)
+        current_card = self._card_for_action(current_action, game) if current_action else None
+        current_cost = effective_card_cost(current_card, energy) if current_card is not None else 0
+        for card_index, card in playable:
+            if not self._card_matches_normalized_names(card, self.URGENT_ETHEREAL_ATTACKS):
+                continue
+            ethereal_cost = effective_card_cost(card, energy)
+            remaining_energy = energy - ethereal_cost
+            if current_card is not None and current_cost > remaining_energy:
+                continue
+            if card_requires_target(card):
+                if target_index is None:
+                    continue
+                return PlayCardAction(card_index=card_index, target_index=target_index)
+            return PlayCardAction(card_index=card_index)
+        return None
+
+    def _is_urgent_ethereal_attack_action(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        return self._card_matches_normalized_names(
+            self._card_for_action(action, game),
+            self.URGENT_ETHEREAL_ATTACKS,
+        )
 
     def _should_override_unproductive_double_tap(self, action: Action, game: Game) -> bool:
         from spirecomm.communication.action import PlayCardAction
