@@ -572,6 +572,46 @@ def test_energy_guard_replaces_wasteful_end_turn_with_play_card():
     assert replacement.target_index == 0
 
 
+def test_energy_guard_fallback_does_not_spend_potion_on_safe_boss_window():
+    potion = SimpleNamespace(
+        potion_id="DistilledChaos",
+        name="Distilled Chaos",
+        can_use=True,
+        requires_target=False,
+        effect_type="play_top_cards",
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    game = _game(
+        hand=[strike],
+        potions=[potion],
+        monsters=[_monster(hp=140, damage=0, index=0, name="Slime Boss", monster_id="SlimeBoss")],
+        current_hp=80,
+        max_hp=80,
+        room_type="MonsterRoom",
+        floor=16,
+        act=1,
+        turn=1,
+        player=SimpleNamespace(energy=3),
+    )
+    agent = _agent()
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PotionAction(True, potion=potion)
+    )
+
+    assert agent._should_override_wasteful_end_turn(EndTurnAction(), game)
+    replacement = agent._get_non_end_turn_fallback(game)
+
+    assert isinstance(replacement, PlayCardAction)
+    assert replacement.card_index == 0
+    assert replacement.target_index == 0
+
+
 def test_energy_guard_targets_name_only_attack_without_has_target():
     strike = SimpleNamespace(
         name="Strike",

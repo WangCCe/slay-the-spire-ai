@@ -1388,11 +1388,14 @@ class CombatRLAgent:
         return True
 
     def _get_non_end_turn_fallback(self, game: Game) -> Optional[Action]:
-        from spirecomm.communication.action import EndTurnAction
+        from spirecomm.communication.action import EndTurnAction, PotionAction
 
         try:
             fallback_action = self.fallback_agent.get_next_action_in_game(game)
-            if fallback_action is not None and not isinstance(fallback_action, EndTurnAction):
+            if (
+                fallback_action is not None
+                and not isinstance(fallback_action, (EndTurnAction, PotionAction))
+            ):
                 return fallback_action
         except Exception as exc:
             logger.debug("[ENERGY_GUARD] Fallback action failed: %s", exc)
