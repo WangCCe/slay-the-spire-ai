@@ -19,6 +19,8 @@ class Args:
     game_dir = r"D:\SteamLibrary\steamapps\common\SlayTheSpire"
     decision_trace_path = None
     skip_decision_trace = False
+    sim_divergence_trace_path = None
+    skip_sim_divergence_trace = False
 
 
 def test_conservative_batch_command_defaults_to_safe_route():
@@ -77,3 +79,32 @@ def test_batch_child_env_can_skip_decision_trace(monkeypatch):
     env = build_child_env(args)
 
     assert "STS_DECISION_TRACE_FILE" not in env
+
+
+def test_batch_child_env_enables_default_sim_divergence_trace(monkeypatch):
+    monkeypatch.delenv("STS_SIM_DIVERGENCE_TRACE_FILE", raising=False)
+    args = Args()
+
+    env = build_child_env(args)
+
+    assert env["STS_SIM_DIVERGENCE_TRACE_FILE"].endswith("sim_divergence_trace.jsonl")
+
+
+def test_batch_child_env_can_override_sim_divergence_trace_path(monkeypatch):
+    monkeypatch.delenv("STS_SIM_DIVERGENCE_TRACE_FILE", raising=False)
+    args = Args()
+    args.sim_divergence_trace_path = r"D:\tmp\sim_trace.jsonl"
+
+    env = build_child_env(args)
+
+    assert env["STS_SIM_DIVERGENCE_TRACE_FILE"] == r"D:\tmp\sim_trace.jsonl"
+
+
+def test_batch_child_env_can_skip_sim_divergence_trace(monkeypatch):
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", "existing_sim.jsonl")
+    args = Args()
+    args.skip_sim_divergence_trace = True
+
+    env = build_child_env(args)
+
+    assert "STS_SIM_DIVERGENCE_TRACE_FILE" not in env

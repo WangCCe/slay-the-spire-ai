@@ -90,12 +90,19 @@ def build_child_env(args):
     env = os.environ.copy()
     if getattr(args, "skip_decision_trace", False):
         env.pop("STS_DECISION_TRACE_FILE", None)
-        return env
+    else:
+        trace_path = getattr(args, "decision_trace_path", None)
+        if not trace_path:
+            trace_path = str(Path(args.game_dir) / "ai_decision_trace.jsonl")
+        env["STS_DECISION_TRACE_FILE"] = trace_path
 
-    trace_path = getattr(args, "decision_trace_path", None)
-    if not trace_path:
-        trace_path = str(Path(args.game_dir) / "ai_decision_trace.jsonl")
-    env["STS_DECISION_TRACE_FILE"] = trace_path
+    if getattr(args, "skip_sim_divergence_trace", False):
+        env.pop("STS_SIM_DIVERGENCE_TRACE_FILE", None)
+    else:
+        sim_trace_path = getattr(args, "sim_divergence_trace_path", None)
+        if not sim_trace_path:
+            sim_trace_path = str(Path(args.game_dir) / "sim_divergence_trace.jsonl")
+        env["STS_SIM_DIVERGENCE_TRACE_FILE"] = sim_trace_path
     return env
 
 
@@ -288,6 +295,16 @@ def parse_args():
         help="Do not enable STS_DECISION_TRACE_FILE for the child process.",
     )
     parser.add_argument(
+        "--sim-divergence-trace-path",
+        default=None,
+        help="JSONL path for compact expected-vs-actual combat simulation divergence traces.",
+    )
+    parser.add_argument(
+        "--skip-sim-divergence-trace",
+        action="store_true",
+        help="Do not enable STS_SIM_DIVERGENCE_TRACE_FILE for the child process.",
+    )
+    parser.add_argument(
         "--truncate-log-after-backup",
         action="store_true",
         help="Clear the active log after copying it. Use only between batches.",
@@ -320,6 +337,9 @@ def main():
     trace_path = child_env.get("STS_DECISION_TRACE_FILE")
     if trace_path:
         print(f"[training-batch] decision trace: {trace_path}", file=sys.stderr)
+    sim_trace_path = child_env.get("STS_SIM_DIVERGENCE_TRACE_FILE")
+    if sim_trace_path:
+        print(f"[training-batch] sim divergence trace: {sim_trace_path}", file=sys.stderr)
     print_restart_guidance(args)
 
     if args.dry_run:
