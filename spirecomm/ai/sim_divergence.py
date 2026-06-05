@@ -48,6 +48,7 @@ BASE_SKILL_BLOCK = {
     "Armaments": 5,
     "Defend": 5,
     "Finesse": 2,
+    "Good Instincts": 6,
     "Flame Barrier": 12,
     "Ghostly Armor": 10,
     "Impervious": 30,

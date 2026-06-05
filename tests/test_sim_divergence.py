@@ -1011,6 +1011,73 @@ def test_zero_cost_seeing_red_gains_two_energy(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_good_instincts_zero_live_block_uses_base_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    good_instincts = _card(
+        name="Good Instincts",
+        card_id="Good Instincts",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        block=0,
+    )
+    before = _game(
+        floor=1,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=0),
+        hand=[good_instincts],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=40, damage=6)],
+    )
+    actual = _game(
+        floor=1,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=6, energy=0),
+        hand=[],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=40, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_good_instincts_plus_zero_live_block_uses_upgrade_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    good_instincts_plus = _card(
+        name="Good Instincts+",
+        card_id="Good Instincts",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        block=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=19,
+        turn=5,
+        player=SimpleNamespace(current_hp=74, max_hp=80, block=0, energy=0),
+        hand=[good_instincts_plus],
+        monsters=[_monster(name="Shelled Parasite", monster_id="Shelled Parasite", hp=68, damage=10)],
+    )
+    actual = _game(
+        floor=19,
+        turn=5,
+        player=SimpleNamespace(current_hp=74, max_hp=80, block=9, energy=0),
+        hand=[],
+        monsters=[_monster(name="Shelled Parasite", monster_id="Shelled Parasite", hp=68, damage=10)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_upgraded_skill_block_does_not_create_false_player_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
