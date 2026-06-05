@@ -41,6 +41,7 @@ ALL_ENEMY_ATTACKS = {
 BASE_SKILL_BLOCK = {
     "Armaments": 5,
     "Defend": 5,
+    "Finesse": 2,
     "Flame Barrier": 12,
     "Ghostly Armor": 10,
     "Impervious": 30,
