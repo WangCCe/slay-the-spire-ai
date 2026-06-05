@@ -12,6 +12,8 @@ def _normalized_potion_identifier(value) -> str:
 
 
 def potion_is_exhaust_hand_select(potion) -> bool:
+    if potion is None:
+        return False
     effect_type = str(getattr(potion, "effect_type", "") or "").lower()
     identifiers = {
         _normalized_potion_identifier(getattr(potion, "potion_id", "")),

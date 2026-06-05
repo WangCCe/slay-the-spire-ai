@@ -469,6 +469,67 @@ def test_rl_potion_action_is_blocked_in_low_risk_act1_hallway_before_boss():
     assert calls == {"rl": 1, "fallback": 1}
 
 
+def test_rl_elixir_action_is_replaced_even_in_boss_combat():
+    potion = SimpleNamespace(
+        potion_id="ElixirPotion",
+        name="Elixir",
+        can_use=True,
+        requires_target=False,
+        effect_type="exhaust_hand_select",
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    game = _game(
+        potions=[potion],
+        monsters=[
+            _monster(
+                hp=98,
+                damage=0,
+                index=0,
+                name="Slime Boss",
+                monster_id="SlimeBoss",
+            )
+        ],
+        current_hp=69,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=2,
+        player=SimpleNamespace(energy=1),
+        hand=[strike],
+    )
+    calls = {"rl": 0, "fallback": 0}
+
+    def rl_decide(_game):
+        calls["rl"] += 1
+        return PotionAction(True, potion=potion)
+
+    def fallback_decide(_game):
+        calls["fallback"] += 1
+        return PlayCardAction(card_index=0, target_index=0)
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=rl_decide)
+    agent.fallback_agent = SimpleNamespace(get_next_action_in_game=fallback_decide)
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index == 0
+    assert calls == {"rl": 1, "fallback": 1}
+
+
 def test_rl_incoming_damage_clamps_negative_live_move_damage_to_zero():
     monster = _monster(hp=25, damage=-1)
     monster.move_hits = 3

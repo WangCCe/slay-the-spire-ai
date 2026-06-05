@@ -32,6 +32,7 @@ from spirecomm.ai.heuristics.potions import (
     game_potion_available,
     game_real_potions,
     potion_can_use,
+    potion_is_exhaust_hand_select,
 )
 from spirecomm.ai.intent_utils import intent_is_unknown, monster_intends_attack
 from spirecomm.spire.character import PlayerClass
@@ -1471,7 +1472,7 @@ class CombatRLAgent:
         effect_type = str(getattr(potion, "effect_type", "") or "")
         name = str(getattr(potion, "name", "") or "").lower()
         score = 0
-        if effect_type == "exhaust_hand_select" or name == "elixir":
+        if potion_is_exhaust_hand_select(potion):
             return 0
         utility_choice_effects = {
             "add_miracle",
@@ -1544,6 +1545,8 @@ class CombatRLAgent:
             return False
         if not getattr(game, "in_combat", False):
             return False
+        if potion_is_exhaust_hand_select(getattr(action, "potion", None)):
+            return True
 
         room_type = str(getattr(game, "room_type", "") or "")
         if "Boss" in room_type or "Elite" in room_type:

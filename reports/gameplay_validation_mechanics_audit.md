@@ -164,3 +164,14 @@
 - Regression: `test_optimized_agent_does_not_auto_use_elixir_hand_select_potion_in_danger` and `test_optimized_agent_boss_fallback_does_not_auto_use_elixir_hand_select_potion` reproduced the two automatic-use paths red before the fix.
 - Verification after fix: focused regressions red `2 failed`, then green `2 passed`; related agent/CombatRL potion tests `107 passed`; full pytest with disabled cache provider and repo-local basetemp passed `1514 passed`.
 - Next candidate: rerun bounded validation from this commit and confirm that fallback no longer burns Elixir into HAND_SELECT. If that signal is quiet, inspect the remaining Slime Boss death and the Act 2 low-HP Snake Plant/Snecko decisions rather than broad potion policy tuning.
+
+## Round 16 - 2026-06-05
+
+- Preflight: git tracked tree clean at `3195618 Skip fallback Elixir auto-use`; CommunicationMod config still used Windows Python with `scripts/run_training_batch.py --eval --max-games 20 --phase conservative --restart-guidance --truncate-log-after-backup`.
+- Baseline: the previous commit had just passed full pytest `1514 passed`; post-fix verification for this round passed full pytest `1515 passed`.
+- Validation: controlled CommunicationMod fresh run from `3195618` was stopped after a focused second Elixir entry point was attributed. It completed 6 visible `.run` files after cutoff `1780619680` with no `victory=true`: deaths to Champ, Collector, Exordium Wildlife, The Guardian twice, and Slime Boss. No CommunicationMod Python traceback was active.
+- Failure type: RL action-space Elixir auto-use bypassed the fallback guard. Decision trace for the Slime Boss run showed `CombatRLAgent` returning `PotionAction` for `ElixirPotion` on floor 16 turn 2, even though fallback and potion-guard scoring no longer auto-use Elixir. That means the learned action decoder path could still open HAND_SELECT and exhaust playable cards.
+- Fix: `CombatRLAgent._should_override_low_value_potion()` now treats `exhaust_hand_select` / `ElixirPotion` as an always-replace unsafe blind potion action before boss/elite exceptions. `CombatRLAgent._score_potion_for_guard()` also uses the shared `potion_is_exhaust_hand_select()` helper.
+- Regression: `test_rl_elixir_action_is_replaced_even_in_boss_combat` reproduced the Slime Boss RL-action path red, then passed after the guard.
+- Verification after fix: focused regression red `1 failed`, then green `1 passed`; related agent/CombatRL potion tests `108 passed`; full pytest with disabled cache provider and repo-local basetemp passed `1515 passed`.
+- Next candidate: rerun bounded validation from this commit and confirm that no `PotionAction` uses `ElixirPotion` from either guard, fallback, or RL action-space paths. If Elixir stays quiet, inspect repeated Act 1 boss deaths and the Act 2 boss deaths separately.
