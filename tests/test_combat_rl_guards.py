@@ -1275,6 +1275,68 @@ def test_guardian_sharp_hide_guard_blocks_attack_that_would_make_incoming_lethal
     assert agent._fallback_turn_key == (16, 7)
 
 
+def test_guardian_sharp_hide_guard_infers_roll_attack_reflection_without_power():
+    thunderclap = SimpleNamespace(
+        name="Thunderclap",
+        card_id="Thunderclap",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    guardian = _monster(
+        hp=88,
+        damage=9,
+        index=0,
+        name="The Guardian",
+        monster_id="TheGuardian",
+    )
+    guardian.intent = Intent.ATTACK
+    guardian.move_id = 5
+    guardian.powers = []
+    game = _game(
+        hand=[thunderclap, defend],
+        monsters=[guardian],
+        current_hp=12,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=8,
+        player=SimpleNamespace(energy=1, block=0),
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0, target_index=0)
+    )
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (16, 8)
+
+
 def test_energy_guard_prioritizes_hexaghost_opening_carnage_over_bash():
     bash = SimpleNamespace(
         name="Bash",

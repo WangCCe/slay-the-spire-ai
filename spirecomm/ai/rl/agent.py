@@ -912,6 +912,9 @@ class CombatRLAgent:
 
     ACT1_BOSS_IDENTIFIERS = frozenset({"slimeboss", "hexaghost", "theguardian"})
     GUARDIAN_PRESSURE_INCOMING = 24
+    GUARDIAN_SHARP_HIDE_DAMAGE = 3
+    GUARDIAN_SHARP_HIDE_ASCENSION_19_DAMAGE = 4
+    GUARDIAN_SHARP_HIDE_MOVE_IDS = frozenset({5, 6})
     GUARDIAN_PRESSURE_WEAK_ATTACKS = frozenset(
         {
             "clothesline",
@@ -2549,8 +2552,20 @@ class CombatRLAgent:
                     continue
                 sharp_hide_damage = max(
                     sharp_hide_damage,
-                    cls._safe_int(getattr(power, "amount", 0), default=0),
+                        cls._safe_int(getattr(power, "amount", 0), default=0),
                 )
+            if sharp_hide_damage <= 0:
+                move_id = cls._safe_int(getattr(monster, "move_id", -1), default=-1)
+                if move_id in cls.GUARDIAN_SHARP_HIDE_MOVE_IDS:
+                    ascension = cls._safe_int(getattr(game, "ascension_level", 0), default=0)
+                    sharp_hide_damage = max(
+                        sharp_hide_damage,
+                        (
+                            cls.GUARDIAN_SHARP_HIDE_ASCENSION_19_DAMAGE
+                            if ascension >= 19
+                            else cls.GUARDIAN_SHARP_HIDE_DAMAGE
+                        ),
+                    )
         return sharp_hide_damage
 
     @staticmethod
