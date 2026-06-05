@@ -186,3 +186,14 @@
 - Regression: `test_energy_guard_counts_burn_damage_when_selecting_survival_fallback` reproduced the Hexaghost hand red by making fallback choose `Thunderclap`; after the fix, the replacement chooses `Defend`.
 - Verification after fix: focused regression red `1 failed`, then green `1 passed`; related CombatRL/agent guard tests `109 passed`; full pytest with disabled cache provider and repo-local basetemp passed `1516 passed`.
 - Next candidate: rerun bounded validation from this commit and inspect whether Hexaghost deaths still contain same-turn Burn lethal lines. If this signal quiets, compare remaining Act 1 boss deaths by boss and turn phase before touching broader fallback/RL policy.
+
+## Round 18 - 2026-06-05
+
+- Preflight: git tracked tree clean at `a48a238 Count Burn damage in survival fallback`; CommunicationMod config still used Windows Python with `scripts/run_training_batch.py --eval --max-games 20 --phase conservative --restart-guidance --truncate-log-after-backup`.
+- Baseline: full pytest with disabled cache provider and repo-local basetemp passed `1516 passed`.
+- Validation: controlled CommunicationMod fresh run from `a48a238` was stopped after the selected potion-action bypass was attributed. It completed 5 visible `.run` files after cutoff `1780621790` with no `victory=true`: Slime Boss, Guardian, Hexaghost, Writhing Mass at floor 46, and another Hexaghost. The batch was then stopped with `restart_sts_modded.ps1 -SkipLaunch` to preserve the current trace.
+- Failure type: RL action-space Elixir guard only handled `PotionAction` objects carrying a bound `potion`. The v2 decoder emits index-only `PotionAction(use=True, potion_index=slot)`, and decision trace showed that shape using `ElixirPotion` on Hexaghost floor 16 turn 2 (`1780623209.run`), opening HAND_SELECT despite the previous Elixir guard.
+- Fix: `CombatRLAgent` now resolves the potion for a `PotionAction` from either the bound `action.potion` or `action.potion_index` against the current game potions before deciding whether the action is an unsafe exhaust-hand-select potion. Combat action logging also includes the resolved potion name and index for index-only potion actions.
+- Regression: `test_rl_elixir_index_action_is_replaced_even_in_boss_combat` reproduced the real v2 decoder path red with `PotionAction(True, potion_index=0)` and a current Elixir slot, then passed after the guard resolved the indexed potion.
+- Verification after fix: focused regression red `1 failed`, then green `1 passed`; related CombatRL/agent/potion tests `116 passed`; full pytest with disabled cache provider and repo-local basetemp passed `1517 passed`.
+- Next candidate: rerun bounded validation from this commit and confirm trace contains no `ElixirPotion` `PotionAction` from bound or index-only RL paths. If Elixir stays quiet, inspect the remaining Act 1 boss deaths and the floor 46 Writhing Mass death separately.

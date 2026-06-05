@@ -1572,7 +1572,7 @@ class CombatRLAgent:
             return False
         if not getattr(game, "in_combat", False):
             return False
-        if potion_is_exhaust_hand_select(getattr(action, "potion", None)):
+        if potion_is_exhaust_hand_select(self._potion_for_action(action, game)):
             return True
 
         room_type = str(getattr(game, "room_type", "") or "")
@@ -2170,9 +2170,10 @@ class CombatRLAgent:
                 parts.append(f"cost={cost}")
             parts.append(f"target_index={getattr(action, 'target_index', None)}")
         elif isinstance(action, PotionAction):
-            potion = getattr(action, "potion", None)
+            potion = self._potion_for_action(action, game)
             if potion is not None:
                 parts.append(f"potion={getattr(potion, 'name', getattr(potion, 'potion_id', None))}")
+            parts.append(f"potion_index={getattr(action, 'potion_index', None)}")
             parts.append(f"target_index={getattr(action, 'target_index', None)}")
 
         hand = ", ".join(
@@ -2184,6 +2185,23 @@ class CombatRLAgent:
         parts.append(f"energy={self._player_energy(game)}")
         parts.append(f"hand=[{hand}]")
         return " ".join(parts)
+
+    @classmethod
+    def _potion_for_action(cls, action: Action, game: Game):
+        potion = getattr(action, "potion", None)
+        if potion is not None:
+            return potion
+
+        potion_index = cls._safe_int(getattr(action, "potion_index", -1), default=-1)
+        if potion_index < 0:
+            return None
+
+        raw_potions = getattr(game, "potions", None)
+        potions = raw_potions if raw_potions is not None else game_real_potions(game)
+        potions = potions or []
+        if potion_index >= len(potions):
+            return None
+        return potions[potion_index]
 
     @staticmethod
     def _card_for_action(action: Action, game: Game):
