@@ -951,6 +951,63 @@ def test_energy_guard_takeover_preserves_hexaghost_setup_priority_when_suppressi
     assert action.target_index is None
 
 
+def test_energy_guard_takeover_replaces_fallback_end_turn_with_playable_card():
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    game = _game(
+        hand=[strike, defend],
+        monsters=[
+            _monster(
+                hp=158,
+                damage=0,
+                index=0,
+                name="The Guardian",
+                monster_id="TheGuardian",
+            )
+        ],
+        current_hp=5,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=5,
+        player=SimpleNamespace(energy=3, block=0),
+    )
+    game.monsters[0].intent = Intent.DEFEND
+
+    agent = _agent()
+    agent._fallback_turn_key = (16, 5)
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index == 0
+
+
 def test_energy_guard_prioritizes_hexaghost_opening_carnage_over_bash():
     bash = SimpleNamespace(
         name="Bash",

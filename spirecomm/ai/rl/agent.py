@@ -1137,6 +1137,16 @@ class CombatRLAgent:
             fallback_action = self.fallback_agent.get_next_action_in_game(game)
             from spirecomm.communication.action import EndTurnAction, PotionAction
 
+            if isinstance(fallback_action, EndTurnAction):
+                replacement = self._get_non_end_turn_fallback(game)
+                if replacement is not None:
+                    logger.info(
+                        "[ENERGY_GUARD] Replacing takeover EndTurnAction with %s",
+                        self._describe_combat_action(replacement, game),
+                    )
+                    return self._with_combat_action_context(replacement, game)
+                return self._with_combat_action_context(fallback_action, game)
+
             if isinstance(fallback_action, PotionAction):
                 replacement = self._get_energy_guard_takeover_potion_replacement(game)
                 if replacement is not None:
