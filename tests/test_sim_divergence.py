@@ -170,6 +170,38 @@ def test_upgraded_attack_damage_does_not_create_false_monster_diff(monkeypatch, 
     assert not trace_path.exists()
 
 
+def test_headbutt_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    headbutt = _card(
+        name="Headbutt",
+        card_id="Headbutt",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=6,
+        turn=2,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=3),
+        hand=[headbutt],
+        monsters=[_monster(name="Slaver", monster_id="SlaverBlue", hp=30, damage=12)],
+    )
+    actual = _game(
+        floor=6,
+        turn=2,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Slaver", monster_id="SlaverBlue", hp=21, damage=12)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_upgraded_skill_block_does_not_create_false_player_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
@@ -200,6 +232,65 @@ def test_upgraded_skill_block_does_not_create_false_player_diff(monkeypatch, tmp
     )
 
     assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_armaments_block_does_not_create_false_player_diff(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    armaments_plus = _card(
+        name="Armaments+",
+        card_id="Armaments",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=16,
+        turn=11,
+        player=SimpleNamespace(current_hp=20, max_hp=80, block=11, energy=2),
+        hand=[armaments_plus, _card(name="Strike", damage=6)],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=94, damage=14)],
+    )
+    actual = _game(
+        floor=16,
+        turn=11,
+        player=SimpleNamespace(current_hp=20, max_hp=80, block=16, energy=1),
+        hand=[_card(name="Strike+", damage=9, upgrades=1)],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=94, damage=14)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_end_turn_energy_refresh_does_not_create_false_player_diff(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=4,
+        turn=1,
+        player=SimpleNamespace(current_hp=65, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=22, damage=0, intent=Intent.NONE)],
+    )
+    actual = _game(
+        floor=4,
+        turn=2,
+        player=SimpleNamespace(current_hp=65, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=22, damage=0, intent=Intent.NONE)],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
     assert observe_next_state(actual) is False
     assert not trace_path.exists()
 

@@ -23,6 +23,7 @@ BASE_ATTACK_DAMAGE = {
     "Bash": 8,
     "Carnage": 20,
     "Cleave": 8,
+    "Headbutt": 9,
     "Iron Wave": 5,
     "Pommel Strike": 9,
     "Strike": 6,
@@ -30,6 +31,7 @@ BASE_ATTACK_DAMAGE = {
 }
 
 BASE_SKILL_BLOCK = {
+    "Armaments": 5,
     "Defend": 5,
     "Flame Barrier": 12,
     "Ghostly Armor": 10,
@@ -107,7 +109,8 @@ def observe_next_state(game, path: Optional[Path] = None) -> bool:
         if actual["floor"] != pending["floor"]:
             return False
 
-        diffs = _diff_snapshots(pending["expected"], actual)
+        ignored_diffs = _ignored_diff_keys(pending)
+        diffs = _diff_snapshots(pending["expected"], actual, ignored_diffs)
         if not diffs:
             return False
 
@@ -219,14 +222,20 @@ def _apply_expected_attack(expected: Dict[str, Any], target_index: Optional[int]
         target["gone"] = True
 
 
-def _diff_snapshots(expected: Dict[str, Any], actual: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+def _diff_snapshots(
+    expected: Dict[str, Any],
+    actual: Dict[str, Any],
+    ignored_keys: Optional[set] = None,
+) -> Dict[str, Dict[str, Any]]:
     diffs: Dict[str, Dict[str, Any]] = {}
+    ignored_keys = ignored_keys or set()
     for field in ("current_hp", "block", "energy"):
         _add_diff(
             diffs,
             f"player.{field}",
             expected.get("player", {}).get(field),
             actual.get("player", {}).get(field),
+            ignored_keys,
         )
 
     expected_monsters = expected.get("monsters", [])
@@ -241,11 +250,27 @@ def _diff_snapshots(expected: Dict[str, Any], actual: Dict[str, Any]) -> Dict[st
                 f"monsters[{index}].{field}",
                 expected_monster.get(field),
                 actual_monster.get(field),
+                ignored_keys,
             )
     return diffs
 
 
-def _add_diff(diffs: Dict[str, Dict[str, Any]], key: str, expected: Any, actual: Any) -> None:
+def _ignored_diff_keys(pending: Dict[str, Any]) -> set:
+    action = pending.get("action", {})
+    if action.get("type") == "EndTurnAction":
+        return {"player.energy"}
+    return set()
+
+
+def _add_diff(
+    diffs: Dict[str, Dict[str, Any]],
+    key: str,
+    expected: Any,
+    actual: Any,
+    ignored_keys: set,
+) -> None:
+    if key in ignored_keys:
+        return
     if expected != actual:
         diffs[key] = {"expected": expected, "actual": actual}
 
