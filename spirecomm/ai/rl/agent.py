@@ -907,6 +907,14 @@ class CombatRLAgent:
     """
 
     ACT1_BOSS_IDENTIFIERS = frozenset({"slimeboss", "hexaghost", "theguardian"})
+    GUARDIAN_PRESSURE_INCOMING = 24
+    GUARDIAN_PRESSURE_WEAK_ATTACKS = frozenset(
+        {
+            "clothesline",
+            "shockwave",
+            "uppercut",
+        }
+    )
     HEXAGHOST_SETUP_PRIORITY = (
         "shockwave",
         "corruption",
@@ -1181,6 +1189,16 @@ class CombatRLAgent:
                     self._fallback_turn_key = self._combat_turn_key(game)
                     logger.info(
                         "[SURVIVAL_GUARD] Replacing RL action with %s on floor=%s turn=%s",
+                        self._describe_combat_action(replacement, game),
+                        getattr(game, "floor", None),
+                        getattr(game, "turn", None),
+                    )
+                    return self._with_combat_action_context(replacement, game)
+                elif (replacement := self._get_guardian_pressure_action_replacement(action, game)) is not None:
+                    self.rl_failure_count = 0
+                    self._fallback_turn_key = self._combat_turn_key(game)
+                    logger.info(
+                        "[GUARDIAN_PRESSURE_GUARD] Replacing RL action with %s on floor=%s turn=%s",
                         self._describe_combat_action(replacement, game),
                         getattr(game, "floor", None),
                         getattr(game, "turn", None),
@@ -1677,6 +1695,8 @@ class CombatRLAgent:
         if replacement is not None:
             return replacement
 
+        guardian_pressure_replacement = self._get_guardian_pressure_block_replacement(game)
+
         if self._is_hexaghost_opening_setup_window(game):
             replacement = self._get_hexaghost_setup_replacement(game)
             if replacement is not None:
@@ -1688,9 +1708,19 @@ class CombatRLAgent:
                 fallback_action is not None
                 and not isinstance(fallback_action, (EndTurnAction, PotionAction))
             ):
+                if guardian_pressure_replacement is not None:
+                    guarded_action = self._get_guardian_pressure_action_replacement(
+                        fallback_action,
+                        game,
+                    )
+                    if guarded_action is not None:
+                        return guarded_action
                 return fallback_action
         except Exception as exc:
             logger.debug("[ENERGY_GUARD] Fallback action failed: %s", exc)
+
+        if guardian_pressure_replacement is not None:
+            return guardian_pressure_replacement
 
         return self._first_playable_card_action(game)
 
@@ -1710,6 +1740,30 @@ class CombatRLAgent:
             return None
 
         current_card = self._card_for_action(action, game)
+        replacement_card = self._card_for_action(replacement, game)
+        if self._survival_block_value(replacement_card) <= self._survival_block_value(current_card):
+            return None
+        return replacement
+
+    def _get_guardian_pressure_action_replacement(self, action: Action, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return None
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        if not getattr(game, "in_combat", False):
+            return None
+
+        current_card = self._card_for_action(action, game)
+        if self._card_matches_normalized_names(current_card, self.GUARDIAN_PRESSURE_WEAK_ATTACKS):
+            return None
+
+        replacement = self._get_guardian_pressure_block_replacement(game)
+        if not isinstance(replacement, PlayCardAction):
+            return None
+
         replacement_card = self._card_for_action(replacement, game)
         if self._survival_block_value(replacement_card) <= self._survival_block_value(current_card):
             return None
@@ -1736,6 +1790,10 @@ class CombatRLAgent:
 
     def _get_energy_guard_takeover_potion_replacement(self, game: Game) -> Optional[Action]:
         replacement = self._get_survival_block_replacement(game)
+        if replacement is not None:
+            return replacement
+
+        replacement = self._get_guardian_pressure_block_replacement(game)
         if replacement is not None:
             return replacement
 
@@ -1791,6 +1849,60 @@ class CombatRLAgent:
             current_hp,
             incoming,
             burn_damage,
+            current_block,
+        )
+        return action
+
+    def _get_guardian_pressure_block_replacement(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+
+        if not self._has_guardian(game):
+            return None
+
+        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        if current_hp <= 0:
+            return None
+
+        incoming = self._incoming_damage(game)
+        current_block = self._player_block(game)
+        damage_after_block = max(0, incoming - current_block)
+        if damage_after_block <= 0:
+            return None
+        if damage_after_block >= current_hp:
+            return None
+        if incoming < self.GUARDIAN_PRESSURE_INCOMING:
+            return None
+
+        energy = self._player_energy(game)
+        best_candidate = None
+        target_index = self._best_monster_index(game)
+        for card_index, card in self._playable_cards(game, energy):
+            block_value = self._survival_block_value(card)
+            if block_value <= 0:
+                continue
+            if card_requires_target(card) and target_index is None:
+                continue
+
+            effective_cost = effective_card_cost(card, energy)
+            score = (block_value, -effective_cost, -card_index)
+            if best_candidate is None or score > best_candidate[0]:
+                action = (
+                    PlayCardAction(card_index=card_index, target_index=target_index)
+                    if card_requires_target(card)
+                    else PlayCardAction(card_index=card_index)
+                )
+                best_candidate = (score, action, card, block_value)
+
+        if best_candidate is None:
+            return None
+
+        _, action, card, block_value = best_candidate
+        logger.info(
+            "[GUARDIAN_PRESSURE_GUARD] Selecting %s for block=%s hp=%s incoming=%s current_block=%s",
+            self._card_label(card),
+            block_value,
+            current_hp,
+            incoming,
             current_block,
         )
         return action
@@ -2305,6 +2417,17 @@ class CombatRLAgent:
                 getattr(monster, "name", None),
             ):
                 if cls._normalize_identifier(value) in cls.ACT1_BOSS_IDENTIFIERS:
+                    return True
+        return False
+
+    @classmethod
+    def _has_guardian(cls, game: Game) -> bool:
+        for monster in cls._alive_monsters(game):
+            for value in (
+                getattr(monster, "monster_id", None),
+                getattr(monster, "name", None),
+            ):
+                if cls._normalize_identifier(value) == "theguardian":
                     return True
         return False
 

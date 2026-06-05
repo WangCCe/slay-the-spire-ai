@@ -1146,6 +1146,74 @@ def test_survival_guard_overrides_rl_attack_when_lethal_block_available():
     assert agent._fallback_turn_key == (16, 7)
 
 
+def test_guardian_pressure_guard_overrides_rl_attack_when_big_nonlethal_block_available():
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    bash = SimpleNamespace(
+        name="Bash",
+        card_id="Bash",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+    )
+    guardian = _monster(
+        hp=222,
+        damage=32,
+        index=0,
+        name="The Guardian",
+        monster_id="TheGuardian",
+    )
+    guardian.intent = Intent.ATTACK
+    game = _game(
+        hand=[strike, defend, bash],
+        monsters=[guardian],
+        current_hp=80,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=2,
+        player=SimpleNamespace(energy=3, block=0),
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0, target_index=0)
+    )
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (16, 2)
+
+
 def test_energy_guard_prioritizes_hexaghost_opening_carnage_over_bash():
     bash = SimpleNamespace(
         name="Bash",
