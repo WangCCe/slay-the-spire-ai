@@ -235,6 +235,82 @@ def test_iron_wave_attack_block_matches_live_effect(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_cleave_hits_all_live_monsters_without_target(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    cleave = _card(
+        name="Cleave",
+        card_id="Cleave",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=8,
+    )
+    before = _game(
+        floor=2,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=2),
+        hand=[cleave],
+        monsters=[
+            _monster(name="Louse", monster_id="FuzzyLouseDefensive", hp=14, damage=0, intent=Intent.NONE),
+            _monster(name="Louse", monster_id="FuzzyLouseNormal", hp=11, damage=0, intent=Intent.NONE),
+        ],
+    )
+    actual = _game(
+        floor=2,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[
+            _monster(name="Louse", monster_id="FuzzyLouseDefensive", hp=6, damage=0, intent=Intent.NONE),
+            _monster(name="Louse", monster_id="FuzzyLouseNormal", hp=3, damage=0, intent=Intent.NONE),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_thunderclap_zero_live_damage_hits_all_monsters(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    thunderclap = _card(
+        name="Thunderclap",
+        card_id="Thunderclap",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=7,
+        turn=1,
+        player=SimpleNamespace(current_hp=62, max_hp=80, block=0, energy=1),
+        hand=[thunderclap],
+        monsters=[
+            _monster(name="Louse", monster_id="FuzzyLouseNormal", hp=10, block=7, damage=0, intent=Intent.NONE),
+            _monster(name="Cultist", monster_id="Cultist", hp=43, damage=0, intent=Intent.NONE),
+        ],
+    )
+    actual = _game(
+        floor=7,
+        turn=1,
+        player=SimpleNamespace(current_hp=62, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(name="Louse", monster_id="FuzzyLouseNormal", hp=10, block=3, damage=0, intent=Intent.NONE),
+            _monster(name="Cultist", monster_id="Cultist", hp=39, damage=0, intent=Intent.NONE),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_clothesline_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

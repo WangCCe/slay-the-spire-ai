@@ -29,7 +29,13 @@ BASE_ATTACK_DAMAGE = {
     "Iron Wave": 5,
     "Pommel Strike": 9,
     "Strike": 6,
+    "Thunderclap": 4,
     "Twin Strike": 10,
+}
+
+ALL_ENEMY_ATTACKS = {
+    "Cleave": 0,
+    "Thunderclap": 0,
 }
 
 BASE_SKILL_BLOCK = {
@@ -188,9 +194,12 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 expected["player"]["energy"] - max(0, _card_cost(card)),
             )
             if _is_attack_card(card):
-                target_index = _target_index_for_action(action, game)
                 damage = _card_damage(card)
-                _apply_expected_attack(expected, target_index, damage)
+                if _is_all_enemy_attack(card):
+                    _apply_expected_attack_to_all(expected, damage)
+                else:
+                    target_index = _target_index_for_action(action, game)
+                    _apply_expected_attack(expected, target_index, damage)
                 self_damage = _card_self_damage(card)
                 if self_damage > 0:
                     expected["player"]["current_hp"] = max(
@@ -231,6 +240,13 @@ def _apply_expected_attack(expected: Dict[str, Any], target_index: Optional[int]
     target["hp"] = max(0, target["hp"] - remaining_damage)
     if target["hp"] <= 0:
         target["gone"] = True
+
+
+def _apply_expected_attack_to_all(expected: Dict[str, Any], damage: int) -> None:
+    for index, monster in enumerate(expected.get("monsters", [])):
+        if monster.get("gone") or monster.get("half_dead") or _to_int(monster.get("hp")) <= 0:
+            continue
+        _apply_expected_attack(expected, index, damage)
 
 
 def _diff_snapshots(
@@ -444,6 +460,10 @@ def _monster_summary(monster) -> Dict[str, Any]:
 def _is_attack_card(card) -> bool:
     card_type = _normalize(getattr(card, "type", getattr(card, "card_type", "")))
     return card_type in {"attack", "cardtypeattack"}
+
+
+def _is_all_enemy_attack(card) -> bool:
+    return _known_card_name(card, ALL_ENEMY_ATTACKS) is not None
 
 
 def _card_cost(card) -> int:
