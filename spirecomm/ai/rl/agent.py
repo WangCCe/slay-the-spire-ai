@@ -1176,6 +1176,16 @@ class CombatRLAgent:
                 if action is None:
                     logger.warning("RL agent returned None, falling back to OptimizedAgent")
                     self.rl_failure_count += 1
+                elif (replacement := self._get_survival_action_replacement(action, game)) is not None:
+                    self.rl_failure_count = 0
+                    self._fallback_turn_key = self._combat_turn_key(game)
+                    logger.info(
+                        "[SURVIVAL_GUARD] Replacing RL action with %s on floor=%s turn=%s",
+                        self._describe_combat_action(replacement, game),
+                        getattr(game, "floor", None),
+                        getattr(game, "turn", None),
+                    )
+                    return self._with_combat_action_context(replacement, game)
                 elif self._should_override_wasteful_end_turn(action, game):
                     replacement = self._get_non_end_turn_fallback(game)
                     if replacement is not None:
@@ -1683,6 +1693,27 @@ class CombatRLAgent:
             logger.debug("[ENERGY_GUARD] Fallback action failed: %s", exc)
 
         return self._first_playable_card_action(game)
+
+    def _get_survival_action_replacement(self, action: Action, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return None
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        if not getattr(game, "in_combat", False):
+            return None
+
+        replacement = self._get_survival_block_replacement(game)
+        if not isinstance(replacement, PlayCardAction):
+            return None
+
+        current_card = self._card_for_action(action, game)
+        replacement_card = self._card_for_action(replacement, game)
+        if self._survival_block_value(replacement_card) <= self._survival_block_value(current_card):
+            return None
+        return replacement
 
     def _get_non_potion_fallback(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction, PotionAction

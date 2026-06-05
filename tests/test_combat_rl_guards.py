@@ -1070,6 +1070,82 @@ def test_energy_guard_takeover_replaces_fallback_end_turn_with_playable_card():
     assert action.target_index == 0
 
 
+def test_survival_guard_overrides_rl_attack_when_lethal_block_available():
+    slimed = SimpleNamespace(
+        name="Slimed",
+        card_id="Slimed",
+        type=CardType.STATUS,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    uppercut = SimpleNamespace(
+        name="Uppercut",
+        card_id="Uppercut",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+    )
+    spike = _monster(
+        hp=43,
+        damage=16,
+        index=0,
+        name="Spike Slime (L)",
+        monster_id="SpikeSlime_L",
+    )
+    spike.intent = Intent.ATTACK_DEBUFF
+    game = _game(
+        hand=[slimed, slimed, defend, strike, uppercut],
+        monsters=[spike],
+        current_hp=3,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=7,
+        player=SimpleNamespace(energy=3, block=0),
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=4, target_index=0)
+    )
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 2
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (16, 7)
+
+
 def test_energy_guard_prioritizes_hexaghost_opening_carnage_over_bash():
     bash = SimpleNamespace(
         name="Bash",
