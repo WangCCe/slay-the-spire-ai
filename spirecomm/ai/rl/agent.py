@@ -30,6 +30,7 @@ from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.ai.heuristics.card_upgrades import (
     card_upgrade_count,
     known_block_upgrade_bonus,
+    known_damage_upgrade_bonus,
 )
 from spirecomm.ai.heuristics.card_types import (
     card_requires_target,
@@ -1015,6 +1016,19 @@ class CombatRLAgent:
         "finesse": ("Finesse", 2),
         "safety": ("Safety", 12),
     }
+    SURVIVAL_ATTACK_DAMAGE_VALUES = {
+        "anger": ("Anger", 6),
+        "bash": ("Bash", 8),
+        "carnage": ("Carnage", 20),
+        "clothesline": ("Clothesline", 12),
+        "headbutt": ("Headbutt", 9),
+        "hemokinesis": ("Hemokinesis", 15),
+        "ironwave": ("Iron Wave", 5),
+        "pommelstrike": ("Pommel Strike", 9),
+        "recklesscharge": ("Reckless Charge", 7),
+        "strike": ("Strike", 6),
+        "wildstrike": ("Wild Strike", 12),
+    }
 
     def __init__(
         self,
@@ -1191,6 +1205,16 @@ class CombatRLAgent:
                 if action is None:
                     logger.warning("RL agent returned None, falling back to OptimizedAgent")
                     self.rl_failure_count += 1
+                elif (replacement := self._get_slime_split_survival_attack_replacement(action, game)) is not None:
+                    self.rl_failure_count = 0
+                    self._fallback_turn_key = self._combat_turn_key(game)
+                    logger.info(
+                        "[SLIME_SPLIT_SURVIVAL_GUARD] Replacing RL action with %s on floor=%s turn=%s",
+                        self._describe_combat_action(replacement, game),
+                        getattr(game, "floor", None),
+                        getattr(game, "turn", None),
+                    )
+                    return self._with_combat_action_context(replacement, game)
                 elif (replacement := self._get_survival_action_replacement(action, game)) is not None:
                     self.rl_failure_count = 0
                     self._fallback_turn_key = self._combat_turn_key(game)
@@ -1767,6 +1791,87 @@ class CombatRLAgent:
         if self._survival_block_value(replacement_card) <= self._survival_block_value(current_card):
             return None
         return replacement
+
+    def _get_slime_split_survival_attack_replacement(self, action: Action, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return None
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        if not getattr(game, "in_combat", False):
+            return None
+        if not self._is_slime_boss_split_phase(game):
+            return None
+
+        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        if current_hp <= 0:
+            return None
+        current_block = self._player_block(game)
+        incoming = self._incoming_damage(game)
+        if incoming - current_block < current_hp:
+            return None
+
+        card = self._card_for_action(action, game)
+        if card is None or not is_attack_card(card) or not card_requires_target(card):
+            return None
+        card_index = self._safe_int(getattr(action, "card_index", -1), default=-1)
+        if card_index < 0:
+            return None
+        energy = self._player_energy(game)
+        if effective_card_cost(card, energy) > energy:
+            return None
+
+        attack_damage = self._survival_attack_damage(card)
+        if attack_damage <= 0:
+            return None
+
+        current_target = self._safe_int(getattr(action, "target_index", -1), default=-1)
+        best_candidate = None
+        for monster_index, monster in enumerate(getattr(game, "monsters", []) or []):
+            if not self._is_targetable_monster(monster):
+                continue
+            if not monster_intends_attack(monster):
+                continue
+            effective_hp = (
+                self._safe_int(getattr(monster, "current_hp", 0), default=0)
+                + self._safe_int(getattr(monster, "block", 0), default=0)
+            )
+            if attack_damage < effective_hp:
+                continue
+            removed_incoming = self._monster_incoming_damage(monster)
+            if removed_incoming <= 0:
+                continue
+            remaining_damage = max(0, incoming - removed_incoming - current_block)
+            if remaining_damage >= current_hp:
+                continue
+            survival_margin = current_hp - remaining_damage
+            score = (survival_margin, removed_incoming, -effective_hp, -monster_index)
+            if best_candidate is None or score > best_candidate[0]:
+                best_candidate = (
+                    score,
+                    monster_index,
+                    monster,
+                    removed_incoming,
+                    effective_hp,
+                )
+
+        if best_candidate is None:
+            return None
+        _, target_index, target, removed_incoming, effective_hp = best_candidate
+        if current_target == target_index:
+            return None
+
+        logger.info(
+            "[SLIME_SPLIT_SURVIVAL_GUARD] Retargeting %s to %s index=%s hp=%s removed_incoming=%s",
+            self._card_label(card),
+            getattr(target, "name", getattr(target, "monster_id", "UNKNOWN")),
+            target_index,
+            effective_hp,
+            removed_incoming,
+        )
+        return PlayCardAction(card_index=card_index, target_index=target_index)
 
     def _get_guardian_sharp_hide_action_replacement(self, action: Action, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction, PlayCardAction
@@ -2514,6 +2619,30 @@ class CombatRLAgent:
         return False
 
     @classmethod
+    def _is_slime_boss_split_phase(cls, game: Game) -> bool:
+        if cls._safe_int(getattr(game, "floor", 0), default=0) != 16:
+            return False
+        if not cls._is_boss_combat(game):
+            return False
+
+        has_dead_slime_boss = False
+        alive_split_slimes = 0
+        for monster in getattr(game, "monsters", []) or []:
+            normalized = {
+                cls._normalize_identifier(getattr(monster, "monster_id", None)),
+                cls._normalize_identifier(getattr(monster, "name", None)),
+            }
+            is_slime_boss = any("slimeboss" in value for value in normalized)
+            if is_slime_boss:
+                if not cls._is_targetable_monster(monster):
+                    has_dead_slime_boss = True
+                continue
+            if cls._is_targetable_monster(monster) and any("slime" in value for value in normalized):
+                alive_split_slimes += 1
+
+        return has_dead_slime_boss and alive_split_slimes >= 2
+
+    @classmethod
     def _has_guardian(cls, game: Game) -> bool:
         for monster in cls._alive_monsters(game):
             for value in (
@@ -2584,16 +2713,16 @@ class CombatRLAgent:
         return [
             monster
             for monster in (getattr(game, "monsters", []) or [])
-            if (
-                CombatRLAgent._safe_int(
-                    getattr(monster, "current_hp", 0),
-                    default=0,
-                )
-                > 0
-                and not getattr(monster, "is_gone", False)
-                and not getattr(monster, "half_dead", False)
-            )
+            if CombatRLAgent._is_targetable_monster(monster)
         ]
+
+    @classmethod
+    def _is_targetable_monster(cls, monster) -> bool:
+        return (
+            cls._safe_int(getattr(monster, "current_hp", 0), default=0) > 0
+            and not getattr(monster, "is_gone", False)
+            and not getattr(monster, "half_dead", False)
+        )
 
     @classmethod
     def _is_finished_combat_transition(cls, game: Game) -> bool:
@@ -2630,6 +2759,21 @@ class CombatRLAgent:
             total += max(0, CombatRLAgent._safe_int(damage, default=0)) * hits
         return total
 
+    @classmethod
+    def _monster_incoming_damage(cls, monster) -> int:
+        if intent_is_unknown(getattr(monster, "intent", None)):
+            known_damage = known_unknown_move_immediate_damage(monster)
+            if known_damage > 0:
+                return known_damage
+            return 0
+        if not monster_intends_attack(monster):
+            return 0
+        damage = getattr(monster, "move_adjusted_damage", None)
+        if damage is None:
+            damage = getattr(monster, "move_base_damage", 0) or 0
+        hits = max(1, cls._safe_int(getattr(monster, "move_hits", 1), default=1))
+        return max(0, cls._safe_int(damage, default=0)) * hits
+
     @staticmethod
     def _player_block(game: Game) -> int:
         player = getattr(game, "player", None)
@@ -2658,6 +2802,20 @@ class CombatRLAgent:
         for normalized_name, (card_name, base_block) in cls.SURVIVAL_BLOCK_CARD_VALUES.items():
             if cls._card_matches_normalized_names(card, {normalized_name}):
                 return base_block + known_block_upgrade_bonus(card, card_name)
+        return 0
+
+    @classmethod
+    def _survival_attack_damage(cls, card) -> int:
+        explicit_damage = max(
+            0,
+            cls._safe_int(getattr(card, "damage", 0), default=0),
+        )
+        if explicit_damage > 0:
+            return explicit_damage
+
+        for normalized_name, (card_name, base_damage) in cls.SURVIVAL_ATTACK_DAMAGE_VALUES.items():
+            if cls._card_matches_normalized_names(card, {normalized_name}):
+                return base_damage + known_damage_upgrade_bonus(card, card_name)
         return 0
 
     @classmethod

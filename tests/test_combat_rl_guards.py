@@ -1849,6 +1849,96 @@ def test_slime_boss_setup_guard_prioritizes_thunderclap_before_strike():
     assert agent._fallback_turn_key == (16, 1)
 
 
+def test_slime_split_survival_guard_retargets_killable_attacker():
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    carnage = SimpleNamespace(
+        name="Carnage",
+        card_id="Carnage",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+        damage=15,
+    )
+
+    first_attacker = _monster(
+        hp=10,
+        damage=8,
+        index=0,
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+    )
+    first_attacker.intent = Intent.ATTACK_DEBUFF
+    dead_large = _monster(
+        hp=0,
+        damage=0,
+        index=1,
+        name="Spike Slime (L)",
+        monster_id="SpikeSlime_L",
+    )
+    dead_large.is_gone = True
+    second_attacker = _monster(
+        hp=16,
+        damage=8,
+        index=2,
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+    )
+    second_attacker.intent = Intent.ATTACK_DEBUFF
+    dead_boss = _monster(
+        hp=0,
+        damage=0,
+        index=3,
+        name="Slime Boss",
+        monster_id="SlimeBoss",
+    )
+    dead_boss.is_gone = True
+    acid_attacker = _monster(
+        hp=34,
+        damage=11,
+        index=4,
+        name="Acid Slime (L)",
+        monster_id="AcidSlime_L",
+    )
+    acid_attacker.intent = Intent.ATTACK_DEBUFF
+
+    game = _game(
+        floor=16,
+        turn=9,
+        current_hp=17,
+        player=SimpleNamespace(energy=2, block=3),
+        hand=[defend, carnage],
+        monsters=[first_attacker, dead_large, second_attacker, dead_boss, acid_attacker],
+        room_type="MonsterRoomBoss",
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=1, target_index=2)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index == 0
+    assert agent._fallback_turn_key == (16, 9)
+
+
 def test_double_tap_guard_skips_when_no_attack_can_follow():
     double_tap = SimpleNamespace(
         name="Double Tap",
