@@ -561,13 +561,9 @@ def _card_damage_for_snapshot(card, player: Dict[str, Any], energy_available: in
     damage = _card_damage(card)
     card_name = _known_card_name(card, BASE_ATTACK_DAMAGE)
     if card_name == "Whirlwind":
-        return max(0, energy_available) * damage
-    if card_name != "Heavy Blade":
-        return damage
-    if _to_int(getattr(card, "damage", 0)) > 0:
-        return damage
-    strength = _snapshot_power_amount(player, "Strength")
-    return damage + strength * heavy_blade_strength_multiplier(card)
+        per_hit = _source_modified_attack_damage(damage, card, player)
+        return max(0, energy_available) * per_hit
+    return _source_modified_attack_damage(damage, card, player)
 
 
 def _card_block(card) -> int:
@@ -617,6 +613,20 @@ def _snapshot_card_matches(snapshot_card: Dict[str, Any], card) -> bool:
         if _normalize(_strip_upgrade_suffix(getattr(card, attr, None))) in snapshot_ids:
             return True
     return False
+
+
+def _source_modified_attack_damage(damage: int, card, player: Dict[str, Any]) -> int:
+    if damage <= 0:
+        return 0
+    strength = _snapshot_power_amount(player, "Strength")
+    if strength != 0:
+        if _known_card_name(card, BASE_ATTACK_DAMAGE) == "Heavy Blade":
+            damage += strength * heavy_blade_strength_multiplier(card)
+        else:
+            damage += strength
+    if _snapshot_power_amount(player, "Weakened") > 0 or _snapshot_power_amount(player, "Weak") > 0:
+        damage = damage * 3 // 4
+    return max(0, damage)
 
 
 def _modified_attack_damage(damage: int, target: Dict[str, Any]) -> int:

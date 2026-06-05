@@ -415,6 +415,124 @@ def test_heavy_blade_zero_live_damage_uses_strength_scaling(monkeypatch, tmp_pat
     assert not trace_path.exists()
 
 
+def test_player_strength_increases_attack_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=16,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=69,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Strength", "Strength", 2)],
+        ),
+        hand=[_card(name="Strike", card_id="Strike_R", damage=6)],
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=240, damage=0)],
+    )
+    actual = _game(
+        floor=16,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=69,
+            max_hp=80,
+            block=0,
+            energy=2,
+            powers=[Power("Strength", "Strength", 2)],
+        ),
+        hand=[],
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=232, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_player_weak_reduces_attack_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=14,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=52,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Weakened", "Weakened", 1)],
+        ),
+        hand=[_card(name="Bash", card_id="Bash", damage=8, cost=2)],
+        monsters=[_monster(name="Acid Slime (S)", monster_id="AcidSlime_S", hp=9, damage=0)],
+    )
+    actual = _game(
+        floor=14,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=52,
+            max_hp=80,
+            block=0,
+            energy=1,
+            powers=[Power("Weakened", "Weakened", 1)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Acid Slime (S)", monster_id="AcidSlime_S", hp=3, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_explicit_heavy_blade_damage_uses_strength_multiplier(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    heavy_blade = _card(
+        name="Heavy Blade",
+        card_id="Heavy Blade",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=14,
+    )
+    before = _game(
+        floor=18,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=77,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Strength", "Strength", 2)],
+        ),
+        hand=[heavy_blade],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=44, damage=0)],
+    )
+    actual = _game(
+        floor=18,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=77,
+            max_hp=80,
+            block=0,
+            energy=1,
+            powers=[Power("Strength", "Strength", 2)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=24, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_vulnerable_target_damage_does_not_create_false_monster_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
