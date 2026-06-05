@@ -269,6 +269,76 @@ def test_reckless_charge_plus_zero_live_damage_uses_upgrade_damage(monkeypatch, 
     assert not trace_path.exists()
 
 
+def test_uppercut_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    uppercut = _card(
+        name="Uppercut",
+        card_id="Uppercut",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=0,
+    )
+    before = _game(
+        floor=24,
+        turn=2,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=3),
+        hand=[uppercut],
+        monsters=[
+            _monster(name="Chosen", monster_id="Chosen", hp=73, damage=0, intent=Intent.STRONG_DEBUFF),
+            _monster(name="Cultist", monster_id="Cultist", hp=52, damage=6),
+        ],
+    )
+    actual = _game(
+        floor=24,
+        turn=2,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[
+            _monster(name="Chosen", monster_id="Chosen", hp=60, damage=0, intent=Intent.STRONG_DEBUFF),
+            _monster(name="Cultist", monster_id="Cultist", hp=52, damage=6),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_missing_target_attack_hits_only_live_monster(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    uppercut = _card(
+        name="Uppercut",
+        card_id="Uppercut",
+        card_type=CardType.ATTACK,
+        cost=0,
+        damage=0,
+    )
+    before = _game(
+        floor=19,
+        turn=2,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=3),
+        hand=[uppercut],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=73, damage=0, intent=Intent.STRONG_DEBUFF)],
+    )
+    actual = _game(
+        floor=19,
+        turn=2,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=60, damage=0, intent=Intent.STRONG_DEBUFF)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_heavy_blade_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

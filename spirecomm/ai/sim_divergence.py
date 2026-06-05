@@ -36,6 +36,7 @@ BASE_ATTACK_DAMAGE = {
     "Strike": 6,
     "Thunderclap": 4,
     "Twin Strike": 10,
+    "Uppercut": 13,
     "Whirlwind": 5,
 }
 
@@ -448,6 +449,16 @@ def _target_index_for_action(action, game) -> Optional[int]:
         return target_index
     target = getattr(action, "target_monster", None)
     if target is None:
+        monsters = list(_safe_iterable(getattr(game, "monsters", [])))
+        alive_indexes = [
+            index
+            for index, monster in enumerate(monsters)
+            if not getattr(monster, "is_gone", False)
+            and not getattr(monster, "half_dead", False)
+            and _to_int(getattr(monster, "current_hp", None)) > 0
+        ]
+        if len(alive_indexes) == 1:
+            return alive_indexes[0]
         return None
     monsters = list(_safe_iterable(getattr(game, "monsters", [])))
     for index, monster in enumerate(monsters):
