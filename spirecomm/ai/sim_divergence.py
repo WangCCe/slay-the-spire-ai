@@ -23,6 +23,7 @@ BASE_ATTACK_DAMAGE = {
     "Bash": 8,
     "Carnage": 20,
     "Cleave": 8,
+    "Clothesline": 12,
     "Headbutt": 9,
     "Hemokinesis": 15,
     "Iron Wave": 5,
