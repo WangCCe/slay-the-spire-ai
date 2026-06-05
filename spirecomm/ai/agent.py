@@ -31,7 +31,11 @@ from spirecomm.ai.heuristics.card_types import (
     is_attack_card,
 )
 from spirecomm.ai.heuristics.combat_state import power_signature
-from spirecomm.ai.heuristics.potions import game_real_potions, potion_can_use
+from spirecomm.ai.heuristics.potions import (
+    game_real_potions,
+    potion_can_use,
+    potion_is_exhaust_hand_select,
+)
 
 # Note: Logging is configured in main.py to write to ai_debug.log
 # No need to configure here
@@ -656,7 +660,7 @@ class SimpleAgent:
 
     def use_next_potion(self):
         for potion in self.game.get_real_potions():
-            if potion_can_use(potion):
+            if potion_can_use(potion) and not potion_is_exhaust_hand_select(potion):
                 if getattr(potion, "requires_target", False):
                     return PotionAction(
                         True, potion=potion, target_monster=self.get_low_hp_target()
@@ -2610,6 +2614,8 @@ class OptimizedAgent(SimpleAgent):
 
         for potion in potions:
             if hasattr(potion, "can_use") and not potion.can_use:
+                continue
+            if potion_is_exhaust_hand_select(potion):
                 continue
             potion_name = str(getattr(potion, "name", None) or potion_id(potion) or "")
             potion_name_lower = potion_name.lower()

@@ -7,6 +7,22 @@ def potion_can_use(potion) -> bool:
     return not hasattr(potion, "can_use") or bool(potion.can_use)
 
 
+def _normalized_potion_identifier(value) -> str:
+    return str(value or "").lower().replace(" ", "").replace("_", "").replace("-", "")
+
+
+def potion_is_exhaust_hand_select(potion) -> bool:
+    effect_type = str(getattr(potion, "effect_type", "") or "").lower()
+    identifiers = {
+        _normalized_potion_identifier(getattr(potion, "potion_id", "")),
+        _normalized_potion_identifier(getattr(potion, "name", "")),
+        _normalized_potion_identifier(potion_id(potion)),
+    }
+    return effect_type == "exhaust_hand_select" or bool(
+        identifiers & {"elixir", "elixirpotion"}
+    )
+
+
 def game_real_potions(game):
     get_real_potions = getattr(game, "get_real_potions", None)
     if callable(get_real_potions):

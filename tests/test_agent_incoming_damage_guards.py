@@ -370,6 +370,81 @@ def test_optimized_agent_potion_logic_ignores_stale_monsters_for_multi_monster_t
     assert agent.use_next_potion() is None
 
 
+def test_optimized_agent_does_not_auto_use_elixir_hand_select_potion_in_danger():
+    monsters = [
+        SimpleNamespace(
+            current_hp=40,
+            is_gone=False,
+            half_dead=False,
+            intent="Intent.ATTACK",
+            move_adjusted_damage=25,
+            move_hits=1,
+            block=0,
+        ),
+        SimpleNamespace(
+            current_hp=38,
+            is_gone=False,
+            half_dead=False,
+            intent="Intent.ATTACK",
+            move_adjusted_damage=25,
+            move_hits=1,
+            block=0,
+        ),
+    ]
+    elixir = SimpleNamespace(
+        potion_id="ElixirPotion",
+        name="Elixir",
+        can_use=True,
+        requires_target=False,
+        effect_type="exhaust_hand_select",
+    )
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.game_tracker = None
+    agent.game = SimpleNamespace(
+        monsters=monsters,
+        player=SimpleNamespace(block=0),
+        current_hp=13,
+        max_hp=80,
+        act=1,
+        room_type="Monster",
+        get_real_potions=lambda: [elixir],
+    )
+
+    assert agent.use_next_potion() is None
+
+
+def test_optimized_agent_boss_fallback_does_not_auto_use_elixir_hand_select_potion():
+    monster = SimpleNamespace(
+        current_hp=140,
+        is_gone=False,
+        half_dead=False,
+        intent="Intent.DEFEND",
+        move_adjusted_damage=0,
+        move_hits=1,
+        block=0,
+    )
+    elixir = SimpleNamespace(
+        potion_id="ElixirPotion",
+        name="Elixir",
+        can_use=True,
+        requires_target=False,
+        effect_type="exhaust_hand_select",
+    )
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.game_tracker = None
+    agent.game = SimpleNamespace(
+        monsters=[monster],
+        player=SimpleNamespace(block=0),
+        current_hp=70,
+        max_hp=80,
+        act=1,
+        room_type="Boss",
+        get_real_potions=lambda: [elixir],
+    )
+
+    assert agent.use_next_potion() is None
+
+
 def test_defensive_potion_uses_player_block_not_monster_block():
     monster = SimpleNamespace(
         current_hp=40,
