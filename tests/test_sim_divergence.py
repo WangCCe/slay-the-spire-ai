@@ -729,6 +729,89 @@ def test_clothesline_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_blood_for_blood_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    blood_for_blood = _card(
+        name="Blood for Blood",
+        card_id="Blood for Blood",
+        card_type=CardType.ATTACK,
+        cost=3,
+        damage=0,
+    )
+    before = _game(
+        floor=7,
+        turn=2,
+        player=SimpleNamespace(current_hp=70, max_hp=80, block=0, energy=3),
+        hand=[blood_for_blood],
+        monsters=[_monster(name="Looter", monster_id="Looter", hp=30, damage=10)],
+    )
+    actual = _game(
+        floor=7,
+        turn=2,
+        player=SimpleNamespace(current_hp=70, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Looter", monster_id="Looter", hp=12, damage=10)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_blood_for_blood_plus_uses_upgrade_damage_bonus(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    blood_for_blood_plus = _card(
+        name="Blood for Blood+",
+        card_id="Blood for Blood",
+        card_type=CardType.ATTACK,
+        cost=0,
+        damage=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=16,
+        turn=10,
+        player=SimpleNamespace(current_hp=14, max_hp=80, block=0, energy=2),
+        hand=[blood_for_blood_plus],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=57,
+                damage=0,
+                intent=Intent.NONE,
+                powers=[Power("Vulnerable", "Vulnerable", 4)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=16,
+        turn=10,
+        player=SimpleNamespace(current_hp=14, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=24,
+                damage=0,
+                intent=Intent.NONE,
+                powers=[Power("Vulnerable", "Vulnerable", 4)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_hemokinesis_zero_live_damage_matches_live_effect(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

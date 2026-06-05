@@ -23,6 +23,7 @@ DISABLED_VALUES = {"", "0", "false", "off", "none", "disabled"}
 BASE_ATTACK_DAMAGE = {
     "Anger": 6,
     "Bash": 8,
+    "Blood for Blood": 18,
     "Carnage": 20,
     "Cleave": 8,
     "Clothesline": 12,
