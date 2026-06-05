@@ -10,6 +10,7 @@ from spirecomm.ai.sim_divergence import (
 from spirecomm.communication.action import EndTurnAction, PlayCardAction
 from spirecomm.spire.card import CardType
 from spirecomm.spire.character import Intent
+from spirecomm.spire.power import Power
 
 
 def _card(
@@ -44,6 +45,7 @@ def _monster(
     hits=1,
     intent=Intent.ATTACK,
     index=0,
+    powers=None,
 ):
     return SimpleNamespace(
         name=name,
@@ -57,7 +59,7 @@ def _monster(
         monster_index=index,
         is_gone=False,
         half_dead=False,
-        powers=[],
+        powers=list(powers or []),
     )
 
 
@@ -198,6 +200,91 @@ def test_headbutt_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     )
 
     assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_vulnerable_target_damage_does_not_create_false_monster_diff(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=1,
+        turn=2,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=1),
+        hand=[_card(name="Strike", card_id="Strike_R", damage=6)],
+        monsters=[
+            _monster(
+                name="Jaw Worm",
+                monster_id="JawWorm",
+                hp=30,
+                powers=[Power("Vulnerable", "Vulnerable", 2)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=1,
+        turn=2,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Jaw Worm",
+                monster_id="JawWorm",
+                hp=21,
+                powers=[Power("Vulnerable", "Vulnerable", 2)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_frail_player_block_does_not_create_false_player_diff(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    defend_plus = _card(
+        name="Defend+",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+        upgrades=1,
+    )
+    before = _game(
+        floor=12,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=55,
+            max_hp=80,
+            block=0,
+            energy=1,
+            powers=[Power("Frail", "Frail", 2)],
+        ),
+        hand=[defend_plus],
+        monsters=[_monster(name="Sentry", monster_id="Sentry", hp=38, damage=10)],
+    )
+    actual = _game(
+        floor=12,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=55,
+            max_hp=80,
+            block=6,
+            energy=0,
+            powers=[Power("Frail", "Frail", 2)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Sentry", monster_id="Sentry", hp=38, damage=10)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
     assert observe_next_state(actual) is False
     assert not trace_path.exists()
 

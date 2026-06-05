@@ -173,6 +173,7 @@ def snapshot_combat_state(game) -> Dict[str, Any]:
             "max_hp": _to_int(getattr(player, "max_hp", getattr(game, "max_hp", None))),
             "block": _to_int(getattr(player, "block", getattr(game, "block", None))),
             "energy": _to_int(getattr(player, "energy", getattr(game, "energy", None))),
+            "powers": [_power_summary(power) for power in _safe_iterable(getattr(player, "powers", []))],
         },
         "hand": [_card_summary(card) for card in _safe_iterable(getattr(game, "hand", []))],
         "monsters": [
@@ -209,7 +210,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     )
             block = _card_block(card)
             if block > 0:
-                expected["player"]["block"] += block
+                expected["player"]["block"] += _modified_block(block, expected.get("player", {}))
         if 0 <= card_index < len(expected["hand"]):
             expected["hand"].pop(card_index)
 
@@ -233,7 +234,7 @@ def _apply_expected_attack(expected: Dict[str, Any], target_index: Optional[int]
     if target_index >= len(monsters):
         return
     target = monsters[target_index]
-    remaining_damage = max(0, damage)
+    remaining_damage = _modified_attack_damage(max(0, damage), target)
     if target["block"] > 0:
         blocked = min(target["block"], remaining_damage)
         target["block"] -= blocked
@@ -443,6 +444,16 @@ def _card_summary(card) -> Dict[str, Any]:
     }
 
 
+def _power_summary(power) -> Dict[str, Any]:
+    return {
+        "id": _safe_str(getattr(power, "power_id", getattr(power, "id", ""))),
+        "name": _safe_str(
+            getattr(power, "power_name", getattr(power, "name", ""))
+        ),
+        "amount": _to_int(getattr(power, "amount", 0)),
+    }
+
+
 def _monster_summary(monster) -> Dict[str, Any]:
     return {
         "name": _safe_str(getattr(monster, "name", "")),
@@ -455,6 +466,7 @@ def _monster_summary(monster) -> Dict[str, Any]:
         "move_hits": _to_int(getattr(monster, "move_hits", None), default=1),
         "gone": bool(getattr(monster, "is_gone", False)),
         "half_dead": bool(getattr(monster, "half_dead", False)),
+        "powers": [_power_summary(power) for power in _safe_iterable(getattr(monster, "powers", []))],
     }
 
 
@@ -499,6 +511,34 @@ def _card_block(card) -> int:
         return explicit
     if base_block is not None:
         return base_block + upgrade_bonus
+    return 0
+
+
+def _modified_attack_damage(damage: int, target: Dict[str, Any]) -> int:
+    if damage <= 0:
+        return 0
+    if _snapshot_power_amount(target, "Vulnerable") > 0:
+        damage = damage * 3 // 2
+    return max(0, damage)
+
+
+def _modified_block(block: int, player: Dict[str, Any]) -> int:
+    if block <= 0:
+        return 0
+    if _snapshot_power_amount(player, "Frail") > 0:
+        block = block * 3 // 4
+    return max(0, block)
+
+
+def _snapshot_power_amount(entity: Dict[str, Any], power_name: str) -> int:
+    target = _normalize(power_name)
+    for power in entity.get("powers", []) or []:
+        identifiers = {
+            _normalize(power.get("id")),
+            _normalize(power.get("name")),
+        }
+        if target in identifiers:
+            return _to_int(power.get("amount"), default=1)
     return 0
 
 
