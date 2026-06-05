@@ -31,7 +31,11 @@ from spirecomm.ai.heuristics.card_upgrades import (
     card_upgrade_count,
     known_block_upgrade_bonus,
 )
-from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
+from spirecomm.ai.heuristics.card_types import (
+    card_requires_target,
+    card_type_name,
+    is_attack_card,
+)
 from spirecomm.ai.heuristics.potions import (
     game_potion_available,
     game_real_potions,
@@ -1194,6 +1198,16 @@ class CombatRLAgent:
                         getattr(game, "turn", None),
                     )
                     return self._with_combat_action_context(replacement, game)
+                elif (replacement := self._get_guardian_sharp_hide_action_replacement(action, game)) is not None:
+                    self.rl_failure_count = 0
+                    self._fallback_turn_key = self._combat_turn_key(game)
+                    logger.info(
+                        "[GUARDIAN_SHARP_HIDE_GUARD] Replacing RL action with %s on floor=%s turn=%s",
+                        self._describe_combat_action(replacement, game),
+                        getattr(game, "floor", None),
+                        getattr(game, "turn", None),
+                    )
+                    return self._with_combat_action_context(replacement, game)
                 elif (replacement := self._get_guardian_pressure_action_replacement(action, game)) is not None:
                     self.rl_failure_count = 0
                     self._fallback_turn_key = self._combat_turn_key(game)
@@ -1708,6 +1722,12 @@ class CombatRLAgent:
                 fallback_action is not None
                 and not isinstance(fallback_action, (EndTurnAction, PotionAction))
             ):
+                guarded_action = self._get_guardian_sharp_hide_action_replacement(
+                    fallback_action,
+                    game,
+                )
+                if guarded_action is not None:
+                    return guarded_action
                 if guardian_pressure_replacement is not None:
                     guarded_action = self._get_guardian_pressure_action_replacement(
                         fallback_action,
@@ -1744,6 +1764,66 @@ class CombatRLAgent:
         if self._survival_block_value(replacement_card) <= self._survival_block_value(current_card):
             return None
         return replacement
+
+    def _get_guardian_sharp_hide_action_replacement(self, action: Action, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import EndTurnAction, PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return None
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        if not getattr(game, "in_combat", False):
+            return None
+
+        current_card = self._card_for_action(action, game)
+        if not is_attack_card(current_card):
+            return None
+
+        sharp_hide_damage = self._guardian_sharp_hide_damage(game)
+        if sharp_hide_damage <= 0:
+            return None
+
+        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        if current_hp <= 0:
+            return None
+
+        incoming = self._incoming_damage(game)
+        burn_damage = self._end_turn_burn_damage(game)
+        current_block = self._player_block(game)
+        damage_without_attack = max(0, incoming + burn_damage - current_block)
+        if damage_without_attack >= current_hp:
+            return None
+
+        damage_with_attack = max(0, incoming + burn_damage + sharp_hide_damage - current_block)
+        if damage_with_attack < current_hp:
+            return None
+
+        candidate = self._best_block_action_candidate(game)
+        if candidate is not None:
+            replacement, card, block_value = candidate
+            if block_value > self._survival_block_value(current_card):
+                logger.info(
+                    "[GUARDIAN_SHARP_HIDE_GUARD] Selecting %s for block=%s hp=%s incoming=%s burn=%s sharp_hide=%s current_block=%s",
+                    self._card_label(card),
+                    block_value,
+                    current_hp,
+                    incoming,
+                    burn_damage,
+                    sharp_hide_damage,
+                    current_block,
+                )
+                return replacement
+
+        logger.info(
+            "[GUARDIAN_SHARP_HIDE_GUARD] Ending turn to avoid lethal Sharp Hide attack hp=%s incoming=%s burn=%s sharp_hide=%s current_block=%s",
+            current_hp,
+            incoming,
+            burn_damage,
+            sharp_hide_damage,
+            current_block,
+        )
+        return EndTurnAction()
 
     def _get_guardian_pressure_action_replacement(self, action: Action, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
@@ -1873,6 +1953,24 @@ class CombatRLAgent:
         if incoming < self.GUARDIAN_PRESSURE_INCOMING:
             return None
 
+        candidate = self._best_block_action_candidate(game)
+        if candidate is None:
+            return None
+
+        action, card, block_value = candidate
+        logger.info(
+            "[GUARDIAN_PRESSURE_GUARD] Selecting %s for block=%s hp=%s incoming=%s current_block=%s",
+            self._card_label(card),
+            block_value,
+            current_hp,
+            incoming,
+            current_block,
+        )
+        return action
+
+    def _best_block_action_candidate(self, game: Game):
+        from spirecomm.communication.action import PlayCardAction
+
         energy = self._player_energy(game)
         best_candidate = None
         target_index = self._best_monster_index(game)
@@ -1897,15 +1995,7 @@ class CombatRLAgent:
             return None
 
         _, action, card, block_value = best_candidate
-        logger.info(
-            "[GUARDIAN_PRESSURE_GUARD] Selecting %s for block=%s hp=%s incoming=%s current_block=%s",
-            self._card_label(card),
-            block_value,
-            current_hp,
-            incoming,
-            current_block,
-        )
-        return action
+        return action, card, block_value
 
     def _first_playable_card_action(
         self,
@@ -2430,6 +2520,38 @@ class CombatRLAgent:
                 if cls._normalize_identifier(value) == "theguardian":
                     return True
         return False
+
+    @classmethod
+    def _guardian_sharp_hide_damage(cls, game: Game) -> int:
+        sharp_hide_damage = 0
+        for monster in cls._alive_monsters(game):
+            is_guardian = False
+            for value in (
+                getattr(monster, "monster_id", None),
+                getattr(monster, "name", None),
+            ):
+                if cls._normalize_identifier(value) == "theguardian":
+                    is_guardian = True
+                    break
+            if not is_guardian:
+                continue
+
+            for power in getattr(monster, "powers", []) or []:
+                identifiers = (
+                    getattr(power, "power_id", None),
+                    getattr(power, "power_name", None),
+                    getattr(power, "name", None),
+                )
+                if not any(
+                    cls._normalize_identifier(value) in {"sharphide", "thorns"}
+                    for value in identifiers
+                ):
+                    continue
+                sharp_hide_damage = max(
+                    sharp_hide_damage,
+                    cls._safe_int(getattr(power, "amount", 0), default=0),
+                )
+        return sharp_hide_damage
 
     @staticmethod
     def _is_power_card(card) -> bool:
