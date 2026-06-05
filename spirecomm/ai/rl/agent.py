@@ -1899,11 +1899,19 @@ class CombatRLAgent:
         incoming = self._incoming_damage(game)
         burn_damage = self._end_turn_burn_damage(game)
         current_block = self._player_block(game)
-        damage_without_attack = max(0, incoming + burn_damage - current_block)
+        damage_without_attack = self._end_turn_damage_after_block(
+            incoming,
+            burn_damage,
+            current_block,
+        )
         if damage_without_attack >= current_hp:
             return None
 
-        damage_with_attack = max(0, incoming + burn_damage + sharp_hide_damage - current_block)
+        damage_with_attack = self._end_turn_damage_after_block(
+            incoming + sharp_hide_damage,
+            burn_damage,
+            current_block,
+        )
         if damage_with_attack < current_hp:
             return None
 
@@ -2002,7 +2010,11 @@ class CombatRLAgent:
         incoming = self._incoming_damage(game)
         burn_damage = self._end_turn_burn_damage(game)
         current_block = self._player_block(game)
-        damage_after_block = max(0, incoming + burn_damage - current_block)
+        damage_after_block = self._end_turn_damage_after_block(
+            incoming,
+            burn_damage,
+            current_block,
+        )
         if damage_after_block < current_hp:
             return None
 
@@ -2789,6 +2801,10 @@ class CombatRLAgent:
             if cls._card_matches_normalized_names(card, {"burn"}):
                 total += 4 if card_upgrade_count(card) > 0 else 2
         return total
+
+    @staticmethod
+    def _end_turn_damage_after_block(blockable_damage: int, burn_damage: int, current_block: int) -> int:
+        return max(0, blockable_damage - current_block) + max(0, burn_damage)
 
     @classmethod
     def _survival_block_value(cls, card) -> int:
