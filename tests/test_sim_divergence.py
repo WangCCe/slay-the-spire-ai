@@ -204,6 +204,82 @@ def test_headbutt_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_heavy_blade_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    heavy_blade = _card(
+        name="Heavy Blade",
+        card_id="Heavy Blade",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=0,
+    )
+    before = _game(
+        floor=16,
+        turn=1,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=3),
+        hand=[heavy_blade],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=244, damage=6)],
+    )
+    actual = _game(
+        floor=16,
+        turn=1,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=230, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_heavy_blade_zero_live_damage_uses_strength_scaling(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    heavy_blade = _card(
+        name="Heavy Blade",
+        card_id="Heavy Blade",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=0,
+    )
+    before = _game(
+        floor=28,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=42,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Strength", "Strength", 3)],
+        ),
+        hand=[heavy_blade],
+        monsters=[_monster(name="Centurion", monster_id="Centurion", hp=57, damage=7)],
+    )
+    actual = _game(
+        floor=28,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=42,
+            max_hp=80,
+            block=0,
+            energy=1,
+            powers=[Power("Strength", "Strength", 3)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Centurion", monster_id="Centurion", hp=34, damage=7)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_vulnerable_target_damage_does_not_create_false_monster_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

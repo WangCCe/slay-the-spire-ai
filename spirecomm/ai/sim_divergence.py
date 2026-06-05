@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional
 
 from spirecomm.ai.heuristics.card_upgrades import (
     card_upgrade_count,
+    heavy_blade_strength_multiplier,
     known_block_upgrade_bonus,
     known_damage_upgrade_bonus,
 )
@@ -26,6 +27,7 @@ BASE_ATTACK_DAMAGE = {
     "Cleave": 8,
     "Clothesline": 12,
     "Headbutt": 9,
+    "Heavy Blade": 14,
     "Hemokinesis": 15,
     "Iron Wave": 5,
     "Pommel Strike": 9,
@@ -204,7 +206,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 expected["player"]["energy"] - max(0, _card_cost(card)),
             )
             if _is_attack_card(card):
-                damage = _card_damage(card)
+                damage = _card_damage_for_snapshot(card, expected.get("player", {}))
                 if _is_all_enemy_attack(card):
                     _apply_expected_attack_to_all(expected, damage)
                 else:
@@ -509,6 +511,16 @@ def _card_damage(card) -> int:
     if base_damage is not None:
         return base_damage + upgrade_bonus
     return 0
+
+
+def _card_damage_for_snapshot(card, player: Dict[str, Any]) -> int:
+    damage = _card_damage(card)
+    if _known_card_name(card, BASE_ATTACK_DAMAGE) != "Heavy Blade":
+        return damage
+    if _to_int(getattr(card, "damage", 0)) > 0:
+        return damage
+    strength = _snapshot_power_amount(player, "Strength")
+    return damage + strength * heavy_blade_strength_multiplier(card)
 
 
 def _card_block(card) -> int:
