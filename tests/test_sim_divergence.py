@@ -944,6 +944,73 @@ def test_offering_hp_energy_effect_does_not_create_false_player_diff(monkeypatch
     assert not trace_path.exists()
 
 
+def test_seeing_red_energy_gain_does_not_create_false_player_diff(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    seeing_red = _card(
+        name="Seeing Red",
+        card_id="Seeing Red",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=0,
+    )
+    before = _game(
+        floor=1,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=1),
+        hand=[seeing_red],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=40, damage=6)],
+    )
+    actual = _game(
+        floor=1,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=40, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_zero_cost_seeing_red_gains_two_energy(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    seeing_red_plus = _card(
+        name="Seeing Red+",
+        card_id="Seeing Red",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        block=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=20,
+        turn=3,
+        player=SimpleNamespace(current_hp=68, max_hp=80, block=8, energy=2),
+        hand=[seeing_red_plus],
+        monsters=[_monster(name="Byrd", monster_id="Byrd", hp=15, damage=0, intent=Intent.NONE)],
+    )
+    actual = _game(
+        floor=20,
+        turn=3,
+        player=SimpleNamespace(current_hp=68, max_hp=80, block=8, energy=4),
+        hand=[],
+        monsters=[_monster(name="Byrd", monster_id="Byrd", hp=15, damage=0, intent=Intent.NONE)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_upgraded_skill_block_does_not_create_false_player_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

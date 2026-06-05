@@ -70,6 +70,7 @@ CARD_SELF_DAMAGE = {
 CARD_ENERGY_GAIN = {
     "Bloodletting": 2,
     "Offering": 2,
+    "Seeing Red": 2,
 }
 
 CARD_ID_ALIASES = {
