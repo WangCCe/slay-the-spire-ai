@@ -666,6 +666,62 @@ def test_energy_guard_replaces_wasteful_end_turn_with_play_card():
     assert replacement.target_index == 0
 
 
+def test_energy_guard_counts_burn_damage_when_selecting_survival_fallback():
+    thunderclap = SimpleNamespace(
+        name="Thunderclap",
+        card_id="Thunderclap",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    bash = SimpleNamespace(
+        name="Bash",
+        card_id="Bash",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+    )
+    burn = SimpleNamespace(
+        name="Burn",
+        card_id="Burn",
+        type=CardType.STATUS,
+        is_playable=False,
+        cost=-2,
+        has_target=False,
+    )
+    game = _game(
+        hand=[thunderclap, defend, bash, burn],
+        monsters=[_monster(hp=184, damage=8, index=0, name="Hexaghost", monster_id="Hexaghost")],
+        current_hp=9,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=8,
+        player=SimpleNamespace(energy=3, block=0),
+    )
+    agent = _agent()
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0)
+    )
+
+    replacement = agent._get_non_end_turn_fallback(game)
+
+    assert isinstance(replacement, PlayCardAction)
+    assert replacement.card_index == 1
+    assert replacement.target_index is None
+
+
 def test_energy_guard_fallback_does_not_spend_potion_on_safe_boss_window():
     potion = SimpleNamespace(
         potion_id="DistilledChaos",

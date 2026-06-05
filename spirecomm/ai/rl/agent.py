@@ -27,6 +27,10 @@ from spirecomm.ai.incoming_damage import (
     known_unknown_move_immediate_damage,
 )
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
+from spirecomm.ai.heuristics.card_upgrades import (
+    card_upgrade_count,
+    known_block_upgrade_bonus,
+)
 from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
 from spirecomm.ai.heuristics.potions import (
     game_potion_available,
@@ -981,6 +985,21 @@ class CombatRLAgent:
             "shrugitoff",
         }
     )
+    SURVIVAL_BLOCK_CARD_VALUES = {
+        "defend": ("Defend", 5),
+        "shrugitoff": ("Shrug It Off", 8),
+        "flamebarrier": ("Flame Barrier", 12),
+        "powerthrough": ("Power Through", 15),
+        "truegrit": ("True Grit", 7),
+        "ghostlyarmor": ("Ghostly Armor", 10),
+        "impervious": ("Impervious", 30),
+        "armaments": ("Armaments", 5),
+        "ironwave": ("Iron Wave", 5),
+        "sentinel": ("Sentinel", 5),
+        "goodinstincts": ("Good Instincts", 6),
+        "finesse": ("Finesse", 2),
+        "safety": ("Safety", 12),
+    }
 
     def __init__(
         self,
@@ -1107,6 +1126,14 @@ class CombatRLAgent:
                 getattr(game, "floor", None),
                 getattr(game, "turn", None),
             )
+            replacement = self._get_survival_block_replacement(game)
+            if replacement is not None:
+                logger.info(
+                    "[SURVIVAL_GUARD] Continuing takeover with %s",
+                    self._describe_combat_action(replacement, game),
+                )
+                return self._with_combat_action_context(replacement, game)
+
             fallback_action = self.fallback_agent.get_next_action_in_game(game)
             from spirecomm.communication.action import EndTurnAction, PotionAction
 
@@ -1627,6 +1654,10 @@ class CombatRLAgent:
     def _get_non_end_turn_fallback(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction, PotionAction
 
+        replacement = self._get_survival_block_replacement(game)
+        if replacement is not None:
+            return replacement
+
         if self._is_hexaghost_opening_setup_window(game):
             replacement = self._get_hexaghost_setup_replacement(game)
             if replacement is not None:
@@ -1664,12 +1695,65 @@ class CombatRLAgent:
         return EndTurnAction()
 
     def _get_energy_guard_takeover_potion_replacement(self, game: Game) -> Optional[Action]:
+        replacement = self._get_survival_block_replacement(game)
+        if replacement is not None:
+            return replacement
+
         if self._is_hexaghost_opening_setup_window(game):
             replacement = self._get_hexaghost_setup_replacement(game)
             if replacement is not None:
                 return replacement
 
         return self._first_playable_card_action(game)
+
+    def _get_survival_block_replacement(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+
+        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        if current_hp <= 0:
+            return None
+
+        incoming = self._incoming_damage(game)
+        burn_damage = self._end_turn_burn_damage(game)
+        current_block = self._player_block(game)
+        damage_after_block = max(0, incoming + burn_damage - current_block)
+        if damage_after_block < current_hp:
+            return None
+
+        energy = self._player_energy(game)
+        best_candidate = None
+        target_index = self._best_monster_index(game)
+        for card_index, card in self._playable_cards(game, energy):
+            block_value = self._survival_block_value(card)
+            if block_value <= 0:
+                continue
+            if card_requires_target(card) and target_index is None:
+                continue
+
+            effective_cost = effective_card_cost(card, energy)
+            score = (block_value, -effective_cost, -card_index)
+            if best_candidate is None or score > best_candidate[0]:
+                action = (
+                    PlayCardAction(card_index=card_index, target_index=target_index)
+                    if card_requires_target(card)
+                    else PlayCardAction(card_index=card_index)
+                )
+                best_candidate = (score, action, card, block_value)
+
+        if best_candidate is None:
+            return None
+
+        _, action, card, block_value = best_candidate
+        logger.info(
+            "[SURVIVAL_GUARD] Selecting %s for block=%s hp=%s incoming=%s burn=%s current_block=%s",
+            self._card_label(card),
+            block_value,
+            current_hp,
+            incoming,
+            burn_damage,
+            current_block,
+        )
+        return action
 
     def _first_playable_card_action(
         self,
@@ -2227,6 +2311,36 @@ class CombatRLAgent:
             )
             total += max(0, CombatRLAgent._safe_int(damage, default=0)) * hits
         return total
+
+    @staticmethod
+    def _player_block(game: Game) -> int:
+        player = getattr(game, "player", None)
+        block = getattr(player, "block", None)
+        if block is None:
+            block = getattr(game, "block", 0)
+        return max(0, CombatRLAgent._safe_int(block, default=0))
+
+    @classmethod
+    def _end_turn_burn_damage(cls, game: Game) -> int:
+        total = 0
+        for card in getattr(game, "hand", []) or []:
+            if cls._card_matches_normalized_names(card, {"burn"}):
+                total += 4 if card_upgrade_count(card) > 0 else 2
+        return total
+
+    @classmethod
+    def _survival_block_value(cls, card) -> int:
+        explicit_block = max(
+            0,
+            cls._safe_int(getattr(card, "block", 0), default=0),
+        )
+        if explicit_block > 0:
+            return explicit_block
+
+        for normalized_name, (card_name, base_block) in cls.SURVIVAL_BLOCK_CARD_VALUES.items():
+            if cls._card_matches_normalized_names(card, {normalized_name}):
+                return base_block + known_block_upgrade_bonus(card, card_name)
+        return 0
 
     @classmethod
     def _has_awakened_one(cls, game: Game) -> bool:

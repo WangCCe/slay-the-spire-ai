@@ -175,3 +175,14 @@
 - Regression: `test_rl_elixir_action_is_replaced_even_in_boss_combat` reproduced the Slime Boss RL-action path red, then passed after the guard.
 - Verification after fix: focused regression red `1 failed`, then green `1 passed`; related agent/CombatRL potion tests `108 passed`; full pytest with disabled cache provider and repo-local basetemp passed `1515 passed`.
 - Next candidate: rerun bounded validation from this commit and confirm that no `PotionAction` uses `ElixirPotion` from either guard, fallback, or RL action-space paths. If Elixir stays quiet, inspect repeated Act 1 boss deaths and the Act 2 boss deaths separately.
+
+## Round 17 - 2026-06-05
+
+- Preflight: git tracked tree clean at `36787bb Block RL Elixir auto-use`; CommunicationMod config still used Windows Python with `scripts/run_training_batch.py --eval --max-games 20 --phase conservative --restart-guidance --truncate-log-after-backup`.
+- Baseline: the previous commit had just passed full pytest `1515 passed`; post-fix verification for this round passed full pytest `1516 passed`.
+- Validation: controlled CommunicationMod fresh run from `36787bb` was stopped after a focused Act 1 boss survival failure was attributed. It completed 4 visible `.run` files after cutoff `1780621037` with no `victory=true`: three Hexaghost deaths and one Guardian death. The trace scan after cutoff found `elixir_potion_actions_after_cutoff=0`, so the selected failure moved away from Elixir.
+- Failure type: current-turn survival fallback ignored player end-turn Burn damage. In `1780621787.run`, Hexaghost floor 16 turn 8 had player HP 9, block 0, incoming 8, and an unplayed `Burn` in hand. RL initially ended turn, energy guard handed off to fallback, and fallback selected attacks (`Thunderclap`, `Bash`) instead of `Defend`. Incoming 8 plus Burn 2 killed from 9 HP; playing `Defend` would have survived the turn.
+- Fix: `CombatRLAgent` survival fallback now counts unplayed hand Burn damage together with monster incoming damage before asking fallback for an action. When current HP would not survive incoming plus Burn after current block, energy guard/takeover chooses the highest-confidence playable block card instead of blindly accepting fallback's attack or first playable card.
+- Regression: `test_energy_guard_counts_burn_damage_when_selecting_survival_fallback` reproduced the Hexaghost hand red by making fallback choose `Thunderclap`; after the fix, the replacement chooses `Defend`.
+- Verification after fix: focused regression red `1 failed`, then green `1 passed`; related CombatRL/agent guard tests `109 passed`; full pytest with disabled cache provider and repo-local basetemp passed `1516 passed`.
+- Next candidate: rerun bounded validation from this commit and inspect whether Hexaghost deaths still contain same-turn Burn lethal lines. If this signal quiets, compare remaining Act 1 boss deaths by boss and turn phase before touching broader fallback/RL policy.
