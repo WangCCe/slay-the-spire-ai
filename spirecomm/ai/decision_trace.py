@@ -134,7 +134,7 @@ def _action_summary(action, game) -> Dict[str, Any]:
         "type": type(action).__name__ if action is not None else None,
         "command": _safe_str(getattr(action, "command", "")),
     }
-    for attr in ("card_index", "target_index", "potion_index", "use"):
+    for attr in ("card_index", "target_index", "use"):
         if hasattr(action, attr):
             summary[attr] = _json_scalar(getattr(action, attr))
 
@@ -149,14 +149,43 @@ def _action_summary(action, game) -> Dict[str, Any]:
 
     potion = getattr(action, "potion", None)
     potion_index = getattr(action, "potion_index", None)
+    resolved_potion_index = _resolve_potion_index(game, potion, potion_index)
+    if resolved_potion_index is not None:
+        summary["potion_index"] = resolved_potion_index
+        potion_index = resolved_potion_index
+    elif hasattr(action, "potion_index"):
+        summary["potion_index"] = _json_scalar(potion_index)
+
     if potion is None and isinstance(potion_index, int):
-        potions = list(_safe_iterable(getattr(game, "potions", [])))
+        potions = _game_potions(game)
         if 0 <= potion_index < len(potions):
             potion = potions[potion_index]
     if potion is not None:
         summary["potion"] = _potion_summary(potion)
 
     return summary
+
+
+def _resolve_potion_index(game, potion, potion_index) -> Optional[int]:
+    if isinstance(potion_index, int) and potion_index >= 0:
+        return potion_index
+    if potion is None:
+        return None
+    potions = _game_potions(game)
+    try:
+        return potions.index(potion)
+    except Exception:
+        return None
+
+
+def _game_potions(game):
+    raw_potions = getattr(game, "potions", None)
+    if raw_potions is not None:
+        return list(_safe_iterable(raw_potions))
+    get_real_potions = getattr(game, "get_real_potions", None)
+    if callable(get_real_potions):
+        return list(_safe_iterable(get_real_potions()))
+    return []
 
 
 def _safe_iterable(value):

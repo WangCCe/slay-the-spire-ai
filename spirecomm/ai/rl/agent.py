@@ -1169,7 +1169,6 @@ class CombatRLAgent:
             logger.info(f"[CombatRLAgent] Calling RL agent for decision")
             try:
                 action = self.rl_agent.get_next_action_in_game(game)
-                action = self._with_combat_action_context(action, game)
 
                 logger.info("[CombatRLAgent] RL returned: %s", self._describe_combat_action(action, game))
 
@@ -1187,7 +1186,7 @@ class CombatRLAgent:
                         )
                         return self._with_combat_action_context(replacement, game)
                     logger.info("[ENERGY_GUARD] No safe replacement found; allowing EndTurnAction")
-                    return action
+                    return self._with_combat_action_context(action, game)
                 elif self._should_override_awakened_one_power(action, game):
                     replacement = self._get_awakened_one_safe_replacement(game)
                     if replacement is not None:
@@ -1220,7 +1219,7 @@ class CombatRLAgent:
                         return self._with_combat_action_context(replacement, game)
                     self.rl_failure_count = 0
                     logger.info("[HEXAGHOST_SETUP_GUARD] No setup replacement found; allowing action")
-                    return action
+                    return self._with_combat_action_context(action, game)
                 elif self._should_override_slime_boss_vulnerable_setup_action(action, game):
                     replacement = self._get_slime_boss_vulnerable_setup_replacement(game)
                     if replacement is not None:
@@ -1235,7 +1234,7 @@ class CombatRLAgent:
                         return self._with_combat_action_context(replacement, game)
                     self.rl_failure_count = 0
                     logger.info("[SLIME_VULN_GUARD] No vulnerable setup replacement found; allowing action")
-                    return action
+                    return self._with_combat_action_context(action, game)
                 elif self._should_override_urgent_ethereal_attack(action, game):
                     replacement = self._get_urgent_ethereal_attack_replacement(game, action)
                     if replacement is not None:
@@ -1250,7 +1249,7 @@ class CombatRLAgent:
                         return self._with_combat_action_context(replacement, game)
                     self.rl_failure_count = 0
                     logger.info("[ETHEREAL_ATTACK_GUARD] No urgent ethereal replacement found; allowing action")
-                    return action
+                    return self._with_combat_action_context(action, game)
                 elif self._should_override_unproductive_double_tap(action, game):
                     replacement = self._get_double_tap_safe_replacement(game)
                     if replacement is not None:
@@ -1268,7 +1267,7 @@ class CombatRLAgent:
                         return self._with_combat_action_context(replacement, game)
                     self.rl_failure_count = 0
                     logger.info("[DOUBLE_TAP_GUARD] No safe replacement found; allowing action")
-                    return action
+                    return self._with_combat_action_context(action, game)
                 elif self._should_override_risky_havoc(action, game):
                     replacement = self._get_havoc_safe_replacement(game)
                     if replacement is not None:
@@ -1286,7 +1285,7 @@ class CombatRLAgent:
                         return self._with_combat_action_context(replacement, game)
                     self.rl_failure_count = 0
                     logger.info("[HAVOC_GUARD] No safe replacement found; allowing Havoc")
-                    return action
+                    return self._with_combat_action_context(action, game)
                 elif self._should_override_low_value_status_card(action, game):
                     replacement = self._get_status_card_safe_replacement(game)
                     if replacement is not None:
@@ -1304,7 +1303,7 @@ class CombatRLAgent:
                         return self._with_combat_action_context(replacement, game)
                     self.rl_failure_count = 0
                     logger.info("[STATUS_CARD_GUARD] No safe replacement found; allowing status card")
-                    return action
+                    return self._with_combat_action_context(action, game)
                 elif self._should_override_low_value_potion(action, game):
                     replacement = self._get_non_potion_fallback(game)
                     if replacement is not None:
@@ -1322,7 +1321,7 @@ class CombatRLAgent:
                         return self._with_combat_action_context(replacement, game)
                     self.rl_failure_count = 0
                     logger.info("[POTION_SAVE_GUARD] No replacement found; allowing PotionAction")
-                    return action
+                    return self._with_combat_action_context(action, game)
                 elif self._is_valid_combat_action(action, game):
                     logger.info(f"[CombatRLAgent] RL action validated, returning it")
                     # Valid action for current combat context

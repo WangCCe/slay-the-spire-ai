@@ -6,7 +6,7 @@ from spirecomm.ai.decision_trace import (
     write_decision_trace_event,
 )
 from spirecomm.ai.rl.agent import CombatRLAgent
-from spirecomm.communication.action import EndTurnAction, PlayCardAction
+from spirecomm.communication.action import EndTurnAction, PlayCardAction, PotionAction
 
 
 def _card(name="Strike", card_id="Strike_R", cost=1, playable=True):
@@ -71,6 +71,23 @@ def test_decision_trace_event_is_json_safe_and_keeps_combat_context():
     assert event["action"]["card_index"] == 0
     assert event["action"]["target_index"] == 0
     json.dumps(event)
+
+
+def test_decision_trace_resolves_bound_potion_index():
+    fire = SimpleNamespace(name="Fire Potion", potion_id="FirePotion")
+    elixir = SimpleNamespace(name="Elixir", potion_id="ElixirPotion")
+    game = _game()
+    game.potions = [fire, elixir]
+
+    event = build_decision_trace_event(
+        PotionAction(True, potion=elixir),
+        game,
+        source="combat_rl",
+    )
+
+    assert event["action"]["type"] == "PotionAction"
+    assert event["action"]["potion_index"] == 1
+    assert event["action"]["potion"]["id"] == "ElixirPotion"
 
 
 def test_decision_trace_writer_is_disabled_without_env(monkeypatch, tmp_path):

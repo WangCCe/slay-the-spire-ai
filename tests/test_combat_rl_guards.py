@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 
 from spirecomm.ai.rl.agent import CombatRLAgent
@@ -589,6 +590,67 @@ def test_rl_elixir_index_action_is_replaced_even_in_boss_combat():
     assert action.card_index == 0
     assert action.target_index == 0
     assert calls == {"rl": 1, "fallback": 1}
+
+
+def test_rl_elixir_replacement_trace_records_final_action_only(monkeypatch, tmp_path):
+    trace_path = tmp_path / "trace.jsonl"
+    monkeypatch.setenv("STS_DECISION_TRACE_FILE", str(trace_path))
+    potion = SimpleNamespace(
+        potion_id="ElixirPotion",
+        name="Elixir",
+        can_use=True,
+        requires_target=False,
+        effect_type="exhaust_hand_select",
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    game = _game(
+        potions=[potion],
+        monsters=[
+            _monster(
+                hp=230,
+                damage=7,
+                index=0,
+                name="Hexaghost",
+                monster_id="Hexaghost",
+            )
+        ],
+        current_hp=74,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=2,
+        player=SimpleNamespace(energy=3),
+        hand=[strike],
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PotionAction(True, potion=potion)
+    )
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0, target_index=0)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    records = [
+        json.loads(line)
+        for line in trace_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [record["action"]["type"] for record in records] == ["PlayCardAction"]
+    assert records[0]["action"]["card_index"] == 0
 
 
 def test_rl_incoming_damage_clamps_negative_live_move_damage_to_zero():
