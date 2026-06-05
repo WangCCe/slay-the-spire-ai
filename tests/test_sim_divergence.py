@@ -202,6 +202,38 @@ def test_headbutt_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_hemokinesis_zero_live_damage_matches_live_effect(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    hemokinesis = _card(
+        name="Hemokinesis",
+        card_id="Hemokinesis",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=5,
+        turn=2,
+        player=SimpleNamespace(current_hp=50, max_hp=80, block=0, energy=3),
+        hand=[hemokinesis],
+        monsters=[_monster(name="Gremlin", monster_id="GremlinWarrior", hp=22, damage=3)],
+    )
+    actual = _game(
+        floor=5,
+        turn=2,
+        player=SimpleNamespace(current_hp=48, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Gremlin", monster_id="GremlinWarrior", hp=7, damage=3)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_upgraded_skill_block_does_not_create_false_player_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

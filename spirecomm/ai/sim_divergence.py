@@ -24,6 +24,7 @@ BASE_ATTACK_DAMAGE = {
     "Carnage": 20,
     "Cleave": 8,
     "Headbutt": 9,
+    "Hemokinesis": 15,
     "Iron Wave": 5,
     "Pommel Strike": 9,
     "Strike": 6,
@@ -40,6 +41,10 @@ BASE_SKILL_BLOCK = {
     "Power Through": 15,
     "Shrug It Off": 8,
     "True Grit": 7,
+}
+
+CARD_SELF_DAMAGE = {
+    "Hemokinesis": 2,
 }
 
 CARD_ID_ALIASES = {
@@ -185,6 +190,12 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 target_index = _target_index_for_action(action, game)
                 damage = _card_damage(card)
                 _apply_expected_attack(expected, target_index, damage)
+                self_damage = _card_self_damage(card)
+                if self_damage > 0:
+                    expected["player"]["current_hp"] = max(
+                        0,
+                        expected["player"]["current_hp"] - self_damage,
+                    )
             else:
                 block = _card_block(card)
                 if block > 0:
@@ -468,6 +479,13 @@ def _card_block(card) -> int:
     if base_block is not None:
         return base_block + upgrade_bonus
     return 0
+
+
+def _card_self_damage(card) -> int:
+    card_name = _known_card_name(card, CARD_SELF_DAMAGE)
+    if card_name is None:
+        return 0
+    return CARD_SELF_DAMAGE.get(card_name, 0)
 
 
 def _known_card_name(card, known_values: Dict[str, int]) -> Optional[str]:
