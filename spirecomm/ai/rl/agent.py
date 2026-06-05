@@ -1124,6 +1124,13 @@ class CombatRLAgent:
         Returns:
             Action to execute
         """
+        try:
+            from spirecomm.ai.sim_divergence import observe_next_state
+
+            observe_next_state(game)
+        except Exception as exc:
+            logger.debug("sim divergence observation failed: %s", exc)
+
         # Run tracking logic from fallback_agent before any decision
         # This ensures statistics are collected even when RL is used
         if hasattr(self.fallback_agent, '_track_game_state'):
@@ -1437,6 +1444,13 @@ class CombatRLAgent:
         if action is not None and not getattr(action, "_decision_trace_written", False):
             if write_decision_trace_event(action, game, source="combat_rl"):
                 action._decision_trace_written = True
+        if action is not None:
+            try:
+                from spirecomm.ai.sim_divergence import record_expected_action
+
+                record_expected_action(action, game)
+            except Exception as exc:
+                logger.debug("sim divergence expected-state record failed: %s", exc)
         return action
 
     def _maybe_use_potion_guard(self, game: Game) -> Optional[Action]:
