@@ -454,6 +454,50 @@ def test_vulnerable_target_damage_does_not_create_false_monster_diff(monkeypatch
     assert not trace_path.exists()
 
 
+def test_curl_up_target_gains_block_after_surviving_attack(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=1,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=3),
+        hand=[_card(name="Strike", card_id="Strike_R", damage=6)],
+        monsters=[
+            _monster(
+                name="Louse",
+                monster_id="FuzzyLouseDefensive",
+                hp=12,
+                damage=0,
+                intent=Intent.NONE,
+                powers=[Power("Curl Up", "Curl Up", 5)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=1,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Louse",
+                monster_id="FuzzyLouseDefensive",
+                hp=6,
+                block=5,
+                damage=0,
+                intent=Intent.NONE,
+                powers=[],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_frail_player_block_does_not_create_false_player_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

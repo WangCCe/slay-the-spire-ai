@@ -277,9 +277,14 @@ def _apply_expected_attack(expected: Dict[str, Any], target_index: Optional[int]
         blocked = min(target["block"], remaining_damage)
         target["block"] -= blocked
         remaining_damage -= blocked
+    hp_before = target["hp"]
     target["hp"] = max(0, target["hp"] - remaining_damage)
     if target["hp"] <= 0:
         target["gone"] = True
+    elif target["hp"] < hp_before:
+        curl_up_block = max(0, _snapshot_power_amount(target, "Curl Up"))
+        if curl_up_block > 0:
+            target["block"] += curl_up_block
 
 
 def _apply_expected_attack_to_all(expected: Dict[str, Any], damage: int) -> None:
