@@ -541,6 +541,85 @@ def test_finesse_plus_zero_live_block_uses_upgrade_block(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_second_wind_zero_live_block_counts_non_attack_cards(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    second_wind = _card(
+        name="Second Wind",
+        card_id="Second Wind",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=0,
+    )
+    before = _game(
+        floor=7,
+        turn=4,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=3),
+        hand=[
+            _card(name="Clothesline", card_id="Clothesline", card_type=CardType.ATTACK, cost=2, damage=12),
+            _card(name="Slimed", card_id="Slimed", card_type=CardType.STATUS, cost=1, damage=0),
+            second_wind,
+            _card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, cost=1, damage=0, block=5),
+            _card(name="Slimed", card_id="Slimed", card_type=CardType.STATUS, cost=1, damage=0),
+        ],
+        monsters=[_monster(name="Spike Slime (L)", monster_id="SpikeSlime_L", hp=45, damage=11)],
+    )
+    actual = _game(
+        floor=7,
+        turn=4,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=15, energy=2),
+        hand=[],
+        monsters=[_monster(name="Spike Slime (L)", monster_id="SpikeSlime_L", hp=45, damage=11)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=2), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_second_wind_plus_uses_upgraded_block_per_non_attack(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    second_wind_plus = _card(
+        name="Second Wind+",
+        card_id="Second Wind",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=20,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=4),
+        hand=[
+            _card(name="Offering+", card_id="Offering", card_type=CardType.SKILL, cost=0, damage=0, upgrades=1),
+            _card(name="Evolve", card_id="Evolve", card_type=CardType.POWER, cost=1, damage=0),
+            _card(name="Strike", card_id="Strike_R", card_type=CardType.ATTACK, cost=1, damage=6),
+            second_wind_plus,
+            _card(name="Sever Soul", card_id="Sever Soul", card_type=CardType.ATTACK, cost=2, damage=16),
+        ],
+        monsters=[_monster(name="Centurion", monster_id="Centurion", hp=83, damage=12)],
+    )
+    actual = _game(
+        floor=20,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=14, energy=3),
+        hand=[],
+        monsters=[_monster(name="Centurion", monster_id="Centurion", hp=83, damage=12)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=3), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_clothesline_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

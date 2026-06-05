@@ -54,6 +54,10 @@ BASE_SKILL_BLOCK = {
     "True Grit": 7,
 }
 
+SECOND_WIND_BLOCK_PER_CARD = {
+    "Second Wind": 5,
+}
+
 CARD_SELF_DAMAGE = {
     "Bloodletting": 3,
     "Hemokinesis": 2,
@@ -224,6 +228,12 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             block = _card_block(card)
             if block > 0:
                 expected["player"]["block"] += _modified_block(block, expected.get("player", {}))
+            second_wind_block = _second_wind_block(card, before, card_index)
+            if second_wind_block > 0:
+                expected["player"]["block"] += _modified_block(
+                    second_wind_block,
+                    expected.get("player", {}),
+                )
         if 0 <= card_index < len(expected["hand"]):
             expected["hand"].pop(card_index)
 
@@ -537,6 +547,41 @@ def _card_block(card) -> int:
     return 0
 
 
+def _second_wind_block(card, before: Dict[str, Any], card_index: int) -> int:
+    card_name = _known_card_name(card, SECOND_WIND_BLOCK_PER_CARD)
+    if card_name is None:
+        return 0
+    per_card = SECOND_WIND_BLOCK_PER_CARD[card_name]
+    if card_upgrade_count(card) > 0:
+        per_card += 2
+    non_attack_count = 0
+    skipped_played_card = False
+    for index, hand_card in enumerate(before.get("hand", [])):
+        if index == card_index:
+            continue
+        if card_index < 0 and not skipped_played_card and _snapshot_card_matches(hand_card, card):
+            skipped_played_card = True
+            continue
+        if not _snapshot_card_is_attack(hand_card):
+            non_attack_count += 1
+    return non_attack_count * per_card
+
+
+def _snapshot_card_is_attack(card: Dict[str, Any]) -> bool:
+    return _normalize(card.get("type")) in {"attack", "cardtypeattack"}
+
+
+def _snapshot_card_matches(snapshot_card: Dict[str, Any], card) -> bool:
+    snapshot_ids = {
+        _normalize(_strip_upgrade_suffix(snapshot_card.get("id"))),
+        _normalize(_strip_upgrade_suffix(snapshot_card.get("name"))),
+    }
+    for attr in ("card_id", "id", "name"):
+        if _normalize(_strip_upgrade_suffix(getattr(card, attr, None))) in snapshot_ids:
+            return True
+    return False
+
+
 def _modified_attack_damage(damage: int, target: Dict[str, Any]) -> int:
     if damage <= 0:
         return 0
@@ -586,7 +631,9 @@ def _known_card_name(card, known_values: Dict[str, int]) -> Optional[str]:
     for attr in ("name", "card_id", "id"):
         value = getattr(card, attr, None)
         if value in CARD_ID_ALIASES:
-            return CARD_ID_ALIASES[value]
+            alias = CARD_ID_ALIASES[value]
+            if alias in known_values:
+                return alias
         normalized = _normalize(_strip_upgrade_suffix(value))
         if normalized in known_by_normalized:
             return known_by_normalized[normalized]
