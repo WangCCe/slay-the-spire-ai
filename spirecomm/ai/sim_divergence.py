@@ -9,9 +9,41 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from spirecomm.ai.heuristics.card_upgrades import (
+    known_block_upgrade_bonus,
+    known_damage_upgrade_bonus,
+)
+
 
 TRACE_ENV = "STS_SIM_DIVERGENCE_TRACE_FILE"
 DISABLED_VALUES = {"", "0", "false", "off", "none", "disabled"}
+
+BASE_ATTACK_DAMAGE = {
+    "Anger": 6,
+    "Bash": 8,
+    "Carnage": 20,
+    "Cleave": 8,
+    "Iron Wave": 5,
+    "Pommel Strike": 9,
+    "Strike": 6,
+    "Twin Strike": 10,
+}
+
+BASE_SKILL_BLOCK = {
+    "Defend": 5,
+    "Flame Barrier": 12,
+    "Ghostly Armor": 10,
+    "Impervious": 30,
+    "Iron Wave": 5,
+    "Power Through": 15,
+    "Shrug It Off": 8,
+    "True Grit": 7,
+}
+
+CARD_ID_ALIASES = {
+    "Defend_R": "Defend",
+    "Strike_R": "Strike",
+}
 
 logger = logging.getLogger(__name__)
 _pending_expected: Optional[Dict[str, Any]] = None
@@ -387,34 +419,52 @@ def _card_cost(card) -> int:
 
 def _card_damage(card) -> int:
     explicit = _to_int(getattr(card, "damage", 0))
+    card_name = _known_card_name(card, BASE_ATTACK_DAMAGE)
+    base_damage = BASE_ATTACK_DAMAGE.get(card_name) if card_name else None
+    upgrade_bonus = known_damage_upgrade_bonus(card, card_name) if card_name else 0
     if explicit > 0:
+        if base_damage is not None and upgrade_bonus > 0 and explicit <= base_damage:
+            return explicit + upgrade_bonus
         return explicit
-    return {
-        "anger": 6,
-        "bash": 8,
-        "carnage": 20,
-        "cleave": 8,
-        "ironwave": 5,
-        "pommelstrike": 9,
-        "strike": 6,
-        "twinstrike": 10,
-    }.get(_normalize(getattr(card, "name", getattr(card, "card_id", ""))), 0)
+    if base_damage is not None:
+        return base_damage + upgrade_bonus
+    return 0
 
 
 def _card_block(card) -> int:
     explicit = _to_int(getattr(card, "block", 0))
+    card_name = _known_card_name(card, BASE_SKILL_BLOCK)
+    base_block = BASE_SKILL_BLOCK.get(card_name) if card_name else None
+    upgrade_bonus = known_block_upgrade_bonus(card, card_name) if card_name else 0
     if explicit > 0:
+        if base_block is not None and upgrade_bonus > 0 and explicit <= base_block:
+            return explicit + upgrade_bonus
         return explicit
-    return {
-        "defend": 5,
-        "flamebarrier": 12,
-        "ghostlyarmor": 10,
-        "impervious": 30,
-        "ironwave": 5,
-        "powerthrough": 15,
-        "shrugitoff": 8,
-        "truegrit": 7,
-    }.get(_normalize(getattr(card, "name", getattr(card, "card_id", ""))), 0)
+    if base_block is not None:
+        return base_block + upgrade_bonus
+    return 0
+
+
+def _known_card_name(card, known_values: Dict[str, int]) -> Optional[str]:
+    known_by_normalized = {_normalize(name): name for name in known_values}
+    for attr in ("name", "card_id", "id"):
+        value = getattr(card, attr, None)
+        if value in CARD_ID_ALIASES:
+            return CARD_ID_ALIASES[value]
+        normalized = _normalize(_strip_upgrade_suffix(value))
+        if normalized in known_by_normalized:
+            return known_by_normalized[normalized]
+    return None
+
+
+def _strip_upgrade_suffix(value) -> str:
+    text = str(value or "")
+    if "+" not in text:
+        return text
+    base, suffix = text.rsplit("+", 1)
+    if suffix == "" or suffix.isdigit():
+        return base
+    return text
 
 
 def _normalize(value) -> str:

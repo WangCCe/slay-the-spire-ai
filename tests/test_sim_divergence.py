@@ -12,7 +12,15 @@ from spirecomm.spire.card import CardType
 from spirecomm.spire.character import Intent
 
 
-def _card(name="Strike", card_id="Strike_R", card_type=CardType.ATTACK, cost=1, damage=6):
+def _card(
+    name="Strike",
+    card_id="Strike_R",
+    card_type=CardType.ATTACK,
+    cost=1,
+    damage=6,
+    block=0,
+    upgrades=0,
+):
     return SimpleNamespace(
         name=name,
         card_id=card_id,
@@ -20,6 +28,8 @@ def _card(name="Strike", card_id="Strike_R", card_type=CardType.ATTACK, cost=1, 
         cost=cost,
         cost_for_turn=cost,
         damage=damage,
+        block=block,
+        upgrades=upgrades,
         is_playable=True,
         has_target=card_type == CardType.ATTACK,
     )
@@ -130,6 +140,68 @@ def test_guardian_sharp_hide_diff_is_attributed(monkeypatch, tmp_path):
     assert records[0]["reason"] == "guardian_sharp_hide_reflection"
     assert records[0]["action"]["card"]["name"] == "Twin Strike"
     assert records[0]["diffs"]["player.block"] == {"expected": 5, "actual": 2}
+
+
+def test_upgraded_attack_damage_does_not_create_false_monster_diff(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    strike_plus = _card(name="Strike+", card_id="Strike_R", damage=6, upgrades=1)
+    before = _game(
+        floor=8,
+        turn=1,
+        current_hp=55,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=3),
+        hand=[strike_plus],
+        monsters=[_monster(name="Slaver", monster_id="SlaverBlue", hp=48, damage=12)],
+    )
+    actual = _game(
+        floor=8,
+        turn=1,
+        current_hp=55,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Slaver", monster_id="SlaverBlue", hp=39, damage=12)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_upgraded_skill_block_does_not_create_false_player_diff(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    defend_plus = _card(
+        name="Defend+",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+        upgrades=1,
+    )
+    before = _game(
+        floor=8,
+        turn=1,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=1),
+        hand=[defend_plus],
+        monsters=[_monster(name="Slaver", monster_id="SlaverBlue", hp=48, damage=12)],
+    )
+    actual = _game(
+        floor=8,
+        turn=1,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=8, energy=0),
+        hand=[],
+        monsters=[_monster(name="Slaver", monster_id="SlaverBlue", hp=48, damage=12)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
 
 
 def test_combat_rl_checks_pending_divergence_on_next_state(monkeypatch, tmp_path):
