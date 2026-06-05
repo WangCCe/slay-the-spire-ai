@@ -202,6 +202,39 @@ def test_headbutt_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_iron_wave_attack_block_matches_live_effect(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    iron_wave = _card(
+        name="Iron Wave",
+        card_id="Iron Wave",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=5,
+        block=5,
+    )
+    before = _game(
+        floor=10,
+        turn=1,
+        player=SimpleNamespace(current_hp=64, max_hp=80, block=0, energy=3),
+        hand=[iron_wave],
+        monsters=[_monster(name="Acid Slime (L)", monster_id="AcidSlime_L", hp=69, damage=16)],
+    )
+    actual = _game(
+        floor=10,
+        turn=1,
+        player=SimpleNamespace(current_hp=64, max_hp=80, block=5, energy=2),
+        hand=[],
+        monsters=[_monster(name="Acid Slime (L)", monster_id="AcidSlime_L", hp=64, damage=16)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_clothesline_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

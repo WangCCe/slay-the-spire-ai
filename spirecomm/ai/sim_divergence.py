@@ -197,10 +197,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                         0,
                         expected["player"]["current_hp"] - self_damage,
                     )
-            else:
-                block = _card_block(card)
-                if block > 0:
-                    expected["player"]["block"] += block
+            block = _card_block(card)
+            if block > 0:
+                expected["player"]["block"] += block
         if 0 <= card_index < len(expected["hand"]):
             expected["hand"].pop(card_index)
 
