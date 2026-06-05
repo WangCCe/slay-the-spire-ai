@@ -13,6 +13,7 @@ Examples:
 
 import argparse
 import glob
+import os
 import shutil
 import subprocess
 import sys
@@ -83,6 +84,19 @@ def build_main_command(args):
         cmd.extend(["--expert-mix-warmup", str(args.expert_mix_warmup)])
 
     return cmd
+
+
+def build_child_env(args):
+    env = os.environ.copy()
+    if getattr(args, "skip_decision_trace", False):
+        env.pop("STS_DECISION_TRACE_FILE", None)
+        return env
+
+    trace_path = getattr(args, "decision_trace_path", None)
+    if not trace_path:
+        trace_path = str(Path(args.game_dir) / "ai_decision_trace.jsonl")
+    env["STS_DECISION_TRACE_FILE"] = trace_path
+    return env
 
 
 def run_maintenance(args):
@@ -264,6 +278,16 @@ def parse_args():
     )
     parser.add_argument("--skip-log-backup", action="store_true")
     parser.add_argument(
+        "--decision-trace-path",
+        default=None,
+        help="JSONL path for compact combat decision traces during this batch.",
+    )
+    parser.add_argument(
+        "--skip-decision-trace",
+        action="store_true",
+        help="Do not enable STS_DECISION_TRACE_FILE for the child process.",
+    )
+    parser.add_argument(
         "--truncate-log-after-backup",
         action="store_true",
         help="Clear the active log after copying it. Use only between batches.",
@@ -292,6 +316,10 @@ def main():
 
     print(f"[training-batch] phase={args.phase}: {phase['description']}", file=sys.stderr)
     print("[training-batch] main:", " ".join(main_command), file=sys.stderr)
+    child_env = build_child_env(args)
+    trace_path = child_env.get("STS_DECISION_TRACE_FILE")
+    if trace_path:
+        print(f"[training-batch] decision trace: {trace_path}", file=sys.stderr)
     print_restart_guidance(args)
 
     if args.dry_run:
@@ -310,7 +338,7 @@ def main():
     if not args.skip_log_backup:
         backup_log_file(args)
 
-    result = subprocess.call(main_command)
+    result = subprocess.call(main_command, env=child_env)
 
     maintenance_result = 0
     if not args.skip_maintenance:

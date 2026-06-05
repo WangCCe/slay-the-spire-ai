@@ -1,4 +1,4 @@
-from scripts.run_training_batch import build_main_command, PHASES
+from scripts.run_training_batch import build_child_env, build_main_command, PHASES
 
 
 class Args:
@@ -16,6 +16,9 @@ class Args:
     expert_mix = False
     expert_mix_prob = None
     expert_mix_warmup = None
+    game_dir = r"D:\SteamLibrary\steamapps\common\SlayTheSpire"
+    decision_trace_path = None
+    skip_decision_trace = False
 
 
 def test_conservative_batch_command_defaults_to_safe_route():
@@ -55,3 +58,22 @@ def test_eval_batch_command_forwards_eval_without_train():
     assert "--train" not in cmd
     assert "--epsilon" in cmd
     assert cmd[cmd.index("--epsilon") + 1] == "0.05"
+
+
+def test_batch_child_env_enables_default_decision_trace(monkeypatch):
+    monkeypatch.delenv("STS_DECISION_TRACE_FILE", raising=False)
+    args = Args()
+
+    env = build_child_env(args)
+
+    assert env["STS_DECISION_TRACE_FILE"].endswith("ai_decision_trace.jsonl")
+
+
+def test_batch_child_env_can_skip_decision_trace(monkeypatch):
+    monkeypatch.setenv("STS_DECISION_TRACE_FILE", "existing.jsonl")
+    args = Args()
+    args.skip_decision_trace = True
+
+    env = build_child_env(args)
+
+    assert "STS_DECISION_TRACE_FILE" not in env

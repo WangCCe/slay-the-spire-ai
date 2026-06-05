@@ -1126,7 +1126,7 @@ class CombatRLAgent:
         if self.use_rl_for_combat and self._is_rl_context(game):
             potion_action = self._maybe_use_potion_guard(game)
             if potion_action is not None:
-                return potion_action
+                return self._with_combat_action_context(potion_action, game)
 
             logger.info(f"[CombatRLAgent] Calling RL agent for decision")
             try:
@@ -1322,10 +1322,14 @@ class CombatRLAgent:
     @staticmethod
     def _with_combat_action_context(action: Optional[Action], game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction
+        from spirecomm.ai.decision_trace import write_decision_trace_event
 
         if isinstance(action, EndTurnAction):
             action.expected_floor = getattr(game, "floor", None)
             action.expected_turn = getattr(game, "turn", None)
+        if action is not None and not getattr(action, "_decision_trace_written", False):
+            if write_decision_trace_event(action, game, source="combat_rl"):
+                action._decision_trace_written = True
         return action
 
     def _maybe_use_potion_guard(self, game: Game) -> Optional[Action]:

@@ -2,8 +2,9 @@ import pytest
 from types import SimpleNamespace
 
 from spirecomm.communication.coordinator import Coordinator
+from spirecomm.communication.action import RestAction, WaitAction
 from spirecomm.spire.character import PlayerClass
-from spirecomm.spire.screen import ScreenType
+from spirecomm.spire.screen import RestOption, ScreenType
 
 
 def test_startup_state_wait_is_longer_than_in_game_stuck_guard():
@@ -57,6 +58,37 @@ def test_idle_in_game_wait_requests_state_for_event_result_pages():
     coordinator._request_state_during_idle_wait(1)
 
     assert sent_messages == [("state", False)]
+
+
+def test_stuck_state_diagnostics_include_screen_action_queue_and_screen_fields():
+    coordinator = object.__new__(Coordinator)
+    coordinator.game_is_ready = False
+    coordinator.in_game = True
+    coordinator.action_queue = [RestAction(RestOption.SMITH), WaitAction(timeout=1)]
+    coordinator._last_sent_message = "choose SMITH"
+    coordinator._sent_message_count = 7
+    coordinator._last_command_error = "Invalid command: choose"
+    coordinator.last_game_state = SimpleNamespace(
+        floor=17,
+        turn=0,
+        screen_type=ScreenType.REST,
+        available_commands=["choose", "state"],
+        screen=SimpleNamespace(
+            rest_options=[RestOption.REST, RestOption.SMITH],
+            has_rested=False,
+        ),
+    )
+
+    details = coordinator._describe_stuck_state(consecutive_timeouts=10)
+
+    assert "screen=ScreenType.REST" in details
+    assert "floor=17" in details
+    assert "queue_size=2" in details
+    assert "next_action=RestAction" in details
+    assert "last_sent=choose SMITH" in details
+    assert "last_error=Invalid command: choose" in details
+    assert "available_commands=['choose', 'state']" in details
+    assert "rest_options=['REST', 'SMITH']" in details
 
 
 def test_play_one_game_ignores_transient_out_of_game_without_game_over():

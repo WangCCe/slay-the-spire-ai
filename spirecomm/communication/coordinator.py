@@ -207,6 +207,47 @@ class Coordinator:
         self.add_action_to_queue(WaitAction(timeout=timeout))
         return True
 
+    def _describe_stuck_state(self, consecutive_timeouts=None):
+        game = getattr(self, "last_game_state", None)
+        screen = getattr(game, "screen", None)
+        action_queue = list(getattr(self, "action_queue", []) or [])
+        next_action = action_queue[0] if action_queue else None
+        fields = [
+            f"screen={getattr(game, 'screen_type', None)}",
+            f"floor={getattr(game, 'floor', None)}",
+            f"turn={getattr(game, 'turn', None)}",
+            f"in_game={getattr(self, 'in_game', None)}",
+            f"game_is_ready={getattr(self, 'game_is_ready', None)}",
+            f"queue_size={len(action_queue)}",
+            f"next_action={type(next_action).__name__ if next_action is not None else None}",
+            f"last_sent={getattr(self, '_last_sent_message', None)}",
+            f"sent_count={getattr(self, '_sent_message_count', None)}",
+            f"last_error={getattr(self, '_last_command_error', None)}",
+            f"available_commands={getattr(game, 'available_commands', None)}",
+        ]
+        if consecutive_timeouts is not None:
+            fields.append(f"consecutive_timeouts={consecutive_timeouts}")
+        if screen is not None:
+            fields.extend(self._describe_screen_fields(screen))
+        return "; ".join(fields)
+
+    @staticmethod
+    def _describe_screen_fields(screen):
+        fields = []
+        for attr in ("confirm_up", "num_cards", "has_rested", "can_pick_zero"):
+            if hasattr(screen, attr):
+                fields.append(f"{attr}={getattr(screen, attr)}")
+        if hasattr(screen, "selected_cards"):
+            fields.append(
+                f"selected_cards={len(getattr(screen, 'selected_cards') or [])}"
+            )
+        if hasattr(screen, "rest_options"):
+            options = []
+            for option in getattr(screen, "rest_options") or []:
+                options.append(getattr(option, "name", str(option)))
+            fields.append(f"rest_options={options}")
+        return fields
+
     def check_communication_threads(self):
         """Check if stdin/stdout communication threads are still alive.
 
@@ -865,9 +906,12 @@ class Coordinator:
                                 continue
 
                 if consecutive_timeouts >= max_consecutive_timeouts:
+                    stuck_details = self._describe_stuck_state(
+                        consecutive_timeouts=consecutive_timeouts
+                    )
                     raise Exception(
                         f"Game appears stuck (no state update for {consecutive_timeouts * 2} seconds). "
-                        f"Last action may have caused the game to hang."
+                        f"Last action may have caused the game to hang. {stuck_details}"
                     )
 
         # Return the saved terminal state if a later menu transition overwrote

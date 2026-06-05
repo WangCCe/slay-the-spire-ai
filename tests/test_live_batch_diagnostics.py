@@ -8,6 +8,7 @@ from pathlib import Path
 from analysis_scripts.diagnose_live_batch import (
     format_report,
     load_run_summaries,
+    read_debug_log_tails,
     scan_text_for_signals,
     summarize_run_batch,
 )
@@ -85,6 +86,23 @@ def test_live_batch_summary_filters_since_and_counts_core_outcomes(tmp_path):
     assert summary.card_reward_skips == 1
 
 
+def test_live_batch_summary_filters_since_run_timestamp_by_file_name(tmp_path):
+    game_dir = tmp_path / "SlayTheSpire"
+    shared_mtime = datetime(2026, 5, 27, 12, 0, tzinfo=timezone.utc).timestamp()
+    _write_run(game_dir, 300, shared_mtime, floor_reached=8, killed_by="Lagavulin")
+    _write_run(game_dir, 301, shared_mtime, floor_reached=16, killed_by="Slime Boss")
+    _write_run(game_dir, 302, shared_mtime, floor_reached=21, killed_by="Chosen")
+
+    runs = load_run_summaries(
+        game_dir,
+        character="IRONCLAD",
+        since_run_timestamp=301,
+        limit=10,
+    )
+
+    assert [run.file_name for run in runs] == ["302.run"]
+
+
 def test_live_batch_report_surfaces_log_signals():
     log_signals = scan_text_for_signals(
         "Traceback\nInvalid command: choose\nGame appears stuck\nTraceback\n"
@@ -106,6 +124,23 @@ def test_live_batch_report_surfaces_log_signals():
     assert "Traceback: 2" in report
     assert "Invalid command: 1" in report
     assert "Communication Mod not responding: 1" in report
+
+
+def test_live_batch_report_scans_rotated_debug_log_tail(tmp_path):
+    game_dir = tmp_path / "SlayTheSpire"
+    game_dir.mkdir(parents=True, exist_ok=True)
+    (game_dir / "ai_debug.log").write_text("CARD_REWARD\n", encoding="utf-8")
+    (game_dir / "ai_debug.log.1").write_text(
+        "READY_WAIT_STATE_POLL action=RestAction screen=ScreenType.REST\n"
+        "Game appears stuck\n",
+        encoding="utf-8",
+    )
+
+    debug_tail = read_debug_log_tails(game_dir, line_count=20, rotated_count=1)
+    signals = scan_text_for_signals("".join(debug_tail))
+
+    assert "READY_WAIT_STATE_POLL action=RestAction" in "".join(debug_tail)
+    assert signals["Game appears stuck"] == 1
 
 
 def test_live_batch_diagnostics_cli_prints_compact_report(tmp_path):

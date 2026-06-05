@@ -26,12 +26,15 @@ SIGNAL_PATTERNS = [
     "Traceback",
     "Game appears stuck",
     "Communication Mod not responding",
+    "READY_WAIT_STATE_POLL",
+    "IDLE_STATE_POLL",
     "Index out of bounds",
     "Invalid command",
     "unsupported operand",
     "TypeError",
     "Max games reached",
     "CARD_REWARD",
+    "POTION_GUARD",
     "ENERGY_GUARD",
     "REST_GUARD",
 ]
@@ -49,6 +52,10 @@ class RunFileSummary:
     ai_marked: bool
     card_reward_picks: int = 0
     card_reward_skips: int = 0
+    deck_size: int = 0
+    potions_obtained: int = 0
+    campfire_smiths: int = 0
+    campfire_rests: int = 0
 
 
 @dataclass
@@ -81,6 +88,7 @@ def load_run_summaries(
     game_dir: Path,
     character: str = DEFAULT_CHARACTER,
     since_timestamp: Optional[float] = None,
+    since_run_timestamp: Optional[int] = None,
     limit: int = 20,
 ) -> List[RunFileSummary]:
     runs_dir = game_dir / "runs" / character
@@ -96,6 +104,12 @@ def load_run_summaries(
         run_files = [
             path for path in run_files
             if path.stat().st_mtime >= since_timestamp
+        ]
+    if since_run_timestamp is not None:
+        run_files = [
+            path for path in run_files
+            if _run_stem_timestamp(path) is not None
+            and _run_stem_timestamp(path) > since_run_timestamp
         ]
     elif limit > 0:
         run_files = run_files[-limit:]
@@ -184,7 +198,9 @@ def format_report(
             marker = "ai" if run.ai_marked else "unmarked"
             lines.append(
                 f"{run.file_name}: {result} floor={run.floor} "
-                f"killed_by={run.killed_by or '-'} playtime={run.playtime}s {marker}"
+                f"killed_by={run.killed_by or '-'} playtime={run.playtime}s "
+                f"deck={run.deck_size} potions={run.potions_obtained} "
+                f"smith/rest={run.campfire_smiths}/{run.campfire_rests} {marker}"
             )
     else:
         lines.append("none")
@@ -227,23 +243,45 @@ def read_tail(path: Path, line_count: int) -> List[str]:
         return list(deque(handle, maxlen=line_count))
 
 
+def read_debug_log_tails(
+    game_dir: Path,
+    line_count: int,
+    rotated_count: int = 2,
+) -> List[str]:
+    lines: List[str] = []
+    for path in _debug_log_paths(game_dir, rotated_count=rotated_count):
+        lines.extend(read_tail(path, line_count))
+    return lines
+
+
 def build_report(
     game_dir: Path,
     character: str,
     since: Optional[str],
+    since_run: Optional[int],
     limit: int,
     tail_lines: int,
+    rotated_log_count: int = 2,
 ) -> str:
     since_timestamp = parse_since(since)
-    since_label = since or f"last {limit} runs"
+    since_label = (
+        f"run timestamp > {since_run}"
+        if since_run is not None
+        else since or f"last {limit} runs"
+    )
     runs = load_run_summaries(
         game_dir,
         character=character,
         since_timestamp=since_timestamp,
+        since_run_timestamp=since_run,
         limit=limit,
     )
     summary = summarize_run_batch(runs)
-    debug_tail = read_tail(game_dir / "ai_debug.log", tail_lines)
+    debug_tail = read_debug_log_tails(
+        game_dir,
+        line_count=tail_lines,
+        rotated_count=rotated_log_count,
+    )
     error_tail = read_tail(game_dir / "communication_mod_errors.log", tail_lines)
     return format_report(
         game_dir=game_dir,
@@ -291,6 +329,23 @@ def _match_ai_marked_run_stems(run_files: Sequence[Path], ai_markers: set) -> se
     return marked
 
 
+def _debug_log_paths(game_dir: Path, rotated_count: int) -> List[Path]:
+    paths = [game_dir / "ai_debug.log"]
+    if rotated_count > 0:
+        paths.extend(
+            game_dir / f"ai_debug.log.{index}"
+            for index in range(1, rotated_count + 1)
+        )
+    return paths
+
+
+def _run_stem_timestamp(path: Path) -> Optional[int]:
+    try:
+        return int(path.stem)
+    except ValueError:
+        return None
+
+
 def _load_json(path: Path):
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -304,6 +359,7 @@ def _summarize_run_file(
     ai_marked_stems: set,
 ) -> RunFileSummary:
     picks, skips = _count_card_rewards(record.get("card_choices", []))
+    smiths, rests = _count_campfires(record.get("campfire_choices", []))
     killed_by = record.get("killed_by") or _last_damage_enemies(record) or ""
     return RunFileSummary(
         file_name=run_file.name,
@@ -316,6 +372,10 @@ def _summarize_run_file(
         ai_marked=run_file.stem in ai_marked_stems,
         card_reward_picks=picks,
         card_reward_skips=skips,
+        deck_size=_sequence_length(record.get("master_deck")),
+        potions_obtained=_sequence_length(record.get("potions_obtained")),
+        campfire_smiths=smiths,
+        campfire_rests=rests,
     )
 
 
@@ -333,6 +393,22 @@ def _count_card_rewards(card_choices) -> tuple:
         else:
             picks += 1
     return picks, skips
+
+
+def _count_campfires(campfire_choices) -> tuple:
+    smiths = 0
+    rests = 0
+    if not isinstance(campfire_choices, list):
+        return smiths, rests
+    for choice in campfire_choices:
+        if not isinstance(choice, dict):
+            continue
+        key = str(choice.get("key") or choice.get("choice") or "").strip().upper()
+        if key == "SMITH":
+            smiths += 1
+        elif key == "REST":
+            rests += 1
+    return smiths, rests
 
 
 def _last_damage_enemies(record: Dict) -> str:
@@ -358,13 +434,23 @@ def _to_int(value, default: int = 0) -> int:
         return default
 
 
+def _sequence_length(value) -> int:
+    return len(value) if isinstance(value, list) else 0
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--game-dir", type=Path, default=DEFAULT_GAME_DIR)
     parser.add_argument("--character", default=DEFAULT_CHARACTER)
     parser.add_argument("--since", help="Unix timestamp or ISO datetime")
+    parser.add_argument(
+        "--since-run",
+        type=int,
+        help="Only include .run files whose numeric filename timestamp is greater than this value",
+    )
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--tail-lines", type=int, default=400)
+    parser.add_argument("--rotated-log-count", type=int, default=2)
     args = parser.parse_args(argv)
 
     print(
@@ -372,8 +458,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             game_dir=args.game_dir,
             character=args.character,
             since=args.since,
+            since_run=args.since_run,
             limit=args.limit,
             tail_lines=args.tail_lines,
+            rotated_log_count=args.rotated_log_count,
         ),
         end="",
     )
