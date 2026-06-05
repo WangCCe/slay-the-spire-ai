@@ -474,6 +474,83 @@ def test_thunderclap_zero_live_damage_hits_all_monsters(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_whirlwind_zero_live_damage_spends_energy_for_all_enemy_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    whirlwind = _card(
+        name="Whirlwind",
+        card_id="Whirlwind",
+        card_type=CardType.ATTACK,
+        cost=0,
+        damage=0,
+    )
+    before = _game(
+        floor=16,
+        turn=2,
+        player=SimpleNamespace(current_hp=58, max_hp=80, block=0, energy=3),
+        hand=[whirlwind],
+        monsters=[
+            _monster(name="Slime Boss", monster_id="SlimeBoss", hp=120, damage=0, intent=Intent.NONE),
+            _monster(name="Acid Slime (L)", monster_id="AcidSlime_L", hp=54, damage=11),
+        ],
+    )
+    actual = _game(
+        floor=16,
+        turn=2,
+        player=SimpleNamespace(current_hp=58, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(name="Slime Boss", monster_id="SlimeBoss", hp=105, damage=0, intent=Intent.NONE),
+            _monster(name="Acid Slime (L)", monster_id="AcidSlime_L", hp=39, damage=11),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_whirlwind_plus_uses_upgraded_damage_per_energy(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    whirlwind_plus = _card(
+        name="Whirlwind+",
+        card_id="Whirlwind",
+        card_type=CardType.ATTACK,
+        cost=0,
+        damage=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=27,
+        turn=3,
+        player=SimpleNamespace(current_hp=47, max_hp=80, block=0, energy=2),
+        hand=[whirlwind_plus],
+        monsters=[
+            _monster(name="Centurion", monster_id="Centurion", hp=83, damage=12),
+            _monster(name="Mystic", monster_id="Mystic", hp=50, damage=0, intent=Intent.NONE),
+        ],
+    )
+    actual = _game(
+        floor=27,
+        turn=3,
+        player=SimpleNamespace(current_hp=47, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(name="Centurion", monster_id="Centurion", hp=67, damage=12),
+            _monster(name="Mystic", monster_id="Mystic", hp=34, damage=0, intent=Intent.NONE),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_finesse_zero_live_block_uses_base_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

@@ -49,6 +49,7 @@ DAMAGE_UPGRADE_BONUS = {
     'Swift Strike': 3,
     'Headbutt': 3,
     'Cleave': 3,
+    'Whirlwind': 3,
     'Bane': 3,
     'Skewer': 3,
 

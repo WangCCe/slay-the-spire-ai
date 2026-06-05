@@ -34,11 +34,13 @@ BASE_ATTACK_DAMAGE = {
     "Strike": 6,
     "Thunderclap": 4,
     "Twin Strike": 10,
+    "Whirlwind": 5,
 }
 
 ALL_ENEMY_ATTACKS = {
     "Cleave": 0,
     "Thunderclap": 0,
+    "Whirlwind": 0,
 }
 
 BASE_SKILL_BLOCK = {
@@ -205,12 +207,20 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         card = _card_for_action(action, game)
         card_index = _to_int(getattr(action, "card_index", -1), default=-1)
         if card is not None:
-            expected["player"]["energy"] = max(
-                0,
-                expected["player"]["energy"] - max(0, _card_cost(card)),
-            )
+            energy_before_card = expected["player"]["energy"]
+            if _is_whirlwind(card):
+                expected["player"]["energy"] = 0
+            else:
+                expected["player"]["energy"] = max(
+                    0,
+                    energy_before_card - max(0, _card_cost(card)),
+                )
             if _is_attack_card(card):
-                damage = _card_damage_for_snapshot(card, expected.get("player", {}))
+                damage = _card_damage_for_snapshot(
+                    card,
+                    expected.get("player", {}),
+                    energy_before_card,
+                )
                 if _is_all_enemy_attack(card):
                     _apply_expected_attack_to_all(expected, damage)
                 else:
@@ -502,6 +512,10 @@ def _is_all_enemy_attack(card) -> bool:
     return _known_card_name(card, ALL_ENEMY_ATTACKS) is not None
 
 
+def _is_whirlwind(card) -> bool:
+    return _known_card_name(card, BASE_ATTACK_DAMAGE) == "Whirlwind"
+
+
 def _card_cost(card) -> int:
     return max(
         0,
@@ -523,9 +537,12 @@ def _card_damage(card) -> int:
     return 0
 
 
-def _card_damage_for_snapshot(card, player: Dict[str, Any]) -> int:
+def _card_damage_for_snapshot(card, player: Dict[str, Any], energy_available: int = 0) -> int:
     damage = _card_damage(card)
-    if _known_card_name(card, BASE_ATTACK_DAMAGE) != "Heavy Blade":
+    card_name = _known_card_name(card, BASE_ATTACK_DAMAGE)
+    if card_name == "Whirlwind":
+        return max(0, energy_available) * damage
+    if card_name != "Heavy Blade":
         return damage
     if _to_int(getattr(card, "damage", 0)) > 0:
         return damage
