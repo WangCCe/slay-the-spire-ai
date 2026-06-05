@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from spirecomm.ai.heuristics.card_upgrades import (
+    card_upgrade_count,
     known_block_upgrade_bonus,
     known_damage_upgrade_bonus,
 )
@@ -52,7 +53,14 @@ BASE_SKILL_BLOCK = {
 }
 
 CARD_SELF_DAMAGE = {
+    "Bloodletting": 3,
     "Hemokinesis": 2,
+    "Offering": 6,
+}
+
+CARD_ENERGY_GAIN = {
+    "Bloodletting": 2,
+    "Offering": 2,
 }
 
 CARD_ID_ALIASES = {
@@ -202,12 +210,15 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 else:
                     target_index = _target_index_for_action(action, game)
                     _apply_expected_attack(expected, target_index, damage)
-                self_damage = _card_self_damage(card)
-                if self_damage > 0:
-                    expected["player"]["current_hp"] = max(
-                        0,
-                        expected["player"]["current_hp"] - self_damage,
-                    )
+            self_damage = _card_self_damage(card)
+            if self_damage > 0:
+                expected["player"]["current_hp"] = max(
+                    0,
+                    expected["player"]["current_hp"] - self_damage,
+                )
+            energy_gain = _card_energy_gain(card)
+            if energy_gain > 0:
+                expected["player"]["energy"] += energy_gain
             block = _card_block(card)
             if block > 0:
                 expected["player"]["block"] += _modified_block(block, expected.get("player", {}))
@@ -547,6 +558,15 @@ def _card_self_damage(card) -> int:
     if card_name is None:
         return 0
     return CARD_SELF_DAMAGE.get(card_name, 0)
+
+
+def _card_energy_gain(card) -> int:
+    card_name = _known_card_name(card, CARD_ENERGY_GAIN)
+    if card_name is None:
+        return 0
+    if card_name == "Bloodletting" and card_upgrade_count(card) > 0:
+        return 3
+    return CARD_ENERGY_GAIN.get(card_name, 0)
 
 
 def _known_card_name(card, known_values: Dict[str, int]) -> Optional[str]:
