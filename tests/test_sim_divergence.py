@@ -204,6 +204,71 @@ def test_headbutt_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_reckless_charge_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    reckless_charge = _card(
+        name="Reckless Charge",
+        card_id="Reckless Charge",
+        card_type=CardType.ATTACK,
+        cost=0,
+        damage=0,
+    )
+    before = _game(
+        floor=7,
+        turn=1,
+        player=SimpleNamespace(current_hp=64, max_hp=80, block=0, energy=3),
+        hand=[reckless_charge],
+        monsters=[_monster(name="Acid Slime (S)", monster_id="AcidSlime_S", hp=30, damage=6)],
+    )
+    actual = _game(
+        floor=7,
+        turn=1,
+        player=SimpleNamespace(current_hp=64, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[_monster(name="Acid Slime (S)", monster_id="AcidSlime_S", hp=23, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_reckless_charge_plus_zero_live_damage_uses_upgrade_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    reckless_charge_plus = _card(
+        name="Reckless Charge+",
+        card_id="Reckless Charge",
+        card_type=CardType.ATTACK,
+        cost=0,
+        damage=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=14,
+        turn=2,
+        player=SimpleNamespace(current_hp=66, max_hp=80, block=0, energy=3),
+        hand=[reckless_charge_plus],
+        monsters=[_monster(name="Acid Slime (L)", monster_id="AcidSlime_L", hp=53, damage=16)],
+    )
+    actual = _game(
+        floor=14,
+        turn=2,
+        player=SimpleNamespace(current_hp=66, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[_monster(name="Acid Slime (L)", monster_id="AcidSlime_L", hp=43, damage=16)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_heavy_blade_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

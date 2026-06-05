@@ -32,6 +32,7 @@ BASE_ATTACK_DAMAGE = {
     "Hemokinesis": 15,
     "Iron Wave": 5,
     "Pommel Strike": 9,
+    "Reckless Charge": 7,
     "Strike": 6,
     "Thunderclap": 4,
     "Twin Strike": 10,
