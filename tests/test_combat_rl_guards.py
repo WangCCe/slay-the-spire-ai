@@ -1395,6 +1395,58 @@ def test_guardian_sharp_hide_guard_infers_roll_attack_reflection_without_power()
     assert agent._fallback_turn_key == (16, 8)
 
 
+def test_guardian_sharp_hide_guard_infers_attack_buff_reflection_without_power():
+    twin_strike = SimpleNamespace(
+        name="Twin Strike",
+        card_id="Twin Strike",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    guardian = _monster(
+        hp=165,
+        damage=8,
+        index=0,
+        name="The Guardian",
+        monster_id="TheGuardian",
+    )
+    guardian.intent = Intent.ATTACK_BUFF
+    guardian.move_hits = 2
+    guardian.powers = []
+    game = _game(
+        hand=[twin_strike],
+        monsters=[guardian],
+        current_hp=13,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=5,
+        player=SimpleNamespace(energy=2, block=5),
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0, target_index=0)
+    )
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, EndTurnAction)
+    assert agent._fallback_turn_key == (16, 5)
+
+
 def test_energy_guard_prioritizes_hexaghost_opening_carnage_over_bash():
     bash = SimpleNamespace(
         name="Bash",

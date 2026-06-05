@@ -916,6 +916,7 @@ class CombatRLAgent:
     GUARDIAN_SHARP_HIDE_DAMAGE = 3
     GUARDIAN_SHARP_HIDE_ASCENSION_19_DAMAGE = 4
     GUARDIAN_SHARP_HIDE_MOVE_IDS = frozenset({5, 6})
+    GUARDIAN_SHARP_HIDE_INTENTS = frozenset({"attackbuff", "intentattackbuff"})
     GUARDIAN_PRESSURE_WEAK_ATTACKS = frozenset(
         {
             "clothesline",
@@ -2697,7 +2698,11 @@ class CombatRLAgent:
                 )
             if sharp_hide_damage <= 0:
                 move_id = cls._safe_int(getattr(monster, "move_id", -1), default=-1)
-                if move_id in cls.GUARDIAN_SHARP_HIDE_MOVE_IDS:
+                intent = cls._normalize_identifier(getattr(monster, "intent", ""))
+                if (
+                    move_id in cls.GUARDIAN_SHARP_HIDE_MOVE_IDS
+                    or intent in cls.GUARDIAN_SHARP_HIDE_INTENTS
+                ):
                     ascension = cls._safe_int(getattr(game, "ascension_level", 0), default=0)
                     sharp_hide_damage = max(
                         sharp_hide_damage,
