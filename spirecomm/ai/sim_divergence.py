@@ -34,6 +34,7 @@ BASE_ATTACK_DAMAGE = {
     "Iron Wave": 5,
     "Pommel Strike": 9,
     "Reckless Charge": 7,
+    "Sever Soul": 16,
     "Strike": 6,
     "Thunderclap": 4,
     "Twin Strike": 10,

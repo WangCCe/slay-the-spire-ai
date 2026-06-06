@@ -613,6 +613,71 @@ def test_dropkick_vulnerable_target_refunds_energy(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_sever_soul_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    sever_soul = _card(
+        name="Sever Soul",
+        card_id="Sever Soul",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=0,
+    )
+    before = _game(
+        floor=14,
+        turn=1,
+        player=SimpleNamespace(current_hp=58, max_hp=80, block=0, energy=3),
+        hand=[sever_soul, _card(name="Defend", card_type=CardType.SKILL, damage=0, block=5)],
+        monsters=[_monster(name="Louse", monster_id="FuzzyLouseNormal", hp=22, damage=0)],
+    )
+    actual = _game(
+        floor=14,
+        turn=1,
+        player=SimpleNamespace(current_hp=58, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="Louse", monster_id="FuzzyLouseNormal", hp=6, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_sever_soul_plus_zero_live_damage_uses_upgrade_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    sever_soul_plus = _card(
+        name="Sever Soul+",
+        card_id="Sever Soul",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=33,
+        turn=5,
+        player=SimpleNamespace(current_hp=40, max_hp=80, block=0, energy=3),
+        hand=[sever_soul_plus, _card(name="Burn", card_type=CardType.STATUS, damage=0)],
+        monsters=[_monster(name="Bronze Automaton", monster_id="BronzeAutomaton", hp=172, damage=0)],
+    )
+    actual = _game(
+        floor=33,
+        turn=5,
+        player=SimpleNamespace(current_hp=40, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="Bronze Automaton", monster_id="BronzeAutomaton", hp=150, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_vulnerable_target_damage_does_not_create_false_monster_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
