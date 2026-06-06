@@ -1264,6 +1264,8 @@ def _apply_guardian_mode_shift(target: Dict[str, Any], hp_loss: int) -> None:
         _set_snapshot_power_amount(target, "Mode Shift", remaining)
         return
     target["block"] = max(0, _to_int(target.get("block"))) + 20
+    target["intent"] = "Intent.BUFF"
+    target["move_damage"] = -1
     _remove_snapshot_power(target, "Mode Shift")
 
 

@@ -377,6 +377,8 @@ def test_guardian_mode_shift_gains_block_and_keeps_bash_vulnerable(monkeypatch, 
                 monster_id="TheGuardian",
                 hp=210,
                 block=20,
+                damage=-1,
+                intent=Intent.BUFF,
                 powers=[Power("Vulnerable", "Vulnerable", 2)],
             )
         ],
