@@ -392,6 +392,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         metallicize_block = _metallicize_end_turn_block(before)
         if metallicize_block > 0:
             expected["player"]["block"] += metallicize_block
+        orichalcum_block = _orichalcum_end_turn_block(before, expected.get("player", {}))
+        if orichalcum_block > 0:
+            expected["player"]["block"] += orichalcum_block
         _apply_end_turn_attack_reflection_damage(expected, before)
         incoming = _incoming_damage_from_snapshot(before)
         incoming += _end_turn_status_damage(before)
@@ -1214,6 +1217,12 @@ def _brutality_start_turn_hp_loss(snapshot: Dict[str, Any]) -> int:
 
 def _metallicize_end_turn_block(snapshot: Dict[str, Any]) -> int:
     return max(0, _snapshot_power_amount(snapshot.get("player", {}), "Metallicize"))
+
+
+def _orichalcum_end_turn_block(snapshot: Dict[str, Any], player: Dict[str, Any]) -> int:
+    if not _snapshot_has_relic(snapshot, "Orichalcum"):
+        return 0
+    return 6 if _to_int(player.get("block")) <= 0 else 0
 
 
 def _apply_end_turn_attack_reflection_damage(

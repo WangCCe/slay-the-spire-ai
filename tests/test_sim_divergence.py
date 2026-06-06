@@ -4743,6 +4743,33 @@ def test_end_turn_metallicize_block_reduces_incoming_damage(monkeypatch, tmp_pat
     assert not trace_path.exists()
 
 
+def test_end_turn_orichalcum_block_reduces_incoming_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=10,
+        turn=2,
+        player=SimpleNamespace(current_hp=64, max_hp=85, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Red Slaver", monster_id="SlaverRed", hp=11, damage=13)],
+        relics=[_relic("Burning Blood"), _relic("Orichalcum"), _relic("Pear")],
+    )
+    actual = _game(
+        floor=10,
+        turn=2,
+        player=SimpleNamespace(current_hp=57, max_hp=85, block=0, energy=3),
+        hand=[],
+        monsters=[_monster(name="Red Slaver", monster_id="SlaverRed", hp=11, damage=13)],
+        relics=[_relic("Burning Blood"), _relic("Orichalcum"), _relic("Pear")],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_mercury_hourglass_damages_monsters(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
