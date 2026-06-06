@@ -264,6 +264,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     energy_before_card - max(0, _card_cost(card)),
                 )
             if _is_attack_card(card):
+                sharp_hide_damage = 0
                 damage, hit_count = _card_damage_and_hits_for_snapshot(
                     card,
                     expected.get("player", {}),
@@ -273,9 +274,11 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 )
                 if _is_all_enemy_attack(card):
                     damage_dealt = _apply_expected_attack_to_all(expected, damage, hit_count)
+                    sharp_hide_damage = _sharp_hide_reflection_damage(before, all_targets=True)
                 else:
                     target_index = _target_index_for_action(action, game)
                     damage_dealt = _apply_expected_attack(expected, target_index, damage, hit_count)
+                    sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
                 if _is_reaper(card) and damage_dealt > 0:
                     _heal_player(expected, damage_dealt)
                 rage_block = _rage_attack_block(expected.get("player", {}))
@@ -284,6 +287,8 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 ornamental_fan_block = _ornamental_fan_attack_block(before)
                 if ornamental_fan_block > 0:
                     expected["player"]["block"] += ornamental_fan_block
+                if sharp_hide_damage > 0:
+                    _damage_player(expected, sharp_hide_damage)
             self_damage = _card_self_damage(card)
             if self_damage > 0:
                 expected["player"]["current_hp"] = max(
@@ -854,6 +859,49 @@ def _heal_player(expected: Dict[str, Any], amount: int) -> None:
     player["current_hp"] = min(
         _to_int(player.get("max_hp")),
         _to_int(player.get("current_hp")) + amount,
+    )
+
+
+def _damage_player(expected: Dict[str, Any], amount: int) -> None:
+    if amount <= 0:
+        return
+    player = expected.get("player", {})
+    block = max(0, _to_int(player.get("block")))
+    blocked = min(block, amount)
+    player["block"] = block - blocked
+    remaining = amount - blocked
+    if remaining > 0:
+        player["current_hp"] = max(0, _to_int(player.get("current_hp")) - remaining)
+
+
+def _sharp_hide_reflection_damage(
+    snapshot: Dict[str, Any],
+    target_index: Optional[int] = None,
+    all_targets: bool = False,
+) -> int:
+    monsters = snapshot.get("monsters", [])
+    if all_targets:
+        candidates = monsters
+    elif target_index is not None and 0 <= target_index < len(monsters):
+        candidates = [monsters[target_index]]
+    else:
+        candidates = []
+
+    for monster in candidates:
+        if monster.get("gone") or monster.get("half_dead") or _to_int(monster.get("hp")) <= 0:
+            continue
+        if not _is_guardian_monster(monster):
+            continue
+        amount = _snapshot_power_amount(monster, "Sharp Hide")
+        if amount > 0:
+            return amount
+    return 0
+
+
+def _is_guardian_monster(monster: Dict[str, Any]) -> bool:
+    return (
+        _normalize(monster.get("id")) == "theguardian"
+        or _normalize(monster.get("name")) == "theguardian"
     )
 
 

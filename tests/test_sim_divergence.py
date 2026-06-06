@@ -105,7 +105,7 @@ def test_sim_divergence_is_disabled_without_env(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
-def test_guardian_sharp_hide_diff_is_attributed(monkeypatch, tmp_path):
+def test_guardian_sharp_hide_reflection_spends_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
     reset_pending_divergence()
@@ -124,6 +124,7 @@ def test_guardian_sharp_hide_diff_is_attributed(monkeypatch, tmp_path):
         damage=8,
         hits=2,
         intent=Intent.ATTACK_BUFF,
+        powers=[Power("Sharp Hide", "Sharp Hide", 3)],
     )
     before = _game(hand=[twin_strike], monsters=[guardian])
 
@@ -134,6 +135,7 @@ def test_guardian_sharp_hide_diff_is_attributed(monkeypatch, tmp_path):
         damage=8,
         hits=2,
         intent=Intent.ATTACK_BUFF,
+        powers=[Power("Sharp Hide", "Sharp Hide", 3)],
     )
     actual = _game(
         current_hp=13,
@@ -143,14 +145,51 @@ def test_guardian_sharp_hide_diff_is_attributed(monkeypatch, tmp_path):
     )
 
     assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
-    assert observe_next_state(actual) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
 
-    records = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines()]
-    assert len(records) == 1
-    assert records[0]["event_type"] == "sim_divergence"
-    assert records[0]["reason"] == "guardian_sharp_hide_reflection"
-    assert records[0]["action"]["card"]["name"] == "Twin Strike"
-    assert records[0]["diffs"]["player.block"] == {"expected": 5, "actual": 2}
+
+def test_guardian_sharp_hide_reflection_damages_hp_without_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    strike = _card(name="Strike", card_id="Strike_R", damage=6)
+    guardian = _monster(
+        name="The Guardian",
+        monster_id="TheGuardian",
+        hp=165,
+        damage=8,
+        hits=2,
+        intent=Intent.ATTACK_BUFF,
+        powers=[Power("Sharp Hide", "Sharp Hide", 3)],
+    )
+    before = _game(
+        player=SimpleNamespace(current_hp=20, max_hp=80, block=0, energy=1),
+        hand=[strike],
+        monsters=[guardian],
+    )
+
+    actual = _game(
+        current_hp=17,
+        player=SimpleNamespace(current_hp=17, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=159,
+                damage=8,
+                hits=2,
+                intent=Intent.ATTACK_BUFF,
+                powers=[Power("Sharp Hide", "Sharp Hide", 3)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
 
 
 def test_upgraded_attack_damage_does_not_create_false_monster_diff(monkeypatch, tmp_path):
