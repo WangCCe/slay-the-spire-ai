@@ -35,6 +35,7 @@ BASE_ATTACK_DAMAGE = {
     "Immolate": 21,
     "Iron Wave": 5,
     "Pommel Strike": 9,
+    "Pummel": 8,
     "Rampage": 8,
     "Reckless Charge": 7,
     "Reaper": 4,
@@ -49,6 +50,7 @@ BASE_ATTACK_DAMAGE = {
 }
 
 MULTI_HIT_ATTACKS = {
+    "Pummel": 4,
     "Sword Boomerang": 3,
     "Twin Strike": 2,
 }
@@ -650,10 +652,14 @@ def _card_damage_and_hits_for_snapshot(
 def _multi_hit_count(card, card_name: Optional[str]) -> int:
     if card_name == "Sword Boomerang" and card_upgrade_count(card) > 0:
         return 4
+    if card_name == "Pummel" and card_upgrade_count(card) > 0:
+        return 5
     return MULTI_HIT_ATTACKS.get(card_name or "", 1)
 
 
 def _multi_hit_damage_per_hit(card, card_name: str, hit_count: int) -> int:
+    if card_name == "Pummel":
+        return 2
     if card_name == "Sword Boomerang":
         return 3
     base_damage = BASE_ATTACK_DAMAGE[card_name]

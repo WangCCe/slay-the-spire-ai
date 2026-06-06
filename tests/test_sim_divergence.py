@@ -1218,6 +1218,163 @@ def test_sword_boomerang_plus_uses_four_hits(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_pummel_zero_live_damage_uses_four_hits(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    pummel = _card(
+        name="Pummel",
+        card_id="Pummel",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=11,
+        turn=1,
+        player=SimpleNamespace(current_hp=65, max_hp=80, block=0, energy=1),
+        hand=[pummel],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=44, damage=12)],
+    )
+    actual = _game(
+        floor=11,
+        turn=1,
+        player=SimpleNamespace(current_hp=65, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=36, damage=12)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_pummel_strength_applies_to_each_hit(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    pummel = _card(
+        name="Pummel",
+        card_id="Pummel",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=4,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=72,
+            max_hp=80,
+            block=0,
+            energy=1,
+            powers=[Power("Strength", "Strength", 3)],
+        ),
+        hand=[pummel],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=26, damage=10)],
+    )
+    actual = _game(
+        floor=4,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=72,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[Power("Strength", "Strength", 3)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=6, damage=10)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_pummel_vulnerable_applies_to_each_hit(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    pummel = _card(
+        name="Pummel",
+        card_id="Pummel",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=2,
+        turn=2,
+        player=SimpleNamespace(current_hp=73, max_hp=80, block=0, energy=1),
+        hand=[pummel],
+        monsters=[
+            _monster(
+                name="Cultist",
+                monster_id="Cultist",
+                hp=39,
+                damage=6,
+                powers=[Power("Vulnerable", "Vulnerable", 1)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=2,
+        turn=2,
+        player=SimpleNamespace(current_hp=73, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Cultist",
+                monster_id="Cultist",
+                hp=27,
+                damage=6,
+                powers=[Power("Vulnerable", "Vulnerable", 1)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_pummel_plus_uses_five_hits(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    pummel_plus = _card(
+        name="Pummel+",
+        card_id="Pummel",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=11,
+        turn=1,
+        player=SimpleNamespace(current_hp=65, max_hp=80, block=0, energy=1),
+        hand=[pummel_plus],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=44, damage=12)],
+    )
+    actual = _game(
+        floor=11,
+        turn=1,
+        player=SimpleNamespace(current_hp=65, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=34, damage=12)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_dropkick_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
