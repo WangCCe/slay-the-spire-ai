@@ -322,6 +322,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 _heal_player(expected, heal)
             energy_gain = _card_energy_gain(card)
             energy_gain += _conditional_card_energy_gain(card, before, target_index)
+            energy_gain += _nunchaku_energy_gain(before, card)
             if energy_gain > 0:
                 expected["player"]["energy"] += energy_gain
             block = _card_block(card)
@@ -620,6 +621,7 @@ def _relic_summary(relic) -> Dict[str, Any]:
     return {
         "name": _safe_str(getattr(relic, "name", "")),
         "id": _safe_str(getattr(relic, "relic_id", getattr(relic, "id", ""))),
+        "counter": _to_int(getattr(relic, "counter", 0)),
     }
 
 
@@ -900,6 +902,20 @@ def _ornamental_fan_attack_block(snapshot: Dict[str, Any]) -> int:
         return 0
     attack_count_after_play = _attacks_played_this_turn + 1
     return 4 if attack_count_after_play > 0 and attack_count_after_play % 3 == 0 else 0
+
+
+def _nunchaku_energy_gain(snapshot: Dict[str, Any], card) -> int:
+    if not _is_attack_card(card):
+        return 0
+    target = _normalize("Nunchaku")
+    for relic in snapshot.get("relics", []) or []:
+        identifiers = {
+            _normalize(relic.get("id")),
+            _normalize(relic.get("name")),
+        }
+        if target in identifiers and _to_int(relic.get("counter")) == 9:
+            return 1
+    return 0
 
 
 def _snapshot_has_relic(snapshot: Dict[str, Any], relic_name: str) -> bool:
