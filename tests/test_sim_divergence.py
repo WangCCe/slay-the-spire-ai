@@ -105,6 +105,66 @@ def test_sim_divergence_is_disabled_without_env(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_blue_candle_curse_play_loses_one_hp(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    parasite = _card(
+        name="Parasite",
+        card_id="Parasite",
+        card_type=CardType.CURSE,
+        cost=0,
+        damage=0,
+    )
+    before = _game(
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=8, energy=2),
+        hand=[parasite],
+        relics=[_relic("Burning Blood"), _relic("Blue Candle")],
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=220, damage=9)],
+    )
+    actual = _game(
+        player=SimpleNamespace(current_hp=79, max_hp=80, block=8, energy=2),
+        hand=[],
+        relics=[_relic("Burning Blood"), _relic("Blue Candle")],
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=220, damage=9)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_curse_play_without_blue_candle_does_not_lose_hp(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    parasite = _card(
+        name="Parasite",
+        card_id="Parasite",
+        card_type=CardType.CURSE,
+        cost=0,
+        damage=0,
+    )
+    before = _game(
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=8, energy=2),
+        hand=[parasite],
+        relics=[_relic("Burning Blood")],
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=220, damage=9)],
+    )
+    actual = _game(
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=8, energy=2),
+        hand=[],
+        relics=[_relic("Burning Blood")],
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=220, damage=9)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_guardian_sharp_hide_reflection_spends_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

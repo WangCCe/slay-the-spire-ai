@@ -292,6 +292,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 if sharp_hide_damage > 0:
                     _damage_player(expected, sharp_hide_damage)
             self_damage = _card_self_damage(card)
+            self_damage += _blue_candle_curse_hp_loss(card, before)
             if self_damage > 0:
                 expected["player"]["current_hp"] = max(
                     0,
@@ -627,6 +628,11 @@ def _is_attack_card(card) -> bool:
     return card_type in {"attack", "cardtypeattack"}
 
 
+def _is_curse_card(card) -> bool:
+    card_type = _normalize(getattr(card, "type", getattr(card, "card_type", "")))
+    return card_type in {"curse", "cardtypecurse"}
+
+
 def _is_all_enemy_attack(card) -> bool:
     return _known_card_name(card, ALL_ENEMY_ATTACKS) is not None
 
@@ -926,6 +932,12 @@ def _card_self_damage(card) -> int:
     if card_name is None:
         return 0
     return CARD_SELF_DAMAGE.get(card_name, 0)
+
+
+def _blue_candle_curse_hp_loss(card, snapshot: Dict[str, Any]) -> int:
+    if not _is_curse_card(card):
+        return 0
+    return 1 if _snapshot_has_relic(snapshot, "Blue Candle") else 0
 
 
 def _card_energy_gain(card) -> int:
