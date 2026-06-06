@@ -93,6 +93,10 @@ CARD_ENERGY_GAIN = {
     "Seeing Red": 2,
 }
 
+CARD_HEAL = {
+    "Bandage Up": 4,
+}
+
 CARD_ID_ALIASES = {
     "Defend_R": "Defend",
     "Strike_R": "Strike",
@@ -267,6 +271,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     0,
                     expected["player"]["current_hp"] - self_damage,
                 )
+            heal = _card_heal(card)
+            if heal > 0:
+                _heal_player(expected, heal)
             energy_gain = _card_energy_gain(card)
             energy_gain += _conditional_card_energy_gain(card, before, target_index)
             if energy_gain > 0:
@@ -794,6 +801,16 @@ def _card_energy_gain(card) -> int:
     if card_name == "Bloodletting" and card_upgrade_count(card) > 0:
         return 3
     return CARD_ENERGY_GAIN.get(card_name, 0)
+
+
+def _card_heal(card) -> int:
+    card_name = _known_card_name(card, CARD_HEAL)
+    if card_name is None:
+        return 0
+    heal = CARD_HEAL.get(card_name, 0)
+    if card_name == "Bandage Up" and card_upgrade_count(card) > 0:
+        heal += 2
+    return heal
 
 
 def _conditional_card_energy_gain(card, snapshot: Dict[str, Any], target_index: Optional[int]) -> int:

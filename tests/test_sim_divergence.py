@@ -2617,6 +2617,73 @@ def test_zero_cost_seeing_red_gains_two_energy(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_bandage_up_heals_and_caps_at_max_hp(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    bandage_up = _card(
+        name="Bandage Up",
+        card_id="Bandage Up",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        block=0,
+    )
+    before = _game(
+        floor=5,
+        turn=1,
+        player=SimpleNamespace(current_hp=78, max_hp=80, block=0, energy=0),
+        hand=[bandage_up],
+        monsters=[_monster(name="Louse", monster_id="FuzzyLouseNormal", hp=16, damage=6)],
+    )
+    actual = _game(
+        floor=5,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Louse", monster_id="FuzzyLouseNormal", hp=16, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_bandage_up_plus_heals_six(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    bandage_up_plus = _card(
+        name="Bandage Up+",
+        card_id="Bandage Up",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        block=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=16,
+        turn=3,
+        player=SimpleNamespace(current_hp=45, max_hp=80, block=0, energy=0),
+        hand=[bandage_up_plus],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=180, damage=6)],
+    )
+    actual = _game(
+        floor=16,
+        turn=3,
+        player=SimpleNamespace(current_hp=51, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=180, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_good_instincts_zero_live_block_uses_base_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
