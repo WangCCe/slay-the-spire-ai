@@ -7,7 +7,13 @@ from spirecomm.ai.sim_divergence import (
     record_expected_action,
     reset_pending_divergence,
 )
-from spirecomm.communication.action import EndTurnAction, PlayCardAction, PotionAction
+from spirecomm.communication.action import (
+    CancelAction,
+    CardRewardAction,
+    EndTurnAction,
+    PlayCardAction,
+    PotionAction,
+)
 from spirecomm.spire.card import CardType
 from spirecomm.spire.character import Intent
 from spirecomm.spire.power import Power
@@ -4377,6 +4383,119 @@ def test_end_turn_next_monster_block_gain_does_not_create_false_diff(monkeypatch
     )
 
     assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_nilrys_codex_end_turn_screen_boundary_does_not_create_false_diff(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Burning Blood"), _relic("Nilry's Codex")]
+    before = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=10, energy=5),
+        hand=[],
+        relics=relics,
+        monsters=[
+            _monster(name="Bronze Automaton", monster_id="BronzeAutomaton", hp=300, damage=4),
+            _monster(name="Bronze Orb", monster_id="BronzeOrb", hp=55, damage=0, index=1),
+        ],
+    )
+    actual = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=10, energy=5),
+        hand=[],
+        relics=relics,
+        monsters=[
+            _monster(name="Bronze Automaton", monster_id="BronzeAutomaton", hp=300, damage=4),
+            _monster(name="Bronze Orb", monster_id="BronzeOrb", hp=55, damage=8, index=1),
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_nilrys_codex_card_reward_boundary_does_not_create_false_diff(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Burning Blood"), _relic("Nilry's Codex")]
+    before = _game(
+        floor=33,
+        turn=4,
+        player=SimpleNamespace(current_hp=76, max_hp=80, block=13, energy=0),
+        hand=[],
+        relics=relics,
+        monsters=[
+            _monster(name="Bronze Automaton", monster_id="BronzeAutomaton", hp=300, damage=0),
+            _monster(name="Bronze Orb", monster_id="BronzeOrb", hp=55, damage=8, index=1),
+        ],
+    )
+    actual = _game(
+        floor=33,
+        turn=4,
+        player=SimpleNamespace(current_hp=76, max_hp=80, block=0, energy=4),
+        hand=[],
+        relics=relics,
+        monsters=[
+            _monster(name="Bronze Automaton", monster_id="BronzeAutomaton", hp=300, damage=8),
+            _monster(
+                name="Bronze Orb",
+                monster_id="BronzeOrb",
+                hp=55,
+                block=9,
+                damage=0,
+                intent=Intent.DEFEND_BUFF,
+                index=1,
+            ),
+        ],
+    )
+
+    assert record_expected_action(
+        CardRewardAction(_card(name="Sentinel", card_id="Sentinel")),
+        before,
+    ) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_nilrys_codex_cancel_boundary_does_not_create_false_diff(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Burning Blood"), _relic("Nilry's Codex")]
+    before = _game(
+        floor=33,
+        turn=7,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=9, energy=0),
+        hand=[],
+        relics=relics,
+        monsters=[
+            _monster(name="Bronze Automaton", monster_id="BronzeAutomaton", hp=220, damage=0),
+            _monster(name="Bronze Orb", monster_id="BronzeOrb", hp=40, damage=21, index=1),
+        ],
+    )
+    actual = _game(
+        floor=33,
+        turn=7,
+        player=SimpleNamespace(current_hp=16, max_hp=80, block=0, energy=4),
+        hand=[],
+        relics=relics,
+        monsters=[
+            _monster(name="Bronze Automaton", monster_id="BronzeAutomaton", hp=220, damage=0),
+            _monster(name="Bronze Orb", monster_id="BronzeOrb", hp=40, damage=0, intent=Intent.STUN, index=1),
+        ],
+    )
+
+    assert record_expected_action(CancelAction(), before) is True
     assert observe_next_state(actual) is False
     assert not trace_path.exists()
 

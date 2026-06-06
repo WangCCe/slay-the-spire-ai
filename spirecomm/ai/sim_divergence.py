@@ -211,6 +211,8 @@ def observe_next_state(game, path: Optional[Path] = None) -> bool:
         _finalize_observed_action(pending, actual)
         if _expected_combat_finished(pending["expected"], actual):
             return False
+        if _nilrys_codex_screen_boundary(pending, actual):
+            return False
 
         ignored_diffs = _ignored_diff_keys(pending)
         diffs = _diff_snapshots(pending["expected"], actual, ignored_diffs)
@@ -566,6 +568,18 @@ def _expected_combat_finished(expected: Dict[str, Any], actual: Dict[str, Any]) 
         _snapshot_monster_active(monster)
         for monster in expected.get("monsters", [])
     )
+
+
+def _nilrys_codex_screen_boundary(pending: Dict[str, Any], actual: Dict[str, Any]) -> bool:
+    before = pending.get("before") or {}
+    if not _snapshot_has_relic(before, "Nilry's Codex"):
+        return False
+    action_type = (pending.get("action") or {}).get("type")
+    if action_type not in {"EndTurnAction", "CardRewardAction", "CancelAction"}:
+        return False
+    if not actual.get("in_combat"):
+        return False
+    return _to_int(actual.get("player", {}).get("current_hp")) > 0
 
 
 def _snapshot_monster_active(monster: Dict[str, Any]) -> bool:
