@@ -4556,7 +4556,7 @@ def test_end_turn_mercury_hourglass_damages_monsters(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
-def test_end_turn_mystic_heals_all_alive_monsters(monkeypatch, tmp_path):
+def test_end_turn_mystic_heal_hp_change_is_ignored_without_move_history(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
     reset_pending_divergence()
@@ -4608,6 +4608,71 @@ def test_end_turn_mystic_heals_all_alive_monsters(monkeypatch, tmp_path):
                 damage=0,
                 intent=Intent.BUFF,
                 index=1,
+            ),
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_end_turn_mystic_strength_buff_does_not_report_hp_divergence(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=24,
+        turn=8,
+        player=SimpleNamespace(current_hp=44, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Centurion",
+                monster_id="Centurion",
+                hp=51,
+                max_hp=80,
+                damage=14,
+                intent=Intent.ATTACK,
+                powers=[Power("Strength", "Strength", 2)],
+            ),
+            _monster(
+                name="Mystic",
+                monster_id="Healer",
+                hp=32,
+                max_hp=55,
+                damage=0,
+                intent=Intent.BUFF,
+                index=1,
+                powers=[Power("Strength", "Strength", 2)],
+            ),
+        ],
+    )
+    actual = _game(
+        floor=24,
+        turn=9,
+        player=SimpleNamespace(current_hp=30, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Centurion",
+                monster_id="Centurion",
+                hp=51,
+                max_hp=80,
+                damage=0,
+                intent=Intent.DEFEND,
+                powers=[Power("Strength", "Strength", 4)],
+            ),
+            _monster(
+                name="Mystic",
+                monster_id="Healer",
+                hp=32,
+                max_hp=55,
+                damage=0,
+                intent=Intent.BUFF,
+                index=1,
+                powers=[Power("Strength", "Strength", 4)],
             ),
         ],
     )
