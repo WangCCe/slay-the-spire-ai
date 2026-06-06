@@ -264,12 +264,14 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             block = _card_block(card)
             if block > 0:
                 expected["player"]["block"] += _modified_block(block, expected.get("player", {}))
-            second_wind_block = _second_wind_block(card, before, card_index)
+            second_wind_block = _second_wind_block(
+                card,
+                before,
+                card_index,
+                expected.get("player", {}),
+            )
             if second_wind_block > 0:
-                expected["player"]["block"] += _modified_block(
-                    second_wind_block,
-                    expected.get("player", {}),
-                )
+                expected["player"]["block"] += second_wind_block
         if 0 <= card_index < len(expected["hand"]):
             expected["hand"].pop(card_index)
 
@@ -652,7 +654,12 @@ def _card_block(card) -> int:
     return 0
 
 
-def _second_wind_block(card, before: Dict[str, Any], card_index: int) -> int:
+def _second_wind_block(
+    card,
+    before: Dict[str, Any],
+    card_index: int,
+    player: Optional[Dict[str, Any]] = None,
+) -> int:
     card_name = _known_card_name(card, SECOND_WIND_BLOCK_PER_CARD)
     if card_name is None:
         return 0
@@ -669,6 +676,8 @@ def _second_wind_block(card, before: Dict[str, Any], card_index: int) -> int:
             continue
         if not _snapshot_card_is_attack(hand_card):
             non_attack_count += 1
+    if player is not None:
+        return sum(_modified_block(per_card, player) for _ in range(non_attack_count))
     return non_attack_count * per_card
 
 
@@ -712,6 +721,7 @@ def _modified_attack_damage(damage: int, target: Dict[str, Any]) -> int:
 def _modified_block(block: int, player: Dict[str, Any]) -> int:
     if block <= 0:
         return 0
+    block += _snapshot_power_amount(player, "Dexterity")
     if _snapshot_power_amount(player, "Frail") > 0:
         block = block * 3 // 4
     return max(0, block)

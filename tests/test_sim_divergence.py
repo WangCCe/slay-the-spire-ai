@@ -1457,6 +1457,96 @@ def test_frail_player_block_does_not_create_false_player_diff(monkeypatch, tmp_p
     assert not trace_path.exists()
 
 
+def test_dexterity_increases_skill_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    defend = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+    )
+    before = _game(
+        floor=16,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=72,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Dexterity", "Dexterity", 1)],
+        ),
+        hand=[defend],
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=199, damage=0)],
+    )
+    actual = _game(
+        floor=16,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=72,
+            max_hp=80,
+            block=6,
+            energy=2,
+            powers=[Power("Dexterity", "Dexterity", 1)],
+        ),
+        hand=[],
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=199, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_negative_dexterity_reduces_skill_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    defend = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+    )
+    before = _game(
+        floor=6,
+        turn=6,
+        player=SimpleNamespace(
+            current_hp=41,
+            max_hp=80,
+            block=0,
+            energy=1,
+            powers=[Power("Dexterity", "Dexterity", -1)],
+        ),
+        hand=[defend],
+        monsters=[_monster(name="Lagavulin", monster_id="Lagavulin", hp=21, damage=0)],
+    )
+    actual = _game(
+        floor=6,
+        turn=6,
+        player=SimpleNamespace(
+            current_hp=41,
+            max_hp=80,
+            block=4,
+            energy=0,
+            powers=[Power("Dexterity", "Dexterity", -1)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Lagavulin", monster_id="Lagavulin", hp=21, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_iron_wave_attack_block_matches_live_effect(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
@@ -1785,6 +1875,57 @@ def test_second_wind_plus_uses_upgraded_block_per_non_attack(monkeypatch, tmp_pa
     )
 
     assert record_expected_action(PlayCardAction(card_index=3), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_second_wind_plus_applies_dexterity_per_exhausted_non_attack(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    second_wind_plus = _card(
+        name="Second Wind+",
+        card_id="Second Wind",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=16,
+        turn=6,
+        player=SimpleNamespace(
+            current_hp=60,
+            max_hp=80,
+            block=12,
+            energy=2,
+            powers=[Power("Dexterity", "Dexterity", 1)],
+        ),
+        hand=[
+            second_wind_plus,
+            _card(name="Slimed", card_id="Slimed", card_type=CardType.STATUS, cost=1, damage=0),
+            _card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, cost=1, damage=0, block=5),
+            _card(name="Strike", card_id="Strike_R", card_type=CardType.ATTACK, cost=1, damage=6),
+        ],
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=136, damage=0)],
+    )
+    actual = _game(
+        floor=16,
+        turn=6,
+        player=SimpleNamespace(
+            current_hp=60,
+            max_hp=80,
+            block=28,
+            energy=1,
+            powers=[Power("Dexterity", "Dexterity", 1)],
+        ),
+        hand=[],
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=136, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
     assert observe_next_state(actual) is False
     assert not trace_path.exists()
 
