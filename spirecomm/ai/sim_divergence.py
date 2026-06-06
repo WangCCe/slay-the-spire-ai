@@ -560,6 +560,7 @@ def _apply_direct_monster_damage(
     expected: Dict[str, Any],
     target_index: Optional[int],
     amount: int,
+    ignore_block: bool = False,
 ) -> int:
     if target_index is None or target_index < 0 or amount <= 0:
         return 0
@@ -572,9 +573,10 @@ def _apply_direct_monster_damage(
 
     remaining = max(0, amount)
     block = max(0, _to_int(target.get("block")))
-    blocked = min(block, remaining)
-    target["block"] = block - blocked
-    remaining -= blocked
+    if not ignore_block:
+        blocked = min(block, remaining)
+        target["block"] = block - blocked
+        remaining -= blocked
     hp_before = _to_int(target.get("hp"))
     target["hp"] = max(0, hp_before - remaining)
     hp_loss = max(0, hp_before - target["hp"])
@@ -1507,6 +1509,7 @@ def _apply_end_turn_attack_reflection_damage(
             expected,
             index,
             reflection_damage * _monster_attack_hits(monster),
+            ignore_block=True,
         )
 
 
