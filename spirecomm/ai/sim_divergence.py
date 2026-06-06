@@ -510,7 +510,12 @@ def _diff_snapshots(
 def _ignored_diff_keys(pending: Dict[str, Any]) -> set:
     action = pending.get("action", {})
     if action.get("type") == "EndTurnAction":
-        return {"player.energy"}
+        ignored = {"player.energy"}
+        monster_count = len((pending.get("expected") or {}).get("monsters") or [])
+        for index in range(monster_count):
+            ignored.add(f"monsters[{index}].intent")
+            ignored.add(f"monsters[{index}].block")
+        return ignored
     return set()
 
 
