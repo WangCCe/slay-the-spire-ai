@@ -2291,6 +2291,137 @@ def test_curl_up_target_gains_block_after_surviving_attack(monkeypatch, tmp_path
     assert not trace_path.exists()
 
 
+def test_flight_halves_attack_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=18,
+        turn=1,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=3),
+        hand=[_card(name="Strike", card_id="Strike_R", damage=6)],
+        monsters=[
+            _monster(
+                name="Byrd",
+                monster_id="Byrd",
+                hp=27,
+                damage=6,
+                intent=Intent.ATTACK,
+                powers=[Power("Flight", "Flight", 3)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=18,
+        turn=1,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Byrd",
+                monster_id="Byrd",
+                hp=24,
+                damage=6,
+                intent=Intent.ATTACK,
+                powers=[Power("Flight", "Flight", 2)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_flight_halves_odd_attack_damage_with_flooring(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    headbutt = _card(name="Headbutt", card_id="Headbutt", damage=9)
+    before = _game(
+        floor=18,
+        turn=2,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=3),
+        hand=[headbutt],
+        monsters=[
+            _monster(
+                name="Byrd",
+                monster_id="Byrd",
+                hp=21,
+                damage=13,
+                intent=Intent.ATTACK,
+                powers=[Power("Strength", "Strength", 1), Power("Flight", "Flight", 3)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=18,
+        turn=2,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Byrd",
+                monster_id="Byrd",
+                hp=17,
+                damage=13,
+                intent=Intent.ATTACK,
+                powers=[Power("Strength", "Strength", 1), Power("Flight", "Flight", 2)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_flight_zero_after_attack_sets_stun_intent(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    heavy_blade = _card(name="Heavy Blade", card_id="Heavy Blade", damage=14)
+    before = _game(
+        floor=24,
+        turn=1,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=3),
+        hand=[heavy_blade],
+        monsters=[
+            _monster(
+                name="Byrd",
+                monster_id="Byrd",
+                hp=19,
+                damage=0,
+                intent=Intent.BUFF,
+                powers=[Power("Flight", "Flight", 1)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=24,
+        turn=1,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Byrd",
+                monster_id="Byrd",
+                hp=12,
+                damage=0,
+                intent=Intent.STUN,
+                powers=[],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_frail_player_block_does_not_create_false_player_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

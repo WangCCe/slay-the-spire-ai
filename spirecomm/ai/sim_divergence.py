@@ -353,6 +353,8 @@ def _apply_expected_attack(
         if target["hp"] <= 0:
             target["gone"] = True
             break
+        if hp_loss > 0:
+            _decrement_flight(target)
         if not curl_up_applied and hp_loss > 0:
             curl_up_block = max(0, _snapshot_power_amount(target, "Curl Up"))
             if curl_up_block > 0:
@@ -793,7 +795,24 @@ def _modified_attack_damage(damage: int, target: Dict[str, Any]) -> int:
         return 0
     if _snapshot_power_amount(target, "Vulnerable") > 0:
         damage = damage * 3 // 2
+    if _snapshot_power_amount(target, "Flight") > 0:
+        damage = damage // 2
     return max(0, damage)
+
+
+def _decrement_flight(target: Dict[str, Any]) -> None:
+    for power in target.get("powers", []) or []:
+        identifiers = {
+            _normalize(power.get("id")),
+            _normalize(power.get("name")),
+        }
+        if "flight" not in identifiers:
+            continue
+        amount = max(0, _to_int(power.get("amount"), default=1) - 1)
+        power["amount"] = amount
+        if amount <= 0:
+            target["intent"] = "Intent.STUN"
+        return
 
 
 def _modified_block(block: int, player: Dict[str, Any]) -> int:
