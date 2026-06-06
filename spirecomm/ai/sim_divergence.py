@@ -133,6 +133,7 @@ _rampage_state_floor: Optional[int] = None
 _attack_count_state_floor: Optional[int] = None
 _attack_count_state_turn: Optional[int] = None
 _attacks_played_this_turn = 0
+_pending_headbutt_select_effects: Optional[Dict[str, Any]] = None
 
 
 def card_upgrade_count(card) -> int:
@@ -153,28 +154,39 @@ def divergence_trace_path(path: Optional[Path] = None) -> Optional[Path]:
 def reset_pending_divergence() -> None:
     global _pending_expected, _rampage_damage_bonus_by_card, _rampage_state_floor
     global _attack_count_state_floor, _attack_count_state_turn, _attacks_played_this_turn
+    global _pending_headbutt_select_effects
     _pending_expected = None
     _rampage_damage_bonus_by_card = {}
     _rampage_state_floor = None
     _attack_count_state_floor = None
     _attack_count_state_turn = None
     _attacks_played_this_turn = 0
+    _pending_headbutt_select_effects = None
 
 
 def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
     """Record a read-only one-action expectation for the next live state."""
-    global _pending_expected
+    global _pending_expected, _pending_headbutt_select_effects
 
     if divergence_trace_path(path) is None:
         return False
     if action is None or not getattr(game, "in_combat", False):
         _pending_expected = None
+        _pending_headbutt_select_effects = None
         return False
 
     try:
         _sync_rampage_state(_to_int(getattr(game, "floor", None)))
         before = snapshot_combat_state(game)
         _sync_attack_count_state(before["floor"], before["turn"])
+        if not _will_apply_pending_headbutt_select_effects(action, before):
+            _pending_headbutt_select_effects = None
+        action_summary = _action_summary(action, game)
+        card = _card_for_action(action, game)
+        if card is not None:
+            delayed_headbutt_effects = _headbutt_select_delayed_effects(before, card)
+            if delayed_headbutt_effects:
+                action_summary["delayed_headbutt_select_effects"] = delayed_headbutt_effects
         _pending_expected = {
             "timestamp": _timestamp(),
             "unix_time": round(time.time(), 3),
@@ -182,11 +194,12 @@ def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
             "turn": before["turn"],
             "before": before,
             "expected": _expected_after_action(action, game, before),
-            "action": _action_summary(action, game),
+            "action": action_summary,
         }
         return True
     except Exception as exc:
         _pending_expected = None
+        _pending_headbutt_select_effects = None
         logger.debug("sim divergence expected-state record failed: %s", exc)
         return False
 
@@ -216,7 +229,9 @@ def observe_next_state(game, path: Optional[Path] = None) -> bool:
 
         ignored_diffs = _ignored_diff_keys(pending)
         diffs = _diff_snapshots(pending["expected"], actual, ignored_diffs)
+        _consume_headbutt_select_boundary_if_applicable(pending)
         if not diffs:
+            _arm_headbutt_select_boundary_if_applicable(pending, actual)
             return False
 
         event = {
@@ -293,6 +308,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         card = _card_for_action(action, game)
         card_index = _to_int(getattr(action, "card_index", -1), default=-1)
         if card is not None:
+            delayed_headbutt_effects = _headbutt_select_delayed_effects(before, card)
             energy_before_card = expected["player"]["energy"]
             target_index = None
             attack_play_count = _attack_card_play_count(before, card)
@@ -325,7 +341,11 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 rage_block = _rage_attack_block(expected.get("player", {}))
                 if rage_block > 0:
                     _gain_player_block(expected, before, rage_block)
-                ornamental_fan_block = _ornamental_fan_attack_block(before)
+                ornamental_fan_block = (
+                    0
+                    if _to_int(delayed_headbutt_effects.get("block")) > 0
+                    else _ornamental_fan_attack_block(before)
+                )
                 if ornamental_fan_block > 0:
                     _gain_player_block(expected, before, ornamental_fan_block)
                 if sharp_hide_damage > 0:
@@ -344,7 +364,8 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 _heal_player(expected, heal)
             energy_gain = _card_energy_gain(card)
             energy_gain += _conditional_card_energy_gain(card, before, target_index)
-            energy_gain += _nunchaku_energy_gain(before, card)
+            if _to_int(delayed_headbutt_effects.get("energy")) <= 0:
+                energy_gain += _nunchaku_energy_gain(before, card)
             if energy_gain > 0:
                 expected["player"]["energy"] += energy_gain
             block = _card_block(card)
@@ -386,6 +407,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             _apply_havoc_top_card(expected, before, card)
         if 0 <= card_index < len(expected["hand"]):
             expected["hand"].pop(card_index)
+
+    elif action_type == "CardSelectAction":
+        _apply_pending_headbutt_select_effects(expected, before)
 
     elif action_type == "PotionAction":
         _apply_expected_potion(expected, action, game)
@@ -584,6 +608,83 @@ def _nilrys_codex_screen_boundary(pending: Dict[str, Any], actual: Dict[str, Any
     if not actual.get("in_combat"):
         return False
     return _to_int(actual.get("player", {}).get("current_hp")) > 0
+
+
+def _headbutt_select_delayed_effects(snapshot: Dict[str, Any], card) -> Dict[str, int]:
+    if _known_card_name(card, BASE_ATTACK_DAMAGE) != "Headbutt":
+        return {}
+    effects: Dict[str, int] = {}
+    block = _ornamental_fan_attack_block(snapshot)
+    if block > 0:
+        effects["block"] = block
+    energy = _nunchaku_energy_gain(snapshot, card)
+    if energy > 0:
+        effects["energy"] = energy
+    return effects
+
+
+def _will_apply_pending_headbutt_select_effects(action, snapshot: Dict[str, Any]) -> bool:
+    if type(action).__name__ != "CardSelectAction":
+        return False
+    return _pending_headbutt_select_effects_match(snapshot)
+
+
+def _pending_headbutt_select_effects_match(snapshot: Dict[str, Any]) -> bool:
+    effects = _pending_headbutt_select_effects
+    if not effects or not snapshot.get("in_combat"):
+        return False
+    if _to_int(snapshot.get("player", {}).get("current_hp")) <= 0:
+        return False
+    return (
+        _to_int(snapshot.get("floor")) == _to_int(effects.get("floor"))
+        and _to_int(snapshot.get("turn")) == _to_int(effects.get("turn"))
+    )
+
+
+def _apply_pending_headbutt_select_effects(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> None:
+    effects = _pending_headbutt_select_effects
+    if not effects or not _pending_headbutt_select_effects_match(before):
+        return
+    block = max(0, _to_int(effects.get("block")))
+    if block > 0:
+        _gain_player_block(expected, before, block)
+    energy = max(0, _to_int(effects.get("energy")))
+    if energy > 0:
+        expected["player"]["energy"] += energy
+
+
+def _arm_headbutt_select_boundary_if_applicable(
+    pending: Dict[str, Any],
+    actual: Dict[str, Any],
+) -> None:
+    global _pending_headbutt_select_effects
+
+    action = pending.get("action") or {}
+    if action.get("type") != "PlayCardAction":
+        return
+    effects = action.get("delayed_headbutt_select_effects") or {}
+    if not effects or not actual.get("in_combat"):
+        return
+    if _to_int(actual.get("player", {}).get("current_hp")) <= 0:
+        return
+    _pending_headbutt_select_effects = {
+        "floor": actual.get("floor"),
+        "turn": actual.get("turn"),
+        **effects,
+    }
+
+
+def _consume_headbutt_select_boundary_if_applicable(pending: Dict[str, Any]) -> None:
+    global _pending_headbutt_select_effects
+
+    action = pending.get("action") or {}
+    if action.get("type") != "CardSelectAction":
+        return
+    if _pending_headbutt_select_effects_match(pending.get("before") or {}):
+        _pending_headbutt_select_effects = None
 
 
 def _snapshot_monster_active(monster: Dict[str, Any]) -> bool:

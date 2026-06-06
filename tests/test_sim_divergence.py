@@ -10,6 +10,7 @@ from spirecomm.ai.sim_divergence import (
 from spirecomm.communication.action import (
     CancelAction,
     CardRewardAction,
+    CardSelectAction,
     EndTurnAction,
     PlayCardAction,
     PotionAction,
@@ -407,6 +408,165 @@ def test_headbutt_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
     assert observe_next_state(actual) is False
     assert not trace_path.exists()
+
+
+def test_headbutt_ornamental_fan_settles_after_card_select(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Ornamental Fan")]
+
+    first_strike = _card(name="Strike", card_id="Strike_R", damage=6)
+    first_before = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(current_hp=76, max_hp=80, block=0, energy=3),
+        hand=[first_strike],
+        relics=relics,
+        monsters=[_monster(name="Bronze Orb", monster_id="BronzeOrb", hp=47, damage=8)],
+    )
+    first_actual = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(current_hp=76, max_hp=80, block=0, energy=2),
+        hand=[],
+        relics=relics,
+        monsters=[_monster(name="Bronze Orb", monster_id="BronzeOrb", hp=41, damage=8)],
+    )
+
+    second_strike = _card(name="Strike", card_id="Strike_R", damage=6)
+    second_before = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(current_hp=76, max_hp=80, block=0, energy=2),
+        hand=[second_strike],
+        relics=relics,
+        monsters=[_monster(name="Bronze Orb", monster_id="BronzeOrb", hp=41, damage=8)],
+    )
+    second_actual = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(current_hp=76, max_hp=80, block=0, energy=1),
+        hand=[],
+        relics=relics,
+        monsters=[_monster(name="Bronze Orb", monster_id="BronzeOrb", hp=35, damage=8)],
+    )
+
+    headbutt = _card(
+        name="Headbutt",
+        card_id="Headbutt",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+    )
+    headbutt_before = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(current_hp=76, max_hp=80, block=0, energy=1),
+        hand=[headbutt],
+        relics=relics,
+        monsters=[_monster(name="Bronze Orb", monster_id="BronzeOrb", hp=35, damage=8)],
+    )
+    select_screen = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(current_hp=76, max_hp=80, block=0, energy=0),
+        hand=[],
+        relics=relics,
+        monsters=[_monster(name="Bronze Orb", monster_id="BronzeOrb", hp=26, damage=8)],
+    )
+    after_select = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(current_hp=76, max_hp=80, block=4, energy=0),
+        hand=[],
+        relics=relics,
+        monsters=[_monster(name="Bronze Orb", monster_id="BronzeOrb", hp=26, damage=8)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), first_before) is True
+    assert observe_next_state(first_actual) is False
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), second_before) is True
+    assert observe_next_state(second_actual) is False
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), headbutt_before) is True
+    assert observe_next_state(select_screen) is False
+    assert record_expected_action(CardSelectAction([first_strike]), select_screen) is True
+    assert observe_next_state(after_select) is False
+    assert not trace_path.exists()
+
+
+def test_headbutt_nunchaku_energy_settles_after_card_select(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Nunchaku", counter=9)]
+    headbutt = _card(
+        name="Headbutt",
+        card_id="Headbutt",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=38,
+        turn=4,
+        player=SimpleNamespace(current_hp=49, max_hp=80, block=0, energy=1),
+        hand=[headbutt],
+        relics=relics,
+        monsters=[_monster(name="Transient", monster_id="Transient", hp=120, damage=40)],
+    )
+    select_screen = _game(
+        floor=38,
+        turn=4,
+        player=SimpleNamespace(current_hp=49, max_hp=80, block=0, energy=0),
+        hand=[],
+        relics=relics,
+        monsters=[_monster(name="Transient", monster_id="Transient", hp=111, damage=40)],
+    )
+    after_select = _game(
+        floor=38,
+        turn=4,
+        player=SimpleNamespace(current_hp=49, max_hp=80, block=0, energy=1),
+        hand=[],
+        relics=relics,
+        monsters=[_monster(name="Transient", monster_id="Transient", hp=111, damage=40)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(select_screen) is False
+    assert record_expected_action(CardSelectAction([headbutt]), select_screen) is True
+    assert observe_next_state(after_select) is False
+    assert not trace_path.exists()
+
+
+def test_card_select_without_headbutt_boundary_still_reports_player_diff(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    selected_card = _card(name="Strike", card_id="Strike_R", damage=6)
+    before = _game(
+        floor=20,
+        turn=3,
+        player=SimpleNamespace(current_hp=70, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=42, damage=6)],
+    )
+    actual = _game(
+        floor=20,
+        turn=3,
+        player=SimpleNamespace(current_hp=70, max_hp=80, block=4, energy=1),
+        hand=[],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=42, damage=6)],
+    )
+
+    assert record_expected_action(CardSelectAction([selected_card]), before) is True
+    assert observe_next_state(actual) is True
+    records = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines()]
+    assert records[0]["reason"] == "player_state_mismatch"
+    assert records[0]["diffs"]["player.block"] == {"expected": 0, "actual": 4}
 
 
 def test_feed_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
