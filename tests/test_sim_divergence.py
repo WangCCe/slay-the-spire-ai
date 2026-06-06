@@ -67,6 +67,10 @@ def _monster(
     )
 
 
+def _relic(name, relic_id=None):
+    return SimpleNamespace(name=name, relic_id=relic_id or name)
+
+
 def _game(**kwargs):
     defaults = dict(
         floor=16,
@@ -80,6 +84,7 @@ def _game(**kwargs):
         player=SimpleNamespace(current_hp=13, max_hp=80, block=5, energy=2),
         hand=[],
         monsters=[],
+        relics=[],
         potions=[],
         play_available=True,
         end_available=True,
@@ -821,6 +826,142 @@ def test_rage_does_not_trigger_on_skill(monkeypatch, tmp_path):
 
     assert record_expected_action(PlayCardAction(card_index=0), before) is True
     assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_ornamental_fan_adds_block_on_every_third_attack(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Ornamental Fan")]
+    first_before = _game(
+        floor=22,
+        turn=1,
+        player=SimpleNamespace(current_hp=35, max_hp=80, block=0, energy=3),
+        hand=[_card(name="Strike", card_id="Strike_R", damage=6)],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=80, damage=0)],
+        relics=relics,
+    )
+    first_actual = _game(
+        floor=22,
+        turn=1,
+        player=SimpleNamespace(current_hp=35, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=74, damage=0)],
+        relics=relics,
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), first_before) is True
+    assert observe_next_state(first_actual) is False
+
+    second_before = _game(
+        floor=22,
+        turn=1,
+        player=SimpleNamespace(current_hp=35, max_hp=80, block=0, energy=2),
+        hand=[_card(name="Sever Soul", card_id="Sever Soul", damage=16, cost=1)],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=74, damage=0)],
+        relics=relics,
+    )
+    second_actual = _game(
+        floor=22,
+        turn=1,
+        player=SimpleNamespace(current_hp=35, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=58, damage=0)],
+        relics=relics,
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), second_before) is True
+    assert observe_next_state(second_actual) is False
+
+    third_before = _game(
+        floor=22,
+        turn=1,
+        player=SimpleNamespace(current_hp=35, max_hp=80, block=0, energy=1),
+        hand=[_card(name="Anger", card_id="Anger", damage=6, cost=0)],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=58, damage=0)],
+        relics=relics,
+    )
+    third_actual = _game(
+        floor=22,
+        turn=1,
+        player=SimpleNamespace(current_hp=35, max_hp=80, block=4, energy=1),
+        hand=[],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=52, damage=0)],
+        relics=relics,
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), third_before) is True
+    assert observe_next_state(third_actual) is False
+    assert not trace_path.exists()
+
+
+def test_ornamental_fan_attack_count_resets_each_turn(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Ornamental Fan")]
+    first_before = _game(
+        floor=24,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=3),
+        hand=[_card(name="Immolate", card_id="Immolate", damage=21, cost=1)],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=80, damage=0)],
+        relics=relics,
+    )
+    first_actual = _game(
+        floor=24,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=59, damage=0)],
+        relics=relics,
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), first_before) is True
+    assert observe_next_state(first_actual) is False
+
+    second_before = _game(
+        floor=24,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=2),
+        hand=[_card(name="Sever Soul", card_id="Sever Soul", damage=16, cost=1)],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=59, damage=0)],
+        relics=relics,
+    )
+    second_actual = _game(
+        floor=24,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=43, damage=0)],
+        relics=relics,
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), second_before) is True
+    assert observe_next_state(second_actual) is False
+
+    next_turn_before = _game(
+        floor=24,
+        turn=2,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=3),
+        hand=[_card(name="Clothesline", card_id="Clothesline", damage=12, cost=1)],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=43, damage=0)],
+        relics=relics,
+    )
+    next_turn_actual = _game(
+        floor=24,
+        turn=2,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=31, damage=0)],
+        relics=relics,
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), next_turn_before) is True
+    assert observe_next_state(next_turn_actual) is False
     assert not trace_path.exists()
 
 

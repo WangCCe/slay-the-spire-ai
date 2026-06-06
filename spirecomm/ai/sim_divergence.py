@@ -106,6 +106,9 @@ logger = logging.getLogger(__name__)
 _pending_expected: Optional[Dict[str, Any]] = None
 _rampage_damage_bonus_by_card: Dict[str, int] = {}
 _rampage_state_floor: Optional[int] = None
+_attack_count_state_floor: Optional[int] = None
+_attack_count_state_turn: Optional[int] = None
+_attacks_played_this_turn = 0
 
 
 def divergence_trace_path(path: Optional[Path] = None) -> Optional[Path]:
@@ -119,9 +122,13 @@ def divergence_trace_path(path: Optional[Path] = None) -> Optional[Path]:
 
 def reset_pending_divergence() -> None:
     global _pending_expected, _rampage_damage_bonus_by_card, _rampage_state_floor
+    global _attack_count_state_floor, _attack_count_state_turn, _attacks_played_this_turn
     _pending_expected = None
     _rampage_damage_bonus_by_card = {}
     _rampage_state_floor = None
+    _attack_count_state_floor = None
+    _attack_count_state_turn = None
+    _attacks_played_this_turn = 0
 
 
 def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
@@ -137,6 +144,7 @@ def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
     try:
         _sync_rampage_state(_to_int(getattr(game, "floor", None)))
         before = snapshot_combat_state(game)
+        _sync_attack_count_state(before["floor"], before["turn"])
         _pending_expected = {
             "timestamp": _timestamp(),
             "unix_time": round(time.time(), 3),
@@ -167,6 +175,7 @@ def observe_next_state(game, path: Optional[Path] = None) -> bool:
     try:
         actual = snapshot_combat_state(game)
         _sync_rampage_state(actual["floor"])
+        _sync_attack_count_state(pending["floor"], pending["turn"])
         if actual["floor"] != pending["floor"]:
             return False
         _finalize_observed_action(pending, actual)
@@ -225,6 +234,7 @@ def snapshot_combat_state(game) -> Dict[str, Any]:
             "powers": [_power_summary(power) for power in _safe_iterable(getattr(player, "powers", []))],
         },
         "hand": [_card_summary(card) for card in _safe_iterable(getattr(game, "hand", []))],
+        "relics": [_relic_summary(relic) for relic in _safe_iterable(getattr(game, "relics", []))],
         "monsters": [
             _monster_summary(monster)
             for monster in _safe_iterable(getattr(game, "monsters", []))
@@ -265,6 +275,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 rage_block = _rage_attack_block(expected.get("player", {}))
                 if rage_block > 0:
                     expected["player"]["block"] += rage_block
+                ornamental_fan_block = _ornamental_fan_attack_block(before)
+                if ornamental_fan_block > 0:
+                    expected["player"]["block"] += ornamental_fan_block
             self_damage = _card_self_damage(card)
             if self_damage > 0:
                 expected["player"]["current_hp"] = max(
@@ -561,6 +574,13 @@ def _card_summary(card) -> Dict[str, Any]:
     }
 
 
+def _relic_summary(relic) -> Dict[str, Any]:
+    return {
+        "name": _safe_str(getattr(relic, "name", "")),
+        "id": _safe_str(getattr(relic, "relic_id", getattr(relic, "id", ""))),
+    }
+
+
 def _power_summary(power) -> Dict[str, Any]:
     return {
         "id": _safe_str(getattr(power, "power_id", getattr(power, "id", ""))),
@@ -765,6 +785,25 @@ def _rage_attack_block(player: Dict[str, Any]) -> int:
     return max(0, _snapshot_power_amount(player, "Rage"))
 
 
+def _ornamental_fan_attack_block(snapshot: Dict[str, Any]) -> int:
+    if not _snapshot_has_relic(snapshot, "Ornamental Fan"):
+        return 0
+    attack_count_after_play = _attacks_played_this_turn + 1
+    return 4 if attack_count_after_play > 0 and attack_count_after_play % 3 == 0 else 0
+
+
+def _snapshot_has_relic(snapshot: Dict[str, Any], relic_name: str) -> bool:
+    target = _normalize(relic_name)
+    for relic in snapshot.get("relics", []) or []:
+        identifiers = {
+            _normalize(relic.get("id")),
+            _normalize(relic.get("name")),
+        }
+        if target in identifiers:
+            return True
+    return False
+
+
 def _heal_player(expected: Dict[str, Any], amount: int) -> None:
     if amount <= 0:
         return
@@ -830,12 +869,24 @@ def _sync_rampage_state(floor: int) -> None:
     _rampage_damage_bonus_by_card = {}
 
 
+def _sync_attack_count_state(floor: int, turn: int) -> None:
+    global _attack_count_state_floor, _attack_count_state_turn, _attacks_played_this_turn
+    if _attack_count_state_floor == floor and _attack_count_state_turn == turn:
+        return
+    _attack_count_state_floor = floor
+    _attack_count_state_turn = turn
+    _attacks_played_this_turn = 0
+
+
 def _finalize_observed_action(pending: Dict[str, Any], actual: Dict[str, Any]) -> None:
     action = pending.get("action", {})
     if action.get("type") != "PlayCardAction":
         return
     card = action.get("card") or {}
-    if not isinstance(card, dict) or not _snapshot_card_is_named(card, "Rampage"):
+    if not isinstance(card, dict):
+        return
+    _finalize_attack_count(card, actual)
+    if not _snapshot_card_is_named(card, "Rampage"):
         return
     key = _snapshot_card_identity(card)
     if not key:
@@ -846,6 +897,16 @@ def _finalize_observed_action(pending: Dict[str, Any], actual: Dict[str, Any]) -
         _rampage_damage_bonus_by_card.get(key, 0)
         + _rampage_scaling_from_snapshot(card)
     )
+
+
+def _finalize_attack_count(card: Dict[str, Any], actual: Dict[str, Any]) -> None:
+    global _attacks_played_this_turn
+    if not _snapshot_card_is_attack(card):
+        return
+    key = _snapshot_card_identity(card)
+    if key.startswith("uuid:") and _snapshot_hand_contains_identity(actual.get("hand", []), key):
+        return
+    _attacks_played_this_turn += 1
 
 
 def _rampage_damage_bonus_for_card(card) -> int:
