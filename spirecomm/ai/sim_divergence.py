@@ -293,6 +293,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         if card is not None:
             energy_before_card = expected["player"]["energy"]
             target_index = None
+            attack_play_count = _attack_card_play_count(before, card)
             if _is_whirlwind(card):
                 expected["player"]["energy"] = 0
             else:
@@ -309,6 +310,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     before,
                     card_index,
                 )
+                hit_count *= attack_play_count
                 if _is_all_enemy_attack(card):
                     damage_dealt = _apply_expected_attack_to_all(expected, damage, hit_count)
                     sharp_hide_damage = _sharp_hide_reflection_damage(before, all_targets=True)
@@ -328,6 +330,8 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     _damage_player(expected, sharp_hide_damage)
             self_damage = _card_self_damage(card)
             self_damage += _blue_candle_curse_hp_loss(card, before)
+            if _is_attack_card(card):
+                self_damage *= attack_play_count
             if self_damage > 0:
                 expected["player"]["current_hp"] = max(
                     0,
@@ -346,7 +350,11 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 _gain_player_block(
                     expected,
                     before,
-                    _modified_block(block, expected.get("player", {})),
+                    sum(
+                        _modified_block(block, expected.get("player", {}))
+                        for _ in range(attack_play_count if _is_attack_card(card) else 1)
+                    ),
+                    attack_play_count if _is_attack_card(card) else 1,
                 )
             second_wind_block = _second_wind_block(
                 card,
@@ -814,6 +822,12 @@ def _monster_summary(monster) -> Dict[str, Any]:
 def _is_attack_card(card) -> bool:
     card_type = _normalize(_card_attr(card, "type", _card_attr(card, "card_type", "")))
     return card_type in {"attack", "cardtypeattack"}
+
+
+def _attack_card_play_count(snapshot: Dict[str, Any], card) -> int:
+    if not _is_attack_card(card):
+        return 1
+    return 2 if _snapshot_power_amount(snapshot.get("player", {}), "Double Tap") > 0 else 1
 
 
 def _is_curse_card(card) -> bool:

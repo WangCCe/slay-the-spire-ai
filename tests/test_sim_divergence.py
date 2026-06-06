@@ -3204,6 +3204,141 @@ def test_iron_wave_attack_block_matches_live_effect(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_double_tap_replays_attack_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    bash_plus = _card(
+        name="Bash+",
+        card_id="Bash",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=12,
+        upgrades=1,
+    )
+    before = _game(
+        floor=21,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=60,
+            max_hp=80,
+            block=18,
+            energy=2,
+            powers=[Power("Double Tap", "Double Tap", 1)],
+        ),
+        hand=[bash_plus],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=49, damage=10)],
+    )
+    actual = _game(
+        floor=21,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=60,
+            max_hp=80,
+            block=18,
+            energy=0,
+            powers=[Power("Double Tap", "Double Tap", 1)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=25, damage=10)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_double_tap_replays_attack_block_effect(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    iron_wave = _card(
+        name="Iron Wave",
+        card_id="Iron Wave",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=5,
+        block=5,
+    )
+    before = _game(
+        floor=18,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Double Tap", "Double Tap", 1)],
+        ),
+        hand=[iron_wave],
+        monsters=[_monster(name="Spheric Guardian", monster_id="SphericGuardian", hp=20, block=40, damage=0)],
+    )
+    actual = _game(
+        floor=18,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            block=10,
+            energy=2,
+            powers=[Power("Double Tap", "Double Tap", 1)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Spheric Guardian", monster_id="SphericGuardian", hp=20, block=30, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_double_tap_replays_attack_self_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    hemokinesis_plus = _card(
+        name="Hemokinesis+",
+        card_id="Hemokinesis",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=20,
+        upgrades=1,
+    )
+    before = _game(
+        floor=24,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=74,
+            max_hp=80,
+            block=10,
+            energy=1,
+            powers=[Power("Double Tap", "Double Tap", 1)],
+        ),
+        hand=[hemokinesis_plus],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=64, damage=0)],
+    )
+    actual = _game(
+        floor=24,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=70,
+            max_hp=80,
+            block=10,
+            energy=0,
+            powers=[Power("Double Tap", "Double Tap", 1)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=24, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_cleave_hits_all_live_monsters_without_target(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
