@@ -489,6 +489,125 @@ def test_player_weak_reduces_attack_damage(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_rage_adds_block_when_attack_is_played(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=16,
+        turn=5,
+        player=SimpleNamespace(
+            current_hp=50,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Rage", "Rage", 3)],
+        ),
+        hand=[_card(name="Strike", card_id="Strike_R", damage=6)],
+        monsters=[_monster(name="Slime Boss", monster_id="SlimeBoss", hp=73, damage=0)],
+    )
+    actual = _game(
+        floor=16,
+        turn=5,
+        player=SimpleNamespace(
+            current_hp=50,
+            max_hp=80,
+            block=3,
+            energy=2,
+            powers=[Power("Rage", "Rage", 3)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Slime Boss", monster_id="SlimeBoss", hp=67, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_rage_block_is_not_reduced_by_frail(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=16,
+        turn=8,
+        player=SimpleNamespace(
+            current_hp=43,
+            max_hp=80,
+            block=11,
+            energy=2,
+            powers=[Power("Rage", "Rage", 3), Power("Frail", "Frail", 3)],
+        ),
+        hand=[_card(name="Pommel Strike+", card_id="Pommel Strike", damage=10, upgrades=1)],
+        monsters=[_monster(name="Spike Slime (L)", monster_id="SpikeSlime_L", hp=37, damage=0)],
+    )
+    actual = _game(
+        floor=16,
+        turn=8,
+        player=SimpleNamespace(
+            current_hp=43,
+            max_hp=80,
+            block=14,
+            energy=1,
+            powers=[Power("Rage", "Rage", 3), Power("Frail", "Frail", 3)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Spike Slime (L)", monster_id="SpikeSlime_L", hp=27, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_rage_does_not_trigger_on_skill(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    defend = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+    )
+    before = _game(
+        floor=18,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=55,
+            max_hp=80,
+            block=0,
+            energy=2,
+            powers=[Power("Rage", "Rage", 3)],
+        ),
+        hand=[defend],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=85, damage=0)],
+    )
+    actual = _game(
+        floor=18,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=55,
+            max_hp=80,
+            block=5,
+            energy=1,
+            powers=[Power("Rage", "Rage", 3)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=85, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_explicit_heavy_blade_damage_uses_strength_multiplier(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

@@ -244,6 +244,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 else:
                     target_index = _target_index_for_action(action, game)
                     _apply_expected_attack(expected, target_index, damage, hit_count)
+                rage_block = _rage_attack_block(expected.get("player", {}))
+                if rage_block > 0:
+                    expected["player"]["block"] += rage_block
             self_damage = _card_self_damage(card)
             if self_damage > 0:
                 expected["player"]["current_hp"] = max(
@@ -698,6 +701,10 @@ def _modified_block(block: int, player: Dict[str, Any]) -> int:
     if _snapshot_power_amount(player, "Frail") > 0:
         block = block * 3 // 4
     return max(0, block)
+
+
+def _rage_attack_block(player: Dict[str, Any]) -> int:
+    return max(0, _snapshot_power_amount(player, "Rage"))
 
 
 def _snapshot_power_amount(entity: Dict[str, Any], power_name: str) -> int:
