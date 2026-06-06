@@ -1149,9 +1149,14 @@ class CombatRLAgent:
         logger.info(f"[CombatRLAgent] screen={current_screen}, use_rl_for_combat={self.use_rl_for_combat}, rl_failure_count={self.rl_failure_count}")
 
         if self._is_finished_combat_transition(game):
-            from spirecomm.communication.action import WaitAction
+            from spirecomm.communication.action import EndTurnAction, WaitAction
 
             self._fallback_turn_key = None
+            if self._should_end_reviving_combat_transition(game):
+                logger.info(
+                    "[POST_COMBAT_GUARD] half-dead monster transition; ending turn to advance revive"
+                )
+                return self._with_combat_action_context(EndTurnAction(), game)
             logger.info(
                 "[POST_COMBAT_GUARD] in_combat still true but no monsters alive; waiting for reward transition"
             )
@@ -2764,6 +2769,20 @@ class CombatRLAgent:
         if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
             return False
         return not cls._alive_monsters(game)
+
+    @classmethod
+    def _should_end_reviving_combat_transition(cls, game: Game) -> bool:
+        available_commands = getattr(game, "available_commands", None)
+        if available_commands is not None:
+            if "end" not in available_commands:
+                return False
+        elif not getattr(game, "end_available", False):
+            return False
+        return any(
+            getattr(monster, "half_dead", False)
+            and not getattr(monster, "is_gone", False)
+            for monster in (getattr(game, "monsters", []) or [])
+        )
 
     @staticmethod
     def _incoming_damage(game: Game) -> int:
