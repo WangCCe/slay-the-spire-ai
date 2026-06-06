@@ -350,6 +350,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         _apply_expected_potion(expected, action, game)
 
     elif action_type == "EndTurnAction":
+        metallicize_block = _metallicize_end_turn_block(before)
+        if metallicize_block > 0:
+            expected["player"]["block"] += metallicize_block
         incoming = _incoming_damage_from_snapshot(before)
         incoming += _end_turn_status_damage(before)
         _damage_player(expected, incoming)
@@ -1080,6 +1083,10 @@ def _end_turn_status_damage(snapshot: Dict[str, Any]) -> int:
 
 def _brutality_start_turn_hp_loss(snapshot: Dict[str, Any]) -> int:
     return 1 if _snapshot_power_amount(snapshot.get("player", {}), "Brutality") > 0 else 0
+
+
+def _metallicize_end_turn_block(snapshot: Dict[str, Any]) -> int:
+    return max(0, _snapshot_power_amount(snapshot.get("player", {}), "Metallicize"))
 
 
 def _apply_havoc_top_card(

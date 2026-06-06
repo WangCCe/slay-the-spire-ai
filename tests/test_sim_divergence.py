@@ -4405,6 +4405,113 @@ def test_end_turn_brutality_loses_one_hp_after_monster_damage(monkeypatch, tmp_p
     assert not trace_path.exists()
 
 
+def test_end_turn_metallicize_block_reduces_incoming_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=11,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[
+                Power("Metallicize", "Metallicize", 6),
+                Power("Dexterity", "Dexterity", 2),
+            ],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Spike Slime (S)",
+                monster_id="SpikeSlime_S",
+                hp=13,
+                damage=5,
+                intent=Intent.ATTACK,
+            ),
+            _monster(
+                name="Acid Slime (S)",
+                monster_id="AcidSlime_S",
+                hp=8,
+                damage=3,
+                intent=Intent.ATTACK,
+                index=1,
+            ),
+            _monster(
+                name="Spike Slime (S)",
+                monster_id="SpikeSlime_S",
+                hp=13,
+                damage=5,
+                intent=Intent.ATTACK,
+                index=2,
+            ),
+            _monster(
+                name="Spike Slime (S)",
+                monster_id="SpikeSlime_S",
+                hp=2,
+                damage=3,
+                intent=Intent.ATTACK,
+                index=3,
+            ),
+        ],
+    )
+    actual = _game(
+        floor=11,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=70,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[
+                Power("Metallicize", "Metallicize", 6),
+                Power("Dexterity", "Dexterity", 2),
+            ],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Spike Slime (S)",
+                monster_id="SpikeSlime_S",
+                hp=13,
+                damage=5,
+                intent=Intent.ATTACK,
+            ),
+            _monster(
+                name="Acid Slime (S)",
+                monster_id="AcidSlime_S",
+                hp=8,
+                damage=3,
+                intent=Intent.ATTACK,
+                index=1,
+            ),
+            _monster(
+                name="Spike Slime (S)",
+                monster_id="SpikeSlime_S",
+                hp=13,
+                damage=5,
+                intent=Intent.ATTACK,
+                index=2,
+            ),
+            _monster(
+                name="Spike Slime (S)",
+                monster_id="SpikeSlime_S",
+                hp=2,
+                damage=3,
+                intent=Intent.ATTACK,
+                index=3,
+            ),
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_combat_rl_checks_pending_divergence_on_next_state(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
