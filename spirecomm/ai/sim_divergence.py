@@ -103,6 +103,10 @@ CARD_HEAL = {
     "Bandage Up": 4,
 }
 
+END_TURN_STATUS_DAMAGE = {
+    "Burn": 2,
+}
+
 CARD_ID_ALIASES = {
     "Defend_R": "Defend",
     "Strike_R": "Strike",
@@ -322,11 +326,8 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
 
     elif action_type == "EndTurnAction":
         incoming = _incoming_damage_from_snapshot(before)
-        current_block = expected["player"]["block"]
-        expected["player"]["current_hp"] = max(
-            0,
-            expected["player"]["current_hp"] - max(0, incoming - current_block),
-        )
+        incoming += _end_turn_status_damage(before)
+        _damage_player(expected, incoming)
         expected["player"]["block"] = 0
         expected["player"]["energy"] = 0
         for monster in expected.get("monsters", []):
@@ -795,6 +796,24 @@ def _snapshot_card_matches(snapshot_card: Dict[str, Any], card) -> bool:
     return False
 
 
+def _snapshot_known_card_name(
+    snapshot_card: Dict[str, Any], known_values: Dict[str, int]
+) -> Optional[str]:
+    known_by_normalized = {_normalize(name): name for name in known_values}
+    for key in ("name", "id", "card_id"):
+        normalized = _normalize(_strip_upgrade_suffix(snapshot_card.get(key)))
+        if normalized in known_by_normalized:
+            return known_by_normalized[normalized]
+    return None
+
+
+def _snapshot_card_upgrade_count(snapshot_card: Dict[str, Any]) -> int:
+    upgrades = max(0, _to_int(snapshot_card.get("upgrades")))
+    if upgrades > 0:
+        return upgrades
+    return 1 if str(snapshot_card.get("name") or "").endswith("+") else 0
+
+
 def _source_modified_attack_damage(damage: int, card, player: Dict[str, Any]) -> int:
     if damage <= 0:
         return 0
@@ -894,6 +913,19 @@ def _damage_player(expected: Dict[str, Any], amount: int) -> None:
     remaining = amount - blocked
     if remaining > 0:
         player["current_hp"] = max(0, _to_int(player.get("current_hp")) - remaining)
+
+
+def _end_turn_status_damage(snapshot: Dict[str, Any]) -> int:
+    total = 0
+    for card in snapshot.get("hand", []) or []:
+        card_name = _snapshot_known_card_name(card, END_TURN_STATUS_DAMAGE)
+        if card_name is None:
+            continue
+        damage = END_TURN_STATUS_DAMAGE[card_name]
+        if card_name == "Burn" and _snapshot_card_upgrade_count(card) > 0:
+            damage += 2
+        total += damage
+    return total
 
 
 def _sharp_hide_reflection_damage(
