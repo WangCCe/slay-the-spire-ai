@@ -330,6 +330,12 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         _damage_player(expected, incoming)
         expected["player"]["block"] = 0
         expected["player"]["energy"] = 0
+        brutality_loss = _brutality_start_turn_hp_loss(before)
+        if brutality_loss > 0:
+            expected["player"]["current_hp"] = max(
+                0,
+                _to_int(expected["player"].get("current_hp")) - brutality_loss,
+            )
         for monster in expected.get("monsters", []):
             monster["block"] = 0
 
@@ -926,6 +932,10 @@ def _end_turn_status_damage(snapshot: Dict[str, Any]) -> int:
             damage += 2
         total += damage
     return total
+
+
+def _brutality_start_turn_hp_loss(snapshot: Dict[str, Any]) -> int:
+    return 1 if _snapshot_power_amount(snapshot.get("player", {}), "Brutality") > 0 else 0
 
 
 def _sharp_hide_reflection_damage(
