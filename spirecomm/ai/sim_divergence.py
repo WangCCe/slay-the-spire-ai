@@ -510,7 +510,15 @@ def _apply_expected_potion(expected: Dict[str, Any], action, game) -> None:
 
     effect_type = _normalize(_potion_attr(potion, "effect_type", ""))
     target_type = _normalize(_potion_attr(potion, "target_type", ""))
-    value = _to_int(_potion_attr(potion, "effect_value", 0))
+    raw_value = _potion_attr(potion, "effect_value", 0)
+
+    if effect_type == "healpercent" and target_type == "self":
+        percent = _to_float(raw_value)
+        heal = int(_to_int(expected["player"].get("max_hp")) * percent)
+        _heal_player(expected, heal)
+        return
+
+    value = _to_int(raw_value)
     if value <= 0:
         return
 
@@ -518,6 +526,9 @@ def _apply_expected_potion(expected: Dict[str, Any], action, game) -> None:
         expected["player"]["energy"] += value
     elif effect_type == "block":
         expected["player"]["block"] += value
+    elif effect_type == "maxhp" and target_type == "self":
+        expected["player"]["max_hp"] = _to_int(expected["player"].get("max_hp")) + value
+        _heal_player(expected, value)
     elif effect_type == "damage":
         if target_type == "allmonsters":
             for index, _monster in enumerate(expected.get("monsters", [])):
@@ -1852,6 +1863,15 @@ def _to_int(value, default=0) -> int:
             return int(float(value))
         except (TypeError, ValueError, OverflowError):
             return default
+
+
+def _to_float(value, default=0.0) -> float:
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError, OverflowError):
+        return default
 
 
 def _timestamp() -> str:

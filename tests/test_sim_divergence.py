@@ -1695,6 +1695,74 @@ def test_explosive_potion_deals_ten_to_all_monsters(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_fruit_juice_gains_max_hp_and_current_hp(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    potion = _potion(
+        "Fruit Juice",
+        potion_id="Fruit Juice",
+        effect_type="max_hp",
+        effect_value=5,
+        target_type="self",
+    )
+    before = _game(
+        floor=8,
+        turn=1,
+        player=SimpleNamespace(current_hp=74, max_hp=80, block=0, energy=1),
+        hand=[_card(name="Strike", card_id="Strike_R")],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=20, damage=0)],
+        potions=[potion],
+    )
+    actual = _game(
+        floor=8,
+        turn=1,
+        player=SimpleNamespace(current_hp=79, max_hp=85, block=0, energy=1),
+        hand=[_card(name="Strike", card_id="Strike_R")],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=20, damage=0)],
+        potions=[],
+    )
+
+    assert record_expected_action(PotionAction(use=True, potion=potion), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_blood_potion_heals_percent_of_max_hp(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    potion = _potion(
+        "Blood Potion",
+        potion_id="BloodPotion",
+        effect_type="heal_percent",
+        effect_value=0.2,
+        target_type="self",
+    )
+    before = _game(
+        floor=21,
+        turn=1,
+        player=SimpleNamespace(current_hp=34, max_hp=80, block=0, energy=3),
+        hand=[_card(name="Strike", card_id="Strike_R")],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=99, damage=10)],
+        potions=[potion],
+    )
+    actual = _game(
+        floor=21,
+        turn=1,
+        player=SimpleNamespace(current_hp=50, max_hp=80, block=0, energy=3),
+        hand=[_card(name="Strike", card_id="Strike_R")],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=99, damage=10)],
+        potions=[],
+    )
+
+    assert record_expected_action(PotionAction(use=True, potion=potion), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_reaper_zero_live_damage_hits_all_and_heals_unblocked_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
