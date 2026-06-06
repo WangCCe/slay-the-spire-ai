@@ -199,6 +199,8 @@ def observe_next_state(game, path: Optional[Path] = None) -> bool:
         if actual["floor"] != pending["floor"]:
             return False
         _finalize_observed_action(pending, actual)
+        if _expected_combat_finished(pending["expected"], actual):
+            return False
 
         ignored_diffs = _ignored_diff_keys(pending)
         diffs = _diff_snapshots(pending["expected"], actual, ignored_diffs)
@@ -505,6 +507,25 @@ def _diff_snapshots(
                 ignored_keys,
             )
     return diffs
+
+
+def _expected_combat_finished(expected: Dict[str, Any], actual: Dict[str, Any]) -> bool:
+    if actual.get("in_combat"):
+        return False
+    if _to_int(actual.get("player", {}).get("current_hp")) <= 0:
+        return False
+    return not any(
+        _snapshot_monster_active(monster)
+        for monster in expected.get("monsters", [])
+    )
+
+
+def _snapshot_monster_active(monster: Dict[str, Any]) -> bool:
+    if monster.get("gone"):
+        return False
+    if monster.get("half_dead"):
+        return True
+    return _to_int(monster.get("hp")) > 0
 
 
 def _ignored_diff_keys(pending: Dict[str, Any]) -> set:

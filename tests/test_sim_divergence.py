@@ -4150,6 +4150,66 @@ def test_end_turn_next_monster_block_gain_does_not_create_false_diff(monkeypatch
     assert not trace_path.exists()
 
 
+def test_combat_finished_after_expected_kill_does_not_create_false_diff(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    strike = _card(name="Strike", card_id="Strike_R", damage=6)
+    before = _game(
+        floor=7,
+        turn=3,
+        player=SimpleNamespace(current_hp=74, max_hp=80, block=0, energy=1),
+        hand=[strike],
+        relics=[_relic("Burning Blood")],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=6, damage=9)],
+    )
+    actual = _game(
+        floor=7,
+        turn=0,
+        in_combat=False,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=0),
+        hand=[],
+        relics=[_relic("Burning Blood")],
+        monsters=[],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_unexpected_combat_exit_still_reports_when_expected_monster_survives(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    strike = _card(name="Strike", card_id="Strike_R", damage=6)
+    before = _game(
+        floor=7,
+        turn=3,
+        player=SimpleNamespace(current_hp=74, max_hp=80, block=0, energy=1),
+        hand=[strike],
+        relics=[_relic("Burning Blood")],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=12, damage=9)],
+    )
+    actual = _game(
+        floor=7,
+        turn=0,
+        in_combat=False,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=0),
+        hand=[],
+        relics=[_relic("Burning Blood")],
+        monsters=[],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is True
+    records = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines()]
+    assert records[0]["reason"] == "monster_state_mismatch"
+    assert records[0]["expected"]["monsters"][0]["hp"] == 6
+
+
 def test_end_turn_resets_monster_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
