@@ -113,6 +113,10 @@ CARD_HEAL = {
     "Bandage Up": 4,
 }
 
+CARD_TARGET_DEBUFFS = {
+    "Bash": ("Vulnerable", 2, 3),
+}
+
 END_TURN_STATUS_DAMAGE = {
     "Burn": 2,
 }
@@ -336,6 +340,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     target_index = _target_index_for_action(action, game)
                     damage_dealt = _apply_expected_attack(expected, target_index, damage, hit_count)
                     sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
+                    _apply_card_target_debuffs(expected, card, target_index)
                 if _is_reaper(card) and damage_dealt > 0:
                     _heal_player(expected, damage_dealt)
                 rage_block = _rage_attack_block(expected.get("player", {}))
@@ -478,6 +483,7 @@ def _apply_expected_attack(
             target["gone"] = True
             break
         if hp_loss > 0:
+            _apply_guardian_mode_shift(target, hp_loss)
             _decrement_flight(target)
             _trigger_malleable(target)
         if not curl_up_applied and hp_loss > 0:
@@ -1246,6 +1252,39 @@ def _trigger_malleable(target: Dict[str, Any]) -> None:
     _set_snapshot_power_amount(target, "Malleable", amount + 1)
 
 
+def _apply_guardian_mode_shift(target: Dict[str, Any], hp_loss: int) -> None:
+    if hp_loss <= 0 or not _is_guardian_monster(target):
+        return
+    amount = _snapshot_power_amount(target, "Mode Shift")
+    if amount <= 0:
+        return
+    remaining = amount - hp_loss
+    if remaining > 0:
+        _set_snapshot_power_amount(target, "Mode Shift", remaining)
+        return
+    target["block"] = max(0, _to_int(target.get("block"))) + 20
+    _remove_snapshot_power(target, "Mode Shift")
+
+
+def _apply_card_target_debuffs(
+    expected: Dict[str, Any],
+    card,
+    target_index: Optional[int],
+) -> None:
+    card_name = _known_card_name(card, CARD_TARGET_DEBUFFS)
+    if card_name is None or target_index is None or target_index < 0:
+        return
+    monsters = expected.get("monsters", [])
+    if target_index >= len(monsters):
+        return
+    target = monsters[target_index]
+    if target.get("gone") or target.get("half_dead") or _to_int(target.get("hp")) <= 0:
+        return
+    power_name, base_amount, upgraded_amount = CARD_TARGET_DEBUFFS[card_name]
+    amount = upgraded_amount if card_upgrade_count(card) > 0 else base_amount
+    _add_snapshot_power_amount(target, power_name, amount)
+
+
 def _modified_block(block: int, player: Dict[str, Any]) -> int:
     if block <= 0:
         return 0
@@ -1649,6 +1688,35 @@ def _set_snapshot_power_amount(entity: Dict[str, Any], power_name: str, amount: 
         if target in identifiers:
             power["amount"] = amount
             return
+
+
+def _add_snapshot_power_amount(entity: Dict[str, Any], power_name: str, amount: int) -> None:
+    if amount <= 0:
+        return
+    target = _normalize(power_name)
+    powers = entity.setdefault("powers", [])
+    for power in powers:
+        identifiers = {
+            _normalize(power.get("id")),
+            _normalize(power.get("name")),
+        }
+        if target in identifiers:
+            power["amount"] = _to_int(power.get("amount"), default=0) + amount
+            return
+    powers.append({"id": power_name, "name": power_name, "amount": amount})
+
+
+def _remove_snapshot_power(entity: Dict[str, Any], power_name: str) -> None:
+    target = _normalize(power_name)
+    entity["powers"] = [
+        power
+        for power in entity.get("powers", []) or []
+        if target
+        not in {
+            _normalize(power.get("id")),
+            _normalize(power.get("name")),
+        }
+    ]
 
 
 def _card_self_damage(card) -> int:

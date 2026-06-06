@@ -350,6 +350,43 @@ def test_guardian_sharp_hide_reflection_damages_hp_without_block(monkeypatch, tm
     assert not trace_path.exists()
 
 
+def test_guardian_mode_shift_gains_block_and_keeps_bash_vulnerable(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    bash = _card(name="Bash", card_id="Bash", cost=2, damage=8)
+    guardian = _monster(
+        name="The Guardian",
+        monster_id="TheGuardian",
+        hp=218,
+        block=0,
+        powers=[Power("Mode Shift", "Mode Shift", 8)],
+    )
+    before = _game(
+        player=SimpleNamespace(current_hp=76, max_hp=80, block=10, energy=2),
+        hand=[bash],
+        monsters=[guardian],
+    )
+    actual = _game(
+        player=SimpleNamespace(current_hp=76, max_hp=80, block=10, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=210,
+                block=20,
+                powers=[Power("Vulnerable", "Vulnerable", 2)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_upgraded_attack_damage_does_not_create_false_monster_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
