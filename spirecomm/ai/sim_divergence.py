@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from spirecomm.ai.heuristics.card_upgrades import (
-    card_upgrade_count,
+    card_upgrade_count as _object_card_upgrade_count,
     heavy_blade_strength_multiplier,
     known_block_upgrade_bonus,
     known_damage_upgrade_bonus,
@@ -107,6 +107,10 @@ END_TURN_STATUS_DAMAGE = {
     "Burn": 2,
 }
 
+HAVOC_CARDS = {
+    "Havoc": 0,
+}
+
 CARD_ID_ALIASES = {
     "Defend_R": "Defend",
     "Strike_R": "Strike",
@@ -119,6 +123,12 @@ _rampage_state_floor: Optional[int] = None
 _attack_count_state_floor: Optional[int] = None
 _attack_count_state_turn: Optional[int] = None
 _attacks_played_this_turn = 0
+
+
+def card_upgrade_count(card) -> int:
+    if isinstance(card, dict):
+        return _snapshot_card_upgrade_count(card)
+    return _object_card_upgrade_count(card)
 
 
 def divergence_trace_path(path: Optional[Path] = None) -> Optional[Path]:
@@ -244,6 +254,10 @@ def snapshot_combat_state(game) -> Dict[str, Any]:
             "powers": [_power_summary(power) for power in _safe_iterable(getattr(player, "powers", []))],
         },
         "hand": [_card_summary(card) for card in _safe_iterable(getattr(game, "hand", []))],
+        "draw_pile": [
+            _card_summary(card)
+            for card in _safe_iterable(getattr(game, "draw_pile", []))
+        ],
         "draw_pile_count": _pile_count(game, "draw_pile"),
         "relics": [_relic_summary(relic) for relic in _safe_iterable(getattr(game, "relics", []))],
         "monsters": [
@@ -321,6 +335,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             )
             if second_wind_block > 0:
                 expected["player"]["block"] += second_wind_block
+            _apply_havoc_top_card(expected, before, card)
         if 0 <= card_index < len(expected["hand"]):
             expected["hand"].pop(card_index)
 
@@ -587,11 +602,11 @@ def _action_summary(action, game) -> Dict[str, Any]:
 
 def _card_summary(card) -> Dict[str, Any]:
     return {
-        "name": _safe_str(getattr(card, "name", "")),
-        "id": _safe_str(getattr(card, "card_id", getattr(card, "id", ""))),
-        "uuid": _safe_str(getattr(card, "uuid", "")),
+        "name": _safe_str(_card_attr(card, "name", "")),
+        "id": _safe_str(_card_attr(card, "card_id", _card_attr(card, "id", ""))),
+        "uuid": _safe_str(_card_attr(card, "uuid", "")),
         "type": _safe_str(
-            getattr(card, "type", getattr(card, "card_type", ""))
+            _card_attr(card, "type", _card_attr(card, "card_type", ""))
         ),
         "cost": _card_cost(card),
         "damage": _card_damage(card),
@@ -635,12 +650,12 @@ def _monster_summary(monster) -> Dict[str, Any]:
 
 
 def _is_attack_card(card) -> bool:
-    card_type = _normalize(getattr(card, "type", getattr(card, "card_type", "")))
+    card_type = _normalize(_card_attr(card, "type", _card_attr(card, "card_type", "")))
     return card_type in {"attack", "cardtypeattack"}
 
 
 def _is_curse_card(card) -> bool:
-    card_type = _normalize(getattr(card, "type", getattr(card, "card_type", "")))
+    card_type = _normalize(_card_attr(card, "type", _card_attr(card, "card_type", "")))
     return card_type in {"curse", "cardtypecurse"}
 
 
@@ -659,12 +674,12 @@ def _is_reaper(card) -> bool:
 def _card_cost(card) -> int:
     return max(
         0,
-        _to_int(getattr(card, "cost_for_turn", getattr(card, "cost", 0))),
+        _to_int(_card_attr(card, "cost_for_turn", _card_attr(card, "cost", 0))),
     )
 
 
 def _card_damage(card) -> int:
-    explicit = _to_int(getattr(card, "damage", 0))
+    explicit = _to_int(_card_attr(card, "damage", 0))
     card_name = _known_card_name(card, BASE_ATTACK_DAMAGE)
     base_damage = BASE_ATTACK_DAMAGE.get(card_name) if card_name else None
     upgrade_bonus = known_damage_upgrade_bonus(card, card_name) if card_name else 0
@@ -747,7 +762,7 @@ def _multi_hit_damage_per_hit(card, card_name: str, hit_count: int) -> int:
 
 
 def _card_block(card) -> int:
-    explicit = _to_int(getattr(card, "block", 0))
+    explicit = _to_int(_card_attr(card, "block", 0))
     card_name = _known_card_name(card, BASE_SKILL_BLOCK)
     base_block = BASE_SKILL_BLOCK.get(card_name) if card_name else None
     upgrade_bonus = known_block_upgrade_bonus(card, card_name) if card_name else 0
@@ -936,6 +951,107 @@ def _end_turn_status_damage(snapshot: Dict[str, Any]) -> int:
 
 def _brutality_start_turn_hp_loss(snapshot: Dict[str, Any]) -> int:
     return 1 if _snapshot_power_amount(snapshot.get("player", {}), "Brutality") > 0 else 0
+
+
+def _apply_havoc_top_card(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+    havoc_card,
+) -> None:
+    if _known_card_name(havoc_card, HAVOC_CARDS) != "Havoc":
+        return
+    top_card = _draw_pile_top_card(before)
+    if top_card is None:
+        return
+
+    _pop_expected_draw_pile_top(expected)
+    target_index = None
+    if _is_attack_card(top_card):
+        sharp_hide_damage = 0
+        damage, hit_count = _card_damage_and_hits_for_snapshot(
+            top_card,
+            expected.get("player", {}),
+            0,
+            before,
+            -1,
+        )
+        if _is_all_enemy_attack(top_card):
+            damage_dealt = _apply_expected_attack_to_all(expected, damage, hit_count)
+            sharp_hide_damage = _sharp_hide_reflection_damage(before, all_targets=True)
+        else:
+            target_index = _single_alive_monster_index(expected)
+            if target_index is None:
+                damage_dealt = 0
+            else:
+                damage_dealt = _apply_expected_attack(
+                    expected,
+                    target_index,
+                    damage,
+                    hit_count,
+                )
+                sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
+        if _is_reaper(top_card) and damage_dealt > 0:
+            _heal_player(expected, damage_dealt)
+        rage_block = _rage_attack_block(expected.get("player", {}))
+        if rage_block > 0:
+            expected["player"]["block"] += rage_block
+        ornamental_fan_block = _ornamental_fan_attack_block(before)
+        if ornamental_fan_block > 0:
+            expected["player"]["block"] += ornamental_fan_block
+        if sharp_hide_damage > 0:
+            _damage_player(expected, sharp_hide_damage)
+
+    self_damage = _card_self_damage(top_card)
+    self_damage += _blue_candle_curse_hp_loss(top_card, before)
+    if self_damage > 0:
+        expected["player"]["current_hp"] = max(
+            0,
+            expected["player"]["current_hp"] - self_damage,
+        )
+    heal = _card_heal(top_card)
+    if heal > 0:
+        _heal_player(expected, heal)
+    energy_gain = _card_energy_gain(top_card)
+    energy_gain += _conditional_card_energy_gain(top_card, before, target_index)
+    if energy_gain > 0:
+        expected["player"]["energy"] += energy_gain
+    block = _card_block(top_card)
+    if block > 0:
+        expected["player"]["block"] += _modified_block(
+            block,
+            expected.get("player", {}),
+        )
+
+
+def _draw_pile_top_card(snapshot: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    draw_pile = snapshot.get("draw_pile") or []
+    if not isinstance(draw_pile, list) or not draw_pile:
+        return None
+    top_card = draw_pile[-1]
+    return top_card if isinstance(top_card, dict) else None
+
+
+def _pop_expected_draw_pile_top(expected: Dict[str, Any]) -> None:
+    draw_pile = expected.get("draw_pile")
+    if isinstance(draw_pile, list) and draw_pile:
+        draw_pile.pop()
+        expected["draw_pile_count"] = len(draw_pile)
+        return
+    expected["draw_pile_count"] = max(
+        0,
+        _to_int(expected.get("draw_pile_count")) - 1,
+    )
+
+
+def _single_alive_monster_index(snapshot: Dict[str, Any]) -> Optional[int]:
+    alive = [
+        index
+        for index, monster in enumerate(snapshot.get("monsters", []) or [])
+        if not monster.get("gone")
+        and not monster.get("half_dead")
+        and _to_int(monster.get("hp")) > 0
+    ]
+    return alive[0] if len(alive) == 1 else None
 
 
 def _sharp_hide_reflection_damage(
@@ -1141,13 +1257,13 @@ def _snapshot_hand_contains_identity(hand, identity: str) -> bool:
 
 
 def _positive_card_misc(card) -> int:
-    return max(0, _to_int(getattr(card, "misc", 0)))
+    return max(0, _to_int(_card_attr(card, "misc", 0)))
 
 
 def _known_card_name(card, known_values: Dict[str, int]) -> Optional[str]:
     known_by_normalized = {_normalize(name): name for name in known_values}
     for attr in ("name", "card_id", "id"):
-        value = getattr(card, attr, None)
+        value = _card_attr(card, attr, None)
         if value in CARD_ID_ALIASES:
             alias = CARD_ID_ALIASES[value]
             if alias in known_values:
@@ -1156,6 +1272,20 @@ def _known_card_name(card, known_values: Dict[str, int]) -> Optional[str]:
         if normalized in known_by_normalized:
             return known_by_normalized[normalized]
     return None
+
+
+def _card_attr(card, attr: str, default=None):
+    if isinstance(card, dict):
+        if attr == "card_id":
+            return card.get("card_id", card.get("id", default))
+        if attr == "id":
+            return card.get("id", card.get("card_id", default))
+        if attr == "card_type":
+            return card.get("card_type", card.get("type", default))
+        if attr == "cost_for_turn":
+            return card.get("cost_for_turn", card.get("cost", default))
+        return card.get(attr, default)
+    return getattr(card, attr, default)
 
 
 def _strip_upgrade_suffix(value) -> str:
