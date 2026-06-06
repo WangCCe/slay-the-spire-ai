@@ -260,6 +260,10 @@ def snapshot_combat_state(game) -> Dict[str, Any]:
         ],
         "draw_pile_count": _pile_count(game, "draw_pile"),
         "relics": [_relic_summary(relic) for relic in _safe_iterable(getattr(game, "relics", []))],
+        "potions": [
+            _potion_summary(potion)
+            for potion in _safe_iterable(getattr(game, "potions", []))
+        ],
         "monsters": [
             _monster_summary(monster)
             for monster in _safe_iterable(getattr(game, "monsters", []))
@@ -340,6 +344,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         if 0 <= card_index < len(expected["hand"]):
             expected["hand"].pop(card_index)
 
+    elif action_type == "PotionAction":
+        _apply_expected_potion(expected, action, game)
+
     elif action_type == "EndTurnAction":
         incoming = _incoming_damage_from_snapshot(before)
         incoming += _end_turn_status_damage(before)
@@ -409,6 +416,62 @@ def _apply_expected_attack_to_all(
             continue
         damage_dealt += _apply_expected_attack(expected, index, damage, hit_count)
     return damage_dealt
+
+
+def _apply_expected_potion(expected: Dict[str, Any], action, game) -> None:
+    if not bool(getattr(action, "use", True)):
+        return
+    potion = _potion_for_action(action, game)
+    if potion is None:
+        return
+
+    effect_type = _normalize(_potion_attr(potion, "effect_type", ""))
+    target_type = _normalize(_potion_attr(potion, "target_type", ""))
+    value = _to_int(_potion_attr(potion, "effect_value", 0))
+    if value <= 0:
+        return
+
+    if effect_type == "energy":
+        expected["player"]["energy"] += value
+    elif effect_type == "block":
+        expected["player"]["block"] += value
+    elif effect_type == "damage":
+        if target_type == "allmonsters":
+            for index, _monster in enumerate(expected.get("monsters", [])):
+                _apply_direct_monster_damage(expected, index, value)
+        elif target_type == "monster":
+            _apply_direct_monster_damage(
+                expected,
+                _target_index_for_action(action, game),
+                value,
+            )
+
+
+def _apply_direct_monster_damage(
+    expected: Dict[str, Any],
+    target_index: Optional[int],
+    amount: int,
+) -> int:
+    if target_index is None or target_index < 0 or amount <= 0:
+        return 0
+    monsters = expected.get("monsters", [])
+    if target_index >= len(monsters):
+        return 0
+    target = monsters[target_index]
+    if target.get("gone") or target.get("half_dead") or _to_int(target.get("hp")) <= 0:
+        return 0
+
+    remaining = max(0, amount)
+    block = max(0, _to_int(target.get("block")))
+    blocked = min(block, remaining)
+    target["block"] = block - blocked
+    remaining -= blocked
+    hp_before = _to_int(target.get("hp"))
+    target["hp"] = max(0, hp_before - remaining)
+    hp_loss = max(0, hp_before - target["hp"])
+    if target["hp"] <= 0:
+        target["gone"] = True
+    return hp_loss
 
 
 def _diff_snapshots(
@@ -565,6 +628,17 @@ def _card_for_action(action, game):
     return None
 
 
+def _potion_for_action(action, game):
+    potion = getattr(action, "potion", None)
+    if potion is not None:
+        return potion
+    potion_index = _to_int(getattr(action, "potion_index", -1), default=-1)
+    potions = list(_safe_iterable(getattr(game, "potions", [])))
+    if 0 <= potion_index < len(potions):
+        return potions[potion_index]
+    return None
+
+
 def _target_index_for_action(action, game) -> Optional[int]:
     target_index = getattr(action, "target_index", None)
     if isinstance(target_index, int) and target_index >= 0:
@@ -598,6 +672,9 @@ def _action_summary(action, game) -> Dict[str, Any]:
     card = _card_for_action(action, game)
     if card is not None:
         summary["card"] = _card_summary(card)
+    potion = _potion_for_action(action, game)
+    if potion is not None:
+        summary["potion"] = _potion_summary(potion)
     return summary
 
 
@@ -622,6 +699,16 @@ def _relic_summary(relic) -> Dict[str, Any]:
         "name": _safe_str(getattr(relic, "name", "")),
         "id": _safe_str(getattr(relic, "relic_id", getattr(relic, "id", ""))),
         "counter": _to_int(getattr(relic, "counter", 0)),
+    }
+
+
+def _potion_summary(potion) -> Dict[str, Any]:
+    return {
+        "name": _safe_str(_potion_attr(potion, "name", "")),
+        "id": _safe_str(_potion_attr(potion, "potion_id", _potion_attr(potion, "id", ""))),
+        "effect_type": _safe_str(_potion_attr(potion, "effect_type", "")),
+        "effect_value": _json_scalar(_potion_attr(potion, "effect_value", 0)),
+        "target_type": _safe_str(_potion_attr(potion, "target_type", "")),
     }
 
 
@@ -1302,6 +1389,16 @@ def _card_attr(card, attr: str, default=None):
             return card.get("cost_for_turn", card.get("cost", default))
         return card.get(attr, default)
     return getattr(card, attr, default)
+
+
+def _potion_attr(potion, attr: str, default=None):
+    if isinstance(potion, dict):
+        if attr == "potion_id":
+            return potion.get("potion_id", potion.get("id", default))
+        if attr == "id":
+            return potion.get("id", potion.get("potion_id", default))
+        return potion.get(attr, default)
+    return getattr(potion, attr, default)
 
 
 def _strip_upgrade_suffix(value) -> str:

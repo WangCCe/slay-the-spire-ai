@@ -7,7 +7,7 @@ from spirecomm.ai.sim_divergence import (
     record_expected_action,
     reset_pending_divergence,
 )
-from spirecomm.communication.action import EndTurnAction, PlayCardAction
+from spirecomm.communication.action import EndTurnAction, PlayCardAction, PotionAction
 from spirecomm.spire.card import CardType
 from spirecomm.spire.character import Intent
 from spirecomm.spire.power import Power
@@ -69,6 +69,16 @@ def _monster(
 
 def _relic(name, relic_id=None, counter=0):
     return SimpleNamespace(name=name, relic_id=relic_id or name, counter=counter)
+
+
+def _potion(name, potion_id=None, effect_type="utility", effect_value=0, target_type="none"):
+    return SimpleNamespace(
+        name=name,
+        potion_id=potion_id or name,
+        effect_type=effect_type,
+        effect_value=effect_value,
+        target_type=target_type,
+    )
 
 
 def _game(**kwargs):
@@ -1361,6 +1371,113 @@ def test_nunchaku_counter_nine_attack_gains_one_energy(monkeypatch, tmp_path):
     )
 
     assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_energy_potion_gains_two_energy(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    potion = _potion(
+        "Energy Potion",
+        effect_type="energy",
+        effect_value=2,
+        target_type="self",
+    )
+    before = _game(
+        floor=4,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=3),
+        hand=[_card(name="Heavy Blade", card_id="Heavy Blade", damage=14)],
+        monsters=[_monster(name="Fat Gremlin", monster_id="FatGremlin", hp=13, damage=0)],
+        potions=[potion],
+    )
+    actual = _game(
+        floor=4,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=5),
+        hand=[_card(name="Heavy Blade", card_id="Heavy Blade", damage=14)],
+        monsters=[_monster(name="Fat Gremlin", monster_id="FatGremlin", hp=13, damage=0)],
+        potions=[],
+    )
+
+    assert record_expected_action(PotionAction(use=True, potion=potion), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_block_potion_gains_twelve_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    potion = _potion(
+        "Block Potion",
+        effect_type="block",
+        effect_value=12,
+        target_type="self",
+    )
+    before = _game(
+        floor=10,
+        turn=2,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=3),
+        hand=[_card(name="Strike", card_id="Strike_R")],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=20, damage=0)],
+        potions=[potion],
+    )
+    actual = _game(
+        floor=10,
+        turn=2,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=12, energy=3),
+        hand=[_card(name="Strike", card_id="Strike_R")],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=20, damage=0)],
+        potions=[],
+    )
+
+    assert record_expected_action(PotionAction(use=True, potion=potion), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_explosive_potion_deals_ten_to_all_monsters(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    potion = _potion(
+        "Explosive Potion",
+        effect_type="damage",
+        effect_value=10,
+        target_type="all_monsters",
+    )
+    before = _game(
+        floor=30,
+        turn=1,
+        player=SimpleNamespace(current_hp=58, max_hp=80, block=45, energy=2),
+        hand=[_card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, damage=0, block=5)],
+        monsters=[
+            _monster(name="Cultist", monster_id="Cultist", hp=51, damage=0, index=0),
+            _monster(name="Cultist", monster_id="Cultist", hp=50, damage=0, index=1),
+            _monster(name="Cultist", monster_id="Cultist", hp=53, damage=0, index=2),
+        ],
+        potions=[potion],
+    )
+    actual = _game(
+        floor=30,
+        turn=1,
+        player=SimpleNamespace(current_hp=58, max_hp=80, block=45, energy=2),
+        hand=[_card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, damage=0, block=5)],
+        monsters=[
+            _monster(name="Cultist", monster_id="Cultist", hp=41, damage=0, index=0),
+            _monster(name="Cultist", monster_id="Cultist", hp=40, damage=0, index=1),
+            _monster(name="Cultist", monster_id="Cultist", hp=43, damage=0, index=2),
+        ],
+        potions=[],
+    )
+
+    assert record_expected_action(PotionAction(use=True, potion=potion), before) is True
     assert observe_next_state(actual) is False
     assert not trace_path.exists()
 
