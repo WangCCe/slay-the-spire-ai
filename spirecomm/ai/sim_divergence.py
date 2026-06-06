@@ -328,6 +328,8 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         )
         expected["player"]["block"] = 0
         expected["player"]["energy"] = 0
+        for monster in expected.get("monsters", []):
+            monster["block"] = 0
 
     return expected
 
