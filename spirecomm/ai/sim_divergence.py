@@ -446,6 +446,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 hp_loss_events,
             )
             next_turn_block += _horn_cleat_start_turn_block(before)
+            next_turn_block += _captains_wheel_start_turn_block(before)
             expected["player"]["block"] = retained_block + next_turn_block
         else:
             expected["player"]["block"] = 0
@@ -1541,6 +1542,18 @@ def _horn_cleat_start_turn_block(snapshot: Dict[str, Any]) -> int:
         }
         if target in identifiers and _to_int(relic.get("counter")) == 1:
             return 14
+    return 0
+
+
+def _captains_wheel_start_turn_block(snapshot: Dict[str, Any]) -> int:
+    target = _normalize("CaptainsWheel")
+    for relic in snapshot.get("relics", []) or []:
+        identifiers = {
+            _normalize(relic.get("id")),
+            _normalize(relic.get("name")),
+        }
+        if target in identifiers and _to_int(relic.get("counter")) == 2:
+            return 18
     return 0
 
 

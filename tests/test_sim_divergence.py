@@ -5560,6 +5560,33 @@ def test_end_turn_horn_cleat_grants_block_after_monster_attacks(monkeypatch, tmp
     assert not trace_path.exists()
 
 
+def test_end_turn_captains_wheel_grants_block_after_monster_attacks(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=6,
+        turn=3,
+        player=SimpleNamespace(current_hp=40, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Spike Slime (S)", monster_id="SpikeSlime_S", hp=11, damage=5)],
+        relics=[_relic("Burning Blood"), _relic("Captain's Wheel", relic_id="CaptainsWheel", counter=2)],
+    )
+    actual = _game(
+        floor=6,
+        turn=4,
+        player=SimpleNamespace(current_hp=35, max_hp=80, block=18, energy=3),
+        hand=[],
+        monsters=[_monster(name="Spike Slime (S)", monster_id="SpikeSlime_S", hp=11, damage=5)],
+        relics=[_relic("Burning Blood"), _relic("Captain's Wheel", relic_id="CaptainsWheel", counter=-1)],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_self_forming_clay_block_tracks_each_hp_loss(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
