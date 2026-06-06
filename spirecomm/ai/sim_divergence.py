@@ -353,7 +353,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         metallicize_block = _metallicize_end_turn_block(before)
         if metallicize_block > 0:
             expected["player"]["block"] += metallicize_block
-        _apply_end_turn_thorns_damage(expected, before)
+        _apply_end_turn_attack_reflection_damage(expected, before)
         incoming = _incoming_damage_from_snapshot(before)
         incoming += _end_turn_status_damage(before)
         _damage_player(expected, incoming)
@@ -1099,17 +1099,29 @@ def _metallicize_end_turn_block(snapshot: Dict[str, Any]) -> int:
     return max(0, _snapshot_power_amount(snapshot.get("player", {}), "Metallicize"))
 
 
-def _apply_end_turn_thorns_damage(
+def _apply_end_turn_attack_reflection_damage(
     expected: Dict[str, Any],
     before: Dict[str, Any],
 ) -> None:
-    thorns = max(0, _snapshot_power_amount(before.get("player", {}), "Thorns"))
-    if thorns <= 0:
+    reflection_damage = _end_turn_attack_reflection_damage(before)
+    if reflection_damage <= 0:
         return
     for index, monster in enumerate(before.get("monsters", []) or []):
         if _monster_attack_damage(monster) <= 0:
             continue
-        _apply_direct_monster_damage(expected, index, thorns * _monster_attack_hits(monster))
+        _apply_direct_monster_damage(
+            expected,
+            index,
+            reflection_damage * _monster_attack_hits(monster),
+        )
+
+
+def _end_turn_attack_reflection_damage(snapshot: Dict[str, Any]) -> int:
+    player = snapshot.get("player", {})
+    return max(0, _snapshot_power_amount(player, "Thorns")) + max(
+        0,
+        _snapshot_power_amount(player, "Flame Barrier"),
+    )
 
 
 def _apply_mercury_hourglass_damage(
