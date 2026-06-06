@@ -608,6 +608,98 @@ def test_rage_does_not_trigger_on_skill(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_reaper_zero_live_damage_hits_all_and_heals_unblocked_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    reaper = _card(name="Reaper", card_id="Reaper", cost=2, damage=0)
+    before = _game(
+        floor=14,
+        turn=1,
+        player=SimpleNamespace(current_hp=51, max_hp=80, block=0, energy=2),
+        hand=[reaper],
+        monsters=[
+            _monster(name="Louse", monster_id="LouseNormal", hp=6, block=6, damage=0),
+            _monster(
+                name="Louse",
+                monster_id="LouseDefensive",
+                hp=16,
+                block=0,
+                damage=0,
+                powers=[Power("Curl Up", "Curl Up", 4)],
+            ),
+            _monster(
+                name="Louse",
+                monster_id="LouseDefensive",
+                hp=16,
+                block=0,
+                damage=0,
+                powers=[Power("Curl Up", "Curl Up", 3)],
+            ),
+        ],
+    )
+    actual = _game(
+        floor=14,
+        turn=1,
+        player=SimpleNamespace(current_hp=59, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(name="Louse", monster_id="LouseNormal", hp=6, block=2, damage=0),
+            _monster(name="Louse", monster_id="LouseDefensive", hp=12, block=4, damage=0),
+            _monster(name="Louse", monster_id="LouseDefensive", hp=12, block=3, damage=0),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_reaper_plus_heal_caps_at_max_hp_after_strength_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    reaper_plus = _card(name="Reaper+", card_id="Reaper", cost=2, damage=0, upgrades=1)
+    before = _game(
+        floor=18,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=66,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Strength", "Strength", 2)],
+        ),
+        hand=[reaper_plus],
+        monsters=[
+            _monster(name="Looter", monster_id="Looter", hp=11, damage=0),
+            _monster(name="Mugger", monster_id="Mugger", hp=12, damage=0),
+        ],
+    )
+    actual = _game(
+        floor=18,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            block=0,
+            energy=1,
+            powers=[Power("Strength", "Strength", 2)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(name="Looter", monster_id="Looter", hp=4, damage=0),
+            _monster(name="Mugger", monster_id="Mugger", hp=5, damage=0),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_explicit_heavy_blade_damage_uses_strength_multiplier(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

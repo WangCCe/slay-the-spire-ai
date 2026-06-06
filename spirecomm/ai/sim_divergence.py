@@ -36,6 +36,7 @@ BASE_ATTACK_DAMAGE = {
     "Iron Wave": 5,
     "Pommel Strike": 9,
     "Reckless Charge": 7,
+    "Reaper": 4,
     "Sever Soul": 16,
     "Strike": 6,
     "Swift Strike": 7,
@@ -54,6 +55,7 @@ MULTI_HIT_ATTACKS = {
 ALL_ENEMY_ATTACKS = {
     "Cleave": 0,
     "Immolate": 0,
+    "Reaper": 0,
     "Thunderclap": 0,
     "Whirlwind": 0,
 }
@@ -240,10 +242,12 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     energy_before_card,
                 )
                 if _is_all_enemy_attack(card):
-                    _apply_expected_attack_to_all(expected, damage, hit_count)
+                    damage_dealt = _apply_expected_attack_to_all(expected, damage, hit_count)
                 else:
                     target_index = _target_index_for_action(action, game)
-                    _apply_expected_attack(expected, target_index, damage, hit_count)
+                    damage_dealt = _apply_expected_attack(expected, target_index, damage, hit_count)
+                if _is_reaper(card) and damage_dealt > 0:
+                    _heal_player(expected, damage_dealt)
                 rage_block = _rage_attack_block(expected.get("player", {}))
                 if rage_block > 0:
                     expected["player"]["block"] += rage_block
@@ -287,14 +291,15 @@ def _apply_expected_attack(
     target_index: Optional[int],
     damage: int,
     hit_count: int = 1,
-) -> None:
+) -> int:
     if target_index is None or target_index < 0:
-        return
+        return 0
     monsters = expected.get("monsters", [])
     if target_index >= len(monsters):
-        return
+        return 0
     target = monsters[target_index]
     curl_up_applied = False
+    damage_dealt = 0
     for _ in range(max(0, hit_count)):
         if target.get("gone") or target.get("half_dead") or _to_int(target.get("hp")) <= 0:
             break
@@ -305,25 +310,30 @@ def _apply_expected_attack(
             remaining_damage -= blocked
         hp_before = target["hp"]
         target["hp"] = max(0, target["hp"] - remaining_damage)
+        hp_loss = max(0, hp_before - target["hp"])
+        damage_dealt += hp_loss
         if target["hp"] <= 0:
             target["gone"] = True
             break
-        if not curl_up_applied and target["hp"] < hp_before:
+        if not curl_up_applied and hp_loss > 0:
             curl_up_block = max(0, _snapshot_power_amount(target, "Curl Up"))
             if curl_up_block > 0:
                 target["block"] += curl_up_block
                 curl_up_applied = True
+    return damage_dealt
 
 
 def _apply_expected_attack_to_all(
     expected: Dict[str, Any],
     damage: int,
     hit_count: int = 1,
-) -> None:
+) -> int:
+    damage_dealt = 0
     for index, monster in enumerate(expected.get("monsters", [])):
         if monster.get("gone") or monster.get("half_dead") or _to_int(monster.get("hp")) <= 0:
             continue
-        _apply_expected_attack(expected, index, damage, hit_count)
+        damage_dealt += _apply_expected_attack(expected, index, damage, hit_count)
+    return damage_dealt
 
 
 def _diff_snapshots(
@@ -568,6 +578,10 @@ def _is_whirlwind(card) -> bool:
     return _known_card_name(card, BASE_ATTACK_DAMAGE) == "Whirlwind"
 
 
+def _is_reaper(card) -> bool:
+    return _known_card_name(card, BASE_ATTACK_DAMAGE) == "Reaper"
+
+
 def _card_cost(card) -> int:
     return max(
         0,
@@ -705,6 +719,16 @@ def _modified_block(block: int, player: Dict[str, Any]) -> int:
 
 def _rage_attack_block(player: Dict[str, Any]) -> int:
     return max(0, _snapshot_power_amount(player, "Rage"))
+
+
+def _heal_player(expected: Dict[str, Any], amount: int) -> None:
+    if amount <= 0:
+        return
+    player = expected.get("player", {})
+    player["current_hp"] = min(
+        _to_int(player.get("max_hp")),
+        _to_int(player.get("current_hp")) + amount,
+    )
 
 
 def _snapshot_power_amount(entity: Dict[str, Any], power_name: str) -> int:
