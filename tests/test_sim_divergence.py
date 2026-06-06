@@ -533,6 +533,149 @@ def test_explicit_heavy_blade_damage_uses_strength_multiplier(monkeypatch, tmp_p
     assert not trace_path.exists()
 
 
+def test_twin_strike_plus_uses_upgraded_damage_per_hit(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    twin_strike_plus = _card(
+        name="Twin Strike+",
+        card_id="Twin Strike",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=12,
+        upgrades=1,
+    )
+    before = _game(
+        floor=10,
+        turn=1,
+        player=SimpleNamespace(current_hp=53, max_hp=80, block=0, energy=3),
+        hand=[twin_strike_plus],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=40, damage=12)],
+    )
+    actual = _game(
+        floor=10,
+        turn=1,
+        player=SimpleNamespace(current_hp=53, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=26, damage=12)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_twin_strike_strength_applies_to_each_hit(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    twin_strike_plus = _card(
+        name="Twin Strike+",
+        card_id="Twin Strike",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=12,
+        upgrades=1,
+    )
+    before = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=53,
+            max_hp=80,
+            block=3,
+            energy=3,
+            powers=[Power("Strength", "Strength", 6)],
+        ),
+        hand=[twin_strike_plus],
+        monsters=[_monster(name="The Champ", monster_id="Champ", hp=367, damage=12)],
+    )
+    actual = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=53,
+            max_hp=80,
+            block=3,
+            energy=2,
+            powers=[Power("Strength", "Strength", 6)],
+        ),
+        hand=[],
+        monsters=[_monster(name="The Champ", monster_id="Champ", hp=341, damage=12)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_twin_strike_strength_hits_block_per_hit(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    twin_strike_plus = _card(
+        name="Twin Strike+",
+        card_id="Twin Strike",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=12,
+        upgrades=1,
+    )
+    before = _game(
+        floor=31,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=50,
+            max_hp=80,
+            block=13,
+            energy=2,
+            powers=[Power("Strength", "Strength", 3)],
+        ),
+        hand=[twin_strike_plus],
+        monsters=[
+            _monster(name="Sentry", monster_id="Sentry", hp=42, damage=9, index=0),
+            _monster(
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                block=40,
+                damage=10,
+                index=1,
+            ),
+        ],
+    )
+    actual = _game(
+        floor=31,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=50,
+            max_hp=80,
+            block=13,
+            energy=1,
+            powers=[Power("Strength", "Strength", 3)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(name="Sentry", monster_id="Sentry", hp=42, damage=9, index=0),
+            _monster(
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                block=20,
+                damage=10,
+                index=1,
+            ),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=1), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_dropkick_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

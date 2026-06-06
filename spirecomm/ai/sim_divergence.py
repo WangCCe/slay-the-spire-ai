@@ -42,6 +42,10 @@ BASE_ATTACK_DAMAGE = {
     "Whirlwind": 5,
 }
 
+MULTI_HIT_ATTACKS = {
+    "Twin Strike": 2,
+}
+
 ALL_ENEMY_ATTACKS = {
     "Cleave": 0,
     "Thunderclap": 0,
@@ -224,16 +228,16 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     energy_before_card - max(0, _card_cost(card)),
                 )
             if _is_attack_card(card):
-                damage = _card_damage_for_snapshot(
+                damage, hit_count = _card_damage_and_hits_for_snapshot(
                     card,
                     expected.get("player", {}),
                     energy_before_card,
                 )
                 if _is_all_enemy_attack(card):
-                    _apply_expected_attack_to_all(expected, damage)
+                    _apply_expected_attack_to_all(expected, damage, hit_count)
                 else:
                     target_index = _target_index_for_action(action, game)
-                    _apply_expected_attack(expected, target_index, damage)
+                    _apply_expected_attack(expected, target_index, damage, hit_count)
             self_damage = _card_self_damage(card)
             if self_damage > 0:
                 expected["player"]["current_hp"] = max(
@@ -269,33 +273,48 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
     return expected
 
 
-def _apply_expected_attack(expected: Dict[str, Any], target_index: Optional[int], damage: int) -> None:
+def _apply_expected_attack(
+    expected: Dict[str, Any],
+    target_index: Optional[int],
+    damage: int,
+    hit_count: int = 1,
+) -> None:
     if target_index is None or target_index < 0:
         return
     monsters = expected.get("monsters", [])
     if target_index >= len(monsters):
         return
     target = monsters[target_index]
-    remaining_damage = _modified_attack_damage(max(0, damage), target)
-    if target["block"] > 0:
-        blocked = min(target["block"], remaining_damage)
-        target["block"] -= blocked
-        remaining_damage -= blocked
-    hp_before = target["hp"]
-    target["hp"] = max(0, target["hp"] - remaining_damage)
-    if target["hp"] <= 0:
-        target["gone"] = True
-    elif target["hp"] < hp_before:
-        curl_up_block = max(0, _snapshot_power_amount(target, "Curl Up"))
-        if curl_up_block > 0:
-            target["block"] += curl_up_block
+    curl_up_applied = False
+    for _ in range(max(0, hit_count)):
+        if target.get("gone") or target.get("half_dead") or _to_int(target.get("hp")) <= 0:
+            break
+        remaining_damage = _modified_attack_damage(max(0, damage), target)
+        if target["block"] > 0:
+            blocked = min(target["block"], remaining_damage)
+            target["block"] -= blocked
+            remaining_damage -= blocked
+        hp_before = target["hp"]
+        target["hp"] = max(0, target["hp"] - remaining_damage)
+        if target["hp"] <= 0:
+            target["gone"] = True
+            break
+        if not curl_up_applied and target["hp"] < hp_before:
+            curl_up_block = max(0, _snapshot_power_amount(target, "Curl Up"))
+            if curl_up_block > 0:
+                target["block"] += curl_up_block
+                curl_up_applied = True
 
 
-def _apply_expected_attack_to_all(expected: Dict[str, Any], damage: int) -> None:
+def _apply_expected_attack_to_all(
+    expected: Dict[str, Any],
+    damage: int,
+    hit_count: int = 1,
+) -> None:
     for index, monster in enumerate(expected.get("monsters", [])):
         if monster.get("gone") or monster.get("half_dead") or _to_int(monster.get("hp")) <= 0:
             continue
-        _apply_expected_attack(expected, index, damage)
+        _apply_expected_attack(expected, index, damage, hit_count)
 
 
 def _diff_snapshots(
@@ -562,12 +581,30 @@ def _card_damage(card) -> int:
 
 
 def _card_damage_for_snapshot(card, player: Dict[str, Any], energy_available: int = 0) -> int:
+    damage, hit_count = _card_damage_and_hits_for_snapshot(card, player, energy_available)
+    return damage * hit_count
+
+
+def _card_damage_and_hits_for_snapshot(
+    card,
+    player: Dict[str, Any],
+    energy_available: int = 0,
+) -> tuple[int, int]:
     damage = _card_damage(card)
     card_name = _known_card_name(card, BASE_ATTACK_DAMAGE)
     if card_name == "Whirlwind":
         per_hit = _source_modified_attack_damage(damage, card, player)
-        return max(0, energy_available) * per_hit
-    return _source_modified_attack_damage(damage, card, player)
+        return max(0, energy_available) * per_hit, 1
+    hit_count = MULTI_HIT_ATTACKS.get(card_name or "", 1)
+    if hit_count > 1 and card_name is not None:
+        damage = _multi_hit_damage_per_hit(card, card_name, hit_count)
+    return _source_modified_attack_damage(damage, card, player), hit_count
+
+
+def _multi_hit_damage_per_hit(card, card_name: str, hit_count: int) -> int:
+    base_damage = BASE_ATTACK_DAMAGE[card_name]
+    per_hit = base_damage // hit_count if hit_count > 0 else base_damage
+    return per_hit + known_damage_upgrade_bonus(card, card_name)
 
 
 def _card_block(card) -> int:
