@@ -436,10 +436,13 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             _heal_player(expected, regeneration_heal)
         hp_loss_events += _apply_end_turn_player_damage(expected, before)
         retained_block = _barricade_end_turn_block(before, expected.get("player", {}))
-        expected["player"]["block"] = retained_block + _self_forming_clay_end_turn_block(
+        next_turn_block = _self_forming_clay_end_turn_block(
             before,
             hp_loss_events,
         )
+        if _to_int(expected.get("player", {}).get("current_hp")) > 0:
+            next_turn_block += _horn_cleat_start_turn_block(before)
+        expected["player"]["block"] = retained_block + next_turn_block
         expected["player"]["energy"] = 0
         brutality_loss = _brutality_start_turn_hp_loss(before)
         if brutality_loss > 0:
@@ -1481,6 +1484,18 @@ def _orichalcum_end_turn_block(snapshot: Dict[str, Any], player: Dict[str, Any])
     if not _snapshot_has_relic(snapshot, "Orichalcum"):
         return 0
     return 6 if _to_int(player.get("block")) <= 0 else 0
+
+
+def _horn_cleat_start_turn_block(snapshot: Dict[str, Any]) -> int:
+    target = _normalize("HornCleat")
+    for relic in snapshot.get("relics", []) or []:
+        identifiers = {
+            _normalize(relic.get("id")),
+            _normalize(relic.get("name")),
+        }
+        if target in identifiers and _to_int(relic.get("counter")) == 1:
+            return 14
+    return 0
 
 
 def _self_forming_clay_end_turn_block(snapshot: Dict[str, Any], hp_loss_events: int) -> int:
