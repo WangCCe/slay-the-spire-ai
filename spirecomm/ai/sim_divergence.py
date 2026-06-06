@@ -394,6 +394,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         metallicize_block = _metallicize_end_turn_block(before)
         if metallicize_block > 0:
             expected["player"]["block"] += metallicize_block
+        plated_armor_block = _plated_armor_end_turn_block(before)
+        if plated_armor_block > 0:
+            expected["player"]["block"] += plated_armor_block
         orichalcum_block = _orichalcum_end_turn_block(before, expected.get("player", {}))
         if orichalcum_block > 0:
             expected["player"]["block"] += orichalcum_block
@@ -1281,6 +1284,10 @@ def _brutality_start_turn_hp_loss(snapshot: Dict[str, Any]) -> int:
 
 def _metallicize_end_turn_block(snapshot: Dict[str, Any]) -> int:
     return max(0, _snapshot_power_amount(snapshot.get("player", {}), "Metallicize"))
+
+
+def _plated_armor_end_turn_block(snapshot: Dict[str, Any]) -> int:
+    return max(0, _snapshot_power_amount(snapshot.get("player", {}), "Plated Armor"))
 
 
 def _orichalcum_end_turn_block(snapshot: Dict[str, Any], player: Dict[str, Any]) -> int:
