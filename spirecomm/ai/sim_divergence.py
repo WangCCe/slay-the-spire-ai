@@ -426,6 +426,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             expected["player"]["block"] += orichalcum_block
         hp_loss_events = _apply_combust_end_turn(expected, before)
         _apply_end_turn_attack_reflection_damage(expected, before)
+        regeneration_heal = _regeneration_end_turn_heal(before)
+        if regeneration_heal > 0:
+            _heal_player(expected, regeneration_heal)
         hp_loss_events += _apply_end_turn_player_damage(expected, before)
         expected["player"]["block"] = _self_forming_clay_end_turn_block(
             before,
@@ -1381,6 +1384,15 @@ def _end_turn_monster_attack_damage_events(snapshot: Dict[str, Any]):
 
 def _brutality_start_turn_hp_loss(snapshot: Dict[str, Any]) -> int:
     return 1 if _snapshot_power_amount(snapshot.get("player", {}), "Brutality") > 0 else 0
+
+
+def _regeneration_end_turn_heal(snapshot: Dict[str, Any]) -> int:
+    player = snapshot.get("player", {})
+    return max(
+        0,
+        _snapshot_power_amount(player, "Regeneration"),
+        _snapshot_power_amount(player, "Regen"),
+    )
 
 
 def _metallicize_end_turn_block(snapshot: Dict[str, Any]) -> int:
