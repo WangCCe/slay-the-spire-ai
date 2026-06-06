@@ -468,6 +468,7 @@ def _apply_expected_attack(
     target = monsters[target_index]
     curl_up_applied = False
     damage_dealt = 0
+    deferred_malleable_block = 0
     for _ in range(max(0, hit_count)):
         if target.get("gone") or target.get("half_dead") or _to_int(target.get("hp")) <= 0:
             break
@@ -486,12 +487,19 @@ def _apply_expected_attack(
         if hp_loss > 0:
             _apply_guardian_mode_shift(target, hp_loss)
             _decrement_flight(target)
-            _trigger_malleable(target)
+            deferred_malleable_block += _trigger_malleable(target, defer_block=True)
         if not curl_up_applied and hp_loss > 0:
             curl_up_block = max(0, _snapshot_power_amount(target, "Curl Up"))
             if curl_up_block > 0:
                 target["block"] += curl_up_block
                 curl_up_applied = True
+    if (
+        deferred_malleable_block > 0
+        and not target.get("gone")
+        and not target.get("half_dead")
+        and _to_int(target.get("hp")) > 0
+    ):
+        target["block"] = max(0, _to_int(target.get("block"))) + deferred_malleable_block
     return damage_dealt
 
 
@@ -1245,12 +1253,14 @@ def _decrement_flight(target: Dict[str, Any]) -> None:
         return
 
 
-def _trigger_malleable(target: Dict[str, Any]) -> None:
+def _trigger_malleable(target: Dict[str, Any], defer_block: bool = False) -> int:
     amount = max(0, _snapshot_power_amount(target, "Malleable"))
     if amount <= 0:
-        return
-    target["block"] = max(0, _to_int(target.get("block"))) + amount
+        return 0
+    if not defer_block:
+        target["block"] = max(0, _to_int(target.get("block"))) + amount
     _set_snapshot_power_amount(target, "Malleable", amount + 1)
+    return amount
 
 
 def _apply_guardian_mode_shift(target: Dict[str, Any], hp_loss: int) -> None:

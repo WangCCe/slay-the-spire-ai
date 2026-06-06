@@ -220,7 +220,7 @@ def test_malleable_gains_block_after_attack_damage(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
-def test_malleable_block_can_absorb_later_hits(monkeypatch, tmp_path):
+def test_malleable_multi_hit_block_does_not_absorb_later_hits(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
     reset_pending_divergence()
@@ -239,8 +239,12 @@ def test_malleable_block_can_absorb_later_hits(monkeypatch, tmp_path):
             _monster(
                 name="Snake Plant",
                 monster_id="SnakePlant",
-                hp=30,
-                powers=[Power("Malleable", "Malleable", 3)],
+                hp=76,
+                intent=Intent.STRONG_DEBUFF,
+                powers=[
+                    Power("Malleable", "Malleable", 3),
+                    Power("Strength", "Strength", 1),
+                ],
             )
         ],
     )
@@ -251,9 +255,13 @@ def test_malleable_block_can_absorb_later_hits(monkeypatch, tmp_path):
             _monster(
                 name="Snake Plant",
                 monster_id="SnakePlant",
-                hp=23,
-                block=4,
-                powers=[Power("Malleable", "Malleable", 5)],
+                hp=66,
+                block=7,
+                intent=Intent.STRONG_DEBUFF,
+                powers=[
+                    Power("Malleable", "Malleable", 5),
+                    Power("Strength", "Strength", 1),
+                ],
             )
         ],
     )
