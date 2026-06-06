@@ -2648,6 +2648,108 @@ def test_sever_soul_triggers_feel_no_pain_for_each_exhausted_non_attack(monkeypa
     assert not trace_path.exists()
 
 
+def test_true_grit_triggers_feel_no_pain_for_one_exhausted_card(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    true_grit = _card(
+        name="True Grit",
+        card_id="True Grit",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=7,
+    )
+    before = _game(
+        floor=21,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=70,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[
+                Power("Feel No Pain", "Feel No Pain", 3),
+                Power("Frail", "Frail", 2),
+            ],
+        ),
+        hand=[true_grit, _card(name="Strike", card_id="Strike_R")],
+        monsters=[_monster(name="Shelled Parasite", monster_id="Shelled Parasite", hp=57, damage=0)],
+    )
+    actual = _game(
+        floor=21,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=70,
+            max_hp=80,
+            block=8,
+            energy=2,
+            powers=[
+                Power("Feel No Pain", "Feel No Pain", 3),
+                Power("Frail", "Frail", 2),
+            ],
+        ),
+        hand=[],
+        monsters=[_monster(name="Shelled Parasite", monster_id="Shelled Parasite", hp=57, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_corruption_skill_exhaust_triggers_feel_no_pain(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    defend = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        block=5,
+    )
+    before = _game(
+        floor=33,
+        turn=5,
+        player=SimpleNamespace(
+            current_hp=44,
+            max_hp=87,
+            block=0,
+            energy=1,
+            powers=[
+                Power("Feel No Pain", "Feel No Pain", 4),
+                Power("Corruption", "Corruption", -1),
+            ],
+        ),
+        hand=[defend],
+        monsters=[_monster(name="The Champ", monster_id="Champ", hp=340, damage=0)],
+    )
+    actual = _game(
+        floor=33,
+        turn=5,
+        player=SimpleNamespace(
+            current_hp=44,
+            max_hp=87,
+            block=9,
+            energy=1,
+            powers=[
+                Power("Feel No Pain", "Feel No Pain", 4),
+                Power("Corruption", "Corruption", -1),
+            ],
+        ),
+        hand=[],
+        monsters=[_monster(name="The Champ", monster_id="Champ", hp=340, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_swift_strike_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

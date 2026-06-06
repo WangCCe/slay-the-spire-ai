@@ -961,6 +961,11 @@ def _is_attack_card(card) -> bool:
     return card_type in {"attack", "cardtypeattack"}
 
 
+def _is_skill_card(card) -> bool:
+    card_type = _normalize(_card_attr(card, "type", _card_attr(card, "card_type", "")))
+    return card_type in {"skill", "cardtypeskill"}
+
+
 def _attack_card_play_count(snapshot: Dict[str, Any], card) -> int:
     if not _is_attack_card(card):
         return 1
@@ -1152,7 +1157,11 @@ def _feel_no_pain_exhaust_count(
     card_index: int,
 ) -> int:
     exhaust_count = _exhausts_non_attack_hand_count(card, before, card_index)
+    if _known_card_name(card, BASE_SKILL_BLOCK) == "True Grit":
+        exhaust_count += 1
     if _known_card_name(card, SELF_EXHAUST_CARDS) is not None:
+        exhaust_count += 1
+    if _is_skill_card(card) and _snapshot_has_power(before.get("player", {}), "Corruption"):
         exhaust_count += 1
     return exhaust_count
 
@@ -1616,6 +1625,18 @@ def _snapshot_power_amount(entity: Dict[str, Any], power_name: str) -> int:
         if target in identifiers:
             return _to_int(power.get("amount"), default=1)
     return 0
+
+
+def _snapshot_has_power(entity: Dict[str, Any], power_name: str) -> bool:
+    target = _normalize(power_name)
+    for power in entity.get("powers", []) or []:
+        identifiers = {
+            _normalize(power.get("id")),
+            _normalize(power.get("name")),
+        }
+        if target in identifiers:
+            return True
+    return False
 
 
 def _set_snapshot_power_amount(entity: Dict[str, Any], power_name: str, amount: int) -> None:
