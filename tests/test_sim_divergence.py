@@ -252,6 +252,45 @@ def test_headbutt_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_mind_blast_zero_live_damage_uses_draw_pile_count(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    mind_blast = _card(
+        name="Mind Blast+",
+        card_id="Mind Blast",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+        upgrades=1,
+    )
+    draw_pile = [
+        _card(name=f"Draw {index}", card_id=f"Draw {index}")
+        for index in range(7)
+    ]
+    before = _game(
+        floor=7,
+        turn=1,
+        player=SimpleNamespace(current_hp=75, max_hp=80, block=0, energy=3),
+        hand=[mind_blast],
+        draw_pile=draw_pile,
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=30, damage=-1, intent=Intent.BUFF)],
+    )
+    actual = _game(
+        floor=7,
+        turn=1,
+        player=SimpleNamespace(current_hp=75, max_hp=80, block=0, energy=2),
+        hand=[],
+        draw_pile=draw_pile,
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=23, damage=-1, intent=Intent.BUFF)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_rampage_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

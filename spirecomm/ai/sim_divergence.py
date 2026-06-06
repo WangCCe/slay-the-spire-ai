@@ -35,6 +35,7 @@ BASE_ATTACK_DAMAGE = {
     "Hemokinesis": 15,
     "Immolate": 21,
     "Iron Wave": 5,
+    "Mind Blast": 0,
     "Pommel Strike": 9,
     "Pummel": 8,
     "Rampage": 8,
@@ -238,6 +239,7 @@ def snapshot_combat_state(game) -> Dict[str, Any]:
             "powers": [_power_summary(power) for power in _safe_iterable(getattr(player, "powers", []))],
         },
         "hand": [_card_summary(card) for card in _safe_iterable(getattr(game, "hand", []))],
+        "draw_pile_count": _pile_count(game, "draw_pile"),
         "relics": [_relic_summary(relic) for relic in _safe_iterable(getattr(game, "relics", []))],
         "monsters": [
             _monster_summary(monster)
@@ -682,6 +684,8 @@ def _card_damage_and_hits_for_snapshot(
 ) -> tuple[int, int]:
     damage = _card_damage(card)
     card_name = _known_card_name(card, BASE_ATTACK_DAMAGE)
+    if card_name == "Mind Blast" and before is not None:
+        damage = max(0, _to_int(before.get("draw_pile_count"), default=0))
     if card_name == "Whirlwind":
         per_hit = _source_modified_attack_damage(damage, card, player)
         return max(0, energy_available) * per_hit, 1
@@ -1092,6 +1096,10 @@ def _normalize(value) -> str:
 
 def _safe_iterable(value):
     return value if isinstance(value, (list, tuple)) else []
+
+
+def _pile_count(game, attr: str) -> int:
+    return len(_safe_iterable(getattr(game, attr, [])))
 
 
 def _safe_str(value) -> str:
