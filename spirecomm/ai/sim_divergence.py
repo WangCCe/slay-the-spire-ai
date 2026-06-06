@@ -39,6 +39,7 @@ BASE_ATTACK_DAMAGE = {
     "Rampage": 8,
     "Reckless Charge": 7,
     "Reaper": 4,
+    "Searing Blow": 12,
     "Sever Soul": 16,
     "Strike": 6,
     "Swift Strike": 7,

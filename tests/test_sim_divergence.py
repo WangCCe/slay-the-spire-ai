@@ -1771,6 +1771,119 @@ def test_bludgeon_plus_zero_live_damage_uses_upgrade_damage(monkeypatch, tmp_pat
     assert not trace_path.exists()
 
 
+def test_searing_blow_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    searing_blow = _card(
+        name="Searing Blow",
+        card_id="Searing Blow",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=0,
+    )
+    before = _game(
+        floor=16,
+        turn=3,
+        player=SimpleNamespace(current_hp=59, max_hp=80, block=0, energy=3),
+        hand=[searing_blow],
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=202, damage=0)],
+    )
+    actual = _game(
+        floor=16,
+        turn=3,
+        player=SimpleNamespace(current_hp=59, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=190, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_searing_blow_vulnerable_target_uses_base_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    searing_blow = _card(
+        name="Searing Blow",
+        card_id="Searing Blow",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=0,
+    )
+    before = _game(
+        floor=4,
+        turn=2,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=3),
+        hand=[searing_blow],
+        monsters=[
+            _monster(
+                name="Jaw Worm",
+                monster_id="JawWorm",
+                hp=30,
+                damage=0,
+                powers=[Power("Vulnerable", "Vulnerable", 1)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=4,
+        turn=2,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Jaw Worm",
+                monster_id="JawWorm",
+                hp=12,
+                damage=0,
+                powers=[Power("Vulnerable", "Vulnerable", 1)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_searing_blow_plus_two_uses_special_upgrade_scaling(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    searing_blow_plus_two = _card(
+        name="Searing Blow+2",
+        card_id="Searing Blow",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=0,
+        upgrades=2,
+    )
+    before = _game(
+        floor=28,
+        turn=3,
+        player=SimpleNamespace(current_hp=67, max_hp=80, block=0, energy=3),
+        hand=[searing_blow_plus_two],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=60, damage=0)],
+    )
+    actual = _game(
+        floor=28,
+        turn=3,
+        player=SimpleNamespace(current_hp=67, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=39, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_immolate_zero_live_damage_hits_all_monsters(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
