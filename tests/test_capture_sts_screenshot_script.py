@@ -93,3 +93,20 @@ def test_capture_script_activates_window_before_visible_pixel_capture():
     assert "[StsCaptureNative]::ShowWindowAsync" in text
     assert "[StsCaptureNative]::SetForegroundWindow" in text
     assert "Start-Sleep -Milliseconds" in text
+
+
+def test_capture_script_enables_dpi_awareness_before_pixel_capture():
+    assert SCRIPT.exists()
+
+    text = SCRIPT.read_text(encoding="utf-8")
+
+    native_type_index = text.find("public static class StsCaptureNative")
+    dpi_import_index = text.find("SetProcessDpiAwarenessContext")
+    dpi_call_index = text.find("Enable-DpiAwareCapture")
+    drawing_index = text.find("Add-Type -AssemblyName System.Drawing")
+
+    assert native_type_index != -1
+    assert dpi_import_index != -1
+    assert dpi_call_index != -1
+    assert drawing_index != -1
+    assert native_type_index < dpi_call_index < drawing_index

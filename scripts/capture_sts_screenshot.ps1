@@ -27,9 +27,6 @@ if ($DryRun -and $AllScreens) {
     exit 0
 }
 
-Add-Type -AssemblyName System.Drawing
-Add-Type -AssemblyName System.Windows.Forms
-
 if (-not ("StsCaptureNative" -as [type])) {
     Add-Type -TypeDefinition @"
 using System;
@@ -44,6 +41,12 @@ public struct StsCaptureRect {
 
 public static class StsCaptureNative {
     [DllImport("user32.dll")]
+    public static extern IntPtr SetProcessDpiAwarenessContext(IntPtr dpiContext);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetProcessDPIAware();
+
+    [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr hWnd, out StsCaptureRect rect);
 
     [DllImport("user32.dll")]
@@ -54,6 +57,31 @@ public static class StsCaptureNative {
 }
 "@
 }
+
+function Enable-DpiAwareCapture {
+    $dpiAwarenessContextPerMonitorAwareV2 = [IntPtr]::new(-4)
+
+    try {
+        if ([StsCaptureNative]::SetProcessDpiAwarenessContext($dpiAwarenessContextPerMonitorAwareV2) -ne [IntPtr]::Zero) {
+            return
+        }
+    }
+    catch {
+        # Older Windows versions may not expose SetProcessDpiAwarenessContext.
+    }
+
+    try {
+        [StsCaptureNative]::SetProcessDPIAware() | Out-Null
+    }
+    catch {
+        Write-CaptureInfo "warning: could not set process DPI awareness; window bounds may be offset on scaled displays"
+    }
+}
+
+Enable-DpiAwareCapture
+
+Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.Windows.Forms
 
 function Get-AllScreensTarget {
     $screens = [System.Windows.Forms.Screen]::AllScreens
