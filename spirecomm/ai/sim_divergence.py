@@ -397,8 +397,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         orichalcum_block = _orichalcum_end_turn_block(before, expected.get("player", {}))
         if orichalcum_block > 0:
             expected["player"]["block"] += orichalcum_block
+        hp_loss_events = _apply_combust_end_turn(expected, before)
         _apply_end_turn_attack_reflection_damage(expected, before)
-        hp_loss_events = _apply_end_turn_player_damage(expected, before)
+        hp_loss_events += _apply_end_turn_player_damage(expected, before)
         expected["player"]["block"] = _self_forming_clay_end_turn_block(
             before,
             hp_loss_events,
@@ -1222,9 +1223,31 @@ def _apply_end_turn_player_damage(
     hp_loss_events = 0
     for amount in _end_turn_status_damage_events(before):
         hp_loss_events += _damage_player(expected, amount)
-    for amount in _end_turn_monster_attack_damage_events(before):
+    for amount in _end_turn_monster_attack_damage_events(expected):
         hp_loss_events += _damage_player(expected, amount)
     return hp_loss_events
+
+
+def _apply_combust_end_turn(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> int:
+    damage = max(0, _snapshot_power_amount(before.get("player", {}), "Combust"))
+    if damage <= 0:
+        return 0
+    hp_loss_event = _lose_player_hp(expected, 1)
+    for index, _monster in enumerate(expected.get("monsters", []) or []):
+        _apply_direct_monster_damage(expected, index, damage)
+    return hp_loss_event
+
+
+def _lose_player_hp(expected: Dict[str, Any], amount: int) -> int:
+    if amount <= 0:
+        return 0
+    player = expected.get("player", {})
+    hp_before = _to_int(player.get("current_hp"))
+    player["current_hp"] = max(0, hp_before - amount)
+    return 1 if _to_int(player.get("current_hp")) < hp_before else 0
 
 
 def _end_turn_status_damage_events(snapshot: Dict[str, Any]):
@@ -1279,7 +1302,7 @@ def _apply_end_turn_attack_reflection_damage(
     reflection_damage = _end_turn_attack_reflection_damage(before)
     if reflection_damage <= 0:
         return
-    for index, monster in enumerate(before.get("monsters", []) or []):
+    for index, monster in enumerate(expected.get("monsters", []) or []):
         if _monster_attack_damage(monster) <= 0:
             continue
         _apply_direct_monster_damage(

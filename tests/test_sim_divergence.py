@@ -4925,6 +4925,43 @@ def test_end_turn_self_forming_clay_block_tracks_each_hp_loss(monkeypatch, tmp_p
     assert not trace_path.exists()
 
 
+def test_end_turn_combust_loses_hp_and_damages_all_monsters(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=4,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=79,
+            max_hp=80,
+            block=5,
+            energy=0,
+            powers=[Power("Combust", "Combust", 5)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=17, damage=6)],
+    )
+    actual = _game(
+        floor=4,
+        turn=4,
+        player=SimpleNamespace(
+            current_hp=77,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Combust", "Combust", 5)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=12, damage=0)],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_mercury_hourglass_damages_monsters(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
