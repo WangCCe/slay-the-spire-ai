@@ -735,6 +735,13 @@ def _snapshot_monster_active(monster: Dict[str, Any]) -> bool:
 
 def _ignored_diff_keys(pending: Dict[str, Any]) -> set:
     action = pending.get("action", {})
+    if _sword_boomerang_random_target_boundary(pending):
+        ignored = set()
+        monster_count = len((pending.get("expected") or {}).get("monsters") or [])
+        for index in range(monster_count):
+            for field in ("hp", "block", "gone", "half_dead", "intent"):
+                ignored.add(f"monsters[{index}].{field}")
+        return ignored
     if action.get("type") == "EndTurnAction":
         ignored = {"player.energy"}
         monster_count = len((pending.get("expected") or {}).get("monsters") or [])
@@ -746,6 +753,21 @@ def _ignored_diff_keys(pending: Dict[str, Any]) -> set:
                 ignored.add(f"monsters[{index}].hp")
         return ignored
     return set()
+
+
+def _sword_boomerang_random_target_boundary(pending: Dict[str, Any]) -> bool:
+    action = pending.get("action") or {}
+    if action.get("type") != "PlayCardAction":
+        return False
+    if _snapshot_known_card_name(action.get("card") or {}, {"Sword Boomerang": 0}) != "Sword Boomerang":
+        return False
+    before = pending.get("before") or {}
+    active_count = sum(
+        1
+        for monster in before.get("monsters", []) or []
+        if _snapshot_monster_active(monster)
+    )
+    return active_count > 1
 
 
 def _add_diff(

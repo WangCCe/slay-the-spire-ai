@@ -2204,6 +2204,47 @@ def test_sword_boomerang_plus_uses_four_hits(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_sword_boomerang_multi_monster_random_hits_do_not_report_distribution(
+    monkeypatch,
+    tmp_path,
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    sword_boomerang = _card(
+        name="Sword Boomerang",
+        card_id="Sword Boomerang",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=8,
+        turn=2,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=1),
+        hand=[sword_boomerang],
+        monsters=[
+            _monster(name="Fungi Beast", monster_id="FungiBeast", hp=15, damage=9),
+            _monster(name="Fungi Beast", monster_id="FungiBeast", hp=13, damage=6, index=1),
+        ],
+    )
+    actual = _game(
+        floor=8,
+        turn=2,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(name="Fungi Beast", monster_id="FungiBeast", hp=12, damage=9),
+            _monster(name="Fungi Beast", monster_id="FungiBeast", hp=7, damage=6, index=1),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_pummel_zero_live_damage_uses_four_hits(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
