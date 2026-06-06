@@ -23,6 +23,7 @@ DISABLED_VALUES = {"", "0", "false", "off", "none", "disabled"}
 BASE_ATTACK_DAMAGE = {
     "Anger": 6,
     "Bash": 8,
+    "Bludgeon": 32,
     "Blood for Blood": 18,
     "Carnage": 20,
     "Cleave": 8,
@@ -31,11 +32,13 @@ BASE_ATTACK_DAMAGE = {
     "Headbutt": 9,
     "Heavy Blade": 14,
     "Hemokinesis": 15,
+    "Immolate": 21,
     "Iron Wave": 5,
     "Pommel Strike": 9,
     "Reckless Charge": 7,
     "Sever Soul": 16,
     "Strike": 6,
+    "Swift Strike": 7,
     "Thunderclap": 4,
     "Twin Strike": 10,
     "Uppercut": 13,
@@ -48,6 +51,7 @@ MULTI_HIT_ATTACKS = {
 
 ALL_ENEMY_ATTACKS = {
     "Cleave": 0,
+    "Immolate": 0,
     "Thunderclap": 0,
     "Whirlwind": 0,
 }
