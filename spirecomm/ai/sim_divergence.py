@@ -35,6 +35,7 @@ BASE_ATTACK_DAMAGE = {
     "Immolate": 21,
     "Iron Wave": 5,
     "Pommel Strike": 9,
+    "Rampage": 8,
     "Reckless Charge": 7,
     "Reaper": 4,
     "Sever Soul": 16,
@@ -97,6 +98,8 @@ CARD_ID_ALIASES = {
 
 logger = logging.getLogger(__name__)
 _pending_expected: Optional[Dict[str, Any]] = None
+_rampage_damage_bonus_by_card: Dict[str, int] = {}
+_rampage_state_floor: Optional[int] = None
 
 
 def divergence_trace_path(path: Optional[Path] = None) -> Optional[Path]:
@@ -109,8 +112,10 @@ def divergence_trace_path(path: Optional[Path] = None) -> Optional[Path]:
 
 
 def reset_pending_divergence() -> None:
-    global _pending_expected
+    global _pending_expected, _rampage_damage_bonus_by_card, _rampage_state_floor
     _pending_expected = None
+    _rampage_damage_bonus_by_card = {}
+    _rampage_state_floor = None
 
 
 def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
@@ -124,6 +129,7 @@ def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
         return False
 
     try:
+        _sync_rampage_state(_to_int(getattr(game, "floor", None)))
         before = snapshot_combat_state(game)
         _pending_expected = {
             "timestamp": _timestamp(),
@@ -154,8 +160,10 @@ def observe_next_state(game, path: Optional[Path] = None) -> bool:
 
     try:
         actual = snapshot_combat_state(game)
+        _sync_rampage_state(actual["floor"])
         if actual["floor"] != pending["floor"]:
             return False
+        _finalize_observed_action(pending, actual)
 
         ignored_diffs = _ignored_diff_keys(pending)
         diffs = _diff_snapshots(pending["expected"], actual, ignored_diffs)
@@ -532,12 +540,15 @@ def _card_summary(card) -> Dict[str, Any]:
     return {
         "name": _safe_str(getattr(card, "name", "")),
         "id": _safe_str(getattr(card, "card_id", getattr(card, "id", ""))),
+        "uuid": _safe_str(getattr(card, "uuid", "")),
         "type": _safe_str(
             getattr(card, "type", getattr(card, "card_type", ""))
         ),
         "cost": _card_cost(card),
         "damage": _card_damage(card),
         "block": _card_block(card),
+        "upgrades": card_upgrade_count(card),
+        "misc": _positive_card_misc(card),
     }
 
 
@@ -596,6 +607,16 @@ def _card_damage(card) -> int:
     card_name = _known_card_name(card, BASE_ATTACK_DAMAGE)
     base_damage = BASE_ATTACK_DAMAGE.get(card_name) if card_name else None
     upgrade_bonus = known_damage_upgrade_bonus(card, card_name) if card_name else 0
+    if card_name == "Rampage" and base_damage is not None:
+        misc_damage = _positive_card_misc(card)
+        tracked_bonus = _rampage_damage_bonus_for_card(card)
+        if explicit > 0:
+            if tracked_bonus > 0 and explicit <= base_damage:
+                return explicit + tracked_bonus
+            return explicit
+        if tracked_bonus <= 0 and misc_damage > base_damage:
+            return misc_damage
+        return base_damage + tracked_bonus
     if explicit > 0:
         if base_damage is not None and upgrade_bonus > 0 and explicit <= base_damage:
             return explicit + upgrade_bonus
@@ -776,6 +797,94 @@ def _conditional_card_energy_gain(card, snapshot: Dict[str, Any], target_index: 
     if target_index is None or target_index < 0 or target_index >= len(monsters):
         return 0
     return 1 if _snapshot_power_amount(monsters[target_index], "Vulnerable") > 0 else 0
+
+
+def _sync_rampage_state(floor: int) -> None:
+    global _rampage_damage_bonus_by_card, _rampage_state_floor
+    if _rampage_state_floor == floor:
+        return
+    _rampage_state_floor = floor
+    _rampage_damage_bonus_by_card = {}
+
+
+def _finalize_observed_action(pending: Dict[str, Any], actual: Dict[str, Any]) -> None:
+    action = pending.get("action", {})
+    if action.get("type") != "PlayCardAction":
+        return
+    card = action.get("card") or {}
+    if not isinstance(card, dict) or not _snapshot_card_is_named(card, "Rampage"):
+        return
+    key = _snapshot_card_identity(card)
+    if not key:
+        return
+    if key.startswith("uuid:") and _snapshot_hand_contains_identity(actual.get("hand", []), key):
+        return
+    _rampage_damage_bonus_by_card[key] = (
+        _rampage_damage_bonus_by_card.get(key, 0)
+        + _rampage_scaling_from_snapshot(card)
+    )
+
+
+def _rampage_damage_bonus_for_card(card) -> int:
+    key = _card_identity(card)
+    if not key:
+        return 0
+    return max(0, _rampage_damage_bonus_by_card.get(key, 0))
+
+
+def _rampage_scaling_from_snapshot(card: Dict[str, Any]) -> int:
+    return 8 if _snapshot_card_upgrade_count(card) > 0 else 5
+
+
+def _snapshot_card_upgrade_count(card: Dict[str, Any]) -> int:
+    upgrades = _to_int(card.get("upgrades", 0))
+    if upgrades > 0:
+        return upgrades
+    return 1 if _safe_str(card.get("name", "")).endswith("+") else 0
+
+
+def _snapshot_card_is_named(card: Dict[str, Any], name: str) -> bool:
+    target = _normalize(name)
+    identifiers = {
+        _normalize(_strip_upgrade_suffix(card.get("id"))),
+        _normalize(_strip_upgrade_suffix(card.get("name"))),
+    }
+    return target in identifiers
+
+
+def _card_identity(card) -> str:
+    uuid = _safe_str(getattr(card, "uuid", ""))
+    if uuid:
+        return f"uuid:{uuid}"
+    identifiers = [
+        _normalize(_strip_upgrade_suffix(getattr(card, "card_id", getattr(card, "id", "")))),
+        _normalize(_strip_upgrade_suffix(getattr(card, "name", ""))),
+    ]
+    identifiers = [value for value in identifiers if value]
+    return "card:" + ":".join(identifiers) if identifiers else ""
+
+
+def _snapshot_card_identity(card: Dict[str, Any]) -> str:
+    uuid = _safe_str(card.get("uuid", ""))
+    if uuid:
+        return f"uuid:{uuid}"
+    identifiers = [
+        _normalize(_strip_upgrade_suffix(card.get("id"))),
+        _normalize(_strip_upgrade_suffix(card.get("name"))),
+    ]
+    identifiers = [value for value in identifiers if value]
+    return "card:" + ":".join(identifiers) if identifiers else ""
+
+
+def _snapshot_hand_contains_identity(hand, identity: str) -> bool:
+    for card in _safe_iterable(hand):
+        if isinstance(card, dict) and _snapshot_card_identity(card) == identity:
+            return True
+    return False
+
+
+def _positive_card_misc(card) -> int:
+    return max(0, _to_int(getattr(card, "misc", 0)))
 
 
 def _known_card_name(card, known_values: Dict[str, int]) -> Optional[str]:

@@ -21,6 +21,8 @@ def _card(
     damage=6,
     block=0,
     upgrades=0,
+    uuid="",
+    misc=0,
 ):
     return SimpleNamespace(
         name=name,
@@ -31,6 +33,8 @@ def _card(
         damage=damage,
         block=block,
         upgrades=upgrades,
+        uuid=uuid,
+        misc=misc,
         is_playable=True,
         has_target=card_type == CardType.ATTACK,
     )
@@ -201,6 +205,218 @@ def test_headbutt_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
 
     assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
     assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_rampage_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    rampage = _card(
+        name="Rampage",
+        card_id="Rampage",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+        uuid="rampage-1",
+    )
+    before = _game(
+        floor=14,
+        turn=2,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=2),
+        hand=[rampage],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=17, damage=6)],
+    )
+    actual = _game(
+        floor=14,
+        turn=2,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=9, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_second_rampage_play_uses_accumulated_combat_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    first_rampage = _card(
+        name="Rampage",
+        card_id="Rampage",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+        uuid="rampage-1",
+    )
+    first_before = _game(
+        floor=14,
+        turn=2,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=2),
+        hand=[first_rampage],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=60, damage=6)],
+    )
+    first_actual = _game(
+        floor=14,
+        turn=2,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=52, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), first_before) is True
+    assert observe_next_state(first_actual) is False
+
+    second_rampage = _card(
+        name="Rampage",
+        card_id="Rampage",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+        uuid="rampage-1",
+    )
+    second_before = _game(
+        floor=14,
+        turn=4,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=1),
+        hand=[second_rampage],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=52, damage=6)],
+    )
+    second_actual = _game(
+        floor=14,
+        turn=4,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=39, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), second_before) is True
+    assert observe_next_state(second_actual) is False
+    assert not trace_path.exists()
+
+
+def test_second_rampage_plus_play_uses_upgraded_combat_scaling(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    first_rampage = _card(
+        name="Rampage+",
+        card_id="Rampage",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+        upgrades=1,
+        uuid="rampage-1",
+    )
+    first_before = _game(
+        floor=16,
+        turn=3,
+        player=SimpleNamespace(current_hp=42, max_hp=80, block=0, energy=2),
+        hand=[first_rampage],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=80, damage=6)],
+    )
+    first_actual = _game(
+        floor=16,
+        turn=3,
+        player=SimpleNamespace(current_hp=42, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=72, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), first_before) is True
+    assert observe_next_state(first_actual) is False
+
+    second_rampage = _card(
+        name="Rampage+",
+        card_id="Rampage",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+        upgrades=1,
+        uuid="rampage-1",
+    )
+    second_before = _game(
+        floor=16,
+        turn=6,
+        player=SimpleNamespace(current_hp=42, max_hp=80, block=0, energy=1),
+        hand=[second_rampage],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=72, damage=6)],
+    )
+    second_actual = _game(
+        floor=16,
+        turn=6,
+        player=SimpleNamespace(current_hp=42, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=56, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), second_before) is True
+    assert observe_next_state(second_actual) is False
+    assert not trace_path.exists()
+
+
+def test_rampage_accumulated_damage_resets_on_next_floor(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    rampage = _card(
+        name="Rampage",
+        card_id="Rampage",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+        uuid="rampage-1",
+    )
+    first_before = _game(
+        floor=14,
+        turn=2,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=2),
+        hand=[rampage],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=60, damage=6)],
+    )
+    first_actual = _game(
+        floor=14,
+        turn=2,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=52, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), first_before) is True
+    assert observe_next_state(first_actual) is False
+
+    next_floor_rampage = _card(
+        name="Rampage",
+        card_id="Rampage",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+        uuid="rampage-1",
+    )
+    next_floor_before = _game(
+        floor=15,
+        turn=1,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=1),
+        hand=[next_floor_rampage],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=60, damage=6)],
+    )
+    next_floor_actual = _game(
+        floor=15,
+        turn=1,
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=52, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), next_floor_before) is True
+    assert observe_next_state(next_floor_actual) is False
     assert not trace_path.exists()
 
 
