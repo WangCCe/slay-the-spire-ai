@@ -29,6 +29,7 @@ BASE_ATTACK_DAMAGE = {
     "Cleave": 8,
     "Clothesline": 12,
     "Dropkick": 5,
+    "Fiend Fire": 7,
     "Headbutt": 9,
     "Heavy Blade": 14,
     "Hemokinesis": 15,
@@ -267,6 +268,8 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     card,
                     expected.get("player", {}),
                     energy_before_card,
+                    before,
+                    card_index,
                 )
                 if _is_all_enemy_attack(card):
                     damage_dealt = _apply_expected_attack_to_all(expected, damage, hit_count)
@@ -667,16 +670,34 @@ def _card_damage_and_hits_for_snapshot(
     card,
     player: Dict[str, Any],
     energy_available: int = 0,
+    before: Optional[Dict[str, Any]] = None,
+    card_index: int = -1,
 ) -> tuple[int, int]:
     damage = _card_damage(card)
     card_name = _known_card_name(card, BASE_ATTACK_DAMAGE)
     if card_name == "Whirlwind":
         per_hit = _source_modified_attack_damage(damage, card, player)
         return max(0, energy_available) * per_hit, 1
+    if card_name == "Fiend Fire" and before is not None:
+        hit_count = _fiend_fire_hit_count(card, before, card_index)
+        return _source_modified_attack_damage(damage, card, player), hit_count
     hit_count = _multi_hit_count(card, card_name)
     if hit_count > 1 and card_name is not None:
         damage = _multi_hit_damage_per_hit(card, card_name, hit_count)
     return _source_modified_attack_damage(damage, card, player), hit_count
+
+
+def _fiend_fire_hit_count(card, before: Dict[str, Any], card_index: int) -> int:
+    hit_count = 0
+    skipped_played_card = False
+    for index, hand_card in enumerate(before.get("hand", [])):
+        if index == card_index:
+            continue
+        if card_index < 0 and not skipped_played_card and _snapshot_card_matches(hand_card, card):
+            skipped_played_card = True
+            continue
+        hit_count += 1
+    return max(0, hit_count)
 
 
 def _multi_hit_count(card, card_name: Optional[str]) -> int:

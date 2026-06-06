@@ -1516,6 +1516,146 @@ def test_pummel_plus_uses_five_hits(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_fiend_fire_zero_live_damage_uses_other_hand_cards_as_hits(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    fiend_fire = _card(
+        name="Fiend Fire",
+        card_id="Fiend Fire",
+        card_type=CardType.ATTACK,
+        cost=0,
+        damage=0,
+    )
+    before = _game(
+        floor=18,
+        turn=2,
+        player=SimpleNamespace(current_hp=68, max_hp=80, block=0, energy=4),
+        hand=[
+            fiend_fire,
+            _card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, damage=0, block=5),
+            _card(name="Bash", card_id="Bash", damage=8, cost=2),
+            _card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, damage=0, block=5),
+            _card(name="Carnage+", card_id="Carnage", damage=28, cost=0, upgrades=1),
+            _card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, damage=0, block=5),
+            _card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, damage=0, block=5),
+        ],
+        monsters=[
+            _monster(name="Looter", monster_id="Looter", hp=0, damage=7, index=0),
+            _monster(name="Mugger", monster_id="Mugger", hp=51, damage=10, index=1),
+        ],
+    )
+    actual = _game(
+        floor=18,
+        turn=2,
+        player=SimpleNamespace(current_hp=68, max_hp=80, block=0, energy=4),
+        hand=[],
+        monsters=[
+            _monster(name="Looter", monster_id="Looter", hp=0, damage=7, index=0),
+            _monster(name="Mugger", monster_id="Mugger", hp=9, damage=10, index=1),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=1), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_fiend_fire_zero_live_damage_repeats_against_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    fiend_fire = _card(
+        name="Fiend Fire",
+        card_id="Fiend Fire",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=0,
+    )
+    before = _game(
+        floor=20,
+        turn=2,
+        player=SimpleNamespace(current_hp=64, max_hp=80, block=0, energy=3),
+        hand=[
+            _card(name="Carnage+", card_id="Carnage", damage=28, cost=2, upgrades=1),
+            _card(name="Havoc", card_id="Havoc", card_type=CardType.SKILL, damage=0, cost=1),
+            _card(name="Clothesline", card_id="Clothesline", damage=12, cost=2),
+            _card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, damage=0, block=5),
+            _card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, damage=0, block=5),
+            fiend_fire,
+            _card(name="Carnage+", card_id="Carnage", damage=28, cost=2, upgrades=1),
+        ],
+        monsters=[
+            _monster(
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                block=44,
+                damage=10,
+            )
+        ],
+    )
+    actual = _game(
+        floor=20,
+        turn=2,
+        player=SimpleNamespace(current_hp=64, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                block=2,
+                damage=10,
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=5, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_fiend_fire_plus_uses_ten_damage_per_other_hand_card(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    fiend_fire_plus = _card(
+        name="Fiend Fire+",
+        card_id="Fiend Fire",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=23,
+        turn=1,
+        player=SimpleNamespace(current_hp=44, max_hp=80, block=0, energy=3),
+        hand=[
+            _card(name="Defend+", card_id="Defend_R", card_type=CardType.SKILL, damage=0, block=8, upgrades=1),
+            fiend_fire_plus,
+            _card(name="Rampage", card_id="Rampage", damage=8),
+            _card(name="Iron Wave+", card_id="Iron Wave", damage=7, block=7, upgrades=1),
+        ],
+        monsters=[_monster(name="Mystic", monster_id="Healer", hp=40, damage=0, index=0)],
+    )
+    actual = _game(
+        floor=23,
+        turn=1,
+        player=SimpleNamespace(current_hp=44, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Mystic", monster_id="Healer", hp=10, damage=0, index=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=1, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_dropkick_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
