@@ -3673,6 +3673,136 @@ def test_double_tap_replays_attack_damage(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_necronomicon_replays_first_two_cost_attack(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    bash = _card(
+        name="Bash",
+        card_id="Bash",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=8,
+    )
+    before = _game(
+        floor=23,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=4),
+        hand=[bash],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=50, damage=10)],
+        relics=[_relic("Necronomicon")],
+    )
+    actual = _game(
+        floor=23,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=34, damage=10)],
+        relics=[_relic("Necronomicon")],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_necronomicon_ignores_prior_one_cost_attacks(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Necronomicon")]
+    strike_before = _game(
+        floor=23,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=4),
+        hand=[_card(name="Strike", card_id="Strike_R", damage=6, cost=1)],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=80, damage=10)],
+        relics=relics,
+    )
+    strike_actual = _game(
+        floor=23,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=74, damage=10)],
+        relics=relics,
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), strike_before) is True
+    assert observe_next_state(strike_actual) is False
+
+    bash_before = _game(
+        floor=23,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=3),
+        hand=[_card(name="Bash", card_id="Bash", damage=8, cost=2)],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=74, damage=10)],
+        relics=relics,
+    )
+    bash_actual = _game(
+        floor=23,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=58, damage=10)],
+        relics=relics,
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), bash_before) is True
+    assert observe_next_state(bash_actual) is False
+    assert not trace_path.exists()
+
+
+def test_necronomicon_replays_only_once_per_turn(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Necronomicon")]
+    bash_before = _game(
+        floor=23,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=4),
+        hand=[_card(name="Bash", card_id="Bash", damage=8, cost=2)],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=80, damage=10)],
+        relics=relics,
+    )
+    bash_actual = _game(
+        floor=23,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=64, damage=10)],
+        relics=relics,
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), bash_before) is True
+    assert observe_next_state(bash_actual) is False
+
+    clothesline_before = _game(
+        floor=23,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=2),
+        hand=[_card(name="Clothesline", card_id="Clothesline", damage=12, cost=2)],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=64, damage=10)],
+        relics=relics,
+    )
+    clothesline_actual = _game(
+        floor=23,
+        turn=1,
+        player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=52, damage=10)],
+        relics=relics,
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), clothesline_before) is True
+    assert observe_next_state(clothesline_actual) is False
+    assert not trace_path.exists()
+
+
 def test_double_tap_replays_attack_block_effect(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

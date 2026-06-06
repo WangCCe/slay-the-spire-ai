@@ -137,6 +137,7 @@ _rampage_state_floor: Optional[int] = None
 _attack_count_state_floor: Optional[int] = None
 _attack_count_state_turn: Optional[int] = None
 _attacks_played_this_turn = 0
+_necronomicon_used_this_turn = False
 _pending_headbutt_select_effects: Optional[Dict[str, Any]] = None
 
 
@@ -158,13 +159,14 @@ def divergence_trace_path(path: Optional[Path] = None) -> Optional[Path]:
 def reset_pending_divergence() -> None:
     global _pending_expected, _rampage_damage_bonus_by_card, _rampage_state_floor
     global _attack_count_state_floor, _attack_count_state_turn, _attacks_played_this_turn
-    global _pending_headbutt_select_effects
+    global _necronomicon_used_this_turn, _pending_headbutt_select_effects
     _pending_expected = None
     _rampage_damage_bonus_by_card = {}
     _rampage_state_floor = None
     _attack_count_state_floor = None
     _attack_count_state_turn = None
     _attacks_played_this_turn = 0
+    _necronomicon_used_this_turn = False
     _pending_headbutt_select_effects = None
 
 
@@ -1015,7 +1017,21 @@ def _is_skill_card(card) -> bool:
 def _attack_card_play_count(snapshot: Dict[str, Any], card) -> int:
     if not _is_attack_card(card):
         return 1
-    return 2 if _snapshot_power_amount(snapshot.get("player", {}), "Double Tap") > 0 else 1
+    play_count = 1
+    if _snapshot_power_amount(snapshot.get("player", {}), "Double Tap") > 0:
+        play_count += 1
+    if _necronomicon_attack_replay(snapshot, card):
+        play_count += 1
+    return play_count
+
+
+def _necronomicon_attack_replay(snapshot: Dict[str, Any], card) -> bool:
+    return (
+        not _necronomicon_used_this_turn
+        and _snapshot_has_relic(snapshot, "Necronomicon")
+        and _is_attack_card(card)
+        and _card_cost(card) >= 2
+    )
 
 
 def _is_curse_card(card) -> bool:
@@ -1837,11 +1853,13 @@ def _sync_rampage_state(floor: int) -> None:
 
 def _sync_attack_count_state(floor: int, turn: int) -> None:
     global _attack_count_state_floor, _attack_count_state_turn, _attacks_played_this_turn
+    global _necronomicon_used_this_turn
     if _attack_count_state_floor == floor and _attack_count_state_turn == turn:
         return
     _attack_count_state_floor = floor
     _attack_count_state_turn = turn
     _attacks_played_this_turn = 0
+    _necronomicon_used_this_turn = False
 
 
 def _finalize_observed_action(pending: Dict[str, Any], actual: Dict[str, Any]) -> None:
@@ -1852,6 +1870,7 @@ def _finalize_observed_action(pending: Dict[str, Any], actual: Dict[str, Any]) -
     if not isinstance(card, dict):
         return
     _finalize_attack_count(card, actual)
+    _finalize_necronomicon_usage(card, pending, actual)
     if not _snapshot_card_is_named(card, "Rampage"):
         return
     key = _snapshot_card_identity(card)
@@ -1873,6 +1892,26 @@ def _finalize_attack_count(card: Dict[str, Any], actual: Dict[str, Any]) -> None
     if key.startswith("uuid:") and _snapshot_hand_contains_identity(actual.get("hand", []), key):
         return
     _attacks_played_this_turn += 1
+
+
+def _finalize_necronomicon_usage(
+    card: Dict[str, Any],
+    pending: Dict[str, Any],
+    actual: Dict[str, Any],
+) -> None:
+    global _necronomicon_used_this_turn
+    before = pending.get("before") or {}
+    if (
+        _necronomicon_used_this_turn
+        or not _snapshot_has_relic(before, "Necronomicon")
+        or not _snapshot_card_is_attack(card)
+        or _card_cost(card) < 2
+    ):
+        return
+    key = _snapshot_card_identity(card)
+    if key.startswith("uuid:") and _snapshot_hand_contains_identity(actual.get("hand", []), key):
+        return
+    _necronomicon_used_this_turn = True
 
 
 def _rampage_damage_bonus_for_card(card) -> int:
