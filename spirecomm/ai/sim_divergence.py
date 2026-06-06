@@ -74,6 +74,7 @@ BASE_SKILL_BLOCK = {
     "Impervious": 30,
     "Iron Wave": 5,
     "Power Through": 15,
+    "Sentinel": 5,
     "Shrug It Off": 8,
     "True Grit": 7,
 }
