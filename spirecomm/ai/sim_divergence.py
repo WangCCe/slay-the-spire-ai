@@ -39,6 +39,7 @@ BASE_ATTACK_DAMAGE = {
     "Sever Soul": 16,
     "Strike": 6,
     "Swift Strike": 7,
+    "Sword Boomerang": 9,
     "Thunderclap": 4,
     "Twin Strike": 10,
     "Uppercut": 13,
@@ -46,6 +47,7 @@ BASE_ATTACK_DAMAGE = {
 }
 
 MULTI_HIT_ATTACKS = {
+    "Sword Boomerang": 3,
     "Twin Strike": 2,
 }
 
@@ -599,13 +601,21 @@ def _card_damage_and_hits_for_snapshot(
     if card_name == "Whirlwind":
         per_hit = _source_modified_attack_damage(damage, card, player)
         return max(0, energy_available) * per_hit, 1
-    hit_count = MULTI_HIT_ATTACKS.get(card_name or "", 1)
+    hit_count = _multi_hit_count(card, card_name)
     if hit_count > 1 and card_name is not None:
         damage = _multi_hit_damage_per_hit(card, card_name, hit_count)
     return _source_modified_attack_damage(damage, card, player), hit_count
 
 
+def _multi_hit_count(card, card_name: Optional[str]) -> int:
+    if card_name == "Sword Boomerang" and card_upgrade_count(card) > 0:
+        return 4
+    return MULTI_HIT_ATTACKS.get(card_name or "", 1)
+
+
 def _multi_hit_damage_per_hit(card, card_name: str, hit_count: int) -> int:
+    if card_name == "Sword Boomerang":
+        return 3
     base_damage = BASE_ATTACK_DAMAGE[card_name]
     per_hit = base_damage // hit_count if hit_count > 0 else base_damage
     return per_hit + known_damage_upgrade_bonus(card, card_name)

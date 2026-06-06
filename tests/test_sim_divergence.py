@@ -676,6 +676,121 @@ def test_twin_strike_strength_hits_block_per_hit(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_sword_boomerang_single_live_monster_uses_three_hits(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    sword_boomerang = _card(
+        name="Sword Boomerang",
+        card_id="Sword Boomerang",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=11,
+        turn=1,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=1),
+        hand=[sword_boomerang],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=48, damage=6)],
+    )
+    actual = _game(
+        floor=11,
+        turn=1,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=39, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_sword_boomerang_vulnerable_block_is_applied_per_hit(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    sword_boomerang = _card(
+        name="Sword Boomerang",
+        card_id="Sword Boomerang",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=18,
+        turn=6,
+        player=SimpleNamespace(current_hp=65, max_hp=80, block=0, energy=4),
+        hand=[sword_boomerang],
+        monsters=[
+            _monster(
+                name="Shelled Parasite",
+                monster_id="ShelledParasite",
+                hp=42,
+                block=11,
+                damage=18,
+                powers=[Power("Vulnerable", "Vulnerable", 1)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=18,
+        turn=6,
+        player=SimpleNamespace(current_hp=65, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Shelled Parasite",
+                monster_id="ShelledParasite",
+                hp=41,
+                block=0,
+                damage=18,
+                powers=[Power("Vulnerable", "Vulnerable", 1)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_sword_boomerang_plus_uses_four_hits(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    sword_boomerang_plus = _card(
+        name="Sword Boomerang+",
+        card_id="Sword Boomerang",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=11,
+        turn=1,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=1),
+        hand=[sword_boomerang_plus],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=48, damage=6)],
+    )
+    actual = _game(
+        floor=11,
+        turn=1,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=36, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_dropkick_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
