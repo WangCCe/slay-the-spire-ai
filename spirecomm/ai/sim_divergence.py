@@ -27,6 +27,7 @@ BASE_ATTACK_DAMAGE = {
     "Carnage": 20,
     "Cleave": 8,
     "Clothesline": 12,
+    "Dropkick": 5,
     "Headbutt": 9,
     "Heavy Blade": 14,
     "Hemokinesis": 15,
@@ -213,6 +214,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         card_index = _to_int(getattr(action, "card_index", -1), default=-1)
         if card is not None:
             energy_before_card = expected["player"]["energy"]
+            target_index = None
             if _is_whirlwind(card):
                 expected["player"]["energy"] = 0
             else:
@@ -238,6 +240,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     expected["player"]["current_hp"] - self_damage,
                 )
             energy_gain = _card_energy_gain(card)
+            energy_gain += _conditional_card_energy_gain(card, before, target_index)
             if energy_gain > 0:
                 expected["player"]["energy"] += energy_gain
             block = _card_block(card)
@@ -671,6 +674,15 @@ def _card_energy_gain(card) -> int:
     if card_name == "Bloodletting" and card_upgrade_count(card) > 0:
         return 3
     return CARD_ENERGY_GAIN.get(card_name, 0)
+
+
+def _conditional_card_energy_gain(card, snapshot: Dict[str, Any], target_index: Optional[int]) -> int:
+    if _known_card_name(card, BASE_ATTACK_DAMAGE) != "Dropkick":
+        return 0
+    monsters = snapshot.get("monsters", [])
+    if target_index is None or target_index < 0 or target_index >= len(monsters):
+        return 0
+    return 1 if _snapshot_power_amount(monsters[target_index], "Vulnerable") > 0 else 0
 
 
 def _known_card_name(card, known_values: Dict[str, int]) -> Optional[str]:
