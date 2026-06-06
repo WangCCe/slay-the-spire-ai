@@ -1211,6 +1211,52 @@ def test_rage_does_not_trigger_on_skill(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_juggernaut_damages_single_alive_monster_when_block_is_gained(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    defend_plus = _card(
+        name="Defend+",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+        upgrades=1,
+    )
+    before = _game(
+        floor=28,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=42,
+            max_hp=80,
+            block=0,
+            energy=2,
+            powers=[Power("Juggernaut", "Juggernaut", 5)],
+        ),
+        hand=[defend_plus],
+        monsters=[_monster(name="Shelled Parasite", monster_id="ShelledParasite", hp=72, block=13, damage=0)],
+    )
+    actual = _game(
+        floor=28,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=42,
+            max_hp=80,
+            block=8,
+            energy=1,
+            powers=[Power("Juggernaut", "Juggernaut", 5)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Shelled Parasite", monster_id="ShelledParasite", hp=72, block=8, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_ornamental_fan_adds_block_on_every_third_attack(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
@@ -2315,6 +2361,55 @@ def test_sever_soul_plus_zero_live_damage_uses_upgrade_damage(monkeypatch, tmp_p
     )
 
     assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_sever_soul_triggers_feel_no_pain_for_each_exhausted_non_attack(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    sever_soul_plus = _card(
+        name="Sever Soul+",
+        card_id="Sever Soul",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=21,
+        turn=4,
+        player=SimpleNamespace(
+            current_hp=45,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Feel No Pain", "Feel No Pain", 4)],
+        ),
+        hand=[
+            _card(name="Defend+", card_id="Defend_R", card_type=CardType.SKILL, cost=1, damage=0, block=5, upgrades=1),
+            sever_soul_plus,
+            _card(name="Defend+", card_id="Defend_R", card_type=CardType.SKILL, cost=1, damage=0, block=5, upgrades=1),
+        ],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=40, damage=0)],
+    )
+    actual = _game(
+        floor=21,
+        turn=4,
+        player=SimpleNamespace(
+            current_hp=45,
+            max_hp=80,
+            block=8,
+            energy=1,
+            powers=[Power("Feel No Pain", "Feel No Pain", 4)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Cultist", monster_id="Cultist", hp=18, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=1, target_index=0), before) is True
     assert observe_next_state(actual) is False
     assert not trace_path.exists()
 

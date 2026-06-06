@@ -87,6 +87,16 @@ SECOND_WIND_BLOCK_PER_CARD = {
     "Second Wind": 5,
 }
 
+EXHAUSTS_NON_ATTACK_HAND_CARDS = {
+    "Second Wind": 0,
+    "Sever Soul": 0,
+}
+
+SELF_EXHAUST_CARDS = {
+    "Burning Pact": 0,
+    "Disarm": 0,
+}
+
 CARD_SELF_DAMAGE = {
     "Bloodletting": 3,
     "Hemokinesis": 2,
@@ -310,10 +320,10 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     _heal_player(expected, damage_dealt)
                 rage_block = _rage_attack_block(expected.get("player", {}))
                 if rage_block > 0:
-                    expected["player"]["block"] += rage_block
+                    _gain_player_block(expected, before, rage_block)
                 ornamental_fan_block = _ornamental_fan_attack_block(before)
                 if ornamental_fan_block > 0:
-                    expected["player"]["block"] += ornamental_fan_block
+                    _gain_player_block(expected, before, ornamental_fan_block)
                 if sharp_hide_damage > 0:
                     _damage_player(expected, sharp_hide_damage)
             self_damage = _card_self_damage(card)
@@ -333,7 +343,11 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 expected["player"]["energy"] += energy_gain
             block = _card_block(card)
             if block > 0:
-                expected["player"]["block"] += _modified_block(block, expected.get("player", {}))
+                _gain_player_block(
+                    expected,
+                    before,
+                    _modified_block(block, expected.get("player", {})),
+                )
             second_wind_block = _second_wind_block(
                 card,
                 before,
@@ -341,7 +355,24 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 expected.get("player", {}),
             )
             if second_wind_block > 0:
-                expected["player"]["block"] += second_wind_block
+                _gain_player_block(
+                    expected,
+                    before,
+                    second_wind_block,
+                    _exhausts_non_attack_hand_count(card, before, card_index),
+                )
+            feel_no_pain_block, feel_no_pain_events = _feel_no_pain_block(
+                card,
+                before,
+                card_index,
+            )
+            if feel_no_pain_block > 0:
+                _gain_player_block(
+                    expected,
+                    before,
+                    feel_no_pain_block,
+                    feel_no_pain_events,
+                )
             _apply_havoc_top_card(expected, before, card)
         if 0 <= card_index < len(expected["hand"]):
             expected["hand"].pop(card_index)
@@ -918,6 +949,27 @@ def _second_wind_block(
     per_card = SECOND_WIND_BLOCK_PER_CARD[card_name]
     if card_upgrade_count(card) > 0:
         per_card += 2
+    non_attack_count = _exhausts_non_attack_hand_count(card, before, card_index)
+    if player is not None:
+        return sum(_modified_block(per_card, player) for _ in range(non_attack_count))
+    return non_attack_count * per_card
+
+
+def _exhausts_non_attack_hand_count(
+    card,
+    before: Dict[str, Any],
+    card_index: int,
+) -> int:
+    if _known_card_name(card, EXHAUSTS_NON_ATTACK_HAND_CARDS) is None:
+        return 0
+    return _non_attack_hand_count_excluding_played(card, before, card_index)
+
+
+def _non_attack_hand_count_excluding_played(
+    card,
+    before: Dict[str, Any],
+    card_index: int,
+) -> int:
     non_attack_count = 0
     skipped_played_card = False
     for index, hand_card in enumerate(before.get("hand", [])):
@@ -928,9 +980,30 @@ def _second_wind_block(
             continue
         if not _snapshot_card_is_attack(hand_card):
             non_attack_count += 1
-    if player is not None:
-        return sum(_modified_block(per_card, player) for _ in range(non_attack_count))
-    return non_attack_count * per_card
+    return non_attack_count
+
+
+def _feel_no_pain_block(
+    card,
+    before: Dict[str, Any],
+    card_index: int,
+) -> tuple[int, int]:
+    amount = max(0, _snapshot_power_amount(before.get("player", {}), "Feel No Pain"))
+    if amount <= 0:
+        return 0, 0
+    exhaust_count = _feel_no_pain_exhaust_count(card, before, card_index)
+    return amount * exhaust_count, exhaust_count
+
+
+def _feel_no_pain_exhaust_count(
+    card,
+    before: Dict[str, Any],
+    card_index: int,
+) -> int:
+    exhaust_count = _exhausts_non_attack_hand_count(card, before, card_index)
+    if _known_card_name(card, SELF_EXHAUST_CARDS) is not None:
+        exhaust_count += 1
+    return exhaust_count
 
 
 def _snapshot_card_is_attack(card: Dict[str, Any]) -> bool:
@@ -1020,6 +1093,33 @@ def _modified_block(block: int, player: Dict[str, Any]) -> int:
     if _snapshot_power_amount(player, "Frail") > 0:
         block = block * 3 // 4
     return max(0, block)
+
+
+def _gain_player_block(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+    amount: int,
+    trigger_count: int = 1,
+) -> None:
+    if amount <= 0:
+        return
+    expected["player"]["block"] += amount
+    _apply_juggernaut_block_triggers(expected, before, trigger_count)
+
+
+def _apply_juggernaut_block_triggers(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+    trigger_count: int,
+) -> None:
+    damage = max(0, _snapshot_power_amount(before.get("player", {}), "Juggernaut"))
+    if damage <= 0 or trigger_count <= 0:
+        return
+    target_index = _single_alive_monster_index(expected)
+    if target_index is None:
+        return
+    for _ in range(trigger_count):
+        _apply_direct_monster_damage(expected, target_index, damage)
 
 
 def _rage_attack_block(player: Dict[str, Any]) -> int:
@@ -1190,10 +1290,10 @@ def _apply_havoc_top_card(
             _heal_player(expected, damage_dealt)
         rage_block = _rage_attack_block(expected.get("player", {}))
         if rage_block > 0:
-            expected["player"]["block"] += rage_block
+            _gain_player_block(expected, before, rage_block)
         ornamental_fan_block = _ornamental_fan_attack_block(before)
         if ornamental_fan_block > 0:
-            expected["player"]["block"] += ornamental_fan_block
+            _gain_player_block(expected, before, ornamental_fan_block)
         if sharp_hide_damage > 0:
             _damage_player(expected, sharp_hide_damage)
 
@@ -1213,9 +1313,10 @@ def _apply_havoc_top_card(
         expected["player"]["energy"] += energy_gain
     block = _card_block(top_card)
     if block > 0:
-        expected["player"]["block"] += _modified_block(
-            block,
-            expected.get("player", {}),
+        _gain_player_block(
+            expected,
+            before,
+            _modified_block(block, expected.get("player", {})),
         )
 
 
