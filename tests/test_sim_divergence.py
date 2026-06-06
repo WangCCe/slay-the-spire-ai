@@ -4770,6 +4770,42 @@ def test_end_turn_orichalcum_block_reduces_incoming_damage(monkeypatch, tmp_path
     assert not trace_path.exists()
 
 
+def test_end_turn_self_forming_clay_block_tracks_each_hp_loss(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Burning Blood"), _relic("Self Forming Clay")]
+    before = _game(
+        floor=11,
+        turn=3,
+        player=SimpleNamespace(current_hp=40, max_hp=80, block=3, energy=0),
+        hand=[],
+        relics=relics,
+        monsters=[
+            _monster(name="Spike Slime (S)", monster_id="SpikeSlime_S", hp=11, damage=5),
+            _monster(name="Acid Slime (S)", monster_id="AcidSlime_S", hp=12, damage=3, index=1),
+            _monster(name="Spike Slime (S)", monster_id="SpikeSlime_S", hp=7, damage=5, index=2),
+        ],
+    )
+    actual = _game(
+        floor=11,
+        turn=4,
+        player=SimpleNamespace(current_hp=30, max_hp=80, block=9, energy=3),
+        hand=[],
+        relics=relics,
+        monsters=[
+            _monster(name="Spike Slime (S)", monster_id="SpikeSlime_S", hp=11, damage=5),
+            _monster(name="Acid Slime (S)", monster_id="AcidSlime_S", hp=12, damage=3, index=1),
+            _monster(name="Spike Slime (S)", monster_id="SpikeSlime_S", hp=7, damage=5, index=2),
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_mercury_hourglass_damages_monsters(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

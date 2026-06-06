@@ -396,10 +396,11 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         if orichalcum_block > 0:
             expected["player"]["block"] += orichalcum_block
         _apply_end_turn_attack_reflection_damage(expected, before)
-        incoming = _incoming_damage_from_snapshot(before)
-        incoming += _end_turn_status_damage(before)
-        _damage_player(expected, incoming)
-        expected["player"]["block"] = 0
+        hp_loss_events = _apply_end_turn_player_damage(expected, before)
+        expected["player"]["block"] = _self_forming_clay_end_turn_block(
+            before,
+            hp_loss_events,
+        )
         expected["player"]["energy"] = 0
         brutality_loss = _brutality_start_turn_hp_loss(before)
         if brutality_loss > 0:
@@ -1186,20 +1187,33 @@ def _heal_player(expected: Dict[str, Any], amount: int) -> None:
     )
 
 
-def _damage_player(expected: Dict[str, Any], amount: int) -> None:
+def _damage_player(expected: Dict[str, Any], amount: int) -> int:
     if amount <= 0:
-        return
+        return 0
     player = expected.get("player", {})
+    hp_before = _to_int(player.get("current_hp"))
     block = max(0, _to_int(player.get("block")))
     blocked = min(block, amount)
     player["block"] = block - blocked
     remaining = amount - blocked
     if remaining > 0:
-        player["current_hp"] = max(0, _to_int(player.get("current_hp")) - remaining)
+        player["current_hp"] = max(0, hp_before - remaining)
+    return 1 if _to_int(player.get("current_hp")) < hp_before else 0
 
 
-def _end_turn_status_damage(snapshot: Dict[str, Any]) -> int:
-    total = 0
+def _apply_end_turn_player_damage(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> int:
+    hp_loss_events = 0
+    for amount in _end_turn_status_damage_events(before):
+        hp_loss_events += _damage_player(expected, amount)
+    for amount in _end_turn_monster_attack_damage_events(before):
+        hp_loss_events += _damage_player(expected, amount)
+    return hp_loss_events
+
+
+def _end_turn_status_damage_events(snapshot: Dict[str, Any]):
     for card in snapshot.get("hand", []) or []:
         card_name = _snapshot_known_card_name(card, END_TURN_STATUS_DAMAGE)
         if card_name is None:
@@ -1207,8 +1221,21 @@ def _end_turn_status_damage(snapshot: Dict[str, Any]) -> int:
         damage = END_TURN_STATUS_DAMAGE[card_name]
         if card_name == "Burn" and _snapshot_card_upgrade_count(card) > 0:
             damage += 2
-        total += damage
-    return total
+        if damage > 0:
+            yield damage
+
+
+def _end_turn_monster_attack_damage_events(snapshot: Dict[str, Any]):
+    for monster in snapshot.get("monsters", []) or []:
+        if monster.get("gone") or monster.get("half_dead"):
+            continue
+        if "attack" not in _normalize(monster.get("intent")):
+            continue
+        damage = max(0, _to_int(monster.get("move_damage")))
+        if damage <= 0:
+            continue
+        for _ in range(_monster_attack_hits(monster)):
+            yield damage
 
 
 def _brutality_start_turn_hp_loss(snapshot: Dict[str, Any]) -> int:
@@ -1223,6 +1250,12 @@ def _orichalcum_end_turn_block(snapshot: Dict[str, Any], player: Dict[str, Any])
     if not _snapshot_has_relic(snapshot, "Orichalcum"):
         return 0
     return 6 if _to_int(player.get("block")) <= 0 else 0
+
+
+def _self_forming_clay_end_turn_block(snapshot: Dict[str, Any], hp_loss_events: int) -> int:
+    if hp_loss_events <= 0 or not _snapshot_has_relic(snapshot, "Self Forming Clay"):
+        return 0
+    return hp_loss_events * 3
 
 
 def _apply_end_turn_attack_reflection_damage(
