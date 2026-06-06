@@ -5425,6 +5425,112 @@ def test_end_turn_self_forming_clay_block_tracks_each_hp_loss(monkeypatch, tmp_p
     assert not trace_path.exists()
 
 
+def test_end_turn_next_turn_block_stacks_with_self_forming_clay(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Burning Blood"), _relic("Self-Forming Clay", relic_id="Self Forming Clay")]
+    before = _game(
+        floor=16,
+        turn=14,
+        player=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            block=8,
+            energy=0,
+            powers=[
+                Power("Evolve", "Evolve", 2),
+                Power("Vulnerable", "Vulnerable", 1),
+                Power("Next Turn Block", "Self-Forming Clay", 3),
+                Power("Weakened", "Weakened", 1),
+            ],
+        ),
+        hand=[],
+        relics=relics,
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=134, damage=13)],
+    )
+    actual = _game(
+        floor=16,
+        turn=15,
+        player=SimpleNamespace(
+            current_hp=35,
+            max_hp=80,
+            block=6,
+            energy=3,
+            powers=[Power("Evolve", "Evolve", 2)],
+        ),
+        hand=[],
+        relics=relics,
+        monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=134, damage=13)],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_end_turn_self_forming_clay_does_not_grant_block_after_death(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Burning Blood"), _relic("Self-Forming Clay", relic_id="Self Forming Clay")]
+    before = _game(
+        floor=16,
+        turn=23,
+        player=SimpleNamespace(
+            current_hp=10,
+            max_hp=80,
+            block=10,
+            energy=0,
+            powers=[Power("Evolve", "Evolve", 2)],
+        ),
+        hand=[],
+        relics=relics,
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=50,
+                damage=5,
+                hits=4,
+                powers=[Power("Mode Shift", "Mode Shift", 50)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=16,
+        turn=23,
+        player=SimpleNamespace(
+            current_hp=0,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[
+                Power("Evolve", "Evolve", 2),
+                Power("Next Turn Block", "Self-Forming Clay", 3),
+            ],
+        ),
+        hand=[],
+        relics=relics,
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=50,
+                damage=-1,
+                hits=1,
+                powers=[Power("Mode Shift", "Mode Shift", 50)],
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_barricade_retains_remaining_block_after_attacks(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

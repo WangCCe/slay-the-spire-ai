@@ -436,13 +436,17 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             _heal_player(expected, regeneration_heal)
         hp_loss_events += _apply_end_turn_player_damage(expected, before)
         retained_block = _barricade_end_turn_block(before, expected.get("player", {}))
-        next_turn_block = _self_forming_clay_end_turn_block(
-            before,
-            hp_loss_events,
-        )
+        next_turn_block = 0
         if _to_int(expected.get("player", {}).get("current_hp")) > 0:
+            next_turn_block += _next_turn_block_start_turn_block(before)
+            next_turn_block += _self_forming_clay_end_turn_block(
+                before,
+                hp_loss_events,
+            )
             next_turn_block += _horn_cleat_start_turn_block(before)
-        expected["player"]["block"] = retained_block + next_turn_block
+            expected["player"]["block"] = retained_block + next_turn_block
+        else:
+            expected["player"]["block"] = 0
         expected["player"]["energy"] = 0
         brutality_loss = _brutality_start_turn_hp_loss(before)
         if brutality_loss > 0:
@@ -1478,6 +1482,10 @@ def _metallicize_end_turn_block(snapshot: Dict[str, Any]) -> int:
 
 def _plated_armor_end_turn_block(snapshot: Dict[str, Any]) -> int:
     return max(0, _snapshot_power_amount(snapshot.get("player", {}), "Plated Armor"))
+
+
+def _next_turn_block_start_turn_block(snapshot: Dict[str, Any]) -> int:
+    return max(0, _snapshot_power_amount(snapshot.get("player", {}), "Next Turn Block"))
 
 
 def _orichalcum_end_turn_block(snapshot: Dict[str, Any], player: Dict[str, Any]) -> int:
