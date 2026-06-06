@@ -44,6 +44,7 @@ def _monster(
     name="Cultist",
     monster_id="Cultist",
     hp=42,
+    max_hp=None,
     block=0,
     damage=6,
     hits=1,
@@ -55,7 +56,7 @@ def _monster(
         name=name,
         monster_id=monster_id,
         current_hp=hp,
-        max_hp=max(hp, 1),
+        max_hp=max(max_hp if max_hp is not None else hp, 1),
         block=block,
         intent=intent,
         move_adjusted_damage=damage,
@@ -4547,6 +4548,67 @@ def test_end_turn_mercury_hourglass_damages_monsters(monkeypatch, tmp_path):
                 damage=0,
                 intent=Intent.BUFF,
             )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_end_turn_mystic_heals_all_alive_monsters(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=30,
+        turn=3,
+        player=SimpleNamespace(current_hp=60, max_hp=80, block=20, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Centurion",
+                monster_id="Centurion",
+                hp=52,
+                max_hp=80,
+                damage=0,
+                intent=Intent.DEFEND,
+            ),
+            _monster(
+                name="Mystic",
+                monster_id="Healer",
+                hp=43,
+                max_hp=55,
+                damage=0,
+                intent=Intent.BUFF,
+                index=1,
+            ),
+        ],
+    )
+    actual = _game(
+        floor=30,
+        turn=4,
+        player=SimpleNamespace(current_hp=60, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Centurion",
+                monster_id="Centurion",
+                hp=68,
+                max_hp=80,
+                damage=0,
+                intent=Intent.DEFEND,
+            ),
+            _monster(
+                name="Mystic",
+                monster_id="Healer",
+                hp=55,
+                max_hp=55,
+                damage=0,
+                intent=Intent.BUFF,
+                index=1,
+            ),
         ],
     )
 

@@ -107,6 +107,8 @@ END_TURN_STATUS_DAMAGE = {
     "Burn": 2,
 }
 
+MYSTIC_HEAL_AMOUNT = 16
+
 HAVOC_CARDS = {
     "Havoc": 0,
 }
@@ -367,6 +369,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             )
         for monster in expected.get("monsters", []):
             monster["block"] = 0
+        _apply_mystic_heal(expected, before)
         _apply_mercury_hourglass_damage(expected, before)
 
     return expected
@@ -1132,6 +1135,30 @@ def _apply_mercury_hourglass_damage(
         return
     for index, _monster in enumerate(expected.get("monsters", []) or []):
         _apply_direct_monster_damage(expected, index, 3)
+
+
+def _apply_mystic_heal(expected: Dict[str, Any], before: Dict[str, Any]) -> None:
+    for monster in before.get("monsters", []) or []:
+        if not _is_mystic_heal_turn(monster):
+            continue
+        for target in expected.get("monsters", []) or []:
+            if target.get("gone") or target.get("half_dead"):
+                continue
+            hp = _to_int(target.get("hp"))
+            if hp <= 0:
+                continue
+            max_hp = _to_int(target.get("max_hp"))
+            healed_hp = hp + MYSTIC_HEAL_AMOUNT
+            target["hp"] = min(max_hp, healed_hp) if max_hp > 0 else healed_hp
+
+
+def _is_mystic_heal_turn(monster: Dict[str, Any]) -> bool:
+    if monster.get("gone") or monster.get("half_dead") or _to_int(monster.get("hp")) <= 0:
+        return False
+    identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
+    if identifiers.isdisjoint({"healer", "mystic"}):
+        return False
+    return "buff" in _normalize(monster.get("intent"))
 
 
 def _apply_havoc_top_card(
