@@ -353,6 +353,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         metallicize_block = _metallicize_end_turn_block(before)
         if metallicize_block > 0:
             expected["player"]["block"] += metallicize_block
+        _apply_end_turn_thorns_damage(expected, before)
         incoming = _incoming_damage_from_snapshot(before)
         incoming += _end_turn_status_damage(before)
         _damage_player(expected, incoming)
@@ -366,6 +367,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             )
         for monster in expected.get("monsters", []):
             monster["block"] = 0
+        _apply_mercury_hourglass_damage(expected, before)
 
     return expected
 
@@ -635,15 +637,23 @@ def _slime_split_visible(snapshot: Dict[str, Any]) -> bool:
 def _incoming_damage_from_snapshot(snapshot: Dict[str, Any]) -> int:
     total = 0
     for monster in snapshot.get("monsters", []):
-        if monster.get("gone") or monster.get("half_dead"):
-            continue
-        if "attack" not in _normalize(monster.get("intent")):
-            continue
-        total += max(0, _to_int(monster.get("move_damage"))) * max(
-            1,
-            _to_int(monster.get("move_hits"), default=1),
-        )
+        total += _monster_attack_damage(monster)
     return total
+
+
+def _monster_attack_damage(monster: Dict[str, Any]) -> int:
+    if monster.get("gone") or monster.get("half_dead"):
+        return 0
+    if "attack" not in _normalize(monster.get("intent")):
+        return 0
+    damage = max(0, _to_int(monster.get("move_damage")))
+    if damage <= 0:
+        return 0
+    return damage * max(1, _to_int(monster.get("move_hits"), default=1))
+
+
+def _monster_attack_hits(monster: Dict[str, Any]) -> int:
+    return max(1, _to_int(monster.get("move_hits"), default=1))
 
 
 def _card_for_action(action, game):
@@ -1087,6 +1097,29 @@ def _brutality_start_turn_hp_loss(snapshot: Dict[str, Any]) -> int:
 
 def _metallicize_end_turn_block(snapshot: Dict[str, Any]) -> int:
     return max(0, _snapshot_power_amount(snapshot.get("player", {}), "Metallicize"))
+
+
+def _apply_end_turn_thorns_damage(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> None:
+    thorns = max(0, _snapshot_power_amount(before.get("player", {}), "Thorns"))
+    if thorns <= 0:
+        return
+    for index, monster in enumerate(before.get("monsters", []) or []):
+        if _monster_attack_damage(monster) <= 0:
+            continue
+        _apply_direct_monster_damage(expected, index, thorns * _monster_attack_hits(monster))
+
+
+def _apply_mercury_hourglass_damage(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> None:
+    if not _snapshot_has_relic(before, "Mercury Hourglass"):
+        return
+    for index, _monster in enumerate(expected.get("monsters", []) or []):
+        _apply_direct_monster_damage(expected, index, 3)
 
 
 def _apply_havoc_top_card(

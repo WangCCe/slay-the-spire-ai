@@ -4512,6 +4512,104 @@ def test_end_turn_metallicize_block_reduces_incoming_damage(monkeypatch, tmp_pat
     assert not trace_path.exists()
 
 
+def test_end_turn_mercury_hourglass_damages_monsters(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=33,
+        turn=3,
+        player=SimpleNamespace(current_hp=76, max_hp=85, block=5, energy=0),
+        hand=[],
+        relics=[_relic("Mercury Hourglass")],
+        monsters=[
+            _monster(
+                name="The Champ",
+                monster_id="Champ",
+                hp=317,
+                damage=0,
+                intent=Intent.BUFF,
+            )
+        ],
+    )
+    actual = _game(
+        floor=33,
+        turn=4,
+        player=SimpleNamespace(current_hp=76, max_hp=85, block=0, energy=3),
+        hand=[],
+        relics=[_relic("Mercury Hourglass")],
+        monsters=[
+            _monster(
+                name="The Champ",
+                monster_id="Champ",
+                hp=314,
+                damage=0,
+                intent=Intent.BUFF,
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_end_turn_thorns_damages_each_attacking_hit(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=16,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            block=20,
+            energy=0,
+            powers=[Power("Thorns", "Thorns", 3)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Hexaghost",
+                monster_id="Hexaghost",
+                hp=209,
+                damage=7,
+                hits=6,
+                intent=Intent.ATTACK,
+            )
+        ],
+    )
+    actual = _game(
+        floor=16,
+        turn=4,
+        player=SimpleNamespace(
+            current_hp=58,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Thorns", "Thorns", 3)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Hexaghost",
+                monster_id="Hexaghost",
+                hp=191,
+                damage=7,
+                hits=6,
+                intent=Intent.ATTACK,
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_combat_rl_checks_pending_divergence_on_next_state(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
