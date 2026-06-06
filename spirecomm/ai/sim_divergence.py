@@ -29,6 +29,7 @@ BASE_ATTACK_DAMAGE = {
     "Cleave": 8,
     "Clothesline": 12,
     "Dropkick": 5,
+    "Feed": 10,
     "Fiend Fire": 7,
     "Headbutt": 9,
     "Heavy Blade": 14,
