@@ -363,6 +363,7 @@ def _apply_expected_attack(
             break
         if hp_loss > 0:
             _decrement_flight(target)
+            _trigger_malleable(target)
         if not curl_up_applied and hp_loss > 0:
             curl_up_block = max(0, _snapshot_power_amount(target, "Curl Up"))
             if curl_up_block > 0:
@@ -830,6 +831,14 @@ def _decrement_flight(target: Dict[str, Any]) -> None:
         return
 
 
+def _trigger_malleable(target: Dict[str, Any]) -> None:
+    amount = max(0, _snapshot_power_amount(target, "Malleable"))
+    if amount <= 0:
+        return
+    target["block"] = max(0, _to_int(target.get("block"))) + amount
+    _set_snapshot_power_amount(target, "Malleable", amount + 1)
+
+
 def _modified_block(block: int, player: Dict[str, Any]) -> int:
     if block <= 0:
         return 0
@@ -925,6 +934,18 @@ def _snapshot_power_amount(entity: Dict[str, Any], power_name: str) -> int:
         if target in identifiers:
             return _to_int(power.get("amount"), default=1)
     return 0
+
+
+def _set_snapshot_power_amount(entity: Dict[str, Any], power_name: str, amount: int) -> None:
+    target = _normalize(power_name)
+    for power in entity.get("powers", []) or []:
+        identifiers = {
+            _normalize(power.get("id")),
+            _normalize(power.get("name")),
+        }
+        if target in identifiers:
+            power["amount"] = amount
+            return
 
 
 def _card_self_damage(card) -> int:

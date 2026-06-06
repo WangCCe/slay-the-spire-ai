@@ -165,6 +165,86 @@ def test_curse_play_without_blue_candle_does_not_lose_hp(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_malleable_gains_block_after_attack_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    strike = _card(name="Strike", card_id="Strike_R", damage=6)
+    before = _game(
+        player=SimpleNamespace(current_hp=70, max_hp=80, block=0, energy=3),
+        hand=[strike],
+        monsters=[
+            _monster(
+                name="Snake Plant",
+                monster_id="SnakePlant",
+                hp=30,
+                powers=[Power("Malleable", "Malleable", 3)],
+            )
+        ],
+    )
+    actual = _game(
+        player=SimpleNamespace(current_hp=70, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Snake Plant",
+                monster_id="SnakePlant",
+                hp=24,
+                block=3,
+                powers=[Power("Malleable", "Malleable", 4)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_malleable_block_can_absorb_later_hits(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    twin_strike = _card(
+        name="Twin Strike",
+        card_id="Twin Strike",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=10,
+    )
+    before = _game(
+        player=SimpleNamespace(current_hp=70, max_hp=80, block=0, energy=3),
+        hand=[twin_strike],
+        monsters=[
+            _monster(
+                name="Snake Plant",
+                monster_id="SnakePlant",
+                hp=30,
+                powers=[Power("Malleable", "Malleable", 3)],
+            )
+        ],
+    )
+    actual = _game(
+        player=SimpleNamespace(current_hp=70, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Snake Plant",
+                monster_id="SnakePlant",
+                hp=23,
+                block=4,
+                powers=[Power("Malleable", "Malleable", 5)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_guardian_sharp_hide_reflection_spends_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
