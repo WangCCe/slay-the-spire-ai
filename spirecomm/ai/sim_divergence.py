@@ -48,6 +48,7 @@ BASE_ATTACK_DAMAGE = {
     "Twin Strike": 10,
     "Uppercut": 13,
     "Whirlwind": 5,
+    "Wild Strike": 12,
 }
 
 MULTI_HIT_ATTACKS = {

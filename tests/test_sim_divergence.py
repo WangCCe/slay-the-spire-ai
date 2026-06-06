@@ -1884,6 +1884,119 @@ def test_searing_blow_plus_two_uses_special_upgrade_scaling(monkeypatch, tmp_pat
     assert not trace_path.exists()
 
 
+def test_wild_strike_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    wild_strike = _card(
+        name="Wild Strike",
+        card_id="Wild Strike",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=8,
+        turn=1,
+        player=SimpleNamespace(current_hp=77, max_hp=80, block=0, energy=3),
+        hand=[wild_strike],
+        monsters=[_monster(name="Acid Slime (M)", monster_id="AcidSlime_M", hp=32, damage=10)],
+    )
+    actual = _game(
+        floor=8,
+        turn=1,
+        player=SimpleNamespace(current_hp=77, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Acid Slime (M)", monster_id="AcidSlime_M", hp=20, damage=10)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_wild_strike_vulnerable_target_uses_base_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    wild_strike = _card(
+        name="Wild Strike",
+        card_id="Wild Strike",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=5,
+        turn=1,
+        player=SimpleNamespace(current_hp=69, max_hp=80, block=0, energy=1),
+        hand=[wild_strike],
+        monsters=[
+            _monster(
+                name="Cultist",
+                monster_id="Cultist",
+                hp=46,
+                damage=0,
+                powers=[Power("Vulnerable", "Vulnerable", 2)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=5,
+        turn=1,
+        player=SimpleNamespace(current_hp=69, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Cultist",
+                monster_id="Cultist",
+                hp=28,
+                damage=0,
+                powers=[Power("Vulnerable", "Vulnerable", 2)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_wild_strike_plus_zero_live_damage_uses_upgrade_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    wild_strike_plus = _card(
+        name="Wild Strike+",
+        card_id="Wild Strike",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(current_hp=70, max_hp=80, block=0, energy=2),
+        hand=[wild_strike_plus],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=50, damage=12)],
+    )
+    actual = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(current_hp=70, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=33, damage=12)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_immolate_zero_live_damage_hits_all_monsters(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
