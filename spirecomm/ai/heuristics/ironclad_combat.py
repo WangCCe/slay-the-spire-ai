@@ -1197,7 +1197,11 @@ class IroncladCombatPlanner(CombatPlanner):
 
         return 1
 
-    def _known_attack_damage_for_bonus(self, card: Card) -> int:
+    def _known_attack_damage_for_bonus(
+        self,
+        card: Card,
+        context: Optional[DecisionContext] = None,
+    ) -> int:
         """Return known attack damage for strategic bonuses without generic fallback."""
         card_type = card_type_name(card)
         if card_type and card_type != 'ATTACK':
@@ -1205,6 +1209,8 @@ class IroncladCombatPlanner(CombatPlanner):
 
         base_damage = self._non_negative_int(getattr(card, 'damage', 0))
         if base_damage > 0:
+            if context is not None:
+                return self._apply_player_weak_to_fallback_attack_damage(base_damage, 1, context)
             return base_damage
 
         try:
@@ -1216,7 +1222,10 @@ class IroncladCombatPlanner(CombatPlanner):
             parsed_damage = game_data_loader._parse_card_damage(card_data)
             if parsed_damage is None or parsed_damage <= 0:
                 return 0
-            return parsed_damage + known_damage_upgrade_bonus(card, card_name)
+            damage = parsed_damage + known_damage_upgrade_bonus(card, card_name)
+            if context is not None:
+                return self._apply_player_weak_to_fallback_attack_damage(damage, 1, context)
+            return damage
         except Exception:
             return 0
 
@@ -1630,7 +1639,7 @@ class IroncladCombatPlanner(CombatPlanner):
                     if block_val > 0:
                         score += block_val * 3  # Value block
 
-                    damage_value = self._known_attack_damage_for_bonus(card)
+                    damage_value = self._known_attack_damage_for_bonus(card, context)
                     if damage_value > 0:
                         score += damage_value * 1.5  # Value damage
                     # Bonus for hybrid nature
@@ -1639,7 +1648,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 # High priority cards that need special handling
                 elif card_id == 'Immolate':
                     # Immolate: high damage + card draw, despite self-damage
-                    damage_value = self._known_attack_damage_for_bonus(card)
+                    damage_value = self._known_attack_damage_for_bonus(card, context)
                     if damage_value > 0:
                         score += damage_value * 2.0  # Value damage highly
                     # Value card draw potential
@@ -1660,7 +1669,7 @@ class IroncladCombatPlanner(CombatPlanner):
                     monster_count = len(context.monsters_alive)
                     if monster_count >= 2:
                         score += 25  # Bonus for multiple monsters
-                    damage_value = self._known_attack_damage_for_bonus(card)
+                    damage_value = self._known_attack_damage_for_bonus(card, context)
                     if damage_value > 0:
                         score += damage_value * monster_count * 0.5  # Value per target
                 

@@ -10111,6 +10111,15 @@ def test_ironclad_known_attack_damage_bonus_accepts_string_damage_attribute():
     assert IroncladCombatPlanner()._known_attack_damage_for_bonus(strike) == 6
 
 
+def test_ironclad_known_attack_damage_bonus_respects_player_weak():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.damage = 6
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Weak", amount=1)]
+
+    assert IroncladCombatPlanner()._known_attack_damage_for_bonus(strike, context) == 4
+
+
 def test_demon_form_does_not_add_strength_on_the_turn_it_is_played():
     demon_form = _card(
         "Demon Form",

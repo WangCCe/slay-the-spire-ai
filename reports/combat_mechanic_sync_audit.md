@@ -63,6 +63,10 @@ already disproved.
   reduces survival attack damage while the player is Weak. This prevents the
   guard from retargeting to an attacker that only looks killable under full
   card damage.
+- 2026-06-07: `IroncladCombatPlanner` fallback card-priority damage bonuses now
+  reduce known scalar attack damage while the player is Weak. This keeps
+  strategic bonus scoring for cards such as Iron Wave, Immolate, and Whirlwind
+  from valuing full visible attack damage under Weak.
 
 ## Backlog
 
