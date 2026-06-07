@@ -92,6 +92,11 @@ already disproved.
   Feel No Pain plus Juggernaut damage from Havoc exhausting a visible
   draw-pile top card. This only proves lethal when Juggernaut's random target is
   deterministic with one live monster; multi-monster cases remain conservative.
+- 2026-06-07: `CombatRLAgent`'s Havoc risk guard now allows RL-selected Havoc
+  when the visible draw-pile top card is a deterministic attack. Single-monster
+  top attacks and AOE top attacks are treated as non-risky; targeted top attacks
+  with multiple live monsters remain conservative because Havoc target selection
+  is not provable there.
 - 2026-06-07: `FastCombatSimulator` and the same-file no-simulation attack
   estimate now apply Pen Nib when the relic counter is 9. The source-side
   attack damage is doubled before player Weak and target Vulnerable, simulated

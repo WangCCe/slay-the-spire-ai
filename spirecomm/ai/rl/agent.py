@@ -33,6 +33,7 @@ from spirecomm.ai.heuristics.card_upgrades import (
     known_damage_upgrade_bonus,
 )
 from spirecomm.ai.heuristics.card_types import (
+    COMMON_AOE_ATTACK_NAMES,
     card_requires_target,
     card_type_name,
     is_attack_card,
@@ -2457,12 +2458,34 @@ class CombatRLAgent:
             return False
         if not self._is_havoc_action(action, game):
             return False
+        if self._havoc_visible_top_attack_is_deterministic(game):
+            return False
 
         energy = self._player_energy(game)
         for _, card in self._playable_cards(game, energy):
             if not self._card_matches_normalized_names(card, {"havoc"}):
                 return True
         return False
+
+    @classmethod
+    def _havoc_visible_top_attack_is_deterministic(cls, game: Game) -> bool:
+        top_card = cls._draw_pile_top_card(game)
+        if top_card is None or not is_attack_card(top_card):
+            return False
+
+        alive_count = len(cls._alive_monsters(game))
+        if alive_count == 1:
+            return True
+
+        aoe_names = {cls._normalize_identifier(name) for name in COMMON_AOE_ATTACK_NAMES}
+        return cls._card_matches_normalized_names(top_card, aoe_names)
+
+    @staticmethod
+    def _draw_pile_top_card(game: Game):
+        draw_pile = getattr(game, "draw_pile", None)
+        if not isinstance(draw_pile, list) or not draw_pile:
+            return None
+        return draw_pile[-1]
 
     def _get_havoc_safe_replacement(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction

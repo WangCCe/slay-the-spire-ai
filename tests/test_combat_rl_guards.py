@@ -2719,6 +2719,128 @@ def test_havoc_guard_replaces_rl_havoc_with_safer_card():
     assert agent._fallback_turn_key == (5, 2)
 
 
+def test_havoc_guard_allows_visible_top_attack_against_single_monster():
+    havoc = SimpleNamespace(
+        name="Havoc",
+        card_id="Havoc",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    top_strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+        damage=6,
+    )
+    game = _game(
+        player=SimpleNamespace(energy=2),
+        hand=[havoc, defend],
+        draw_pile=[top_strike],
+        monsters=[_monster(hp=6, damage=8, index=0)],
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=lambda _game: PlayCardAction(card_index=0))
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert agent._fallback_turn_key is None
+
+
+def test_havoc_guard_allows_visible_top_aoe_attack_against_multiple_monsters():
+    havoc = SimpleNamespace(
+        name="Havoc",
+        card_id="Havoc",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    top_cleave = SimpleNamespace(
+        name="Cleave",
+        card_id="Cleave",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        damage=8,
+    )
+    game = _game(
+        player=SimpleNamespace(energy=2),
+        hand=[havoc, defend],
+        draw_pile=[top_cleave],
+        monsters=[_monster(hp=8, damage=6, index=0), _monster(hp=8, damage=6, index=1)],
+    )
+
+    assert _agent()._should_override_risky_havoc(PlayCardAction(card_index=0), game) is False
+
+
+def test_havoc_guard_keeps_visible_top_targeted_attack_multi_monster_conservative():
+    havoc = SimpleNamespace(
+        name="Havoc",
+        card_id="Havoc",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    top_strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+        damage=6,
+    )
+    game = _game(
+        player=SimpleNamespace(energy=2),
+        hand=[havoc, defend],
+        draw_pile=[top_strike],
+        monsters=[_monster(hp=6, damage=6, index=0), _monster(hp=6, damage=6, index=1)],
+    )
+
+    assert _agent()._should_override_risky_havoc(PlayCardAction(card_index=0), game) is True
+
+
 def test_rl_action_log_names_returned_card(caplog):
     strike = SimpleNamespace(
         name="Strike",
