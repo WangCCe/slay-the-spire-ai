@@ -345,6 +345,13 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                         damage,
                         hit_count,
                         before,
+                        source_damage_before_weak=_card_damage_before_player_weak(
+                            card,
+                            expected.get("player", {}),
+                            energy_before_card,
+                            before,
+                            card_index,
+                        ),
                     )
                     sharp_hide_damage = _sharp_hide_reflection_damage(before, all_targets=True)
                 else:
@@ -355,6 +362,13 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                         damage,
                         hit_count,
                         before,
+                        source_damage_before_weak=_card_damage_before_player_weak(
+                            card,
+                            expected.get("player", {}),
+                            energy_before_card,
+                            before,
+                            card_index,
+                        ),
                     )
                     sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
                     _apply_card_target_debuffs(expected, card, target_index)
@@ -484,6 +498,7 @@ def _apply_expected_attack(
     damage: int,
     hit_count: int = 1,
     before: Optional[Dict[str, Any]] = None,
+    source_damage_before_weak: Optional[int] = None,
 ) -> int:
     if target_index is None or target_index < 0:
         return 0
@@ -497,7 +512,12 @@ def _apply_expected_attack(
     for _ in range(max(0, hit_count)):
         if target.get("gone") or target.get("half_dead") or _to_int(target.get("hp")) <= 0:
             break
-        remaining_damage = _modified_attack_damage(max(0, damage), target, before)
+        remaining_damage = _modified_attack_damage(
+            max(0, damage),
+            target,
+            before,
+            source_damage_before_weak=source_damage_before_weak,
+        )
         if target["block"] > 0:
             blocked = min(target["block"], remaining_damage)
             target["block"] -= blocked
@@ -533,6 +553,7 @@ def _apply_expected_attack_to_all(
     damage: int,
     hit_count: int = 1,
     before: Optional[Dict[str, Any]] = None,
+    source_damage_before_weak: Optional[int] = None,
 ) -> int:
     damage_dealt = 0
     for index, monster in enumerate(expected.get("monsters", [])):
@@ -544,6 +565,7 @@ def _apply_expected_attack_to_all(
             damage,
             hit_count,
             before,
+            source_damage_before_weak=source_damage_before_weak,
         )
     return damage_dealt
 
@@ -1348,21 +1370,64 @@ def _card_damage_and_hits_for_snapshot(
     energy_available: int = 0,
     before: Optional[Dict[str, Any]] = None,
     card_index: int = -1,
+    apply_weak: bool = True,
 ) -> tuple[int, int]:
     damage = _card_damage(card)
     card_name = _known_card_name(card, BASE_ATTACK_DAMAGE)
     if card_name == "Mind Blast" and before is not None:
         damage = max(0, _to_int(before.get("draw_pile_count"), default=0))
     if card_name == "Whirlwind":
-        per_hit = _source_modified_attack_damage(damage, card, player, before)
+        per_hit = _source_modified_attack_damage(
+            damage,
+            card,
+            player,
+            before,
+            apply_weak=apply_weak,
+        )
         return max(0, energy_available) * per_hit, 1
     if card_name == "Fiend Fire" and before is not None:
         hit_count = _fiend_fire_hit_count(card, before, card_index)
-        return _source_modified_attack_damage(damage, card, player, before), hit_count
+        return (
+            _source_modified_attack_damage(
+                damage,
+                card,
+                player,
+                before,
+                apply_weak=apply_weak,
+            ),
+            hit_count,
+        )
     hit_count = _multi_hit_count(card, card_name)
     if hit_count > 1 and card_name is not None:
         damage = _multi_hit_damage_per_hit(card, card_name, hit_count)
-    return _source_modified_attack_damage(damage, card, player, before), hit_count
+    return (
+        _source_modified_attack_damage(
+            damage,
+            card,
+            player,
+            before,
+            apply_weak=apply_weak,
+        ),
+        hit_count,
+    )
+
+
+def _card_damage_before_player_weak(
+    card,
+    player: Dict[str, Any],
+    energy_available: int = 0,
+    before: Optional[Dict[str, Any]] = None,
+    card_index: int = -1,
+) -> int:
+    damage, _hit_count = _card_damage_and_hits_for_snapshot(
+        card,
+        player,
+        energy_available,
+        before,
+        card_index,
+        apply_weak=False,
+    )
+    return damage
 
 
 def _fiend_fire_hit_count(card, before: Dict[str, Any], card_index: int) -> int:
@@ -1521,6 +1586,7 @@ def _source_modified_attack_damage(
     card,
     player: Dict[str, Any],
     snapshot: Optional[Dict[str, Any]] = None,
+    apply_weak: bool = True,
 ) -> int:
     if damage <= 0:
         return 0
@@ -1532,7 +1598,7 @@ def _source_modified_attack_damage(
             damage += strength
     if _pen_nib_damage_multiplier(snapshot, card) > 1:
         damage *= 2
-    if _snapshot_power_amount(player, "Weakened") > 0 or _snapshot_power_amount(player, "Weak") > 0:
+    if apply_weak and _snapshot_player_is_weak(player):
         damage = damage * 3 // 4
     return max(0, damage)
 
@@ -1541,11 +1607,21 @@ def _modified_attack_damage(
     damage: int,
     target: Dict[str, Any],
     before: Optional[Dict[str, Any]] = None,
+    source_damage_before_weak: Optional[int] = None,
 ) -> int:
     if damage <= 0:
         return 0
     if _snapshot_power_amount(target, "Vulnerable") > 0:
-        damage = _vulnerable_modified_damage(damage, before)
+        if (
+            source_damage_before_weak is not None
+            and _snapshot_player_is_weak((before or {}).get("player", {}))
+        ):
+            damage = _weak_vulnerable_modified_damage(
+                source_damage_before_weak,
+                before,
+            )
+        else:
+            damage = _vulnerable_modified_damage(damage, before)
     if _snapshot_power_amount(target, "Flight") > 0:
         damage = damage // 2
     return max(0, damage)
@@ -1558,6 +1634,22 @@ def _vulnerable_modified_damage(
     if _snapshot_has_relic(before or {}, "Paper Phrog"):
         return damage * 7 // 4
     return damage * 3 // 2
+
+
+def _weak_vulnerable_modified_damage(
+    damage_before_weak: int,
+    before: Optional[Dict[str, Any]] = None,
+) -> int:
+    if _snapshot_has_relic(before or {}, "Paper Phrog"):
+        return damage_before_weak * 21 // 16
+    return damage_before_weak * 9 // 8
+
+
+def _snapshot_player_is_weak(player: Dict[str, Any]) -> bool:
+    return (
+        _snapshot_power_amount(player, "Weakened") > 0
+        or _snapshot_power_amount(player, "Weak") > 0
+    )
 
 
 def _decrement_flight(target: Dict[str, Any]) -> None:
@@ -1972,12 +2064,20 @@ def _apply_havoc_top_card(
             before,
             -1,
         )
+        source_damage_before_weak = _card_damage_before_player_weak(
+            top_card,
+            expected.get("player", {}),
+            0,
+            before,
+            -1,
+        )
         if _is_all_enemy_attack(top_card):
             damage_dealt = _apply_expected_attack_to_all(
                 expected,
                 damage,
                 hit_count,
                 before,
+                source_damage_before_weak=source_damage_before_weak,
             )
             sharp_hide_damage = _sharp_hide_reflection_damage(before, all_targets=True)
         else:
@@ -1991,6 +2091,7 @@ def _apply_havoc_top_card(
                     damage,
                     hit_count,
                     before,
+                    source_damage_before_weak=source_damage_before_weak,
                 )
                 sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
         if _is_reaper(top_card) and damage_dealt > 0:
