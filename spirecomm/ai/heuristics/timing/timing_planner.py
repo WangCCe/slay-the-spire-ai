@@ -35,7 +35,11 @@ from spirecomm.ai.heuristics.card_costs import (
     whirlwind_damage,
     x_effect_energy,
 )
-from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
+from spirecomm.ai.heuristics.card_types import (
+    card_requires_target,
+    card_type_name,
+    is_attack_card,
+)
 from spirecomm.ai.heuristics.card_upgrades import (
     card_upgrade_count,
     heavy_blade_strength_multiplier,
@@ -1367,7 +1371,10 @@ class TimingAwareCombatPlanner:
         if hasattr(card, 'block_for'):
             try:
                 block = max(0, int(card.block_for()))
-                return self._apply_block_status_modifiers(block, context)
+                return (
+                    self._apply_block_status_modifiers(block, context)
+                    + self._ornamental_fan_block_for_card(card, context)
+                )
             except Exception:
                 pass
 
@@ -1394,7 +1401,10 @@ class TimingAwareCombatPlanner:
             except Exception:
                 block = 0
 
-        return self._apply_block_status_modifiers(block, context)
+        return (
+            self._apply_block_status_modifiers(block, context)
+            + self._ornamental_fan_block_for_card(card, context)
+        )
 
     def _estimate_havoc_top_card_block(self, havoc_card, context) -> int:
         top_card = self._draw_pile_top_card(context)
@@ -1423,6 +1433,14 @@ class TimingAwareCombatPlanner:
         if block <= 0 and player_has_power(context, 'Feel No Pain'):
             return 3
         return block
+
+    def _ornamental_fan_block_for_card(self, card, context) -> int:
+        if context is None or not is_attack_card(card):
+            return 0
+        counter = self._context_relic_counter(context, 'Ornamental Fan')
+        if counter is None:
+            return 0
+        return 4 if (max(0, counter) + 1) % 3 == 0 else 0
 
     def _apply_block_status_modifiers(self, block: int, context=None) -> int:
         block = max(0, int(block))
