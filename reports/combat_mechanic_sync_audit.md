@@ -42,7 +42,7 @@ Status labels:
 | X-energy and per-hit attacks | Whirlwind divergence and guard tests | synced | synced | synced | synced | synced for relevant RL survival multi-hit paths | Watch for newly added scalar damage shortcuts. |
 | Hand-count attack damage | Fiend Fire divergence and guard tests | synced | synced | synced | synced | not currently duplicated outside encoded card identity | No immediate gap found; recheck only when RL adds Fiend Fire-specific damage guards. |
 | Target-side attack modifiers | Weak, Vulnerable, Paper Phrog divergence tests | synced | synced | synced | synced | synced for Slime split survival guard | Generic scoring that does not estimate player attack damage is `n/a`. |
-| Monster lifecycle states | Darkling half-dead/revive divergence and live stuck evidence | n/a | synced | synced | synced for SAFE timing bonus | synced for v2 state alive flag and reward exit handling | Slime split lifecycle boundaries still need periodic review across new target masks. |
+| Monster lifecycle states | Darkling half-dead/revive plus Collector summon/reorder divergence evidence | n/a | synced for Darkling revive, death split, and concrete current-move summons without negative lifecycle damage score | synced | synced for SAFE timing bonus | synced for v2 state alive flag and reward exit handling | Random/generic summons still need explicit live evidence and concrete minion data before materialization. |
 | Combat escape settlement | Looter/Mugger escape and Smoke Bomb divergence evidence | n/a | synced for Smoke Bomb potion escape and Looter/Mugger end-turn escape projection without kill/lethal credit | n/a | n/a | synced for in-combat and combat-exit reward | Other escape monsters should be added only with explicit intent/move evidence. |
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
 | Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | synced for Pen Nib scalar fallback damage estimates, Nunchaku counter-9 refund-preserving attack-before-defense ordering, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective block before defense priority | synced for Pen Nib damage estimates, Nunchaku targeted lethal search, cache invalidation over relic counters plus draw-pile/hand/deck inputs, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective turn block before fallback block scoring | synced for direct and Havoc-top Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether non-damage relic counters are read or intentionally ignored. |
@@ -100,6 +100,12 @@ Status labels:
   escape-intent monsters and the Looter/Mugger escape move as gone while
   tracking escaped monsters separately from kills. Outcome scoring removes the
   escaped monster from live threats without awarding kill or all-lethal credit.
+- 2026-06-08: `FastCombatSimulator` end-turn projection now materializes
+  concrete minions for the current summoning monster move, including The
+  Collector's Spawn move producing two Torch Heads. Summoned minions get HP and
+  attack intent/damage from monster data so future-threat scoring can see them,
+  while outcome damage scoring uses tracked player damage with an existing-slot
+  fallback so newly summoned HP is not counted as negative damage.
 - 2026-06-08: legacy RL `StateEncoder` hand/card-reward damage features now
   fall back to parsed static attack damage when live attack cards report zero
   damage, including upgraded static attacks such as Headbutt+. This keeps RL

@@ -454,6 +454,7 @@ class SimulationState:
         )
         self.player_artifact = self._get_player_power_amount(context, 'Artifact')
         self.combat_escaped = False
+        self.ascension_level = self._context_ascension_level(context)
 
         # Player debuffs (binary: >0 means debuffed)
         self.player_vulnerable = self._get_player_debuff_stacks(context, 'Vulnerable')
@@ -3338,6 +3339,7 @@ class FastCombatSimulator:
         projected = self._apply_monster_escape_intents(projected)
         projected = self._revive_ready_darklings(projected)
         projected = self._materialize_pending_death_splits(projected)
+        projected = self._materialize_end_turn_summons(projected)
         return projected
 
     def _apply_monster_escape_intents(self, state: SimulationState) -> SimulationState:
@@ -3396,6 +3398,222 @@ class FastCombatSimulator:
             normalize_monster_id(_canonical_live_monster_name(monster)),
         }
         return 'darkling' in identifiers
+
+    def _materialize_end_turn_summons(self, state: SimulationState) -> SimulationState:
+        """Add deterministic minions for the current summoning monster move."""
+        new_monsters = []
+        changed = False
+
+        for monster in state.monsters:
+            new_monsters.append(monster)
+            summon_names = self._end_turn_summon_names(monster)
+            if not summon_names:
+                continue
+
+            live_minions = self._live_summoned_minion_count(state, summon_names)
+            max_minions = self._summoner_max_minions(monster, summon_names)
+            open_slots = max(0, max_minions - live_minions)
+            if open_slots <= 0:
+                continue
+
+            for child_index, child_name in enumerate(summon_names[:open_slots]):
+                summoned = self._make_summoned_monster(child_name, monster, state, child_index)
+                if summoned is None:
+                    continue
+                new_monsters.append(summoned)
+                changed = True
+
+        if changed:
+            state.monsters = new_monsters
+            state.primary_target = None
+
+        return state
+
+    def _end_turn_summon_names(self, monster: dict) -> List[str]:
+        if not self._is_live_monster_state(monster):
+            return []
+
+        monster_name = _canonical_live_monster_name(monster)
+        if not monster_name:
+            return []
+
+        move = self._current_summon_move(monster_name, monster)
+        if not move:
+            return []
+
+        raw_summons = move.get('summons')
+        if isinstance(raw_summons, str):
+            summon_names = [raw_summons]
+        elif isinstance(raw_summons, list):
+            summon_names = [name for name in raw_summons if isinstance(name, str)]
+        else:
+            summon_names = []
+
+        summon_names = self._concrete_summon_names(summon_names)
+        if not summon_names:
+            return []
+
+        count = self._summon_count_from_move(move, len(summon_names))
+        if count <= 0:
+            return []
+        if len(summon_names) == 1 and count > 1:
+            summon_names = summon_names * count
+        return summon_names[:count]
+
+    def _current_summon_move(self, monster_name: str, monster: dict) -> Optional[Dict[str, Any]]:
+        move_id = coerce_int(monster.get('move_id'), None)
+        if move_id is None:
+            return None
+
+        for move in game_data_loader.get_monster_moves(monster_name):
+            if 'summons' not in move:
+                continue
+            if coerce_int(move.get('move_id'), None) == move_id:
+                return move
+        return None
+
+    def _concrete_summon_names(self, summon_names: List[str]) -> List[str]:
+        concrete_names = []
+        for raw_name in summon_names:
+            child_name = self._canonical_monster_name(raw_name)
+            if not game_data_loader.get_enhanced_monster_data(child_name):
+                logger.debug("[SUMMON] Skipping unknown summoned monster %s", raw_name)
+                continue
+            concrete_names.append(child_name)
+        return concrete_names
+
+    def _summon_count_from_move(self, move: Dict[str, Any], default_count: int) -> int:
+        count = move.get('summon_count')
+        if isinstance(count, dict):
+            values = [
+                coerce_int(value, None)
+                for value in count.values()
+            ]
+            values = [value for value in values if value is not None]
+            return max(values, default=default_count)
+        return max(0, coerce_int(count, default_count))
+
+    def _summoner_max_minions(self, monster: dict, summon_names: List[str]) -> int:
+        monster_name = _canonical_live_monster_name(monster)
+        monster_data = game_data_loader.get_enhanced_monster_data(monster_name)
+        mechanics = monster_data.get('special_mechanics', {}) if monster_data else {}
+        return max(
+            len(summon_names),
+            coerce_int(mechanics.get('max_minions'), len(summon_names)),
+        )
+
+    def _live_summoned_minion_count(self, state: SimulationState, summon_names: List[str]) -> int:
+        summon_name_set = {
+            normalize_monster_id(name)
+            for name in summon_names
+        }
+        return sum(
+            1
+            for candidate in state.monsters
+            if (
+                self._is_live_monster_state(candidate)
+                and normalize_monster_id(_canonical_live_monster_name(candidate)) in summon_name_set
+            )
+        )
+
+    def _make_summoned_monster(
+        self,
+        child_name: str,
+        parent: dict,
+        state: SimulationState,
+        child_index: int,
+    ) -> Optional[dict]:
+        child_name = self._canonical_monster_name(child_name)
+        hp = self._summoned_monster_hp(child_name, state)
+        if hp <= 0:
+            return None
+
+        attack_damage, attack_hits, move_id = self._strongest_known_attack_move_values(child_name)
+        monster_data = game_data_loader.get_enhanced_monster_data(child_name) or {}
+        return {
+            'monster_id': monster_data.get('monster_id', child_name),
+            'name': child_name,
+            'hp': hp,
+            'max_hp': hp,
+            'block': 0,
+            'intent': Intent.ATTACK if attack_damage > 0 else Intent.UNKNOWN,
+            'move_id': move_id,
+            'is_gone': False,
+            'half_dead': False,
+            'is_minion': True,
+            'vulnerable': 0,
+            'weak': 0,
+            'frail': 0,
+            'poison': 0,
+            'thorns': 0,
+            'artifact': 0,
+            'move_base_damage': attack_damage,
+            'move_adjusted_damage': attack_damage,
+            'move_hits': attack_hits,
+            'strength': 0,
+            'skill_strength_gain': 0,
+            'power_strength_gain': 0,
+            'end_turn_strength_gain': 0,
+            'summoned_by': parent.get('name', ''),
+            'summon_child_index': child_index,
+        }
+
+    def _summoned_monster_hp(self, child_name: str, state: SimulationState) -> int:
+        monster_data = game_data_loader.get_enhanced_monster_data(child_name)
+        hp_range = self._monster_hp_range_from_data(
+            monster_data.get('hp_ranges') if monster_data else None,
+            child_name,
+            getattr(state, 'ascension_level', 0),
+        )
+        if hp_range is None:
+            return 0
+        return max(1, hp_range[1])
+
+    def _monster_hp_range_from_data(
+        self,
+        hp_ranges: Any,
+        monster_name: str,
+        ascension_level: int,
+    ) -> Optional[Tuple[int, int]]:
+        if not isinstance(hp_ranges, dict):
+            return None
+
+        thresholds = []
+        for key in hp_ranges:
+            match = re.match(r'ascension_(\d+)\+$', str(key))
+            if match:
+                thresholds.append((int(match.group(1)), key))
+        for threshold, key in sorted(thresholds, reverse=True):
+            if ascension_level >= threshold:
+                hp_range = self._extract_monster_hp_tuple(hp_ranges[key], monster_name)
+                if hp_range is not None:
+                    return hp_range
+
+        if 'normal' in hp_ranges:
+            hp_range = self._extract_monster_hp_tuple(hp_ranges['normal'], monster_name)
+            if hp_range is not None:
+                return hp_range
+
+        return self._extract_monster_hp_tuple(hp_ranges, monster_name)
+
+    def _extract_monster_hp_tuple(
+        self,
+        range_data: Any,
+        monster_name: str,
+    ) -> Optional[Tuple[int, int]]:
+        if not isinstance(range_data, dict):
+            return None
+        minimum = coerce_int(range_data.get('min'), None)
+        maximum = coerce_int(range_data.get('max'), None)
+        if minimum is not None and maximum is not None:
+            return minimum, maximum
+
+        normalized_name = str(monster_name or '').lower()
+        for key, value in range_data.items():
+            if str(key).lower() != normalized_name:
+                continue
+            return self._extract_monster_hp_tuple(value, monster_name)
+        return None
 
     def _apply_skill(
         self,
@@ -5307,14 +5525,25 @@ class FastCombatSimulator:
         }
 
     def _strongest_known_attack_damage(self, monster_name: str) -> int:
-        damage_values = []
+        damage, hits, _move_id = self._strongest_known_attack_move_values(monster_name)
+        return int(damage * hits)
+
+    def _strongest_known_attack_move_values(self, monster_name: str) -> Tuple[int, int, Optional[int]]:
+        best_damage = 0
+        best_hits = 1
+        best_move_id = None
         for move in game_data_loader.get_monster_moves(monster_name):
             damage = self._numeric_damage_value(move.get('damage'))
             if not intent_is_attack(move.get('intent', '')) or damage <= 0:
                 continue
             hits = self._move_hit_count(move)
-            damage_values.append(int(damage * hits))
-        return max(damage_values, default=0)
+            total = int(damage * hits)
+            if total <= best_damage:
+                continue
+            best_damage = damage
+            best_hits = hits
+            best_move_id = coerce_int(move.get('move_id'), None)
+        return best_damage, best_hits, best_move_id
 
     def _handle_death_split(self, state: SimulationState, monster: dict, monster_index: int):
         """
@@ -5546,6 +5775,34 @@ class FastCombatSimulator:
 
         return bonus
 
+    def _outcome_total_damage(
+        self,
+        initial_state: SimulationState,
+        final_state: SimulationState,
+    ) -> int:
+        tracked_damage = max(
+            0,
+            coerce_int(getattr(final_state, 'total_damage_dealt', 0), 0)
+            - coerce_int(getattr(initial_state, 'total_damage_dealt', 0), 0),
+        )
+        if tracked_damage > 0:
+            return tracked_damage
+
+        initial_hp = sum(m['hp'] for m in initial_state.monsters)
+        final_existing_hp = sum(
+            m['hp']
+            for m in final_state.monsters[:len(initial_state.monsters)]
+            if not self._is_lifecycle_spawned_monster(m)
+        )
+        return max(0, initial_hp - final_existing_hp)
+
+    @staticmethod
+    def _is_lifecycle_spawned_monster(monster: dict) -> bool:
+        return bool(
+            monster.get('summoned_by')
+            or monster.get('split_materialized')
+        )
+
     def calculate_outcome_score(self, initial_state: SimulationState, final_state: SimulationState,
                                current_act: int = 1, weights: dict = None, context=None, sequence=None) -> float:
         """
@@ -5621,8 +5878,7 @@ class FastCombatSimulator:
             logger.debug(f"[ALL_LETHAL_BONUS] +{ALL_LETHAL_BONUS} score for killing all {initial_alive} monsters")
 
         # 2. Damage dealt (with multi-monster bonuses)
-        total_damage = sum(m['hp'] for m in initial_state.monsters) - \
-                      sum(m['hp'] for m in final_state.monsters)
+        total_damage = self._outcome_total_damage(initial_state, final_state)
 
         # Multi-monster detection and adaptive damage weighting
         num_monsters = len([m for m in initial_state.monsters if self._is_live_monster_state(m)])

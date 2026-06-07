@@ -724,6 +724,22 @@ def _darkling(current_hp=48):
     )
 
 
+def _collector_spawn(current_hp=260):
+    return Monster(
+        name="The Collector",
+        monster_id="TheCollector",
+        max_hp=current_hp,
+        current_hp=current_hp,
+        block=0,
+        intent=Intent.UNKNOWN,
+        half_dead=False,
+        is_gone=False,
+        move_id=0,
+        move_adjusted_damage=-1,
+        move_hits=1,
+    )
+
+
 def _orb_walker(current_hp=96, move_id=0, move_adjusted_damage=10):
     return Monster(
         name="Orb Walker",
@@ -16222,6 +16238,47 @@ def test_looter_end_turn_escape_projection_removes_threat_without_kill_score():
     assert getattr(projected, "monsters_escaped", 0) == 1
     assert score < simulation.KILL_BONUS
     assert score < simulation.ALL_LETHAL_BONUS
+
+
+def test_collector_spawn_end_turn_projection_adds_torch_heads_without_negative_damage_score():
+    context = _combat_context([], energy=0, monsters=[_collector_spawn()])
+    context.act = 2
+    context.floor = 33
+    context.ascension_level = 0
+    context.game.ascension_level = 0
+    context.game.monsters = context.monsters_alive
+    initial = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    projected = simulator.project_end_turn_effects(initial)
+    live_names = [
+        monster["name"]
+        for monster in projected.monsters
+        if simulator._is_live_monster_state(monster)
+    ]
+    torch_heads = [
+        monster
+        for monster in projected.monsters
+        if monster["name"] == "Torch Head"
+    ]
+
+    assert live_names.count("The Collector") == 1
+    assert live_names.count("Torch Head") == 2
+    assert all(38 <= monster["hp"] <= 40 for monster in torch_heads)
+    score = simulator.calculate_outcome_score(
+        initial,
+        initial,
+        current_act=2,
+        weights={
+            "KILL_BONUS": 0,
+            "DAMAGE_WEIGHT": 1,
+            "BLOCK_WEIGHT": 0,
+            "ENERGY_EFFICIENCY_WEIGHT": 0,
+            "W_DEATHRISK": 0,
+        },
+        context=context,
+    )
+    assert score == 0
 
 
 def test_smoke_bomb_gets_high_priority_when_incoming_damage_is_lethal():
