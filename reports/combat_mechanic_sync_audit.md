@@ -88,6 +88,10 @@ already disproved.
   monster, AOE top attacks apply through the existing AOE lethal damage path,
   and the returned action remains the Havoc play rather than the consumed top
   card.
+- 2026-06-07: `CombatEndingDetector` now counts the deterministic
+  Feel No Pain plus Juggernaut damage from Havoc exhausting a visible
+  draw-pile top card. This only proves lethal when Juggernaut's random target is
+  deterministic with one live monster; multi-monster cases remain conservative.
 - 2026-06-07: `FastCombatSimulator` and the same-file no-simulation attack
   estimate now apply Pen Nib when the relic counter is 9. The source-side
   attack damage is doubled before player Weak and target Vulnerable, simulated
@@ -175,7 +179,7 @@ already disproved.
   - Paper Phrog, Weak/Vulnerable, Strength, and upgraded attack stats.
   - Other dynamic base damage beyond the Mind Blast combat estimator and RL
     survival surfaces already covered above.
-  - Havoc random-target boundaries and Feel No Pain block across remaining
-    live estimators.
+  - Havoc random-target boundaries and non-Juggernaut Feel No Pain block value
+    across remaining live estimators.
   - Monster lifecycle boundaries such as Slime split and Darkling revive.
   - Combat-exit boundaries such as Looter escape.

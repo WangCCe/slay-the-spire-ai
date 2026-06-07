@@ -236,7 +236,15 @@ class CombatEndingDetector:
 
             attack_cards = [
                 card for card in context.playable_cards
-                if is_attack_card(card) or self._havoc_top_attack_card(card, context) is not None
+                if (
+                    is_attack_card(card)
+                    or self._havoc_top_attack_card(card, context) is not None
+                    or self._havoc_top_exhaust_juggernaut_damage_potential(
+                        card,
+                        context,
+                        available_energy,
+                    ) > 0
+                )
             ]
             proven_aoe_cleanup = bool(self._find_aoe_cleanup_sequence(
                 context,
@@ -328,7 +336,15 @@ class CombatEndingDetector:
 
         # Get attack cards sorted by damage
         attack_cards = [c for c in context.playable_cards
-                       if is_attack_card(c) or self._havoc_top_attack_card(c, context) is not None]
+                       if (
+                           is_attack_card(c)
+                           or self._havoc_top_attack_card(c, context) is not None
+                           or self._havoc_top_exhaust_juggernaut_damage_potential(
+                               c,
+                               context,
+                               remaining_energy,
+                           ) > 0
+                       )]
         attack_cards.sort(
             key=lambda c: self._get_card_damage(
                 c,
@@ -495,6 +511,7 @@ class CombatEndingDetector:
                 self._is_aoe_attack(card)
                 or self._card_requires_target(card)
                 or self._havoc_top_attack_card(card, context) is not None
+                or self._havoc_top_exhaust_juggernaut_ready(card, context)
             )
         ]
         return (
@@ -822,6 +839,78 @@ class CombatEndingDetector:
             )
 
         return 0
+
+    def _player_feel_no_pain_block_per_exhaust(self, context: DecisionContext) -> int:
+        block = max(0, self._get_player_debuff_stacks(context, 'Feel No Pain'))
+        if block <= 0 and player_has_power(context, 'Feel No Pain'):
+            return 3
+        return block
+
+    def _havoc_top_exhaust_juggernaut_ready(
+        self,
+        havoc_card: Card,
+        context: DecisionContext,
+        consumed: int = 0,
+    ) -> bool:
+        if self._base_card_name(havoc_card) != 'Havoc':
+            return False
+        if self._draw_pile_top_card_for_havoc(context, consumed) is None:
+            return False
+        return (
+            self._player_feel_no_pain_block_per_exhaust(context) > 0
+            and self._player_juggernaut_damage(context) > 0
+        )
+
+    def _apply_havoc_top_exhaust_juggernaut_damage(
+        self,
+        havoc_card: Card,
+        context: DecisionContext,
+        hp_state: Tuple[int, ...],
+        block_state: Tuple[int, ...],
+        consumed: int = 0,
+    ) -> Tuple[Tuple[int, ...], Tuple[int, ...], int]:
+        if not self._havoc_top_exhaust_juggernaut_ready(
+            havoc_card,
+            context,
+            consumed,
+        ):
+            return hp_state, block_state, 0
+
+        target_idx = self._single_alive_monster_index(hp_state)
+        if target_idx is None:
+            return hp_state, block_state, 0
+
+        return self._apply_lethal_direct_damage_to_target(
+            hp_state,
+            block_state,
+            target_idx,
+            self._player_juggernaut_damage(context),
+        )
+
+    def _havoc_top_exhaust_juggernaut_damage_potential(
+        self,
+        havoc_card: Card,
+        context: DecisionContext,
+        available_energy: int,
+    ) -> int:
+        if self._lethal_card_cost(havoc_card, context, available_energy) > available_energy:
+            return 0
+
+        hp_state = tuple(
+            self._monster_current_hp(monster)
+            for monster in getattr(context, 'monsters_alive', []) or []
+        )
+        block_state = tuple(
+            max(0, self._safe_int(getattr(monster, 'block', 0), default=0))
+            for monster in getattr(context, 'monsters_alive', []) or []
+        )
+        _next_hp, _next_block, damage = self._apply_havoc_top_exhaust_juggernaut_damage(
+            havoc_card,
+            context,
+            hp_state,
+            block_state,
+        )
+        return damage
 
     def _is_lethal_strength_support_card(self, card: Card) -> bool:
         card_name = self._base_card_name(card)
@@ -1168,6 +1257,7 @@ class CombatEndingDetector:
                 self._is_aoe_attack(card)
                 or self._card_requires_target(card)
                 or self._havoc_top_attack_card(card, context) is not None
+                or self._havoc_top_exhaust_juggernaut_ready(card, context)
             )
         ]
         support_cards = [
@@ -1455,6 +1545,16 @@ class CombatEndingDetector:
                 )
                 if havoc_candidate is not None:
                     candidates.append(havoc_candidate)
+                    continue
+
+                havoc_exhaust_candidate = self._havoc_top_exhaust_juggernaut_lethal_candidate(
+                    card_pos,
+                    card,
+                    context,
+                    state,
+                )
+                if havoc_exhaust_candidate is not None:
+                    candidates.append(havoc_exhaust_candidate)
                     continue
 
                 if self._is_aoe_attack(card):
@@ -1933,6 +2033,17 @@ class CombatEndingDetector:
 
             cost -= total_energy_refund
 
+        next_hp, next_block, exhaust_damage = (
+            self._apply_havoc_top_exhaust_juggernaut_damage(
+                havoc_card,
+                context,
+                next_hp,
+                next_block,
+                state.havoc_cards_consumed,
+            )
+        )
+        total_damage += exhaust_damage
+
         if total_damage <= 0:
             return None
 
@@ -1966,6 +2077,56 @@ class CombatEndingDetector:
                 artifact=next_artifact,
                 double_tap_charges=next_double_tap_charges,
                 nunchaku_counter=next_nunchaku_counter,
+                havoc_cards_consumed=state.havoc_cards_consumed + 1,
+            ),
+        )
+
+    def _havoc_top_exhaust_juggernaut_lethal_candidate(
+        self,
+        card_pos: int,
+        havoc_card: Card,
+        context: DecisionContext,
+        state: _TargetedLethalState,
+    ) -> Optional[_TargetedLethalCandidate]:
+        cost = self._lethal_card_cost(
+            havoc_card,
+            context,
+            state.energy,
+            state.corruption_active,
+        )
+        if cost > state.energy:
+            return None
+
+        next_hp, next_block, damage_progress = (
+            self._apply_havoc_top_exhaust_juggernaut_damage(
+                havoc_card,
+                context,
+                state.hp,
+                state.block,
+                state.havoc_cards_consumed,
+            )
+        )
+        if damage_progress <= 0:
+            return None
+
+        kill_count = sum(
+            1
+            for before_hp, after_hp in zip(state.hp, next_hp)
+            if before_hp > 0 and after_hp <= 0
+        )
+        return _TargetedLethalCandidate(
+            priority=(
+                kill_count,
+                0,
+                damage_progress,
+                -cost,
+            ),
+            card_pos=card_pos,
+            monster_idx=None,
+            next_state=state.after_spending(
+                cost,
+                hp=next_hp,
+                block=next_block,
                 havoc_cards_consumed=state.havoc_cards_consumed + 1,
             ),
         )
@@ -2275,6 +2436,11 @@ class CombatEndingDetector:
                     available_energy,
                 )
             ) > 0:
+                havoc_damage += self._havoc_top_exhaust_juggernaut_damage_potential(
+                    card,
+                    context,
+                    available_energy,
+                )
                 cost = self._lethal_card_cost(card, context, available_energy)
                 logger.info(f"[LETHAL_CALC] {card.name}: cost={cost}, havoc_top_damage={havoc_damage}, eff={havoc_damage/cost if cost > 0 else 'inf'}")
                 if cost > 0:
@@ -2282,6 +2448,20 @@ class CombatEndingDetector:
                 else:
                     efficiency = float('inf')
                 attack_cards.append((card, cost, havoc_damage, efficiency))
+            elif (
+                havoc_exhaust_damage := self._havoc_top_exhaust_juggernaut_damage_potential(
+                    card,
+                    context,
+                    available_energy,
+                )
+            ) > 0:
+                cost = self._lethal_card_cost(card, context, available_energy)
+                logger.info(f"[LETHAL_CALC] {card.name}: cost={cost}, havoc_top_exhaust_juggernaut_damage={havoc_exhaust_damage}, eff={havoc_exhaust_damage/cost if cost > 0 else 'inf'}")
+                if cost > 0:
+                    efficiency = havoc_exhaust_damage / cost
+                else:
+                    efficiency = float('inf')
+                attack_cards.append((card, cost, havoc_exhaust_damage, efficiency))
             elif juggernaut_damage > 0:
                 cost = self._lethal_card_cost(card, context, available_energy)
                 damage = juggernaut_damage

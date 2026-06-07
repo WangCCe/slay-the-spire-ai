@@ -11586,6 +11586,47 @@ def test_lethal_detector_counts_havoc_visible_top_aoe_attack(monkeypatch):
     assert sequence[0].target_monster is None
 
 
+def test_lethal_detector_counts_havoc_top_exhaust_feel_no_pain_juggernaut(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "berserk": {
+            "name": "Berserk",
+            "description": "Gain 2 Vulnerable. At the start of your turn, gain [R].",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    havoc.uuid = "havoc"
+    top_berserk = _card(
+        "Berserk",
+        "Berserk",
+        card_type=CardType.POWER,
+        cost=0,
+        has_target=False,
+    )
+    context = _combat_context([havoc], energy=1, monsters=[_louse(current_hp=5)])
+    context.game.draw_pile = [top_berserk]
+    context.game.player.powers = [
+        SimpleNamespace(power_name="Feel No Pain", amount=3),
+        SimpleNamespace(power_name="Juggernaut", amount=5),
+    ]
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 5
+    assert detector.can_kill_all(context) is True
+
+    sequence = detector.find_lethal_sequence(context)
+
+    assert [action.card.uuid for action in sequence] == ["havoc"]
+    assert sequence[0].target_monster is None
+
+
 def test_lethal_detector_uses_dropkick_energy_refund_for_sequence(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
