@@ -873,7 +873,42 @@ def _headbutt_select_delayed_diff_key(pending: Dict[str, Any], key: str) -> bool
     monsters = (pending.get("before") or {}).get("monsters") or []
     if monster_index < 0 or monster_index >= len(monsters):
         return False
-    return _is_guardian_monster(monsters[monster_index])
+    if _is_guardian_monster(monsters[monster_index]):
+        return True
+    return field == "block" and _action_triggers_malleable_block(
+        pending.get("action") or {},
+        pending,
+        monster_index,
+    )
+
+
+def _action_triggers_malleable_block(
+    action: Dict[str, Any],
+    pending: Dict[str, Any],
+    monster_index: int,
+) -> bool:
+    target_index = action.get("target_index")
+    if not isinstance(target_index, int) or target_index != monster_index:
+        return False
+
+    before_monsters = (pending.get("before") or {}).get("monsters") or []
+    expected_monsters = (pending.get("expected") or {}).get("monsters") or []
+    if monster_index < 0 or monster_index >= len(before_monsters):
+        return False
+    if monster_index >= len(expected_monsters):
+        return False
+
+    before_malleable = max(
+        0,
+        _snapshot_power_amount(before_monsters[monster_index], "Malleable"),
+    )
+    if before_malleable <= 0:
+        return False
+    expected_malleable = max(
+        0,
+        _snapshot_power_amount(expected_monsters[monster_index], "Malleable"),
+    )
+    return expected_malleable > before_malleable
 
 
 def _action_triggers_guardian_sharp_hide(
