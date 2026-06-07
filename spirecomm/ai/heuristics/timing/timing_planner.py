@@ -934,7 +934,10 @@ class TimingAwareCombatPlanner:
             try:
                 strength = self._non_negative_int(getattr(context, 'strength', 0))
                 turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
-                return max(0, int(card.damage_for(turn, strength)))
+                return self._apply_pen_nib_attack_multiplier(
+                    max(0, int(card.damage_for(turn, strength))),
+                    context,
+                )
             except Exception:
                 pass
 
@@ -948,11 +951,20 @@ class TimingAwareCombatPlanner:
 
         if card_name == 'Whirlwind':
             energy = x_effect_energy(card, energy_for_x, context)
-            return whirlwind_damage(card, energy, strength)
+            return self._apply_pen_nib_attack_multiplier(
+                whirlwind_damage(card, energy, strength),
+                context,
+            )
         if card_name == 'Body Slam':
-            return max(0, player_block_value(context) + strength)
+            return self._apply_pen_nib_attack_multiplier(
+                max(0, player_block_value(context) + strength),
+                context,
+            )
         if card_name == 'Mind Blast':
-            return max(0, draw_pile_count(context) + strength)
+            return self._apply_pen_nib_attack_multiplier(
+                max(0, draw_pile_count(context) + strength),
+                context,
+            )
 
         base_damage = self._non_negative_int(getattr(card, 'damage', 0))
         if base_damage <= 0:
@@ -970,7 +982,39 @@ class TimingAwareCombatPlanner:
 
         scaled_damage = self._apply_attack_damage_scaling(card, base_damage, strength, context)
         hit_count = self._get_attack_hit_count(card, context, energy_for_x)
-        return max(0, int(scaled_damage * hit_count))
+        return self._apply_pen_nib_attack_multiplier(
+            max(0, int(scaled_damage * hit_count)),
+            context,
+        )
+
+    def _apply_pen_nib_attack_multiplier(self, damage: int, context) -> int:
+        if damage <= 0:
+            return 0
+        if not self._pen_nib_ready(context):
+            return damage
+        return damage * 2
+
+    def _pen_nib_ready(self, context) -> bool:
+        return self._context_relic_counter(context, 'Pen Nib') == 9
+
+    @staticmethod
+    def _normalized_relic_key(value) -> str:
+        return ''.join(ch for ch in str(value or '').lower() if ch.isalnum())
+
+    def _context_relic_counter(self, context, relic_name: str) -> Optional[int]:
+        wanted = self._normalized_relic_key(relic_name)
+        for source in (context, getattr(context, 'game', None)):
+            for relic in getattr(source, 'relics', []) or []:
+                identifiers = [
+                    getattr(relic, 'relic_id', None),
+                    getattr(relic, 'name', None),
+                    getattr(relic, 'id', None),
+                ]
+                if isinstance(relic, str):
+                    identifiers.append(relic)
+                if any(self._normalized_relic_key(identifier) == wanted for identifier in identifiers):
+                    return self._safe_int(getattr(relic, 'counter', 0), 0)
+        return None
 
     def _apply_attack_status_modifiers(
         self,

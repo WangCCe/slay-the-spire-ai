@@ -939,6 +939,30 @@ def test_timing_lethal_check_applies_paper_phrog_vulnerable_multiplier(monkeypat
     ) == 10
 
 
+def test_timing_damage_estimate_applies_pen_nib_before_player_weak():
+    strike = _card("Strike_R", "Strike")
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[strike],
+        monsters_alive=[SimpleNamespace(current_hp=9, block=0)],
+        player=SimpleNamespace(powers=[SimpleNamespace(name="Weak", amount=1)]),
+        game=SimpleNamespace(
+            relics=[SimpleNamespace(relic_id="Pen Nib", name="Pen Nib", counter=9)],
+        ),
+    )
+    planner = TimingAwareCombatPlanner(data_loader=_loader_with_basic_ironclad_cards())
+
+    assert planner._card_damage_against_monster(
+        strike,
+        context,
+        context.monsters_alive,
+        0,
+        1,
+    ) == 9
+
+
 def test_timing_lethal_sequence_uses_bash_vulnerable_before_followup(monkeypatch):
     monkeypatch.setattr(
         timing_planner,

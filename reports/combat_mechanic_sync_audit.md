@@ -45,7 +45,7 @@ Status labels:
 | Monster lifecycle states | Darkling half-dead/revive divergence and live stuck evidence | n/a | synced | synced | synced for SAFE timing bonus | synced for v2 state alive flag and reward exit handling | Slime split lifecycle boundaries still need periodic review across new target masks. |
 | Combat escape settlement | Looter/Mugger escape and Smoke Bomb divergence evidence | n/a | synced for Smoke Bomb potion escape | n/a | n/a | synced for in-combat and combat-exit reward | Other escape monsters should be added only with explicit intent/move evidence. |
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
-| Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | partial for scalar fallback estimates | n/a unless timing reads scalar attack/block | not duplicated except survival/block guards already noted | Future scalar shortcuts must state whether relic counters are read or intentionally ignored. |
+| Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | partial for scalar fallback estimates | synced for Pen Nib timing damage estimates | not duplicated except survival/block guards already noted | Future scalar shortcuts must state whether relic counters are read or intentionally ignored; Nunchaku/Fan/Orichalcum timing shortcuts need evidence before porting. |
 | Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests | synced for deterministic cases | synced | partial for RL shared block candidate and survival block | n/a | synced where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
 | Healing and monster self-heal | Bandage Up, Shelled Parasite Suck divergence tests | n/a | synced | n/a | n/a | n/a | Only fast/beam sim currently predicts these HP transitions. |
 
@@ -94,6 +94,11 @@ Status labels:
   combat `game`. The context-free single-card helper still leaves Mind Blast at
   zero, so card-reward features do not invent draw-pile context that they do
   not have.
+- 2026-06-08: `TimingAwareCombatPlanner` scalar card-damage estimates now read
+  the Pen Nib relic counter and double attack damage when the counter is 9.
+  The multiplier is applied before later player Weak and target Vulnerable
+  modifiers, keeping timing damage checks aligned with the Pen Nib divergence
+  and fast-simulator behavior.
 - 2026-06-07: `CombatEndingDetector` now uses the same confirmed target-side
   attack modifier shape as the divergence oracle for:
   - player Weak plus target Vulnerable combined before final integer
