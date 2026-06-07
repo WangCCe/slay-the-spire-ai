@@ -1310,6 +1310,116 @@ def test_havoc_plus_uses_known_draw_pile_top_attack_damage(monkeypatch, tmp_path
     assert not trace_path.exists()
 
 
+def test_havoc_top_attack_random_target_multi_monster_is_not_divergence(
+    monkeypatch,
+    tmp_path,
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    havoc = _card(
+        name="Havoc",
+        card_id="Havoc",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+    )
+    top_strike = _card(name="Strike", card_id="Strike_R", damage=6, cost=1)
+    before = _game(
+        floor=24,
+        turn=5,
+        player=SimpleNamespace(current_hp=34, max_hp=80, block=5, energy=0),
+        hand=[havoc],
+        draw_pile=[top_strike],
+        monsters=[
+            _monster(name="Centurion", monster_id="Centurion", hp=40, damage=6),
+            _monster(
+                name="Mystic",
+                monster_id="Healer",
+                hp=31,
+                damage=-1,
+                intent=Intent.BUFF,
+            ),
+        ],
+    )
+    actual = _game(
+        floor=24,
+        turn=5,
+        player=SimpleNamespace(current_hp=34, max_hp=80, block=5, energy=0),
+        hand=[],
+        draw_pile=[],
+        monsters=[
+            _monster(name="Centurion", monster_id="Centurion", hp=40, damage=6),
+            _monster(
+                name="Mystic",
+                monster_id="Healer",
+                hp=25,
+                damage=-1,
+                intent=Intent.BUFF,
+            ),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_havoc_exhausted_top_card_triggers_feel_no_pain_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    havoc = _card(
+        name="Havoc",
+        card_id="Havoc",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+    )
+    top_berserk = _card(
+        name="Berserk",
+        card_id="Berserk",
+        card_type=CardType.POWER,
+        cost=0,
+        damage=0,
+    )
+    feel_no_pain = Power("Feel No Pain", "Feel No Pain", 3)
+    before = _game(
+        floor=27,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=61,
+            max_hp=80,
+            block=5,
+            energy=0,
+            powers=[feel_no_pain],
+        ),
+        hand=[havoc],
+        draw_pile=[top_berserk],
+        monsters=[_monster(name="Snake Plant", monster_id="SnakePlant", hp=79, damage=8)],
+    )
+    actual = _game(
+        floor=27,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=61,
+            max_hp=80,
+            block=8,
+            energy=0,
+            powers=[feel_no_pain],
+        ),
+        hand=[],
+        draw_pile=[],
+        monsters=[_monster(name="Snake Plant", monster_id="SnakePlant", hp=79, damage=8)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_rampage_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

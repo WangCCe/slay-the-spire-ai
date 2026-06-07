@@ -973,6 +973,9 @@ def _ignored_diff_keys(pending: Dict[str, Any], actual: Optional[Dict[str, Any]]
     if _sword_boomerang_random_target_boundary(pending):
         ignored.update(_monster_state_diff_keys(pending, actual))
         return ignored
+    if _havoc_random_top_card_target_boundary(pending):
+        ignored.update(_monster_state_diff_keys(pending, actual))
+        return ignored
 
     ignored.update(_slime_split_ignored_diff_keys(pending, actual))
     ignored.update(_darkling_half_dead_animation_ignored_diff_keys(pending, actual))
@@ -1169,6 +1172,28 @@ def _sword_boomerang_random_target_boundary(pending: Dict[str, Any]) -> bool:
     if _snapshot_known_card_name(action.get("card") or {}, {"Sword Boomerang": 0}) != "Sword Boomerang":
         return False
     before = pending.get("before") or {}
+    active_count = sum(
+        1
+        for monster in before.get("monsters", []) or []
+        if _snapshot_monster_active(monster)
+    )
+    return active_count > 1
+
+
+def _havoc_random_top_card_target_boundary(pending: Dict[str, Any]) -> bool:
+    action = pending.get("action") or {}
+    if action.get("type") != "PlayCardAction":
+        return False
+    if _snapshot_known_card_name(action.get("card") or {}, HAVOC_CARDS) != "Havoc":
+        return False
+
+    before = pending.get("before") or {}
+    top_card = _draw_pile_top_card(before)
+    if top_card is None or not _snapshot_card_is_attack(top_card):
+        return False
+    if _is_all_enemy_attack(top_card):
+        return False
+
     active_count = sum(
         1
         for monster in before.get("monsters", []) or []
@@ -2264,6 +2289,9 @@ def _apply_havoc_top_card(
             before,
             _modified_block(block, expected.get("player", {})),
         )
+    feel_no_pain_block = _havoc_top_card_feel_no_pain_block(before)
+    if feel_no_pain_block > 0:
+        _gain_player_block(expected, before, feel_no_pain_block)
 
 
 def _draw_pile_top_card(snapshot: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -2272,6 +2300,12 @@ def _draw_pile_top_card(snapshot: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         return None
     top_card = draw_pile[-1]
     return top_card if isinstance(top_card, dict) else None
+
+
+def _havoc_top_card_feel_no_pain_block(snapshot: Dict[str, Any]) -> int:
+    if _draw_pile_top_card(snapshot) is None:
+        return 0
+    return max(0, _snapshot_power_amount(snapshot.get("player", {}), "Feel No Pain"))
 
 
 def _pop_expected_draw_pile_top(expected: Dict[str, Any]) -> None:
