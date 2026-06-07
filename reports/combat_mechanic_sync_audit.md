@@ -27,6 +27,28 @@ already disproved.
 - Each port should have its own focused regression in the owning estimator's
   test file before implementation.
 
+## Coverage Matrix
+
+Status labels:
+- `synced`: focused regression exists in the owning estimator surface.
+- `partial`: at least one live estimator surface is synced, but related surfaces
+  still need evidence-based review before claiming full coverage.
+- `n/a`: the surface does not estimate that mechanic directly.
+
+| Mechanic family | Diagnostic evidence | Lethal detection | Beam / fast sim | Ironclad fallback / targeting | Timing planner | RL guards / reward / state | Current gap |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Static zero-live attack damage, including upgrades | Headbutt and upgraded attack divergence tests | synced | synced | synced | synced | synced for survival guards and legacy state features | Check only if a new estimator reads raw `card.damage` directly. |
+| Context-dependent attack base damage | Mind Blast draw-pile-count divergence tests | synced | synced | synced | synced | synced for survival guards and legacy hand-state features | Context-free card-reward features remain `n/a`; they intentionally lack draw-pile context. |
+| X-energy and per-hit attacks | Whirlwind divergence and guard tests | synced | synced | synced | synced | synced for relevant RL survival multi-hit paths | Watch for newly added scalar damage shortcuts. |
+| Hand-count attack damage | Fiend Fire divergence and guard tests | synced | synced | synced | synced | not currently duplicated outside encoded card identity | No immediate gap found; recheck only when RL adds Fiend Fire-specific damage guards. |
+| Target-side attack modifiers | Weak, Vulnerable, Paper Phrog divergence tests | synced | synced | synced | synced | synced for Slime split survival guard | Generic scoring that does not estimate player attack damage is `n/a`. |
+| Monster lifecycle states | Darkling half-dead/revive divergence and live stuck evidence | n/a | synced | synced | synced for SAFE timing bonus | synced for v2 state alive flag and reward exit handling | Slime split lifecycle boundaries still need periodic review across new target masks. |
+| Combat escape settlement | Looter/Mugger escape and Smoke Bomb divergence evidence | n/a | synced for Smoke Bomb potion escape | n/a | n/a | synced for in-combat and combat-exit reward | Other escape monsters should be added only with explicit intent/move evidence. |
+| End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
+| Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | partial for scalar fallback estimates | n/a unless timing reads scalar attack/block | not duplicated except survival/block guards already noted | Future scalar shortcuts must state whether relic counters are read or intentionally ignored. |
+| Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests | synced for deterministic cases | synced | partial for RL shared block candidate and survival block | n/a | synced where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
+| Healing and monster self-heal | Bandage Up, Shelled Parasite Suck divergence tests | n/a | synced | n/a | n/a | n/a | Only fast/beam sim currently predicts these HP transitions. |
+
 ## Confirmed Sync Work
 
 - 2026-06-07: `FastCombatSimulator` now applies the Blue Candle HP-loss cost
@@ -235,8 +257,7 @@ already disproved.
 
 - Add a streaming `sim_divergence_trace_clean.jsonl` analyzer so large clean
   traces can be summarized by cutoff without PowerShell full-file JSON parsing.
-- Expand this report into a compact coverage matrix from divergence rounds
-  105-118: rows as mechanics, columns as estimator surfaces.
+- Keep the coverage matrix current as new divergence mechanics are confirmed.
 - Audit high-impact confirmed mechanics across live estimators:
   - Watch for newly discovered Whirlwind estimator surfaces beyond the synced
     divergence, simulator, timing, lethal, fallback damage, and priority paths.
