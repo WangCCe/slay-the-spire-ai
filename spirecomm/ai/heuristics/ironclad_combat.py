@@ -1015,8 +1015,13 @@ class IroncladCombatPlanner(CombatPlanner):
             logger.info(f"[TARGET_PRUNING] Skipping - {monster_count} monsters > 4")
             return []
 
-        # Check if cleanup phase (all monsters low HP)
-        all_low_hp = all(m['hp'] < 8 for m in state.monsters if not m['is_gone'])
+        # Check if cleanup phase (all live monsters low HP)
+        live_monster_states = [
+            m for m in state.monsters if self._is_live_monster_state(m)
+        ]
+        all_low_hp = bool(live_monster_states) and all(
+            m['hp'] < 8 for m in live_monster_states
+        )
         if all_low_hp:
             logger.info("[TARGET_PRUNING] Cleanup phase detected - using greedy lowest-HP")
             # Use greedy lowest-HP targeting

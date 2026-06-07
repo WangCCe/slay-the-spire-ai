@@ -9009,6 +9009,41 @@ def test_ironclad_target_pruning_treats_string_attack_as_attack(monkeypatch):
     assert [idx for _, idx, _ in pruned] == [1]
 
 
+def test_ironclad_target_pruning_ignores_half_dead_for_cleanup_phase(monkeypatch):
+    strike = _card("Strike_R", "Strike", cost=1)
+    waiting_darkling = _darkling(current_hp=40)
+    high_threat_low_hp = _darkling(current_hp=7)
+    lowest_hp = _darkling(current_hp=5)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[waiting_darkling, high_threat_low_hp, lowest_hp],
+    )
+    state = SimulationState(context)
+    state.monsters[0]["half_dead"] = True
+    state.monsters[0]["is_gone"] = False
+    ranked_targets = [
+        (high_threat_low_hp, 1, 100.0),
+        (lowest_hp, 2, 1.0),
+    ]
+
+    planner = IroncladCombatPlanner()
+    monkeypatch.setattr(
+        planner,
+        "_estimate_attack_damage_to_target",
+        lambda _card, _context, _state, _target_idx: 1,
+    )
+
+    pruned = planner._prune_targets(
+        strike,
+        ranked_targets,
+        context,
+        state,
+    )
+
+    assert [idx for _, idx, _ in pruned] == [2]
+
+
 def test_heuristic_target_pruning_treats_string_attack_as_attack(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

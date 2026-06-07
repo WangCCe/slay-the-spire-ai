@@ -45,6 +45,9 @@ already disproved.
   `half_dead` monsters even when their HP field remains positive. This keeps
   legacy and v2 fallback target pickers aligned with the simulator's Darkling
   lifecycle handling.
+- 2026-06-08: `IroncladCombatPlanner` target pruning cleanup-phase detection
+  now counts only live simulated monster states, so `half_dead` monsters no
+  longer prevent low-HP live targets from using greedy cleanup targeting.
 - 2026-06-07: `CombatEndingDetector` now uses the same confirmed target-side
   attack modifier shape as the divergence oracle for:
   - player Weak plus target Vulnerable combined before final integer
