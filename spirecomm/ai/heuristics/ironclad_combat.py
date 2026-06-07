@@ -38,7 +38,12 @@ from .card_upgrades import (
     known_damage_upgrade_bonus,
     perfected_strike_bonus_per_strike,
 )
-from .combat_state import is_card_played, mark_card_played, player_block_value
+from .combat_state import (
+    is_card_played,
+    mark_card_played,
+    player_block_value,
+    player_debuff_stacks,
+)
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
 from ..decision.base import DecisionContext
@@ -1099,10 +1104,18 @@ class IroncladCombatPlanner(CombatPlanner):
         card_name = canonical_card_name(card)
         if card_name == 'Body Slam':
             strength = getattr(context, 'strength', 0)
-            return max(0, player_block_value(context) + strength)
+            return self._apply_player_weak_to_fallback_attack_damage(
+                max(0, player_block_value(context) + strength),
+                1,
+                context,
+            )
         if card_name == 'Whirlwind':
             energy = x_effect_energy(card, getattr(context, 'energy_available', 0), context)
-            return whirlwind_damage(card, energy, getattr(context, 'strength', 0))
+            return self._apply_player_weak_to_fallback_attack_damage(
+                whirlwind_damage(card, energy, getattr(context, 'strength', 0)),
+                max(1, energy),
+                context,
+            )
 
         base_damage = self._non_negative_int(getattr(card, 'damage', 0))
         parsed_card_data_name = None
@@ -1130,15 +1143,47 @@ class IroncladCombatPlanner(CombatPlanner):
 
         strength = getattr(context, 'strength', 0)
         if card_name == 'Heavy Blade':
-            return max(0, base_damage + strength * heavy_blade_strength_multiplier(card))
+            return self._apply_player_weak_to_fallback_attack_damage(
+                max(0, base_damage + strength * heavy_blade_strength_multiplier(card)),
+                1,
+                context,
+            )
         if card_name == 'Perfected Strike':
-            return max(
-                0,
-                base_damage + strike_card_count(context) * perfected_strike_bonus_per_strike(card) + strength,
+            return self._apply_player_weak_to_fallback_attack_damage(
+                max(
+                    0,
+                    base_damage + strike_card_count(context) * perfected_strike_bonus_per_strike(card) + strength,
+                ),
+                1,
+                context,
             )
 
         hit_count = self._get_attack_hit_count(card, context)
-        return max(0, base_damage + strength) * hit_count
+        return self._apply_player_weak_to_fallback_attack_damage(
+            max(0, base_damage + strength) * hit_count,
+            hit_count,
+            context,
+        )
+
+    @staticmethod
+    def _apply_player_weak_to_fallback_attack_damage(
+        damage: int,
+        hit_count: int,
+        context: DecisionContext,
+    ) -> int:
+        damage = max(0, int(damage))
+        if player_debuff_stacks(context, 'Weak') <= 0:
+            return damage
+
+        hit_count = max(1, int(hit_count or 1))
+        if hit_count <= 1:
+            return damage * 3 // 4
+
+        per_hit_damage, remainder = divmod(damage, hit_count)
+        if remainder != 0:
+            return damage * 3 // 4
+
+        return per_hit_damage * 3 // 4 * hit_count
 
     @staticmethod
     def _get_attack_hit_count(card: Card, context: Optional[DecisionContext] = None) -> int:

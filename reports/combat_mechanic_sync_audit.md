@@ -55,6 +55,10 @@ already disproved.
     truncation (`9/8`);
   - Paper Phrog target Vulnerable uses `7/4`;
   - Paper Phrog plus player Weak and target Vulnerable uses `21/16`.
+- 2026-06-07: `IroncladCombatPlanner` no-simulation fallback attack estimates
+  now apply player Weak with per-hit integer truncation. This keeps fallback
+  strategic thresholds such as Bash follow-up detection from treating Weak
+  attacks as if they still dealt full damage.
 
 ## Backlog
 
