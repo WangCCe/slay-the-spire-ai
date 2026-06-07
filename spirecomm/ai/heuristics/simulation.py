@@ -3174,6 +3174,8 @@ class FastCombatSimulator:
             return
 
         card_name = _canonical_card_name(card)
+        if card_name == 'Havoc':
+            self._apply_havoc_top_card(state, context)
 
         # Block skills - apply frail multiplier if player has frail
         block_gain = self._non_negative_int(getattr(card, 'block', 0))
@@ -3340,6 +3342,94 @@ class FastCombatSimulator:
 
         if _canonical_card_name(card) == 'Battle Trance':
             state.draw_blocked = True
+
+    def _apply_havoc_top_card(
+        self,
+        state: SimulationState,
+        context: Optional[DecisionContext],
+    ):
+        top_card = self._draw_pile_top_card(context)
+        if top_card is None:
+            return
+
+        top_card_type = card_type_name(top_card)
+        mark_card_played(state.played_card_uuids, top_card)
+
+        top_card_exhausted_by_effect = False
+        if top_card_type == 'ATTACK':
+            target_index = self._havoc_top_attack_target_index(state, top_card)
+            state.attacks_played += 1
+            self._apply_attack(
+                state,
+                top_card,
+                target=None,
+                target_index=target_index,
+                context=context,
+                x_energy_spent=0 if is_x_cost_card(top_card) else None,
+            )
+            self._apply_rage_block(state)
+            self._apply_self_damage(state, top_card)
+            top_card_exhausted_by_effect = self._card_exhausts_itself_from_data(top_card)
+        elif top_card_type == 'SKILL':
+            state.skills_played += 1
+            self._apply_skill(
+                state,
+                top_card,
+                context,
+                target_index=None,
+                x_energy_spent=0 if is_x_cost_card(top_card) else None,
+            )
+            self._apply_skill_reactive_monster_powers(state)
+            self._apply_self_damage(state, top_card)
+            top_card_exhausted_by_effect = self._card_exhausts_itself_from_data(top_card)
+        elif top_card_type == 'POWER':
+            self._apply_power(state, top_card)
+            self._apply_power_reactive_monster_powers(state)
+            self._apply_self_damage(state, top_card)
+
+        if not top_card_exhausted_by_effect:
+            state.exhaust_events += 1
+
+    @staticmethod
+    def _draw_pile_top_card(context: Optional[DecisionContext]) -> Optional[Card]:
+        game = getattr(context, 'game', None)
+        for owner in (game, context):
+            draw_pile = getattr(owner, 'draw_pile', None)
+            if isinstance(draw_pile, list) and draw_pile:
+                top_card = draw_pile[-1]
+                return top_card if isinstance(top_card, Card) else None
+        return None
+
+    def _havoc_top_attack_target_index(
+        self,
+        state: SimulationState,
+        card: Card,
+    ) -> Optional[int]:
+        if self._is_aoe_attack_card(card) or self._is_random_target_attack(card):
+            return None
+        alive_indices = [
+            idx for idx, monster in enumerate(state.monsters)
+            if self._is_live_monster_state(monster)
+        ]
+        if len(alive_indices) == 1:
+            return alive_indices[0]
+        return None
+
+    def _is_aoe_attack_card(self, card: Card) -> bool:
+        card_name = _canonical_card_name(card)
+        if card_name in IRONCLAD_AOE_ATTACK_CARDS:
+            return True
+        card_data = game_data_loader.get_card_data(card_name)
+        return bool(card_data and game_data_loader._is_card_aoe(card_data))
+
+    def _card_exhausts_itself_from_data(self, card: Card) -> bool:
+        card_data = game_data_loader.get_card_data(_canonical_card_name(card))
+        if not card_data:
+            return False
+        return self._card_exhausts_itself(
+            self._get_card_effect_text(_canonical_card_name(card), card_data),
+            is_card_upgraded(card),
+        )
 
     def _apply_power(self, state: SimulationState, card: Card):
         """Apply power card effects."""

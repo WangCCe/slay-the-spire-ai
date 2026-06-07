@@ -67,6 +67,11 @@ already disproved.
   reduce known scalar attack damage while the player is Weak. This keeps
   strategic bonus scoring for cards such as Iron Wave, Immolate, and Whirlwind
   from valuing full visible attack damage under Weak.
+- 2026-06-07: `FastCombatSimulator` now applies deterministic Havoc top-card
+  effects when the draw-pile top card is visible. Known top attacks resolve for
+  single-monster or AOE/random-target cases, known top skills and powers reuse
+  the existing live simulators, and the top card contributes one exhaust event
+  for exhaust synergies such as Feel No Pain.
 
 ## Backlog
 

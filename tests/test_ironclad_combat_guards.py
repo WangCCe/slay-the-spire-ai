@@ -9010,6 +9010,101 @@ def test_mind_blast_damage_uses_draw_pile_size(monkeypatch):
     assert result.total_damage_dealt == 4
 
 
+def test_havoc_plays_known_draw_pile_top_attack_against_single_monster():
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    bottom_defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        has_target=False,
+    )
+    top_strike = _card("Strike_R", "Strike")
+    top_strike.damage = 6
+    context = _combat_context([havoc], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.draw_pile = [bottom_defend, top_strike]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        havoc,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 0
+    assert result.total_damage_dealt == 6
+    assert result.exhaust_events == 1
+
+
+def test_havoc_plays_known_draw_pile_top_skill_block():
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    bottom_strike = _card("Strike_R", "Strike")
+    top_defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    top_defend.block = 5
+    context = _combat_context([havoc], energy=0, monsters=[_louse(current_hp=100)])
+    context.game.draw_pile = [bottom_strike, top_defend]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        havoc,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 5
+    assert result.exhaust_events == 1
+
+
+def test_havoc_exhausted_top_card_triggers_feel_no_pain_block():
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    top_power = _card(
+        "Berserk",
+        "Berserk",
+        card_type=CardType.POWER,
+        cost=0,
+        has_target=False,
+    )
+    context = _combat_context([havoc], energy=0, monsters=[_louse(current_hp=100)])
+    context.game.draw_pile = [top_power]
+    context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        havoc,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.exhaust_events == 1
+    assert result.player_block == 3
+
+
 def _patch_ritual_dagger_loader(monkeypatch, module):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
