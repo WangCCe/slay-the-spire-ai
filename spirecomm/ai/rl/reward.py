@@ -108,6 +108,15 @@ class RewardCalculator:
             return None
         return self._finite_int(getattr(monster, "current_hp", None))
 
+    def _is_live_monster(self, monster) -> bool:
+        monster_hp = self._monster_hp_value(monster)
+        return (
+            monster_hp is not None
+            and monster_hp > 0
+            and not getattr(monster, "is_gone", False)
+            and not getattr(monster, "half_dead", False)
+        )
+
     @staticmethod
     def _is_truthy(value: str) -> bool:
         return str(value).strip().lower() in ("1", "true", "yes", "y", "on")
@@ -429,8 +438,8 @@ class RewardCalculator:
             finishing_kills = 0
             if had_alive_monsters:
                 for monster in last_monsters:
-                    monster_hp = self._monster_hp_value(monster)
-                    if monster_hp is not None and monster_hp > 0:
+                    if self._is_live_monster(monster):
+                        monster_hp = self._monster_hp_value(monster)
                         finishing_damage += monster_hp
                         finishing_kills += 1
                         if self._get_power_amount(monster, "Vulnerable") > 0:
@@ -590,8 +599,7 @@ class RewardCalculator:
 
     def _had_alive_monsters(self, monsters: Iterable) -> bool:
         for monster in monsters:
-            monster_hp = self._monster_hp_value(monster)
-            if monster_hp is not None and monster_hp > 0:
+            if self._is_live_monster(monster):
                 return True
         return False
 

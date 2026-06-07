@@ -51,6 +51,9 @@ already disproved.
 - 2026-06-08: `FastCombatSimulator` SAFE timing bonus now uses the simulator
   live-monster predicate, excluding `half_dead` monsters whose HP field remains
   positive during lifecycle transitions.
+- 2026-06-08: `RewardCalculator` combat-exit finishing damage now uses a live
+  monster predicate that excludes `is_gone` and `half_dead` monsters, preventing
+  lifecycle waiting states from generating extra damage or kill reward.
 - 2026-06-07: `CombatEndingDetector` now uses the same confirmed target-side
   attack modifier shape as the divergence oracle for:
   - player Weak plus target Vulnerable combined before final integer

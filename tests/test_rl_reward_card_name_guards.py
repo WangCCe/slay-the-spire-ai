@@ -188,6 +188,31 @@ def test_rl_step_reward_accepts_numeric_string_player_max_hp_for_hp_loss_penalty
     assert reward == expected
 
 
+def test_rl_combat_exit_reward_ignores_half_dead_monster_hp_for_finishing_damage():
+    calc = RewardCalculator()
+    info = {}
+    current_game = _game(1)
+    current_game.screen_type = ScreenType.COMBAT_REWARD
+    last_game = _combat_game(
+        [
+            SimpleNamespace(
+                monster_index=0,
+                current_hp=12,
+                powers=[],
+                half_dead=True,
+                is_gone=False,
+            )
+        ]
+    )
+
+    reward = calc.calculate_step_reward(current_game, last_game, debug_info=info)
+
+    assert info["damage_dealt"] == 0
+    assert info["total_monster_hp_delta"] == 0
+    assert info["monster_killed"] is False
+    assert reward == calc.ALL_LETHAL_BONUS
+
+
 def test_rl_victory_detection_accepts_numeric_string_final_floor():
     calc = RewardCalculator()
     game = SimpleNamespace(
