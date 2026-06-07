@@ -133,6 +133,10 @@ already disproved.
   the upgraded 6 HP amount and max-HP cap. This syncs the confirmed colorless
   heal behavior from sim divergence into beam/fast scoring so survival
   estimates can value the card.
+- 2026-06-07: `FastCombatSimulator` enemy lookahead now models Shelled
+  Parasite attack-buff self-heal from unblocked player HP loss. The healed HP
+  is carried into later lookahead steps so HP-dependent future move prediction
+  does not overstate follow-up damage after Suck.
 
 ## Backlog
 

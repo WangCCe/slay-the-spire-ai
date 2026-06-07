@@ -4197,6 +4197,11 @@ class FastCombatSimulator:
 
             for step in range(look_ahead):
                 turn_damage = 0
+                turn_block_remaining = (
+                    max(0, coerce_int(lookahead_state.turn_block(), 0))
+                    if step == 0
+                    else 0
+                )
                 pending_debuffs = {'weak': 0, 'frail': 0, 'vulnerable': 0}
                 pending_constricted = 0
                 any_predictions = False
@@ -4280,6 +4285,13 @@ class FastCombatSimulator:
                                     move_hits,
                                 )
                                 damage = self._apply_debuff_risk_multiplier(damage, player_weak, player_frail)
+                                hp_loss = max(0, damage - turn_block_remaining)
+                                turn_block_remaining = max(0, turn_block_remaining - damage)
+                                self._apply_shelled_parasite_attack_buff_heal(
+                                    monster,
+                                    hp_loss,
+                                    move.get('intent', monster.get('intent', '')),
+                                )
                             else:
                                 damage = move_damage * move_hits
                             discount = LOOKAHEAD_DAMAGE_DISCOUNT ** step
@@ -4348,6 +4360,13 @@ class FastCombatSimulator:
                                 move_hits,
                             )
                             damage = self._apply_debuff_risk_multiplier(damage, player_weak, player_frail)
+                            hp_loss = max(0, damage - turn_block_remaining)
+                            turn_block_remaining = max(0, turn_block_remaining - damage)
+                            self._apply_shelled_parasite_attack_buff_heal(
+                                monster,
+                                hp_loss,
+                                monster.get('intent', ''),
+                            )
                             discount = LOOKAHEAD_DAMAGE_DISCOUNT ** step
                             turn_damage += int(damage * discount)
 
@@ -4392,6 +4411,42 @@ class FastCombatSimulator:
                 self.__dict__.pop("_prediction_monster", None)
             else:
                 self._prediction_monster = previous_prediction_monster
+
+    def _apply_shelled_parasite_attack_buff_heal(
+        self,
+        monster: Dict[str, Any],
+        hp_loss: int,
+        intent: Any,
+    ):
+        heal_amount = max(0, coerce_int(hp_loss, 0))
+        if heal_amount <= 0:
+            return
+        if not self._is_shelled_parasite_monster(monster):
+            return
+        if not self._is_attack_buff_intent(intent):
+            return
+
+        current_hp = max(0, coerce_int(monster.get('hp', 0), 0))
+        max_hp = max(current_hp, coerce_int(monster.get('max_hp', current_hp), current_hp))
+        if max_hp <= 0:
+            return
+        monster['hp'] = min(max_hp, current_hp + heal_amount)
+
+    @staticmethod
+    def _is_shelled_parasite_monster(monster: Dict[str, Any]) -> bool:
+        identifiers = {
+            normalize_monster_id(monster.get('name', '')),
+            normalize_monster_id(monster.get('monster_id', '')),
+            normalize_monster_id(monster.get('id', '')),
+            normalize_monster_id(_canonical_live_monster_name(monster)),
+        }
+        return 'shelledparasite' in identifiers or 'shellparasite' in identifiers
+
+    def _is_attack_buff_intent(self, intent: Any) -> bool:
+        tokens = intent_tokens(intent)
+        if 'ATTACK' in tokens and 'BUFF' in tokens:
+            return True
+        return 'attackbuff' in self._intent_name(intent).replace('_', '').lower()
 
     def _apply_monster_end_turn_strength_gains(self, state: SimulationState):
         for monster in state.monsters:

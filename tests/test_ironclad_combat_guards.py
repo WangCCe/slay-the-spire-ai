@@ -15226,6 +15226,65 @@ def test_live_spheric_guardian_defend_intent_overrides_mismatched_move_id():
     assert damage == 0
 
 
+def test_shelled_parasite_attack_buff_heal_updates_future_lookahead_hp(monkeypatch):
+    class FakeLoader:
+        def get_enhanced_monster_data(self, _monster_name):
+            return None
+
+        def get_monster_moves(self, _monster_name):
+            return [
+                {
+                    "name": "Suck",
+                    "move_id": 1,
+                    "intent": "ATTACK_BUFF",
+                    "damage": 10,
+                    "hits": 1,
+                }
+            ]
+
+        def predict_monster_moves(self, _monster_name, current_turn, hp_percent, **_kwargs):
+            if hp_percent < 0.5:
+                move = {
+                    "name": "Low HP Strike",
+                    "intent": "ATTACK",
+                    "damage": 20,
+                    "hits": 1,
+                }
+            else:
+                move = {
+                    "name": "High HP Wait",
+                    "intent": "BUFF",
+                    "damage": 0,
+                    "hits": 1,
+                }
+            return [{"turn": current_turn + 1, "move": move}]
+
+    shelled_parasite = Monster(
+        name="Shelled Parasite",
+        monster_id="Shelled Parasite",
+        max_hp=68,
+        current_hp=33,
+        block=0,
+        intent=Intent.ATTACK_BUFF,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=10,
+        move_hits=1,
+    )
+    context = _combat_context([], monsters=[shelled_parasite])
+    context.turn = 6
+    monkeypatch.setattr(simulation, "game_data_loader", FakeLoader())
+
+    damage = FastCombatSimulator(SynergyCardEvaluator()).simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=2,
+    )
+
+    assert damage == 10
+
+
 def test_live_buff_intent_does_not_resolve_to_debuff_move(monkeypatch):
     class FakeLoader:
         def get_monster_moves(self, _monster_name):
