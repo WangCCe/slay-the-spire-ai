@@ -129,6 +129,10 @@ already disproved.
   Paper Phrog, and player Weak are combined with the same final-truncation
   shape as the divergence oracle before deciding whether an attacker is
   killable.
+- 2026-06-07: `FastCombatSimulator` now models Bandage Up healing, including
+  the upgraded 6 HP amount and max-HP cap. This syncs the confirmed colorless
+  heal behavior from sim divergence into beam/fast scoring so survival
+  estimates can value the card.
 
 ## Backlog
 

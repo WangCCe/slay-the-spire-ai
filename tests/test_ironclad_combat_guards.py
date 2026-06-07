@@ -1049,6 +1049,59 @@ def test_blue_candle_curse_play_loses_one_hp_without_spending_block():
     assert result.player_energy == 2
 
 
+def test_bandage_up_heals_and_caps_at_max_hp_in_fast_simulation():
+    bandage_up = _card(
+        "Bandage Up",
+        "Bandage Up",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    context = _combat_context([bandage_up], energy=0, monsters=[_louse(current_hp=50)])
+    context.game.current_hp = 78
+    context.player_hp = 78
+    context.game.max_hp = 80
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        bandage_up,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_hp == 80
+
+
+def test_bandage_up_plus_heals_six_in_fast_simulation():
+    bandage_up_plus = _card(
+        "Bandage Up",
+        "Bandage Up+",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context(
+        [bandage_up_plus],
+        energy=0,
+        monsters=[_louse(current_hp=50)],
+    )
+    context.game.current_hp = 45
+    context.player_hp = 45
+    context.game.max_hp = 80
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        bandage_up_plus,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_hp == 51
+
+
 def test_simulate_card_play_applies_string_attack_type_damage():
     strike = _card("Strike_R", "Strike", cost=1)
     strike.type = "ATTACK"

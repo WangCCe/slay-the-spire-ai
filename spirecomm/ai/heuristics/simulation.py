@@ -3316,6 +3316,7 @@ class FastCombatSimulator:
         card_name = _canonical_card_name(card)
         if card_name == 'Havoc':
             self._apply_havoc_top_card(state, context)
+        self._apply_skill_healing(state, card)
 
         # Block skills - apply frail multiplier if player has frail
         block_gain = self._non_negative_int(getattr(card, 'block', 0))
@@ -3482,6 +3483,14 @@ class FastCombatSimulator:
 
         if _canonical_card_name(card) == 'Battle Trance':
             state.draw_blocked = True
+
+    def _apply_skill_healing(self, state: SimulationState, card: Card):
+        card_name = _canonical_card_name(card)
+        if card_name != 'Bandage Up':
+            return
+
+        heal_amount = 6 if is_card_upgraded(card) else 4
+        state.player_hp = min(state.player_max_hp, state.player_hp + heal_amount)
 
     def _apply_havoc_top_card(
         self,
