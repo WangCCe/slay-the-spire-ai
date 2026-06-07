@@ -46,6 +46,9 @@ already disproved.
   count upgraded static attack damage when parsed card data only exposes the
   base value. This keeps Bash follow-up checks and non-clone fallback scoring
   from underestimating cards such as Headbutt+.
+- 2026-06-07: `CombatRLAgent` survival guards now include Decay in end-turn
+  status HP loss alongside Burn. Guard takeover decisions treat that HP loss as
+  unblocked when deciding whether to replace an RL attack with a defensive card.
 
 ## Backlog
 

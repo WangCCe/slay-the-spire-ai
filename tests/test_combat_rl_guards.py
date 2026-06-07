@@ -903,6 +903,64 @@ def test_survival_guard_treats_burn_damage_as_unblocked_by_current_block():
     assert agent._fallback_turn_key == (16, 12)
 
 
+def test_survival_guard_treats_decay_damage_as_unblocked_by_current_block():
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    decay = SimpleNamespace(
+        name="Decay",
+        card_id="Decay",
+        type=CardType.CURSE,
+        is_playable=False,
+        cost=-2,
+        has_target=False,
+    )
+    slime = _monster(hp=62, damage=8, index=0, name="Acid Slime (L)", monster_id="AcidSlime_L")
+    slime.intent = Intent.ATTACK
+    game = _game(
+        hand=[strike, defend, decay],
+        monsters=[slime],
+        current_hp=4,
+        max_hp=80,
+        room_type="MonsterRoom",
+        floor=10,
+        act=1,
+        turn=1,
+        player=SimpleNamespace(energy=1, block=6),
+    )
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0, target_index=0)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (10, 1)
+
+
 def test_energy_guard_fallback_does_not_spend_potion_on_safe_boss_window():
     potion = SimpleNamespace(
         potion_id="DistilledChaos",
