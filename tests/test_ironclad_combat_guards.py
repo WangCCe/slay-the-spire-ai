@@ -16105,6 +16105,41 @@ def test_smoke_bomb_escape_score_avoids_lethal_without_lethal_bonus():
     assert escaped.monsters_killed == 0
 
 
+def test_looter_end_turn_escape_projection_removes_threat_without_kill_score():
+    looter = Monster(
+        name="Looter",
+        monster_id="Looter",
+        max_hp=45,
+        current_hp=6,
+        block=0,
+        intent=Intent.ESCAPE,
+        half_dead=False,
+        is_gone=False,
+        move_id=3,
+        move_adjusted_damage=-1,
+        move_hits=1,
+    )
+    context = _combat_context([], energy=0, monsters=[looter])
+    context.game.monsters = context.monsters_alive
+    initial = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    projected = simulator.project_end_turn_effects(initial)
+    score = simulator.calculate_outcome_score(
+        initial,
+        initial,
+        current_act=1,
+        context=context,
+    )
+
+    assert projected.monsters[0]["is_gone"] is True
+    assert projected.monsters[0]["hp"] == 6
+    assert projected.monsters_killed == 0
+    assert getattr(projected, "monsters_escaped", 0) == 1
+    assert score < simulation.KILL_BONUS
+    assert score < simulation.ALL_LETHAL_BONUS
+
+
 def test_smoke_bomb_gets_high_priority_when_incoming_damage_is_lethal():
     potion = SimpleNamespace(
         name="Smoke Bomb",

@@ -598,6 +598,7 @@ class SimulationState:
         self.energy_spent = 0
         self.total_damage_dealt = 0
         self.monsters_killed = 0
+        self.monsters_escaped = 0
 
         # Primary target for focused fire (monster index or None)
         # Set on first attack, maintained until target dies
@@ -890,6 +891,7 @@ class SimulationState:
             self.player_intangible,
             self.player_artifact,
             self.combat_escaped,
+            self.monsters_escaped,
             self.player_vulnerable,
             self.player_vulnerable_added,
             self.player_weak,
@@ -3333,9 +3335,37 @@ class FastCombatSimulator:
         if temp_dexterity:
             projected.player_dexterity -= temp_dexterity
             projected.player_temp_dexterity = 0
+        projected = self._apply_monster_escape_intents(projected)
         projected = self._revive_ready_darklings(projected)
         projected = self._materialize_pending_death_splits(projected)
         return projected
+
+    def _apply_monster_escape_intents(self, state: SimulationState) -> SimulationState:
+        for monster in state.monsters:
+            if not self._should_escape_at_end_turn(monster):
+                continue
+            monster['is_gone'] = True
+            monster['half_dead'] = False
+            state.monsters_escaped += 1
+        return state
+
+    def _should_escape_at_end_turn(self, monster: dict) -> bool:
+        if not self._is_live_monster_state(monster):
+            return False
+
+        if self._intent_name(monster.get('intent', '')).upper() == 'ESCAPE':
+            return True
+
+        identifiers = {
+            normalize_monster_id(monster.get('name', '')),
+            normalize_monster_id(monster.get('monster_id', '')),
+            normalize_monster_id(monster.get('id', '')),
+            normalize_monster_id(_canonical_live_monster_name(monster)),
+        }
+        return (
+            coerce_int(monster.get('move_id', -1), -1) == 3
+            and bool(identifiers & {'looter', 'mugger'})
+        )
 
     def _revive_ready_darklings(self, state: SimulationState) -> SimulationState:
         for monster in state.monsters:
@@ -5577,11 +5607,16 @@ class FastCombatSimulator:
         # 1. Monsters killed (high priority)
         initial_alive = sum(1 for m in initial_state.monsters if self._is_live_monster_state(m))
         final_alive = sum(1 for m in final_state.monsters if self._is_live_monster_state(m))
-        kills = max(0, initial_alive - final_alive)
+        escaped_monsters = max(
+            0,
+            getattr(final_state, 'monsters_escaped', 0)
+            - getattr(initial_state, 'monsters_escaped', 0),
+        )
+        kills = max(0, initial_alive - final_alive - escaped_monsters)
         score += kills * weights['KILL_BONUS']
 
         # ALL_LETHAL_BONUS: Exponential bonus for killing all monsters
-        if final_alive == 0 and initial_alive > 0:
+        if final_alive == 0 and initial_alive > 0 and escaped_monsters == 0:
             score += ALL_LETHAL_BONUS
             logger.debug(f"[ALL_LETHAL_BONUS] +{ALL_LETHAL_BONUS} score for killing all {initial_alive} monsters")
 
