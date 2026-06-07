@@ -2476,6 +2476,23 @@ def test_incoming_damage_ignores_half_dead_monsters():
     ) == 0
 
 
+def test_safe_timing_bonus_ignores_half_dead_monster_hp():
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_darkling(current_hp=40), _darkling(current_hp=6)],
+    )
+    state = SimulationState(context)
+    state.monsters[0]["half_dead"] = True
+    state.monsters[0]["is_gone"] = False
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator.set_timing_context(
+        SimpleNamespace(turn_timing=SimpleNamespace(value="SAFE"))
+    )
+
+    assert simulator._calculate_timing_bonus(state) == 3.0
+
+
 def test_project_end_turn_revives_buffing_half_dead_darkling():
     context = _combat_context([], energy=0, monsters=[_darkling(current_hp=1)])
     state = SimulationState(context)

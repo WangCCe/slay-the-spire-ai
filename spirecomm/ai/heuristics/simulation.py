@@ -5480,7 +5480,9 @@ class FastCombatSimulator:
         # Safe turn bonus: reward attacking when monsters are buffing
         if timing.value == "SAFE":
             damage_dealt = sum(
-                m['hp'] for m in final_state.monsters if not m['is_gone']
+                m['hp']
+                for m in final_state.monsters
+                if self._is_live_monster_state(m)
             )  # Note: This is rough estimate
             bonus += damage_dealt * 0.5  # Extra reward for attacking on safe turns
             logger.debug(f"[TIMING_BONUS] Safe turn: +{damage_dealt * 0.5:.1f} for attacking")
