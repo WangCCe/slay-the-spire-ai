@@ -5,6 +5,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "recover_sts_menu_flow.ps1"
+UI_SCRIPT = ROOT / "scripts" / "recover_sts_ui.ps1"
 SCRIPT_TIMEOUT_SECONDS = 30
 
 
@@ -73,6 +74,43 @@ def test_recovery_script_end_turn_action_parses_before_window_lookup():
             "Bypass",
             "-File",
             str(SCRIPT),
+            "-WindowTitlePattern",
+            "__definitely_missing_sts_window__",
+            "-Action",
+            "EndTurn",
+            "-DryRun",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=SCRIPT_TIMEOUT_SECONDS,
+    )
+
+    output = result.stdout + result.stderr
+    assert result.returncode == 2, output
+    assert "No visible window matching pattern" in output
+
+
+def test_ui_recovery_script_is_canonical_wrapper():
+    assert UI_SCRIPT.exists()
+
+    text = UI_SCRIPT.read_text(encoding="utf-8")
+
+    assert 'Join-Path $PSScriptRoot "recover_sts_menu_flow.ps1"' in text
+    assert '[ValidateSet("MenuFlow", "EndTurn")]' in text
+    assert '[string]$Action = "EndTurn"' in text
+
+
+def test_ui_recovery_wrapper_delegates_end_turn_action():
+    assert UI_SCRIPT.exists()
+
+    result = subprocess.run(
+        [
+            _powershell(),
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(UI_SCRIPT),
             "-WindowTitlePattern",
             "__definitely_missing_sts_window__",
             "-Action",
