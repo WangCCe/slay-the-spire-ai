@@ -1321,15 +1321,15 @@ def _card_damage_and_hits_for_snapshot(
     if card_name == "Mind Blast" and before is not None:
         damage = max(0, _to_int(before.get("draw_pile_count"), default=0))
     if card_name == "Whirlwind":
-        per_hit = _source_modified_attack_damage(damage, card, player)
+        per_hit = _source_modified_attack_damage(damage, card, player, before)
         return max(0, energy_available) * per_hit, 1
     if card_name == "Fiend Fire" and before is not None:
         hit_count = _fiend_fire_hit_count(card, before, card_index)
-        return _source_modified_attack_damage(damage, card, player), hit_count
+        return _source_modified_attack_damage(damage, card, player, before), hit_count
     hit_count = _multi_hit_count(card, card_name)
     if hit_count > 1 and card_name is not None:
         damage = _multi_hit_damage_per_hit(card, card_name, hit_count)
-    return _source_modified_attack_damage(damage, card, player), hit_count
+    return _source_modified_attack_damage(damage, card, player, before), hit_count
 
 
 def _fiend_fire_hit_count(card, before: Dict[str, Any], card_index: int) -> int:
@@ -1483,7 +1483,12 @@ def _snapshot_card_upgrade_count(snapshot_card: Dict[str, Any]) -> int:
     return 1 if str(snapshot_card.get("name") or "").endswith("+") else 0
 
 
-def _source_modified_attack_damage(damage: int, card, player: Dict[str, Any]) -> int:
+def _source_modified_attack_damage(
+    damage: int,
+    card,
+    player: Dict[str, Any],
+    snapshot: Optional[Dict[str, Any]] = None,
+) -> int:
     if damage <= 0:
         return 0
     strength = _snapshot_power_amount(player, "Strength")
@@ -1492,6 +1497,8 @@ def _source_modified_attack_damage(damage: int, card, player: Dict[str, Any]) ->
             damage += strength * heavy_blade_strength_multiplier(card)
         else:
             damage += strength
+    if _pen_nib_damage_multiplier(snapshot, card) > 1:
+        damage *= 2
     if _snapshot_power_amount(player, "Weakened") > 0 or _snapshot_power_amount(player, "Weak") > 0:
         damage = damage * 3 // 4
     return max(0, damage)
@@ -1626,6 +1633,20 @@ def _nunchaku_energy_gain(snapshot: Dict[str, Any], card) -> int:
         if target in identifiers and _to_int(relic.get("counter")) == 9:
             return 1
     return 0
+
+
+def _pen_nib_damage_multiplier(snapshot: Optional[Dict[str, Any]], card) -> int:
+    if snapshot is None or not _is_attack_card(card):
+        return 1
+    target = _normalize("Pen Nib")
+    for relic in snapshot.get("relics", []) or []:
+        identifiers = {
+            _normalize(relic.get("id")),
+            _normalize(relic.get("name")),
+        }
+        if target in identifiers and _to_int(relic.get("counter")) == 9:
+            return 2
+    return 1
 
 
 def _snapshot_has_relic(snapshot: Dict[str, Any], relic_name: str) -> bool:

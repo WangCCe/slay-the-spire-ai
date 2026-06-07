@@ -1802,6 +1802,130 @@ def test_nunchaku_counter_nine_attack_gains_one_energy(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_pen_nib_counter_nine_doubles_attack_before_target_vulnerable(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    strike = _card(name="Strike", card_id="Strike_R", damage=6, cost=1)
+    before = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=66,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Pen Nib", "Pen Nib", 1)],
+        ),
+        hand=[strike],
+        monsters=[
+            _monster(
+                name="Looter",
+                monster_id="Looter",
+                hp=36,
+                damage=10,
+                powers=[Power("Vulnerable", "Vulnerable", 2)],
+            )
+        ],
+        relics=[_relic("Burning Blood", counter=-1), _relic("Pen Nib", counter=9)],
+    )
+    actual = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(current_hp=66, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Looter",
+                monster_id="Looter",
+                hp=18,
+                damage=10,
+                powers=[Power("Vulnerable", "Vulnerable", 2)],
+            )
+        ],
+        relics=[_relic("Burning Blood", counter=-1), _relic("Pen Nib", counter=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_pen_nib_counter_nine_doubles_attack_before_player_weak(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    blood_for_blood = _card(
+        name="Blood for Blood+",
+        card_id="Blood for Blood",
+        damage=22,
+        cost=1,
+        upgrades=1,
+    )
+    before = _game(
+        floor=24,
+        turn=6,
+        player=SimpleNamespace(
+            current_hp=35,
+            max_hp=80,
+            block=11,
+            energy=1,
+            powers=[
+                Power("Hex", "Hex", 1),
+                Power("Pen Nib", "Pen Nib", 1),
+                Power("Weakened", "Weakened", 4),
+            ],
+        ),
+        hand=[blood_for_blood],
+        monsters=[
+            _monster(name="Cultist", monster_id="Cultist", hp=0, damage=6),
+            _monster(
+                name="Chosen",
+                monster_id="Chosen",
+                hp=46,
+                damage=8,
+                hits=2,
+                index=1,
+                powers=[Power("Strength", "Strength", 6), Power("Weakened", "Weakened", 1)],
+            ),
+        ],
+        relics=[_relic("Burning Blood", counter=-1), _relic("Pen Nib", counter=9)],
+    )
+    before.monsters[0].is_gone = True
+    actual = _game(
+        floor=24,
+        turn=6,
+        player=SimpleNamespace(
+            current_hp=35,
+            max_hp=80,
+            block=11,
+            energy=0,
+            powers=[Power("Hex", "Hex", 1), Power("Weakened", "Weakened", 4)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(name="Cultist", monster_id="Cultist", hp=0, damage=6),
+            _monster(
+                name="Chosen",
+                monster_id="Chosen",
+                hp=13,
+                damage=8,
+                hits=2,
+                index=1,
+                powers=[Power("Strength", "Strength", 6), Power("Weakened", "Weakened", 1)],
+            ),
+        ],
+        relics=[_relic("Burning Blood", counter=-1), _relic("Pen Nib", counter=0)],
+    )
+    actual.monsters[0].is_gone = True
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=1), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_energy_potion_gains_two_energy(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
