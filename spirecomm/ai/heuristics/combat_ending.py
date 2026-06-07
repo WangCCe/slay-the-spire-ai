@@ -66,6 +66,7 @@ class _TargetedLethalState:
     player_hp: int
     corruption_active: bool
     double_tap_charges: int
+    nunchaku_counter: Optional[int]
     energy: int
 
     def seen_key(self, remaining_card_keys: Tuple[object, ...]):
@@ -80,6 +81,7 @@ class _TargetedLethalState:
             self.player_hp,
             self.corruption_active,
             self.double_tap_charges,
+            self.nunchaku_counter,
             self.energy,
         )
 
@@ -999,6 +1001,7 @@ class CombatEndingDetector:
             player_hp=self._context_player_hp(context),
             corruption_active=self._context_corruption_active(context),
             double_tap_charges=self._context_double_tap_charges(context),
+            nunchaku_counter=self._context_relic_counter(context, 'Nunchaku'),
             energy=available_energy,
         )
         seen = set()
@@ -1194,6 +1197,7 @@ class CombatEndingDetector:
                     next_vulnerable = state.vulnerable
                     next_artifact = state.artifact
                     total_damage = 0
+                    attack_plays_resolved = 0
                     rampage_bonus = 0
                     for _repeat_idx in range(attack_repeats):
                         repeat_damage = 0
@@ -1234,6 +1238,7 @@ class CombatEndingDetector:
                         if repeat_damage <= 0:
                             break
 
+                        attack_plays_resolved += 1
                         total_damage += repeat_damage
                         next_vulnerable, next_artifact = self._vulnerable_state_after_card(
                             card,
@@ -1248,6 +1253,13 @@ class CombatEndingDetector:
                     if total_damage <= 0:
                         continue
 
+                    nunchaku_energy_gain, next_nunchaku_counter = (
+                        self._nunchaku_energy_after_attack_plays(
+                            state.nunchaku_counter,
+                            attack_plays_resolved,
+                        )
+                    )
+                    cost = cost - nunchaku_energy_gain
                     kill_count = sum(
                         1
                         for before_hp, after_hp in zip(state.hp, next_hp)
@@ -1255,7 +1267,7 @@ class CombatEndingDetector:
                     )
                     priority = (
                         kill_count,
-                        0,
+                        1 if nunchaku_energy_gain > 0 else 0,
                         total_damage,
                         -cost,
                     )
@@ -1272,6 +1284,7 @@ class CombatEndingDetector:
                                 vulnerable=next_vulnerable,
                                 artifact=next_artifact,
                                 double_tap_charges=next_double_tap_charges,
+                                nunchaku_counter=next_nunchaku_counter,
                             ),
                         )
                     )
@@ -1308,6 +1321,7 @@ class CombatEndingDetector:
                     next_artifact = state.artifact
                     total_damage = 0
                     total_energy_refund = 0
+                    attack_plays_resolved = 0
                     rampage_bonus = 0
                     for _repeat_idx in range(attack_repeats):
                         current_hp = next_hp[monster_idx]
@@ -1337,6 +1351,7 @@ class CombatEndingDetector:
                         if damage <= 0:
                             continue
 
+                        attack_plays_resolved += 1
                         hit_count = self._get_vulnerable_damage_instance_count(
                             card,
                             context,
@@ -1368,8 +1383,14 @@ class CombatEndingDetector:
                     if total_damage <= 0:
                         continue
 
-                    cost = upfront_cost - total_energy_refund
-                    refunds_energy = total_energy_refund > 0
+                    nunchaku_energy_gain, next_nunchaku_counter = (
+                        self._nunchaku_energy_after_attack_plays(
+                            state.nunchaku_counter,
+                            attack_plays_resolved,
+                        )
+                    )
+                    cost = upfront_cost - total_energy_refund - nunchaku_energy_gain
+                    refunds_energy = total_energy_refund > 0 or nunchaku_energy_gain > 0
                     priority = (
                         1 if next_hp[monster_idx] <= 0 else 0,
                         1 if refunds_energy else 0,
@@ -1389,6 +1410,7 @@ class CombatEndingDetector:
                                 vulnerable=next_vulnerable,
                                 artifact=next_artifact,
                                 double_tap_charges=next_double_tap_charges,
+                                nunchaku_counter=next_nunchaku_counter,
                             ),
                         )
                     )
@@ -1720,17 +1742,25 @@ class CombatEndingDetector:
 
         def greedy_total(candidates):
             selected_damage = 0
-            selected_energy = 0
+            remaining_energy = available_energy
+            nunchaku_counter = self._context_relic_counter(context, 'Nunchaku')
             selected_cards = []
             for card, cost, damage, _ in candidates:
-                if selected_energy + cost <= available_energy:
+                if cost <= remaining_energy:
                     selected_damage += damage
-                    selected_energy += cost
+                    remaining_energy -= cost
                     selected_cards.append(card.name)
+                    nunchaku_energy_gain, nunchaku_counter = (
+                        self._nunchaku_energy_after_attack_plays(
+                            nunchaku_counter,
+                            1,
+                        )
+                    )
+                    remaining_energy += nunchaku_energy_gain
                 elif cost == 0:
                     selected_damage += damage
                     selected_cards.append(card.name)
-            return selected_damage, selected_energy, selected_cards
+            return selected_damage, available_energy - remaining_energy, selected_cards
 
         # Sort by efficiency (highest first), then by damage (highest first)
         attack_cards.sort(key=lambda x: (x[3], x[2]), reverse=True)
@@ -2096,6 +2126,44 @@ class CombatEndingDetector:
 
     def _player_is_weak(self, context: DecisionContext) -> bool:
         return self._get_player_debuff_stacks(context, 'Weak') > 0
+
+    def _nunchaku_energy_after_attack_plays(
+        self,
+        counter: Optional[int],
+        attack_plays: int,
+    ) -> Tuple[int, Optional[int]]:
+        if counter is None or attack_plays <= 0:
+            return 0, counter
+
+        energy_gain = 0
+        next_counter = max(0, self._safe_int(counter, default=0))
+        for _ in range(attack_plays):
+            if next_counter >= 9:
+                energy_gain += 1
+                next_counter = 0
+            else:
+                next_counter = min(9, next_counter + 1)
+        return energy_gain, next_counter
+
+    @staticmethod
+    def _context_relic_counter(context: DecisionContext, relic_name: str) -> Optional[int]:
+        target = ''.join(ch for ch in relic_name.lower() if ch.isalnum())
+        if not target:
+            return None
+
+        relics = []
+        for source in (getattr(context, 'game', None), context):
+            relics.extend(getattr(source, 'relics', []) or [])
+
+        for relic in relics:
+            for attr in ('name', 'relic_id', 'id'):
+                value = getattr(relic, attr, None)
+                if value is None:
+                    continue
+                normalized = ''.join(ch for ch in str(value).lower() if ch.isalnum())
+                if normalized == target:
+                    return coerce_int(getattr(relic, 'counter', 0), 0)
+        return None
 
     @staticmethod
     def _context_has_relic(context: DecisionContext, relic_name: str) -> bool:

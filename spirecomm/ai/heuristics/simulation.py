@@ -450,6 +450,7 @@ class SimulationState:
         )
         self.double_tap_charges = 0
         self.pen_nib_counter = self._context_relic_counter(context, 'Pen Nib')
+        self.nunchaku_counter = self._context_relic_counter(context, 'Nunchaku')
         self.corruption_active = self._has_player_power(context, 'Corruption')
         self.feel_no_pain_block_per_exhaust = self._get_player_power_amount(context, 'Feel No Pain')
         self.dark_embrace_draw_per_exhaust = self._get_player_power_amount(context, 'Dark Embrace')
@@ -862,6 +863,7 @@ class SimulationState:
             self.card_block_blocked,
             self.double_tap_charges,
             self.pen_nib_counter,
+            self.nunchaku_counter,
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
             self.dark_embrace_draw_per_exhaust,
@@ -1286,6 +1288,7 @@ class FastCombatSimulator:
 
         base_damage += self._rampage_damage_bonus(state, card)
         pen_nib_multiplier = self._pen_nib_attack_multiplier(state, consume=True)
+        self._apply_nunchaku_attack_energy(state)
 
         # Handle AOE attacks
         card_data = game_data_loader.get_card_data(card_name)
@@ -1744,6 +1747,20 @@ class FastCombatSimulator:
         if consume:
             state.pen_nib_counter = min(9, counter + 1)
         return 1
+
+    def _apply_nunchaku_attack_energy(self, state: SimulationState):
+        counter = getattr(state, 'nunchaku_counter', None)
+        if counter is None:
+            return
+
+        counter = self._non_negative_int(counter)
+        if counter >= 9:
+            state.nunchaku_counter = 0
+            state.player_energy += 1
+            state.energy_gained += 1
+            return
+
+        state.nunchaku_counter = min(9, counter + 1)
 
     @staticmethod
     def _positive_card_misc(card: Card) -> int:

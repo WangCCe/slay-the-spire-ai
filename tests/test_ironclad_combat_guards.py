@@ -1123,6 +1123,28 @@ def test_simulate_card_play_applies_pen_nib_before_target_vulnerable():
     assert result.pen_nib_counter == 0
 
 
+def test_simulate_card_play_nunchaku_counter_nine_refunds_energy():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.damage = 6
+    target = _louse(current_hp=20)
+    context = _combat_context([strike], energy=1, monsters=[target])
+    context.game.relics = [SimpleNamespace(relic_id="Nunchaku", name="Nunchaku", counter=9)]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 6
+    assert result.player_energy == 1
+    assert result.energy_gained == 1
+    assert result.nunchaku_counter == 0
+
+
 def test_fallback_attack_estimate_combines_player_weak_and_target_vulnerable_before_rounding():
     dropkick = _card("Dropkick", "Dropkick", cost=1)
     dropkick.damage = 5
@@ -11197,6 +11219,36 @@ def test_lethal_detector_uses_dropkick_energy_refund_for_sequence(monkeypatch):
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
         "dropkick",
         "strike",
+    ]
+
+
+def test_lethal_detector_uses_nunchaku_energy_refund_for_sequence(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    first_strike = _card("Strike_R", "Strike", cost=1)
+    first_strike.uuid = "first-strike"
+    second_strike = _card("Strike_R", "Strike", cost=1)
+    second_strike.uuid = "second-strike"
+    context = _combat_context(
+        [first_strike, second_strike],
+        energy=1,
+        monsters=[_louse(current_hp=12)],
+    )
+    context.game.relics = [SimpleNamespace(relic_id="Nunchaku", name="Nunchaku", counter=9)]
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 12
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "first-strike",
+        "second-strike",
     ]
 
 

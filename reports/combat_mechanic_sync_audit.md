@@ -79,6 +79,11 @@ already disproved.
   attack damage is doubled before player Weak and target Vulnerable, simulated
   attack plays advance or consume the counter, and fallback scalar estimates
   read the current counter without mutating state.
+- 2026-06-07: Nunchaku counter-9 attack energy gain is now modeled in
+  `FastCombatSimulator` and `CombatEndingDetector`. Simulated attack plays
+  spend their card cost, then gain 1 energy and reset the relic counter when
+  the counter reaches 9; lethal sequence search carries the counter in its
+  state key so refund lines can continue into later attacks.
 - 2026-06-07: `FastCombatSimulator` now defers Malleable block during a
   single multi-hit attack card. Twin Strike/Pummel-style hits and Whirlwind's
   per-energy hits each increment Malleable, but the gained block is applied
