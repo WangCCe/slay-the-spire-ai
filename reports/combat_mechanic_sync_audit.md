@@ -42,6 +42,10 @@ already disproved.
   - Paper Phrog increases target Vulnerable attack damage to `7/4`;
   - fallback attack damage scoring uses the same helper before Slow and hit-count
     expansion.
+- 2026-06-07: `IroncladCombatPlanner` fallback attack damage estimates now
+  count upgraded static attack damage when parsed card data only exposes the
+  base value. This keeps Bash follow-up checks and non-clone fallback scoring
+  from underestimating cards such as Headbutt+.
 
 ## Backlog
 

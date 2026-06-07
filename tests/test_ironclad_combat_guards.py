@@ -1136,6 +1136,31 @@ def test_fallback_attack_estimate_applies_paper_phrog_vulnerable_multiplier():
     assert damage == 10
 
 
+def test_ironclad_fallback_attack_estimate_counts_upgraded_static_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "headbutt": {
+            "name": "Headbutt",
+            "type": "ATTACK",
+            "cost": 1,
+            "description": "Deal 9 damage. Put a card from your discard pile on top of your draw pile.",
+        },
+    }
+    loader._wiki_data = {
+        "headbutt": {
+            "name": "Headbutt",
+            "text": "Deal [9|12] damage.\nPut a card from your discard pile on top of your draw pile.",
+        },
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+    headbutt_plus = _card("Headbutt", "Headbutt+", cost=1, upgrades=1)
+    context = _combat_context([headbutt_plus], energy=1, monsters=[_louse(current_hp=50)])
+    planner = IroncladCombatPlanner()
+
+    assert planner._estimate_attack_damage_without_simulation(headbutt_plus, context) == 12
+    assert planner._is_big_attack_followup(headbutt_plus, context) is True
+
+
 def test_simulation_state_coerces_string_monster_hp_and_block():
     target = _louse(current_hp="20")
     target.max_hp = "50"

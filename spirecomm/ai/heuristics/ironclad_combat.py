@@ -1120,12 +1120,12 @@ class IroncladCombatPlanner(CombatPlanner):
         if base_damage == 0:
             base_damage = 6
 
-        if (
-            card_name == 'Searing Blow'
-            and is_card_upgraded(card)
-            and parsed_card_data_name is not None
-            and '+' not in str(parsed_card_data_name or '')
-        ):
+        parsed_data_name_text = str(parsed_card_data_name or '')
+        parsed_data_is_base_damage = (
+            '+' not in parsed_data_name_text
+            and (bool(parsed_card_data_name) or card_name == 'Searing Blow')
+        )
+        if is_card_upgraded(card) and parsed_data_is_base_damage:
             base_damage += known_damage_upgrade_bonus(card, card_name)
 
         strength = getattr(context, 'strength', 0)
