@@ -2916,6 +2916,8 @@ class CombatRLAgent:
     @classmethod
     def _survival_block_value_for_game(cls, card, game: Optional[Game] = None) -> int:
         block_value = cls._survival_block_value(card)
+        if game is not None:
+            block_value += cls._ornamental_fan_block_for_card(card, game)
         if game is None or not cls._card_matches_normalized_names(card, {"havoc"}):
             return block_value
 
@@ -2926,6 +2928,30 @@ class CombatRLAgent:
         top_card_block = cls._survival_block_value(top_card)
         feel_no_pain_block = max(0, player_power_amount(game, "Feel No Pain"))
         return block_value + top_card_block + feel_no_pain_block
+
+    @classmethod
+    def _ornamental_fan_block_for_card(cls, card, game: Game) -> int:
+        if not is_attack_card(card):
+            return 0
+        counter = cls._relic_counter(game, "Ornamental Fan")
+        if counter is None:
+            return 0
+        return 4 if (max(0, counter) + 1) % 3 == 0 else 0
+
+    @classmethod
+    def _relic_counter(cls, game: Game, relic_name: str) -> Optional[int]:
+        wanted = cls._normalize_identifier(relic_name)
+        for relic in getattr(game, "relics", []) or []:
+            identifiers = [
+                getattr(relic, "relic_id", None),
+                getattr(relic, "name", None),
+                getattr(relic, "id", None),
+            ]
+            if isinstance(relic, str):
+                identifiers.append(relic)
+            if any(cls._normalize_identifier(identifier) == wanted for identifier in identifiers):
+                return cls._safe_int(getattr(relic, "counter", 0), default=0)
+        return None
 
     @classmethod
     def _survival_attack_damage(cls, card, game: Optional[Game] = None) -> int:

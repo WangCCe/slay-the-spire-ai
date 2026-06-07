@@ -903,6 +903,40 @@ def test_survival_guard_counts_havoc_visible_top_skill_block():
     assert agent._fallback_turn_key == (4, 2)
 
 
+def test_survival_guard_counts_ornamental_fan_attack_block():
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    jaw_worm = _monster(hp=42, damage=4, index=0, name="Jaw Worm", monster_id="JawWorm")
+    jaw_worm.intent = Intent.ATTACK
+    game = _game(
+        hand=[strike],
+        monsters=[jaw_worm],
+        relics=[
+            SimpleNamespace(
+                relic_id="Ornamental Fan",
+                name="Ornamental Fan",
+                counter=2,
+            )
+        ],
+        current_hp=4,
+        player=SimpleNamespace(energy=1, block=0, powers=[]),
+        floor=4,
+        turn=2,
+    )
+
+    replacement = _agent()._get_survival_block_replacement(game)
+
+    assert isinstance(replacement, PlayCardAction)
+    assert replacement.card_index == 0
+    assert replacement.target_index == 0
+
+
 def test_survival_guard_counts_havoc_feel_no_pain_block():
     strike = SimpleNamespace(
         name="Strike",
