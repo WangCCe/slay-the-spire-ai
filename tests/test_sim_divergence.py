@@ -5656,6 +5656,139 @@ def test_unexpected_combat_exit_still_reports_when_expected_monster_survives(mon
     assert records[0]["expected"]["monsters"][0]["hp"] == 6
 
 
+def test_darkling_attack_death_enters_half_dead_without_false_divergence(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    strike = _card(name="Strike", card_id="Strike_R", damage=6, cost=1)
+    before = _game(
+        floor=35,
+        turn=2,
+        player=SimpleNamespace(current_hp=85, max_hp=85, block=16, energy=1),
+        hand=[strike],
+        monsters=[
+            _monster(
+                name="Darkling",
+                monster_id="Darkling",
+                hp=6,
+                max_hp=50,
+                damage=8,
+                intent=Intent.ATTACK,
+            ),
+            _monster(
+                name="Darkling",
+                monster_id="Darkling",
+                hp=37,
+                max_hp=48,
+                block=12,
+                damage=9,
+                intent=Intent.ATTACK,
+                index=1,
+            ),
+        ],
+    )
+    killed_darkling = _monster(
+        name="Darkling",
+        monster_id="Darkling",
+        hp=0,
+        max_hp=50,
+        damage=-1,
+        intent=Intent.UNKNOWN,
+    )
+    killed_darkling.is_gone = True
+    killed_darkling.half_dead = True
+    actual = _game(
+        floor=35,
+        turn=2,
+        player=SimpleNamespace(current_hp=85, max_hp=85, block=16, energy=1),
+        hand=[],
+        monsters=[
+            killed_darkling,
+            _monster(
+                name="Darkling",
+                monster_id="Darkling",
+                hp=37,
+                max_hp=48,
+                block=12,
+                damage=9,
+                intent=Intent.ATTACK,
+                index=1,
+            ),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_darkling_buff_turn_revives_half_dead_monster_without_false_divergence(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    reviving_darkling = _monster(
+        name="Darkling",
+        monster_id="Darkling",
+        hp=0,
+        max_hp=50,
+        damage=-1,
+        intent=Intent.BUFF,
+    )
+    reviving_darkling.is_gone = True
+    reviving_darkling.half_dead = True
+    before = _game(
+        floor=35,
+        turn=4,
+        player=SimpleNamespace(current_hp=85, max_hp=85, block=16, energy=0),
+        hand=[],
+        monsters=[
+            reviving_darkling,
+            _monster(
+                name="Darkling",
+                monster_id="Darkling",
+                hp=15,
+                max_hp=48,
+                damage=-1,
+                intent=Intent.DEFEND,
+                index=1,
+            ),
+        ],
+    )
+    actual = _game(
+        floor=35,
+        turn=5,
+        player=SimpleNamespace(current_hp=85, max_hp=85, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Darkling",
+                monster_id="Darkling",
+                hp=25,
+                max_hp=50,
+                damage=8,
+                hits=2,
+                intent=Intent.ATTACK,
+            ),
+            _monster(
+                name="Darkling",
+                monster_id="Darkling",
+                hp=15,
+                max_hp=48,
+                block=12,
+                damage=9,
+                intent=Intent.ATTACK,
+                index=1,
+            ),
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_resets_monster_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

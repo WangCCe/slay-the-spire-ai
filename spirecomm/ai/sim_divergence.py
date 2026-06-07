@@ -486,6 +486,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 0,
                 _to_int(expected["player"].get("current_hp")) - brutality_loss,
             )
+        _apply_darkling_end_turn_revives(expected, before)
         _prepare_monster_block_for_mercury_hourglass(expected, before)
         _apply_mercury_hourglass_damage(expected, before)
 
@@ -527,7 +528,7 @@ def _apply_expected_attack(
         hp_loss = max(0, hp_before - target["hp"])
         damage_dealt += hp_loss
         if target["hp"] <= 0:
-            target["gone"] = True
+            _mark_monster_defeated(target)
             break
         if hp_loss > 0:
             _apply_guardian_mode_shift(target, hp_loss)
@@ -635,8 +636,38 @@ def _apply_direct_monster_damage(
     target["hp"] = max(0, hp_before - remaining)
     hp_loss = max(0, hp_before - target["hp"])
     if target["hp"] <= 0:
-        target["gone"] = True
+        _mark_monster_defeated(target)
     return hp_loss
+
+
+def _mark_monster_defeated(monster: Dict[str, Any]) -> None:
+    monster["hp"] = 0
+    monster["gone"] = True
+    if _is_darkling_monster(monster):
+        monster["half_dead"] = True
+        monster["intent"] = "Intent.UNKNOWN"
+        monster["move_damage"] = -1
+
+
+def _apply_darkling_end_turn_revives(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> None:
+    before_monsters = before.get("monsters") or []
+    for index, monster in enumerate(expected.get("monsters", []) or []):
+        before_monster = before_monsters[index] if index < len(before_monsters) else {}
+        if not _darkling_revival_ready(before_monster):
+            continue
+        monster["hp"] = max(1, _to_int(monster.get("max_hp")) // 2)
+        monster["gone"] = False
+        monster["half_dead"] = False
+
+
+def _darkling_revival_ready(monster: Dict[str, Any]) -> bool:
+    return (
+        _darkling_half_dead(monster)
+        and _normalize(monster.get("intent")) in {"buff", "intentbuff"}
+    )
 
 
 def _diff_snapshots(
@@ -895,6 +926,7 @@ def _ignored_diff_keys(pending: Dict[str, Any], actual: Optional[Dict[str, Any]]
         return ignored
 
     ignored.update(_slime_split_ignored_diff_keys(pending, actual))
+    ignored.update(_darkling_half_dead_animation_ignored_diff_keys(pending, actual))
 
     if action.get("type") == "EndTurnAction":
         ignored.add("player.energy")
@@ -1032,6 +1064,53 @@ def _slime_split_ready(monster: Dict[str, Any]) -> bool:
 def _is_slime_monster(monster: Dict[str, Any]) -> bool:
     identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
     return any("slime" in value for value in identifiers)
+
+
+def _darkling_half_dead_animation_ignored_diff_keys(
+    pending: Dict[str, Any],
+    actual: Optional[Dict[str, Any]] = None,
+) -> set:
+    actual = actual or {}
+    action = pending.get("action") or {}
+    if action.get("type") != "PlayCardAction":
+        return set()
+
+    before_monsters = (pending.get("before") or {}).get("monsters") or []
+    expected_monsters = (pending.get("expected") or {}).get("monsters") or []
+    actual_monsters = actual.get("monsters") or []
+    for index, before_monster in enumerate(before_monsters):
+        if index >= len(expected_monsters) or index >= len(actual_monsters):
+            continue
+        if not _is_live_darkling(before_monster):
+            continue
+        if _darkling_half_dead(expected_monsters[index]) and _darkling_half_dead(
+            actual_monsters[index]
+        ):
+            return {"player.energy"}
+    return set()
+
+
+def _is_live_darkling(monster: Dict[str, Any]) -> bool:
+    return (
+        _is_darkling_monster(monster)
+        and not bool(monster.get("gone"))
+        and not bool(monster.get("half_dead"))
+        and _to_int(monster.get("hp")) > 0
+    )
+
+
+def _darkling_half_dead(monster: Dict[str, Any]) -> bool:
+    return (
+        _is_darkling_monster(monster)
+        and bool(monster.get("gone"))
+        and bool(monster.get("half_dead"))
+        and _to_int(monster.get("hp")) <= 0
+    )
+
+
+def _is_darkling_monster(monster: Dict[str, Any]) -> bool:
+    identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
+    return "darkling" in identifiers
 
 
 def _sword_boomerang_random_target_boundary(pending: Dict[str, Any]) -> bool:
