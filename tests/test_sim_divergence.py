@@ -3575,6 +3575,100 @@ def test_vulnerable_target_damage_does_not_create_false_monster_diff(monkeypatch
     assert not trace_path.exists()
 
 
+def test_paper_phrog_vulnerable_target_uses_bonus_multiplier(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=16,
+        turn=2,
+        player=SimpleNamespace(current_hp=49, max_hp=80, block=0, energy=1),
+        hand=[_card(name="Strike", card_id="Strike_R", damage=6)],
+        relics=[_relic("Paper Phrog", counter=-1)],
+        monsters=[
+            _monster(
+                name="Hexaghost",
+                monster_id="Hexaghost",
+                hp=209,
+                powers=[Power("Vulnerable", "Vulnerable", 2)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=16,
+        turn=2,
+        player=SimpleNamespace(current_hp=49, max_hp=80, block=0, energy=0),
+        hand=[],
+        relics=[_relic("Paper Phrog", counter=-1)],
+        monsters=[
+            _monster(
+                name="Hexaghost",
+                monster_id="Hexaghost",
+                hp=199,
+                powers=[Power("Vulnerable", "Vulnerable", 2)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_paper_phrog_vulnerable_target_applies_after_strength(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=16,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=74,
+            max_hp=80,
+            block=0,
+            energy=1,
+            powers=[Power("Strength", "Strength", 5), Power("Strength Down", "Flex", 5)],
+        ),
+        hand=[_card(name="Strike", card_id="Strike_R", damage=6)],
+        relics=[_relic("Paper Phrog", counter=-1)],
+        monsters=[
+            _monster(
+                name="Hexaghost",
+                monster_id="Hexaghost",
+                hp=250,
+                powers=[Power("Vulnerable", "Vulnerable", 3)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=16,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=74,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[Power("Strength", "Strength", 5), Power("Strength Down", "Flex", 5)],
+        ),
+        hand=[],
+        relics=[_relic("Paper Phrog", counter=-1)],
+        monsters=[
+            _monster(
+                name="Hexaghost",
+                monster_id="Hexaghost",
+                hp=231,
+                powers=[Power("Vulnerable", "Vulnerable", 3)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_curl_up_target_gains_block_after_surviving_attack(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

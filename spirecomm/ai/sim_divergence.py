@@ -340,11 +340,22 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 )
                 hit_count *= attack_play_count
                 if _is_all_enemy_attack(card):
-                    damage_dealt = _apply_expected_attack_to_all(expected, damage, hit_count)
+                    damage_dealt = _apply_expected_attack_to_all(
+                        expected,
+                        damage,
+                        hit_count,
+                        before,
+                    )
                     sharp_hide_damage = _sharp_hide_reflection_damage(before, all_targets=True)
                 else:
                     target_index = _target_index_for_action(action, game)
-                    damage_dealt = _apply_expected_attack(expected, target_index, damage, hit_count)
+                    damage_dealt = _apply_expected_attack(
+                        expected,
+                        target_index,
+                        damage,
+                        hit_count,
+                        before,
+                    )
                     sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
                     _apply_card_target_debuffs(expected, card, target_index)
                 if _is_reaper(card) and damage_dealt > 0:
@@ -472,6 +483,7 @@ def _apply_expected_attack(
     target_index: Optional[int],
     damage: int,
     hit_count: int = 1,
+    before: Optional[Dict[str, Any]] = None,
 ) -> int:
     if target_index is None or target_index < 0:
         return 0
@@ -485,7 +497,7 @@ def _apply_expected_attack(
     for _ in range(max(0, hit_count)):
         if target.get("gone") or target.get("half_dead") or _to_int(target.get("hp")) <= 0:
             break
-        remaining_damage = _modified_attack_damage(max(0, damage), target)
+        remaining_damage = _modified_attack_damage(max(0, damage), target, before)
         if target["block"] > 0:
             blocked = min(target["block"], remaining_damage)
             target["block"] -= blocked
@@ -520,12 +532,19 @@ def _apply_expected_attack_to_all(
     expected: Dict[str, Any],
     damage: int,
     hit_count: int = 1,
+    before: Optional[Dict[str, Any]] = None,
 ) -> int:
     damage_dealt = 0
     for index, monster in enumerate(expected.get("monsters", [])):
         if monster.get("gone") or monster.get("half_dead") or _to_int(monster.get("hp")) <= 0:
             continue
-        damage_dealt += _apply_expected_attack(expected, index, damage, hit_count)
+        damage_dealt += _apply_expected_attack(
+            expected,
+            index,
+            damage,
+            hit_count,
+            before,
+        )
     return damage_dealt
 
 
@@ -1503,14 +1522,27 @@ def _source_modified_attack_damage(
     return max(0, damage)
 
 
-def _modified_attack_damage(damage: int, target: Dict[str, Any]) -> int:
+def _modified_attack_damage(
+    damage: int,
+    target: Dict[str, Any],
+    before: Optional[Dict[str, Any]] = None,
+) -> int:
     if damage <= 0:
         return 0
     if _snapshot_power_amount(target, "Vulnerable") > 0:
-        damage = damage * 3 // 2
+        damage = _vulnerable_modified_damage(damage, before)
     if _snapshot_power_amount(target, "Flight") > 0:
         damage = damage // 2
     return max(0, damage)
+
+
+def _vulnerable_modified_damage(
+    damage: int,
+    before: Optional[Dict[str, Any]] = None,
+) -> int:
+    if _snapshot_has_relic(before or {}, "Paper Phrog"):
+        return damage * 7 // 4
+    return damage * 3 // 2
 
 
 def _decrement_flight(target: Dict[str, Any]) -> None:
@@ -1926,7 +1958,12 @@ def _apply_havoc_top_card(
             -1,
         )
         if _is_all_enemy_attack(top_card):
-            damage_dealt = _apply_expected_attack_to_all(expected, damage, hit_count)
+            damage_dealt = _apply_expected_attack_to_all(
+                expected,
+                damage,
+                hit_count,
+                before,
+            )
             sharp_hide_damage = _sharp_hide_reflection_damage(before, all_targets=True)
         else:
             target_index = _single_alive_monster_index(expected)
@@ -1938,6 +1975,7 @@ def _apply_havoc_top_card(
                     target_index,
                     damage,
                     hit_count,
+                    before,
                 )
                 sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
         if _is_reaper(top_card) and damage_dealt > 0:
