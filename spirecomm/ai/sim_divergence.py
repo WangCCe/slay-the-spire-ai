@@ -461,7 +461,6 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         if orichalcum_block > 0:
             expected["player"]["block"] += orichalcum_block
         hp_loss_events = _apply_combust_end_turn(expected, before)
-        _apply_end_turn_attack_reflection_damage(expected, before)
         regeneration_heal = _regeneration_end_turn_heal(before)
         if regeneration_heal > 0:
             _heal_player(expected, regeneration_heal)
@@ -1922,6 +1921,7 @@ def _apply_end_turn_player_damage(
     hp_loss_events = 0
     for amount in _end_turn_status_damage_events(before):
         hp_loss_events += _damage_player(expected, amount)
+    reflection_damage = _end_turn_attack_reflection_damage(before)
     for index, monster in enumerate(expected.get("monsters", []) or []):
         damage = max(0, _to_int(monster.get("move_damage")))
         if damage <= 0 or _monster_attack_damage(monster) <= 0:
@@ -1932,6 +1932,15 @@ def _apply_end_turn_player_damage(
             hp_lost = max(0, hp_before - _to_int(expected.get("player", {}).get("current_hp")))
             if _is_shelled_parasite_attack_buff(monster):
                 _heal_monster(expected, index, hp_lost)
+            if reflection_damage > 0:
+                _apply_direct_monster_damage(
+                    expected,
+                    index,
+                    reflection_damage,
+                    ignore_block=True,
+                )
+                if monster.get("gone") or monster.get("half_dead"):
+                    break
     return hp_loss_events
 
 

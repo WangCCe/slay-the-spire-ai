@@ -7172,6 +7172,83 @@ def test_end_turn_thorns_bypasses_monster_block(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_end_turn_thorns_killed_monster_still_deals_current_attack_damage(
+    monkeypatch,
+    tmp_path,
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=11,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=53,
+            max_hp=80,
+            block=5,
+            energy=0,
+            powers=[Power("Thorns", "Thorns", 3)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Acid Slime (M)",
+                monster_id="AcidSlime_M",
+                hp=20,
+                max_hp=32,
+                damage=10,
+                intent=Intent.ATTACK,
+            ),
+            _monster(
+                name="Looter",
+                monster_id="Looter",
+                hp=3,
+                max_hp=46,
+                damage=10,
+                intent=Intent.ATTACK,
+                index=1,
+            ),
+        ],
+    )
+    actual = _game(
+        floor=11,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=38,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Thorns", "Thorns", 3)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Acid Slime (M)",
+                monster_id="AcidSlime_M",
+                hp=17,
+                max_hp=32,
+                damage=-1,
+                intent=Intent.DEBUFF,
+            ),
+            _monster(
+                name="Looter",
+                monster_id="Looter",
+                hp=0,
+                max_hp=46,
+                damage=10,
+                intent=Intent.ATTACK,
+                index=1,
+            ),
+        ],
+    )
+    actual.monsters[1].is_gone = True
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_flame_barrier_damages_attacker(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
