@@ -24,6 +24,7 @@ from .combat_state import (
     monster_power_amount,
     player_block_value,
     player_debuff_stacks,
+    player_has_power,
     player_hp_values,
 )
 from .card_names import canonical_card_name
@@ -44,6 +45,7 @@ from .card_upgrades import (
     card_upgrade_count,
     heavy_blade_strength_multiplier,
     is_card_upgraded,
+    known_block_upgrade_bonus,
     known_damage_upgrade_bonus,
     perfected_strike_bonus_per_strike,
 )
@@ -777,6 +779,81 @@ class CombatEndingDetector:
             and intent_is_attack(getattr(context.monsters_alive[monster_idx], 'intent', None))
         )
 
+    @staticmethod
+    def _single_alive_monster_index(hp_state: Tuple[int, ...]) -> Optional[int]:
+        alive_indices = [
+            monster_idx
+            for monster_idx, hp in enumerate(hp_state)
+            if hp > 0
+        ]
+        if len(alive_indices) != 1:
+            return None
+        return alive_indices[0]
+
+    def _player_juggernaut_damage(self, context: DecisionContext) -> int:
+        damage = max(0, self._get_player_debuff_stacks(context, 'Juggernaut'))
+        if damage <= 1 and player_has_power(context, 'Juggernaut'):
+            return 5
+        return damage
+
+    def _player_blocks_card_block(self, context: DecisionContext) -> bool:
+        return any(
+            self._get_player_debuff_stacks(context, power_name) > 0
+            for power_name in ('No Block', 'NoBlock', 'NoBlockPower')
+        )
+
+    def _card_block_gain(self, card: Card, context: DecisionContext) -> int:
+        if self._player_blocks_card_block(context):
+            return 0
+
+        card_name = self._base_card_name(card)
+        block_gain = max(0, self._safe_int(getattr(card, 'block', 0), default=0))
+        if block_gain <= 0:
+            card_data = self.game_data_loader.get_card_data(card_name) or {}
+            if card_data:
+                block_data = dict(card_data)
+                upgrades = card_upgrade_count(card)
+                block_data['name'] = f"{card_name}+" if upgrades > 0 else card_name
+                parsed_block = self.game_data_loader._parse_card_block(block_data)
+                block_gain = max(0, self._safe_int(parsed_block, default=0))
+                if block_gain > 0 and upgrades > 0:
+                    base_data = dict(card_data)
+                    base_data['name'] = card_name
+                    unupgraded_block = self.game_data_loader._parse_card_block(base_data)
+                    if unupgraded_block is not None and block_gain == unupgraded_block:
+                        block_gain += known_block_upgrade_bonus(card, card_name)
+
+        if block_gain <= 0:
+            return 0
+
+        dexterity = self._get_player_debuff_stacks(context, 'Dexterity')
+        block_gain = max(0, block_gain + dexterity)
+        if self._get_player_debuff_stacks(context, 'Frail') > 0:
+            block_gain = int(block_gain * 0.75)
+        return max(0, block_gain)
+
+    def _juggernaut_damage_for_block_card(
+        self,
+        card: Card,
+        context: DecisionContext,
+        hp_state: Tuple[int, ...],
+    ) -> int:
+        if self._single_alive_monster_index(hp_state) is None:
+            return 0
+        if not self._is_juggernaut_block_card(card, context):
+            return 0
+        return self._player_juggernaut_damage(context)
+
+    def _is_juggernaut_block_card(
+        self,
+        card: Card,
+        context: DecisionContext,
+    ) -> bool:
+        return (
+            self._player_juggernaut_damage(context) > 0
+            and self._card_block_gain(card, context) > 0
+        )
+
     def _is_lethal_energy_support_card(self, card: Card) -> bool:
         if card_type_name(card) != 'SKILL':
             return False
@@ -930,6 +1007,65 @@ class CombatEndingDetector:
             damage_progress,
         )
 
+    def _apply_lethal_direct_damage_to_target(
+        self,
+        hp_state: Tuple[int, ...],
+        block_state: Tuple[int, ...],
+        monster_idx: int,
+        damage: int,
+    ) -> Tuple[Tuple[int, ...], Tuple[int, ...], int]:
+        next_hp = list(hp_state)
+        next_block = list(block_state)
+        if monster_idx < 0 or monster_idx >= len(next_hp):
+            return hp_state, block_state, 0
+
+        remaining_damage = max(0, int(damage))
+        if remaining_damage <= 0 or next_hp[monster_idx] <= 0:
+            return hp_state, block_state, 0
+
+        damage_progress = 0
+        block_before = max(0, next_block[monster_idx])
+        if block_before > 0:
+            blocked = min(block_before, remaining_damage)
+            next_block[monster_idx] = block_before - blocked
+            remaining_damage -= blocked
+            damage_progress += blocked
+
+        hp_before = max(0, next_hp[monster_idx])
+        next_hp[monster_idx] = max(0, hp_before - remaining_damage)
+        hp_loss = max(0, hp_before - next_hp[monster_idx])
+        damage_progress += hp_loss
+        if next_hp[monster_idx] <= 0:
+            next_block[monster_idx] = 0
+
+        return (
+            tuple(next_hp),
+            tuple(max(0, block) for block in next_block),
+            damage_progress,
+        )
+
+    def _apply_lethal_juggernaut_block_damage(
+        self,
+        card: Card,
+        context: DecisionContext,
+        hp_state: Tuple[int, ...],
+        block_state: Tuple[int, ...],
+    ) -> Tuple[Tuple[int, ...], Tuple[int, ...], int]:
+        target_idx = self._single_alive_monster_index(hp_state)
+        if target_idx is None:
+            return hp_state, block_state, 0
+
+        damage = self._juggernaut_damage_for_block_card(card, context, hp_state)
+        if damage <= 0:
+            return hp_state, block_state, 0
+
+        return self._apply_lethal_direct_damage_to_target(
+            hp_state,
+            block_state,
+            target_idx,
+            damage,
+        )
+
     def _is_lethal_vulnerable_support_card(self, card: Card) -> bool:
         if card_type_name(card) != 'SKILL':
             return False
@@ -959,6 +1095,10 @@ class CombatEndingDetector:
                 or self._is_lethal_corruption_support_card(card)
                 or self._is_lethal_double_tap_support_card(card)
                 or self._is_lethal_vulnerable_support_card(card)
+                or (
+                    not is_attack_card(card)
+                    and self._is_juggernaut_block_card(card, context)
+                )
             )
         ]
         sequence_cards = support_cards + sequence_cards
@@ -1018,6 +1158,50 @@ class CombatEndingDetector:
 
             candidates = []
             for card_pos, card in enumerate(remaining_cards):
+                if self._is_juggernaut_block_card(card, context) and not is_attack_card(card):
+                    cost = self._lethal_card_cost(
+                        card,
+                        context,
+                        state.energy,
+                        state.corruption_active,
+                    )
+                    if cost > state.energy:
+                        continue
+
+                    target_idx = self._single_alive_monster_index(state.hp)
+                    if target_idx is None:
+                        continue
+
+                    next_hp, next_block, damage_progress = (
+                        self._apply_lethal_juggernaut_block_damage(
+                            card,
+                            context,
+                            state.hp,
+                            state.block,
+                        )
+                    )
+                    if damage_progress <= 0:
+                        continue
+
+                    candidates.append(
+                        _TargetedLethalCandidate(
+                            priority=(
+                                1 if next_hp[target_idx] <= 0 else 0,
+                                0,
+                                damage_progress,
+                                -cost,
+                            ),
+                            card_pos=card_pos,
+                            monster_idx=None,
+                            next_state=state.after_spending(
+                                cost,
+                                hp=next_hp,
+                                block=next_block,
+                            ),
+                        )
+                    )
+                    continue
+
                 if self._is_lethal_strength_support_card(card):
                     cost = self._lethal_card_cost(
                         card,
@@ -1239,6 +1423,15 @@ class CombatEndingDetector:
                             break
 
                         attack_plays_resolved += 1
+                        next_hp, next_block, juggernaut_damage = (
+                            self._apply_lethal_juggernaut_block_damage(
+                                card,
+                                context,
+                                next_hp,
+                                next_block,
+                            )
+                        )
+                        repeat_damage += juggernaut_damage
                         total_damage += repeat_damage
                         next_vulnerable, next_artifact = self._vulnerable_state_after_card(
                             card,
@@ -1370,6 +1563,15 @@ class CombatEndingDetector:
                             )
                         )
                         total_damage += damage_progress
+                        next_hp, next_block, juggernaut_damage = (
+                            self._apply_lethal_juggernaut_block_damage(
+                                card,
+                                context,
+                                next_hp,
+                                next_block,
+                            )
+                        )
+                        total_damage += juggernaut_damage
                         next_vulnerable, next_artifact = self._vulnerable_state_after_card(
                             card,
                             context,
@@ -1693,10 +1895,19 @@ class CombatEndingDetector:
             0,
             self._safe_int(getattr(context, 'energy_available', 0), default=0),
         )
+        hp_state = tuple(
+            self._monster_current_hp(monster)
+            for monster in getattr(context, 'monsters_alive', []) or []
+        )
 
         # Sort attack cards by damage efficiency (damage per energy)
         attack_cards = []
         for card in context.playable_cards:
+            juggernaut_damage = self._juggernaut_damage_for_block_card(
+                card,
+                context,
+                hp_state,
+            )
             if is_attack_card(card):
                 if len(context.monsters_alive) == 1:
                     cost = self._card_energy_cost_against_monster(
@@ -1733,11 +1944,21 @@ class CombatEndingDetector:
                         damage,
                         available_energy,
                     )
+                damage += juggernaut_damage
                 logger.info(f"[LETHAL_CALC] {card.name}: cost={cost}, damage={damage}, eff={damage/cost if cost > 0 else 'inf'}")
                 if cost > 0:
                     efficiency = damage / cost
                 else:
                     efficiency = float('inf')  # Zero-cost cards are infinitely efficient
+                attack_cards.append((card, cost, damage, efficiency))
+            elif juggernaut_damage > 0:
+                cost = self._lethal_card_cost(card, context, available_energy)
+                damage = juggernaut_damage
+                logger.info(f"[LETHAL_CALC] {card.name}: cost={cost}, juggernaut_damage={damage}, eff={damage/cost if cost > 0 else 'inf'}")
+                if cost > 0:
+                    efficiency = damage / cost
+                else:
+                    efficiency = float('inf')
                 attack_cards.append((card, cost, damage, efficiency))
 
         def greedy_total(candidates):
@@ -1750,13 +1971,14 @@ class CombatEndingDetector:
                     selected_damage += damage
                     remaining_energy -= cost
                     selected_cards.append(card.name)
-                    nunchaku_energy_gain, nunchaku_counter = (
-                        self._nunchaku_energy_after_attack_plays(
-                            nunchaku_counter,
-                            1,
+                    if is_attack_card(card):
+                        nunchaku_energy_gain, nunchaku_counter = (
+                            self._nunchaku_energy_after_attack_plays(
+                                nunchaku_counter,
+                                1,
+                            )
                         )
-                    )
-                    remaining_energy += nunchaku_energy_gain
+                        remaining_energy += nunchaku_energy_gain
                 elif cost == 0:
                     selected_damage += damage
                     selected_cards.append(card.name)

@@ -84,6 +84,11 @@ already disproved.
   spend their card cost, then gain 1 energy and reset the relic counter when
   the counter reaches 9; lethal sequence search carries the counter in its
   state key so refund lines can continue into later attacks.
+- 2026-06-07: `CombatEndingDetector` now counts Juggernaut damage caused by
+  block-gaining card plays when the current lethal-search state has a single
+  living monster. Non-attack block cards can prove lethal as support plays, and
+  block-gaining attack cards add the same direct damage after their attack
+  damage; multi-monster random targeting remains conservative.
 - 2026-06-07: `FastCombatSimulator` now models Ornamental Fan attack-count
   block. Simulated attack plays carry a separate Fan counter in the state key
   and gain 4 block on every third attack through the normal block-gain path,
