@@ -6410,6 +6410,56 @@ def test_end_turn_burn_plus_damage_uses_remaining_block(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_end_turn_decay_loses_hp_through_block_before_monster_attack(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    decay = _card(
+        name="Decay",
+        card_id="Decay",
+        card_type=CardType.CURSE,
+        cost=0,
+        damage=0,
+    )
+    before = _game(
+        floor=10,
+        turn=1,
+        player=SimpleNamespace(current_hp=52, max_hp=80, block=10, energy=0),
+        hand=[decay, _card(name="Defend+", card_id="Defend_R", card_type=CardType.SKILL, block=8)],
+        monsters=[
+            _monster(
+                name="Acid Slime (L)",
+                monster_id="AcidSlime_L",
+                hp=62,
+                max_hp=68,
+                damage=16,
+                intent=Intent.ATTACK,
+            )
+        ],
+    )
+    actual = _game(
+        floor=10,
+        turn=2,
+        player=SimpleNamespace(current_hp=44, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Acid Slime (L)",
+                monster_id="AcidSlime_L",
+                hp=62,
+                max_hp=68,
+                damage=16,
+                intent=Intent.ATTACK_DEBUFF,
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_brutality_loses_one_hp_after_monster_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

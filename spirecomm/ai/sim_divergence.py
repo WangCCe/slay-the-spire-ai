@@ -121,6 +121,10 @@ END_TURN_STATUS_DAMAGE = {
     "Burn": 2,
 }
 
+END_TURN_STATUS_HP_LOSS = {
+    "Decay": 2,
+}
+
 HAVOC_CARDS = {
     "Havoc": 0,
 }
@@ -1994,6 +1998,8 @@ def _apply_end_turn_player_damage(
     before: Dict[str, Any],
 ) -> int:
     hp_loss_events = 0
+    for amount in _end_turn_status_hp_loss_events(before):
+        hp_loss_events += _lose_player_hp(expected, amount)
     for amount in _end_turn_status_damage_events(before):
         hp_loss_events += _damage_player(expected, amount)
     reflection_damage = _end_turn_attack_reflection_damage(before)
@@ -2051,6 +2057,16 @@ def _end_turn_status_damage_events(snapshot: Dict[str, Any]):
             damage += 2
         if damage > 0:
             yield damage
+
+
+def _end_turn_status_hp_loss_events(snapshot: Dict[str, Any]):
+    for card in snapshot.get("hand", []) or []:
+        card_name = _snapshot_known_card_name(card, END_TURN_STATUS_HP_LOSS)
+        if card_name is None:
+            continue
+        amount = END_TURN_STATUS_HP_LOSS[card_name]
+        if amount > 0:
+            yield amount
 
 
 def _end_turn_monster_attack_damage_events(snapshot: Dict[str, Any]):
