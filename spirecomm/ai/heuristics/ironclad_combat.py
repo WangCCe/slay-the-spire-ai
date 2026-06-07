@@ -1829,6 +1829,7 @@ class IroncladCombatPlanner(CombatPlanner):
     def _estimate_fallback_card_block(self, card: Card, context: DecisionContext) -> int:
         card_name = canonical_card_name(card)
         block_gain = self._non_negative_int(getattr(card, 'block', 0))
+        relic_block = self._ornamental_fan_block_for_card(card, context)
 
         if block_gain <= 0:
             try:
@@ -1849,12 +1850,24 @@ class IroncladCombatPlanner(CombatPlanner):
                 block_gain = 0
 
         if block_gain <= 0:
-            return 0
+            return relic_block
 
         block_gain = max(0, block_gain + player_debuff_stacks(context, 'Dexterity'))
         if player_debuff_stacks(context, 'Frail') > 0:
             block_gain = int(block_gain * 0.75)
-        return max(0, block_gain)
+        return max(0, block_gain) + relic_block
+
+    def _ornamental_fan_block_for_card(
+        self,
+        card: Card,
+        context: DecisionContext,
+    ) -> int:
+        if not is_attack_card(card):
+            return 0
+        counter = SimulationState._context_relic_counter(context, 'Ornamental Fan')
+        if counter is None:
+            return 0
+        return 4 if (self._non_negative_int(counter) + 1) % 3 == 0 else 0
 
     @staticmethod
     def _feel_no_pain_block_per_exhaust(context: DecisionContext) -> int:
@@ -1944,6 +1957,12 @@ class IroncladCombatPlanner(CombatPlanner):
 
         if card_id == 'Havoc':
             havoc_block = self._estimate_havoc_visible_top_card_block(card, context)
+            missing_block = max(0, incoming_damage - context_turn_block)
+            if havoc_block > 0 and missing_block > 0 and havoc_block >= missing_block:
+                if aggressive_mode:
+                    player_hp = self._non_negative_float(context.game.current_hp)
+                    return 600 if incoming_damage > player_hp * 0.8 else 100
+                return 850
             if havoc_block >= 5:
                 if aggressive_mode:
                     player_hp = self._non_negative_float(context.game.current_hp)
@@ -1969,10 +1988,15 @@ class IroncladCombatPlanner(CombatPlanner):
         # Attacks - prioritize more in aggressive mode
         if card_type == 'ATTACK':
             base_attack_priority = 700
-            
+
             # Increase attack priority for aggressive mode against Gremlins
             if aggressive_mode:
                 base_attack_priority = 900
+
+            attack_block = self._estimate_fallback_card_block(card, context)
+            missing_block = max(0, incoming_damage - context_turn_block)
+            if attack_block > 0 and missing_block > 0 and attack_block >= missing_block:
+                return max(base_attack_priority, 850)
 
             if card_id == 'Reaper' and len(context.monsters_alive) >= 2:
                 return 900 if context_strength >= 5 else base_attack_priority

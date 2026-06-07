@@ -15555,6 +15555,73 @@ def test_ironclad_fallback_counts_orichalcum_before_prioritizing_defense():
     assert sequence[0].card is strike
 
 
+def test_ironclad_fallback_counts_ornamental_fan_attack_block():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [defend, strike],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.incoming_damage = 4
+    context.game.relics = [SimpleNamespace(name="Ornamental Fan", counter=2)]
+    context.relics = context.game.relics
+    planner = IroncladCombatPlanner()
+    planner._get_monster_info = lambda _monster: {
+        "recommended_strategy": "balanced",
+        "threat_level": 2,
+    }
+
+    sequence = planner._fallback_plan(context, [defend, strike])
+
+    assert len(sequence) == 1
+    assert sequence[0].card is strike
+
+
+def test_ironclad_fallback_counts_ornamental_fan_from_havoc_top_attack():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend.block = 3
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    top_strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [defend, havoc],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.incoming_damage = 4
+    context.game.draw_pile = [top_strike]
+    context.game.relics = [SimpleNamespace(name="Ornamental Fan", counter=2)]
+    context.relics = context.game.relics
+    planner = IroncladCombatPlanner()
+    planner._get_monster_info = lambda _monster: {
+        "recommended_strategy": "balanced",
+        "threat_level": 2,
+    }
+
+    sequence = planner._fallback_plan(context, [defend, havoc])
+
+    assert len(sequence) == 1
+    assert sequence[0].card is havoc
+
+
 def test_ironclad_fallback_priority_values_bash_before_perfected_strike_with_strike_deck(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

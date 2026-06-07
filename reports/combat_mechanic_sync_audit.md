@@ -45,7 +45,7 @@ Status labels:
 | Monster lifecycle states | Darkling half-dead/revive divergence and live stuck evidence | n/a | synced | synced | synced for SAFE timing bonus | synced for v2 state alive flag and reward exit handling | Slime split lifecycle boundaries still need periodic review across new target masks. |
 | Combat escape settlement | Looter/Mugger escape and Smoke Bomb divergence evidence | n/a | synced for Smoke Bomb potion escape | n/a | n/a | synced for in-combat and combat-exit reward | Other escape monsters should be added only with explicit intent/move evidence. |
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
-| Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | synced for Pen Nib scalar fallback damage estimates and Orichalcum effective block before defense priority; partial for other non-damage resource/block shortcuts | synced for Pen Nib damage estimates, Nunchaku targeted lethal search, cache invalidation over relic counters plus draw-pile/hand/deck inputs, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective turn block before fallback block scoring | synced for direct and Havoc-top Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether non-damage relic counters are read or intentionally ignored. |
+| Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | synced for Pen Nib scalar fallback damage estimates, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective block before defense priority; partial for other non-damage resource shortcuts | synced for Pen Nib damage estimates, Nunchaku targeted lethal search, cache invalidation over relic counters plus draw-pile/hand/deck inputs, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective turn block before fallback block scoring | synced for direct and Havoc-top Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether non-damage relic counters are read or intentionally ignored. |
 | Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests | synced for deterministic cases | synced | synced for deterministic Havoc top-card block and Feel No Pain fallback priority | synced for deterministic Havoc top-card block and Feel No Pain in fallback scoring | synced where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
 | Healing and monster self-heal | Bandage Up, Shelled Parasite Suck divergence tests | n/a | synced | n/a | n/a | n/a | Only fast/beam sim currently predicts these HP transitions. |
 
@@ -123,6 +123,12 @@ Status labels:
   Havoc lines where the visible draw-pile top card is an attack, while leaving
   ordinary card block under the existing Dexterity/Frail modifiers and adding
   the relic block afterward.
+- 2026-06-08: `IroncladCombatPlanner` fallback priority now counts
+  Ornamental Fan block from direct attacks and deterministic Havoc top-card
+  attacks when the relic counter shows the next attack is the third attack this
+  turn. Fan block is added after ordinary card block modifiers, and Fan-enabled
+  attacks can satisfy the fallback's missing-block check before it spends the
+  turn on a weaker pure defense card.
 - 2026-06-08: `IroncladCombatPlanner` no-simulation fallback damage and
   card-priority bonus damage now read Pen Nib's counter for scalar attack
   estimates. When Pen Nib is ready, source-side attack damage is doubled before
