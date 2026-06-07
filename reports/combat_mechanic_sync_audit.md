@@ -46,7 +46,7 @@ Status labels:
 | Combat escape settlement | Looter/Mugger escape and Smoke Bomb divergence evidence | n/a | synced for Smoke Bomb potion escape | n/a | n/a | synced for in-combat and combat-exit reward | Other escape monsters should be added only with explicit intent/move evidence. |
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
 | Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | synced for Pen Nib scalar fallback damage estimates; partial for non-damage resource/block shortcuts | synced for Pen Nib damage estimates, Nunchaku targeted lethal search, and cache invalidation over relic counters plus draw-pile/hand/deck inputs | synced for direct and Havoc-top Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether non-damage relic counters are read or intentionally ignored; Orichalcum timing weighting needs evidence before porting. |
-| Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests | synced for deterministic cases | synced | partial for RL shared block candidate and survival block | n/a | synced where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
+| Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests | synced for deterministic cases | synced | partial for RL shared block candidate and survival block | synced for deterministic Havoc top-card block and Feel No Pain in fallback scoring | synced where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
 | Healing and monster self-heal | Bandage Up, Shelled Parasite Suck divergence tests | n/a | synced | n/a | n/a | n/a | Only fast/beam sim currently predicts these HP transitions. |
 
 ## Confirmed Sync Work
@@ -128,6 +128,11 @@ Status labels:
   same-turn plans from reusing pre-Pen-Nib damage, stale Nunchaku state,
   old Mind Blast/Havoc draw-pile context, or old Fiend Fire/Perfected Strike
   card-count context.
+- 2026-06-08: `TimingAwareCombatPlanner` fallback block scoring now counts
+  deterministic Havoc block when the visible draw-pile top card gains block,
+  plus the confirmed Feel No Pain block from exhausting that top card. This
+  lets the timing-only fallback choose Havoc for known top-card defense while
+  preserving the existing conservative boundary for random-target damage.
 - 2026-06-07: `CombatEndingDetector` now uses the same confirmed target-side
   attack modifier shape as the divergence oracle for:
   - player Weak plus target Vulnerable combined before final integer

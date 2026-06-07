@@ -17,6 +17,7 @@ from spirecomm.ai.heuristics.combat_state import (
     monster_power_amount,
     player_block_value,
     player_debuff_stacks,
+    player_has_power,
     player_hp_values,
     player_power_amount,
 )
@@ -1342,6 +1343,15 @@ class TimingAwareCombatPlanner:
                 pass
 
         block = self._non_negative_int(getattr(card, 'block', 0))
+        if block <= 0 and context is not None:
+            try:
+                if canonical_card_name(card) == 'Havoc':
+                    block = self._estimate_havoc_top_card_block(card, context)
+                    if block > 0:
+                        return block
+            except Exception:
+                block = 0
+
         if block <= 0:
             try:
                 card_name = canonical_card_name(card)
@@ -1356,6 +1366,34 @@ class TimingAwareCombatPlanner:
                 block = 0
 
         return self._apply_block_status_modifiers(block, context)
+
+    def _estimate_havoc_top_card_block(self, havoc_card, context) -> int:
+        top_card = self._draw_pile_top_card(context)
+        if top_card is None:
+            return 0
+
+        top_card_block = 0
+        try:
+            if top_card is not havoc_card and canonical_card_name(top_card) != 'Havoc':
+                top_card_block = self._estimate_card_block(top_card, context)
+        except Exception:
+            top_card_block = 0
+
+        return max(0, top_card_block) + self._feel_no_pain_block_for_havoc(context)
+
+    @staticmethod
+    def _draw_pile_top_card(context):
+        for owner in (getattr(context, 'game', None), context):
+            draw_pile = getattr(owner, 'draw_pile', None)
+            if isinstance(draw_pile, list) and draw_pile:
+                return draw_pile[-1]
+        return None
+
+    def _feel_no_pain_block_for_havoc(self, context) -> int:
+        block = max(0, self._get_player_power_amount(context, 'Feel No Pain'))
+        if block <= 0 and player_has_power(context, 'Feel No Pain'):
+            return 3
+        return block
 
     def _apply_block_status_modifiers(self, block: int, context=None) -> int:
         block = max(0, int(block))

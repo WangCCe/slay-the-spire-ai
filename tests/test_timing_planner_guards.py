@@ -2009,6 +2009,44 @@ def test_timing_fallback_boosts_attack_scores_against_vulnerable_targets(monkeyp
     assert actions[0].card is strike
 
 
+def test_timing_fallback_counts_havoc_visible_top_card_block():
+    havoc = _card("Havoc", "Havoc", card_type=CardType.SKILL, has_target=False)
+    havoc.uuid = "havoc"
+    strike = _card("Strike_R", "Strike")
+    strike.uuid = "strike"
+    top_power_through = _card(
+        "Power Through",
+        "Power Through",
+        card_type=CardType.SKILL,
+        has_target=False,
+    )
+    top_power_through.block = 15
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[strike, havoc],
+        monsters_alive=[SimpleNamespace(current_hp=30, block=0)],
+        game=SimpleNamespace(
+            draw_pile=[top_power_through],
+            player=SimpleNamespace(
+                powers=[SimpleNamespace(power_name="Feel No Pain", amount=3)],
+            ),
+        ),
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.THREAT_SPIKE,
+        current_damage=18,
+        balance_weights=BalanceWeights(damage_weight=1.0, block_weight=1.0),
+    )
+
+    actions = TimingAwareCombatPlanner()._fallback_plan(context, timing_ctx)
+
+    assert len(actions) == 1
+    assert actions[0].card is havoc
+    assert actions[0].target_monster is None
+
+
 def test_timing_fallback_does_not_target_no_target_cards(monkeypatch):
     monkeypatch.setattr(
         timing_planner,
