@@ -58,6 +58,8 @@ AOE_ATTACK_NAMES = frozenset(['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 
 @dataclass(frozen=True)
 class _TargetedLethalState:
     hp: Tuple[int, ...]
+    block: Tuple[int, ...]
+    malleable: Tuple[int, ...]
     vulnerable: Tuple[int, ...]
     artifact: Tuple[int, ...]
     strength: int
@@ -70,6 +72,8 @@ class _TargetedLethalState:
         return (
             remaining_card_keys,
             self.hp,
+            self.block,
+            self.malleable,
             self.vulnerable,
             self.artifact,
             self.strength,
@@ -853,6 +857,77 @@ class CombatEndingDetector:
             return 0
         return 8 if is_card_upgraded(card) else 5
 
+    @staticmethod
+    def _damage_instances(total_damage: int, hit_count: int) -> List[int]:
+        total_damage = max(0, int(total_damage))
+        hit_count = max(1, int(hit_count or 1))
+        if hit_count <= 1:
+            return [total_damage]
+
+        per_hit, remainder = divmod(total_damage, hit_count)
+        instances = [per_hit] * hit_count
+        if remainder:
+            instances[-1] += remainder
+        return instances
+
+    def _apply_lethal_attack_damage_to_target(
+        self,
+        hp_state: Tuple[int, ...],
+        block_state: Tuple[int, ...],
+        malleable_state: Tuple[int, ...],
+        monster_idx: int,
+        total_damage: int,
+        hit_count: int,
+    ) -> Tuple[Tuple[int, ...], Tuple[int, ...], Tuple[int, ...], int]:
+        next_hp = list(hp_state)
+        next_block = list(block_state)
+        next_malleable = list(malleable_state)
+        if monster_idx < 0 or monster_idx >= len(next_hp):
+            return hp_state, block_state, malleable_state, 0
+
+        damage_progress = 0
+        deferred_malleable_block = 0
+        malleable_amount = max(0, next_malleable[monster_idx])
+
+        for damage_instance in self._damage_instances(total_damage, hit_count):
+            if next_hp[monster_idx] <= 0:
+                break
+
+            remaining_damage = max(0, damage_instance)
+            if remaining_damage <= 0:
+                continue
+
+            block_before = max(0, next_block[monster_idx])
+            if block_before > 0:
+                blocked = min(block_before, remaining_damage)
+                next_block[monster_idx] = block_before - blocked
+                remaining_damage -= blocked
+                damage_progress += blocked
+
+            hp_before = max(0, next_hp[monster_idx])
+            next_hp[monster_idx] = max(0, hp_before - remaining_damage)
+            hp_loss = max(0, hp_before - next_hp[monster_idx])
+            damage_progress += hp_loss
+
+            if next_hp[monster_idx] <= 0:
+                next_block[monster_idx] = 0
+                break
+
+            if hp_loss > 0 and malleable_amount > 0:
+                deferred_malleable_block += malleable_amount
+                malleable_amount += 1
+
+        next_malleable[monster_idx] = malleable_amount
+        if deferred_malleable_block > 0 and next_hp[monster_idx] > 0:
+            next_block[monster_idx] = max(0, next_block[monster_idx]) + deferred_malleable_block
+
+        return (
+            tuple(next_hp),
+            tuple(max(0, block) for block in next_block),
+            tuple(max(0, amount) for amount in next_malleable),
+            damage_progress,
+        )
+
     def _is_lethal_vulnerable_support_card(self, card: Card) -> bool:
         if card_type_name(card) != 'SKILL':
             return False
@@ -895,7 +970,15 @@ class CombatEndingDetector:
 
         sequence_card_keys = {card_play_key(card) for card in sequence_cards}
         starting_hp = tuple(
-            self._monster_hp_with_block(monster)
+            self._monster_current_hp(monster)
+            for monster in context.monsters_alive
+        )
+        starting_block = tuple(
+            max(0, self._safe_int(getattr(monster, 'block', 0), default=0))
+            for monster in context.monsters_alive
+        )
+        starting_malleable = tuple(
+            self._get_monster_power_amount(monster, 'Malleable')
             for monster in context.monsters_alive
         )
         starting_vulnerable = tuple(
@@ -908,6 +991,8 @@ class CombatEndingDetector:
         )
         starting_state = _TargetedLethalState(
             hp=starting_hp,
+            block=starting_block,
+            malleable=starting_malleable,
             vulnerable=starting_vulnerable,
             artifact=starting_artifact,
             strength=getattr(context, 'strength', 0),
@@ -1104,12 +1189,13 @@ class CombatEndingDetector:
                         state.double_tap_charges
                     )
                     next_hp = tuple(state.hp)
+                    next_block = tuple(state.block)
+                    next_malleable = tuple(state.malleable)
                     next_vulnerable = state.vulnerable
                     next_artifact = state.artifact
                     total_damage = 0
                     rampage_bonus = 0
                     for _repeat_idx in range(attack_repeats):
-                        repeat_hp = list(next_hp)
                         repeat_damage = 0
                         for monster_idx, hp in enumerate(next_hp):
                             if hp <= 0:
@@ -1127,14 +1213,28 @@ class CombatEndingDetector:
                             if damage <= 0:
                                 continue
 
-                            repeat_damage += min(hp, damage)
-                            repeat_hp[monster_idx] = max(0, hp - damage)
+                            hit_count = self._get_vulnerable_damage_instance_count(
+                                card,
+                                context,
+                                state.energy,
+                                monster_idx,
+                            )
+                            next_hp, next_block, next_malleable, damage_progress = (
+                                self._apply_lethal_attack_damage_to_target(
+                                    next_hp,
+                                    next_block,
+                                    next_malleable,
+                                    monster_idx,
+                                    damage,
+                                    hit_count,
+                                )
+                            )
+                            repeat_damage += damage_progress
 
                         if repeat_damage <= 0:
                             break
 
                         total_damage += repeat_damage
-                        next_hp = tuple(repeat_hp)
                         next_vulnerable, next_artifact = self._vulnerable_state_after_card(
                             card,
                             context,
@@ -1167,6 +1267,8 @@ class CombatEndingDetector:
                             next_state=state.after_spending(
                                 cost,
                                 hp=next_hp,
+                                block=next_block,
+                                malleable=next_malleable,
                                 vulnerable=next_vulnerable,
                                 artifact=next_artifact,
                                 double_tap_charges=next_double_tap_charges,
@@ -1199,7 +1301,9 @@ class CombatEndingDetector:
                         remaining_cards,
                         sequence_card_keys,
                     )
-                    next_hp = list(state.hp)
+                    next_hp = tuple(state.hp)
+                    next_block = tuple(state.block)
+                    next_malleable = tuple(state.malleable)
                     next_vulnerable = state.vulnerable
                     next_artifact = state.artifact
                     total_damage = 0
@@ -1210,11 +1314,9 @@ class CombatEndingDetector:
                         if current_hp <= 0:
                             break
                         if self._base_card_name(card) == 'Melter':
-                            current_hp = min(
-                                current_hp,
-                                self._monster_current_hp(context.monsters_alive[monster_idx]),
-                            )
-                            next_hp[monster_idx] = current_hp
+                            next_block_list = list(next_block)
+                            next_block_list[monster_idx] = 0
+                            next_block = tuple(next_block_list)
 
                         total_energy_refund += self._card_energy_refund_against_monster(
                             card,
@@ -1235,8 +1337,24 @@ class CombatEndingDetector:
                         if damage <= 0:
                             continue
 
-                        total_damage += min(current_hp, damage)
-                        next_hp[monster_idx] = max(0, current_hp - damage)
+                        hit_count = self._get_vulnerable_damage_instance_count(
+                            card,
+                            context,
+                            state.energy,
+                            monster_idx,
+                            fiend_fire_exhaust_count,
+                        )
+                        next_hp, next_block, next_malleable, damage_progress = (
+                            self._apply_lethal_attack_damage_to_target(
+                                next_hp,
+                                next_block,
+                                next_malleable,
+                                monster_idx,
+                                damage,
+                                hit_count,
+                            )
+                        )
+                        total_damage += damage_progress
                         next_vulnerable, next_artifact = self._vulnerable_state_after_card(
                             card,
                             context,
@@ -1251,7 +1369,6 @@ class CombatEndingDetector:
                         continue
 
                     cost = upfront_cost - total_energy_refund
-                    next_hp = tuple(next_hp)
                     refunds_energy = total_energy_refund > 0
                     priority = (
                         1 if next_hp[monster_idx] <= 0 else 0,
@@ -1267,6 +1384,8 @@ class CombatEndingDetector:
                             next_state=state.after_spending(
                                 cost,
                                 hp=next_hp,
+                                block=next_block,
+                                malleable=next_malleable,
                                 vulnerable=next_vulnerable,
                                 artifact=next_artifact,
                                 double_tap_charges=next_double_tap_charges,
@@ -1361,6 +1480,18 @@ class CombatEndingDetector:
             if aoe_cost > available_energy:
                 continue
 
+            hp_state = tuple(
+                self._monster_current_hp(monster)
+                for monster in context.monsters_alive
+            )
+            block_state = tuple(
+                max(0, self._safe_int(getattr(monster, 'block', 0), default=0))
+                for monster in context.monsters_alive
+            )
+            malleable_state = tuple(
+                self._get_monster_power_amount(monster, 'Malleable')
+                for monster in context.monsters_alive
+            )
             survivors = []
             for monster_idx, monster in enumerate(context.monsters_alive):
                 damage = self._card_damage_against_monster(
@@ -1369,9 +1500,30 @@ class CombatEndingDetector:
                     monster_idx,
                     available_energy,
                 )
-                hp_after_aoe = self._monster_hp_with_block(monster) - damage
-                if hp_after_aoe > 0:
-                    survivors.append((hp_after_aoe, monster_idx, monster))
+                hit_count = self._get_vulnerable_damage_instance_count(
+                    aoe_card,
+                    context,
+                    available_energy,
+                    monster_idx,
+                )
+                hp_state, block_state, malleable_state, _damage_progress = (
+                    self._apply_lethal_attack_damage_to_target(
+                        hp_state,
+                        block_state,
+                        malleable_state,
+                        monster_idx,
+                        damage,
+                        hit_count,
+                    )
+                )
+                if hp_state[monster_idx] > 0:
+                    survivors.append(
+                        (
+                            hp_state[monster_idx] + block_state[monster_idx],
+                            monster_idx,
+                            monster,
+                        )
+                    )
 
             if not survivors:
                 return [PlayCardAction(card=aoe_card)]
@@ -1383,10 +1535,11 @@ class CombatEndingDetector:
             survivors.sort(key=lambda item: item[0], reverse=True)
 
             for damage_needed, monster_idx, monster in survivors:
-                while damage_needed > 0:
+                while hp_state[monster_idx] > 0:
                     best_card = None
                     best_cost = 0
                     best_damage = 0
+                    best_next_state = None
                     best_priority = None
 
                     for card in attack_cards:
@@ -1420,21 +1573,44 @@ class CombatEndingDetector:
                             remaining_energy,
                             fiend_fire_exhaust_count,
                         )
+                        hit_count = self._get_vulnerable_damage_instance_count(
+                            card,
+                            context,
+                            remaining_energy,
+                            monster_idx,
+                            fiend_fire_exhaust_count,
+                        )
+                        candidate_block_state = block_state
+                        if self._base_card_name(card) == 'Melter':
+                            candidate_block_list = list(candidate_block_state)
+                            candidate_block_list[monster_idx] = 0
+                            candidate_block_state = tuple(candidate_block_list)
+                        candidate_hp, candidate_block, candidate_malleable, damage_progress = (
+                            self._apply_lethal_attack_damage_to_target(
+                                hp_state,
+                                candidate_block_state,
+                                malleable_state,
+                                monster_idx,
+                                damage,
+                                hit_count,
+                            )
+                        )
                         refunds_energy = self._card_refunds_energy_against_monster(
                             card,
                             context,
                             monster_idx,
                         )
                         priority = (
-                            1 if damage >= damage_needed else 0,
+                            1 if candidate_hp[monster_idx] <= 0 else 0,
                             1 if refunds_energy else 0,
-                            damage,
+                            damage_progress,
                             -cost,
                         )
                         if best_priority is None or priority > best_priority:
                             best_card = card
                             best_cost = cost
-                            best_damage = damage
+                            best_damage = damage_progress
+                            best_next_state = (candidate_hp, candidate_block, candidate_malleable)
                             best_priority = priority
 
                     if best_card is None or best_damage <= 0:
@@ -1442,14 +1618,15 @@ class CombatEndingDetector:
                         break
 
                     sequence.append(self._play_card_action(best_card, monster))
+                    hp_state, block_state, malleable_state = best_next_state
                     if self._base_card_name(best_card) == 'Fiend Fire':
                         played_cards.update(sequence_card_keys)
                     else:
                         mark_card_played(played_cards, best_card)
                     remaining_energy -= best_cost
-                    damage_needed -= best_damage
+                    damage_needed = hp_state[monster_idx] + block_state[monster_idx]
 
-                if damage_needed > 0:
+                if hp_state[monster_idx] > 0:
                     break
             else:
                 return sequence

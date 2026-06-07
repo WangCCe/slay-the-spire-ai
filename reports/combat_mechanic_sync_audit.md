@@ -83,6 +83,11 @@ already disproved.
   per-energy hits each increment Malleable, but the gained block is applied
   after that card's hits finish so it does not absorb later hits from the same
   attack.
+- 2026-06-07: `CombatEndingDetector` targeted lethal and AOE-cleanup searches
+  now model target HP, block, and Malleable counters separately. Malleable block
+  is deferred within each attack card, then applied before later cards in the
+  proposed lethal line, preventing false lethal calls where a nonlethal attack
+  creates block that stops the follow-up.
 - 2026-06-07: `IroncladCombatPlanner` fallback attack damage estimates and
   `TimingAwareCombatPlanner` scalar damage estimates now count Mind Blast as
   draw-pile-count attack damage when live card damage is reported as zero.

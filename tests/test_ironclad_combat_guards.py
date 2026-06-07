@@ -11421,6 +11421,37 @@ def test_lethal_detector_rejects_aoe_overkill_false_positive(monkeypatch):
     assert detector.find_lethal_sequence(context) == []
 
 
+def test_lethal_detector_rejects_aoe_cleanup_through_malleable_block(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "cleave": {
+            "name": "Cleave",
+            "description": "Deal 8 damage to ALL enemies.",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    cleave.uuid = "cleave"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    malleable_target = _louse(current_hp=14)
+    malleable_target.powers = [SimpleNamespace(power_name="Malleable", amount=3)]
+    context = _combat_context(
+        [cleave, strike],
+        energy=2,
+        monsters=[malleable_target, _louse(current_hp=5)],
+    )
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 22
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
+
+
 def test_lethal_detector_rejects_single_target_distribution_false_positive(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -11758,6 +11789,43 @@ def test_lethal_detector_counts_multi_hit_attack_damage(monkeypatch):
     )
 
     assert CombatEndingDetector()._calculate_affordable_damage(context) == 19
+
+
+def test_lethal_detector_accounts_for_malleable_block_between_attack_cards(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "description": "Deal 5 damage twice.",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "text": "Deal [5|7] damage twice.",
+        },
+        "strike": {
+            "name": "Strike",
+            "text": "Deal 6 damage.",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    twin_strike = _card("Twin Strike", "Twin Strike", cost=1)
+    twin_strike.uuid = "twin-strike"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    target = _louse(current_hp=14)
+    target.powers = [SimpleNamespace(power_name="Malleable", amount=3)]
+    context = _combat_context([twin_strike, strike], energy=2, monsters=[target])
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 16
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
 
 
 def test_lethal_detector_counts_bane_second_hit_against_poisoned_target(monkeypatch):
