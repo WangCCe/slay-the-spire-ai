@@ -1869,6 +1869,33 @@ class IroncladCombatPlanner(CombatPlanner):
             return 0
         return 4 if (self._non_negative_int(counter) + 1) % 3 == 0 else 0
 
+    def _nunchaku_refund_preserves_defensive_followup(
+        self,
+        card: Card,
+        context: DecisionContext,
+    ) -> bool:
+        if not is_attack_card(card):
+            return False
+        counter = SimulationState._context_relic_counter(context, 'Nunchaku')
+        if counter is None or self._non_negative_int(counter) < 9:
+            return False
+
+        current_energy = self._non_negative_int(getattr(context, 'energy_available', 0))
+        attack_cost = effective_card_cost(card, current_energy)
+        if attack_cost <= 0 or attack_cost > current_energy:
+            return False
+
+        energy_without_refund = max(0, current_energy - attack_cost)
+        energy_with_refund = energy_without_refund + 1
+        playable_cards = getattr(context, 'playable_cards', []) or []
+        for candidate in playable_cards:
+            if candidate is card or not self._is_defensive_card(candidate):
+                continue
+            defense_cost = effective_card_cost(candidate, energy_with_refund)
+            if defense_cost > energy_without_refund and defense_cost <= energy_with_refund:
+                return True
+        return False
+
     @staticmethod
     def _feel_no_pain_block_per_exhaust(context: DecisionContext) -> int:
         block = max(0, player_power_amount(context, 'Feel No Pain'))
@@ -1996,6 +2023,8 @@ class IroncladCombatPlanner(CombatPlanner):
             attack_block = self._estimate_fallback_card_block(card, context)
             missing_block = max(0, incoming_damage - context_turn_block)
             if attack_block > 0 and missing_block > 0 and attack_block >= missing_block:
+                return max(base_attack_priority, 850)
+            if missing_block > 0 and self._nunchaku_refund_preserves_defensive_followup(card, context):
                 return max(base_attack_priority, 850)
 
             if card_id == 'Reaper' and len(context.monsters_alive) >= 2:

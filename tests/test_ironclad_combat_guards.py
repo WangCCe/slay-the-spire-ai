@@ -15584,6 +15584,35 @@ def test_ironclad_fallback_counts_ornamental_fan_attack_block():
     assert sequence[0].card is strike
 
 
+def test_ironclad_fallback_prioritizes_nunchaku_refund_attack_before_defense():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [defend, strike],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.incoming_damage = 5
+    context.game.relics = [SimpleNamespace(name="Nunchaku", relic_id="Nunchaku", counter=9)]
+    context.relics = context.game.relics
+    planner = IroncladCombatPlanner()
+    planner._get_monster_info = lambda _monster: {
+        "recommended_strategy": "balanced",
+        "threat_level": 2,
+    }
+
+    sequence = planner._fallback_plan(context, [defend, strike])
+
+    assert len(sequence) == 1
+    assert sequence[0].card is strike
+
+
 def test_ironclad_fallback_counts_ornamental_fan_from_havoc_top_attack():
     defend = _card(
         "Defend_R",
