@@ -5587,6 +5587,72 @@ def test_end_turn_captains_wheel_grants_block_after_monster_attacks(monkeypatch,
     assert not trace_path.exists()
 
 
+def test_slime_split_boundary_ignores_monster_lifecycle_diffs(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=16,
+        turn=6,
+        player=SimpleNamespace(current_hp=43, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Slime Boss",
+                monster_id="SlimeBoss",
+                hp=47,
+                max_hp=140,
+                damage=0,
+                intent=Intent.UNKNOWN,
+                powers=[Power("Split", "Split", -1), Power("Vulnerable", "Vulnerable", 2)],
+            )
+        ],
+    )
+    split_boss = _monster(
+        name="Slime Boss",
+        monster_id="SlimeBoss",
+        hp=0,
+        max_hp=140,
+        damage=0,
+        intent=Intent.UNKNOWN,
+        index=1,
+    )
+    split_boss.is_gone = True
+    actual = _game(
+        floor=16,
+        turn=7,
+        player=SimpleNamespace(current_hp=43, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Spike Slime (L)",
+                monster_id="SpikeSlime_L",
+                hp=35,
+                max_hp=53,
+                damage=16,
+                intent=Intent.ATTACK_DEBUFF,
+                powers=[Power("Split", "Split", -1)],
+            ),
+            split_boss,
+            _monster(
+                name="Acid Slime (L)",
+                monster_id="AcidSlime_L",
+                hp=43,
+                max_hp=53,
+                damage=16,
+                intent=Intent.UNKNOWN,
+                index=2,
+                powers=[Power("Split", "Split", -1)],
+            ),
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_self_forming_clay_block_tracks_each_hp_loss(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

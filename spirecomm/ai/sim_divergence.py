@@ -7,7 +7,7 @@ import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from spirecomm.ai.heuristics.card_upgrades import (
     card_upgrade_count as _object_card_upgrade_count,
@@ -233,7 +233,7 @@ def observe_next_state(game, path: Optional[Path] = None) -> bool:
         if _nilrys_codex_screen_boundary(pending, actual):
             return False
 
-        ignored_diffs = _ignored_diff_keys(pending)
+        ignored_diffs = _ignored_diff_keys(pending, actual)
         diffs = _diff_snapshots(pending["expected"], actual, ignored_diffs)
         _consume_headbutt_select_boundary_if_applicable(pending)
         if not diffs:
@@ -736,18 +736,18 @@ def _snapshot_monster_active(monster: Dict[str, Any]) -> bool:
     return _to_int(monster.get("hp")) > 0
 
 
-def _ignored_diff_keys(pending: Dict[str, Any]) -> set:
+def _ignored_diff_keys(pending: Dict[str, Any], actual: Optional[Dict[str, Any]] = None) -> set:
     action = pending.get("action", {})
+    ignored = set()
     if _sword_boomerang_random_target_boundary(pending):
-        ignored = set()
-        monster_count = len((pending.get("expected") or {}).get("monsters") or [])
-        for index in range(monster_count):
-            for field in ("hp", "block", "gone", "half_dead", "intent"):
-                ignored.add(f"monsters[{index}].{field}")
+        ignored.update(_monster_state_diff_keys(pending, actual))
         return ignored
+
+    ignored.update(_slime_split_ignored_diff_keys(pending, actual))
+
     if action.get("type") == "EndTurnAction":
-        ignored = {"player.energy"}
-        monster_count = len((pending.get("expected") or {}).get("monsters") or [])
+        ignored.add("player.energy")
+        monster_count = _monster_diff_count(pending, actual)
         mystic_support_turn = _has_mystic_support_turn(pending.get("before") or {})
         for index in range(monster_count):
             ignored.add(f"monsters[{index}].intent")
@@ -755,7 +755,132 @@ def _ignored_diff_keys(pending: Dict[str, Any]) -> set:
             if mystic_support_turn:
                 ignored.add(f"monsters[{index}].hp")
         return ignored
-    return set()
+    return ignored
+
+
+def _monster_diff_count(
+    pending: Dict[str, Any],
+    actual: Optional[Dict[str, Any]] = None,
+) -> int:
+    snapshots = [
+        pending.get("before") or {},
+        pending.get("expected") or {},
+        actual or {},
+    ]
+    return max(len(snapshot.get("monsters") or []) for snapshot in snapshots)
+
+
+def _monster_state_diff_keys(
+    pending: Dict[str, Any],
+    actual: Optional[Dict[str, Any]] = None,
+) -> set:
+    ignored = set()
+    for index in range(_monster_diff_count(pending, actual)):
+        for field in ("hp", "block", "gone", "half_dead", "intent"):
+            ignored.add(f"monsters[{index}].{field}")
+    return ignored
+
+
+def _slime_split_ignored_diff_keys(
+    pending: Dict[str, Any],
+    actual: Optional[Dict[str, Any]] = None,
+) -> set:
+    actual = actual or {}
+    if not _slime_split_context(pending, actual):
+        return set()
+
+    if _slime_split_structure_changed(pending, actual):
+        return _monster_state_diff_keys(pending, actual)
+
+    ignored = set()
+    expected_monsters = (pending.get("expected") or {}).get("monsters") or []
+    actual_monsters = actual.get("monsters") or []
+    for index, (expected_monster, actual_monster) in enumerate(
+        zip(expected_monsters, actual_monsters)
+    ):
+        if expected_monster.get("intent") == actual_monster.get("intent"):
+            continue
+        if _slime_split_monster_pair(expected_monster, actual_monster):
+            ignored.add(f"monsters[{index}].intent")
+    return ignored
+
+
+def _slime_split_context(pending: Dict[str, Any], actual: Dict[str, Any]) -> bool:
+    snapshots = [
+        pending.get("before") or {},
+        pending.get("expected") or {},
+        actual or {},
+    ]
+    return any(
+        _slime_split_visible(snapshot) or _has_split_ready_slime(snapshot)
+        for snapshot in snapshots
+    )
+
+
+def _has_split_ready_slime(snapshot: Dict[str, Any]) -> bool:
+    return any(
+        _slime_split_ready(monster)
+        for monster in snapshot.get("monsters", []) or []
+    )
+
+
+def _slime_split_structure_changed(
+    pending: Dict[str, Any],
+    actual: Dict[str, Any],
+) -> bool:
+    expected_monsters = (pending.get("expected") or {}).get("monsters") or []
+    actual_monsters = actual.get("monsters") or []
+    if len(expected_monsters) != len(actual_monsters):
+        return True
+    return _monster_lifecycle_signature(expected_monsters) != _monster_lifecycle_signature(
+        actual_monsters
+    )
+
+
+def _monster_lifecycle_signature(monsters: List[Dict[str, Any]]) -> List[tuple]:
+    return [
+        (
+            _normalize(monster.get("id")),
+            _normalize(monster.get("name")),
+            bool(monster.get("gone")),
+            bool(monster.get("half_dead")),
+            _to_int(monster.get("hp")) <= 0,
+        )
+        for monster in monsters
+    ]
+
+
+def _slime_split_monster_pair(
+    expected_monster: Dict[str, Any],
+    actual_monster: Dict[str, Any],
+) -> bool:
+    return _slime_split_monster(expected_monster) or _slime_split_monster(actual_monster)
+
+
+def _slime_split_monster(monster: Dict[str, Any]) -> bool:
+    return _is_slime_monster(monster) and (
+        _snapshot_has_power(monster, "Split")
+        or _slime_split_ready(monster)
+        or bool(monster.get("gone"))
+        or _to_int(monster.get("hp")) <= 0
+    )
+
+
+def _slime_split_ready(monster: Dict[str, Any]) -> bool:
+    if not _is_slime_monster(monster):
+        return False
+    if bool(monster.get("gone")) or bool(monster.get("half_dead")):
+        return False
+    if not _snapshot_has_power(monster, "Split"):
+        return False
+    hp = _to_int(monster.get("hp"))
+    max_hp = max(1, _to_int(monster.get("max_hp")))
+    return hp > 0 and hp * 2 <= max_hp
+
+
+def _is_slime_monster(monster: Dict[str, Any]) -> bool:
+    identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
+    return any("slime" in value for value in identifiers)
 
 
 def _sword_boomerang_random_target_boundary(pending: Dict[str, Any]) -> bool:
