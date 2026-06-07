@@ -838,6 +838,84 @@ def test_timing_lethal_check_applies_single_target_vulnerable(monkeypatch):
     assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_lethal_check_combines_player_weak_and_target_vulnerable_before_rounding():
+    dropkick = SimpleNamespace(
+        name="Dropkick",
+        type=CardType.ATTACK,
+        damage=5,
+        cost=1,
+        cost_for_turn=1,
+        has_target=True,
+        is_playable=True,
+        uuid="weak-vulnerable-dropkick",
+    )
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[dropkick],
+        monsters_alive=[SimpleNamespace(current_hp=5, block=0)],
+        vulnerable_stacks={0: 1},
+        game=SimpleNamespace(
+            player=SimpleNamespace(powers=[SimpleNamespace(power_name="Weak", amount=1)]),
+        ),
+    )
+    planner = TimingAwareCombatPlanner()
+
+    assert planner._card_damage_against_monster(
+        dropkick,
+        context,
+        context.monsters_alive,
+        0,
+        1,
+    ) == 5
+    assert planner._apply_attack_status_modifiers(
+        dropkick,
+        context,
+        5,
+        1,
+        context.monsters_alive,
+    ) == 5
+
+
+def test_timing_lethal_check_applies_paper_phrog_vulnerable_multiplier(monkeypatch):
+    monkeypatch.setattr(
+        timing_planner,
+        "game_data_loader",
+        _loader_with_basic_ironclad_cards(),
+        raising=False,
+    )
+    strike = _card("Strike_R", "Strike")
+    strike.uuid = "paper-phrog-strike"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[strike],
+        monsters_alive=[SimpleNamespace(current_hp=10, block=0)],
+        vulnerable_stacks={0: 1},
+        game=SimpleNamespace(
+            relics=[SimpleNamespace(relic_id="Paper Phrog", name="Paper Phrog")],
+        ),
+    )
+    planner = TimingAwareCombatPlanner()
+
+    assert planner._card_damage_against_monster(
+        strike,
+        context,
+        context.monsters_alive,
+        0,
+        1,
+    ) == 10
+    assert planner._apply_attack_status_modifiers(
+        strike,
+        context,
+        6,
+        1,
+        context.monsters_alive,
+    ) == 10
+
+
 def test_timing_lethal_sequence_uses_bash_vulnerable_before_followup(monkeypatch):
     monkeypatch.setattr(
         timing_planner,

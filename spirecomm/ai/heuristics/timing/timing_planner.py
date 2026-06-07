@@ -26,6 +26,7 @@ from spirecomm.ai.heuristics.card_hits import (
     strike_card_count,
 )
 from spirecomm.ai.heuristics.card_costs import (
+    context_has_relic,
     effective_card_cost,
     energy_refund_for_card,
     playable_card_cost_after_refund,
@@ -861,25 +862,15 @@ class TimingAwareCombatPlanner:
         available_energy: int,
     ) -> int:
         damage = self._estimate_card_damage(card, context, available_energy)
-        if self._get_player_debuff_stacks(context, 'Weak') > 0:
-            damage = self._apply_per_hit_damage_multiplier(
-                card,
-                context,
-                damage,
-                available_energy,
-                0.75,
-            )
-
-        if self._monster_vulnerable_stacks(context, monsters, monster_idx) > 0:
-            damage = self._apply_per_hit_damage_multiplier(
-                card,
-                context,
-                damage,
-                available_energy,
-                1.5,
-            )
-
-        return max(0, int(damage))
+        return self._apply_target_attack_status_modifiers(
+            card,
+            context,
+            damage,
+            available_energy,
+            target_vulnerable=(
+                self._monster_vulnerable_stacks(context, monsters, monster_idx) > 0
+            ),
+        )
 
     def _card_energy_cost_against_monster(
         self,
@@ -987,26 +978,82 @@ class TimingAwareCombatPlanner:
         monsters,
     ) -> int:
         """Apply combat status modifiers that are safe for scalar damage estimates."""
+        return self._apply_target_attack_status_modifiers(
+            card,
+            context,
+            total_damage,
+            available_energy,
+            target_vulnerable=self._all_alive_targets_vulnerable(context, monsters),
+        )
+
+    def _apply_target_attack_status_modifiers(
+        self,
+        card,
+        context,
+        total_damage: int,
+        available_energy: int,
+        target_vulnerable: bool,
+    ) -> int:
+        """Apply player Weak and target Vulnerable with one final truncation."""
         damage = max(0, int(total_damage))
-        if self._get_player_debuff_stacks(context, 'Weak') > 0:
-            damage = self._apply_per_hit_damage_multiplier(
+        player_weak = self._get_player_debuff_stacks(context, 'Weak') > 0
+
+        if player_weak and target_vulnerable:
+            numerator, denominator = (
+                (21, 16) if context_has_relic(context, 'Paper Phrog') else (9, 8)
+            )
+            return self._apply_per_hit_damage_ratio(
                 card,
                 context,
                 damage,
                 available_energy,
-                0.75,
+                numerator,
+                denominator,
             )
 
-        if self._all_alive_targets_vulnerable(context, monsters):
-            damage = self._apply_per_hit_damage_multiplier(
+        if player_weak:
+            damage = self._apply_per_hit_damage_ratio(
                 card,
                 context,
                 damage,
                 available_energy,
-                1.5,
+                3,
+                4,
+            )
+
+        if target_vulnerable:
+            numerator, denominator = (
+                (7, 4) if context_has_relic(context, 'Paper Phrog') else (3, 2)
+            )
+            damage = self._apply_per_hit_damage_ratio(
+                card,
+                context,
+                damage,
+                available_energy,
+                numerator,
+                denominator,
             )
 
         return max(0, int(damage))
+
+    def _apply_per_hit_damage_ratio(
+        self,
+        card,
+        context,
+        total_damage: int,
+        available_energy: int,
+        numerator: int,
+        denominator: int,
+    ) -> int:
+        hit_count = self._get_damage_instance_count(card, context, available_energy)
+        if hit_count <= 1:
+            return total_damage * numerator // denominator
+
+        per_hit_damage, remainder = divmod(total_damage, hit_count)
+        if remainder != 0:
+            return total_damage * numerator // denominator
+
+        return per_hit_damage * numerator // denominator * hit_count
 
     def _apply_per_hit_damage_multiplier(
         self,

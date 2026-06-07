@@ -49,6 +49,12 @@ already disproved.
 - 2026-06-07: `CombatRLAgent` survival guards now include Decay in end-turn
   status HP loss alongside Burn. Guard takeover decisions treat that HP loss as
   unblocked when deciding whether to replace an RL attack with a defensive card.
+- 2026-06-07: `TimingAwareCombatPlanner` target-specific and scalar timing
+  damage estimates now use the confirmed target-side attack modifier shape:
+  - player Weak plus target Vulnerable is combined before final integer
+    truncation (`9/8`);
+  - Paper Phrog target Vulnerable uses `7/4`;
+  - Paper Phrog plus player Weak and target Vulnerable uses `21/16`.
 
 ## Backlog
 
