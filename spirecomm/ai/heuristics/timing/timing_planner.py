@@ -564,6 +564,13 @@ class TimingAwareCombatPlanner:
             best_score = float('-inf')
             energy = getattr(context, 'energy_available', 3)
             monsters = getattr(context, 'monsters_alive', [])
+            incoming_damage = self._non_negative_int(
+                getattr(timing_ctx, 'current_damage', 0)
+            )
+            block_already_covers_damage = (
+                incoming_damage > 0
+                and self._effective_turn_block(context) >= incoming_damage
+            )
 
             for card in playable_cards:
                 score = 0
@@ -582,7 +589,8 @@ class TimingAwareCombatPlanner:
 
                 # Check if card provides block
                 block = self._estimate_card_block(card, context)
-                score += block * weights.block_weight
+                if not block_already_covers_damage:
+                    score += block * weights.block_weight
 
                 if score > best_score:
                     best_score = score
@@ -1247,6 +1255,27 @@ class TimingAwareCombatPlanner:
 
     def _get_player_power_amount(self, context, power_name: str) -> int:
         return player_power_amount(context, power_name)
+
+    def _effective_turn_block(self, context) -> int:
+        block = player_block_value(context)
+        plated_armor = max(
+            self._get_player_power_amount(context, 'Plated Armor'),
+            self._get_player_power_amount(context, 'PlatedArmor'),
+        )
+        turn_block = (
+            block
+            + self._get_player_power_amount(context, 'Metallicize')
+            + plated_armor
+        )
+        if self._has_orichalcum(context) and turn_block <= 0:
+            turn_block += 6
+        return max(0, turn_block)
+
+    def _has_orichalcum(self, context) -> bool:
+        return (
+            bool(getattr(context, 'has_orichalcum', False))
+            or self._context_relic_counter(context, 'Orichalcum') is not None
+        )
 
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:
