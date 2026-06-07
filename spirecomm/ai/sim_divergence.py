@@ -887,11 +887,14 @@ def _action_triggers_malleable_block(
     pending: Dict[str, Any],
     monster_index: int,
 ) -> bool:
+    before = pending.get("before") or {}
     target_index = action.get("target_index")
+    if target_index is None:
+        target_index = _single_alive_monster_index(before)
     if not isinstance(target_index, int) or target_index != monster_index:
         return False
 
-    before_monsters = (pending.get("before") or {}).get("monsters") or []
+    before_monsters = before.get("monsters") or []
     expected_monsters = (pending.get("expected") or {}).get("monsters") or []
     if monster_index < 0 or monster_index >= len(before_monsters):
         return False

@@ -955,6 +955,81 @@ def test_headbutt_malleable_block_settles_after_card_select(monkeypatch, tmp_pat
     assert not trace_path.exists()
 
 
+def test_headbutt_malleable_block_settles_after_card_select_with_implicit_target(
+    monkeypatch,
+    tmp_path,
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    headbutt = _card(
+        name="Headbutt",
+        card_id="Headbutt",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=12,
+    )
+    strike = _card(name="Strike", card_id="Strike_R", damage=6)
+    before = _game(
+        floor=25,
+        turn=3,
+        player=SimpleNamespace(current_hp=5, max_hp=80, block=0, energy=1),
+        hand=[headbutt, strike],
+        monsters=[
+            _monster(
+                name="Snake Plant",
+                monster_id="SnakePlant",
+                hp=20,
+                block=3,
+                damage=7,
+                hits=3,
+                powers=[Power("Malleable", "Malleable", 4)],
+            )
+        ],
+    )
+    select_screen = _game(
+        floor=25,
+        turn=3,
+        player=SimpleNamespace(current_hp=5, max_hp=80, block=0, energy=0),
+        hand=[strike],
+        monsters=[
+            _monster(
+                name="Snake Plant",
+                monster_id="SnakePlant",
+                hp=11,
+                block=0,
+                damage=7,
+                hits=3,
+                powers=[Power("Malleable", "Malleable", 5)],
+            )
+        ],
+    )
+    after_select = _game(
+        floor=25,
+        turn=3,
+        player=SimpleNamespace(current_hp=5, max_hp=80, block=0, energy=0),
+        hand=[strike],
+        monsters=[
+            _monster(
+                name="Snake Plant",
+                monster_id="SnakePlant",
+                hp=11,
+                block=4,
+                damage=7,
+                hits=3,
+                powers=[Power("Malleable", "Malleable", 5)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=None), before) is True
+    assert observe_next_state(select_screen) is False
+    assert record_expected_action(CardSelectAction([strike]), select_screen) is True
+    assert observe_next_state(after_select) is False
+    assert not trace_path.exists()
+
+
 def test_card_select_without_headbutt_boundary_still_reports_player_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
