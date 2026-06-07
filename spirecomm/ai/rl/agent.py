@@ -2941,7 +2941,10 @@ class CombatRLAgent:
 
         for normalized_name, (card_name, base_damage) in cls.SURVIVAL_ATTACK_DAMAGE_VALUES.items():
             if cls._card_matches_normalized_names(card, {normalized_name}):
-                return base_damage + known_damage_upgrade_bonus(card, card_name)
+                damage = base_damage + known_damage_upgrade_bonus(card, card_name)
+                if game is not None:
+                    damage += player_power_amount(game, "Strength")
+                return max(0, damage)
         return 0
 
     @classmethod

@@ -149,6 +149,11 @@ already disproved.
   Mind Blast as draw-pile-count attack damage when live card damage is reported
   as zero. Strength and player Weak are applied before the survival retarget
   guard decides whether an attack can kill an incoming attacker.
+- 2026-06-08: `CombatRLAgent` survival attack damage estimates now also apply
+  Strength when falling back to static base damage for live attacks whose
+  reported damage is zero, such as Headbutt. This keeps the Slime Boss split
+  survival retarget guard from missing Strength-enabled kills on incoming
+  attackers.
 - 2026-06-07: `CombatRLAgent` Slime Boss split survival retarget guard now
   evaluates attack damage against each candidate target. Target Vulnerable,
   Paper Phrog, and player Weak are combined with the same final-truncation
@@ -191,7 +196,8 @@ already disproved.
 - Audit high-impact confirmed mechanics across live estimators:
   - Watch for newly discovered Whirlwind estimator surfaces beyond the synced
     divergence, simulator, timing, lethal, fallback damage, and priority paths.
-  - Paper Phrog, Weak/Vulnerable, Strength, and upgraded attack stats.
+  - Paper Phrog, Weak/Vulnerable, Strength, and upgraded attack stats across
+    any still-unaudited estimator surfaces.
   - Other dynamic base damage beyond the Mind Blast combat estimator and RL
     survival surfaces already covered above.
   - Havoc random-target boundaries and any remaining non-Juggernaut
