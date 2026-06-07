@@ -15646,6 +15646,90 @@ def test_draw_potions_respect_no_draw_power():
         assert result.cards_drawn == 0
 
 
+def test_smoke_bomb_simulation_marks_combat_escaped_without_killing_monsters():
+    potion = SimpleNamespace(
+        name="Smoke Bomb",
+        can_use=True,
+        requires_target=False,
+        effect_type="escape",
+        effect_value=0,
+        target_type="none",
+    )
+    context = _combat_context(
+        [],
+        energy=0,
+        monsters=[_louse(current_hp=30), _louse(current_hp=40)],
+    )
+    context.game.monsters = context.monsters_alive
+    context.game.room_type = "MonsterRoom"
+    state = SimulationState(context)
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+
+    result = planner._simulate_potion_use(state, potion, target=None)
+
+    assert result.combat_escaped is True
+    assert result.monsters_killed == 0
+    assert [monster["is_gone"] for monster in result.monsters] == [False, False]
+
+
+def test_smoke_bomb_escape_score_avoids_lethal_without_lethal_bonus():
+    potion = SimpleNamespace(
+        name="Smoke Bomb",
+        can_use=True,
+        requires_target=False,
+        effect_type="escape",
+        effect_value=0,
+        target_type="none",
+    )
+    monster = _louse(current_hp=30)
+    monster.move_adjusted_damage = 7
+    monster.move_hits = 1
+    context = _combat_context([], energy=0, monsters=[monster])
+    context.game.current_hp = 5
+    context.player_hp = 5
+    context.player_hp_pct = 5 / 80
+    context.game.monsters = context.monsters_alive
+    context.game.room_type = "MonsterRoom"
+    initial = SimulationState(context)
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+
+    escaped = planner._simulate_potion_use(initial, potion, target=None)
+    score = FastCombatSimulator(SynergyCardEvaluator()).calculate_outcome_score(
+        initial,
+        escaped,
+        current_act=1,
+        context=context,
+    )
+
+    assert score > 0
+    assert score < simulation.ALL_LETHAL_BONUS
+    assert escaped.monsters_killed == 0
+
+
+def test_smoke_bomb_gets_high_priority_when_incoming_damage_is_lethal():
+    potion = SimpleNamespace(
+        name="Smoke Bomb",
+        can_use=True,
+        requires_target=False,
+        effect_type="escape",
+        effect_value=0,
+        target_type="none",
+    )
+    monster = _louse(current_hp=30)
+    monster.move_adjusted_damage = 7
+    monster.move_hits = 1
+    context = _combat_context([], energy=0, monsters=[monster])
+    context.game.current_hp = 5
+    context.player_hp = 5
+    context.player_hp_pct = 5 / 80
+    context.game.monsters = context.monsters_alive
+    context.game.room_type = "MonsterRoom"
+    state = SimulationState(context)
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+
+    assert planner._score_potion(potion, context, state) > 100
+
+
 def test_draw_power_respects_no_draw_power():
     draw_power = _card(
         "Draw",

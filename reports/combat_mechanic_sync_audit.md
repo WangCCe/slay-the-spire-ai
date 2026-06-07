@@ -151,6 +151,11 @@ already disproved.
   only, not HP plus block. This syncs the confirmed Thorns/Flame Barrier
   semantics that reflection bypasses monster block and can score the temporary
   reflection from a simulated Flame Barrier play.
+- 2026-06-07: `HeuristicCombatPlanner` now models Smoke Bomb as combat escape
+  in potion beam scoring without awarding kill or all-lethal rewards. Escaped
+  states stop further beam expansion and receive survival value based on
+  avoided incoming HP loss, syncing the observed escape-potion divergence into
+  live potion decision estimates.
 
 ## Backlog
 
@@ -166,4 +171,4 @@ already disproved.
     survival surfaces already covered above.
   - Havoc top-card effects, random-target boundaries, and Feel No Pain block.
   - Monster lifecycle boundaries such as Slime split and Darkling revive.
-  - Combat-exit boundaries such as Smoke Bomb and Looter escape.
+  - Combat-exit boundaries such as Looter escape.

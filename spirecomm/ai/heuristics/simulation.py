@@ -453,6 +453,7 @@ class SimulationState:
             self._get_player_power_amount(context, 'IntangiblePlayer'),
         )
         self.player_artifact = self._get_player_power_amount(context, 'Artifact')
+        self.combat_escaped = False
 
         # Player debuffs (binary: >0 means debuffed)
         self.player_vulnerable = self._get_player_debuff_stacks(context, 'Vulnerable')
@@ -888,6 +889,7 @@ class SimulationState:
             self.player_thorns,
             self.player_intangible,
             self.player_artifact,
+            self.combat_escaped,
             self.player_vulnerable,
             self.player_vulnerable_added,
             self.player_weak,
@@ -5564,6 +5566,9 @@ class FastCombatSimulator:
                     'W_DEATHRISK': W_DEATHRISK,
                 }
 
+        if getattr(final_state, 'combat_escaped', False):
+            return self._score_combat_escape(final_state, current_act, weights)
+
         final_state = self.project_end_turn_effects(final_state)
         score = 0.0
 
@@ -5791,6 +5796,29 @@ class FastCombatSimulator:
 
         return score
 
+    def _score_combat_escape(
+        self,
+        state: SimulationState,
+        current_act: int,
+        weights: dict,
+    ) -> float:
+        expected_incoming = self._estimate_incoming_damage(
+            state.monsters,
+            state.player_vulnerable_added,
+            getattr(state, 'player_intangible', 0),
+        )
+        hp_loss_avoided = max(0, expected_incoming - state.turn_block())
+        score = hp_loss_avoided * weights['W_DEATHRISK']
+
+        act = max(1, coerce_int(current_act, 1))
+        danger_threshold = 15 + (act * 5)
+        if hp_loss_avoided >= state.player_hp:
+            score += DANGER_PENALTY
+        elif state.player_hp - hp_loss_avoided < danger_threshold:
+            score += DANGER_PENALTY * 0.5
+
+        return score
+
 
 class HeuristicCombatPlanner(CombatPlanner):
     """
@@ -6001,6 +6029,9 @@ class HeuristicCombatPlanner(CombatPlanner):
             new_candidates = []
 
             for sequence, state, energy_spent, _beam_score in beam:
+                if getattr(state, 'combat_escaped', False):
+                    continue
+
                 # === Two-stage action expansion ===
                 # Collect playable cards
                 playable_actions = []
@@ -6230,6 +6261,10 @@ class HeuristicCombatPlanner(CombatPlanner):
         """Check if potion is a block potion."""
         return potion.effect_type in ['block', 'plated_armor', 'metallicize']
 
+    def _is_escape_potion(self, potion) -> bool:
+        """Check if potion immediately exits combat."""
+        return potion.effect_type == 'escape'
+
     @staticmethod
     def _non_negative_int(value) -> int:
         return max(0, coerce_int(value or 0, 0))
@@ -6353,6 +6388,15 @@ class HeuristicCombatPlanner(CombatPlanner):
             if incoming_damage > state.player_hp * 0.4:
                 score += 35  # High incoming damage
 
+        # Escape potions: survival value without kill/lethal rewards
+        elif self._is_escape_potion(potion):
+            if alive_monsters:
+                hp_loss_avoided = max(0, incoming_damage - state.turn_block())
+                if hp_loss_avoided >= state.player_hp:
+                    score += 120
+                elif hp_loss_avoided > 0:
+                    score += 20 + (hp_loss_avoided * 2)
+
         # Utility/Buff potions: baseline value in dangerous fights
         else:
             if incoming_damage > state.player_hp * 0.3:
@@ -6449,6 +6493,8 @@ class HeuristicCombatPlanner(CombatPlanner):
             state.energy_gained += potion.effect_value
         elif potion.effect_type in ['draw', 'draw_randomize_cost']:
             self.simulator._add_card_draw(state, potion.effect_value)
+        elif potion.effect_type == 'escape':
+            state.combat_escaped = True
 
     def _find_best_potion_target(self, potion, context: DecisionContext) -> Monster:
         """
