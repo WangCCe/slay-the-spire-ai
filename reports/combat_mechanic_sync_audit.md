@@ -59,6 +59,10 @@ already disproved.
   now apply player Weak with per-hit integer truncation. This keeps fallback
   strategic thresholds such as Bash follow-up detection from treating Weak
   attacks as if they still dealt full damage.
+- 2026-06-07: `CombatRLAgent` Slime Boss split survival retarget guard now
+  reduces survival attack damage while the player is Weak. This prevents the
+  guard from retargeting to an attacker that only looks killable under full
+  card damage.
 
 ## Backlog
 

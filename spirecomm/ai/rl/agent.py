@@ -37,6 +37,7 @@ from spirecomm.ai.heuristics.card_types import (
     card_type_name,
     is_attack_card,
 )
+from spirecomm.ai.heuristics.combat_state import player_debuff_stacks
 from spirecomm.ai.heuristics.potions import (
     game_potion_available,
     game_real_potions,
@@ -1843,7 +1844,7 @@ class CombatRLAgent:
         if effective_card_cost(card, energy) > energy:
             return None
 
-        attack_damage = self._survival_attack_damage(card)
+        attack_damage = self._survival_attack_damage(card, game)
         if attack_damage <= 0:
             return None
 
@@ -2861,18 +2862,28 @@ class CombatRLAgent:
         return 0
 
     @classmethod
-    def _survival_attack_damage(cls, card) -> int:
+    def _survival_attack_damage(cls, card, game: Optional[Game] = None) -> int:
         explicit_damage = max(
             0,
             cls._safe_int(getattr(card, "damage", 0), default=0),
         )
         if explicit_damage > 0:
-            return explicit_damage
+            return cls._apply_player_weak_to_survival_attack_damage(explicit_damage, game)
 
         for normalized_name, (card_name, base_damage) in cls.SURVIVAL_ATTACK_DAMAGE_VALUES.items():
             if cls._card_matches_normalized_names(card, {normalized_name}):
-                return base_damage + known_damage_upgrade_bonus(card, card_name)
+                return cls._apply_player_weak_to_survival_attack_damage(
+                    base_damage + known_damage_upgrade_bonus(card, card_name),
+                    game,
+                )
         return 0
+
+    @classmethod
+    def _apply_player_weak_to_survival_attack_damage(cls, damage: int, game: Optional[Game]) -> int:
+        damage = max(0, cls._safe_int(damage, default=0))
+        if game is None or player_debuff_stacks(game, "Weak") <= 0:
+            return damage
+        return damage * 3 // 4
 
     @classmethod
     def _has_awakened_one(cls, game: Game) -> bool:
