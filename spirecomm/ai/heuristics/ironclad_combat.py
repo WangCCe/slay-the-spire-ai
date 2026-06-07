@@ -1881,6 +1881,13 @@ class IroncladCombatPlanner(CombatPlanner):
 
         return max(0, top_card_block + self._feel_no_pain_block_per_exhaust(context))
 
+    @staticmethod
+    def _fallback_turn_block(context: DecisionContext) -> int:
+        try:
+            return max(0, SimulationState(context).turn_block())
+        except Exception:
+            return player_block_value(context)
+
     def _fallback_plan(self, context: DecisionContext,
                        playable_cards: List[Card]) -> List[Action]:
         """Fallback to priority-based selection if beam search fails."""
@@ -1911,6 +1918,7 @@ class IroncladCombatPlanner(CombatPlanner):
         turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
         context_strength = self._non_negative_int(getattr(context, 'strength', 0))
         context_player_block = player_block_value(context)
+        context_turn_block = self._fallback_turn_block(context)
 
         # Check if fighting Gremlins or other weak monsters that require aggressive play
         aggressive_mode = False
@@ -1940,7 +1948,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 if aggressive_mode:
                     player_hp = self._non_negative_float(context.game.current_hp)
                     return 600 if incoming_damage > player_hp * 0.8 else 100
-                return 850 if incoming_damage > context_player_block else 200
+                return 850 if incoming_damage > context_turn_block else 200
 
         # Draw cards
         if self._is_draw_card(card):
@@ -1954,7 +1962,7 @@ class IroncladCombatPlanner(CombatPlanner):
         if card_id == 'Iron Wave':
             # Iron Wave is excellent hybrid card - value it highly
             # Always good, but even better when we need block
-            if incoming_damage > context_player_block:
+            if incoming_damage > context_turn_block:
                 return 850  # High priority when we need block
             return 750  # Still good when we don't need block
 
@@ -1983,7 +1991,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 # Otherwise, lower defense priority
                 return 100
             # Normal mode - use defense when needed
-            return 700 if incoming_damage > context_player_block else 200
+            return 700 if incoming_damage > context_turn_block else 200
 
         return 400
         

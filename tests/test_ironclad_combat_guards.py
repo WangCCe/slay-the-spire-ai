@@ -15525,6 +15525,36 @@ def test_ironclad_fallback_prefers_havoc_visible_top_card_block():
     assert sequence[0].card is havoc
 
 
+def test_ironclad_fallback_counts_orichalcum_before_prioritizing_defense():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [defend, strike],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.incoming_damage = 5
+    context.game.relics = [SimpleNamespace(name="Orichalcum")]
+    context.relics = context.game.relics
+    context.has_orichalcum = True
+    planner = IroncladCombatPlanner()
+    planner._get_monster_info = lambda _monster: {
+        "recommended_strategy": "balanced",
+        "threat_level": 2,
+    }
+
+    sequence = planner._fallback_plan(context, [defend, strike])
+
+    assert len(sequence) == 1
+    assert sequence[0].card is strike
+
+
 def test_ironclad_fallback_priority_values_bash_before_perfected_strike_with_strike_deck(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
