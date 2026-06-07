@@ -719,9 +719,10 @@ class TimingAwareCombatPlanner:
             self._monster_effective_hp(monster)
             for monster in monsters
         )
+        starting_nunchaku_counter = self._context_relic_counter(context, 'Nunchaku')
         seen = set()
 
-        def search(remaining_cards, hp_state, remaining_energy):
+        def search(remaining_cards, hp_state, remaining_energy, nunchaku_counter):
             if all(hp <= 0 for hp in hp_state):
                 return []
 
@@ -729,6 +730,7 @@ class TimingAwareCombatPlanner:
                 tuple(card_play_key(card) for card in remaining_cards),
                 hp_state,
                 remaining_energy,
+                nunchaku_counter,
             )
             if state_key in seen:
                 return None
@@ -772,12 +774,20 @@ class TimingAwareCombatPlanner:
                         total_damage,
                         -cost,
                     )
+                    nunchaku_energy_gain, next_nunchaku_counter = (
+                        self._nunchaku_energy_after_attack_play(
+                            nunchaku_counter,
+                            card,
+                        )
+                    )
                     candidates.append((
                         priority,
                         card_pos,
                         None,
                         cost,
                         tuple(next_hp),
+                        remaining_energy - cost + nunchaku_energy_gain,
+                        next_nunchaku_counter,
                     ))
                     continue
 
@@ -810,12 +820,18 @@ class TimingAwareCombatPlanner:
 
                     next_hp = list(hp_state)
                     next_hp[monster_idx] = max(0, hp - damage)
+                    nunchaku_energy_gain, next_nunchaku_counter = (
+                        self._nunchaku_energy_after_attack_play(
+                            nunchaku_counter,
+                            card,
+                        )
+                    )
                     refunds_energy = self._card_energy_refund_against_monster(
                         card,
                         context,
                         monsters,
                         monster_idx,
-                    ) > 0
+                    ) > 0 or nunchaku_energy_gain > 0
                     priority = (
                         1 if damage >= hp else 0,
                         1 if refunds_energy else 0,
@@ -828,14 +844,29 @@ class TimingAwareCombatPlanner:
                         monster_idx,
                         cost,
                         tuple(next_hp),
+                        remaining_energy - cost + nunchaku_energy_gain,
+                        next_nunchaku_counter,
                     ))
 
             candidates.sort(key=lambda item: item[0], reverse=True)
 
-            for _priority, card_pos, monster_idx, cost, next_hp in candidates:
+            for (
+                _priority,
+                card_pos,
+                monster_idx,
+                _cost,
+                next_hp,
+                next_remaining_energy,
+                next_nunchaku_counter,
+            ) in candidates:
                 card = remaining_cards[card_pos]
                 next_cards = remaining_cards[:card_pos] + remaining_cards[card_pos + 1:]
-                tail = search(next_cards, next_hp, remaining_energy - cost)
+                tail = search(
+                    next_cards,
+                    next_hp,
+                    next_remaining_energy,
+                    next_nunchaku_counter,
+                )
                 if tail is not None:
                     target_monster = (
                         None
@@ -851,8 +882,25 @@ class TimingAwareCombatPlanner:
 
             return None
 
-        sequence = search(tuple(attack_cards), starting_hp, max(0, int(available_energy)))
+        sequence = search(
+            tuple(attack_cards),
+            starting_hp,
+            max(0, int(available_energy)),
+            starting_nunchaku_counter,
+        )
         return sequence or []
+
+    def _nunchaku_energy_after_attack_play(
+        self,
+        nunchaku_counter,
+        card,
+    ) -> tuple[int, Optional[int]]:
+        if nunchaku_counter is None or card_type_name(card) != 'ATTACK':
+            return 0, nunchaku_counter
+        counter = max(0, self._safe_int(nunchaku_counter, 0))
+        if counter >= 9:
+            return 1, 0
+        return 0, min(9, counter + 1)
 
     def _card_damage_against_monster(
         self,

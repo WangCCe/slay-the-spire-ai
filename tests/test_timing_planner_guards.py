@@ -1385,6 +1385,35 @@ def test_timing_lethal_check_uses_dropkick_energy_refund(monkeypatch):
     ]
 
 
+def test_timing_targeted_lethal_search_uses_nunchaku_counter_nine():
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_1.uuid = "strike-1"
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    strike_2.uuid = "strike-2"
+    monster = SimpleNamespace(current_hp=12, block=0, monster_index=0)
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=1,
+        playable_cards=[strike_1, strike_2],
+        monsters_alive=[monster],
+        game=SimpleNamespace(
+            relics=[SimpleNamespace(relic_id="Nunchaku", name="Nunchaku", counter=9)],
+        ),
+    )
+    planner = TimingAwareCombatPlanner(data_loader=_loader_with_basic_ironclad_cards())
+
+    sequence = planner._find_targeted_lethal_sequence(
+        context,
+        context.playable_cards,
+        context.monsters_alive,
+        context.energy_available,
+    )
+
+    assert [action.card.uuid for action in sequence] == ["strike-1", "strike-2"]
+    assert [action.target_monster for action in sequence] == [monster, monster]
+
+
 def test_timing_vulnerable_target_check_accepts_numeric_string_hp():
     dead_target = SimpleNamespace(current_hp="0", block=0)
     live_target = SimpleNamespace(current_hp="12", block=0)
