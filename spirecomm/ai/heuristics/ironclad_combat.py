@@ -516,6 +516,7 @@ class IroncladCombatPlanner(CombatPlanner):
     def _is_live_monster_state(monster_state: dict) -> bool:
         return (
             not monster_state.get('is_gone', False)
+            and not monster_state.get('half_dead', False)
             and monster_state.get('hp', monster_state.get('current_hp', 1)) > 0
         )
 

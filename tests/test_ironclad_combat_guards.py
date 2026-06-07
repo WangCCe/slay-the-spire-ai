@@ -6029,6 +6029,29 @@ def test_single_target_selection_ignores_zero_hp_stale_simulated_monsters():
     assert target_idx == 1
 
 
+def test_single_target_selection_ignores_half_dead_simulated_monsters():
+    strike = _card("Strike_R", "Strike", cost=1)
+    waiting_darkling = _darkling(current_hp=20)
+    live_darkling = _darkling(current_hp=40)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[waiting_darkling, live_darkling],
+    )
+    state = SimulationState(context)
+    state.monsters[0]["half_dead"] = True
+    state.monsters[0]["is_gone"] = False
+
+    target, target_idx = IroncladCombatPlanner()._choose_target_for_card(
+        strike,
+        context,
+        state,
+    )
+
+    assert target is live_darkling
+    assert target_idx == 1
+
+
 def test_primary_target_selection_clears_zero_hp_stale_simulated_monster():
     strike = _card("Strike_R", "Strike", cost=1)
     stale = _louse(current_hp=40)
@@ -6164,6 +6187,30 @@ def test_v2_single_target_selection_ignores_zero_hp_stale_simulated_monsters():
     )
 
     assert target is live
+    assert target_idx == 1
+
+
+def test_v2_single_target_selection_ignores_half_dead_simulated_monsters():
+    strike = _card("Strike_R", "Strike", cost=1)
+    waiting_darkling = _darkling(current_hp=20)
+    live_darkling = _darkling(current_hp=40)
+    context = _combat_context(
+        [strike],
+        energy=1,
+        monsters=[waiting_darkling, live_darkling],
+    )
+    context.compute_threat_v2 = lambda monster: 1
+    state = SimulationState(context)
+    state.monsters[0]["half_dead"] = True
+    state.monsters[0]["is_gone"] = False
+
+    target, target_idx = IroncladCombatPlanner()._choose_target_for_card_v2(
+        strike,
+        context,
+        state,
+    )
+
+    assert target is live_darkling
     assert target_idx == 1
 
 

@@ -41,6 +41,10 @@ already disproved.
   even when the live payload still carries positive HP. This aligns the RL v2
   observation surface with the already-synced target masks and revive
   transition guard for monster lifecycle states.
+- 2026-06-08: `IroncladCombatPlanner` target selection now excludes simulated
+  `half_dead` monsters even when their HP field remains positive. This keeps
+  legacy and v2 fallback target pickers aligned with the simulator's Darkling
+  lifecycle handling.
 - 2026-06-07: `CombatEndingDetector` now uses the same confirmed target-side
   attack modifier shape as the divergence oracle for:
   - player Weak plus target Vulnerable combined before final integer
