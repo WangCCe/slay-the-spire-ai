@@ -27,6 +27,7 @@ from spirecomm.ai.incoming_damage import (
     known_unknown_move_immediate_damage,
 )
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
+from spirecomm.ai.heuristics.card_exhaust import card_exhausts_itself
 from spirecomm.ai.heuristics.card_hits import fixed_attack_hit_count
 from spirecomm.ai.heuristics.card_upgrades import (
     card_upgrade_count,
@@ -42,8 +43,10 @@ from spirecomm.ai.heuristics.card_types import (
 from spirecomm.ai.heuristics.combat_state import (
     draw_pile_count,
     player_debuff_stacks,
+    player_has_power,
     player_power_amount,
 )
+from spirecomm.data.loader import game_data_loader
 from spirecomm.ai.heuristics.potions import (
     game_potion_available,
     game_real_potions,
@@ -2927,6 +2930,8 @@ class CombatRLAgent:
         block_value = cls._survival_block_value(card)
         if game is not None:
             block_value += cls._ornamental_fan_block_for_card(card, game)
+            if card_exhausts_itself(card, game_data_loader):
+                block_value += cls._feel_no_pain_block_per_exhaust(game)
         if game is None or not cls._card_matches_normalized_names(card, {"havoc"}):
             return block_value
 
@@ -2936,8 +2941,15 @@ class CombatRLAgent:
 
         top_card_block = cls._survival_block_value(top_card)
         top_card_fan_block = cls._ornamental_fan_block_for_card(top_card, game)
-        feel_no_pain_block = max(0, player_power_amount(game, "Feel No Pain"))
+        feel_no_pain_block = cls._feel_no_pain_block_per_exhaust(game)
         return block_value + top_card_block + top_card_fan_block + feel_no_pain_block
+
+    @classmethod
+    def _feel_no_pain_block_per_exhaust(cls, game: Game) -> int:
+        block = max(0, player_power_amount(game, "Feel No Pain"))
+        if block <= 0 and player_has_power(game, "Feel No Pain"):
+            return 3
+        return block
 
     @classmethod
     def _ornamental_fan_block_for_card(cls, card, game: Game) -> int:

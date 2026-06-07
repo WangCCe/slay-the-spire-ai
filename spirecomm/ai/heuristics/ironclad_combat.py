@@ -29,6 +29,7 @@ from .card_hits import (
     fixed_attack_hit_count,
     strike_card_count,
 )
+from .card_exhaust import card_exhausts_itself
 from .card_names import canonical_card_name
 from .card_types import card_requires_target, card_type_name, is_attack_card
 from .card_upgrades import (
@@ -1830,6 +1831,7 @@ class IroncladCombatPlanner(CombatPlanner):
         card_name = canonical_card_name(card)
         block_gain = self._non_negative_int(getattr(card, 'block', 0))
         relic_block = self._ornamental_fan_block_for_card(card, context)
+        self_exhaust_block = self._self_exhaust_feel_no_pain_block(card, context)
 
         if block_gain <= 0:
             try:
@@ -1850,12 +1852,12 @@ class IroncladCombatPlanner(CombatPlanner):
                 block_gain = 0
 
         if block_gain <= 0:
-            return relic_block
+            return relic_block + self_exhaust_block
 
         block_gain = max(0, block_gain + player_debuff_stacks(context, 'Dexterity'))
         if player_debuff_stacks(context, 'Frail') > 0:
             block_gain = int(block_gain * 0.75)
-        return max(0, block_gain) + relic_block
+        return max(0, block_gain) + relic_block + self_exhaust_block
 
     def _ornamental_fan_block_for_card(
         self,
@@ -1902,6 +1904,17 @@ class IroncladCombatPlanner(CombatPlanner):
         if block <= 0 and player_has_power(context, 'Feel No Pain'):
             return 3
         return block
+
+    def _self_exhaust_feel_no_pain_block(
+        self,
+        card: Card,
+        context: DecisionContext,
+    ) -> int:
+        if context is None:
+            return 0
+        if not card_exhausts_itself(card, game_data_loader):
+            return 0
+        return self._feel_no_pain_block_per_exhaust(context)
 
     def _estimate_havoc_visible_top_card_block(
         self,
@@ -2032,6 +2045,18 @@ class IroncladCombatPlanner(CombatPlanner):
             if card_id == 'Body Slam' and context_player_block >= 20:
                 return 950
             return base_attack_priority
+
+        estimated_block = self._estimate_fallback_card_block(card, context)
+        missing_block = max(0, incoming_damage - context_turn_block)
+        if (
+            estimated_block > 0
+            and missing_block > 0
+            and not self._is_defensive_card(card)
+        ):
+            if aggressive_mode:
+                player_hp = self._non_negative_float(context.game.current_hp)
+                return 600 if incoming_damage > player_hp * 0.8 else 100
+            return 850 if estimated_block >= missing_block else 700
 
         # Other defense cards - decrease priority for aggressive mode
         if self._is_defensive_card(card):

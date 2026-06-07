@@ -27,6 +27,7 @@ from spirecomm.ai.heuristics.card_hits import (
     fixed_attack_hit_count,
     strike_card_count,
 )
+from spirecomm.ai.heuristics.card_exhaust import card_exhausts_itself
 from spirecomm.ai.heuristics.card_costs import (
     context_has_relic,
     effective_card_cost,
@@ -1368,12 +1369,14 @@ class TimingAwareCombatPlanner:
 
     def _estimate_card_block(self, card, context=None) -> int:
         """Estimate card block for timing decisions from methods or parsed data."""
+        self_exhaust_block = self._self_exhaust_feel_no_pain_block(card, context)
         if hasattr(card, 'block_for'):
             try:
                 block = max(0, int(card.block_for()))
                 return (
                     self._apply_block_status_modifiers(block, context)
                     + self._ornamental_fan_block_for_card(card, context)
+                    + self_exhaust_block
                 )
             except Exception:
                 pass
@@ -1404,6 +1407,7 @@ class TimingAwareCombatPlanner:
         return (
             self._apply_block_status_modifiers(block, context)
             + self._ornamental_fan_block_for_card(card, context)
+            + self_exhaust_block
         )
 
     def _estimate_havoc_top_card_block(self, havoc_card, context) -> int:
@@ -1433,6 +1437,13 @@ class TimingAwareCombatPlanner:
         if block <= 0 and player_has_power(context, 'Feel No Pain'):
             return 3
         return block
+
+    def _self_exhaust_feel_no_pain_block(self, card, context) -> int:
+        if context is None:
+            return 0
+        if not card_exhausts_itself(card, self.game_data_loader):
+            return 0
+        return self._feel_no_pain_block_for_havoc(context)
 
     def _ornamental_fan_block_for_card(self, card, context) -> int:
         if context is None or not is_attack_card(card):

@@ -46,11 +46,17 @@ Status labels:
 | Combat escape settlement | Looter/Mugger escape and Smoke Bomb divergence evidence | n/a | synced for Smoke Bomb potion escape and Looter/Mugger end-turn escape projection without kill/lethal credit | n/a | n/a | synced for in-combat and combat-exit reward | Other escape monsters should be added only with explicit intent/move evidence. |
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
 | Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | synced for Pen Nib scalar fallback damage estimates, Nunchaku counter-9 refund-preserving attack-before-defense ordering, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective block before defense priority | synced for Pen Nib damage estimates, Nunchaku targeted lethal search, cache invalidation over relic counters plus draw-pile/hand/deck inputs, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective turn block before fallback block scoring | synced for direct and Havoc-top Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether non-damage relic counters are read or intentionally ignored. |
-| Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests plus fresh Havoc top-energy evidence | synced for deterministic top attacks, top-card exhaust damage, and visible top energy skills | synced | synced for deterministic Havoc top-card block and Feel No Pain fallback priority | synced for deterministic Havoc top-card block and Feel No Pain in fallback scoring | synced where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
+| Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests plus fresh Havoc top-energy and Shockwave self-exhaust evidence | synced for deterministic top attacks, top-card exhaust damage, and visible top energy skills | synced | synced for deterministic Havoc top-card block, Feel No Pain fallback priority, and direct self-exhaust Feel No Pain block | synced for deterministic Havoc top-card block, Feel No Pain in fallback scoring, and direct self-exhaust Feel No Pain block | synced for survival and shared block guards where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
 | Healing and monster self-heal | Bandage Up, Shelled Parasite Suck divergence tests | n/a | synced | n/a | n/a | n/a | Only fast/beam sim currently predicts these HP transitions. |
 
 ## Confirmed Sync Work
 
+- 2026-06-08: `IroncladCombatPlanner`, `TimingAwareCombatPlanner`, and
+  `CombatRLAgent` survival block estimates now count Feel No Pain block from
+  directly played self-exhausting cards such as Shockwave. The shared
+  lightweight detector uses the live `card.exhausts` field first, then falls
+  back to card text that ends in `Exhaust.`, so cards that exhaust other cards
+  are not treated as self-exhausting. The added block is not reduced by Frail.
 - 2026-06-08: `CombatEndingDetector` targeted lethal search now treats
   `Havoc` with a visible draw-pile top energy skill as a deterministic support
   action. The search spends only Havoc's cost, applies the top card's

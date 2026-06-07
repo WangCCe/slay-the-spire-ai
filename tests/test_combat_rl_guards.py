@@ -1093,6 +1093,64 @@ def test_survival_guard_counts_havoc_feel_no_pain_block():
     assert agent._fallback_turn_key == (27, 1)
 
 
+def test_survival_guard_counts_self_exhaust_feel_no_pain_block():
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    shockwave = SimpleNamespace(
+        name="Shockwave",
+        card_id="Shockwave",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=2,
+        has_target=False,
+        exhausts=True,
+    )
+    snake_plant = _monster(
+        hp=79,
+        damage=5,
+        index=0,
+        name="Snake Plant",
+        monster_id="SnakePlant",
+    )
+    snake_plant.intent = Intent.ATTACK
+    game = _game(
+        hand=[strike, shockwave],
+        monsters=[snake_plant],
+        current_hp=3,
+        player=SimpleNamespace(
+            energy=2,
+            block=0,
+            powers=[SimpleNamespace(power_name="Feel No Pain", amount=3)],
+        ),
+        floor=27,
+        turn=2,
+    )
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0, target_index=0)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (27, 2)
+
+
 def test_survival_guard_applies_current_block_to_burn_plus_damage():
     strike = SimpleNamespace(
         name="Strike",

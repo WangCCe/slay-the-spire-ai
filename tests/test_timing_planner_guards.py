@@ -2047,6 +2047,43 @@ def test_timing_fallback_counts_havoc_visible_top_card_block():
     assert actions[0].target_monster is None
 
 
+def test_timing_fallback_counts_self_exhaust_feel_no_pain_block():
+    shockwave = _card(
+        "Shockwave",
+        "Shockwave",
+        card_type=CardType.SKILL,
+        cost=2,
+        has_target=False,
+    )
+    shockwave.uuid = "shockwave"
+    shockwave.exhausts = True
+    strike = _card("Strike_R", "Strike")
+    strike.uuid = "strike"
+    context = SimpleNamespace(
+        turn=1,
+        strength=0,
+        energy_available=2,
+        playable_cards=[strike, shockwave],
+        monsters_alive=[SimpleNamespace(current_hp=30, block=0)],
+        game=SimpleNamespace(
+            player=SimpleNamespace(
+                powers=[SimpleNamespace(power_name="Feel No Pain", amount=3)],
+            ),
+        ),
+    )
+    timing_ctx = TimingContext(
+        turn_timing=TurnTiming.THREAT_SPIKE,
+        current_damage=3,
+        balance_weights=BalanceWeights(damage_weight=0.1, block_weight=1.0),
+    )
+
+    actions = TimingAwareCombatPlanner()._fallback_plan(context, timing_ctx)
+
+    assert len(actions) == 1
+    assert actions[0].card is shockwave
+    assert actions[0].target_monster is None
+
+
 def test_timing_fallback_counts_orichalcum_before_block_scores(monkeypatch):
     monkeypatch.setattr(
         timing_planner,

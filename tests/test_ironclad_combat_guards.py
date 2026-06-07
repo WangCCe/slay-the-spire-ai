@@ -15580,6 +15580,35 @@ def test_ironclad_fallback_prefers_havoc_visible_top_card_block():
     assert sequence[0].card is havoc
 
 
+def test_ironclad_fallback_counts_self_exhaust_feel_no_pain_block():
+    strike = _card("Strike_R", "Strike", cost=1)
+    shockwave = _card(
+        "Shockwave",
+        "Shockwave",
+        card_type=CardType.SKILL,
+        cost=2,
+        has_target=False,
+    )
+    shockwave.exhausts = True
+    context = _combat_context(
+        [strike, shockwave],
+        energy=2,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.incoming_damage = 3
+    context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+    planner = IroncladCombatPlanner()
+    planner._get_monster_info = lambda _monster: {
+        "recommended_strategy": "balanced",
+        "threat_level": 2,
+    }
+
+    sequence = planner._fallback_plan(context, [strike, shockwave])
+
+    assert len(sequence) == 1
+    assert sequence[0].card is shockwave
+
+
 def test_ironclad_fallback_counts_orichalcum_before_prioritizing_defense():
     defend = _card(
         "Defend_R",
