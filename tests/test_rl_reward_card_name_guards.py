@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 from spirecomm.ai.rl.reward import RewardCalculator
-from spirecomm.spire.character import PlayerClass
+from spirecomm.spire.character import Intent, PlayerClass
 from spirecomm.spire.screen import ScreenType
 
 
@@ -211,6 +211,128 @@ def test_rl_combat_exit_reward_ignores_half_dead_monster_hp_for_finishing_damage
     assert info["total_monster_hp_delta"] == 0
     assert info["monster_killed"] is False
     assert reward == calc.ALL_LETHAL_BONUS
+
+
+def test_rl_reward_does_not_count_escaping_monster_as_damage_or_kill():
+    calc = RewardCalculator()
+    info = {}
+    last_game = _combat_game(
+        [
+            SimpleNamespace(
+                monster_index=0,
+                name="Looter",
+                current_hp=12,
+                powers=[],
+                half_dead=False,
+                is_gone=False,
+                intent=Intent.ESCAPE,
+                move_id=3,
+            ),
+            SimpleNamespace(
+                monster_index=1,
+                name="Cultist",
+                current_hp=20,
+                powers=[],
+                half_dead=False,
+                is_gone=False,
+            ),
+        ]
+    )
+    current_game = _combat_game(
+        [
+            SimpleNamespace(
+                monster_index=0,
+                name="Looter",
+                current_hp=0,
+                powers=[],
+                half_dead=False,
+                is_gone=True,
+                intent=Intent.ESCAPE,
+                move_id=3,
+            ),
+            SimpleNamespace(
+                monster_index=1,
+                name="Cultist",
+                current_hp=20,
+                powers=[],
+                half_dead=False,
+                is_gone=False,
+            ),
+        ]
+    )
+
+    reward = calc.calculate_step_reward(
+        current_game,
+        last_game,
+        debug_info=info,
+        action_context={"action_name": "EndTurnAction"},
+    )
+
+    assert info["damage_dealt"] == 0
+    assert info["monster_killed"] is False
+    assert info["all_monsters_killed"] is False
+    assert reward == 0
+
+
+def test_rl_reward_still_counts_player_killing_escape_intent_monster():
+    calc = RewardCalculator()
+    info = {}
+    last_game = _combat_game(
+        [
+            SimpleNamespace(
+                monster_index=0,
+                name="Looter",
+                current_hp=12,
+                powers=[],
+                half_dead=False,
+                is_gone=False,
+                intent=Intent.ESCAPE,
+                move_id=3,
+            ),
+            SimpleNamespace(
+                monster_index=1,
+                name="Cultist",
+                current_hp=20,
+                powers=[],
+                half_dead=False,
+                is_gone=False,
+            ),
+        ]
+    )
+    current_game = _combat_game(
+        [
+            SimpleNamespace(
+                monster_index=0,
+                name="Looter",
+                current_hp=0,
+                powers=[],
+                half_dead=False,
+                is_gone=True,
+                intent=Intent.ESCAPE,
+                move_id=3,
+            ),
+            SimpleNamespace(
+                monster_index=1,
+                name="Cultist",
+                current_hp=20,
+                powers=[],
+                half_dead=False,
+                is_gone=False,
+            ),
+        ]
+    )
+
+    reward = calc.calculate_step_reward(
+        current_game,
+        last_game,
+        debug_info=info,
+        action_context={"action_name": "PlayCardAction"},
+    )
+
+    assert info["damage_dealt"] == 12
+    assert info["monster_killed"] is True
+    assert info["all_monsters_killed"] is False
+    assert reward > 12 * calc.DAMAGE_REWARD_SCALE
 
 
 def test_rl_victory_detection_accepts_numeric_string_final_floor():

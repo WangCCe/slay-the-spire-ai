@@ -118,6 +118,35 @@ class RewardCalculator:
         )
 
     @staticmethod
+    def _action_name(action_context: Optional[Dict]) -> str:
+        if not action_context:
+            return ""
+        return str(action_context.get("action_name") or "")
+
+    @classmethod
+    def _intent_name(cls, intent) -> str:
+        if hasattr(intent, "name"):
+            return str(intent.name).upper()
+        return str(intent or "").rsplit(".", 1)[-1].upper()
+
+    @staticmethod
+    def _normalized_identifier(value) -> str:
+        return str(value or "").strip().lower().replace(" ", "").replace("_", "")
+
+    def _is_escape_monster_state(self, monster) -> bool:
+        if monster is None:
+            return False
+        if self._intent_name(getattr(monster, "intent", None)) == "ESCAPE":
+            return True
+
+        # Looter/Mugger move_id 3 is Escape in the local monster database.
+        move_id = self._safe_int(getattr(monster, "move_id", -1), default=-1)
+        monster_name = self._normalized_identifier(
+            getattr(monster, "name", "") or getattr(monster, "monster_id", "")
+        )
+        return move_id == 3 and monster_name in {"looter", "mugger"}
+
+    @staticmethod
     def _is_truthy(value: str) -> bool:
         return str(value).strip().lower() in ("1", "true", "yes", "y", "on")
 
@@ -297,6 +326,8 @@ class RewardCalculator:
             # Get current monsters
             current_monsters = current_game.monsters if current_game.monsters else []
             last_monsters = last_game.monsters if last_game.monsters else []
+            ended_turn = self._action_name(action_context) == "EndTurnAction"
+            escape_resolved_after_end_turn = False
             if info is not None:
                 info["monster_count_last"] = len(last_monsters)
                 info["monster_count_current"] = len(current_monsters)
@@ -314,11 +345,13 @@ class RewardCalculator:
 
             # Build mapping of monster_index -> HP for comparison
             current_monster_hp = {}
+            current_monsters_by_key = {}
             for idx, monster in enumerate(current_monsters):
                 if hasattr(monster, 'monster_index'):
                     key = monster.monster_index
                 else:
                     key = idx
+                current_monsters_by_key[key] = monster
                 if hasattr(monster, 'current_hp'):
                     current_monster_hp[key] = self._monster_hp_value(monster)
 
@@ -336,23 +369,35 @@ class RewardCalculator:
 
                 # Check if monster still exists
                 if key in current_monster_hp:
+                    current_monster = current_monsters_by_key.get(key)
                     current_hp = current_monster_hp[key]
                     if current_hp is None:
                         continue
+                    escaped_after_end_turn = ended_turn and (
+                        self._is_escape_monster_state(last_monster)
+                        or self._is_escape_monster_state(current_monster)
+                    )
+                    if escaped_after_end_turn and current_hp <= 0 and last_hp > 0:
+                        escape_resolved_after_end_turn = True
 
                     # Monster took damage
-                    if current_hp < last_hp:
+                    if current_hp < last_hp and not escaped_after_end_turn:
                         dmg = (last_hp - current_hp)
                         damage_dealt += dmg
                         if was_vulnerable:
                             vulnerable_damage += dmg
 
                     # Monster died
-                    if current_hp <= 0 and last_hp > 0:
+                    if current_hp <= 0 and last_hp > 0 and not escaped_after_end_turn:
                         kills_count += 1
                 else:
                     # Monster disappeared (died or removed)
-                    if last_hp > 0:
+                    escaped_after_end_turn = (
+                        ended_turn and self._is_escape_monster_state(last_monster)
+                    )
+                    if escaped_after_end_turn and last_hp > 0:
+                        escape_resolved_after_end_turn = True
+                    if last_hp > 0 and not escaped_after_end_turn:
                         damage_dealt += last_hp
                         if was_vulnerable:
                             vulnerable_damage += last_hp
@@ -365,7 +410,9 @@ class RewardCalculator:
                 ]
                 if current_hp_values:
                     all_alive = any(hp > 0 for hp in current_hp_values)
-                    all_monsters_killed = not all_alive
+                    all_monsters_killed = (
+                        not all_alive and not escape_resolved_after_end_turn
+                    )
 
             # Track HP lost
             hp_lost = 0
