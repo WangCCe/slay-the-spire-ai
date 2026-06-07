@@ -1927,10 +1927,10 @@ class CombatRLAgent:
             return None
 
         incoming = self._incoming_damage(game)
-        status_hp_loss = self._end_turn_status_hp_loss(game)
+        status_blockable_damage, status_hp_loss = self._end_turn_status_damage(game)
         current_block = self._player_block(game)
         damage_without_attack = self._end_turn_damage_after_block(
-            incoming,
+            incoming + status_blockable_damage,
             status_hp_loss,
             current_block,
         )
@@ -1938,7 +1938,7 @@ class CombatRLAgent:
             return None
 
         damage_with_attack = self._end_turn_damage_after_block(
-            incoming + sharp_hide_damage,
+            incoming + sharp_hide_damage + status_blockable_damage,
             status_hp_loss,
             current_block,
         )
@@ -1950,11 +1950,12 @@ class CombatRLAgent:
             replacement, card, block_value = candidate
             if block_value > self._survival_block_value(current_card):
                 logger.info(
-                    "[GUARDIAN_SHARP_HIDE_GUARD] Selecting %s for block=%s hp=%s incoming=%s status_hp_loss=%s sharp_hide=%s current_block=%s",
+                    "[GUARDIAN_SHARP_HIDE_GUARD] Selecting %s for block=%s hp=%s incoming=%s status_blockable_damage=%s status_hp_loss=%s sharp_hide=%s current_block=%s",
                     self._card_label(card),
                     block_value,
                     current_hp,
                     incoming,
+                    status_blockable_damage,
                     status_hp_loss,
                     sharp_hide_damage,
                     current_block,
@@ -1962,9 +1963,10 @@ class CombatRLAgent:
                 return replacement
 
         logger.info(
-            "[GUARDIAN_SHARP_HIDE_GUARD] Ending turn to avoid lethal Sharp Hide attack hp=%s incoming=%s status_hp_loss=%s sharp_hide=%s current_block=%s",
+            "[GUARDIAN_SHARP_HIDE_GUARD] Ending turn to avoid lethal Sharp Hide attack hp=%s incoming=%s status_blockable_damage=%s status_hp_loss=%s sharp_hide=%s current_block=%s",
             current_hp,
             incoming,
+            status_blockable_damage,
             status_hp_loss,
             sharp_hide_damage,
             current_block,
@@ -2038,10 +2040,10 @@ class CombatRLAgent:
             return None
 
         incoming = self._incoming_damage(game)
-        status_hp_loss = self._end_turn_status_hp_loss(game)
+        status_blockable_damage, status_hp_loss = self._end_turn_status_damage(game)
         current_block = self._player_block(game)
         damage_after_block = self._end_turn_damage_after_block(
-            incoming,
+            incoming + status_blockable_damage,
             status_hp_loss,
             current_block,
         )
@@ -2073,11 +2075,12 @@ class CombatRLAgent:
 
         _, action, card, block_value = best_candidate
         logger.info(
-            "[SURVIVAL_GUARD] Selecting %s for block=%s hp=%s incoming=%s status_hp_loss=%s current_block=%s",
+            "[SURVIVAL_GUARD] Selecting %s for block=%s hp=%s incoming=%s status_blockable_damage=%s status_hp_loss=%s current_block=%s",
             self._card_label(card),
             block_value,
             current_hp,
             incoming,
+            status_blockable_damage,
             status_hp_loss,
             current_block,
         )
@@ -2844,13 +2847,19 @@ class CombatRLAgent:
 
     @classmethod
     def _end_turn_status_hp_loss(cls, game: Game) -> int:
-        total = 0
+        _, hp_loss = cls._end_turn_status_damage(game)
+        return hp_loss
+
+    @classmethod
+    def _end_turn_status_damage(cls, game: Game) -> tuple[int, int]:
+        blockable_damage = 0
+        hp_loss = 0
         for card in getattr(game, "hand", []) or []:
             if cls._card_matches_normalized_names(card, {"burn"}):
-                total += 4 if card_upgrade_count(card) > 0 else 2
+                blockable_damage += 4 if card_upgrade_count(card) > 0 else 2
             elif cls._card_matches_normalized_names(card, {"decay"}):
-                total += 2
-        return total
+                hp_loss += 2
+        return blockable_damage, hp_loss
 
     @staticmethod
     def _end_turn_damage_after_block(blockable_damage: int, status_hp_loss: int, current_block: int) -> int:

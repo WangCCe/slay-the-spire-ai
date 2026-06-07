@@ -46,9 +46,10 @@ already disproved.
   count upgraded static attack damage when parsed card data only exposes the
   base value. This keeps Bash follow-up checks and non-clone fallback scoring
   from underestimating cards such as Headbutt+.
-- 2026-06-07: `CombatRLAgent` survival guards now include Decay in end-turn
-  status HP loss alongside Burn. Guard takeover decisions treat that HP loss as
-  unblocked when deciding whether to replace an RL attack with a defensive card.
+- 2026-06-07: `CombatRLAgent` survival and Guardian Sharp Hide guards now
+  distinguish Burn's blockable end-turn damage from Decay's HP loss through
+  block. Monster damage and Burn share current block; Decay remains unblocked
+  when deciding whether to replace an RL attack with a defensive card.
 - 2026-06-07: `TimingAwareCombatPlanner` target-specific and scalar timing
   damage estimates now use the confirmed target-side attack modifier shape:
   - player Weak plus target Vulnerable is combined before final integer
