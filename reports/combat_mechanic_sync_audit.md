@@ -73,6 +73,11 @@ already disproved.
   the existing live simulators, and the top card contributes one exhaust event
   for exhaust synergies such as Feel No Pain. Later simulated Havoc plays skip
   top cards already consumed by the current simulated line.
+- 2026-06-07: `FastCombatSimulator` and the same-file no-simulation attack
+  estimate now apply Pen Nib when the relic counter is 9. The source-side
+  attack damage is doubled before player Weak and target Vulnerable, simulated
+  attack plays advance or consume the counter, and fallback scalar estimates
+  read the current counter without mutating state.
 
 ## Backlog
 
@@ -82,7 +87,7 @@ already disproved.
   105-118: rows as mechanics, columns as estimator surfaces.
 - Audit high-impact confirmed mechanics across live estimators:
   - Whirlwind per-energy hits, per-hit rounding, and Malleable interactions.
-  - Paper Phrog, Pen Nib, Weak/Vulnerable, Strength, and upgraded attack stats.
+  - Paper Phrog, Weak/Vulnerable, Strength, and upgraded attack stats.
   - Mind Blast/deck-count and other dynamic base damage.
   - Havoc top-card effects, random-target boundaries, and Feel No Pain block.
   - End-turn statuses such as Burn and Decay.

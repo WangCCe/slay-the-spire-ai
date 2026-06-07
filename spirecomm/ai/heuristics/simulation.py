@@ -449,6 +449,7 @@ class SimulationState:
             for power_name in ('No Block', 'NoBlock', 'NoBlockPower')
         )
         self.double_tap_charges = 0
+        self.pen_nib_counter = self._context_relic_counter(context, 'Pen Nib')
         self.corruption_active = self._has_player_power(context, 'Corruption')
         self.feel_no_pain_block_per_exhaust = self._get_player_power_amount(context, 'Feel No Pain')
         self.dark_embrace_draw_per_exhaust = self._get_player_power_amount(context, 'Dark Embrace')
@@ -588,6 +589,25 @@ class SimulationState:
 
     def _has_player_power(self, context: DecisionContext, power_name: str) -> bool:
         return player_has_power(context, power_name)
+
+    @staticmethod
+    def _context_relic_counter(context: DecisionContext, relic_name: str) -> Optional[int]:
+        target = ''.join(ch for ch in relic_name.lower() if ch.isalnum())
+        if not context or not target:
+            return None
+
+        relics = []
+        for source in (getattr(context, 'game', None), context):
+            relics.extend(getattr(source, 'relics', []) or [])
+
+        for relic in relics:
+            identifiers = {
+                ''.join(ch for ch in str(getattr(relic, attr, '')).lower() if ch.isalnum())
+                for attr in ('name', 'relic_id', 'id')
+            }
+            if target in identifiers:
+                return coerce_int(getattr(relic, 'counter', 0), 0)
+        return None
 
     def _get_player_hex_stacks(self, context: DecisionContext) -> int:
         """Hex is a persistent Chosen debuff; amount may be -1 in game state."""
@@ -841,6 +861,7 @@ class SimulationState:
             self.draw_blocked,
             self.card_block_blocked,
             self.double_tap_charges,
+            self.pen_nib_counter,
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
             self.dark_embrace_draw_per_exhaust,
@@ -1264,6 +1285,7 @@ class FastCombatSimulator:
                 base_damage = 6  # Fallback estimate for truly unknown cards
 
         base_damage += self._rampage_damage_bonus(state, card)
+        pen_nib_multiplier = self._pen_nib_attack_multiplier(state, consume=True)
 
         # Handle AOE attacks
         card_data = game_data_loader.get_card_data(card_name)
@@ -1291,6 +1313,7 @@ class FastCombatSimulator:
                     if not self._is_live_monster_state(monster):
                         break
                     damage = self._calculate_attack_damage(card, base_damage, state, context)
+                    damage *= pen_nib_multiplier
                     damage = self._apply_player_attack_damage_modifiers(
                         damage,
                         state,
@@ -1319,6 +1342,7 @@ class FastCombatSimulator:
                     break
                 monster = alive_monsters[hit_index % len(alive_monsters)]
                 damage = self._calculate_attack_damage(card, base_damage, state, context)
+                damage *= pen_nib_multiplier
                 damage = self._apply_player_attack_damage_modifiers(
                     damage,
                     state,
@@ -1345,6 +1369,7 @@ class FastCombatSimulator:
                         if not self._is_live_monster_state(monster):
                             break
                         damage = self._calculate_attack_damage(card, base_damage, state, context)
+                        damage *= pen_nib_multiplier
                         damage = self._apply_player_attack_damage_modifiers(
                             damage,
                             state,
@@ -1685,6 +1710,21 @@ class FastCombatSimulator:
             )
 
         return max(0, base_damage + state.player_strength)
+
+    def _pen_nib_attack_multiplier(self, state: Any, consume: bool = False) -> int:
+        counter = getattr(state, 'pen_nib_counter', None)
+        if counter is None:
+            return 1
+
+        counter = self._non_negative_int(counter)
+        if counter >= 9:
+            if consume:
+                state.pen_nib_counter = 0
+            return 2
+
+        if consume:
+            state.pen_nib_counter = min(9, counter + 1)
+        return 1
 
     @staticmethod
     def _positive_card_misc(card: Card) -> int:
@@ -6406,6 +6446,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             added_hand_cards=[],
             played_card_uuids=set(),
             rampage_damage_bonus_by_card={},
+            pen_nib_counter=SimulationState._context_relic_counter(context, 'Pen Nib'),
         )
 
         dynamic_damage_card = card_name in {'Body Slam', 'Mind Blast', 'Whirlwind'}
@@ -6447,6 +6488,10 @@ class HeuristicCombatPlanner(CombatPlanner):
             base_damage,
             estimator_state,
             context,
+        )
+        per_hit_damage *= self.simulator._pen_nib_attack_multiplier(
+            estimator_state,
+            consume=False,
         )
         per_hit_damage = self.simulator._apply_player_attack_damage_modifiers(
             per_hit_damage,

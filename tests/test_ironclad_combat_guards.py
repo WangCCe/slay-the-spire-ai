@@ -1102,6 +1102,27 @@ def test_simulate_card_play_applies_paper_phrog_vulnerable_multiplier():
     assert result.total_damage_dealt == 10
 
 
+def test_simulate_card_play_applies_pen_nib_before_target_vulnerable():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.damage = 6
+    target = _louse(current_hp=40)
+    context = _combat_context([strike], energy=1, monsters=[target])
+    context.vulnerable_stacks[0] = 1
+    context.game.relics = [SimpleNamespace(relic_id="Pen Nib", name="Pen Nib", counter=9)]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 18
+    assert result.pen_nib_counter == 0
+
+
 def test_fallback_attack_estimate_combines_player_weak_and_target_vulnerable_before_rounding():
     dropkick = _card("Dropkick", "Dropkick", cost=1)
     dropkick.damage = 5
@@ -1134,6 +1155,26 @@ def test_fallback_attack_estimate_applies_paper_phrog_vulnerable_multiplier():
     )
 
     assert damage == 10
+
+
+def test_fallback_attack_estimate_applies_pen_nib_before_player_weak():
+    blood_for_blood = _card("Blood for Blood", "Blood for Blood+", cost=1, upgrades=1)
+    blood_for_blood.damage = 22
+    target = _louse(current_hp=60)
+    context = _combat_context([blood_for_blood], energy=1, monsters=[target])
+    context.game.player.powers = [SimpleNamespace(power_name="Weak", amount=1)]
+    context.game.relics = [SimpleNamespace(relic_id="Pen Nib", name="Pen Nib", counter=9)]
+    state = SimulationState(context)
+
+    damage = HeuristicCombatPlanner()._estimate_attack_damage_without_simulation(
+        blood_for_blood,
+        context,
+        state=state,
+        target=target,
+    )
+
+    assert damage == 33
+    assert state.pen_nib_counter == 9
 
 
 def test_ironclad_fallback_attack_estimate_counts_upgraded_static_damage(monkeypatch):
