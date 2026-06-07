@@ -1,15 +1,17 @@
 <#
 .SYNOPSIS
-Recover a stuck Slay the Spire main-menu flow for CommunicationMod batches.
+Recover common stuck Slay the Spire UI flows for CommunicationMod batches.
 
 .DESCRIPTION
 This helper repeats the UI clicks used when a clean batch starts at the game
-main menu instead of emitting CommunicationMod state updates. It uses scaled
-window-relative coordinates so the same reference points work across DPI-aware
-and DPI-virtualized PowerShell sessions.
+main menu instead of emitting CommunicationMod state updates. It can also send
+one combat End Turn click for the revive-animation stuck state observed during
+live batches. It uses scaled window-relative coordinates so the same reference
+points work across DPI-aware and DPI-virtualized PowerShell sessions.
 
-Run this only after a screenshot confirms the game is on a menu screen, not
-during an active run.
+Run menu recovery only after a screenshot confirms the game is on a menu screen.
+Run EndTurn recovery only after a screenshot or live observation confirms the
+AI is stuck waiting on an end-turn UI click.
 
 .EXAMPLE
 scripts\recover_sts_menu_flow.ps1 -DryRun -StartScreen MainMenu
@@ -19,10 +21,18 @@ scripts\recover_sts_menu_flow.ps1 -StartScreen MainMenu
 
 .EXAMPLE
 scripts\recover_sts_menu_flow.ps1 -StartScreen PatchNotes
+
+.EXAMPLE
+scripts\recover_sts_menu_flow.ps1 -Action EndTurn -DryRun
+
+.EXAMPLE
+scripts\recover_sts_menu_flow.ps1 -Action EndTurn
 #>
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
 param(
     [string]$WindowTitlePattern = "Modded Slay the Spire|Slay the Spire",
+    [ValidateSet("MenuFlow", "EndTurn")]
+    [string]$Action = "MenuFlow",
     [ValidateSet("MainMenu", "PlayMenu", "CharacterSelect", "IroncladSelected", "PatchNotes")]
     [string]$StartScreen = "MainMenu",
     [switch]$BackFirst,
@@ -188,7 +198,7 @@ if (-not $target) {
 
 $bounds = "left=$($target.Left), top=$($target.Top), width=$($target.Width), height=$($target.Height)"
 Write-RecoveryInfo "target title='$($target.Title)' pid=$($target.ProcessId) $bounds"
-Write-RecoveryInfo "start_screen=$StartScreen back_first=$($BackFirst.IsPresent) dry_run=$($DryRun.IsPresent)"
+Write-RecoveryInfo "action=$Action start_screen=$StartScreen back_first=$($BackFirst.IsPresent) dry_run=$($DryRun.IsPresent)"
 
 $points = @{
     Back = @{ X = 95; Y = 629 }
@@ -196,28 +206,38 @@ $points = @{
     Standard = @{ X = 345; Y = 405 }
     Ironclad = @{ X = 416; Y = 620 }
     Embark = @{ X = 1193; Y = 631 }
+    EndTurn = @{ X = 1160; Y = 560 }
 }
 
 $sequence = @()
-if ($BackFirst -and $StartScreen -ne "PatchNotes") {
-    $sequence += "Back"
-}
 
-switch ($StartScreen) {
-    "MainMenu" {
-        $sequence += @("Play", "Standard", "Ironclad", "Embark")
+if ($Action -eq "EndTurn") {
+    if ($BackFirst) {
+        Write-RecoveryInfo "warning: -BackFirst is ignored for -Action EndTurn"
     }
-    "PlayMenu" {
-        $sequence += @("Standard", "Ironclad", "Embark")
+    $sequence += "EndTurn"
+}
+else {
+    if ($BackFirst -and $StartScreen -ne "PatchNotes") {
+        $sequence += "Back"
     }
-    "CharacterSelect" {
-        $sequence += @("Ironclad", "Embark")
-    }
-    "IroncladSelected" {
-        $sequence += @("Embark")
-    }
-    "PatchNotes" {
-        $sequence += @("Back", "Play", "Standard", "Ironclad", "Embark")
+
+    switch ($StartScreen) {
+        "MainMenu" {
+            $sequence += @("Play", "Standard", "Ironclad", "Embark")
+        }
+        "PlayMenu" {
+            $sequence += @("Standard", "Ironclad", "Embark")
+        }
+        "CharacterSelect" {
+            $sequence += @("Ironclad", "Embark")
+        }
+        "IroncladSelected" {
+            $sequence += @("Embark")
+        }
+        "PatchNotes" {
+            $sequence += @("Back", "Play", "Standard", "Ironclad", "Embark")
+        }
     }
 }
 
