@@ -461,8 +461,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 0,
                 _to_int(expected["player"].get("current_hp")) - brutality_loss,
             )
-        for monster in expected.get("monsters", []):
-            monster["block"] = 0
+        _prepare_monster_block_for_mercury_hourglass(expected, before)
         _apply_mercury_hourglass_damage(expected, before)
 
     return expected
@@ -1873,6 +1872,23 @@ def _apply_mercury_hourglass_damage(
         return
     for index, _monster in enumerate(expected.get("monsters", []) or []):
         _apply_direct_monster_damage(expected, index, 3)
+
+
+def _prepare_monster_block_for_mercury_hourglass(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> None:
+    before_monsters = before.get("monsters", []) or []
+    for index, monster in enumerate(expected.get("monsters", []) or []):
+        if monster.get("gone") or monster.get("half_dead") or _to_int(monster.get("hp")) <= 0:
+            monster["block"] = 0
+            continue
+
+        before_monster = before_monsters[index] if index < len(before_monsters) else {}
+        block = max(0, _to_int(monster.get("block")))
+        block += max(0, _snapshot_power_amount(before_monster, "Plated Armor"))
+        block += max(0, _snapshot_power_amount(before_monster, "Metallicize"))
+        monster["block"] = block
 
 
 def _has_mystic_support_turn(snapshot: Dict[str, Any]) -> bool:
