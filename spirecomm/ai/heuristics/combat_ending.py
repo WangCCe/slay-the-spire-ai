@@ -190,7 +190,7 @@ class CombatEndingDetector:
                         f"idx={i}, stacks={stacks}, hp={monster.current_hp}, block={monster.block}"
                     )
             logger.info(
-                "[LETHAL_VULNERABLE] targets=%s, multiplier=1.5",
+                "[LETHAL_VULNERABLE] targets=%s, multiplier=1.5/1.75",
                 vulnerable_targets if vulnerable_targets else "none",
             )
 
@@ -458,26 +458,13 @@ class CombatEndingDetector:
         context: DecisionContext,
         available_energy: int,
     ) -> bool:
-        base_damage = self._get_card_damage(
-            card,
-            context,
-            available_energy=available_energy,
-        )
-        base_damage = self._apply_player_weak_to_card_damage(
-            card,
-            context,
-            base_damage,
-            available_energy,
-        )
         for monster_idx, monster in enumerate(context.monsters_alive):
-            damage = base_damage
-            if self._monster_vulnerable_stacks(context, monster_idx) > 0:
-                damage = self._apply_vulnerable_to_card_damage(
-                    card,
-                    context,
-                    damage,
-                    available_energy,
-                )
+            damage = self._card_damage_against_monster(
+                card,
+                context,
+                monster_idx,
+                available_energy,
+            )
             if damage < self._monster_hp_with_block(monster):
                 return False
         return True
@@ -537,20 +524,32 @@ class CombatEndingDetector:
             strength,
             base_damage_bonus,
         )
-        damage = self._apply_player_weak_to_card_damage(
-            card,
-            context,
-            damage,
-            available_energy,
-            monster_idx,
-            fiend_fire_exhaust_count,
-        )
+        damage_before_weak = damage
         vulnerable_stacks = (
             self._monster_vulnerable_stacks(context, monster_idx)
             if target_vulnerable_stacks is None
             else target_vulnerable_stacks
         )
-        if vulnerable_stacks > 0:
+        player_weak = self._player_is_weak(context)
+        if vulnerable_stacks > 0 and player_weak:
+            damage = self._apply_weak_and_vulnerable_to_card_damage(
+                card,
+                context,
+                damage_before_weak,
+                available_energy,
+                monster_idx,
+                fiend_fire_exhaust_count,
+            )
+        else:
+            damage = self._apply_player_weak_to_card_damage(
+                card,
+                context,
+                damage,
+                available_energy,
+                monster_idx,
+                fiend_fire_exhaust_count,
+            )
+        if vulnerable_stacks > 0 and not player_weak:
             damage = self._apply_vulnerable_to_card_damage(
                 card,
                 context,
@@ -1514,21 +1513,22 @@ class CombatEndingDetector:
                     context,
                     available_energy=available_energy,
                 )
-                damage = self._apply_player_weak_to_card_damage(
-                    card,
-                    context,
-                    damage,
-                    available_energy,
-                )
-                if len(context.monsters_alive) == 1 and self._monster_vulnerable_stacks(context, 0) > 0:
-                    damage = self._apply_vulnerable_to_card_damage(
+                if len(context.monsters_alive) == 1:
+                    damage = self._card_damage_against_monster(
+                        card,
+                        context,
+                        0,
+                        available_energy,
+                    )
+                elif self._is_aoe_attack(card):
+                    damage = self._aoe_damage_potential(
                         card,
                         context,
                         damage,
                         available_energy,
                     )
-                elif self._is_aoe_attack(card):
-                    damage = self._aoe_damage_potential(
+                else:
+                    damage = self._apply_player_weak_to_card_damage(
                         card,
                         context,
                         damage,
@@ -1590,12 +1590,31 @@ class CombatEndingDetector:
         total = 0
         for monster_idx, _monster in enumerate(context.monsters_alive):
             damage = base_damage
-            if self._monster_vulnerable_stacks(context, monster_idx) > 0:
+            vulnerable = self._monster_vulnerable_stacks(context, monster_idx) > 0
+            player_weak = self._player_is_weak(context)
+            if vulnerable and player_weak:
+                damage = self._apply_weak_and_vulnerable_to_card_damage(
+                    card,
+                    context,
+                    base_damage,
+                    available_energy,
+                    monster_idx,
+                )
+            else:
+                damage = self._apply_player_weak_to_card_damage(
+                    card,
+                    context,
+                    damage,
+                    available_energy,
+                    monster_idx,
+                )
+            if vulnerable and not player_weak:
                 damage = self._apply_vulnerable_to_card_damage(
                     card,
                     context,
                     damage,
                     available_energy,
+                    monster_idx,
                 )
             total += damage
         return total
@@ -1805,24 +1824,45 @@ class CombatEndingDetector:
         fiend_fire_exhaust_count: Optional[int] = None,
     ) -> int:
         """Apply player Weak using the game's per-hit rounding."""
-        if self._get_player_debuff_stacks(context, 'Weak') <= 0:
+        if not self._player_is_weak(context):
             return total_damage
 
-        hit_count = self._get_vulnerable_damage_instance_count(
+        return self._apply_damage_multiplier_per_hit(
             card,
             context,
+            total_damage,
             available_energy,
-            monster_idx,
-            fiend_fire_exhaust_count,
+            numerator=3,
+            denominator=4,
+            monster_idx=monster_idx,
+            fiend_fire_exhaust_count=fiend_fire_exhaust_count,
         )
-        if hit_count <= 1:
-            return int(total_damage * 0.75)
 
-        per_hit_damage, remainder = divmod(total_damage, hit_count)
-        if remainder != 0:
-            return int(total_damage * 0.75)
-
-        return int(per_hit_damage * 0.75) * hit_count
+    def _apply_weak_and_vulnerable_to_card_damage(
+        self,
+        card: Card,
+        context: DecisionContext,
+        total_damage: int,
+        available_energy: int,
+        monster_idx: Optional[int] = None,
+        fiend_fire_exhaust_count: Optional[int] = None,
+    ) -> int:
+        """Apply combined Weak+Vulnerable before final integer truncation."""
+        numerator, denominator = (
+            (21, 16)
+            if self._context_has_relic(context, 'Paper Phrog')
+            else (9, 8)
+        )
+        return self._apply_damage_multiplier_per_hit(
+            card,
+            context,
+            total_damage,
+            available_energy,
+            numerator=numerator,
+            denominator=denominator,
+            monster_idx=monster_idx,
+            fiend_fire_exhaust_count=fiend_fire_exhaust_count,
+        )
 
     def _apply_vulnerable_to_card_damage(
         self,
@@ -1834,6 +1874,33 @@ class CombatEndingDetector:
         fiend_fire_exhaust_count: Optional[int] = None,
     ) -> int:
         """Apply Vulnerable using the game's per-hit rounding."""
+        numerator, denominator = (
+            (7, 4)
+            if self._context_has_relic(context, 'Paper Phrog')
+            else (3, 2)
+        )
+        return self._apply_damage_multiplier_per_hit(
+            card,
+            context,
+            total_damage,
+            available_energy,
+            numerator=numerator,
+            denominator=denominator,
+            monster_idx=monster_idx,
+            fiend_fire_exhaust_count=fiend_fire_exhaust_count,
+        )
+
+    def _apply_damage_multiplier_per_hit(
+        self,
+        card: Card,
+        context: DecisionContext,
+        total_damage: int,
+        available_energy: int,
+        numerator: int,
+        denominator: int,
+        monster_idx: Optional[int] = None,
+        fiend_fire_exhaust_count: Optional[int] = None,
+    ) -> int:
         hit_count = self._get_vulnerable_damage_instance_count(
             card,
             context,
@@ -1842,13 +1909,36 @@ class CombatEndingDetector:
             fiend_fire_exhaust_count,
         )
         if hit_count <= 1:
-            return int(total_damage * 1.5)
+            return total_damage * numerator // denominator
 
         per_hit_damage, remainder = divmod(total_damage, hit_count)
         if remainder != 0:
-            return int(total_damage * 1.5)
+            return total_damage * numerator // denominator
 
-        return int(per_hit_damage * 1.5) * hit_count
+        return per_hit_damage * numerator // denominator * hit_count
+
+    def _player_is_weak(self, context: DecisionContext) -> bool:
+        return self._get_player_debuff_stacks(context, 'Weak') > 0
+
+    @staticmethod
+    def _context_has_relic(context: DecisionContext, relic_name: str) -> bool:
+        target = ''.join(ch for ch in relic_name.lower() if ch.isalnum())
+        if not target:
+            return False
+
+        relics = []
+        for source in (getattr(context, 'game', None), context):
+            relics.extend(getattr(source, 'relics', []) or [])
+
+        for relic in relics:
+            for attr in ('name', 'relic_id', 'id'):
+                value = getattr(relic, attr, None)
+                if value is None:
+                    continue
+                normalized = ''.join(ch for ch in str(value).lower() if ch.isalnum())
+                if normalized == target:
+                    return True
+        return False
 
     def _get_vulnerable_damage_instance_count(
         self,

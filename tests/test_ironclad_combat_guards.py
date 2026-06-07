@@ -11190,7 +11190,7 @@ def test_lethal_detector_applies_vulnerable_rounding_per_whirlwind_hit():
     assert CombatEndingDetector()._calculate_affordable_damage(context) == 21
 
 
-def test_lethal_detector_applies_player_weak_before_target_vulnerable(monkeypatch):
+def test_lethal_detector_combines_player_weak_and_target_vulnerable_before_rounding(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {"dropkick": {"name": "Dropkick", "description": "Deal 5 damage."}}
     monkeypatch.setattr(combat_ending, "game_data_loader", loader)
@@ -11199,7 +11199,22 @@ def test_lethal_detector_applies_player_weak_before_target_vulnerable(monkeypatc
     context.game.player.powers = [SimpleNamespace(power_name="Weak", amount=1)]
     context.vulnerable_stacks[0] = 1
 
-    assert CombatEndingDetector()._calculate_affordable_damage(context) == 4
+    assert CombatEndingDetector()._calculate_affordable_damage(context) == 5
+
+
+def test_lethal_detector_applies_paper_phrog_vulnerable_multiplier(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=10)])
+    context.vulnerable_stacks[0] = 1
+    context.game.relics = [SimpleNamespace(relic_id="Paper Phrog", name="Paper Phrog")]
+
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 10
+    assert detector.can_kill_all(context) is True
 
 
 def test_lethal_detector_counts_perfected_strike_deck_scaling(monkeypatch):
