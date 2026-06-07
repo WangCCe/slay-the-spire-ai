@@ -78,6 +78,11 @@ already disproved.
   attack damage is doubled before player Weak and target Vulnerable, simulated
   attack plays advance or consume the counter, and fallback scalar estimates
   read the current counter without mutating state.
+- 2026-06-07: `FastCombatSimulator` now defers Malleable block during a
+  single multi-hit attack card. Twin Strike/Pummel-style hits and Whirlwind's
+  per-energy hits each increment Malleable, but the gained block is applied
+  after that card's hits finish so it does not absorb later hits from the same
+  attack.
 
 ## Backlog
 
@@ -86,7 +91,7 @@ already disproved.
 - Expand this report into a compact coverage matrix from divergence rounds
   105-118: rows as mechanics, columns as estimator surfaces.
 - Audit high-impact confirmed mechanics across live estimators:
-  - Whirlwind per-energy hits, per-hit rounding, and Malleable interactions.
+  - Whirlwind per-energy hits and per-hit rounding across remaining estimators.
   - Paper Phrog, Weak/Vulnerable, Strength, and upgraded attack stats.
   - Mind Blast/deck-count and other dynamic base damage.
   - Havoc top-card effects, random-target boundaries, and Feel No Pain block.

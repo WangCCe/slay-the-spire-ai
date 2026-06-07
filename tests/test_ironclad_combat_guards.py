@@ -2009,6 +2009,85 @@ def test_malleable_gains_increasing_block_after_each_nonlethal_attack_damage():
     assert state.monsters[0]["malleable_block"] == 5
 
 
+def test_multihit_attack_malleable_block_does_not_absorb_later_hits(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "description": "Deal 5 damage twice.",
+        }
+    }
+    loader._wiki_data = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "text": "Deal [5|7] damage twice.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    twin_strike = _card("Twin Strike", "Twin Strike", cost=1)
+    target = Monster(
+        name="Snake Plant",
+        monster_id="SnakePlant",
+        max_hp=79,
+        current_hp=76,
+        block=0,
+        intent=Intent.STRONG_DEBUFF,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+    target.powers = [SimpleNamespace(power_name="Malleable", amount=3)]
+    context = _combat_context([twin_strike], energy=1, monsters=[target])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        twin_strike,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 10
+    assert result.monsters[0]["hp"] == 66
+    assert result.monsters[0]["block"] == 7
+    assert result.monsters[0]["malleable_block"] == 5
+
+
+def test_whirlwind_malleable_block_does_not_absorb_later_energy_hits():
+    whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
+    target = Monster(
+        name="Snake Plant",
+        monster_id="SnakePlant",
+        max_hp=79,
+        current_hp=79,
+        block=0,
+        intent=Intent.STRONG_DEBUFF,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=0,
+        move_hits=1,
+    )
+    target.powers = [SimpleNamespace(power_name="Malleable", amount=3)]
+    context = _combat_context([whirlwind], energy=2, monsters=[target])
+    context.strength = 1
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        whirlwind,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 12
+    assert result.monsters[0]["hp"] == 67
+    assert result.monsters[0]["block"] == 7
+    assert result.monsters[0]["malleable_block"] == 5
+
+
 def test_simulator_rejects_nonfinite_malleable_block_counter():
     snake_plant = Monster(
         name="Snake Plant",
