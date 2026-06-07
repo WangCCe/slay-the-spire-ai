@@ -38,6 +38,32 @@ def _game_state(character):
     )
 
 
+def _combat_game(hand=None, draw_pile=None):
+    return SimpleNamespace(
+        player=SimpleNamespace(current_hp=70, max_hp=80, energy=3, block=0, powers=[]),
+        gold=0,
+        hand=hand or [],
+        deck=[],
+        discard_pile=[],
+        draw_pile=draw_pile or [],
+        exhaust_pile=[],
+        monsters=[],
+        relics=[],
+        potions=[],
+        floor=1,
+        act=1,
+        ascension_level=0,
+        character="IRONCLAD",
+        screen_type=None,
+        in_combat=True,
+        room_type="MONSTER",
+        choice_list=[],
+        choice_available=False,
+        available_commands=[],
+        turn=1,
+    )
+
+
 def test_rl_state_encoder_hand_card_hash_strips_counted_upgrade_suffix():
     encoder = StateEncoder()
 
@@ -171,6 +197,29 @@ def test_rl_state_encoder_upgraded_static_attack_damage_falls_back_when_live_dam
     features = encoder._encode_single_card(headbutt)
 
     assert features[2] == 12 / 30
+
+
+def test_rl_state_encoder_mind_blast_hand_damage_uses_draw_pile_count():
+    encoder = StateEncoder()
+    mind_blast = _card("Mind Blast", upgrades=1)
+    mind_blast.name = "Mind Blast+"
+    mind_blast.damage = 0
+    draw_pile = [_card(f"Draw {index}") for index in range(7)]
+    game = _combat_game(hand=[mind_blast], draw_pile=draw_pile)
+
+    hand_features = encoder._encode_hand_cards(game)
+
+    assert hand_features[2] == 7 / 30
+
+
+def test_rl_state_encoder_mind_blast_single_card_without_game_stays_context_free():
+    encoder = StateEncoder()
+    mind_blast = _card("Mind Blast")
+    mind_blast.damage = 0
+
+    features = encoder._encode_single_card(mind_blast)
+
+    assert features[2] == 0.0
 
 
 def test_rl_state_encoder_infers_target_feature_for_name_only_attack_without_has_target():

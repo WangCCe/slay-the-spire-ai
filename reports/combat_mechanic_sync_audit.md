@@ -67,6 +67,11 @@ already disproved.
   observation features aligned with the confirmed zero-live-damage Headbutt
   divergence without pretending to encode context-dependent attacks such as
   Mind Blast in the context-free card helper.
+- 2026-06-08: legacy RL `StateEncoder` hand-card damage features now use the
+  current draw-pile count for zero-live-damage Mind Blast when encoding a full
+  combat `game`. The context-free single-card helper still leaves Mind Blast at
+  zero, so card-reward features do not invent draw-pile context that they do
+  not have.
 - 2026-06-07: `CombatEndingDetector` now uses the same confirmed target-side
   attack modifier shape as the divergence oracle for:
   - player Weak plus target Vulnerable combined before final integer

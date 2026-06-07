@@ -98,13 +98,13 @@ class StateEncoder:
         features = []
         for i in range(10):
             if i < len(hand):
-                features.extend(self._encode_single_card(hand[i]))
+                features.extend(self._encode_single_card(hand[i], game=game))
             else:
                 features.extend([0.0] * 15)
         return features
 
-    def _encode_single_card(self, card: Card) -> List[float]:
-        damage, block = self._extract_card_damage_block(card)
+    def _encode_single_card(self, card: Card, game: Game = None) -> List[float]:
+        damage, block = self._extract_card_damage_block(card, game=game)
 
         normalized_card_type = card_type_name(card)
 
@@ -565,7 +565,7 @@ class StateEncoder:
         ]
 
     @staticmethod
-    def _extract_card_damage_block(card: Card) -> Tuple[float, float]:
+    def _extract_card_damage_block(card: Card, game: Game = None) -> Tuple[float, float]:
         # Safely extract card properties with error handling
         damage = 0
         block = 0
@@ -593,11 +593,14 @@ class StateEncoder:
             and card_type_name(card) == 'ATTACK'
         ):
             card_name = canonical_card_name(card)
-            card_data = game_data_loader.get_card_data(card_name)
-            if card_data:
-                parsed_damage = game_data_loader._parse_card_damage(card_data)
-                if parsed_damage:
-                    damage = parsed_damage + known_damage_upgrade_bonus(card, card_name)
+            if card_name == "Mind Blast" and game is not None:
+                damage = len(getattr(game, "draw_pile", []) or [])
+            else:
+                card_data = game_data_loader.get_card_data(card_name)
+                if card_data:
+                    parsed_damage = game_data_loader._parse_card_damage(card_data)
+                    if parsed_damage:
+                        damage = parsed_damage + known_damage_upgrade_bonus(card, card_name)
 
         if block == 0 and hasattr(card, 'block'):
             try:
