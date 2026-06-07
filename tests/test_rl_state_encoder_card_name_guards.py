@@ -152,6 +152,27 @@ def test_rl_state_encoder_card_stats_accept_string_damage_and_block():
     assert features[3] == 5 / 20
 
 
+def test_rl_state_encoder_static_attack_damage_falls_back_when_live_damage_zero():
+    encoder = StateEncoder()
+    headbutt = _card("Headbutt")
+    headbutt.damage = 0
+
+    features = encoder._encode_single_card(headbutt)
+
+    assert features[2] == 9 / 30
+
+
+def test_rl_state_encoder_upgraded_static_attack_damage_falls_back_when_live_damage_zero():
+    encoder = StateEncoder()
+    headbutt = _card("Headbutt+1", upgrades=1)
+    headbutt.name = "Headbutt+"
+    headbutt.damage = 0
+
+    features = encoder._encode_single_card(headbutt)
+
+    assert features[2] == 12 / 30
+
+
 def test_rl_state_encoder_infers_target_feature_for_name_only_attack_without_has_target():
     encoder = StateEncoder()
     strike = SimpleNamespace(

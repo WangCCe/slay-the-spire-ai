@@ -61,6 +61,12 @@ already disproved.
   finishing-damage, and all-lethal reward for that transition, while
   player-card kills against escape-intent monsters still count as real damage
   and kills.
+- 2026-06-08: legacy RL `StateEncoder` hand/card-reward damage features now
+  fall back to parsed static attack damage when live attack cards report zero
+  damage, including upgraded static attacks such as Headbutt+. This keeps RL
+  observation features aligned with the confirmed zero-live-damage Headbutt
+  divergence without pretending to encode context-dependent attacks such as
+  Mind Blast in the context-free card helper.
 - 2026-06-07: `CombatEndingDetector` now uses the same confirmed target-side
   attack modifier shape as the divergence oracle for:
   - player Weak plus target Vulnerable combined before final integer
