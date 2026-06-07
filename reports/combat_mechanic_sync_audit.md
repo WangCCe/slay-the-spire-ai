@@ -71,7 +71,8 @@ already disproved.
   effects when the draw-pile top card is visible. Known top attacks resolve for
   single-monster or AOE/random-target cases, known top skills and powers reuse
   the existing live simulators, and the top card contributes one exhaust event
-  for exhaust synergies such as Feel No Pain.
+  for exhaust synergies such as Feel No Pain. Later simulated Havoc plays skip
+  top cards already consumed by the current simulated line.
 
 ## Backlog
 

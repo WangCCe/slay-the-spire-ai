@@ -3348,7 +3348,7 @@ class FastCombatSimulator:
         state: SimulationState,
         context: Optional[DecisionContext],
     ):
-        top_card = self._draw_pile_top_card(context)
+        top_card = self._draw_pile_top_card(state, context)
         if top_card is None:
             return
 
@@ -3391,13 +3391,20 @@ class FastCombatSimulator:
             state.exhaust_events += 1
 
     @staticmethod
-    def _draw_pile_top_card(context: Optional[DecisionContext]) -> Optional[Card]:
+    def _draw_pile_top_card(
+        state: SimulationState,
+        context: Optional[DecisionContext],
+    ) -> Optional[Card]:
         game = getattr(context, 'game', None)
         for owner in (game, context):
             draw_pile = getattr(owner, 'draw_pile', None)
             if isinstance(draw_pile, list) and draw_pile:
-                top_card = draw_pile[-1]
-                return top_card if isinstance(top_card, Card) else None
+                for top_card in reversed(draw_pile):
+                    if not isinstance(top_card, Card):
+                        continue
+                    if is_card_played(state.played_card_uuids, top_card):
+                        continue
+                    return top_card
         return None
 
     def _havoc_top_attack_target_index(

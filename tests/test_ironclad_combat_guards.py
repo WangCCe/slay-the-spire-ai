@@ -9105,6 +9105,59 @@ def test_havoc_exhausted_top_card_triggers_feel_no_pain_block():
     assert result.player_block == 3
 
 
+def test_havoc_consumes_visible_top_card_for_later_simulated_havoc():
+    first_havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    second_havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    bottom_defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    bottom_defend.block = 5
+    top_strike = _card("Strike_R", "Strike")
+    top_strike.damage = 6
+    context = _combat_context(
+        [first_havoc, second_havoc],
+        energy=0,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.game.draw_pile = [bottom_defend, top_strike]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    after_first = simulator.simulate_card_play(
+        SimulationState(context),
+        first_havoc,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+    after_second = simulator.simulate_card_play(
+        after_first,
+        second_havoc,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert after_second.total_damage_dealt == 6
+    assert after_second.player_block == 5
+    assert after_second.exhaust_events == 2
+
+
 def _patch_ritual_dagger_loader(monkeypatch, module):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
