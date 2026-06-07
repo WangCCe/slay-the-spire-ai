@@ -477,20 +477,33 @@ class RewardCalculator:
                 info["monster_killed"] = info["monster_killed"] or (kills_count > 0)
                 info["all_monsters_killed"] = info["all_monsters_killed"] or all_monsters_killed
         elif last_game.in_combat and not current_game.in_combat:
-            combat_won = self._is_combat_victory(current_game)
             last_monsters = last_game.monsters if last_game.monsters else []
-            had_alive_monsters = self._had_alive_monsters(last_monsters)
+            live_last_monsters = [
+                monster for monster in last_monsters if self._is_live_monster(monster)
+            ]
+            escaped_combat_after_end_turn = (
+                self._action_name(action_context) == "EndTurnAction"
+                and bool(live_last_monsters)
+                and all(
+                    self._is_escape_monster_state(monster)
+                    for monster in live_last_monsters
+                )
+            )
+            combat_won = (
+                self._is_combat_victory(current_game)
+                and not escaped_combat_after_end_turn
+            )
+            had_alive_monsters = bool(live_last_monsters)
             finishing_damage = 0
             finishing_vulnerable_damage = 0
             finishing_kills = 0
-            if had_alive_monsters:
-                for monster in last_monsters:
-                    if self._is_live_monster(monster):
-                        monster_hp = self._monster_hp_value(monster)
-                        finishing_damage += monster_hp
-                        finishing_kills += 1
-                        if self._get_power_amount(monster, "Vulnerable") > 0:
-                            finishing_vulnerable_damage += monster_hp
+            if had_alive_monsters and not escaped_combat_after_end_turn:
+                for monster in live_last_monsters:
+                    monster_hp = self._monster_hp_value(monster)
+                    finishing_damage += monster_hp
+                    finishing_kills += 1
+                    if self._get_power_amount(monster, "Vulnerable") > 0:
+                        finishing_vulnerable_damage += monster_hp
             combat_reward = self.calculate_combat_reward(
                 last_game,
                 damage_dealt=finishing_damage,

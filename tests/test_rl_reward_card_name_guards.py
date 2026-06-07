@@ -335,6 +335,39 @@ def test_rl_reward_still_counts_player_killing_escape_intent_monster():
     assert reward > 12 * calc.DAMAGE_REWARD_SCALE
 
 
+def test_rl_combat_exit_reward_does_not_count_enemy_escape_as_finishing_damage():
+    calc = RewardCalculator()
+    info = {}
+    current_game = _game(1)
+    current_game.screen_type = ScreenType.MAP
+    last_game = _combat_game(
+        [
+            SimpleNamespace(
+                monster_index=0,
+                name="Looter",
+                current_hp=12,
+                powers=[],
+                half_dead=False,
+                is_gone=False,
+                intent=Intent.ESCAPE,
+                move_id=3,
+            )
+        ]
+    )
+
+    reward = calc.calculate_step_reward(
+        current_game,
+        last_game,
+        debug_info=info,
+        action_context={"action_name": "EndTurnAction"},
+    )
+
+    assert info["damage_dealt"] == 0
+    assert info["monster_killed"] is False
+    assert info["all_monsters_killed"] is False
+    assert reward == 0
+
+
 def test_rl_victory_detection_accepts_numeric_string_final_floor():
     calc = RewardCalculator()
     game = SimpleNamespace(

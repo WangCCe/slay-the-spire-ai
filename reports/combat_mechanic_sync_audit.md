@@ -54,12 +54,13 @@ already disproved.
 - 2026-06-08: `RewardCalculator` combat-exit finishing damage now uses a live
   monster predicate that excludes `is_gone` and `half_dead` monsters, preventing
   lifecycle waiting states from generating extra damage or kill reward.
-- 2026-06-08: `RewardCalculator` in-combat HP-delta reward now treats
+- 2026-06-08: `RewardCalculator` HP-delta and combat-exit reward now treat
   Looter/Mugger escape settlement after `EndTurnAction` as escape rather than
-  player damage or a kill. Explicit `Intent.ESCAPE` and the local database's
-  Looter/Mugger escape move id suppress damage, kill, and all-lethal reward for
-  that transition, while player-card kills against escape-intent monsters still
-  count as real damage and kills.
+  player damage, a kill, or combat victory. Explicit `Intent.ESCAPE` and the
+  local database's Looter/Mugger escape move id suppress damage, kill,
+  finishing-damage, and all-lethal reward for that transition, while
+  player-card kills against escape-intent monsters still count as real damage
+  and kills.
 - 2026-06-07: `CombatEndingDetector` now uses the same confirmed target-side
   attack modifier shape as the divergence oracle for:
   - player Weak plus target Vulnerable combined before final integer
@@ -236,4 +237,4 @@ already disproved.
     Feel No Pain block value outside the simulator, lethal, RL survival, and
     RL shared block-candidate surfaces already covered above.
   - Monster lifecycle boundaries such as Slime split and Darkling revive.
-  - Combat-exit boundaries beyond the Looter/Mugger in-combat reward sync.
+  - Combat-exit boundaries beyond the Looter/Mugger reward sync.
