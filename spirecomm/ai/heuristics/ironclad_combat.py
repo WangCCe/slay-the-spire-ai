@@ -35,6 +35,7 @@ from .card_upgrades import (
     card_upgrade_count,
     heavy_blade_strength_multiplier,
     is_card_upgraded,
+    known_block_upgrade_bonus,
     known_damage_upgrade_bonus,
     perfected_strike_bonus_per_strike,
 )
@@ -44,6 +45,8 @@ from .combat_state import (
     mark_card_played,
     player_block_value,
     player_debuff_stacks,
+    player_has_power,
+    player_power_amount,
 )
 from .combat_ending import CombatEndingDetector
 from .monster_database import evaluate_monster_threat, get_monster_info
@@ -1813,6 +1816,71 @@ class IroncladCombatPlanner(CombatPlanner):
                 count += 1
         return count
 
+    def _draw_pile_top_card_for_havoc_fallback(self, context: DecisionContext) -> Optional[Card]:
+        game = getattr(context, 'game', None)
+        for owner in (game, context):
+            draw_pile = getattr(owner, 'draw_pile', None)
+            if isinstance(draw_pile, list):
+                for top_card in reversed(draw_pile):
+                    if isinstance(top_card, Card):
+                        return top_card
+        return None
+
+    def _estimate_fallback_card_block(self, card: Card, context: DecisionContext) -> int:
+        card_name = canonical_card_name(card)
+        block_gain = self._non_negative_int(getattr(card, 'block', 0))
+
+        if block_gain <= 0:
+            try:
+                card_data = game_data_loader.get_card_data(card_name) or {}
+                if card_data:
+                    block_data = dict(card_data)
+                    upgrades = card_upgrade_count(card)
+                    block_data['name'] = f"{card_name}+" if upgrades > 0 else card_name
+                    parsed_block = game_data_loader._parse_card_block(block_data)
+                    block_gain = self._non_negative_int(parsed_block)
+                    if block_gain > 0 and upgrades > 0:
+                        base_data = dict(card_data)
+                        base_data['name'] = card_name
+                        unupgraded_block = game_data_loader._parse_card_block(base_data)
+                        if unupgraded_block is not None and block_gain == unupgraded_block:
+                            block_gain += known_block_upgrade_bonus(card, card_name)
+            except Exception:
+                block_gain = 0
+
+        if block_gain <= 0:
+            return 0
+
+        block_gain = max(0, block_gain + player_debuff_stacks(context, 'Dexterity'))
+        if player_debuff_stacks(context, 'Frail') > 0:
+            block_gain = int(block_gain * 0.75)
+        return max(0, block_gain)
+
+    @staticmethod
+    def _feel_no_pain_block_per_exhaust(context: DecisionContext) -> int:
+        block = max(0, player_power_amount(context, 'Feel No Pain'))
+        if block <= 0 and player_has_power(context, 'Feel No Pain'):
+            return 3
+        return block
+
+    def _estimate_havoc_visible_top_card_block(
+        self,
+        card: Card,
+        context: DecisionContext,
+    ) -> int:
+        if canonical_card_name(card) != 'Havoc':
+            return 0
+
+        top_card = self._draw_pile_top_card_for_havoc_fallback(context)
+        if top_card is None:
+            return 0
+
+        top_card_block = 0
+        if canonical_card_name(top_card) != 'Havoc':
+            top_card_block = self._estimate_fallback_card_block(top_card, context)
+
+        return max(0, top_card_block + self._feel_no_pain_block_per_exhaust(context))
+
     def _fallback_plan(self, context: DecisionContext,
                        playable_cards: List[Card]) -> List[Action]:
         """Fallback to priority-based selection if beam search fails."""
@@ -1865,6 +1933,14 @@ class IroncladCombatPlanner(CombatPlanner):
             if card_id == 'Demon Form' and turn <= 3:
                 return 1000
             return 600 if turn <= 3 else 400
+
+        if card_id == 'Havoc':
+            havoc_block = self._estimate_havoc_visible_top_card_block(card, context)
+            if havoc_block >= 5:
+                if aggressive_mode:
+                    player_hp = self._non_negative_float(context.game.current_hp)
+                    return 600 if incoming_damage > player_hp * 0.8 else 100
+                return 850 if incoming_damage > context_player_block else 200
 
         # Draw cards
         if self._is_draw_card(card):

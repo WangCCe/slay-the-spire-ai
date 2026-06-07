@@ -15488,6 +15488,43 @@ def test_ironclad_fallback_priority_accepts_string_player_block_for_iron_wave():
     assert string_priority == planner._get_card_priority(iron_wave, enum_context)
 
 
+def test_ironclad_fallback_prefers_havoc_visible_top_card_block():
+    strike = _card("Strike_R", "Strike", cost=1)
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    top_power_through = _card(
+        "Power Through",
+        "Power Through",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    top_power_through.block = 15
+    context = _combat_context(
+        [strike, havoc],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.incoming_damage = 18
+    context.game.draw_pile = [top_power_through]
+    context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+    planner = IroncladCombatPlanner()
+    planner._get_monster_info = lambda _monster: {
+        "recommended_strategy": "balanced",
+        "threat_level": 2,
+    }
+
+    sequence = planner._fallback_plan(context, [strike, havoc])
+
+    assert len(sequence) == 1
+    assert sequence[0].card is havoc
+
+
 def test_ironclad_fallback_priority_values_bash_before_perfected_strike_with_strike_deck(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
