@@ -137,6 +137,10 @@ already disproved.
   Parasite attack-buff self-heal from unblocked player HP loss. The healed HP
   is carried into later lookahead steps so HP-dependent future move prediction
   does not overstate follow-up damage after Suck.
+- 2026-06-07: `SimulationState.turn_block()` now includes Orichalcum's 6 block
+  when current block plus end-turn block is still zero. This syncs the
+  confirmed end-turn relic block into beam/fast scoring surfaces that subtract
+  `turn_block()` from predicted incoming damage.
 
 ## Backlog
 

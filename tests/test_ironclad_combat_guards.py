@@ -1445,6 +1445,31 @@ def test_simulation_state_prefers_context_player_block_field():
     assert state.turn_block() == 18
 
 
+def test_simulation_state_orichalcum_counts_as_end_turn_block_when_empty():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=20)])
+    context.game.relics = [SimpleNamespace(name="Orichalcum")]
+    context.relics = context.game.relics
+    context.has_orichalcum = True
+
+    state = SimulationState(context)
+
+    assert state.player_block == 0
+    assert state.turn_block() == 6
+
+
+def test_simulation_state_orichalcum_does_not_stack_with_existing_block():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=20)])
+    context.game.player.block = 4
+    context.game.relics = [SimpleNamespace(name="Orichalcum")]
+    context.relics = context.game.relics
+    context.has_orichalcum = True
+
+    state = SimulationState(context)
+
+    assert state.player_block == 4
+    assert state.turn_block() == 4
+
+
 def test_simulation_state_coerces_string_player_energy_and_strength():
     context = _combat_context([], energy="3", monsters=[_louse(current_hp=20)])
     context.strength = "-2"

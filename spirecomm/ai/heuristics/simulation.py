@@ -459,6 +459,10 @@ class SimulationState:
             context,
             'Ornamental Fan',
         )
+        self.has_orichalcum = (
+            bool(getattr(context, 'has_orichalcum', False))
+            or self._context_relic_counter(context, 'Orichalcum') is not None
+        )
         self.corruption_active = self._has_player_power(context, 'Corruption')
         self.feel_no_pain_block_per_exhaust = self._get_player_power_amount(context, 'Feel No Pain')
         self.dark_embrace_draw_per_exhaust = self._get_player_power_amount(context, 'Dark Embrace')
@@ -873,6 +877,7 @@ class SimulationState:
             self.pen_nib_counter,
             self.nunchaku_counter,
             self.ornamental_fan_attack_count,
+            self.has_orichalcum,
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
             self.dark_embrace_draw_per_exhaust,
@@ -969,7 +974,10 @@ class SimulationState:
 
     def turn_block(self) -> int:
         """Block available by the time enemies attack this turn."""
-        return self.player_block + self.end_turn_block
+        block = self.player_block + self.end_turn_block
+        if self.has_orichalcum and block <= 0:
+            block += 6
+        return block
 
 
 class FastCombatSimulator:
