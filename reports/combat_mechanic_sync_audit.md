@@ -158,6 +158,11 @@ already disproved.
   reported damage is zero, such as Headbutt. This keeps the Slime Boss split
   survival retarget guard from missing Strength-enabled kills on incoming
   attackers.
+- 2026-06-08: `CombatRLAgent` survival attack damage estimates now account for
+  fixed multi-hit attacks such as Twin Strike and Pummel. Static zero-damage
+  fallback keeps per-hit source damage, applies Strength before player
+  Weak/target Vulnerable, then multiplies the per-hit result by hit count so
+  Slime Boss split retargeting can see multi-hit kills.
 - 2026-06-07: `CombatRLAgent` Slime Boss split survival retarget guard now
   evaluates attack damage against each candidate target. Target Vulnerable,
   Paper Phrog, and player Weak are combined with the same final-truncation

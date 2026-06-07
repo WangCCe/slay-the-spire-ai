@@ -2479,6 +2479,66 @@ def test_slime_split_survival_guard_counts_strength_for_zero_damage_static_attac
     assert replacement.target_index == 0
 
 
+def test_slime_split_survival_guard_counts_zero_damage_multi_hit_static_attack():
+    twin_strike = SimpleNamespace(
+        name="Twin Strike",
+        card_id="Twin Strike",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+        damage=0,
+    )
+
+    strength_killable_attacker = _monster(
+        hp=14,
+        damage=8,
+        index=0,
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+    )
+    strength_killable_attacker.intent = Intent.ATTACK_DEBUFF
+    current_target = _monster(
+        hp=50,
+        damage=8,
+        index=1,
+        name="Acid Slime (M)",
+        monster_id="AcidSlime_M",
+    )
+    current_target.intent = Intent.ATTACK_DEBUFF
+    dead_boss = _monster(
+        hp=0,
+        damage=0,
+        index=2,
+        name="Slime Boss",
+        monster_id="SlimeBoss",
+    )
+    dead_boss.is_gone = True
+
+    game = _game(
+        floor=16,
+        turn=9,
+        current_hp=10,
+        player=SimpleNamespace(
+            energy=1,
+            block=0,
+            powers=[SimpleNamespace(power_name="Strength", amount=2)],
+        ),
+        hand=[twin_strike],
+        monsters=[strength_killable_attacker, current_target, dead_boss],
+        room_type="MonsterRoomBoss",
+    )
+
+    replacement = _agent()._get_slime_split_survival_attack_replacement(
+        PlayCardAction(card_index=0, target_index=1),
+        game,
+    )
+
+    assert isinstance(replacement, PlayCardAction)
+    assert replacement.card_index == 0
+    assert replacement.target_index == 0
+
+
 def test_slime_split_survival_guard_combines_weak_and_vulnerable_attack_damage():
     carnage = SimpleNamespace(
         name="Carnage",
@@ -2683,6 +2743,26 @@ def test_survival_attack_damage_counts_mind_blast_draw_pile_with_strength_and_we
     )
 
     assert CombatRLAgent._survival_attack_damage(mind_blast, game) == 8
+
+
+def test_survival_attack_damage_applies_player_weak_per_hit_for_multi_hit_attack():
+    twin_strike = SimpleNamespace(
+        name="Twin Strike",
+        card_id="Twin Strike",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+        damage=5,
+    )
+    game = _game(
+        player=SimpleNamespace(
+            energy=1,
+            powers=[SimpleNamespace(power_name="Weak", amount=1)],
+        ),
+    )
+
+    assert CombatRLAgent._survival_attack_damage(twin_strike, game) == 6
 
 
 def test_double_tap_guard_skips_when_no_attack_can_follow():

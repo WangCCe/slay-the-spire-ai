@@ -27,6 +27,7 @@ from spirecomm.ai.incoming_damage import (
     known_unknown_move_immediate_damage,
 )
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
+from spirecomm.ai.heuristics.card_hits import fixed_attack_hit_count
 from spirecomm.ai.heuristics.card_upgrades import (
     card_upgrade_count,
     known_block_upgrade_bonus,
@@ -1032,8 +1033,10 @@ class CombatRLAgent:
         "hemokinesis": ("Hemokinesis", 15),
         "ironwave": ("Iron Wave", 5),
         "pommelstrike": ("Pommel Strike", 9),
+        "pummel": ("Pummel", 2),
         "recklesscharge": ("Reckless Charge", 7),
         "strike": ("Strike", 6),
+        "twinstrike": ("Twin Strike", 5),
         "wildstrike": ("Wild Strike", 12),
     }
 
@@ -1855,6 +1858,7 @@ class CombatRLAgent:
         source_attack_damage = self._survival_attack_damage_before_player_weak(card, game)
         if source_attack_damage <= 0:
             return None
+        source_attack_hits = self._survival_attack_hit_count(card)
 
         current_target = self._safe_int(getattr(action, "target_index", -1), default=-1)
         best_candidate = None
@@ -1871,6 +1875,7 @@ class CombatRLAgent:
                 source_attack_damage,
                 game,
                 monster,
+                hit_count=source_attack_hits,
             )
             if attack_damage < effective_hp:
                 continue
@@ -2925,7 +2930,19 @@ class CombatRLAgent:
     @classmethod
     def _survival_attack_damage(cls, card, game: Optional[Game] = None) -> int:
         damage = cls._survival_attack_damage_before_player_weak(card, game)
-        return cls._apply_player_weak_to_survival_attack_damage(damage, game)
+        hit_count = cls._survival_attack_hit_count(card)
+        return cls._apply_player_weak_to_survival_attack_damage(
+            damage,
+            game,
+            hit_count=hit_count,
+        )
+
+    @classmethod
+    def _survival_attack_hit_count(cls, card) -> int:
+        hit_count = fixed_attack_hit_count(card)
+        if hit_count is None:
+            return 1
+        return max(1, cls._safe_int(hit_count, default=1))
 
     @classmethod
     def _survival_attack_damage_before_player_weak(cls, card, game: Optional[Game] = None) -> int:
@@ -2948,8 +2965,15 @@ class CombatRLAgent:
         return 0
 
     @classmethod
-    def _apply_survival_attack_target_modifiers(cls, damage: int, game: Game, monster) -> int:
+    def _apply_survival_attack_target_modifiers(
+        cls,
+        damage: int,
+        game: Game,
+        monster,
+        hit_count: int = 1,
+    ) -> int:
         damage = max(0, cls._safe_int(damage, default=0))
+        hit_count = max(1, cls._safe_int(hit_count, default=1))
         if damage <= 0:
             return 0
         player_weak = player_debuff_stacks(game, "Weak") > 0
@@ -2960,24 +2984,30 @@ class CombatRLAgent:
                 if cls._has_relic(game, "paperphrog")
                 else (9, 8)
             )
-            return damage * numerator // denominator
+            return (damage * numerator // denominator) * hit_count
         if player_weak:
-            return damage * 3 // 4
+            return (damage * 3 // 4) * hit_count
         if target_vulnerable:
             numerator, denominator = (
                 (7, 4)
                 if cls._has_relic(game, "paperphrog")
                 else (3, 2)
             )
-            return damage * numerator // denominator
-        return damage
+            return (damage * numerator // denominator) * hit_count
+        return damage * hit_count
 
     @classmethod
-    def _apply_player_weak_to_survival_attack_damage(cls, damage: int, game: Optional[Game]) -> int:
+    def _apply_player_weak_to_survival_attack_damage(
+        cls,
+        damage: int,
+        game: Optional[Game],
+        hit_count: int = 1,
+    ) -> int:
         damage = max(0, cls._safe_int(damage, default=0))
+        hit_count = max(1, cls._safe_int(hit_count, default=1))
         if game is None or player_debuff_stacks(game, "Weak") <= 0:
-            return damage
-        return damage * 3 // 4
+            return damage * hit_count
+        return (damage * 3 // 4) * hit_count
 
     @classmethod
     def _has_relic(cls, game: Game, normalized_relic_name: str) -> bool:
