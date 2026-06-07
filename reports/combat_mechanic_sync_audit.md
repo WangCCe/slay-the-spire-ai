@@ -46,11 +46,18 @@ Status labels:
 | Combat escape settlement | Looter/Mugger escape and Smoke Bomb divergence evidence | n/a | synced for Smoke Bomb potion escape and Looter/Mugger end-turn escape projection without kill/lethal credit | n/a | n/a | synced for in-combat and combat-exit reward | Other escape monsters should be added only with explicit intent/move evidence. |
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
 | Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | synced for Pen Nib scalar fallback damage estimates, Nunchaku counter-9 refund-preserving attack-before-defense ordering, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective block before defense priority | synced for Pen Nib damage estimates, Nunchaku targeted lethal search, cache invalidation over relic counters plus draw-pile/hand/deck inputs, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective turn block before fallback block scoring | synced for direct and Havoc-top Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether non-damage relic counters are read or intentionally ignored. |
-| Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests | synced for deterministic cases | synced | synced for deterministic Havoc top-card block and Feel No Pain fallback priority | synced for deterministic Havoc top-card block and Feel No Pain in fallback scoring | synced where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
+| Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests plus fresh Havoc top-energy evidence | synced for deterministic top attacks, top-card exhaust damage, and visible top energy skills | synced | synced for deterministic Havoc top-card block and Feel No Pain fallback priority | synced for deterministic Havoc top-card block and Feel No Pain in fallback scoring | synced where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
 | Healing and monster self-heal | Bandage Up, Shelled Parasite Suck divergence tests | n/a | synced | n/a | n/a | n/a | Only fast/beam sim currently predicts these HP transitions. |
 
 ## Confirmed Sync Work
 
+- 2026-06-08: `CombatEndingDetector` targeted lethal search now treats
+  `Havoc` with a visible draw-pile top energy skill as a deterministic support
+  action. The search spends only Havoc's cost, applies the top card's
+  `Seeing Red`/`Bloodletting`/`Offering` energy gain and HP loss, consumes that
+  top card for later Havoc branches, and reuses the existing top-card exhaust
+  damage handling. This syncs the fresh Havoc energy divergence evidence into
+  live lethal detection, matching the already-synced fast simulator behavior.
 - 2026-06-07: `FastCombatSimulator` now applies the Blue Candle HP-loss cost
   when a Curse is played. The HP loss bypasses block and reuses the same
   player-HP-loss path as other HP-cost cards, keeping Rupture handling

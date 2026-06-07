@@ -11713,6 +11713,61 @@ def test_lethal_detector_counts_havoc_visible_top_aoe_attack(monkeypatch):
     assert sequence[0].target_monster is None
 
 
+def test_lethal_detector_counts_havoc_visible_top_energy_skill(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "seeing red": {
+            "name": "Seeing Red",
+            "description": "Gain [R] [R]. Exhaust.",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    havoc.uuid = "havoc"
+    first_strike = _card("Strike_R", "Strike", cost=1)
+    first_strike.uuid = "first-strike"
+    first_strike.damage = 6
+    second_strike = _card("Strike_R", "Strike", cost=1)
+    second_strike.uuid = "second-strike"
+    second_strike.damage = 6
+    top_seeing_red = _card(
+        "Seeing Red",
+        "Seeing Red",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    context = _combat_context(
+        [havoc, first_strike, second_strike],
+        energy=1,
+        monsters=[_louse(current_hp=12)],
+    )
+    context.game.draw_pile = [top_seeing_red]
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+
+    sequence = detector.find_lethal_sequence(context)
+
+    assert [action.card.uuid for action in sequence] == [
+        "havoc",
+        "first-strike",
+        "second-strike",
+    ]
+    assert sequence[0].target_monster is None
+
+
 def test_lethal_detector_counts_havoc_top_exhaust_feel_no_pain_juggernaut(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

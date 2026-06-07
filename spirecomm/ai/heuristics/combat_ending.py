@@ -799,6 +799,20 @@ class CombatEndingDetector:
             return None
         return top_card
 
+    def _havoc_top_energy_support_card(
+        self,
+        card: Card,
+        context: DecisionContext,
+        consumed: int = 0,
+    ) -> Optional[Card]:
+        if self._base_card_name(card) != 'Havoc':
+            return None
+
+        top_card = self._draw_pile_top_card_for_havoc(context, consumed)
+        if top_card is None or not self._is_lethal_energy_support_card(top_card):
+            return None
+        return top_card
+
     def _havoc_top_attack_damage_potential(
         self,
         havoc_card: Card,
@@ -1269,6 +1283,7 @@ class CombatEndingDetector:
                 or self._is_lethal_corruption_support_card(card)
                 or self._is_lethal_double_tap_support_card(card)
                 or self._is_lethal_vulnerable_support_card(card)
+                or self._havoc_top_energy_support_card(card, context) is not None
                 or (
                     not is_attack_card(card)
                     and self._is_juggernaut_block_card(card, context)
@@ -1486,6 +1501,16 @@ class CombatEndingDetector:
                             ),
                         )
                     )
+                    continue
+
+                havoc_energy_candidate = self._havoc_top_energy_lethal_candidate(
+                    card_pos,
+                    card,
+                    context,
+                    state,
+                )
+                if havoc_energy_candidate is not None:
+                    candidates.append(havoc_energy_candidate)
                     continue
 
                 if self._is_lethal_vulnerable_support_card(card):
@@ -1846,6 +1871,68 @@ class CombatEndingDetector:
             starting_state,
         )
         return sequence or []
+
+    def _havoc_top_energy_lethal_candidate(
+        self,
+        card_pos: int,
+        havoc_card: Card,
+        context: DecisionContext,
+        state: _TargetedLethalState,
+    ) -> Optional[_TargetedLethalCandidate]:
+        top_energy_card = self._havoc_top_energy_support_card(
+            havoc_card,
+            context,
+            state.havoc_cards_consumed,
+        )
+        if top_energy_card is None:
+            return None
+
+        cost = self._lethal_card_cost(
+            havoc_card,
+            context,
+            state.energy,
+            state.corruption_active,
+        )
+        if cost > state.energy:
+            return None
+
+        energy_gain = self._lethal_energy_gain(top_energy_card)
+        hp_loss = self._lethal_energy_hp_loss(top_energy_card)
+        if energy_gain <= 0 or state.player_hp <= hp_loss:
+            return None
+
+        next_hp, next_block, exhaust_damage = (
+            self._apply_havoc_top_exhaust_juggernaut_damage(
+                havoc_card,
+                context,
+                state.hp,
+                state.block,
+                state.havoc_cards_consumed,
+            )
+        )
+        kill_count = sum(
+            1
+            for before_hp, after_hp in zip(state.hp, next_hp)
+            if before_hp > 0 and after_hp <= 0
+        )
+        net_cost = cost - energy_gain
+        return _TargetedLethalCandidate(
+            priority=(
+                kill_count,
+                1,
+                energy_gain - cost + exhaust_damage,
+                -cost,
+            ),
+            card_pos=card_pos,
+            monster_idx=None,
+            next_state=state.after_spending(
+                net_cost,
+                hp=next_hp,
+                block=next_block,
+                player_hp=state.player_hp - hp_loss,
+                havoc_cards_consumed=state.havoc_cards_consumed + 1,
+            ),
+        )
 
     def _havoc_top_attack_lethal_candidate(
         self,
