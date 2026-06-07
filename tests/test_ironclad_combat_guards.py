@@ -4743,6 +4743,61 @@ def test_end_turn_aoe_ignores_zero_hp_stale_simulated_monsters():
     assert projected.monsters[1]["is_gone"] is True
 
 
+def test_project_end_turn_burn_uses_remaining_block():
+    burn = _card("Burn", "Burn", card_type=CardType.STATUS, cost=0, has_target=False)
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=20)])
+    context.game.current_hp = 29
+    context.player_hp = 29
+    context.game.player.block = 11
+    context.game.hand = [burn]
+
+    projected = FastCombatSimulator(SynergyCardEvaluator()).project_end_turn_effects(
+        SimulationState(context)
+    )
+
+    assert projected.player_hp == 29
+    assert projected.player_block == 9
+
+
+def test_project_end_turn_burn_plus_deals_four_after_block():
+    burn_plus = _card(
+        "Burn",
+        "Burn+",
+        card_type=CardType.STATUS,
+        cost=0,
+        has_target=False,
+        upgrades=1,
+    )
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=20)])
+    context.game.current_hp = 14
+    context.player_hp = 14
+    context.game.player.block = 3
+    context.game.hand = [burn_plus, burn_plus]
+
+    projected = FastCombatSimulator(SynergyCardEvaluator()).project_end_turn_effects(
+        SimulationState(context)
+    )
+
+    assert projected.player_hp == 9
+    assert projected.player_block == 0
+
+
+def test_project_end_turn_decay_loses_hp_through_block():
+    decay = _card("Decay", "Decay", card_type=CardType.CURSE, cost=0, has_target=False)
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=20)])
+    context.game.current_hp = 52
+    context.player_hp = 52
+    context.game.player.block = 10
+    context.game.hand = [decay]
+
+    projected = FastCombatSimulator(SynergyCardEvaluator()).project_end_turn_effects(
+        SimulationState(context)
+    )
+
+    assert projected.player_hp == 50
+    assert projected.player_block == 10
+
+
 def test_power_energy_gain_uses_name_only_card_data(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

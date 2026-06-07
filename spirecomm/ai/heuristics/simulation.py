@@ -402,6 +402,21 @@ class SimulationState:
     def _int_value(value) -> int:
         return coerce_int(value or 0, 0)
 
+    @staticmethod
+    def end_turn_status_damage_for_card(card: Any) -> int:
+        if _canonical_card_name(card) != 'Burn':
+            return 0
+
+        upgraded = card_upgrade_count(card) > 0 or str(getattr(card, 'name', '')).endswith('+')
+        return 4 if upgraded else 2
+
+    @staticmethod
+    def end_turn_status_hp_loss_for_card(card: Any) -> int:
+        if _canonical_card_name(card) != 'Decay':
+            return 0
+
+        return 2
+
     def __init__(self, context: DecisionContext):
         """Initialize simulation state from decision context."""
         self.turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
@@ -476,6 +491,11 @@ class SimulationState:
         if self.end_turn_aoe_damage <= 0 and self._has_player_power(context, 'Combust'):
             self.end_turn_aoe_damage = 5
         self.end_turn_hp_loss = 1 if self.end_turn_aoe_damage > 0 else 0
+        self.end_turn_status_damage = 0
+        self.end_turn_status_hp_loss = 0
+        for card in getattr(context.game, 'hand', []) or []:
+            self.end_turn_status_damage += self.end_turn_status_damage_for_card(card)
+            self.end_turn_status_hp_loss += self.end_turn_status_hp_loss_for_card(card)
 
         # Monster state (each monster tracked independently)
         self.monsters = []
@@ -885,6 +905,8 @@ class SimulationState:
             self.rupture_strength_per_hp_loss,
             self.end_turn_aoe_damage,
             self.end_turn_hp_loss,
+            self.end_turn_status_damage,
+            self.end_turn_status_hp_loss,
             self.exhaust_events,
             self.cards_drawn,
             self.energy_gained,
@@ -1040,6 +1062,7 @@ class FastCombatSimulator:
         """
         new_state = state.clone()
         mark_card_played(new_state.played_card_uuids, card)
+        self._remove_pending_end_turn_status(new_state, card)
         card_type = card_type_name(card)
 
         # Use actual cost (for Snecko Eye and other cost modifiers). X-cost
@@ -2277,6 +2300,8 @@ class FastCombatSimulator:
                         simulated_added_status=status,
                     )
                 )
+                if status == 'burn':
+                    state.end_turn_status_damage += 2
 
     def _record_added_hand_status_exhausted(self, state: SimulationState, card: Card):
         status = getattr(card, 'simulated_added_status', None)
@@ -2285,6 +2310,23 @@ class FastCombatSimulator:
         state.status_cards_added = max(0, getattr(state, 'status_cards_added', 0) - 1)
         if status == 'dazed':
             state.dazed_cards_added = max(0, getattr(state, 'dazed_cards_added', 0) - 1)
+        self._remove_pending_end_turn_status(state, card)
+
+    @staticmethod
+    def _remove_pending_end_turn_status(state: SimulationState, card: Card):
+        status_damage = SimulationState.end_turn_status_damage_for_card(card)
+        if status_damage > 0:
+            state.end_turn_status_damage = max(
+                0,
+                getattr(state, 'end_turn_status_damage', 0) - status_damage,
+            )
+
+        status_hp_loss = SimulationState.end_turn_status_hp_loss_for_card(card)
+        if status_hp_loss > 0:
+            state.end_turn_status_hp_loss = max(
+                0,
+                getattr(state, 'end_turn_status_hp_loss', 0) - status_hp_loss,
+            )
 
     def _extract_debuff_stacks(self, description: str, keyword: str, upgraded: bool) -> Optional[int]:
         """Extract debuff stacks from card description for a keyword."""
@@ -3233,6 +3275,10 @@ class FastCombatSimulator:
             if projected.rupture_strength_per_hp_loss > 0:
                 projected.player_strength += projected.rupture_strength_per_hp_loss
 
+        status_hp_loss = max(0, getattr(projected, 'end_turn_status_hp_loss', 0))
+        if status_hp_loss > 0:
+            projected.player_hp = max(0, projected.player_hp - status_hp_loss)
+
         constricted_loss = max(0, getattr(projected, 'player_constricted', 0))
         if constricted_loss > 0:
             projected.player_hp = max(0, projected.player_hp - constricted_loss)
@@ -3254,8 +3300,18 @@ class FastCombatSimulator:
             projected.end_turn_block = 0
             self._add_player_block(projected, end_turn_block)
 
+        status_damage = max(0, getattr(projected, 'end_turn_status_damage', 0))
+        if status_damage > 0:
+            blocked = min(projected.player_block, status_damage)
+            projected.player_block -= blocked
+            unblocked = status_damage - blocked
+            if unblocked > 0:
+                projected.player_hp = max(0, projected.player_hp - unblocked)
+
         projected.end_turn_aoe_damage = 0
         projected.end_turn_hp_loss = 0
+        projected.end_turn_status_damage = 0
+        projected.end_turn_status_hp_loss = 0
         temp_strength = getattr(projected, 'player_temp_strength', 0)
         if temp_strength:
             projected.player_strength -= temp_strength

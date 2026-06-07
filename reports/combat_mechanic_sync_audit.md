@@ -141,6 +141,11 @@ already disproved.
   when current block plus end-turn block is still zero. This syncs the
   confirmed end-turn relic block into beam/fast scoring surfaces that subtract
   `turn_block()` from predicted incoming damage.
+- 2026-06-07: `FastCombatSimulator` end-turn projection now models current-hand
+  Burn/Burn+ as blockable status damage and Decay as block-bypassing HP loss.
+  Pending status costs are carried in the beam state key and removed when the
+  status card is played or exhausted, keeping survival scoring aligned with the
+  divergence oracle's end-turn status semantics.
 
 ## Backlog
 
@@ -155,6 +160,5 @@ already disproved.
   - Other dynamic base damage beyond the Mind Blast combat estimator and RL
     survival surfaces already covered above.
   - Havoc top-card effects, random-target boundaries, and Feel No Pain block.
-  - End-turn statuses such as Burn and Decay.
   - Monster lifecycle boundaries such as Slime split and Darkling revive.
   - Combat-exit boundaries such as Smoke Bomb and Looter escape.
