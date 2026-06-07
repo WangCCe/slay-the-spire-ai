@@ -1108,6 +1108,7 @@ class FastCombatSimulator:
 
         if card_type != 'ATTACK':
             self._apply_self_damage(new_state, card)
+            self._apply_blue_candle_curse_hp_loss(new_state, card, context)
 
         self._apply_feel_no_pain_block(new_state, starting_exhaust_events)
         self._apply_dark_embrace_draw(new_state, starting_exhaust_events)
@@ -3857,11 +3858,32 @@ class FastCombatSimulator:
             if hp_loss <= 0:
                 return
 
-            state.player_hp = max(0, state.player_hp - hp_loss)
-            if state.rupture_strength_per_hp_loss > 0:
-                state.player_strength += state.rupture_strength_per_hp_loss
+            self._lose_player_hp(state, hp_loss)
         except Exception:
             pass
+
+    def _apply_blue_candle_curse_hp_loss(
+        self,
+        state: SimulationState,
+        card: Card,
+        context: Optional[DecisionContext],
+    ):
+        if card_type_name(card) != 'CURSE':
+            return
+        if not self._context_has_relic(context, 'Blue Candle'):
+            return
+
+        self._lose_player_hp(state, 1)
+
+    @staticmethod
+    def _lose_player_hp(state: SimulationState, amount: int):
+        hp_loss = max(0, coerce_int(amount, 0))
+        if hp_loss <= 0:
+            return
+
+        state.player_hp = max(0, state.player_hp - hp_loss)
+        if state.rupture_strength_per_hp_loss > 0:
+            state.player_strength += state.rupture_strength_per_hp_loss
 
     @staticmethod
     def _positive_monster_hits(monster: dict) -> int:

@@ -1020,6 +1020,35 @@ def test_x_cost_whirlwind_spends_current_energy_without_negative_simulation_stat
     assert result.total_damage_dealt == 30
 
 
+def test_blue_candle_curse_play_loses_one_hp_without_spending_block():
+    parasite = _card(
+        "Parasite",
+        "Parasite",
+        card_type=CardType.CURSE,
+        cost=0,
+        has_target=False,
+    )
+    context = _combat_context([parasite], energy=2, monsters=[_louse(current_hp=50)])
+    context.game.relics = [
+        SimpleNamespace(relic_id="Blue Candle", name="Blue Candle"),
+    ]
+    context.game.current_hp = 80
+    context.player_hp = 80
+    context.game.player.block = 8
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        parasite,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_hp == 79
+    assert result.player_block == 8
+    assert result.player_energy == 2
+
+
 def test_simulate_card_play_applies_string_attack_type_damage():
     strike = _card("Strike_R", "Strike", cost=1)
     strike.type = "ATTACK"

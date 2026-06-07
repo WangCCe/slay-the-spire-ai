@@ -29,6 +29,10 @@ already disproved.
 
 ## Confirmed Sync Work
 
+- 2026-06-07: `FastCombatSimulator` now applies the Blue Candle HP-loss cost
+  when a Curse is played. The HP loss bypasses block and reuses the same
+  player-HP-loss path as other HP-cost cards, keeping Rupture handling
+  consistent with existing simulator mechanics.
 - 2026-06-07: `FastCombatSimulator` end-turn projection now revives BUFF-ready
   half-dead Darklings to half max HP and marks them live again. This syncs the
   Darkling lifecycle boundary proven by sim divergence into beam/fast scoring
