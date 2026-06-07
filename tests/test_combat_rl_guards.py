@@ -2166,6 +2166,30 @@ def test_slime_split_survival_guard_respects_player_weak_attack_damage():
     assert replacement is None
 
 
+def test_survival_attack_damage_counts_mind_blast_draw_pile_with_strength_and_weak():
+    mind_blast = SimpleNamespace(
+        name="Mind Blast+",
+        card_id="Mind Blast",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+        damage=0,
+    )
+    game = _game(
+        player=SimpleNamespace(
+            energy=1,
+            powers=[
+                SimpleNamespace(power_name="Strength", amount=2),
+                SimpleNamespace(power_name="Weak", amount=1),
+            ],
+        ),
+        draw_pile=[object() for _ in range(9)],
+    )
+
+    assert CombatRLAgent._survival_attack_damage(mind_blast, game) == 8
+
+
 def test_double_tap_guard_skips_when_no_attack_can_follow():
     double_tap = SimpleNamespace(
         name="Double Tap",

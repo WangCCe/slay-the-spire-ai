@@ -97,6 +97,10 @@ already disproved.
   now count Whirlwind as an X-energy multi-hit attack instead of a static
   scalar damage card. The bonus uses current X-effect energy, applies Strength
   to each hit, and applies player Weak with per-hit integer truncation.
+- 2026-06-07: `CombatRLAgent` survival attack damage estimates now count
+  Mind Blast as draw-pile-count attack damage when live card damage is reported
+  as zero. Strength and player Weak are applied before the survival retarget
+  guard decides whether an attack can kill an incoming attacker.
 
 ## Backlog
 
@@ -108,8 +112,8 @@ already disproved.
   - Watch for newly discovered Whirlwind estimator surfaces beyond the synced
     divergence, simulator, timing, lethal, fallback damage, and priority paths.
   - Paper Phrog, Weak/Vulnerable, Strength, and upgraded attack stats.
-  - Other dynamic base damage beyond the Mind Blast combat estimator surfaces
-    already covered above.
+  - Other dynamic base damage beyond the Mind Blast combat estimator and RL
+    survival surfaces already covered above.
   - Havoc top-card effects, random-target boundaries, and Feel No Pain block.
   - End-turn statuses such as Burn and Decay.
   - Monster lifecycle boundaries such as Slime split and Darkling revive.

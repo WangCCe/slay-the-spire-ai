@@ -37,7 +37,11 @@ from spirecomm.ai.heuristics.card_types import (
     card_type_name,
     is_attack_card,
 )
-from spirecomm.ai.heuristics.combat_state import player_debuff_stacks
+from spirecomm.ai.heuristics.combat_state import (
+    draw_pile_count,
+    player_debuff_stacks,
+    player_power_amount,
+)
 from spirecomm.ai.heuristics.potions import (
     game_potion_available,
     game_real_potions,
@@ -2869,6 +2873,10 @@ class CombatRLAgent:
         )
         if explicit_damage > 0:
             return cls._apply_player_weak_to_survival_attack_damage(explicit_damage, game)
+
+        if game is not None and cls._card_matches_normalized_names(card, {"mindblast"}):
+            damage = draw_pile_count(game) + player_power_amount(game, "Strength")
+            return cls._apply_player_weak_to_survival_attack_damage(damage, game)
 
         for normalized_name, (card_name, base_damage) in cls.SURVIVAL_ATTACK_DAMAGE_VALUES.items():
             if cls._card_matches_normalized_names(card, {normalized_name}):
