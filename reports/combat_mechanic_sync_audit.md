@@ -37,6 +37,10 @@ already disproved.
   half-dead Darklings to half max HP and marks them live again. This syncs the
   Darkling lifecycle boundary proven by sim divergence into beam/fast scoring
   and direct enemy lookahead, while non-BUFF half-dead states remain waiting.
+- 2026-06-08: `StateEncoderV2` now treats `half_dead` monsters as not alive
+  even when the live payload still carries positive HP. This aligns the RL v2
+  observation surface with the already-synced target masks and revive
+  transition guard for monster lifecycle states.
 - 2026-06-07: `CombatEndingDetector` now uses the same confirmed target-side
   attack modifier shape as the divergence oracle for:
   - player Weak plus target Vulnerable combined before final integer

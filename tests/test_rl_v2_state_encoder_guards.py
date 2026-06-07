@@ -72,3 +72,43 @@ def test_state_encoder_coerces_power_amounts_before_keyword_encoding():
 
     assert np.isclose(strength, np.tanh(0.2))
     assert poison == 0.0
+
+
+def test_state_encoder_treats_half_dead_monsters_as_not_alive():
+    game = SimpleNamespace(
+        player=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            energy=3,
+            block=0,
+            powers=[],
+        ),
+        monsters=[
+            SimpleNamespace(
+                current_hp=12,
+                max_hp=40,
+                block=0,
+                intent=Intent.BUFF,
+                move_adjusted_damage=0,
+                move_hits=0,
+                powers=[],
+                is_gone=False,
+                half_dead=True,
+            )
+        ],
+        floor=35,
+        draw_pile=[],
+        discard_pile=[],
+        exhaust_pile=[],
+        hand=[],
+        character="IRONCLAD",
+        screen_type=None,
+        in_combat=True,
+        potions=[],
+        relics=[],
+    )
+
+    encoded = StateEncoderV2(id_mapper=_IdMapper()).encode(game)
+
+    first_monster_alive = encoded.continuous[StateEncoderV2.PLAYER_FEATURES]
+    assert first_monster_alive == 0.0
