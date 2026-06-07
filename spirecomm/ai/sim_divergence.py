@@ -374,12 +374,16 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     _apply_card_target_debuffs(expected, card, target_index)
                 if _is_reaper(card) and damage_dealt > 0:
                     _heal_player(expected, damage_dealt)
-                rage_block = _rage_attack_block(expected.get("player", {}))
+                rage_block = (
+                    0
+                    if _to_int(delayed_headbutt_effects.get("rage_block")) > 0
+                    else _rage_attack_block(expected.get("player", {}))
+                )
                 if rage_block > 0:
                     _gain_player_block(expected, before, rage_block)
                 ornamental_fan_block = (
                     0
-                    if _to_int(delayed_headbutt_effects.get("block")) > 0
+                    if _to_int(delayed_headbutt_effects.get("ornamental_fan_block")) > 0
                     else _ornamental_fan_attack_block(before)
                 )
                 if ornamental_fan_block > 0:
@@ -729,7 +733,15 @@ def _headbutt_select_delayed_effects(snapshot: Dict[str, Any], card) -> Dict[str
     if _known_card_name(card, BASE_ATTACK_DAMAGE) != "Headbutt":
         return {}
     effects: Dict[str, Any] = {"headbutt_select": True}
-    block = _ornamental_fan_attack_block(snapshot)
+    block = 0
+    rage_block = _rage_attack_block(snapshot.get("player", {}))
+    if rage_block > 0:
+        effects["rage_block"] = rage_block
+        block += rage_block
+    fan_block = _ornamental_fan_attack_block(snapshot)
+    if fan_block > 0:
+        effects["ornamental_fan_block"] = fan_block
+        block += fan_block
     if block > 0:
         effects["block"] = block
     energy = _nunchaku_energy_gain(snapshot, card)
