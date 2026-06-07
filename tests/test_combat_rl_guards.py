@@ -937,6 +937,44 @@ def test_survival_guard_counts_ornamental_fan_attack_block():
     assert replacement.target_index == 0
 
 
+def test_survival_guard_counts_orichalcum_before_replacing_attack():
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        block=5,
+    )
+    jaw_worm = _monster(hp=42, damage=6, index=0, name="Jaw Worm", monster_id="JawWorm")
+    jaw_worm.intent = Intent.ATTACK
+    game = _game(
+        hand=[strike, defend],
+        monsters=[jaw_worm],
+        relics=[SimpleNamespace(relic_id="Orichalcum", name="Orichalcum")],
+        current_hp=6,
+        player=SimpleNamespace(energy=1, block=0, powers=[]),
+        floor=4,
+        turn=2,
+    )
+
+    replacement = _agent()._get_survival_action_replacement(
+        PlayCardAction(card_index=0, target_index=0),
+        game,
+    )
+
+    assert replacement is None
+
+
 def test_survival_guard_counts_havoc_feel_no_pain_block():
     strike = SimpleNamespace(
         name="Strike",

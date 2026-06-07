@@ -2057,7 +2057,7 @@ class CombatRLAgent:
         damage_after_block = self._end_turn_damage_after_block(
             incoming + status_blockable_damage,
             status_hp_loss,
-            current_block,
+            self._end_turn_block_for_game(game, current_block),
         )
         if damage_after_block < current_hp:
             return None
@@ -2898,6 +2898,15 @@ class CombatRLAgent:
     @staticmethod
     def _end_turn_damage_after_block(blockable_damage: int, status_hp_loss: int, current_block: int) -> int:
         return max(0, blockable_damage - current_block) + max(0, status_hp_loss)
+
+    @classmethod
+    def _end_turn_block_for_game(cls, game: Game, current_block: int) -> int:
+        block = max(0, current_block)
+        if block > 0:
+            return block
+        if cls._relic_counter(game, "Orichalcum") is not None:
+            return 6
+        return block
 
     @classmethod
     def _survival_block_value(cls, card) -> int:
