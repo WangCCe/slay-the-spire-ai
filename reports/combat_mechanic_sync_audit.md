@@ -45,7 +45,7 @@ Status labels:
 | Monster lifecycle states | Darkling half-dead/revive divergence and live stuck evidence | n/a | synced | synced | synced for SAFE timing bonus | synced for v2 state alive flag and reward exit handling | Slime split lifecycle boundaries still need periodic review across new target masks. |
 | Combat escape settlement | Looter/Mugger escape and Smoke Bomb divergence evidence | n/a | synced for Smoke Bomb potion escape | n/a | n/a | synced for in-combat and combat-exit reward | Other escape monsters should be added only with explicit intent/move evidence. |
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
-| Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | partial for scalar fallback estimates | synced for Pen Nib damage estimates and Nunchaku targeted lethal search | synced for direct Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether relic counters are read or intentionally ignored; Havoc-top Fan and Orichalcum timing shortcuts need evidence before porting. |
+| Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | partial for scalar fallback estimates | synced for Pen Nib damage estimates and Nunchaku targeted lethal search | synced for direct and Havoc-top Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether relic counters are read or intentionally ignored; Orichalcum timing shortcuts need evidence before porting. |
 | Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests | synced for deterministic cases | synced | partial for RL shared block candidate and survival block | n/a | synced where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
 | Healing and monster self-heal | Bandage Up, Shelled Parasite Suck divergence tests | n/a | synced | n/a | n/a | n/a | Only fast/beam sim currently predicts these HP transitions. |
 
@@ -113,6 +113,10 @@ Status labels:
   end-turn 6 block when the player currently has no block. This prevents the
   survival guard from replacing an otherwise safe attack just because its
   lethal check ignored the confirmed Orichalcum block settlement.
+- 2026-06-08: `CombatRLAgent` survival block replacement now also counts
+  Ornamental Fan block from Havoc playing a visible top-deck attack. The
+  game-aware Havoc block estimate includes the top attack's third-attack Fan
+  trigger, so a Fan-enabled Havoc can outrank a weaker ordinary block card.
 - 2026-06-07: `CombatEndingDetector` now uses the same confirmed target-side
   attack modifier shape as the divergence oracle for:
   - player Weak plus target Vulnerable combined before final integer

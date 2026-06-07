@@ -2935,8 +2935,9 @@ class CombatRLAgent:
             return block_value
 
         top_card_block = cls._survival_block_value(top_card)
+        top_card_fan_block = cls._ornamental_fan_block_for_card(top_card, game)
         feel_no_pain_block = max(0, player_power_amount(game, "Feel No Pain"))
-        return block_value + top_card_block + feel_no_pain_block
+        return block_value + top_card_block + top_card_fan_block + feel_no_pain_block
 
     @classmethod
     def _ornamental_fan_block_for_card(cls, card, game: Game) -> int:
