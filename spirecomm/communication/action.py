@@ -28,6 +28,22 @@ def _queue_ready_wait(coordinator, timeout=1):
         add_action_to_queue(wait_action)
 
 
+def _compact_identifier(value):
+    return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
+
+
+def _is_escape_potion(potion):
+    if potion is None:
+        return False
+    if getattr(potion, "effect_type", None) == "escape":
+        return True
+    identifiers = {
+        _compact_identifier(getattr(potion, attr, None))
+        for attr in ("name", "potion_id", "id")
+    }
+    return "smokebomb" in identifiers
+
+
 class Action:
     """A base class for an action to take in Slay the Spire"""
 
@@ -142,8 +158,10 @@ class PotionAction(Action):
         self.potion_index = potion_index
         self.target_monster = target_monster
         self.target_index = target_index
+        self.waits_for_combat_transition = False
 
     def execute(self, coordinator):
+        resolved_potion = self.potion
         if self.potion is not None:
             raw_potions = getattr(coordinator.last_game_state, "potions", None)
             if raw_potions is not None:
@@ -156,8 +174,16 @@ class PotionAction(Action):
                 )
                 potions = get_real_potions() if callable(get_real_potions) else []
             self.potion_index = potions.index(self.potion)
+            resolved_potion = potions[self.potion_index]
+        elif self.potion_index >= 0:
+            raw_potions = getattr(coordinator.last_game_state, "potions", None)
+            if raw_potions is not None and self.potion_index < len(raw_potions):
+                resolved_potion = raw_potions[self.potion_index]
         if self.potion_index == -1:
             raise Exception("Specified potion for PotionAction is not available")
+        self.waits_for_combat_transition = bool(
+            self.use and _is_escape_potion(resolved_potion)
+        )
         arguments = [self.command]
         if self.use:
             arguments.append("use")
