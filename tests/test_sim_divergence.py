@@ -755,6 +755,97 @@ def test_headbutt_guardian_sharp_hide_settles_after_card_select(monkeypatch, tmp
     assert not trace_path.exists()
 
 
+def test_headbutt_guardian_sharp_hide_block_loss_settles_after_card_select(
+    monkeypatch,
+    tmp_path,
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    headbutt_plus = _card(
+        name="Headbutt+",
+        card_id="Headbutt",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=12,
+        upgrades=1,
+    )
+    defend = _card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, block=5)
+    before = _game(
+        floor=16,
+        turn=8,
+        player=SimpleNamespace(
+            current_hp=2,
+            max_hp=80,
+            block=7,
+            energy=2,
+            powers=[Power("Thorns", "Thorns", 3)],
+        ),
+        hand=[headbutt_plus, defend],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=97,
+                damage=0,
+                intent=Intent.ATTACK_BUFF,
+                powers=[Power("Sharp Hide", "Sharp Hide", 3)],
+            )
+        ],
+    )
+    select_screen = _game(
+        floor=16,
+        turn=8,
+        player=SimpleNamespace(
+            current_hp=2,
+            max_hp=80,
+            block=7,
+            energy=1,
+            powers=[Power("Thorns", "Thorns", 3)],
+        ),
+        hand=[defend],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=85,
+                damage=0,
+                intent=Intent.ATTACK_BUFF,
+                powers=[Power("Sharp Hide", "Sharp Hide", 3)],
+            )
+        ],
+    )
+    after_select = _game(
+        floor=16,
+        turn=8,
+        player=SimpleNamespace(
+            current_hp=2,
+            max_hp=80,
+            block=4,
+            energy=1,
+            powers=[Power("Thorns", "Thorns", 3)],
+        ),
+        hand=[defend],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=85,
+                damage=0,
+                intent=Intent.ATTACK_BUFF,
+                powers=[Power("Sharp Hide", "Sharp Hide", 3)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(select_screen) is False
+    assert record_expected_action(CardSelectAction([defend]), select_screen) is True
+    assert observe_next_state(after_select) is False
+    assert not trace_path.exists()
+
+
 def test_card_select_without_headbutt_boundary_still_reports_player_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

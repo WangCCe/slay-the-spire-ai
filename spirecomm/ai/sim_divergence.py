@@ -809,7 +809,10 @@ def _headbutt_select_delayed_diff_key(pending: Dict[str, Any], key: str) -> bool
         )
     delayed_effects = (pending.get("action") or {}).get("delayed_headbutt_select_effects") or {}
     if key == "player.block":
-        return "block" in delayed_effects
+        return "block" in delayed_effects or _action_triggers_guardian_sharp_hide(
+            pending.get("action") or {},
+            pending.get("before") or {},
+        )
     if key == "player.energy":
         return "energy" in delayed_effects
     monster_index, field = _parse_monster_diff_key(key)
@@ -819,6 +822,18 @@ def _headbutt_select_delayed_diff_key(pending: Dict[str, Any], key: str) -> bool
     if monster_index < 0 or monster_index >= len(monsters):
         return False
     return _is_guardian_monster(monsters[monster_index])
+
+
+def _action_triggers_guardian_sharp_hide(
+    action: Dict[str, Any],
+    snapshot: Dict[str, Any],
+) -> bool:
+    if not _action_targets_guardian(action, snapshot):
+        return False
+    target_index = action.get("target_index")
+    if isinstance(target_index, int):
+        return _sharp_hide_reflection_damage(snapshot, target_index) > 0
+    return _sharp_hide_reflection_damage(snapshot, all_targets=True) > 0
 
 
 def _parse_monster_diff_key(key: str) -> tuple[Optional[int], Optional[str]]:
