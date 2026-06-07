@@ -1111,22 +1111,34 @@ class IroncladCombatPlanner(CombatPlanner):
         card_name = canonical_card_name(card)
         if card_name == 'Body Slam':
             strength = getattr(context, 'strength', 0)
-            return self._apply_player_weak_to_fallback_attack_damage(
+            damage = self._apply_pen_nib_attack_multiplier(
                 max(0, player_block_value(context) + strength),
+                context,
+            )
+            return self._apply_player_weak_to_fallback_attack_damage(
+                damage,
                 1,
                 context,
             )
         if card_name == 'Whirlwind':
             energy = x_effect_energy(card, getattr(context, 'energy_available', 0), context)
-            return self._apply_player_weak_to_fallback_attack_damage(
+            damage = self._apply_pen_nib_attack_multiplier(
                 whirlwind_damage(card, energy, getattr(context, 'strength', 0)),
+                context,
+            )
+            return self._apply_player_weak_to_fallback_attack_damage(
+                damage,
                 max(1, energy),
                 context,
             )
         if card_name == 'Mind Blast':
             strength = coerce_int(getattr(context, 'strength', 0), 0)
-            return self._apply_player_weak_to_fallback_attack_damage(
+            damage = self._apply_pen_nib_attack_multiplier(
                 max(0, draw_pile_count(context) + strength),
+                context,
+            )
+            return self._apply_player_weak_to_fallback_attack_damage(
+                damage,
                 1,
                 context,
             )
@@ -1157,27 +1169,51 @@ class IroncladCombatPlanner(CombatPlanner):
 
         strength = getattr(context, 'strength', 0)
         if card_name == 'Heavy Blade':
-            return self._apply_player_weak_to_fallback_attack_damage(
+            damage = self._apply_pen_nib_attack_multiplier(
                 max(0, base_damage + strength * heavy_blade_strength_multiplier(card)),
+                context,
+            )
+            return self._apply_player_weak_to_fallback_attack_damage(
+                damage,
                 1,
                 context,
             )
         if card_name == 'Perfected Strike':
-            return self._apply_player_weak_to_fallback_attack_damage(
+            damage = self._apply_pen_nib_attack_multiplier(
                 max(
                     0,
                     base_damage + strike_card_count(context) * perfected_strike_bonus_per_strike(card) + strength,
                 ),
+                context,
+            )
+            return self._apply_player_weak_to_fallback_attack_damage(
+                damage,
                 1,
                 context,
             )
 
         hit_count = self._get_attack_hit_count(card, context)
-        return self._apply_player_weak_to_fallback_attack_damage(
+        damage = self._apply_pen_nib_attack_multiplier(
             max(0, base_damage + strength) * hit_count,
+            context,
+        )
+        return self._apply_player_weak_to_fallback_attack_damage(
+            damage,
             hit_count,
             context,
         )
+
+    @staticmethod
+    def _apply_pen_nib_attack_multiplier(
+        damage: int,
+        context: Optional[DecisionContext],
+    ) -> int:
+        damage = max(0, coerce_int(damage, 0))
+        if damage <= 0:
+            return 0
+        if SimulationState._context_relic_counter(context, 'Pen Nib') == 9:
+            return damage * 2
+        return damage
 
     @staticmethod
     def _apply_player_weak_to_fallback_attack_damage(
@@ -1225,8 +1261,12 @@ class IroncladCombatPlanner(CombatPlanner):
         if card_name == 'Whirlwind' and context is not None:
             energy = x_effect_energy(card, getattr(context, 'energy_available', 0), context)
             strength = coerce_int(getattr(context, 'strength', 0), 0)
-            return self._apply_player_weak_to_fallback_attack_damage(
+            damage = self._apply_pen_nib_attack_multiplier(
                 whirlwind_damage(card, energy, strength),
+                context,
+            )
+            return self._apply_player_weak_to_fallback_attack_damage(
+                damage,
                 max(1, energy),
                 context,
             )
@@ -1234,7 +1274,8 @@ class IroncladCombatPlanner(CombatPlanner):
         base_damage = self._non_negative_int(getattr(card, 'damage', 0))
         if base_damage > 0:
             if context is not None:
-                return self._apply_player_weak_to_fallback_attack_damage(base_damage, 1, context)
+                damage = self._apply_pen_nib_attack_multiplier(base_damage, context)
+                return self._apply_player_weak_to_fallback_attack_damage(damage, 1, context)
             return base_damage
 
         try:
@@ -1248,6 +1289,7 @@ class IroncladCombatPlanner(CombatPlanner):
             damage = parsed_damage + known_damage_upgrade_bonus(card, card_name)
             if context is not None:
                 damage += coerce_int(getattr(context, 'strength', 0), 0)
+                damage = self._apply_pen_nib_attack_multiplier(damage, context)
                 return self._apply_player_weak_to_fallback_attack_damage(damage, 1, context)
             return damage
         except Exception:

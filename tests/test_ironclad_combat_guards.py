@@ -10773,6 +10773,16 @@ def test_ironclad_known_attack_damage_bonus_respects_player_weak():
     assert IroncladCombatPlanner()._known_attack_damage_for_bonus(strike, context) == 4
 
 
+def test_ironclad_known_attack_damage_bonus_applies_pen_nib_before_weak():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.damage = 6
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.player.powers = [SimpleNamespace(power_name="Weak", amount=1)]
+    context.game.relics = [SimpleNamespace(relic_id="Pen Nib", name="Pen Nib", counter=9)]
+
+    assert IroncladCombatPlanner()._known_attack_damage_for_bonus(strike, context) == 9
+
+
 def test_ironclad_known_attack_damage_bonus_counts_strength_for_zero_damage_static_attack(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

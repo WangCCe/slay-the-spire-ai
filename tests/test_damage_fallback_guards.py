@@ -2980,6 +2980,30 @@ def test_ironclad_fallback_damage_accepts_string_damage_attribute():
     assert damage == 8
 
 
+def test_ironclad_fallback_damage_applies_pen_nib_before_weak():
+    card = Card(
+        card_id="Strike_R",
+        name="Strike",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.BASIC,
+        has_target=True,
+        cost=1,
+        upgrades=0,
+    )
+    card.damage = 6
+    context = SimpleNamespace(
+        strength=2,
+        game=SimpleNamespace(
+            relics=[SimpleNamespace(relic_id="Pen Nib", name="Pen Nib", counter=9)],
+            player=SimpleNamespace(powers=[SimpleNamespace(power_name="Weak", amount=1)]),
+        ),
+    )
+
+    damage = IroncladCombatPlanner()._estimate_attack_damage_without_simulation(card, context)
+
+    assert damage == 12
+
+
 def test_ironclad_fallback_damage_applies_all_searing_blow_upgrades(monkeypatch):
     card = Card(
         card_id="Searing Blow",
