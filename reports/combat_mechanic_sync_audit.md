@@ -83,6 +83,11 @@ already disproved.
   per-energy hits each increment Malleable, but the gained block is applied
   after that card's hits finish so it does not absorb later hits from the same
   attack.
+- 2026-06-07: `IroncladCombatPlanner` fallback attack damage estimates and
+  `TimingAwareCombatPlanner` scalar damage estimates now count Mind Blast as
+  draw-pile-count attack damage when live card damage is reported as zero.
+  Strength is applied as source-side attack damage, and each estimator keeps
+  using its existing player Weak and target Vulnerable modifier path afterward.
 
 ## Backlog
 
@@ -93,7 +98,8 @@ already disproved.
 - Audit high-impact confirmed mechanics across live estimators:
   - Whirlwind per-energy hits and per-hit rounding across remaining estimators.
   - Paper Phrog, Weak/Vulnerable, Strength, and upgraded attack stats.
-  - Mind Blast/deck-count and other dynamic base damage.
+  - Other dynamic base damage beyond the Mind Blast combat estimator surfaces
+    already covered above.
   - Havoc top-card effects, random-target boundaries, and Feel No Pain block.
   - End-turn statuses such as Burn and Decay.
   - Monster lifecycle boundaries such as Slime split and Darkling revive.

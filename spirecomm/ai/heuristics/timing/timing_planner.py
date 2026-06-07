@@ -13,6 +13,7 @@ from .turn_classifier import TurnTimingClassifier
 from .balance_strategy import CombatBalanceStrategy
 from spirecomm.ai.heuristics.combat_state import (
     card_play_key,
+    draw_pile_count,
     monster_power_amount,
     player_block_value,
     player_debuff_stacks,
@@ -950,6 +951,8 @@ class TimingAwareCombatPlanner:
             return whirlwind_damage(card, energy, strength)
         if card_name == 'Body Slam':
             return max(0, player_block_value(context) + strength)
+        if card_name == 'Mind Blast':
+            return max(0, draw_pile_count(context) + strength)
 
         base_damage = self._non_negative_int(getattr(card, 'damage', 0))
         if base_damage <= 0:

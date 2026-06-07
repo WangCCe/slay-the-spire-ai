@@ -752,6 +752,29 @@ def test_timing_lethal_check_counts_body_slam_current_block(monkeypatch):
     assert TimingAwareCombatPlanner()._can_kill_all_this_turn(context, timing_ctx)
 
 
+def test_timing_damage_estimate_counts_mind_blast_draw_pile():
+    loader = _loader_with_basic_ironclad_cards()
+    loader._cards["mind blast"] = {
+        "name": "Mind Blast",
+        "description": "Innate. Deal damage equal to the number of cards in your draw pile.",
+    }
+    mind_blast = _card("Mind Blast", "Mind Blast+", cost=1)
+    mind_blast.damage = 0
+    context = SimpleNamespace(
+        turn=1,
+        strength=2,
+        energy_available=1,
+        game=SimpleNamespace(draw_pile=[object() for _ in range(9)]),
+    )
+
+    damage = TimingAwareCombatPlanner(data_loader=loader)._estimate_card_damage(
+        mind_blast,
+        context,
+    )
+
+    assert damage == 11
+
+
 def test_timing_lethal_check_counts_fiend_fire_hand_damage(monkeypatch):
     monkeypatch.setattr(
         timing_planner,

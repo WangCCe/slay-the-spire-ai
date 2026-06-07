@@ -39,6 +39,7 @@ from .card_upgrades import (
     perfected_strike_bonus_per_strike,
 )
 from .combat_state import (
+    draw_pile_count,
     is_card_played,
     mark_card_played,
     player_block_value,
@@ -1114,6 +1115,13 @@ class IroncladCombatPlanner(CombatPlanner):
             return self._apply_player_weak_to_fallback_attack_damage(
                 whirlwind_damage(card, energy, getattr(context, 'strength', 0)),
                 max(1, energy),
+                context,
+            )
+        if card_name == 'Mind Blast':
+            strength = coerce_int(getattr(context, 'strength', 0), 0)
+            return self._apply_player_weak_to_fallback_attack_damage(
+                max(0, draw_pile_count(context) + strength),
+                1,
                 context,
             )
 

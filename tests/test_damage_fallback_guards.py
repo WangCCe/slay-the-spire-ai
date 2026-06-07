@@ -3045,6 +3045,32 @@ def test_ironclad_fallback_damage_counts_whirlwind_x_energy(monkeypatch):
     assert damage == 15
 
 
+def test_ironclad_fallback_damage_counts_mind_blast_draw_pile():
+    card = Card(
+        card_id="Mind Blast",
+        name="Mind Blast+",
+        card_type=CardType.ATTACK,
+        rarity=CardRarity.UNCOMMON,
+        has_target=True,
+        cost=1,
+        upgrades=1,
+    )
+    card.damage = 0
+    context = SimpleNamespace(
+        strength=2,
+        game=SimpleNamespace(
+            draw_pile=[object() for _ in range(9)],
+            player=SimpleNamespace(powers=[]),
+        ),
+    )
+    planner = IroncladCombatPlanner()
+
+    damage = planner._estimate_attack_damage_without_simulation(card, context)
+
+    assert damage == 11
+    assert planner._is_big_attack_followup(card, context) is True
+
+
 def test_ironclad_fallback_damage_applies_heavy_blade_strength_multiplier(monkeypatch):
     monkeypatch.setattr(
         ironclad_combat.game_data_loader,
