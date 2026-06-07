@@ -1997,7 +1997,10 @@ class CombatRLAgent:
             return None
 
         replacement_card = self._card_for_action(replacement, game)
-        if self._survival_block_value(replacement_card) <= self._survival_block_value(current_card):
+        if self._survival_block_value_for_game(
+            replacement_card,
+            game,
+        ) <= self._survival_block_value_for_game(current_card, game):
             return None
         return replacement
 
@@ -2132,7 +2135,7 @@ class CombatRLAgent:
         best_candidate = None
         target_index = self._best_monster_index(game)
         for card_index, card in self._playable_cards(game, energy):
-            block_value = self._survival_block_value(card)
+            block_value = self._survival_block_value_for_game(card, game)
             if block_value <= 0:
                 continue
             if card_requires_target(card) and target_index is None:
