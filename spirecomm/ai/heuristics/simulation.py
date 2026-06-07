@@ -451,6 +451,10 @@ class SimulationState:
         self.double_tap_charges = 0
         self.pen_nib_counter = self._context_relic_counter(context, 'Pen Nib')
         self.nunchaku_counter = self._context_relic_counter(context, 'Nunchaku')
+        self.ornamental_fan_attack_count = self._context_relic_counter(
+            context,
+            'Ornamental Fan',
+        )
         self.corruption_active = self._has_player_power(context, 'Corruption')
         self.feel_no_pain_block_per_exhaust = self._get_player_power_amount(context, 'Feel No Pain')
         self.dark_embrace_draw_per_exhaust = self._get_player_power_amount(context, 'Dark Embrace')
@@ -864,6 +868,7 @@ class SimulationState:
             self.double_tap_charges,
             self.pen_nib_counter,
             self.nunchaku_counter,
+            self.ornamental_fan_attack_count,
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
             self.dark_embrace_draw_per_exhaust,
@@ -1076,6 +1081,7 @@ class FastCombatSimulator:
                     x_energy_spent=x_energy_spent,
                 )
                 self._apply_rage_block(new_state)
+                self._apply_ornamental_fan_block(new_state)
                 self._apply_self_damage(new_state, card)
         elif card_type == 'SKILL':
             new_state.skills_played += 1
@@ -3466,6 +3472,7 @@ class FastCombatSimulator:
                 x_energy_spent=0 if is_x_cost_card(top_card) else None,
             )
             self._apply_rage_block(state)
+            self._apply_ornamental_fan_block(state)
             self._apply_self_damage(state, top_card)
             top_card_exhausted_by_effect = self._card_exhausts_itself_from_data(top_card)
         elif top_card_type == 'SKILL':
@@ -3781,6 +3788,16 @@ class FastCombatSimulator:
         if state.rage_block_per_attack <= 0:
             return
         self._add_player_block(state, state.rage_block_per_attack)
+
+    def _apply_ornamental_fan_block(self, state: SimulationState):
+        counter = getattr(state, 'ornamental_fan_attack_count', None)
+        if counter is None:
+            return
+
+        counter = self._non_negative_int(counter) + 1
+        state.ornamental_fan_attack_count = counter
+        if counter % 3 == 0:
+            self._add_player_block(state, 4)
 
     def _apply_self_damage(self, state: SimulationState, card: Card):
         """Apply HP costs for cards that damage the player to fuel effects."""

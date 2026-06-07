@@ -10250,6 +10250,53 @@ def test_double_tap_repeats_next_attack_once_or_twice():
     assert result.attacks_played == 4
 
 
+def test_ornamental_fan_adds_block_on_third_simulated_attack():
+    first_strike = _card("Strike_R", "Strike", cost=1)
+    first_strike.damage = 6
+    sever_soul = _card("Sever Soul", "Sever Soul", cost=1)
+    sever_soul.damage = 16
+    anger = _card("Anger", "Anger", cost=0)
+    anger.damage = 6
+    context = _combat_context(
+        [first_strike, sever_soul, anger],
+        energy=2,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.game.relics = [
+        SimpleNamespace(relic_id="Ornamental Fan", name="Ornamental Fan")
+    ]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        first_strike,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+    assert state.player_block == 0
+
+    state = simulator.simulate_card_play(
+        state,
+        sever_soul,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+    assert state.player_block == 0
+
+    result = simulator.simulate_card_play(
+        state,
+        anger,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.attacks_played == 3
+    assert result.player_block == 4
+
+
 def test_double_tapped_rampage_uses_first_play_scaling(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

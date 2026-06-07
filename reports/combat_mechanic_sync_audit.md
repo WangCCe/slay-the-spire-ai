@@ -84,6 +84,10 @@ already disproved.
   spend their card cost, then gain 1 energy and reset the relic counter when
   the counter reaches 9; lethal sequence search carries the counter in its
   state key so refund lines can continue into later attacks.
+- 2026-06-07: `FastCombatSimulator` now models Ornamental Fan attack-count
+  block. Simulated attack plays carry a separate Fan counter in the state key
+  and gain 4 block on every third attack through the normal block-gain path,
+  so downstream reactions such as Juggernaut remain consistent.
 - 2026-06-07: `FastCombatSimulator` now defers Malleable block during a
   single multi-hit attack card. Twin Strike/Pummel-style hits and Whirlwind's
   per-energy hits each increment Malleable, but the gained block is applied
