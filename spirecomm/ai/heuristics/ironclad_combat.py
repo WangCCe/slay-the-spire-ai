@@ -1215,6 +1215,16 @@ class IroncladCombatPlanner(CombatPlanner):
         if card_type and card_type != 'ATTACK':
             return 0
 
+        card_name = canonical_card_name(card)
+        if card_name == 'Whirlwind' and context is not None:
+            energy = x_effect_energy(card, getattr(context, 'energy_available', 0), context)
+            strength = coerce_int(getattr(context, 'strength', 0), 0)
+            return self._apply_player_weak_to_fallback_attack_damage(
+                whirlwind_damage(card, energy, strength),
+                max(1, energy),
+                context,
+            )
+
         base_damage = self._non_negative_int(getattr(card, 'damage', 0))
         if base_damage > 0:
             if context is not None:
@@ -1222,7 +1232,6 @@ class IroncladCombatPlanner(CombatPlanner):
             return base_damage
 
         try:
-            card_name = canonical_card_name(card)
             card_data = game_data_loader.get_card_data(card_name)
             if not card_data:
                 return 0

@@ -10388,6 +10388,24 @@ def test_ironclad_known_attack_damage_bonus_respects_player_weak():
     assert IroncladCombatPlanner()._known_attack_damage_for_bonus(strike, context) == 4
 
 
+def test_ironclad_known_attack_damage_bonus_counts_whirlwind_x_energy_per_hit(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "whirlwind": {
+            "name": "Whirlwind",
+            "description": "Deal 5 damage to ALL enemies X times.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+    whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
+    whirlwind.damage = 0
+    context = _combat_context([whirlwind], energy=3, monsters=[_louse(current_hp=100)])
+    context.strength = 2
+    context.game.player.powers = [SimpleNamespace(power_name="Weak", amount=1)]
+
+    assert IroncladCombatPlanner()._known_attack_damage_for_bonus(whirlwind, context) == 15
+
+
 def test_demon_form_does_not_add_strength_on_the_turn_it_is_played():
     demon_form = _card(
         "Demon Form",
@@ -13523,7 +13541,7 @@ def test_simulator_outcome_aoe_bonus_accepts_name_only_cleave():
     assert name_only_score == canonical_score
 
 
-def test_ironclad_sequence_strategic_bonus_treats_counted_upgraded_whirlwind_as_whirlwind():
+def test_ironclad_sequence_strategic_bonus_values_counted_upgraded_whirlwind_damage():
     whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
     counted_whirlwind = _card(
         "Whirlwind+1",
@@ -13558,7 +13576,8 @@ def test_ironclad_sequence_strategic_bonus_treats_counted_upgraded_whirlwind_as_
         context,
     )
 
-    assert counted_score == canonical_score
+    expected_upgrade_delta = (8 - 5) * 3 * len(context.monsters_alive) * 0.5
+    assert counted_score - canonical_score == expected_upgrade_delta
 
 
 def test_ironclad_sequence_score_accepts_string_power_type():

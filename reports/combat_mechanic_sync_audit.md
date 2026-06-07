@@ -93,6 +93,10 @@ already disproved.
   draw-pile-count attack damage when live card damage is reported as zero.
   Strength is applied as source-side attack damage, and each estimator keeps
   using its existing player Weak and target Vulnerable modifier path afterward.
+- 2026-06-07: `IroncladCombatPlanner` fallback card-priority damage bonuses
+  now count Whirlwind as an X-energy multi-hit attack instead of a static
+  scalar damage card. The bonus uses current X-effect energy, applies Strength
+  to each hit, and applies player Weak with per-hit integer truncation.
 
 ## Backlog
 
@@ -101,7 +105,8 @@ already disproved.
 - Expand this report into a compact coverage matrix from divergence rounds
   105-118: rows as mechanics, columns as estimator surfaces.
 - Audit high-impact confirmed mechanics across live estimators:
-  - Whirlwind per-energy hits and per-hit rounding across remaining estimators.
+  - Watch for newly discovered Whirlwind estimator surfaces beyond the synced
+    divergence, simulator, timing, lethal, fallback damage, and priority paths.
   - Paper Phrog, Weak/Vulnerable, Strength, and upgraded attack stats.
   - Other dynamic base damage beyond the Mind Blast combat estimator surfaces
     already covered above.
