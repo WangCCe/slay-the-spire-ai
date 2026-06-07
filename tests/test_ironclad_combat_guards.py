@@ -10674,6 +10674,24 @@ def test_ironclad_known_attack_damage_bonus_respects_player_weak():
     assert IroncladCombatPlanner()._known_attack_damage_for_bonus(strike, context) == 4
 
 
+def test_ironclad_known_attack_damage_bonus_counts_strength_for_zero_damage_static_attack(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "headbutt": {
+            "name": "Headbutt",
+            "description": "Deal 9 damage. Put a card from your discard pile on top of your draw pile.",
+        }
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+
+    headbutt = _card("Headbutt", "Headbutt", cost=1)
+    headbutt.damage = 0
+    context = _combat_context([headbutt], energy=1, monsters=[_louse(current_hp=100)])
+    context.strength = 2
+
+    assert IroncladCombatPlanner()._known_attack_damage_for_bonus(headbutt, context) == 11
+
+
 def test_ironclad_known_attack_damage_bonus_counts_whirlwind_x_energy_per_hit(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

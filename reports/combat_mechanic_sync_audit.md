@@ -76,6 +76,10 @@ already disproved.
   reduce known scalar attack damage while the player is Weak. This keeps
   strategic bonus scoring for cards such as Iron Wave, Immolate, and Whirlwind
   from valuing full visible attack damage under Weak.
+- 2026-06-08: `IroncladCombatPlanner` fallback card-priority damage bonuses
+  now add Strength when falling back to parsed static attack damage for live
+  cards reporting zero damage, such as Headbutt. Explicit nonzero live damage
+  remains treated as already adjusted to avoid double-counting Strength.
 - 2026-06-07: `FastCombatSimulator` now applies deterministic Havoc top-card
   effects when the draw-pile top card is visible. Known top attacks resolve for
   single-monster or AOE/random-target cases, known top skills and powers reuse

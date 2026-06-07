@@ -1241,6 +1241,7 @@ class IroncladCombatPlanner(CombatPlanner):
                 return 0
             damage = parsed_damage + known_damage_upgrade_bonus(card, card_name)
             if context is not None:
+                damage += coerce_int(getattr(context, 'strength', 0), 0)
                 return self._apply_player_weak_to_fallback_attack_damage(damage, 1, context)
             return damage
         except Exception:
