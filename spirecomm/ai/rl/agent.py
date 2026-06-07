@@ -1814,7 +1814,10 @@ class CombatRLAgent:
 
         current_card = self._card_for_action(action, game)
         replacement_card = self._card_for_action(replacement, game)
-        if self._survival_block_value(replacement_card) <= self._survival_block_value(current_card):
+        if self._survival_block_value_for_game(
+            replacement_card,
+            game,
+        ) <= self._survival_block_value_for_game(current_card, game):
             return None
         return replacement
 
@@ -2055,7 +2058,7 @@ class CombatRLAgent:
         best_candidate = None
         target_index = self._best_monster_index(game)
         for card_index, card in self._playable_cards(game, energy):
-            block_value = self._survival_block_value(card)
+            block_value = self._survival_block_value_for_game(card, game)
             if block_value <= 0:
                 continue
             if card_requires_target(card) and target_index is None:
@@ -2901,6 +2904,20 @@ class CombatRLAgent:
             if cls._card_matches_normalized_names(card, {normalized_name}):
                 return base_block + known_block_upgrade_bonus(card, card_name)
         return 0
+
+    @classmethod
+    def _survival_block_value_for_game(cls, card, game: Optional[Game] = None) -> int:
+        block_value = cls._survival_block_value(card)
+        if game is None or not cls._card_matches_normalized_names(card, {"havoc"}):
+            return block_value
+
+        top_card = cls._draw_pile_top_card(game)
+        if top_card is None:
+            return block_value
+
+        top_card_block = cls._survival_block_value(top_card)
+        feel_no_pain_block = max(0, player_power_amount(game, "Feel No Pain"))
+        return block_value + top_card_block + feel_no_pain_block
 
     @classmethod
     def _survival_attack_damage(cls, card, game: Optional[Game] = None) -> int:

@@ -97,6 +97,11 @@ already disproved.
   top attacks and AOE top attacks are treated as non-risky; targeted top attacks
   with multiple live monsters remain conservative because Havoc target selection
   is not provable there.
+- 2026-06-08: `CombatRLAgent` survival block replacement now counts
+  deterministic Havoc block when the draw-pile top card is visible. The
+  game-aware estimate adds the visible top card's own block and the
+  Feel No Pain block from exhausting that top card, so survival takeovers can
+  choose Havoc when the hand card itself reports zero block.
 - 2026-06-07: `FastCombatSimulator` and the same-file no-simulation attack
   estimate now apply Pen Nib when the relic counter is 9. The source-side
   attack damage is doubled before player Weak and target Vulnerable, simulated
@@ -184,7 +189,8 @@ already disproved.
   - Paper Phrog, Weak/Vulnerable, Strength, and upgraded attack stats.
   - Other dynamic base damage beyond the Mind Blast combat estimator and RL
     survival surfaces already covered above.
-  - Havoc random-target boundaries and non-Juggernaut Feel No Pain block value
-    across remaining live estimators.
+  - Havoc random-target boundaries and any remaining non-Juggernaut
+    Feel No Pain block value outside the simulator, lethal, and RL survival
+    surfaces already covered above.
   - Monster lifecycle boundaries such as Slime split and Darkling revive.
   - Combat-exit boundaries such as Looter escape.
