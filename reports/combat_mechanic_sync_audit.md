@@ -35,6 +35,13 @@ already disproved.
     truncation (`9/8`);
   - Paper Phrog target Vulnerable (`7/4`);
   - Paper Phrog plus player Weak and target Vulnerable (`21/16`).
+- 2026-06-07: `FastCombatSimulator` and the same-file no-simulation attack
+  estimate now share that target-side attack modifier shape:
+  - `simulate_card_play` attack branches apply player Weak plus target
+    Vulnerable with one final truncation;
+  - Paper Phrog increases target Vulnerable attack damage to `7/4`;
+  - fallback attack damage scoring uses the same helper before Slow and hit-count
+    expansion.
 
 ## Backlog
 

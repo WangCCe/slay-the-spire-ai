@@ -981,7 +981,7 @@ class FastCombatSimulator:
         This simulation accounts for:
         - Actual card costs (cost_for_turn for Snecko Eye, etc.)
         - Strength power bonus
-        - Vulnerable debuff (1.5x damage)
+        - Vulnerable debuff (1.5x or Paper Phrog 1.75x damage)
         - Monster block
         - AOE vs single-target
         - Power effects (Demon Form, Inflame, etc.)
@@ -1291,8 +1291,12 @@ class FastCombatSimulator:
                     if not self._is_live_monster_state(monster):
                         break
                     damage = self._calculate_attack_damage(card, base_damage, state, context)
-                    damage = self._apply_weak_damage(damage, getattr(state, 'player_weak', 0))
-                    damage = self._apply_vulnerable_damage(damage, monster)
+                    damage = self._apply_player_attack_damage_modifiers(
+                        damage,
+                        state,
+                        monster,
+                        context,
+                    )
                     damage = self._apply_slow_attack_damage(damage, monster)
                     self._deal_damage_to_monster(state, monster, damage)
                     state.damage_instances += 1  # Track each damage instance
@@ -1315,8 +1319,12 @@ class FastCombatSimulator:
                     break
                 monster = alive_monsters[hit_index % len(alive_monsters)]
                 damage = self._calculate_attack_damage(card, base_damage, state, context)
-                damage = self._apply_weak_damage(damage, getattr(state, 'player_weak', 0))
-                damage = self._apply_vulnerable_damage(damage, monster)
+                damage = self._apply_player_attack_damage_modifiers(
+                    damage,
+                    state,
+                    monster,
+                    context,
+                )
                 damage = self._apply_slow_attack_damage(damage, monster)
                 self._deal_damage_to_monster(state, monster, damage)
                 state.damage_instances += 1
@@ -1337,8 +1345,12 @@ class FastCombatSimulator:
                         if not self._is_live_monster_state(monster):
                             break
                         damage = self._calculate_attack_damage(card, base_damage, state, context)
-                        damage = self._apply_weak_damage(damage, getattr(state, 'player_weak', 0))
-                        damage = self._apply_vulnerable_damage(damage, monster)
+                        damage = self._apply_player_attack_damage_modifiers(
+                            damage,
+                            state,
+                            monster,
+                            context,
+                        )
                         damage = self._apply_slow_attack_damage(damage, monster)
                         self._deal_damage_to_monster(state, monster, damage)
                         state.damage_instances += 1  # Track damage instance
@@ -1681,11 +1693,52 @@ class FastCombatSimulator:
         except (TypeError, ValueError):
             return 0
 
-    def _apply_vulnerable_damage(self, damage: int, monster: dict) -> int:
-        """Apply vulnerable multiplier (1.5x). Binary: any vulnerable stacks = 1.5x damage."""
-        if monster.get('vulnerable', 0) > 0:
-            return int(damage * 1.5)
+    def _apply_player_attack_damage_modifiers(
+        self,
+        damage: int,
+        state: SimulationState,
+        monster: dict,
+        context: DecisionContext = None,
+    ) -> int:
+        """Apply player Weak and target Vulnerable with one final truncation."""
+        if damage <= 0:
+            return 0
+
+        player_weak = getattr(state, 'player_weak', 0)
+        target_vulnerable = self._non_negative_int(monster.get('vulnerable', 0)) > 0
+        if player_weak > 0 and target_vulnerable:
+            numerator, denominator = (
+                (21, 16)
+                if self._context_has_relic(context, 'Paper Phrog')
+                else (9, 8)
+            )
+            return self._apply_damage_multiplier(damage, numerator, denominator)
+
+        if player_weak > 0:
+            damage = self._apply_weak_damage(damage, player_weak)
+        if target_vulnerable:
+            damage = self._apply_vulnerable_damage(damage, monster, context)
         return damage
+
+    def _apply_vulnerable_damage(
+        self,
+        damage: int,
+        monster: dict,
+        context: DecisionContext = None,
+    ) -> int:
+        """Apply target Vulnerable. Binary: any vulnerable stacks multiply damage."""
+        if self._non_negative_int(monster.get('vulnerable', 0)) > 0:
+            numerator, denominator = (
+                (7, 4)
+                if self._context_has_relic(context, 'Paper Phrog')
+                else (3, 2)
+            )
+            return self._apply_damage_multiplier(damage, numerator, denominator)
+        return damage
+
+    @staticmethod
+    def _apply_damage_multiplier(damage: int, numerator: int, denominator: int) -> int:
+        return damage * numerator // denominator
 
     def _apply_slow_attack_damage(self, damage: int, monster: dict) -> int:
         """Apply Giant Head Slow's attack-damage multiplier."""
@@ -1714,6 +1767,26 @@ class FastCombatSimulator:
         if player_weak > 0:
             return int(damage * 0.75)
         return damage
+
+    @staticmethod
+    def _context_has_relic(context: DecisionContext, relic_name: str) -> bool:
+        target = ''.join(ch for ch in relic_name.lower() if ch.isalnum())
+        if not context or not target:
+            return False
+
+        relics = []
+        for source in (getattr(context, 'game', None), context):
+            relics.extend(getattr(source, 'relics', []) or [])
+
+        for relic in relics:
+            for attr in ('name', 'relic_id', 'id'):
+                value = getattr(relic, attr, None)
+                if value is None:
+                    continue
+                normalized = ''.join(ch for ch in str(value).lower() if ch.isalnum())
+                if normalized == target:
+                    return True
+        return False
 
     def _consume_monster_artifact(self, monster: dict) -> bool:
         artifact = monster.get('artifact', 0)
@@ -6278,11 +6351,12 @@ class HeuristicCombatPlanner(CombatPlanner):
             estimator_state,
             context,
         )
-        per_hit_damage = self.simulator._apply_weak_damage(
+        per_hit_damage = self.simulator._apply_player_attack_damage_modifiers(
             per_hit_damage,
-            getattr(estimator_state, 'player_weak', 0),
+            estimator_state,
+            target_state,
+            context,
         )
-        per_hit_damage = self.simulator._apply_vulnerable_damage(per_hit_damage, target_state)
         per_hit_damage = self.simulator._apply_slow_attack_damage(per_hit_damage, target_state)
 
         hit_count = self.simulator._get_attack_hit_count(card, estimator_state, context)

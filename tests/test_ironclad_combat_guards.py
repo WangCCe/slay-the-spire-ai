@@ -1062,6 +1062,80 @@ def test_simulate_card_play_accepts_string_damage_attribute():
     assert result.total_damage_dealt == 8
 
 
+def test_simulate_card_play_combines_player_weak_and_target_vulnerable_before_rounding():
+    dropkick = _card("Dropkick", "Dropkick", cost=1)
+    dropkick.damage = 5
+    target = _louse(current_hp=20)
+    context = _combat_context([dropkick], energy=1, monsters=[target])
+    context.game.player.powers = [SimpleNamespace(power_name="Weak", amount=1)]
+    context.vulnerable_stacks[0] = 1
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        dropkick,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 5
+
+
+def test_simulate_card_play_applies_paper_phrog_vulnerable_multiplier():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.damage = 6
+    target = _louse(current_hp=20)
+    context = _combat_context([strike], energy=1, monsters=[target])
+    context.vulnerable_stacks[0] = 1
+    context.game.relics = [SimpleNamespace(relic_id="Paper Phrog", name="Paper Phrog")]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 10
+
+
+def test_fallback_attack_estimate_combines_player_weak_and_target_vulnerable_before_rounding():
+    dropkick = _card("Dropkick", "Dropkick", cost=1)
+    dropkick.damage = 5
+    target = _louse(current_hp=20)
+    context = _combat_context([dropkick], energy=1, monsters=[target])
+    context.game.player.powers = [SimpleNamespace(power_name="Weak", amount=1)]
+    context.vulnerable_stacks[0] = 1
+
+    damage = HeuristicCombatPlanner()._estimate_attack_damage_without_simulation(
+        dropkick,
+        context,
+        target=target,
+    )
+
+    assert damage == 5
+
+
+def test_fallback_attack_estimate_applies_paper_phrog_vulnerable_multiplier():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.damage = 6
+    target = _louse(current_hp=20)
+    context = _combat_context([strike], energy=1, monsters=[target])
+    context.vulnerable_stacks[0] = 1
+    context.game.relics = [SimpleNamespace(relic_id="Paper Phrog", name="Paper Phrog")]
+
+    damage = HeuristicCombatPlanner()._estimate_attack_damage_without_simulation(
+        strike,
+        context,
+        target=target,
+    )
+
+    assert damage == 10
+
+
 def test_simulation_state_coerces_string_monster_hp_and_block():
     target = _louse(current_hp="20")
     target.max_hp = "50"
@@ -8341,7 +8415,7 @@ def test_player_weak_reduces_player_attack_damage(monkeypatch):
     assert result.total_damage_dealt == 4
 
 
-def test_player_weak_applies_before_target_vulnerable(monkeypatch):
+def test_player_weak_and_target_vulnerable_combine_before_rounding(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {"dropkick": {"name": "Dropkick", "description": "Deal 5 damage."}}
     monkeypatch.setattr(simulation, "game_data_loader", loader)
@@ -8358,7 +8432,7 @@ def test_player_weak_applies_before_target_vulnerable(monkeypatch):
         context=context,
     )
 
-    assert result.total_damage_dealt == 4
+    assert result.total_damage_dealt == 5
 
 
 def test_ironclad_target_pruning_counts_upgraded_attack_damage(monkeypatch):
