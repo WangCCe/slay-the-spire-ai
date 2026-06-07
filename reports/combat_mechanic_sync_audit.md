@@ -29,6 +29,10 @@ already disproved.
 
 ## Confirmed Sync Work
 
+- 2026-06-07: `FastCombatSimulator` end-turn projection now revives BUFF-ready
+  half-dead Darklings to half max HP and marks them live again. This syncs the
+  Darkling lifecycle boundary proven by sim divergence into beam/fast scoring
+  and direct enemy lookahead, while non-BUFF half-dead states remain waiting.
 - 2026-06-07: `CombatEndingDetector` now uses the same confirmed target-side
   attack modifier shape as the divergence oracle for:
   - player Weak plus target Vulnerable combined before final integer

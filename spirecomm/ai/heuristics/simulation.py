@@ -21,7 +21,11 @@ from spirecomm.ai.incoming_damage import (
     move_data_immediate_unknown_damage,
 )
 from spirecomm.ai.intent_utils import intent_is_attack, intent_is_unknown, intent_tokens, monster_intends_attack
-from spirecomm.ai.monster_names import canonical_live_monster_name, monster_field
+from spirecomm.ai.monster_names import (
+    canonical_live_monster_name,
+    monster_field,
+    normalize_monster_id,
+)
 from spirecomm.ai.decision.base import DecisionContext, CombatPlanner
 from spirecomm.ai.heuristics.card import SynergyCardEvaluator
 from spirecomm.ai.heuristics.combat_state import (
@@ -3258,8 +3262,39 @@ class FastCombatSimulator:
         if temp_dexterity:
             projected.player_dexterity -= temp_dexterity
             projected.player_temp_dexterity = 0
+        projected = self._revive_ready_darklings(projected)
         projected = self._materialize_pending_death_splits(projected)
         return projected
+
+    def _revive_ready_darklings(self, state: SimulationState) -> SimulationState:
+        for monster in state.monsters:
+            if not self._darkling_revival_ready(monster):
+                continue
+            max_hp = max(1, coerce_int(monster.get('max_hp', 0), 0))
+            monster['hp'] = max(1, max_hp // 2)
+            monster['is_gone'] = False
+            monster['half_dead'] = False
+            monster['block'] = 0
+        return state
+
+    def _darkling_revival_ready(self, monster: dict) -> bool:
+        return (
+            self._is_darkling_monster_state(monster)
+            and bool(monster.get('half_dead', False))
+            and coerce_int(monster.get('hp', 0), 0) <= 0
+            and self._intent_name(monster.get('intent', '')).lower()
+            in {'buff', 'intentbuff'}
+        )
+
+    @staticmethod
+    def _is_darkling_monster_state(monster: dict) -> bool:
+        identifiers = {
+            normalize_monster_id(monster.get('name', '')),
+            normalize_monster_id(monster.get('monster_id', '')),
+            normalize_monster_id(monster.get('id', '')),
+            normalize_monster_id(_canonical_live_monster_name(monster)),
+        }
+        return 'darkling' in identifiers
 
     def _apply_skill(
         self,
@@ -4140,6 +4175,7 @@ class FastCombatSimulator:
                     discount = LOOKAHEAD_DAMAGE_DISCOUNT ** step
                     turn_damage += int(player_constricted * discount)
 
+                lookahead_state = self._revive_ready_darklings(lookahead_state)
                 for idx, monster in enumerate(lookahead_state.monsters):
                     if not self._is_live_monster_state(monster):
                         continue

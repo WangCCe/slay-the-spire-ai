@@ -2369,6 +2369,61 @@ def test_incoming_damage_ignores_half_dead_monsters():
     ) == 0
 
 
+def test_project_end_turn_revives_buffing_half_dead_darkling():
+    context = _combat_context([], energy=0, monsters=[_darkling(current_hp=1)])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["max_hp"] = 50
+    state.monsters[0]["is_gone"] = True
+    state.monsters[0]["half_dead"] = True
+    state.monsters[0]["intent"] = Intent.BUFF
+    state.monsters[0]["move_base_damage"] = 0
+    state.monsters[0]["move_adjusted_damage"] = 0
+    state.monsters[0]["move_hits"] = 0
+
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    projected = simulator.project_end_turn_effects(state)
+
+    assert projected.monsters[0]["hp"] == 25
+    assert projected.monsters[0]["is_gone"] is False
+    assert projected.monsters[0]["half_dead"] is False
+    assert simulator._is_live_monster_state(projected.monsters[0]) is True
+
+
+def test_project_end_turn_revives_simulated_half_dead_darkling_without_gone_flag():
+    context = _combat_context([], energy=0, monsters=[_darkling(current_hp=1)])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = False
+    state.monsters[0]["half_dead"] = True
+    state.monsters[0]["intent"] = Intent.BUFF
+
+    projected = FastCombatSimulator(SynergyCardEvaluator()).project_end_turn_effects(
+        state
+    )
+
+    assert projected.monsters[0]["hp"] == 24
+    assert projected.monsters[0]["is_gone"] is False
+    assert projected.monsters[0]["half_dead"] is False
+
+
+def test_project_end_turn_keeps_non_buff_half_dead_darkling_waiting():
+    context = _combat_context([], energy=0, monsters=[_darkling(current_hp=1)])
+    state = SimulationState(context)
+    state.monsters[0]["hp"] = 0
+    state.monsters[0]["is_gone"] = True
+    state.monsters[0]["half_dead"] = True
+    state.monsters[0]["intent"] = Intent.ATTACK
+
+    projected = FastCombatSimulator(SynergyCardEvaluator()).project_end_turn_effects(
+        state
+    )
+
+    assert projected.monsters[0]["hp"] == 0
+    assert projected.monsters[0]["is_gone"] is True
+    assert projected.monsters[0]["half_dead"] is True
+
+
 def test_fungi_beast_death_vulnerable_can_make_same_turn_attack_lethal():
     strike = _card("Strike_R", "Strike", cost=1)
     remaining_attacker = _louse(current_hp=50)
