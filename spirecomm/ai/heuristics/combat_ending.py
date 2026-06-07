@@ -70,6 +70,7 @@ class _TargetedLethalState:
     double_tap_charges: int
     nunchaku_counter: Optional[int]
     energy: int
+    havoc_cards_consumed: int = 0
 
     def seen_key(self, remaining_card_keys: Tuple[object, ...]):
         return (
@@ -85,6 +86,7 @@ class _TargetedLethalState:
             self.double_tap_charges,
             self.nunchaku_counter,
             self.energy,
+            self.havoc_cards_consumed,
         )
 
     def after_spending(self, cost: int, **changes) -> "_TargetedLethalState":
@@ -234,7 +236,7 @@ class CombatEndingDetector:
 
             attack_cards = [
                 card for card in context.playable_cards
-                if is_attack_card(card)
+                if is_attack_card(card) or self._havoc_top_attack_card(card, context) is not None
             ]
             proven_aoe_cleanup = bool(self._find_aoe_cleanup_sequence(
                 context,
@@ -326,7 +328,7 @@ class CombatEndingDetector:
 
         # Get attack cards sorted by damage
         attack_cards = [c for c in context.playable_cards
-                       if is_attack_card(c)]
+                       if is_attack_card(c) or self._havoc_top_attack_card(c, context) is not None]
         attack_cards.sort(
             key=lambda c: self._get_card_damage(
                 c,
@@ -489,7 +491,11 @@ class CombatEndingDetector:
         sequence_cards = [
             card
             for card in attack_cards
-            if self._is_aoe_attack(card) or self._card_requires_target(card)
+            if (
+                self._is_aoe_attack(card)
+                or self._card_requires_target(card)
+                or self._havoc_top_attack_card(card, context) is not None
+            )
         ]
         return (
             bool(sequence_cards)
@@ -742,6 +748,80 @@ class CombatEndingDetector:
                 return str(value)
 
         return ''
+
+    def _draw_pile_top_card_for_havoc(
+        self,
+        context: DecisionContext,
+        consumed: int = 0,
+    ) -> Optional[Card]:
+        game = getattr(context, 'game', None)
+        for owner in (game, context):
+            draw_pile = getattr(owner, 'draw_pile', None)
+            if isinstance(draw_pile, list) and draw_pile:
+                skipped = 0
+                for top_card in reversed(draw_pile):
+                    if not isinstance(top_card, Card):
+                        continue
+                    if skipped < consumed:
+                        skipped += 1
+                        continue
+                    return top_card
+        return None
+
+    def _havoc_top_attack_card(
+        self,
+        card: Card,
+        context: DecisionContext,
+        consumed: int = 0,
+    ) -> Optional[Card]:
+        if self._base_card_name(card) != 'Havoc':
+            return None
+
+        top_card = self._draw_pile_top_card_for_havoc(context, consumed)
+        if top_card is None or not is_attack_card(top_card):
+            return None
+        return top_card
+
+    def _havoc_top_attack_damage_potential(
+        self,
+        havoc_card: Card,
+        context: DecisionContext,
+        available_energy: int,
+    ) -> int:
+        top_attack = self._havoc_top_attack_card(havoc_card, context)
+        if top_attack is None:
+            return 0
+
+        if self._lethal_card_cost(havoc_card, context, available_energy) > available_energy:
+            return 0
+
+        monsters = getattr(context, 'monsters_alive', []) or []
+        if not monsters:
+            return 0
+
+        havoc_top_card_energy = 0
+        if self._is_aoe_attack(top_attack):
+            damage = self._get_card_damage(
+                top_attack,
+                context,
+                available_energy=havoc_top_card_energy,
+            )
+            return self._aoe_damage_potential(
+                top_attack,
+                context,
+                damage,
+                havoc_top_card_energy,
+            )
+
+        if len(monsters) == 1:
+            return self._card_damage_against_monster(
+                top_attack,
+                context,
+                0,
+                havoc_top_card_energy,
+            )
+
+        return 0
 
     def _is_lethal_strength_support_card(self, card: Card) -> bool:
         card_name = self._base_card_name(card)
@@ -1084,7 +1164,11 @@ class CombatEndingDetector:
         sequence_cards = [
             card
             for card in attack_cards
-            if self._is_aoe_attack(card) or self._card_requires_target(card)
+            if (
+                self._is_aoe_attack(card)
+                or self._card_requires_target(card)
+                or self._havoc_top_attack_card(card, context) is not None
+            )
         ]
         support_cards = [
             card
@@ -1361,6 +1445,16 @@ class CombatEndingDetector:
                                 ),
                             )
                         )
+                    continue
+
+                havoc_candidate = self._havoc_top_attack_lethal_candidate(
+                    card_pos,
+                    card,
+                    context,
+                    state,
+                )
+                if havoc_candidate is not None:
+                    candidates.append(havoc_candidate)
                     continue
 
                 if self._is_aoe_attack(card):
@@ -1652,6 +1746,229 @@ class CombatEndingDetector:
             starting_state,
         )
         return sequence or []
+
+    def _havoc_top_attack_lethal_candidate(
+        self,
+        card_pos: int,
+        havoc_card: Card,
+        context: DecisionContext,
+        state: _TargetedLethalState,
+    ) -> Optional[_TargetedLethalCandidate]:
+        top_attack = self._havoc_top_attack_card(
+            havoc_card,
+            context,
+            state.havoc_cards_consumed,
+        )
+        if top_attack is None:
+            return None
+
+        cost = self._lethal_card_cost(
+            havoc_card,
+            context,
+            state.energy,
+            state.corruption_active,
+        )
+        if cost > state.energy:
+            return None
+
+        top_attack_energy = 0
+        next_hp = tuple(state.hp)
+        next_block = tuple(state.block)
+        next_malleable = tuple(state.malleable)
+        next_vulnerable = state.vulnerable
+        next_artifact = state.artifact
+        total_damage = 0
+        attack_plays_resolved = 0
+
+        if self._is_aoe_attack(top_attack):
+            attack_repeats = self._lethal_attack_repeats(
+                top_attack,
+                state.double_tap_charges,
+            )
+            next_double_tap_charges = self._double_tap_charges_after_attack(
+                state.double_tap_charges
+            )
+            rampage_bonus = 0
+            for _repeat_idx in range(attack_repeats):
+                repeat_damage = 0
+                for monster_idx, hp in enumerate(next_hp):
+                    if hp <= 0:
+                        continue
+
+                    damage = self._card_damage_against_monster(
+                        top_attack,
+                        context,
+                        monster_idx,
+                        top_attack_energy,
+                        target_vulnerable_stacks=next_vulnerable[monster_idx],
+                        strength=state.strength,
+                        base_damage_bonus=rampage_bonus,
+                    )
+                    if damage <= 0:
+                        continue
+
+                    hit_count = self._get_vulnerable_damage_instance_count(
+                        top_attack,
+                        context,
+                        top_attack_energy,
+                        monster_idx,
+                    )
+                    next_hp, next_block, next_malleable, damage_progress = (
+                        self._apply_lethal_attack_damage_to_target(
+                            next_hp,
+                            next_block,
+                            next_malleable,
+                            monster_idx,
+                            damage,
+                            hit_count,
+                        )
+                    )
+                    repeat_damage += damage_progress
+
+                if repeat_damage <= 0:
+                    break
+
+                attack_plays_resolved += 1
+                next_hp, next_block, juggernaut_damage = (
+                    self._apply_lethal_juggernaut_block_damage(
+                        top_attack,
+                        context,
+                        next_hp,
+                        next_block,
+                    )
+                )
+                repeat_damage += juggernaut_damage
+                total_damage += repeat_damage
+                next_vulnerable, next_artifact = self._vulnerable_state_after_card(
+                    top_attack,
+                    context,
+                    next_vulnerable,
+                    next_artifact,
+                    next_hp,
+                    None,
+                )
+                rampage_bonus += self._rampage_scaling_per_play(top_attack)
+        else:
+            alive_targets = [
+                monster_idx
+                for monster_idx, hp in enumerate(next_hp)
+                if hp > 0
+            ]
+            if len(alive_targets) != 1:
+                return None
+
+            monster_idx = alive_targets[0]
+            attack_repeats = self._lethal_attack_repeats(
+                top_attack,
+                state.double_tap_charges,
+            )
+            next_double_tap_charges = self._double_tap_charges_after_attack(
+                state.double_tap_charges
+            )
+            total_energy_refund = 0
+            rampage_bonus = 0
+            for _repeat_idx in range(attack_repeats):
+                if next_hp[monster_idx] <= 0:
+                    break
+
+                if self._base_card_name(top_attack) == 'Melter':
+                    next_block_list = list(next_block)
+                    next_block_list[monster_idx] = 0
+                    next_block = tuple(next_block_list)
+
+                total_energy_refund += self._card_energy_refund_against_monster(
+                    top_attack,
+                    context,
+                    monster_idx,
+                    next_vulnerable[monster_idx],
+                )
+                damage = self._card_damage_against_monster(
+                    top_attack,
+                    context,
+                    monster_idx,
+                    top_attack_energy,
+                    target_vulnerable_stacks=next_vulnerable[monster_idx],
+                    strength=state.strength,
+                    base_damage_bonus=rampage_bonus,
+                )
+                if damage <= 0:
+                    continue
+
+                attack_plays_resolved += 1
+                hit_count = self._get_vulnerable_damage_instance_count(
+                    top_attack,
+                    context,
+                    top_attack_energy,
+                    monster_idx,
+                )
+                next_hp, next_block, next_malleable, damage_progress = (
+                    self._apply_lethal_attack_damage_to_target(
+                        next_hp,
+                        next_block,
+                        next_malleable,
+                        monster_idx,
+                        damage,
+                        hit_count,
+                    )
+                )
+                total_damage += damage_progress
+                next_hp, next_block, juggernaut_damage = (
+                    self._apply_lethal_juggernaut_block_damage(
+                        top_attack,
+                        context,
+                        next_hp,
+                        next_block,
+                    )
+                )
+                total_damage += juggernaut_damage
+                next_vulnerable, next_artifact = self._vulnerable_state_after_card(
+                    top_attack,
+                    context,
+                    next_vulnerable,
+                    next_artifact,
+                    tuple(next_hp),
+                    monster_idx,
+                )
+                rampage_bonus += self._rampage_scaling_per_play(top_attack)
+
+            cost -= total_energy_refund
+
+        if total_damage <= 0:
+            return None
+
+        nunchaku_energy_gain, next_nunchaku_counter = (
+            self._nunchaku_energy_after_attack_plays(
+                state.nunchaku_counter,
+                attack_plays_resolved,
+            )
+        )
+        cost -= nunchaku_energy_gain
+        kill_count = sum(
+            1
+            for before_hp, after_hp in zip(state.hp, next_hp)
+            if before_hp > 0 and after_hp <= 0
+        )
+        return _TargetedLethalCandidate(
+            priority=(
+                kill_count,
+                1 if nunchaku_energy_gain > 0 else 0,
+                total_damage,
+                -cost,
+            ),
+            card_pos=card_pos,
+            monster_idx=None,
+            next_state=state.after_spending(
+                cost,
+                hp=next_hp,
+                block=next_block,
+                malleable=next_malleable,
+                vulnerable=next_vulnerable,
+                artifact=next_artifact,
+                double_tap_charges=next_double_tap_charges,
+                nunchaku_counter=next_nunchaku_counter,
+                havoc_cards_consumed=state.havoc_cards_consumed + 1,
+            ),
+        )
 
     def _fiend_fire_exhaust_count_for_remaining_cards(
         self,
@@ -1951,6 +2268,20 @@ class CombatEndingDetector:
                 else:
                     efficiency = float('inf')  # Zero-cost cards are infinitely efficient
                 attack_cards.append((card, cost, damage, efficiency))
+            elif (
+                havoc_damage := self._havoc_top_attack_damage_potential(
+                    card,
+                    context,
+                    available_energy,
+                )
+            ) > 0:
+                cost = self._lethal_card_cost(card, context, available_energy)
+                logger.info(f"[LETHAL_CALC] {card.name}: cost={cost}, havoc_top_damage={havoc_damage}, eff={havoc_damage/cost if cost > 0 else 'inf'}")
+                if cost > 0:
+                    efficiency = havoc_damage / cost
+                else:
+                    efficiency = float('inf')
+                attack_cards.append((card, cost, havoc_damage, efficiency))
             elif juggernaut_damage > 0:
                 cost = self._lethal_card_cost(card, context, available_energy)
                 damage = juggernaut_damage
@@ -1971,7 +2302,7 @@ class CombatEndingDetector:
                     selected_damage += damage
                     remaining_energy -= cost
                     selected_cards.append(card.name)
-                    if is_attack_card(card):
+                    if is_attack_card(card) or self._havoc_top_attack_card(card, context) is not None:
                         nunchaku_energy_gain, nunchaku_counter = (
                             self._nunchaku_energy_after_attack_plays(
                                 nunchaku_counter,

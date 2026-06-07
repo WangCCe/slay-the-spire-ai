@@ -82,6 +82,12 @@ already disproved.
   the existing live simulators, and the top card contributes one exhaust event
   for exhaust synergies such as Feel No Pain. Later simulated Havoc plays skip
   top cards already consumed by the current simulated line.
+- 2026-06-07: `CombatEndingDetector` now treats Havoc with a visible draw-pile
+  top attack as a deterministic lethal action when the resulting target outcome
+  is provable. Single-target top attacks can prove lethal only with one live
+  monster, AOE top attacks apply through the existing AOE lethal damage path,
+  and the returned action remains the Havoc play rather than the consumed top
+  card.
 - 2026-06-07: `FastCombatSimulator` and the same-file no-simulation attack
   estimate now apply Pen Nib when the relic counter is 9. The source-side
   attack damage is doubled before player Weak and target Vulnerable, simulated
@@ -169,6 +175,7 @@ already disproved.
   - Paper Phrog, Weak/Vulnerable, Strength, and upgraded attack stats.
   - Other dynamic base damage beyond the Mind Blast combat estimator and RL
     survival surfaces already covered above.
-  - Havoc top-card effects, random-target boundaries, and Feel No Pain block.
+  - Havoc random-target boundaries and Feel No Pain block across remaining
+    live estimators.
   - Monster lifecycle boundaries such as Slime split and Darkling revive.
   - Combat-exit boundaries such as Looter escape.

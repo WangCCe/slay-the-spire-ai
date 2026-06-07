@@ -11518,6 +11518,74 @@ def test_lethal_detector_counts_mind_blast_draw_pile_damage(monkeypatch):
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["mind-blast"]
 
 
+def test_lethal_detector_counts_havoc_visible_top_attack_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    havoc.uuid = "havoc"
+    top_strike = _card("Strike_R", "Strike", cost=1)
+    top_strike.damage = 6
+    context = _combat_context([havoc], energy=1, monsters=[_louse(current_hp=6)])
+    context.game.draw_pile = [top_strike]
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 6
+    assert detector.can_kill_all(context) is True
+
+    sequence = detector.find_lethal_sequence(context)
+
+    assert [action.card.uuid for action in sequence] == ["havoc"]
+    assert sequence[0].target_monster is None
+
+
+def test_lethal_detector_counts_havoc_visible_top_aoe_attack(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "cleave": {
+            "name": "Cleave",
+            "description": "Deal 8 damage to ALL enemies.",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    havoc.uuid = "havoc"
+    top_cleave = _card("Cleave", "Cleave", cost=1, has_target=False)
+    top_cleave.damage = 8
+    context = _combat_context(
+        [havoc],
+        energy=1,
+        monsters=[_louse(current_hp=8), _louse(current_hp=8)],
+    )
+    context.game.draw_pile = [top_cleave]
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 16
+    assert detector.can_kill_all(context) is True
+
+    sequence = detector.find_lethal_sequence(context)
+
+    assert [action.card.uuid for action in sequence] == ["havoc"]
+    assert sequence[0].target_monster is None
+
+
 def test_lethal_detector_uses_dropkick_energy_refund_for_sequence(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
