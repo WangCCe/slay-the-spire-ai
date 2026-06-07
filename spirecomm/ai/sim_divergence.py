@@ -235,9 +235,13 @@ def observe_next_state(game, path: Optional[Path] = None) -> bool:
 
         ignored_diffs = _ignored_diff_keys(pending, actual)
         diffs = _diff_snapshots(pending["expected"], actual, ignored_diffs)
+        if _headbutt_select_delayed_diff_boundary(pending, actual, diffs):
+            _arm_headbutt_select_boundary_if_applicable(pending, actual, diffs)
+            return False
+
         _consume_headbutt_select_boundary_if_applicable(pending)
         if not diffs:
-            _arm_headbutt_select_boundary_if_applicable(pending, actual)
+            _arm_headbutt_select_boundary_if_applicable(pending, actual, diffs)
             return False
 
         event = {
@@ -651,10 +655,10 @@ def _nilrys_codex_screen_boundary(pending: Dict[str, Any], actual: Dict[str, Any
     return _to_int(actual.get("player", {}).get("current_hp")) > 0
 
 
-def _headbutt_select_delayed_effects(snapshot: Dict[str, Any], card) -> Dict[str, int]:
+def _headbutt_select_delayed_effects(snapshot: Dict[str, Any], card) -> Dict[str, Any]:
     if _known_card_name(card, BASE_ATTACK_DAMAGE) != "Headbutt":
         return {}
-    effects: Dict[str, int] = {}
+    effects: Dict[str, Any] = {"headbutt_select": True}
     block = _ornamental_fan_attack_block(snapshot)
     if block > 0:
         effects["block"] = block
@@ -695,18 +699,30 @@ def _apply_pending_headbutt_select_effects(
     energy = max(0, _to_int(effects.get("energy")))
     if energy > 0:
         expected["player"]["energy"] += energy
+    for field, value in (effects.get("player_fields") or {}).items():
+        if field in {"current_hp", "block", "energy"}:
+            expected.setdefault("player", {})[field] = value
+    monster_fields = effects.get("monster_fields") or {}
+    monsters = expected.get("monsters") or []
+    for index, fields in monster_fields.items():
+        if not isinstance(index, int) or index < 0 or index >= len(monsters):
+            continue
+        for field, value in fields.items():
+            if field in {"block", "intent"}:
+                monsters[index][field] = value
 
 
 def _arm_headbutt_select_boundary_if_applicable(
     pending: Dict[str, Any],
     actual: Dict[str, Any],
+    diffs: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> None:
     global _pending_headbutt_select_effects
 
     action = pending.get("action") or {}
     if action.get("type") != "PlayCardAction":
         return
-    effects = action.get("delayed_headbutt_select_effects") or {}
+    effects = _headbutt_select_effects_to_apply(pending, diffs)
     if not effects or not actual.get("in_combat"):
         return
     if _to_int(actual.get("player", {}).get("current_hp")) <= 0:
@@ -716,6 +732,86 @@ def _arm_headbutt_select_boundary_if_applicable(
         "turn": actual.get("turn"),
         **effects,
     }
+
+
+def _headbutt_select_effects_to_apply(
+    pending: Dict[str, Any],
+    diffs: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    action = pending.get("action") or {}
+    effects = dict(action.get("delayed_headbutt_select_effects") or {})
+    expected = pending.get("expected") or {}
+    for key in diffs or {}:
+        if key.startswith("player."):
+            field = key.split(".", 1)[1]
+            if field in {"current_hp", "block", "energy"}:
+                effects.setdefault("player_fields", {})[field] = (
+                    expected.get("player") or {}
+                ).get(field)
+            continue
+        monster_index, field = _parse_monster_diff_key(key)
+        if monster_index is None or field not in {"block", "intent"}:
+            continue
+        monsters = expected.get("monsters") or []
+        if 0 <= monster_index < len(monsters):
+            effects.setdefault("monster_fields", {}).setdefault(monster_index, {})[
+                field
+            ] = monsters[monster_index].get(field)
+    return effects
+
+
+def _headbutt_select_delayed_diff_boundary(
+    pending: Dict[str, Any],
+    actual: Dict[str, Any],
+    diffs: Dict[str, Dict[str, Any]],
+) -> bool:
+    if not diffs:
+        return False
+    action = pending.get("action") or {}
+    if action.get("type") != "PlayCardAction":
+        return False
+    if _snapshot_known_card_name(action.get("card") or {}, {"Headbutt": 0}) != "Headbutt":
+        return False
+    if not actual.get("in_combat"):
+        return False
+    if _to_int(actual.get("player", {}).get("current_hp")) <= 0:
+        return False
+    if _to_int(actual.get("floor")) != _to_int(pending.get("floor")):
+        return False
+    if _to_int(actual.get("turn")) != _to_int(pending.get("turn")):
+        return False
+    return all(_headbutt_select_delayed_diff_key(pending, key) for key in diffs)
+
+
+def _headbutt_select_delayed_diff_key(pending: Dict[str, Any], key: str) -> bool:
+    if key == "player.current_hp":
+        return _action_targets_guardian(
+            pending.get("action") or {},
+            pending.get("before") or {},
+        )
+    delayed_effects = (pending.get("action") or {}).get("delayed_headbutt_select_effects") or {}
+    if key == "player.block":
+        return "block" in delayed_effects
+    if key == "player.energy":
+        return "energy" in delayed_effects
+    monster_index, field = _parse_monster_diff_key(key)
+    if monster_index is None or field not in {"block", "intent"}:
+        return False
+    monsters = (pending.get("before") or {}).get("monsters") or []
+    if monster_index < 0 or monster_index >= len(monsters):
+        return False
+    return _is_guardian_monster(monsters[monster_index])
+
+
+def _parse_monster_diff_key(key: str) -> tuple[Optional[int], Optional[str]]:
+    if not key.startswith("monsters[") or "]." not in key:
+        return None, None
+    prefix, field = key.split("].", 1)
+    try:
+        index = int(prefix[len("monsters["):])
+    except ValueError:
+        return None, None
+    return index, field
 
 
 def _consume_headbutt_select_boundary_if_applicable(pending: Dict[str, Any]) -> None:
