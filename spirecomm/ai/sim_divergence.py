@@ -1463,7 +1463,7 @@ def _card_damage_and_hits_for_snapshot(
             before,
             apply_weak=apply_weak,
         )
-        return max(0, energy_available) * per_hit, 1
+        return per_hit, max(0, energy_available)
     if card_name == "Fiend Fire" and before is not None:
         hit_count = _fiend_fire_hit_count(card, before, card_index)
         return (
