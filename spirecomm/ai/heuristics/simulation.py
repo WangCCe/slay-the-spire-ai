@@ -473,6 +473,10 @@ class SimulationState:
             self._get_player_debuff_stacks(context, power_name) > 0
             for power_name in ('No Block', 'NoBlock', 'NoBlockPower')
         )
+        self.duplication_charges = max(
+            self._get_player_power_amount(context, 'DuplicationPower'),
+            self._get_player_power_amount(context, 'Duplication'),
+        )
         self.double_tap_charges = 0
         self.pen_nib_counter = self._context_relic_counter(context, 'Pen Nib')
         self.nunchaku_counter = self._context_relic_counter(context, 'Nunchaku')
@@ -902,6 +906,7 @@ class SimulationState:
             self.rage_block_per_attack,
             self.draw_blocked,
             self.card_block_blocked,
+            self.duplication_charges,
             self.double_tap_charges,
             self.pen_nib_counter,
             self.nunchaku_counter,
@@ -1095,6 +1100,10 @@ class FastCombatSimulator:
         new_state.player_energy -= cost
         new_state.energy_spent += cost
         starting_exhaust_events = new_state.exhaust_events
+        card_play_repeats = 1
+        if getattr(new_state, 'duplication_charges', 0) > 0:
+            card_play_repeats = 2
+            new_state.duplication_charges -= 1
 
         # Check special monster abilities before applying card effects
         for i, monster in enumerate(new_state.monsters):
@@ -1104,51 +1113,52 @@ class FastCombatSimulator:
                 self._handle_phase_change(new_state, monster)
                 self._handle_hibernation(new_state, monster)
 
-        self._apply_slow_card_play(new_state)
-
         # Apply card effects based on type
         resolved_target_index = self._resolve_target_index(target, target_index, context)
 
-        if card_type == 'ATTACK':
-            attack_repeats = 1
-            if new_state.double_tap_charges > 0:
-                attack_repeats = 2
-                new_state.double_tap_charges -= 1
-            for _ in range(attack_repeats):
-                new_state.attacks_played += 1
-                self._apply_attack(
+        for _ in range(card_play_repeats):
+            self._apply_slow_card_play(new_state)
+
+            if card_type == 'ATTACK':
+                attack_repeats = 1
+                if new_state.double_tap_charges > 0:
+                    attack_repeats = 2
+                    new_state.double_tap_charges -= 1
+                for _ in range(attack_repeats):
+                    new_state.attacks_played += 1
+                    self._apply_attack(
+                        new_state,
+                        card,
+                        target,
+                        resolved_target_index,
+                        context,
+                        x_energy_spent=x_energy_spent,
+                    )
+                    self._apply_rage_block(new_state)
+                    self._apply_ornamental_fan_block(new_state)
+                    self._apply_self_damage(new_state, card)
+            elif card_type == 'SKILL':
+                new_state.skills_played += 1
+                corruption_exhausts_skill = new_state.corruption_active
+                self._apply_skill(
                     new_state,
                     card,
-                    target,
-                    resolved_target_index,
                     context,
+                    resolved_target_index,
                     x_energy_spent=x_energy_spent,
                 )
-                self._apply_rage_block(new_state)
-                self._apply_ornamental_fan_block(new_state)
+                self._apply_skill_reactive_monster_powers(new_state)
+                if corruption_exhausts_skill and not self._skill_exhausts_itself(card):
+                    new_state.exhaust_events += 1
+            elif card_type == 'POWER':
+                self._apply_power(new_state, card)
+                self._apply_power_reactive_monster_powers(new_state)
+
+            self._apply_hex_card_pollution(new_state, card_type)
+
+            if card_type != 'ATTACK':
                 self._apply_self_damage(new_state, card)
-        elif card_type == 'SKILL':
-            new_state.skills_played += 1
-            corruption_exhausts_skill = new_state.corruption_active
-            self._apply_skill(
-                new_state,
-                card,
-                context,
-                resolved_target_index,
-                x_energy_spent=x_energy_spent,
-            )
-            self._apply_skill_reactive_monster_powers(new_state)
-            if corruption_exhausts_skill and not self._skill_exhausts_itself(card):
-                new_state.exhaust_events += 1
-        elif card_type == 'POWER':
-            self._apply_power(new_state, card)
-            self._apply_power_reactive_monster_powers(new_state)
-
-        self._apply_hex_card_pollution(new_state, card_type)
-
-        if card_type != 'ATTACK':
-            self._apply_self_damage(new_state, card)
-            self._apply_blue_candle_curse_hp_loss(new_state, card, context)
+                self._apply_blue_candle_curse_hp_loss(new_state, card, context)
 
         self._apply_feel_no_pain_block(new_state, starting_exhaust_events)
         self._apply_dark_embrace_draw(new_state, starting_exhaust_events)

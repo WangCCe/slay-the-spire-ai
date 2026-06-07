@@ -123,6 +123,45 @@ def test_sim_divergence_is_disabled_without_env(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_duplication_power_defend_applies_block_twice(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    defend = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+    )
+    before = _game(
+        floor=16,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=79,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Duplication", "DuplicationPower", 1)],
+        ),
+        hand=[defend],
+        monsters=[_monster(name="Slime Boss", monster_id="SlimeBoss", hp=116, damage=35)],
+    )
+    actual = _game(
+        floor=16,
+        turn=3,
+        player=SimpleNamespace(current_hp=79, max_hp=80, block=10, energy=2, powers=[]),
+        hand=[],
+        monsters=[_monster(name="Slime Boss", monster_id="SlimeBoss", hp=116, damage=35)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_blue_candle_curse_play_loses_one_hp(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

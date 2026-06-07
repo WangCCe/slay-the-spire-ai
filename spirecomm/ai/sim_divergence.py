@@ -325,6 +325,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             delayed_headbutt_effects = _headbutt_select_delayed_effects(before, card)
             energy_before_card = expected["player"]["energy"]
             target_index = None
+            card_play_count = _card_play_count(before, card)
             attack_play_count = _attack_card_play_count(before, card)
             if _is_whirlwind(card):
                 expected["player"]["energy"] = 0
@@ -419,9 +420,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     before,
                     sum(
                         _modified_block(block, expected.get("player", {}))
-                        for _ in range(attack_play_count if _is_attack_card(card) else 1)
+                        for _ in range(attack_play_count if _is_attack_card(card) else card_play_count)
                     ),
-                    attack_play_count if _is_attack_card(card) else 1,
+                    attack_play_count if _is_attack_card(card) else card_play_count,
                 )
             second_wind_block = _second_wind_block(
                 card,
@@ -449,6 +450,8 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     feel_no_pain_events,
                 )
             _apply_havoc_top_card(expected, before, card)
+            if card_play_count > 1:
+                _consume_duplication_power(expected)
         if 0 <= card_index < len(expected["hand"]):
             expected["hand"].pop(card_index)
 
@@ -1449,14 +1452,42 @@ def _is_skill_card(card) -> bool:
 
 
 def _attack_card_play_count(snapshot: Dict[str, Any], card) -> int:
+    play_count = _card_play_count(snapshot, card)
     if not _is_attack_card(card):
-        return 1
-    play_count = 1
+        return play_count
     if _snapshot_power_amount(snapshot.get("player", {}), "Double Tap") > 0:
         play_count += 1
     if _necronomicon_attack_replay(snapshot, card):
         play_count += 1
     return play_count
+
+
+def _card_play_count(snapshot: Dict[str, Any], card) -> int:
+    play_count = 1
+    if _has_duplication_power(snapshot):
+        play_count += 1
+    return play_count
+
+
+def _has_duplication_power(snapshot: Dict[str, Any]) -> bool:
+    player = snapshot.get("player", {})
+    return (
+        _snapshot_power_amount(player, "DuplicationPower") > 0
+        or _snapshot_power_amount(player, "Duplication") > 0
+    )
+
+
+def _consume_duplication_power(expected: Dict[str, Any]) -> None:
+    player = expected.get("player", {})
+    for power_name in ("DuplicationPower", "Duplication"):
+        amount = _snapshot_power_amount(player, power_name)
+        if amount <= 0:
+            continue
+        if amount <= 1:
+            _remove_snapshot_power(player, power_name)
+        else:
+            _set_snapshot_power_amount(player, power_name, amount - 1)
+        return
 
 
 def _necronomicon_attack_replay(snapshot: Dict[str, Any], card) -> bool:

@@ -1036,6 +1036,33 @@ def test_x_cost_whirlwind_spends_current_energy_without_negative_simulation_stat
     assert result.total_damage_dealt == 30
 
 
+def test_simulation_duplication_power_defend_applies_block_twice():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend.block = 5
+    context = _combat_context([defend], energy=3, monsters=[_louse(current_hp=50)])
+    context.game.player.powers = [
+        SimpleNamespace(power_id="DuplicationPower", power_name="Duplication", amount=1)
+    ]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        defend,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 2
+    assert result.player_block == 10
+
+
 def test_blue_candle_curse_play_loses_one_hp_without_spending_block():
     parasite = _card(
         "Parasite",
@@ -13600,6 +13627,27 @@ def test_lethal_detector_uses_double_tap_for_next_attack(monkeypatch):
         "double-tap",
         "strike",
     ]
+
+
+def test_lethal_detector_uses_duplication_power_for_next_attack(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    context = _combat_context([strike], energy=1, monsters=[_louse(current_hp=12)])
+    context.game.player.powers = [
+        SimpleNamespace(power_id="DuplicationPower", power_name="Duplication", amount=1)
+    ]
+
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 12
+    assert detector.can_kill_all(context) is True
+    sequence = detector.find_lethal_sequence(context)
+    assert [action.card.uuid for action in sequence] == ["strike"]
+    assert sequence[0].target_monster is context.monsters_alive[0]
 
 
 def test_lethal_detector_uses_rampage_scaling_between_double_tap_repeats(monkeypatch):

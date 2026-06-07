@@ -47,10 +47,19 @@ Status labels:
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
 | Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | synced for Pen Nib scalar fallback damage estimates, Nunchaku counter-9 refund-preserving attack-before-defense ordering, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective block before defense priority | synced for Pen Nib damage estimates, Nunchaku targeted lethal search, cache invalidation over relic counters plus draw-pile/hand/deck inputs, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective turn block before fallback block scoring | synced for direct and Havoc-top Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether non-damage relic counters are read or intentionally ignored. |
 | Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests plus fresh Havoc top-energy and Shockwave self-exhaust evidence | synced for deterministic top attacks, top-card exhaust damage, and visible top energy skills | synced | synced for deterministic Havoc top-card block, Feel No Pain fallback priority, and direct self-exhaust Feel No Pain block | synced for deterministic Havoc top-card block, Feel No Pain in fallback scoring, and direct self-exhaust Feel No Pain block | synced for survival and shared block guards where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
+| Next-card replay effects | DuplicationPower clean divergence on Defend block | synced for direct next-attack lethal search and deterministic support effects inside targeted lethal search | synced | partial; no direct fallback reader found in this round | partial; audit only if timing code starts reading DuplicationPower outside lethal/simulator paths | partial; no direct RL guard/reward reader found in this round | Keep future scalar shortcuts honest about whether the next card is executed twice while energy is paid once. |
 | Healing and monster self-heal | Bandage Up, Shelled Parasite Suck divergence tests | n/a | synced | n/a | n/a | n/a | Only fast/beam sim currently predicts these HP transitions. |
 
 ## Confirmed Sync Work
 
+- 2026-06-08: `sim_divergence.py`, `FastCombatSimulator`, and
+  `CombatEndingDetector` now model the confirmed `DuplicationPower` replay
+  boundary in the paths touched by fresh evidence. The divergence oracle
+  accepts the clean Defend block replay case while paying energy once and
+  consuming the power once; fast simulation repeats duplicated card effects
+  through the existing card-effect paths; and targeted lethal search counts a
+  duplicated next attack plus deterministic support effects without leaving the
+  power active for later cards.
 - 2026-06-08: `IroncladCombatPlanner`, `TimingAwareCombatPlanner`, and
   `CombatRLAgent` survival block estimates now count Feel No Pain block from
   directly played self-exhausting cards such as Shockwave. The shared

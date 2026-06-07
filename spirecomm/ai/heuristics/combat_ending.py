@@ -26,6 +26,7 @@ from .combat_state import (
     player_debuff_stacks,
     player_has_power,
     player_hp_values,
+    player_power_amount,
 )
 from .card_names import canonical_card_name
 from .card_costs import (
@@ -67,6 +68,7 @@ class _TargetedLethalState:
     strength: int
     player_hp: int
     corruption_active: bool
+    duplication_charges: int
     double_tap_charges: int
     nunchaku_counter: Optional[int]
     energy: int
@@ -83,6 +85,7 @@ class _TargetedLethalState:
             self.strength,
             self.player_hp,
             self.corruption_active,
+            self.duplication_charges,
             self.double_tap_charges,
             self.nunchaku_counter,
             self.energy,
@@ -1096,6 +1099,24 @@ class CombatEndingDetector:
         except (TypeError, ValueError):
             return 0
 
+    def _context_duplication_charges(self, context: DecisionContext) -> int:
+        try:
+            return max(
+                0,
+                player_power_amount(context, 'DuplicationPower'),
+                player_power_amount(context, 'Duplication'),
+            )
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
+    def _lethal_card_play_repeats(duplication_charges: int) -> int:
+        return 2 if duplication_charges > 0 else 1
+
+    @staticmethod
+    def _duplication_charges_after_card(duplication_charges: int) -> int:
+        return max(0, duplication_charges - 1)
+
     def _is_lethal_double_tap_support_card(self, card: Card) -> bool:
         if card_type_name(card) != 'SKILL':
             return False
@@ -1329,6 +1350,7 @@ class CombatEndingDetector:
             strength=getattr(context, 'strength', 0),
             player_hp=self._context_player_hp(context),
             corruption_active=self._context_corruption_active(context),
+            duplication_charges=self._context_duplication_charges(context),
             double_tap_charges=self._context_double_tap_charges(context),
             nunchaku_counter=self._context_relic_counter(context, 'Nunchaku'),
             energy=available_energy,
@@ -1361,14 +1383,25 @@ class CombatEndingDetector:
                     if target_idx is None:
                         continue
 
-                    next_hp, next_block, damage_progress = (
-                        self._apply_lethal_juggernaut_block_damage(
-                            card,
-                            context,
-                            state.hp,
-                            state.block,
-                        )
+                    card_play_repeats = self._lethal_card_play_repeats(
+                        state.duplication_charges
                     )
+                    next_duplication_charges = self._duplication_charges_after_card(
+                        state.duplication_charges
+                    )
+                    next_hp = state.hp
+                    next_block = state.block
+                    damage_progress = 0
+                    for _card_play_idx in range(card_play_repeats):
+                        next_hp, next_block, repeat_damage = (
+                            self._apply_lethal_juggernaut_block_damage(
+                                card,
+                                context,
+                                next_hp,
+                                next_block,
+                            )
+                        )
+                        damage_progress += repeat_damage
                     if damage_progress <= 0:
                         continue
 
@@ -1386,6 +1419,7 @@ class CombatEndingDetector:
                                 cost,
                                 hp=next_hp,
                                 block=next_block,
+                                duplication_charges=next_duplication_charges,
                             ),
                         )
                     )
@@ -1402,8 +1436,16 @@ class CombatEndingDetector:
                         continue
 
                     next_strength = self._strength_after_lethal_support_card(card, state.strength)
-                    if next_strength <= state.strength:
+                    strength_gain = next_strength - state.strength
+                    if strength_gain <= 0:
                         continue
+                    card_play_repeats = self._lethal_card_play_repeats(
+                        state.duplication_charges
+                    )
+                    next_duplication_charges = self._duplication_charges_after_card(
+                        state.duplication_charges
+                    )
+                    next_strength = state.strength + strength_gain * card_play_repeats
 
                     for target_idx in self._lethal_strength_support_targets(
                         card,
@@ -1418,6 +1460,7 @@ class CombatEndingDetector:
                                 next_state=state.after_spending(
                                     cost,
                                     strength=next_strength,
+                                    duplication_charges=next_duplication_charges,
                                 ),
                             )
                         )
@@ -1433,8 +1476,14 @@ class CombatEndingDetector:
                     if cost > state.energy:
                         continue
 
-                    energy_gain = self._lethal_energy_gain(card)
-                    hp_loss = self._lethal_energy_hp_loss(card)
+                    card_play_repeats = self._lethal_card_play_repeats(
+                        state.duplication_charges
+                    )
+                    next_duplication_charges = self._duplication_charges_after_card(
+                        state.duplication_charges
+                    )
+                    energy_gain = self._lethal_energy_gain(card) * card_play_repeats
+                    hp_loss = self._lethal_energy_hp_loss(card) * card_play_repeats
                     if state.player_hp <= hp_loss:
                         continue
 
@@ -1451,6 +1500,7 @@ class CombatEndingDetector:
                             next_state=state.after_spending(
                                 net_cost,
                                 player_hp=next_player_hp,
+                                duplication_charges=next_duplication_charges,
                             ),
                         )
                     )
@@ -1464,6 +1514,9 @@ class CombatEndingDetector:
                     if cost > state.energy:
                         continue
 
+                    next_duplication_charges = self._duplication_charges_after_card(
+                        state.duplication_charges
+                    )
                     candidates.append(
                         _TargetedLethalCandidate(
                             priority=(0, 0, 0, -cost),
@@ -1472,6 +1525,7 @@ class CombatEndingDetector:
                             next_state=state.after_spending(
                                 cost,
                                 corruption_active=True,
+                                duplication_charges=next_duplication_charges,
                             ),
                         )
                     )
@@ -1487,8 +1541,15 @@ class CombatEndingDetector:
                     if cost > state.energy:
                         continue
 
+                    card_play_repeats = self._lethal_card_play_repeats(
+                        state.duplication_charges
+                    )
+                    next_duplication_charges = self._duplication_charges_after_card(
+                        state.duplication_charges
+                    )
                     next_double_tap_charges = (
-                        state.double_tap_charges + self._lethal_double_tap_charges(card)
+                        state.double_tap_charges
+                        + self._lethal_double_tap_charges(card) * card_play_repeats
                     )
                     candidates.append(
                         _TargetedLethalCandidate(
@@ -1497,6 +1558,7 @@ class CombatEndingDetector:
                             monster_idx=None,
                             next_state=state.after_spending(
                                 cost,
+                                duplication_charges=next_duplication_charges,
                                 double_tap_charges=next_double_tap_charges,
                             ),
                         )
@@ -1534,15 +1596,26 @@ class CombatEndingDetector:
                     else:
                         support_targets = (None,)
 
+                    card_play_repeats = self._lethal_card_play_repeats(
+                        state.duplication_charges
+                    )
+                    next_duplication_charges = self._duplication_charges_after_card(
+                        state.duplication_charges
+                    )
                     for target_idx in support_targets:
-                        next_vulnerable, next_artifact = self._vulnerable_state_after_card(
-                            card,
-                            context,
-                            state.vulnerable,
-                            state.artifact,
-                            state.hp,
-                            target_idx,
-                        )
+                        next_vulnerable = state.vulnerable
+                        next_artifact = state.artifact
+                        for _card_play_idx in range(card_play_repeats):
+                            next_vulnerable, next_artifact = (
+                                self._vulnerable_state_after_card(
+                                    card,
+                                    context,
+                                    next_vulnerable,
+                                    next_artifact,
+                                    state.hp,
+                                    target_idx,
+                                )
+                            )
                         if next_vulnerable == state.vulnerable and next_artifact == state.artifact:
                             continue
 
@@ -1557,6 +1630,7 @@ class CombatEndingDetector:
                                     cost,
                                     vulnerable=next_vulnerable,
                                     artifact=next_artifact,
+                                    duplication_charges=next_duplication_charges,
                                 ),
                             )
                         )
@@ -1587,13 +1661,13 @@ class CombatEndingDetector:
                     if cost > state.energy:
                         continue
 
-                    attack_repeats = self._lethal_attack_repeats(
-                        card,
-                        state.double_tap_charges,
+                    card_play_repeats = self._lethal_card_play_repeats(
+                        state.duplication_charges
                     )
-                    next_double_tap_charges = self._double_tap_charges_after_attack(
-                        state.double_tap_charges
+                    next_duplication_charges = self._duplication_charges_after_card(
+                        state.duplication_charges
                     )
+                    next_double_tap_charges = state.double_tap_charges
                     next_hp = tuple(state.hp)
                     next_block = tuple(state.block)
                     next_malleable = tuple(state.malleable)
@@ -1602,65 +1676,73 @@ class CombatEndingDetector:
                     total_damage = 0
                     attack_plays_resolved = 0
                     rampage_bonus = 0
-                    for _repeat_idx in range(attack_repeats):
-                        repeat_damage = 0
-                        for monster_idx, hp in enumerate(next_hp):
-                            if hp <= 0:
-                                continue
+                    for _card_play_idx in range(card_play_repeats):
+                        attack_repeats = self._lethal_attack_repeats(
+                            card,
+                            next_double_tap_charges,
+                        )
+                        next_double_tap_charges = self._double_tap_charges_after_attack(
+                            next_double_tap_charges
+                        )
+                        for _repeat_idx in range(attack_repeats):
+                            repeat_damage = 0
+                            for monster_idx, hp in enumerate(next_hp):
+                                if hp <= 0:
+                                    continue
 
-                            damage = self._card_damage_against_monster(
-                                card,
-                                context,
-                                monster_idx,
-                                state.energy,
-                                target_vulnerable_stacks=next_vulnerable[monster_idx],
-                                strength=state.strength,
-                                base_damage_bonus=rampage_bonus,
-                            )
-                            if damage <= 0:
-                                continue
+                                damage = self._card_damage_against_monster(
+                                    card,
+                                    context,
+                                    monster_idx,
+                                    state.energy,
+                                    target_vulnerable_stacks=next_vulnerable[monster_idx],
+                                    strength=state.strength,
+                                    base_damage_bonus=rampage_bonus,
+                                )
+                                if damage <= 0:
+                                    continue
 
-                            hit_count = self._get_vulnerable_damage_instance_count(
-                                card,
-                                context,
-                                state.energy,
-                                monster_idx,
-                            )
-                            next_hp, next_block, next_malleable, damage_progress = (
-                                self._apply_lethal_attack_damage_to_target(
+                                hit_count = self._get_vulnerable_damage_instance_count(
+                                    card,
+                                    context,
+                                    state.energy,
+                                    monster_idx,
+                                )
+                                next_hp, next_block, next_malleable, damage_progress = (
+                                    self._apply_lethal_attack_damage_to_target(
+                                        next_hp,
+                                        next_block,
+                                        next_malleable,
+                                        monster_idx,
+                                        damage,
+                                        hit_count,
+                                    )
+                                )
+                                repeat_damage += damage_progress
+
+                            if repeat_damage <= 0:
+                                break
+
+                            attack_plays_resolved += 1
+                            next_hp, next_block, juggernaut_damage = (
+                                self._apply_lethal_juggernaut_block_damage(
+                                    card,
+                                    context,
                                     next_hp,
                                     next_block,
-                                    next_malleable,
-                                    monster_idx,
-                                    damage,
-                                    hit_count,
                                 )
                             )
-                            repeat_damage += damage_progress
-
-                        if repeat_damage <= 0:
-                            break
-
-                        attack_plays_resolved += 1
-                        next_hp, next_block, juggernaut_damage = (
-                            self._apply_lethal_juggernaut_block_damage(
+                            repeat_damage += juggernaut_damage
+                            total_damage += repeat_damage
+                            next_vulnerable, next_artifact = self._vulnerable_state_after_card(
                                 card,
                                 context,
+                                next_vulnerable,
+                                next_artifact,
                                 next_hp,
-                                next_block,
+                                None,
                             )
-                        )
-                        repeat_damage += juggernaut_damage
-                        total_damage += repeat_damage
-                        next_vulnerable, next_artifact = self._vulnerable_state_after_card(
-                            card,
-                            context,
-                            next_vulnerable,
-                            next_artifact,
-                            next_hp,
-                            None,
-                        )
-                        rampage_bonus += self._rampage_scaling_per_play(card)
+                            rampage_bonus += self._rampage_scaling_per_play(card)
 
                     if total_damage <= 0:
                         continue
@@ -1695,6 +1777,7 @@ class CombatEndingDetector:
                                 malleable=next_malleable,
                                 vulnerable=next_vulnerable,
                                 artifact=next_artifact,
+                                duplication_charges=next_duplication_charges,
                                 double_tap_charges=next_double_tap_charges,
                                 nunchaku_counter=next_nunchaku_counter,
                             ),
@@ -1709,13 +1792,13 @@ class CombatEndingDetector:
                     if hp <= 0:
                         continue
 
-                    attack_repeats = self._lethal_attack_repeats(
-                        card,
-                        state.double_tap_charges,
+                    card_play_repeats = self._lethal_card_play_repeats(
+                        state.duplication_charges
                     )
-                    next_double_tap_charges = self._double_tap_charges_after_attack(
-                        state.double_tap_charges
+                    next_duplication_charges = self._duplication_charges_after_card(
+                        state.duplication_charges
                     )
+                    next_double_tap_charges = state.double_tap_charges
                     upfront_cost = effective_card_cost(card, state.energy)
                     if upfront_cost > state.energy:
                         continue
@@ -1735,71 +1818,79 @@ class CombatEndingDetector:
                     total_energy_refund = 0
                     attack_plays_resolved = 0
                     rampage_bonus = 0
-                    for _repeat_idx in range(attack_repeats):
-                        current_hp = next_hp[monster_idx]
-                        if current_hp <= 0:
-                            break
-                        if self._base_card_name(card) == 'Melter':
-                            next_block_list = list(next_block)
-                            next_block_list[monster_idx] = 0
-                            next_block = tuple(next_block_list)
+                    for _card_play_idx in range(card_play_repeats):
+                        attack_repeats = self._lethal_attack_repeats(
+                            card,
+                            next_double_tap_charges,
+                        )
+                        next_double_tap_charges = self._double_tap_charges_after_attack(
+                            next_double_tap_charges
+                        )
+                        for _repeat_idx in range(attack_repeats):
+                            current_hp = next_hp[monster_idx]
+                            if current_hp <= 0:
+                                break
+                            if self._base_card_name(card) == 'Melter':
+                                next_block_list = list(next_block)
+                                next_block_list[monster_idx] = 0
+                                next_block = tuple(next_block_list)
 
-                        total_energy_refund += self._card_energy_refund_against_monster(
-                            card,
-                            context,
-                            monster_idx,
-                            next_vulnerable[monster_idx],
-                        )
-                        damage = self._card_damage_against_monster(
-                            card,
-                            context,
-                            monster_idx,
-                            state.energy,
-                            fiend_fire_exhaust_count,
-                            next_vulnerable[monster_idx],
-                            state.strength,
-                            base_damage_bonus=rampage_bonus,
-                        )
-                        if damage <= 0:
-                            continue
-
-                        attack_plays_resolved += 1
-                        hit_count = self._get_vulnerable_damage_instance_count(
-                            card,
-                            context,
-                            state.energy,
-                            monster_idx,
-                            fiend_fire_exhaust_count,
-                        )
-                        next_hp, next_block, next_malleable, damage_progress = (
-                            self._apply_lethal_attack_damage_to_target(
-                                next_hp,
-                                next_block,
-                                next_malleable,
-                                monster_idx,
-                                damage,
-                                hit_count,
-                            )
-                        )
-                        total_damage += damage_progress
-                        next_hp, next_block, juggernaut_damage = (
-                            self._apply_lethal_juggernaut_block_damage(
+                            total_energy_refund += self._card_energy_refund_against_monster(
                                 card,
                                 context,
-                                next_hp,
-                                next_block,
+                                monster_idx,
+                                next_vulnerable[monster_idx],
                             )
-                        )
-                        total_damage += juggernaut_damage
-                        next_vulnerable, next_artifact = self._vulnerable_state_after_card(
-                            card,
-                            context,
-                            next_vulnerable,
-                            next_artifact,
-                            tuple(next_hp),
-                            monster_idx,
-                        )
-                        rampage_bonus += self._rampage_scaling_per_play(card)
+                            damage = self._card_damage_against_monster(
+                                card,
+                                context,
+                                monster_idx,
+                                state.energy,
+                                fiend_fire_exhaust_count,
+                                next_vulnerable[monster_idx],
+                                state.strength,
+                                base_damage_bonus=rampage_bonus,
+                            )
+                            if damage <= 0:
+                                continue
+
+                            attack_plays_resolved += 1
+                            hit_count = self._get_vulnerable_damage_instance_count(
+                                card,
+                                context,
+                                state.energy,
+                                monster_idx,
+                                fiend_fire_exhaust_count,
+                            )
+                            next_hp, next_block, next_malleable, damage_progress = (
+                                self._apply_lethal_attack_damage_to_target(
+                                    next_hp,
+                                    next_block,
+                                    next_malleable,
+                                    monster_idx,
+                                    damage,
+                                    hit_count,
+                                )
+                            )
+                            total_damage += damage_progress
+                            next_hp, next_block, juggernaut_damage = (
+                                self._apply_lethal_juggernaut_block_damage(
+                                    card,
+                                    context,
+                                    next_hp,
+                                    next_block,
+                                )
+                            )
+                            total_damage += juggernaut_damage
+                            next_vulnerable, next_artifact = self._vulnerable_state_after_card(
+                                card,
+                                context,
+                                next_vulnerable,
+                                next_artifact,
+                                next_hp,
+                                monster_idx,
+                            )
+                            rampage_bonus += self._rampage_scaling_per_play(card)
 
                     if total_damage <= 0:
                         continue
@@ -1830,6 +1921,7 @@ class CombatEndingDetector:
                                 malleable=next_malleable,
                                 vulnerable=next_vulnerable,
                                 artifact=next_artifact,
+                                duplication_charges=next_duplication_charges,
                                 double_tap_charges=next_double_tap_charges,
                                 nunchaku_counter=next_nunchaku_counter,
                             ),
@@ -1896,6 +1988,9 @@ class CombatEndingDetector:
         if cost > state.energy:
             return None
 
+        next_duplication_charges = self._duplication_charges_after_card(
+            state.duplication_charges
+        )
         energy_gain = self._lethal_energy_gain(top_energy_card)
         hp_loss = self._lethal_energy_hp_loss(top_energy_card)
         if energy_gain <= 0 or state.player_hp <= hp_loss:
@@ -1930,6 +2025,7 @@ class CombatEndingDetector:
                 hp=next_hp,
                 block=next_block,
                 player_hp=state.player_hp - hp_loss,
+                duplication_charges=next_duplication_charges,
                 havoc_cards_consumed=state.havoc_cards_consumed + 1,
             ),
         )
@@ -1958,6 +2054,9 @@ class CombatEndingDetector:
         if cost > state.energy:
             return None
 
+        next_duplication_charges = self._duplication_charges_after_card(
+            state.duplication_charges
+        )
         top_attack_energy = 0
         next_hp = tuple(state.hp)
         next_block = tuple(state.block)
@@ -2162,6 +2261,7 @@ class CombatEndingDetector:
                 malleable=next_malleable,
                 vulnerable=next_vulnerable,
                 artifact=next_artifact,
+                duplication_charges=next_duplication_charges,
                 double_tap_charges=next_double_tap_charges,
                 nunchaku_counter=next_nunchaku_counter,
                 havoc_cards_consumed=state.havoc_cards_consumed + 1,
@@ -2184,6 +2284,9 @@ class CombatEndingDetector:
         if cost > state.energy:
             return None
 
+        next_duplication_charges = self._duplication_charges_after_card(
+            state.duplication_charges
+        )
         next_hp, next_block, damage_progress = (
             self._apply_havoc_top_exhaust_juggernaut_damage(
                 havoc_card,
@@ -2214,6 +2317,7 @@ class CombatEndingDetector:
                 cost,
                 hp=next_hp,
                 block=next_block,
+                duplication_charges=next_duplication_charges,
                 havoc_cards_consumed=state.havoc_cards_consumed + 1,
             ),
         )
@@ -2563,20 +2667,29 @@ class CombatEndingDetector:
             selected_damage = 0
             remaining_energy = available_energy
             nunchaku_counter = self._context_relic_counter(context, 'Nunchaku')
+            duplication_charges = self._context_duplication_charges(context)
             selected_cards = []
             for card, cost, damage, _ in candidates:
                 if cost <= remaining_energy:
-                    selected_damage += damage
+                    card_play_repeats = self._lethal_card_play_repeats(
+                        duplication_charges
+                    )
+                    damage_repeats = card_play_repeats if is_attack_card(card) else 1
+                    selected_damage += damage * damage_repeats
                     remaining_energy -= cost
                     selected_cards.append(card.name)
                     if is_attack_card(card) or self._havoc_top_attack_card(card, context) is not None:
+                        attack_plays = damage_repeats if is_attack_card(card) else 1
                         nunchaku_energy_gain, nunchaku_counter = (
                             self._nunchaku_energy_after_attack_plays(
                                 nunchaku_counter,
-                                1,
+                                attack_plays,
                             )
                         )
                         remaining_energy += nunchaku_energy_gain
+                    duplication_charges = self._duplication_charges_after_card(
+                        duplication_charges
+                    )
                 elif cost == 0:
                     selected_damage += damage
                     selected_cards.append(card.name)
