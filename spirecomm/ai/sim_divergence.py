@@ -1650,6 +1650,19 @@ def _heal_player(expected: Dict[str, Any], amount: int) -> None:
     )
 
 
+def _heal_monster(expected: Dict[str, Any], monster_index: int, amount: int) -> None:
+    if amount <= 0:
+        return
+    monsters = expected.get("monsters", []) or []
+    if monster_index < 0 or monster_index >= len(monsters):
+        return
+    monster = monsters[monster_index]
+    monster["hp"] = min(
+        _to_int(monster.get("max_hp")),
+        _to_int(monster.get("hp")) + amount,
+    )
+
+
 def _damage_player(expected: Dict[str, Any], amount: int) -> int:
     if amount <= 0:
         return 0
@@ -1671,8 +1684,16 @@ def _apply_end_turn_player_damage(
     hp_loss_events = 0
     for amount in _end_turn_status_damage_events(before):
         hp_loss_events += _damage_player(expected, amount)
-    for amount in _end_turn_monster_attack_damage_events(expected):
-        hp_loss_events += _damage_player(expected, amount)
+    for index, monster in enumerate(expected.get("monsters", []) or []):
+        damage = max(0, _to_int(monster.get("move_damage")))
+        if damage <= 0 or _monster_attack_damage(monster) <= 0:
+            continue
+        for _ in range(_monster_attack_hits(monster)):
+            hp_before = _to_int(expected.get("player", {}).get("current_hp"))
+            hp_loss_events += _damage_player(expected, damage)
+            hp_lost = max(0, hp_before - _to_int(expected.get("player", {}).get("current_hp")))
+            if _is_shelled_parasite_attack_buff(monster):
+                _heal_monster(expected, index, hp_lost)
     return hp_loss_events
 
 
@@ -1721,6 +1742,13 @@ def _end_turn_monster_attack_damage_events(snapshot: Dict[str, Any]):
             continue
         for _ in range(_monster_attack_hits(monster)):
             yield damage
+
+
+def _is_shelled_parasite_attack_buff(monster: Dict[str, Any]) -> bool:
+    identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
+    if "shelledparasite" not in identifiers:
+        return False
+    return "attackbuff" in _normalize(monster.get("intent"))
 
 
 def _brutality_start_turn_hp_loss(snapshot: Dict[str, Any]) -> int:

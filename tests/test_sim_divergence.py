@@ -5673,6 +5673,101 @@ def test_end_turn_plated_armor_block_reduces_incoming_damage(monkeypatch, tmp_pa
     assert not trace_path.exists()
 
 
+def test_end_turn_shelled_parasite_attack_buff_heals_self(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=18,
+        turn=4,
+        player=SimpleNamespace(current_hp=68, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Shelled Parasite",
+                monster_id="Shelled Parasite",
+                hp=33,
+                max_hp=68,
+                block=0,
+                damage=10,
+                intent=Intent.ATTACK_BUFF,
+                powers=[Power("Plated Armor", "Plated Armor", 11)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=18,
+        turn=5,
+        player=SimpleNamespace(current_hp=58, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Shelled Parasite",
+                monster_id="Shelled Parasite",
+                hp=43,
+                max_hp=68,
+                block=11,
+                damage=18,
+                intent=Intent.ATTACK_DEBUFF,
+                powers=[Power("Plated Armor", "Plated Armor", 11)],
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_end_turn_shelled_parasite_attack_buff_heals_unblocked_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=18,
+        turn=6,
+        player=SimpleNamespace(current_hp=35, max_hp=80, block=3, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Shelled Parasite",
+                monster_id="Shelled Parasite",
+                hp=31,
+                max_hp=68,
+                block=0,
+                damage=10,
+                intent=Intent.ATTACK_BUFF,
+                powers=[Power("Plated Armor", "Plated Armor", 7)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=18,
+        turn=7,
+        player=SimpleNamespace(current_hp=28, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Shelled Parasite",
+                monster_id="Shelled Parasite",
+                hp=38,
+                max_hp=68,
+                block=7,
+                damage=6,
+                hits=2,
+                intent=Intent.ATTACK,
+                powers=[Power("Plated Armor", "Plated Armor", 7)],
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_orichalcum_block_reduces_incoming_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
