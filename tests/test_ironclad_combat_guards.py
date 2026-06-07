@@ -13621,6 +13621,61 @@ def test_thorns_triggers_on_killing_attack_hit():
     assert result.player_hp == 77
 
 
+def test_player_thorns_score_bypasses_monster_block():
+    monster = _louse(current_hp=1)
+    monster.block = 99
+    context = _combat_context([], energy=0, monsters=[monster])
+    context.game.player.powers = [SimpleNamespace(power_name="Thorns", amount=3)]
+    state = SimulationState(context)
+
+    reflected = FastCombatSimulator(SynergyCardEvaluator())._estimate_player_thorns_damage(state)
+
+    assert reflected == 1
+
+
+def test_flame_barrier_power_scores_as_current_attacker_reflection():
+    context = _combat_context([], energy=0, monsters=[_louse(current_hp=8)])
+    context.game.player.powers = [SimpleNamespace(power_name="Flame Barrier", amount=6)]
+    state = SimulationState(context)
+
+    reflected = FastCombatSimulator(SynergyCardEvaluator())._estimate_player_thorns_damage(state)
+
+    assert state.player_thorns == 6
+    assert reflected == 6
+
+
+def test_flame_barrier_card_adds_current_turn_reflection(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "flame barrier": {
+            "name": "Flame Barrier",
+            "description": "Gain 12 Block. Whenever you are attacked this turn, deal 4 damage to the attacker.",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    flame_barrier = _card(
+        "Flame Barrier",
+        "Flame Barrier",
+        card_type=CardType.SKILL,
+        cost=2,
+        has_target=False,
+    )
+    context = _combat_context([flame_barrier], energy=2, monsters=[_louse(current_hp=8)])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    state = simulator.simulate_card_play(
+        SimulationState(context),
+        flame_barrier,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert state.player_thorns == 4
+    assert simulator._estimate_player_thorns_damage(state) == 4
+
+
 def test_guardian_mode_shift_power_is_tracked_in_simulation_state():
     strike = _card("Strike_R", "Strike", cost=1)
     context = _combat_context(

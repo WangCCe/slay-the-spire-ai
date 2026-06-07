@@ -146,6 +146,11 @@ already disproved.
   Pending status costs are carried in the beam state key and removed when the
   status card is played or exhausted, keeping survival scoring aligned with the
   divergence oracle's end-turn status semantics.
+- 2026-06-07: `FastCombatSimulator` current-attacker reflection scoring now
+  treats Flame Barrier as player thorns and caps reflected damage by monster HP
+  only, not HP plus block. This syncs the confirmed Thorns/Flame Barrier
+  semantics that reflection bypasses monster block and can score the temporary
+  reflection from a simulated Flame Barrier play.
 
 ## Backlog
 

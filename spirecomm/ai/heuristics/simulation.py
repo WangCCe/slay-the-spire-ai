@@ -443,7 +443,11 @@ class SimulationState:
         )
         self.player_dexterity = self._get_player_power_amount(context, 'Dexterity')
         self.player_temp_dexterity = 0
-        self.player_thorns = self._get_player_power_amount(context, 'Thorns')
+        flame_barrier = max(
+            self._get_player_power_amount(context, 'Flame Barrier'),
+            self._get_player_power_amount(context, 'FlameBarrier'),
+        )
+        self.player_thorns = self._get_player_power_amount(context, 'Thorns') + flame_barrier
         self.player_intangible = max(
             self._get_player_power_amount(context, 'Intangible'),
             self._get_player_power_amount(context, 'IntangiblePlayer'),
@@ -3440,6 +3444,8 @@ class FastCombatSimulator:
         if _canonical_card_name(card) == 'Rage':
             rage_gain = 5 if is_card_upgraded(card) else 3
             state.rage_block_per_attack += rage_gain
+        if card_name == 'Flame Barrier':
+            state.player_thorns += 6 if is_card_upgraded(card) else 4
         if card_name == 'Panic Button':
             state.card_block_blocked = True
 
@@ -4126,10 +4132,7 @@ class FastCombatSimulator:
                 continue
             hits = self._positive_monster_hits(monster)
             reflected_damage = player_thorns * hits
-            effective_hp = max(0, monster.get('hp', 0)) + max(
-                0,
-                monster.get('block', 0),
-            )
+            effective_hp = max(0, monster.get('hp', 0))
             total_damage += min(reflected_damage, effective_hp)
         return total_damage
 
