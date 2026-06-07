@@ -101,6 +101,11 @@ already disproved.
   Mind Blast as draw-pile-count attack damage when live card damage is reported
   as zero. Strength and player Weak are applied before the survival retarget
   guard decides whether an attack can kill an incoming attacker.
+- 2026-06-07: `CombatRLAgent` Slime Boss split survival retarget guard now
+  evaluates attack damage against each candidate target. Target Vulnerable,
+  Paper Phrog, and player Weak are combined with the same final-truncation
+  shape as the divergence oracle before deciding whether an attacker is
+  killable.
 
 ## Backlog
 

@@ -2107,6 +2107,186 @@ def test_slime_split_survival_guard_retargets_killable_attacker():
     assert agent._fallback_turn_key == (16, 9)
 
 
+def test_slime_split_survival_guard_uses_target_vulnerable_attack_damage():
+    carnage = SimpleNamespace(
+        name="Carnage",
+        card_id="Carnage",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+        damage=15,
+    )
+
+    vulnerable_attacker = _monster(
+        hp=22,
+        damage=8,
+        index=0,
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+    )
+    vulnerable_attacker.intent = Intent.ATTACK_DEBUFF
+    vulnerable_attacker.powers = [SimpleNamespace(power_name="Vulnerable", amount=1)]
+    current_target = _monster(
+        hp=50,
+        damage=8,
+        index=1,
+        name="Acid Slime (M)",
+        monster_id="AcidSlime_M",
+    )
+    current_target.intent = Intent.ATTACK_DEBUFF
+    dead_boss = _monster(
+        hp=0,
+        damage=0,
+        index=2,
+        name="Slime Boss",
+        monster_id="SlimeBoss",
+    )
+    dead_boss.is_gone = True
+
+    game = _game(
+        floor=16,
+        turn=9,
+        current_hp=10,
+        player=SimpleNamespace(energy=2, block=0, powers=[]),
+        hand=[carnage],
+        monsters=[vulnerable_attacker, current_target, dead_boss],
+        room_type="MonsterRoomBoss",
+    )
+
+    replacement = _agent()._get_slime_split_survival_attack_replacement(
+        PlayCardAction(card_index=0, target_index=1),
+        game,
+    )
+
+    assert isinstance(replacement, PlayCardAction)
+    assert replacement.card_index == 0
+    assert replacement.target_index == 0
+
+
+def test_slime_split_survival_guard_combines_weak_and_vulnerable_attack_damage():
+    carnage = SimpleNamespace(
+        name="Carnage",
+        card_id="Carnage",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+        damage=15,
+    )
+
+    vulnerable_attacker = _monster(
+        hp=16,
+        damage=8,
+        index=0,
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+    )
+    vulnerable_attacker.intent = Intent.ATTACK_DEBUFF
+    vulnerable_attacker.powers = [SimpleNamespace(power_name="Vulnerable", amount=1)]
+    current_target = _monster(
+        hp=50,
+        damage=8,
+        index=1,
+        name="Acid Slime (M)",
+        monster_id="AcidSlime_M",
+    )
+    current_target.intent = Intent.ATTACK_DEBUFF
+    dead_boss = _monster(
+        hp=0,
+        damage=0,
+        index=2,
+        name="Slime Boss",
+        monster_id="SlimeBoss",
+    )
+    dead_boss.is_gone = True
+
+    game = _game(
+        floor=16,
+        turn=9,
+        current_hp=10,
+        player=SimpleNamespace(
+            energy=2,
+            block=0,
+            powers=[SimpleNamespace(power_name="Weak", amount=1)],
+        ),
+        hand=[carnage],
+        monsters=[vulnerable_attacker, current_target, dead_boss],
+        room_type="MonsterRoomBoss",
+    )
+
+    replacement = _agent()._get_slime_split_survival_attack_replacement(
+        PlayCardAction(card_index=0, target_index=1),
+        game,
+    )
+
+    assert isinstance(replacement, PlayCardAction)
+    assert replacement.card_index == 0
+    assert replacement.target_index == 0
+
+
+def test_slime_split_survival_guard_uses_paper_phrog_vulnerable_attack_damage():
+    carnage = SimpleNamespace(
+        name="Carnage",
+        card_id="Carnage",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+        damage=15,
+    )
+
+    vulnerable_attacker = _monster(
+        hp=19,
+        damage=8,
+        index=0,
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+    )
+    vulnerable_attacker.intent = Intent.ATTACK_DEBUFF
+    vulnerable_attacker.powers = [SimpleNamespace(power_name="Vulnerable", amount=1)]
+    current_target = _monster(
+        hp=50,
+        damage=8,
+        index=1,
+        name="Acid Slime (M)",
+        monster_id="AcidSlime_M",
+    )
+    current_target.intent = Intent.ATTACK_DEBUFF
+    dead_boss = _monster(
+        hp=0,
+        damage=0,
+        index=2,
+        name="Slime Boss",
+        monster_id="SlimeBoss",
+    )
+    dead_boss.is_gone = True
+
+    game = _game(
+        floor=16,
+        turn=9,
+        current_hp=10,
+        player=SimpleNamespace(
+            energy=2,
+            block=0,
+            powers=[SimpleNamespace(power_name="Weak", amount=1)],
+        ),
+        hand=[carnage],
+        monsters=[vulnerable_attacker, current_target, dead_boss],
+        room_type="MonsterRoomBoss",
+        relics=[SimpleNamespace(relic_id="Paper Phrog", name="Paper Phrog")],
+    )
+
+    replacement = _agent()._get_slime_split_survival_attack_replacement(
+        PlayCardAction(card_index=0, target_index=1),
+        game,
+    )
+
+    assert isinstance(replacement, PlayCardAction)
+    assert replacement.card_index == 0
+    assert replacement.target_index == 0
+
+
 def test_slime_split_survival_guard_respects_player_weak_attack_damage():
     carnage = SimpleNamespace(
         name="Carnage",

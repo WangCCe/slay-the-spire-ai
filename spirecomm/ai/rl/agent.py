@@ -1848,8 +1848,8 @@ class CombatRLAgent:
         if effective_card_cost(card, energy) > energy:
             return None
 
-        attack_damage = self._survival_attack_damage(card, game)
-        if attack_damage <= 0:
+        source_attack_damage = self._survival_attack_damage_before_player_weak(card, game)
+        if source_attack_damage <= 0:
             return None
 
         current_target = self._safe_int(getattr(action, "target_index", -1), default=-1)
@@ -1862,6 +1862,11 @@ class CombatRLAgent:
             effective_hp = (
                 self._safe_int(getattr(monster, "current_hp", 0), default=0)
                 + self._safe_int(getattr(monster, "block", 0), default=0)
+            )
+            attack_damage = self._apply_survival_attack_target_modifiers(
+                source_attack_damage,
+                game,
+                monster,
             )
             if attack_damage < effective_hp:
                 continue
@@ -2867,24 +2872,50 @@ class CombatRLAgent:
 
     @classmethod
     def _survival_attack_damage(cls, card, game: Optional[Game] = None) -> int:
+        damage = cls._survival_attack_damage_before_player_weak(card, game)
+        return cls._apply_player_weak_to_survival_attack_damage(damage, game)
+
+    @classmethod
+    def _survival_attack_damage_before_player_weak(cls, card, game: Optional[Game] = None) -> int:
         explicit_damage = max(
             0,
             cls._safe_int(getattr(card, "damage", 0), default=0),
         )
         if explicit_damage > 0:
-            return cls._apply_player_weak_to_survival_attack_damage(explicit_damage, game)
+            return explicit_damage
 
         if game is not None and cls._card_matches_normalized_names(card, {"mindblast"}):
-            damage = draw_pile_count(game) + player_power_amount(game, "Strength")
-            return cls._apply_player_weak_to_survival_attack_damage(damage, game)
+            return draw_pile_count(game) + player_power_amount(game, "Strength")
 
         for normalized_name, (card_name, base_damage) in cls.SURVIVAL_ATTACK_DAMAGE_VALUES.items():
             if cls._card_matches_normalized_names(card, {normalized_name}):
-                return cls._apply_player_weak_to_survival_attack_damage(
-                    base_damage + known_damage_upgrade_bonus(card, card_name),
-                    game,
-                )
+                return base_damage + known_damage_upgrade_bonus(card, card_name)
         return 0
+
+    @classmethod
+    def _apply_survival_attack_target_modifiers(cls, damage: int, game: Game, monster) -> int:
+        damage = max(0, cls._safe_int(damage, default=0))
+        if damage <= 0:
+            return 0
+        player_weak = player_debuff_stacks(game, "Weak") > 0
+        target_vulnerable = cls._monster_vulnerable_stacks(monster) > 0
+        if player_weak and target_vulnerable:
+            numerator, denominator = (
+                (21, 16)
+                if cls._has_relic(game, "paperphrog")
+                else (9, 8)
+            )
+            return damage * numerator // denominator
+        if player_weak:
+            return damage * 3 // 4
+        if target_vulnerable:
+            numerator, denominator = (
+                (7, 4)
+                if cls._has_relic(game, "paperphrog")
+                else (3, 2)
+            )
+            return damage * numerator // denominator
+        return damage
 
     @classmethod
     def _apply_player_weak_to_survival_attack_damage(cls, damage: int, game: Optional[Game]) -> int:
@@ -2892,6 +2923,15 @@ class CombatRLAgent:
         if game is None or player_debuff_stacks(game, "Weak") <= 0:
             return damage
         return damage * 3 // 4
+
+    @classmethod
+    def _has_relic(cls, game: Game, normalized_relic_name: str) -> bool:
+        target = cls._normalize_identifier(normalized_relic_name)
+        for relic in getattr(game, "relics", []) or []:
+            for attr in ("name", "relic_id", "id"):
+                if cls._normalize_identifier(getattr(relic, attr, None)) == target:
+                    return True
+        return False
 
     @classmethod
     def _has_awakened_one(cls, game: Game) -> bool:
