@@ -1288,6 +1288,62 @@ def test_timing_planner_cache_invalidates_when_player_block_status_changes():
     assert base_planner.calls == [5, 7]
 
 
+def test_timing_planner_cache_invalidates_when_pen_nib_counter_changes():
+    class StaticClassifier:
+        def classify_turn(self, _context):
+            return TimingContext(
+                turn_timing=TurnTiming.SAFE,
+                current_damage=0,
+                balance_weights=BalanceWeights.safe_turn_weights(),
+            )
+
+    strike = _card("Strike_R", "Strike")
+    strike.uuid = "same-strike"
+
+    class DamageEstimatingPlanner:
+        def __init__(self, timing_planner):
+            self.timing_planner = timing_planner
+            self.calls = []
+
+        def set_timing_context(self, timing_context):
+            self.timing_context = timing_context
+
+        def plan_turn(self, context):
+            damage = self.timing_planner._estimate_card_damage(strike, context)
+            self.calls.append(damage)
+            return [damage]
+
+    def context_for_pen_nib(counter):
+        return SimpleNamespace(
+            turn=1,
+            strength=0,
+            energy_available=1,
+            game=SimpleNamespace(
+                player=SimpleNamespace(block=0, powers=[]),
+                relics=[
+                    SimpleNamespace(
+                        relic_id="Pen Nib",
+                        name="Pen Nib",
+                        counter=counter,
+                    )
+                ],
+            ),
+            playable_cards=[strike],
+            monsters_alive=[SimpleNamespace(current_hp=20, block=0, monster_index=0)],
+        )
+
+    planner = TimingAwareCombatPlanner(
+        classifier=StaticClassifier(),
+        data_loader=_loader_with_basic_ironclad_cards(),
+    )
+    base_planner = DamageEstimatingPlanner(planner)
+    planner.base_planner = base_planner
+
+    assert planner.plan_with_timing(context_for_pen_nib(0)) == [6]
+    assert planner.plan_with_timing(context_for_pen_nib(9)) == [12]
+    assert base_planner.calls == [6, 12]
+
+
 def test_timing_planner_applies_injected_balance_strategy():
     classifier_weights = BalanceWeights(
         damage_weight=1.0,

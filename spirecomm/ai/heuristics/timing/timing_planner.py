@@ -186,6 +186,10 @@ class TimingAwareCombatPlanner:
             player_debuff_stacks(context, 'Weak'),
             player_debuff_stacks(context, 'Frail'),
             self._status_map_cache_key(getattr(context, 'vulnerable_stacks', {})),
+            self._relics_cache_key(context),
+            self._card_collection_cache_key(context, 'draw_pile'),
+            self._card_collection_cache_key(context, 'hand'),
+            self._card_collection_cache_key(context, 'deck'),
             tuple(
                 self._card_cache_key(card)
                 for card in getattr(context, 'playable_cards', []) or []
@@ -197,6 +201,68 @@ class TimingAwareCombatPlanner:
                 )
             ),
         )
+
+    def _relics_cache_key(self, context):
+        """Fingerprint relic identities and counters used by timing estimates."""
+        entries = []
+        for owner_name, owner in (
+            ('context', context),
+            ('game', getattr(context, 'game', None)),
+        ):
+            for relic in getattr(owner, 'relics', []) or []:
+                identifiers = [
+                    getattr(relic, 'relic_id', None),
+                    getattr(relic, 'name', None),
+                    getattr(relic, 'id', None),
+                ]
+                if isinstance(relic, str):
+                    identifiers.append(relic)
+                normalized_ids = tuple(
+                    sorted(
+                        self._normalized_relic_key(identifier)
+                        for identifier in identifiers
+                        if identifier is not None
+                    )
+                )
+                if not normalized_ids:
+                    continue
+                entries.append((
+                    owner_name,
+                    normalized_ids,
+                    self._safe_int(getattr(relic, 'counter', 0), 0),
+                ))
+
+        return tuple(entries)
+
+    def _card_collection_cache_key(self, context, attr_name: str):
+        """Fingerprint card collections that feed timing damage estimates."""
+        entries = []
+        for owner_name, owner in (
+            ('game', getattr(context, 'game', None)),
+            ('context', context),
+        ):
+            collection = getattr(owner, attr_name, None)
+            if collection is not None:
+                try:
+                    entries.append((
+                        owner_name,
+                        tuple(self._card_cache_key(card) for card in collection),
+                    ))
+                except TypeError:
+                    entries.append((
+                        owner_name,
+                        self._non_negative_int(collection),
+                    ))
+
+            size = getattr(owner, f'{attr_name}_size', None)
+            if size is not None:
+                entries.append((
+                    owner_name,
+                    'size',
+                    self._non_negative_int(size),
+                ))
+
+        return tuple(entries)
 
     @staticmethod
     def _card_cache_key(card):
