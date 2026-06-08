@@ -603,6 +603,75 @@ def test_upgraded_attack_damage_does_not_create_false_monster_diff(monkeypatch, 
     assert not trace_path.exists()
 
 
+def test_feed_kill_increases_max_hp_and_current_hp(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    feed = _card(name="Feed", card_id="Feed", damage=10)
+    before = _game(
+        floor=7,
+        turn=2,
+        player=SimpleNamespace(current_hp=61, max_hp=80, block=0, energy=3),
+        hand=[feed],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=6, damage=0)],
+    )
+    actual = _game(
+        floor=7,
+        turn=2,
+        player=SimpleNamespace(current_hp=64, max_hp=83, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=0, damage=0)],
+    )
+    actual.monsters[0].is_gone = True
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_feed_does_not_gain_max_hp_from_minion_kill(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    feed = _card(name="Feed", card_id="Feed", damage=10)
+    minion = _monster(
+        name="Torch Head",
+        monster_id="TorchHead",
+        hp=6,
+        damage=0,
+        powers=[Power("Minion", "Minion", 0)],
+    )
+    before = _game(
+        floor=34,
+        turn=2,
+        player=SimpleNamespace(current_hp=50, max_hp=80, block=0, energy=3),
+        hand=[feed],
+        monsters=[minion],
+    )
+    actual = _game(
+        floor=34,
+        turn=2,
+        player=SimpleNamespace(current_hp=50, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Torch Head",
+                monster_id="TorchHead",
+                hp=0,
+                damage=0,
+                powers=[Power("Minion", "Minion", 0)],
+            )
+        ],
+    )
+    actual.monsters[0].is_gone = True
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_headbutt_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

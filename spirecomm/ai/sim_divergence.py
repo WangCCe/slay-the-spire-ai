@@ -24,6 +24,8 @@ PANACHE_RESET_COUNT = 5
 FAIRY_REVIVE_FRACTION = 0.3
 FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
 TOY_ORNITHOPTER_HEAL = 5
+FEED_MAX_HP_GAIN = 3
+FEED_UPGRADED_MAX_HP_GAIN = 4
 
 BASE_ATTACK_DAMAGE = {
     "Anger": 6,
@@ -382,6 +384,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     )
                     sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
                     _apply_card_target_debuffs(expected, card, target_index)
+                    _apply_feed_max_hp_gain(expected, card, target_index, before)
                 if _is_reaper(card) and damage_dealt > 0:
                     _heal_player(expected, damage_dealt)
                 rage_block = (
@@ -2064,6 +2067,59 @@ def _heal_player(expected: Dict[str, Any], amount: int) -> None:
 def _apply_toy_ornithopter_potion_heal(expected: Dict[str, Any]) -> None:
     if _snapshot_has_relic(expected, "Toy Ornithopter"):
         _heal_player(expected, TOY_ORNITHOPTER_HEAL)
+
+
+def _apply_feed_max_hp_gain(
+    expected: Dict[str, Any],
+    card,
+    target_index: Optional[int],
+    before: Optional[Dict[str, Any]] = None,
+) -> None:
+    if _known_card_name(card, {"Feed": 0}) != "Feed":
+        return
+    if target_index is None or target_index < 0:
+        return
+    monsters = expected.get("monsters", []) or []
+    if target_index >= len(monsters):
+        return
+    target = monsters[target_index]
+    if not target.get("gone") or target.get("half_dead"):
+        return
+    if _snapshot_monster_is_minion(target):
+        return
+    if before is not None:
+        before_monsters = before.get("monsters", []) or []
+        if target_index < len(before_monsters) and not _snapshot_monster_active(
+            before_monsters[target_index]
+        ):
+            return
+    max_hp_gain = (
+        FEED_UPGRADED_MAX_HP_GAIN
+        if card_upgrade_count(card) > 0
+        else FEED_MAX_HP_GAIN
+    )
+    _gain_player_max_hp(expected, max_hp_gain)
+
+
+def _gain_player_max_hp(expected: Dict[str, Any], amount: int) -> None:
+    if amount <= 0:
+        return
+    player = expected.get("player", {})
+    max_hp = _to_int(player.get("max_hp")) + amount
+    player["max_hp"] = max_hp
+    player["current_hp"] = min(
+        max_hp,
+        _to_int(player.get("current_hp")) + amount,
+    )
+
+
+def _snapshot_monster_is_minion(monster: Dict[str, Any]) -> bool:
+    if bool(monster.get("minion")) or bool(monster.get("is_minion")):
+        return True
+    return _snapshot_has_power(monster, "Minion") or _snapshot_has_power(
+        monster,
+        "MinionPower",
+    )
 
 
 def _heal_monster(expected: Dict[str, Any], monster_index: int, amount: int) -> None:
