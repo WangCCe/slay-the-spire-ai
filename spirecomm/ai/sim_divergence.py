@@ -25,6 +25,8 @@ PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
 LETTER_OPENER_DAMAGE = 5
 BIRD_FACED_URN_HEAL = 2
+STONE_CALENDAR_DAMAGE = 52
+STONE_CALENDAR_TRIGGER_COUNTER = 7
 FAIRY_REVIVE_FRACTION = 0.3
 FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
 TOY_ORNITHOPTER_HEAL = 5
@@ -514,6 +516,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         _apply_darkling_end_turn_revives(expected, before)
         _prepare_monster_block_for_mercury_hourglass(expected, before)
         _apply_mercury_hourglass_damage(expected, before)
+        _apply_stone_calendar_damage(expected, before)
 
     return expected
 
@@ -2610,6 +2613,21 @@ def _apply_mercury_hourglass_damage(
         return
     for index, _monster in enumerate(expected.get("monsters", []) or []):
         _apply_direct_monster_damage(expected, index, 3)
+
+
+def _apply_stone_calendar_damage(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> None:
+    counter = _snapshot_relic_counter(before, "Stone Calendar")
+    if counter is None:
+        return
+
+    counter = max(0, counter)
+    if counter == STONE_CALENDAR_TRIGGER_COUNTER:
+        for index, _monster in enumerate(expected.get("monsters", []) or []):
+            _apply_direct_monster_damage(expected, index, STONE_CALENDAR_DAMAGE)
+    _set_snapshot_relic_counter(expected, "Stone Calendar", counter + 1)
 
 
 def _prepare_monster_block_for_mercury_hourglass(

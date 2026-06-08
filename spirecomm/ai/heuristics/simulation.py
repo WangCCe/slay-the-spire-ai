@@ -75,6 +75,8 @@ PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
 LETTER_OPENER_DAMAGE = 5
 BIRD_FACED_URN_HEAL = 2
+STONE_CALENDAR_DAMAGE = 52
+STONE_CALENDAR_TRIGGER_COUNTER = 7
 FAIRY_REVIVE_FRACTION = 0.3
 FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
 TOY_ORNITHOPTER_HEAL = 5
@@ -558,6 +560,10 @@ class SimulationState:
             context,
             'Letter Opener',
         )
+        self.stone_calendar_counter = self._context_relic_counter(
+            context,
+            'Stone Calendar',
+        )
         self.has_orichalcum = (
             bool(getattr(context, 'has_orichalcum', False))
             or self._context_relic_counter(context, 'Orichalcum') is not None
@@ -1011,6 +1017,7 @@ class SimulationState:
             self.nunchaku_counter,
             self.ornamental_fan_attack_count,
             self.letter_opener_counter,
+            self.stone_calendar_counter,
             self.has_orichalcum,
             self.has_tungsten_rod,
             self.has_the_boot,
@@ -3532,6 +3539,8 @@ class FastCombatSimulator:
                     trigger_thorns=False,
                 )
 
+        self._apply_stone_calendar_end_turn(projected)
+
         end_turn_block = max(0, getattr(projected, 'end_turn_block', 0))
         if end_turn_block > 0:
             projected.end_turn_block = 0
@@ -3569,6 +3578,23 @@ class FastCombatSimulator:
         projected = self._materialize_pending_death_splits(projected)
         projected = self._materialize_end_turn_summons(projected)
         return projected
+
+    def _apply_stone_calendar_end_turn(self, state: SimulationState):
+        counter = getattr(state, 'stone_calendar_counter', None)
+        if counter is None:
+            return
+
+        counter = self._non_negative_int(counter)
+        if counter == STONE_CALENDAR_TRIGGER_COUNTER:
+            for monster in state.monsters:
+                if self._is_live_monster_state(monster):
+                    self._deal_damage_to_monster(
+                        state,
+                        monster,
+                        STONE_CALENDAR_DAMAGE,
+                        trigger_thorns=False,
+                    )
+        state.stone_calendar_counter = counter + 1
 
     def _apply_monster_escape_intents(self, state: SimulationState) -> SimulationState:
         for monster in state.monsters:

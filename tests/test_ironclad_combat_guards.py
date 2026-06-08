@@ -2881,6 +2881,22 @@ def test_project_end_turn_keeps_non_buff_half_dead_darkling_waiting():
     assert projected.monsters[0]["half_dead"] is True
 
 
+def test_project_end_turn_stone_calendar_counter_seven_damages_monsters():
+    guardian = _guardian(current_hp=79)
+    context = _combat_context([], energy=0, monsters=[guardian])
+    context.game.relics = [
+        SimpleNamespace(relic_id="StoneCalendar", name="Stone Calendar", counter=7)
+    ]
+    context.relics = context.game.relics
+    state = SimulationState(context)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    projected = simulator.project_end_turn_effects(state)
+
+    assert projected.monsters[0]["hp"] == 27
+    assert projected.stone_calendar_counter == 8
+
+
 def test_fungi_beast_death_vulnerable_can_make_same_turn_attack_lethal():
     strike = _card("Strike_R", "Strike", cost=1)
     remaining_attacker = _louse(current_hp=50)
