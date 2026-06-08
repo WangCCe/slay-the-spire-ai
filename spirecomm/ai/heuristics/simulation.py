@@ -70,6 +70,9 @@ from spirecomm.data.loader import (
 # Configure logging for combat decisions
 logger = logging.getLogger(__name__)
 
+PANACHE_DAMAGE = 10
+PANACHE_RESET_COUNT = 5
+
 
 # =============================================================================
 # SCORING WEIGHTS CONFIGURATION (Tune these based on testing results)
@@ -478,6 +481,12 @@ class SimulationState:
             self._get_player_power_amount(context, 'Duplication'),
         )
         self.double_tap_charges = 0
+        self.panache_counter = self._get_player_power_amount(context, 'Panache')
+        self.panache_damage = PANACHE_DAMAGE if (
+            self.panache_counter > 0 or self._has_player_power(context, 'Panache')
+        ) else 0
+        if self.panache_damage > 0 and self.panache_counter <= 0:
+            self.panache_counter = PANACHE_RESET_COUNT
         self.pen_nib_counter = self._context_relic_counter(context, 'Pen Nib')
         self.nunchaku_counter = self._context_relic_counter(context, 'Nunchaku')
         self.ornamental_fan_attack_count = self._context_relic_counter(
@@ -909,6 +918,8 @@ class SimulationState:
             self.card_block_blocked,
             self.duplication_charges,
             self.double_tap_charges,
+            self.panache_counter,
+            self.panache_damage,
             self.pen_nib_counter,
             self.nunchaku_counter,
             self.ornamental_fan_attack_count,
@@ -1106,6 +1117,7 @@ class FastCombatSimulator:
         if getattr(new_state, 'duplication_charges', 0) > 0:
             card_play_repeats = 2
             new_state.duplication_charges -= 1
+        panache_active_before_card = new_state.panache_damage > 0
 
         # Check special monster abilities before applying card effects
         for i, monster in enumerate(new_state.monsters):
@@ -1162,6 +1174,9 @@ class FastCombatSimulator:
                 self._apply_self_damage(new_state, card)
                 self._apply_blue_candle_curse_hp_loss(new_state, card, context)
 
+            if panache_active_before_card:
+                self._apply_panache_card_play(new_state)
+
         self._apply_feel_no_pain_block(new_state, starting_exhaust_events)
         self._apply_dark_embrace_draw(new_state, starting_exhaust_events)
 
@@ -1212,6 +1227,25 @@ class FastCombatSimulator:
                 monster.get('name', 'Unknown'),
                 strength_gain,
             )
+
+    def _apply_panache_card_play(self, state: SimulationState):
+        if state.panache_damage <= 0:
+            return
+
+        counter = max(1, self._non_negative_int(state.panache_counter))
+        if counter > 1:
+            state.panache_counter = counter - 1
+            return
+
+        for monster in state.monsters:
+            if self._is_live_monster_state(monster):
+                self._deal_damage_to_monster(
+                    state,
+                    monster,
+                    state.panache_damage,
+                    trigger_thorns=False,
+                )
+        state.panache_counter = PANACHE_RESET_COUNT
 
     def _apply_slow_card_play(self, state: SimulationState):
         """Giant Head's Slow gains a stack whenever the player plays a card."""
@@ -3951,6 +3985,11 @@ class FastCombatSimulator:
         # Juggernaut - damage a random enemy whenever block is gained.
         elif card_id == 'Juggernaut':
             state.juggernaut_damage_on_block += 7 if upgraded else 5
+
+        # Panache - every fifth later card play deals AOE damage.
+        elif card_id == 'Panache':
+            state.panache_counter = PANACHE_RESET_COUNT
+            state.panache_damage = PANACHE_DAMAGE
 
         # Metallicize - end-turn block applies before enemies attack, but not immediately.
         elif card_id == 'Metallicize':

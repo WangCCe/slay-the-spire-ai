@@ -19,6 +19,8 @@ from spirecomm.ai.heuristics.card_upgrades import (
 
 TRACE_ENV = "STS_SIM_DIVERGENCE_TRACE_FILE"
 DISABLED_VALUES = {"", "0", "false", "off", "none", "disabled"}
+PANACHE_DAMAGE = 10
+PANACHE_RESET_COUNT = 5
 
 BASE_ATTACK_DAMAGE = {
     "Anger": 6,
@@ -447,6 +449,8 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     feel_no_pain_events,
                 )
             _apply_havoc_top_card(expected, before, card)
+            for _ in range(card_play_count):
+                _apply_panache_card_play(expected)
             if card_play_count > 1:
                 _consume_duplication_power(expected)
         if 0 <= card_index < len(expected["hand"]):
@@ -642,6 +646,33 @@ def _apply_direct_monster_damage(
     if target["hp"] <= 0:
         _mark_monster_defeated(target)
     return hp_loss
+
+
+def _apply_panache_card_play(expected: Dict[str, Any]) -> int:
+    player = expected.get("player", {})
+    if not _snapshot_has_power(player, "Panache"):
+        return 0
+
+    counter = _snapshot_power_amount(player, "Panache")
+    if counter > 1:
+        _set_snapshot_power_amount(player, "Panache", counter - 1)
+        return 0
+
+    damage_dealt = 0
+    for monster_index, monster in enumerate(expected.get("monsters", []) or []):
+        if (
+            monster.get("gone")
+            or monster.get("half_dead")
+            or _to_int(monster.get("hp")) <= 0
+        ):
+            continue
+        damage_dealt += _apply_direct_monster_damage(
+            expected,
+            monster_index,
+            PANACHE_DAMAGE,
+        )
+    _set_snapshot_power_amount(player, "Panache", PANACHE_RESET_COUNT)
+    return damage_dealt
 
 
 def _mark_monster_defeated(monster: Dict[str, Any]) -> None:

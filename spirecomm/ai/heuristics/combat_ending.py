@@ -56,6 +56,8 @@ logger = logging.getLogger(__name__)
 TARGETED_LETHAL_MAX_CARDS = 8
 TARGETED_LETHAL_MAX_MONSTERS = 4
 AOE_ATTACK_NAMES = frozenset(['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper'])
+PANACHE_DAMAGE = 10
+PANACHE_RESET_COUNT = 5
 
 
 @dataclass(frozen=True)
@@ -71,6 +73,8 @@ class _TargetedLethalState:
     duplication_charges: int
     double_tap_charges: int
     nunchaku_counter: Optional[int]
+    panache_counter: int
+    panache_damage: int
     energy: int
     havoc_cards_consumed: int = 0
 
@@ -88,6 +92,8 @@ class _TargetedLethalState:
             self.duplication_charges,
             self.double_tap_charges,
             self.nunchaku_counter,
+            self.panache_counter,
+            self.panache_damage,
             self.energy,
             self.havoc_cards_consumed,
         )
@@ -1127,6 +1133,18 @@ class CombatEndingDetector:
         except (TypeError, ValueError):
             return 0
 
+    def _context_panache_counter(self, context: DecisionContext) -> int:
+        try:
+            counter = max(0, player_power_amount(context, 'Panache'))
+        except (TypeError, ValueError):
+            counter = 0
+        if counter > 0:
+            return counter
+        return PANACHE_RESET_COUNT if player_has_power(context, 'Panache') else 0
+
+    def _context_panache_damage(self, context: DecisionContext) -> int:
+        return PANACHE_DAMAGE if self._context_panache_counter(context) > 0 else 0
+
     @staticmethod
     def _lethal_card_play_repeats(duplication_charges: int) -> int:
         return 2 if duplication_charges > 0 else 1
@@ -1266,6 +1284,60 @@ class CombatEndingDetector:
             damage_progress,
         )
 
+    def _apply_lethal_panache_card_play(
+        self,
+        hp_state: Tuple[int, ...],
+        block_state: Tuple[int, ...],
+        panache_counter: int,
+        panache_damage: int,
+    ) -> Tuple[Tuple[int, ...], Tuple[int, ...], int, int]:
+        counter = max(0, self._safe_int(panache_counter, default=0))
+        damage = max(0, self._safe_int(panache_damage, default=0))
+        if counter <= 0 or damage <= 0:
+            return hp_state, block_state, counter, 0
+
+        if counter > 1:
+            return hp_state, block_state, counter - 1, 0
+
+        next_hp = tuple(hp_state)
+        next_block = tuple(block_state)
+        damage_progress = 0
+        for monster_idx, hp in enumerate(next_hp):
+            if hp <= 0:
+                continue
+            next_hp, next_block, dealt = self._apply_lethal_direct_damage_to_target(
+                next_hp,
+                next_block,
+                monster_idx,
+                damage,
+            )
+            damage_progress += dealt
+        return next_hp, next_block, PANACHE_RESET_COUNT, damage_progress
+
+    def _apply_lethal_panache_card_plays(
+        self,
+        hp_state: Tuple[int, ...],
+        block_state: Tuple[int, ...],
+        panache_counter: int,
+        panache_damage: int,
+        repeats: int,
+    ) -> Tuple[Tuple[int, ...], Tuple[int, ...], int, int]:
+        next_hp = tuple(hp_state)
+        next_block = tuple(block_state)
+        next_counter = max(0, self._safe_int(panache_counter, default=0))
+        total_damage = 0
+        for _ in range(max(1, repeats)):
+            next_hp, next_block, next_counter, damage = (
+                self._apply_lethal_panache_card_play(
+                    next_hp,
+                    next_block,
+                    next_counter,
+                    panache_damage,
+                )
+            )
+            total_damage += damage
+        return next_hp, next_block, next_counter, total_damage
+
     def _apply_lethal_juggernaut_block_damage(
         self,
         card: Card,
@@ -1327,6 +1399,11 @@ class CombatEndingDetector:
                     not is_attack_card(card)
                     and self._is_juggernaut_block_card(card, context)
                 )
+                or (
+                    not is_attack_card(card)
+                    and not self._card_requires_target(card)
+                    and 0 < self._context_panache_counter(context) <= 1
+                )
             )
         ]
         sequence_cards = support_cards + sequence_cards
@@ -1371,6 +1448,8 @@ class CombatEndingDetector:
             duplication_charges=self._context_duplication_charges(context),
             double_tap_charges=self._context_double_tap_charges(context),
             nunchaku_counter=self._context_relic_counter(context, 'Nunchaku'),
+            panache_counter=self._context_panache_counter(context),
+            panache_damage=self._context_panache_damage(context),
             energy=available_energy,
         )
         seen = set()
@@ -1387,6 +1466,15 @@ class CombatEndingDetector:
 
             candidates = []
             for card_pos, card in enumerate(remaining_cards):
+                panache_candidate = self._panache_card_play_lethal_candidate(
+                    card_pos,
+                    card,
+                    context,
+                    state,
+                )
+                if panache_candidate is not None:
+                    candidates.append(panache_candidate)
+
                 if self._is_juggernaut_block_card(card, context) and not is_attack_card(card):
                     cost = self._lethal_card_cost(
                         card,
@@ -1695,6 +1783,7 @@ class CombatEndingDetector:
                     next_malleable = tuple(state.malleable)
                     next_vulnerable = state.vulnerable
                     next_artifact = state.artifact
+                    next_panache_counter = state.panache_counter
                     total_damage = 0
                     attack_plays_resolved = 0
                     rampage_bonus = 0
@@ -1765,6 +1854,15 @@ class CombatEndingDetector:
                                 None,
                             )
                             rampage_bonus += self._rampage_scaling_per_play(card)
+                        next_hp, next_block, next_panache_counter, panache_damage = (
+                            self._apply_lethal_panache_card_play(
+                                next_hp,
+                                next_block,
+                                next_panache_counter,
+                                state.panache_damage,
+                            )
+                        )
+                        total_damage += panache_damage
 
                     if total_damage <= 0:
                         continue
@@ -1802,6 +1900,7 @@ class CombatEndingDetector:
                                 duplication_charges=next_duplication_charges,
                                 double_tap_charges=next_double_tap_charges,
                                 nunchaku_counter=next_nunchaku_counter,
+                                panache_counter=next_panache_counter,
                             ),
                         )
                     )
@@ -1836,6 +1935,7 @@ class CombatEndingDetector:
                     next_malleable = tuple(state.malleable)
                     next_vulnerable = state.vulnerable
                     next_artifact = state.artifact
+                    next_panache_counter = state.panache_counter
                     total_damage = 0
                     total_energy_refund = 0
                     attack_plays_resolved = 0
@@ -1913,6 +2013,15 @@ class CombatEndingDetector:
                                 monster_idx,
                             )
                             rampage_bonus += self._rampage_scaling_per_play(card)
+                        next_hp, next_block, next_panache_counter, panache_damage = (
+                            self._apply_lethal_panache_card_play(
+                                next_hp,
+                                next_block,
+                                next_panache_counter,
+                                state.panache_damage,
+                            )
+                        )
+                        total_damage += panache_damage
 
                     if total_damage <= 0:
                         continue
@@ -1946,6 +2055,7 @@ class CombatEndingDetector:
                                 duplication_charges=next_duplication_charges,
                                 double_tap_charges=next_double_tap_charges,
                                 nunchaku_counter=next_nunchaku_counter,
+                                panache_counter=next_panache_counter,
                             ),
                         )
                     )
@@ -1985,6 +2095,65 @@ class CombatEndingDetector:
             starting_state,
         )
         return sequence or []
+
+    def _panache_card_play_lethal_candidate(
+        self,
+        card_pos: int,
+        card: Card,
+        context: DecisionContext,
+        state: _TargetedLethalState,
+    ) -> Optional[_TargetedLethalCandidate]:
+        if (
+            state.panache_damage <= 0
+            or is_attack_card(card)
+            or self._card_requires_target(card)
+        ):
+            return None
+
+        cost = self._lethal_card_cost(
+            card,
+            context,
+            state.energy,
+            state.corruption_active,
+        )
+        if cost > state.energy:
+            return None
+
+        card_play_repeats = self._lethal_card_play_repeats(
+            state.duplication_charges
+        )
+        next_duplication_charges = self._duplication_charges_after_card(
+            state.duplication_charges
+        )
+        next_hp, next_block, next_panache_counter, damage_progress = (
+            self._apply_lethal_panache_card_plays(
+                state.hp,
+                state.block,
+                state.panache_counter,
+                state.panache_damage,
+                card_play_repeats,
+            )
+        )
+        if damage_progress <= 0 and next_panache_counter == state.panache_counter:
+            return None
+
+        kill_count = sum(
+            1
+            for before_hp, after_hp in zip(state.hp, next_hp)
+            if before_hp > 0 and after_hp <= 0
+        )
+        return _TargetedLethalCandidate(
+            priority=(kill_count, 0, damage_progress, -cost),
+            card_pos=card_pos,
+            monster_idx=None,
+            next_state=state.after_spending(
+                cost,
+                hp=next_hp,
+                block=next_block,
+                duplication_charges=next_duplication_charges,
+                panache_counter=next_panache_counter,
+            ),
+        )
 
     def _havoc_top_energy_lethal_candidate(
         self,

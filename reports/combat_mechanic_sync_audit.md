@@ -48,11 +48,22 @@ Status labels:
 | Player HP-loss prevention | Tungsten Rod Bloodletting and end-turn HP-loss divergence evidence | synced for HP-cost energy support cards | synced for card HP costs, Blue Candle, Thorns/Sharp Hide, and deterministic end-turn HP-loss projection | n/a | n/a | synced for survival and Guardian guard end-turn lethal checks | RL guard incoming is still aggregate-level; revisit per-hit/per-source reduction only with live evidence that it changes an action. |
 | Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | synced for Pen Nib scalar fallback damage estimates, Nunchaku counter-9 refund-preserving attack-before-defense ordering, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective block before defense priority | synced for Pen Nib damage estimates, Nunchaku targeted lethal search, cache invalidation over relic counters plus draw-pile/hand/deck inputs, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective turn block before fallback block scoring | synced for direct and Havoc-top Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether non-damage relic counters are read or intentionally ignored. |
 | Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests plus fresh Havoc top-energy and Shockwave self-exhaust evidence | synced for deterministic top attacks, top-card exhaust damage, and visible top energy skills | synced | synced for deterministic Havoc top-card block, Feel No Pain fallback priority, and direct self-exhaust Feel No Pain block | synced for deterministic Havoc top-card block, Feel No Pain in fallback scoring, and direct self-exhaust Feel No Pain block | synced for survival and shared block guards where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
+| Card-play-count power damage | Panache clean divergence on fifth-card Anger AOE damage | synced for immediate-trigger support cards and attack-triggered exact search | synced | n/a | n/a | n/a | Upgrade damage and non-immediate pure support advancement need fresh live evidence before broader search expansion. |
 | Next-card replay effects | DuplicationPower clean divergence on Defend block | synced for direct next-attack lethal search and deterministic support effects inside targeted lethal search | synced | partial; no direct fallback reader found in this round | partial; audit only if timing code starts reading DuplicationPower outside lethal/simulator paths | partial; no direct RL guard/reward reader found in this round | Keep future scalar shortcuts honest about whether the next card is executed twice while energy is paid once. |
 | Healing and monster self-heal | Bandage Up, Shelled Parasite Suck divergence tests | n/a | synced | n/a | n/a | n/a | Only fast/beam sim currently predicts these HP transitions. |
 
 ## Confirmed Sync Work
 
+- 2026-06-08: Panache fifth-card damage is now synced from fresh clean-trace
+  Anger divergence evidence into the diagnostic oracle and live combat
+  estimators. `sim_divergence.py` decrements the active Panache card counter
+  and applies the confirmed 10 AOE damage when it reaches the trigger point,
+  then resets the live-visible counter to 5. `FastCombatSimulator` carries the
+  same counter in `SimulationState` and applies the triggered AOE after each
+  simulated card play. `CombatEndingDetector` targeted lethal search now counts
+  attack-triggered Panache damage and immediate-trigger non-attack support
+  cards, while avoiding a broad expansion of pure support-card search before
+  there is live evidence for non-immediate Panache setup lines.
 - 2026-06-08: Tungsten Rod HP-loss prevention is now synced from fresh
   `Bloodletting` and end-turn clean-trace divergence evidence into the
   diagnostic oracle and live estimators. `sim_divergence.py` reduces actual

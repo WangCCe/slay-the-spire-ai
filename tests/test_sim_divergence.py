@@ -162,6 +162,72 @@ def test_duplication_power_defend_applies_block_twice(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_panache_triggers_aoe_on_fifth_card_play(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    anger = _card(name="Anger", card_id="Anger", cost=0, damage=6)
+    sneaky = _monster(name="Sneaky Gremlin", monster_id="GremlinThief", hp=7, index=0)
+    shield = _monster(name="Shield Gremlin", monster_id="GremlinWarrior", hp=14, index=1)
+    before = _game(
+        floor=8,
+        turn=4,
+        current_hp=66,
+        max_hp=80,
+        player=SimpleNamespace(
+            current_hp=66,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[
+                Power("Metallicize", "Metallicize", 6),
+                Power("Panache", "Panache", 1),
+            ],
+        ),
+        hand=[anger],
+        monsters=[sneaky, shield],
+    )
+
+    after_sneaky = _monster(
+        name="Sneaky Gremlin",
+        monster_id="GremlinThief",
+        hp=0,
+        index=0,
+    )
+    after_sneaky.is_gone = True
+    actual = _game(
+        floor=8,
+        turn=4,
+        current_hp=66,
+        max_hp=80,
+        player=SimpleNamespace(
+            current_hp=66,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[
+                Power("Metallicize", "Metallicize", 6),
+                Power("Panache", "Panache", 5),
+            ],
+        ),
+        hand=[],
+        monsters=[
+            after_sneaky,
+            _monster(
+                name="Shield Gremlin",
+                monster_id="GremlinWarrior",
+                hp=4,
+                index=1,
+            ),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_blue_candle_curse_play_loses_one_hp(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
