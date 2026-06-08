@@ -3724,6 +3724,46 @@ def test_fiend_fire_plus_uses_ten_damage_per_other_hand_card(monkeypatch, tmp_pa
     assert not trace_path.exists()
 
 
+def test_fiend_fire_exhausting_sentinel_restores_energy(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    fiend_fire = _card(
+        name="Fiend Fire",
+        card_id="Fiend Fire",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=0,
+    )
+    sentinel = _card(
+        name="Sentinel",
+        card_id="Sentinel",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=0,
+    )
+    before = _game(
+        floor=18,
+        turn=3,
+        player=SimpleNamespace(current_hp=68, max_hp=80, block=0, energy=2),
+        hand=[fiend_fire, sentinel],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=30, damage=10)],
+    )
+    actual = _game(
+        floor=18,
+        turn=3,
+        player=SimpleNamespace(current_hp=68, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=23, damage=10)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_dropkick_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
@@ -3829,6 +3869,50 @@ def test_sever_soul_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
         player=SimpleNamespace(current_hp=58, max_hp=80, block=0, energy=1),
         hand=[],
         monsters=[_monster(name="Louse", monster_id="FuzzyLouseNormal", hp=6, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_sever_soul_exhausting_sentinel_restores_energy(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    sever_soul = _card(
+        name="Sever Soul",
+        card_id="Sever Soul",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=0,
+    )
+    sentinel = _card(
+        name="Sentinel",
+        card_id="Sentinel",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=0,
+    )
+    before = _game(
+        floor=14,
+        turn=2,
+        player=SimpleNamespace(current_hp=58, max_hp=80, block=0, energy=2),
+        hand=[
+            sever_soul,
+            sentinel,
+            _card(name="Strike", card_id="Strike_R", card_type=CardType.ATTACK, cost=1, damage=6),
+        ],
+        monsters=[_monster(name="Louse", monster_id="FuzzyLouseNormal", hp=30, damage=0)],
+    )
+    actual = _game(
+        floor=14,
+        turn=2,
+        player=SimpleNamespace(current_hp=58, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[_monster(name="Louse", monster_id="FuzzyLouseNormal", hp=14, damage=0)],
     )
 
     assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
@@ -5637,6 +5721,47 @@ def test_second_wind_plus_applies_dexterity_per_exhausted_non_attack(monkeypatch
         ),
         hand=[],
         monsters=[_monster(name="The Guardian", monster_id="TheGuardian", hp=136, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_second_wind_exhausting_sentinel_restores_energy(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    second_wind = _card(
+        name="Second Wind",
+        card_id="Second Wind",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=0,
+    )
+    sentinel = _card(
+        name="Sentinel",
+        card_id="Sentinel",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=0,
+    )
+    before = _game(
+        floor=3,
+        turn=5,
+        player=SimpleNamespace(current_hp=78, max_hp=80, block=0, energy=1),
+        hand=[second_wind, sentinel],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=10, damage=7)],
+    )
+    actual = _game(
+        floor=3,
+        turn=5,
+        player=SimpleNamespace(current_hp=78, max_hp=80, block=5, energy=2),
+        hand=[],
+        monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=10, damage=7)],
     )
 
     assert record_expected_action(PlayCardAction(card_index=0), before) is True

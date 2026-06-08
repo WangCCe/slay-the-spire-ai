@@ -11996,6 +11996,81 @@ def test_lethal_detector_uses_dropkick_energy_refund_for_sequence(monkeypatch):
     ]
 
 
+def test_lethal_detector_uses_second_wind_sentinel_energy_for_followup_attacks(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "second wind": {
+            "name": "Second Wind",
+            "description": "Exhaust all non-Attack cards in your hand. Gain 5 Block for each card Exhausted.",
+        },
+        "sentinel": {
+            "name": "Sentinel",
+            "description": "Gain 5 Block. If this card is Exhausted, gain [R] [R].",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    second_wind = _card("Second Wind", "Second Wind", card_type=CardType.SKILL, cost=1, has_target=False)
+    sentinel = _card("Sentinel", "Sentinel", card_type=CardType.SKILL, cost=1, has_target=False)
+    first_strike = _card("Strike_R", "Strike", cost=1)
+    second_strike = _card("Strike_R", "Strike", cost=1)
+    second_wind.uuid = "second-wind"
+    sentinel.uuid = "sentinel"
+    first_strike.uuid = "first-strike"
+    second_strike.uuid = "second-strike"
+    cards = [second_wind, sentinel, first_strike, second_strike]
+    context = _combat_context(cards, energy=1, monsters=[_louse(current_hp=12)])
+    context.game.hand = cards
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "second-wind",
+        "first-strike",
+        "second-strike",
+    ]
+
+
+def test_lethal_detector_uses_sever_soul_sentinel_energy_for_followup_attack(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "sever soul": {
+            "name": "Sever Soul",
+            "description": "Exhaust all non-Attack cards in your hand. Deal 16 damage.",
+        },
+        "sentinel": {
+            "name": "Sentinel",
+            "description": "Gain 5 Block. If this card is Exhausted, gain [R] [R].",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    sever_soul = _card("Sever Soul", "Sever Soul", cost=2)
+    sentinel = _card("Sentinel", "Sentinel", card_type=CardType.SKILL, cost=1, has_target=False)
+    strike = _card("Strike_R", "Strike", cost=1)
+    sever_soul.uuid = "sever-soul"
+    sentinel.uuid = "sentinel"
+    strike.uuid = "strike"
+    cards = [sever_soul, sentinel, strike]
+    context = _combat_context(cards, energy=2, monsters=[_louse(current_hp=22)])
+    context.game.hand = cards
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "sever-soul",
+        "strike",
+    ]
+
+
 def test_lethal_detector_uses_nunchaku_energy_refund_for_sequence(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

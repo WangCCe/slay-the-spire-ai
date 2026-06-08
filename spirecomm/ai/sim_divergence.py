@@ -447,6 +447,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     second_wind_block,
                     _exhausts_non_attack_hand_count(card, before, card_index),
                 )
+            hand_exhaust_energy = _hand_exhaust_sentinel_energy(card, before, card_index)
+            if hand_exhaust_energy > 0:
+                expected["player"]["energy"] += hand_exhaust_energy
             feel_no_pain_block, feel_no_pain_events = _feel_no_pain_block(
                 card,
                 before,
@@ -1754,12 +1757,57 @@ def _exhausts_non_attack_hand_count(
     return _non_attack_hand_count_excluding_played(card, before, card_index)
 
 
+def _hand_exhaust_sentinel_energy(
+    card,
+    before: Dict[str, Any],
+    card_index: int,
+) -> int:
+    energy = 0
+    for hand_card in _hand_exhausted_cards(card, before, card_index):
+        if _snapshot_known_card_name(hand_card, BASE_SKILL_BLOCK) != "Sentinel":
+            continue
+        energy += 3 if _snapshot_card_upgrade_count(hand_card) > 0 else 2
+    return energy
+
+
+def _hand_exhausted_cards(
+    card,
+    before: Dict[str, Any],
+    card_index: int,
+) -> List[Dict[str, Any]]:
+    if _known_card_name(card, BASE_ATTACK_DAMAGE) == "Fiend Fire":
+        return _hand_cards_excluding_played(card, before, card_index)
+    if _known_card_name(card, EXHAUSTS_NON_ATTACK_HAND_CARDS) is not None:
+        return _non_attack_hand_cards_excluding_played(card, before, card_index)
+    return []
+
+
 def _non_attack_hand_count_excluding_played(
     card,
     before: Dict[str, Any],
     card_index: int,
 ) -> int:
-    non_attack_count = 0
+    return len(_non_attack_hand_cards_excluding_played(card, before, card_index))
+
+
+def _non_attack_hand_cards_excluding_played(
+    card,
+    before: Dict[str, Any],
+    card_index: int,
+) -> List[Dict[str, Any]]:
+    return [
+        hand_card
+        for hand_card in _hand_cards_excluding_played(card, before, card_index)
+        if not _snapshot_card_is_attack(hand_card)
+    ]
+
+
+def _hand_cards_excluding_played(
+    card,
+    before: Dict[str, Any],
+    card_index: int,
+) -> List[Dict[str, Any]]:
+    hand_cards: List[Dict[str, Any]] = []
     skipped_played_card = False
     for index, hand_card in enumerate(before.get("hand", [])):
         if index == card_index:
@@ -1767,9 +1815,8 @@ def _non_attack_hand_count_excluding_played(
         if card_index < 0 and not skipped_played_card and _snapshot_card_matches(hand_card, card):
             skipped_played_card = True
             continue
-        if not _snapshot_card_is_attack(hand_card):
-            non_attack_count += 1
-    return non_attack_count
+        hand_cards.append(hand_card)
+    return hand_cards
 
 
 def _feel_no_pain_block(

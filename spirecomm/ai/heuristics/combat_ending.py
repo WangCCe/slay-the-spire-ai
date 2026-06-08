@@ -8,7 +8,7 @@ combat could be ended this turn.
 import logging
 import re
 from dataclasses import dataclass, replace
-from typing import List, Tuple, Optional
+from typing import List, Optional, Sequence, Tuple
 from spirecomm.spire.card import Card
 from spirecomm.spire.character import Monster
 from spirecomm.spire.numeric import coerce_float, coerce_int
@@ -1064,6 +1064,148 @@ class CombatEndingDetector:
             return 2
         return 0
 
+    def _is_lethal_hand_exhaust_energy_support_card(
+        self,
+        card: Card,
+        context: DecisionContext,
+    ) -> bool:
+        if is_attack_card(card):
+            return False
+        if self._base_card_name(card) != 'Second Wind':
+            return False
+
+        cards = list(getattr(context, 'playable_cards', []) or [])
+        card_pos = self._card_position_in_sequence(card, cards)
+        if card_pos is None:
+            return False
+        return self._lethal_hand_exhaust_sentinel_energy_gain(card_pos, card, cards) > 0
+
+    def _is_lethal_hand_exhaust_energy_resource_card(
+        self,
+        card: Card,
+        context: DecisionContext,
+    ) -> bool:
+        if self._base_card_name(card) != 'Sentinel':
+            return False
+
+        cards = list(getattr(context, 'playable_cards', []) or [])
+        for index, candidate in enumerate(cards):
+            if candidate is card:
+                continue
+            if card in self._lethal_hand_exhausted_cards(index, candidate, cards):
+                return True
+        return False
+
+    @staticmethod
+    def _card_position_in_sequence(
+        card: Card,
+        cards: Sequence[Card],
+    ) -> Optional[int]:
+        for index, candidate in enumerate(cards):
+            if candidate is card:
+                return index
+        return None
+
+    def _lethal_hand_exhaust_sentinel_energy_gain(
+        self,
+        card_pos: int,
+        card: Card,
+        remaining_cards: Sequence[Card],
+    ) -> int:
+        energy_gain = 0
+        for exhausted_card in self._lethal_hand_exhausted_cards(
+            card_pos,
+            card,
+            remaining_cards,
+        ):
+            if self._base_card_name(exhausted_card) != 'Sentinel':
+                continue
+            energy_gain += 3 if is_card_upgraded(exhausted_card) else 2
+        return energy_gain
+
+    def _lethal_hand_exhausted_cards(
+        self,
+        card_pos: int,
+        card: Card,
+        remaining_cards: Sequence[Card],
+    ) -> Tuple[Card, ...]:
+        card_name = self._base_card_name(card)
+        if card_name not in {'Fiend Fire', 'Second Wind', 'Sever Soul'}:
+            return ()
+
+        exhausted_cards = []
+        for index, candidate in enumerate(remaining_cards):
+            if index == card_pos:
+                continue
+            if card_name == 'Fiend Fire' or not is_attack_card(candidate):
+                exhausted_cards.append(candidate)
+        return tuple(exhausted_cards)
+
+    def _remaining_cards_after_lethal_play(
+        self,
+        card_pos: int,
+        card: Card,
+        remaining_cards: Tuple[Card, ...],
+    ) -> Tuple[Card, ...]:
+        if self._base_card_name(card) == 'Fiend Fire':
+            return ()
+
+        exhausted_cards = self._lethal_hand_exhausted_cards(
+            card_pos,
+            card,
+            remaining_cards,
+        )
+        exhausted_ids = {id(exhausted_card) for exhausted_card in exhausted_cards}
+        return tuple(
+            candidate
+            for index, candidate in enumerate(remaining_cards)
+            if index != card_pos and id(candidate) not in exhausted_ids
+        )
+
+    def _hand_exhaust_energy_lethal_candidate(
+        self,
+        card_pos: int,
+        card: Card,
+        remaining_cards: Tuple[Card, ...],
+        context: DecisionContext,
+        state: _TargetedLethalState,
+    ) -> Optional[_TargetedLethalCandidate]:
+        if is_attack_card(card):
+            return None
+        if self._base_card_name(card) != 'Second Wind':
+            return None
+
+        cost = self._lethal_card_cost(
+            card,
+            context,
+            state.energy,
+            state.corruption_active,
+        )
+        if cost > state.energy:
+            return None
+
+        energy_gain = self._lethal_hand_exhaust_sentinel_energy_gain(
+            card_pos,
+            card,
+            remaining_cards,
+        )
+        if energy_gain <= cost:
+            return None
+
+        next_duplication_charges = self._duplication_charges_after_card(
+            state.duplication_charges
+        )
+        net_cost = cost - energy_gain
+        return _TargetedLethalCandidate(
+            priority=(0, 1, energy_gain - cost, -cost),
+            card_pos=card_pos,
+            monster_idx=None,
+            next_state=state.after_spending(
+                net_cost,
+                duplication_charges=next_duplication_charges,
+            ),
+        )
+
     def _lethal_energy_hp_loss(self, card: Card) -> int:
         card_name = self._base_card_name(card)
         if card_name == 'Bloodletting':
@@ -1413,6 +1555,8 @@ class CombatEndingDetector:
             if (
                 self._is_lethal_strength_support_card(card)
                 or self._is_lethal_energy_support_card(card)
+                or self._is_lethal_hand_exhaust_energy_support_card(card, context)
+                or self._is_lethal_hand_exhaust_energy_resource_card(card, context)
                 or self._is_lethal_corruption_support_card(card)
                 or self._is_lethal_double_tap_support_card(card)
                 or self._is_lethal_vulnerable_support_card(card)
@@ -1641,6 +1785,19 @@ class CombatEndingDetector:
                             ),
                         )
                     )
+                    continue
+
+                hand_exhaust_energy_candidate = (
+                    self._hand_exhaust_energy_lethal_candidate(
+                        card_pos,
+                        card,
+                        remaining_cards,
+                        context,
+                        state,
+                    )
+                )
+                if hand_exhaust_energy_candidate is not None:
+                    candidates.append(hand_exhaust_energy_candidate)
                     continue
 
                 if self._is_lethal_corruption_support_card(card):
@@ -2064,8 +2221,24 @@ class CombatEndingDetector:
                             attack_plays_resolved,
                         )
                     )
-                    cost = upfront_cost - total_energy_refund - nunchaku_energy_gain
-                    refunds_energy = total_energy_refund > 0 or nunchaku_energy_gain > 0
+                    hand_exhaust_energy_gain = (
+                        self._lethal_hand_exhaust_sentinel_energy_gain(
+                            card_pos,
+                            card,
+                            remaining_cards,
+                        )
+                    )
+                    cost = (
+                        upfront_cost
+                        - total_energy_refund
+                        - nunchaku_energy_gain
+                        - hand_exhaust_energy_gain
+                    )
+                    refunds_energy = (
+                        total_energy_refund > 0
+                        or nunchaku_energy_gain > 0
+                        or hand_exhaust_energy_gain > 0
+                    )
                     priority = (
                         1 if next_hp[monster_idx] <= 0 else 0,
                         1 if refunds_energy else 0,
@@ -2097,13 +2270,11 @@ class CombatEndingDetector:
 
             for candidate in candidates:
                 card = remaining_cards[candidate.card_pos]
-                if self._base_card_name(card) == 'Fiend Fire':
-                    next_cards = ()
-                else:
-                    next_cards = (
-                        remaining_cards[:candidate.card_pos]
-                        + remaining_cards[candidate.card_pos + 1:]
-                    )
+                next_cards = self._remaining_cards_after_lethal_play(
+                    candidate.card_pos,
+                    card,
+                    remaining_cards,
+                )
                 tail = search(
                     next_cards,
                     candidate.next_state,
