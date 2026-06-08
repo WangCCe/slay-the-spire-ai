@@ -292,6 +292,45 @@ def test_tungsten_rod_reduces_bloodletting_hp_loss(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_fairy_potion_revives_after_lethal_end_turn_attack(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=16,
+        turn=7,
+        current_hp=8,
+        max_hp=80,
+        player=SimpleNamespace(current_hp=8, max_hp=80, block=0, energy=0),
+        hand=[],
+        potions=[
+            _potion(
+                "Fairy in a Bottle",
+                potion_id="FairyPotion",
+                effect_type="fairy",
+                effect_value=0.3,
+                target_type="self",
+            )
+        ],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=69, damage=7, hits=2)],
+    )
+    actual = _game(
+        floor=16,
+        turn=7,
+        current_hp=24,
+        max_hp=80,
+        player=SimpleNamespace(current_hp=24, max_hp=80, block=0, energy=0),
+        hand=[],
+        potions=[],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=69, damage=7, hits=2)],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_curse_play_without_blue_candle_does_not_lose_hp(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

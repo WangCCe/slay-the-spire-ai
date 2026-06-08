@@ -72,6 +72,49 @@ logger = logging.getLogger(__name__)
 
 PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
+FAIRY_REVIVE_FRACTION = 0.3
+FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
+
+
+def _normalized_potion_identifier(value) -> str:
+    return ''.join(ch for ch in str(value or '').lower() if ch.isalnum())
+
+
+def _potion_attr(potion, attr: str, default=None):
+    if isinstance(potion, dict):
+        if attr == 'potion_id':
+            return potion.get('potion_id', potion.get('id', default))
+        if attr == 'id':
+            return potion.get('id', potion.get('potion_id', default))
+        return potion.get(attr, default)
+    return getattr(potion, attr, default)
+
+
+def _is_fairy_potion(potion) -> bool:
+    effect_type = _normalized_potion_identifier(_potion_attr(potion, 'effect_type', ''))
+    identifiers = {
+        _normalized_potion_identifier(_potion_attr(potion, 'id', '')),
+        _normalized_potion_identifier(_potion_attr(potion, 'potion_id', '')),
+        _normalized_potion_identifier(_potion_attr(potion, 'name', '')),
+    }
+    return effect_type == 'fairy' or not identifiers.isdisjoint(FAIRY_POTION_IDENTIFIERS)
+
+
+def _fairy_potions_for_game(game) -> List[Any]:
+    if game is None:
+        return []
+    try:
+        potions = game_real_potions(game)
+    except Exception:
+        potions = getattr(game, 'potions', []) or []
+    return [potion for potion in potions if _is_fairy_potion(potion)]
+
+
+def _fairy_revive_hp_from_potion(max_hp: int, potion) -> int:
+    percent = coerce_float(_potion_attr(potion, 'effect_value', 0), 0.0)
+    if percent <= 0 or percent > 1:
+        percent = FAIRY_REVIVE_FRACTION
+    return max(1, int(max(1, coerce_int(max_hp, 1)) * percent))
 
 
 # =============================================================================
@@ -427,6 +470,15 @@ class SimulationState:
         # Player state
         self.player_hp = self._non_negative_int(context.game.current_hp)
         self.player_max_hp = self._non_negative_int(context.game.max_hp)
+        fairy_potions = _fairy_potions_for_game(getattr(context, 'game', None))
+        self.fairy_revives = len(fairy_potions)
+        self.fairy_revive_hp = max(
+            (
+                _fairy_revive_hp_from_potion(self.player_max_hp, potion)
+                for potion in fairy_potions
+            ),
+            default=0,
+        )
         self.player_block = self._non_negative_int(player_block_value(context))
         plated_armor = max(
             self._get_player_power_amount(context, 'Plated Armor'),
@@ -893,6 +945,8 @@ class SimulationState:
         player_key = (
             self.player_hp,
             self.player_max_hp,
+            self.fairy_revives,
+            self.fairy_revive_hp,
             self.player_block,
             self.end_turn_block,
             self.player_energy,
@@ -4261,6 +4315,35 @@ class FastCombatSimulator:
         return hp_loss
 
     @staticmethod
+    def _fairy_revive_hp(state: SimulationState) -> int:
+        revive_hp = coerce_int(getattr(state, 'fairy_revive_hp', 0), 0)
+        if revive_hp > 0:
+            return revive_hp
+        max_hp = max(1, coerce_int(getattr(state, 'player_max_hp', 1), 1))
+        return max(1, int(max_hp * FAIRY_REVIVE_FRACTION))
+
+    @staticmethod
+    def _consume_fairy_revive_if_dead(state: SimulationState) -> bool:
+        if coerce_int(getattr(state, 'player_hp', 0), 0) > 0:
+            return False
+        revive_count = max(0, coerce_int(getattr(state, 'fairy_revives', 0), 0))
+        if revive_count <= 0:
+            return False
+        state.fairy_revives = revive_count - 1
+        state.player_hp = FastCombatSimulator._fairy_revive_hp(state)
+        return True
+
+    @staticmethod
+    def _projected_player_hp_after_loss(state: SimulationState, amount: int) -> int:
+        hp_loss = FastCombatSimulator._effective_player_hp_loss(state, amount)
+        hp_after_loss = max(0, coerce_int(getattr(state, 'player_hp', 0), 0) - hp_loss)
+        if hp_after_loss > 0:
+            return hp_after_loss
+        if max(0, coerce_int(getattr(state, 'fairy_revives', 0), 0)) > 0:
+            return FastCombatSimulator._fairy_revive_hp(state)
+        return 0
+
+    @staticmethod
     def _lose_player_hp(
         state: SimulationState,
         amount: int,
@@ -4272,6 +4355,7 @@ class FastCombatSimulator:
             return
 
         state.player_hp = max(0, state.player_hp - hp_loss)
+        FastCombatSimulator._consume_fairy_revive_if_dead(state)
         if trigger_rupture and state.rupture_strength_per_hp_loss > 0:
             state.player_strength += state.rupture_strength_per_hp_loss
 
@@ -6074,7 +6158,11 @@ class FastCombatSimulator:
         #     logger.debug(f"[USELESS_DEFENSE_PENALTY] -{block_gained * 10.0:.1f} score for {block_gained} wasted block")
 
         # Death penalty (infinite score = avoid at all costs)
-        if hp_loss_next_turn >= final_state.player_hp:
+        hp_after_next_turn = self._projected_player_hp_after_loss(
+            final_state,
+            hp_loss_next_turn,
+        )
+        if hp_after_next_turn <= 0:
             return float('-inf')
 
         # Survival penalty (weighted heavily)
@@ -6118,7 +6206,7 @@ class FastCombatSimulator:
 
         # Danger threshold penalty (act-dependent)
         danger_threshold = 15 + (current_act * 5)  # Act 1: 20, Act 2: 25, Act 3: 30
-        if final_state.player_hp - hp_loss_next_turn < danger_threshold:
+        if hp_after_next_turn < danger_threshold:
             score -= DANGER_PENALTY
 
         # 7. Engine event tracking (synergy bonuses)

@@ -16375,6 +16375,39 @@ def test_smoke_bomb_escape_score_avoids_lethal_without_lethal_bonus():
     assert escaped.monsters_killed == 0
 
 
+def test_fairy_potion_prevents_lethal_in_outcome_score():
+    potion = SimpleNamespace(
+        name="Fairy in a Bottle",
+        potion_id="FairyPotion",
+        can_use=True,
+        requires_target=False,
+        effect_type="fairy",
+        effect_value=0.3,
+        target_type="self",
+    )
+    monster = _louse(current_hp=30)
+    monster.move_adjusted_damage = 7
+    monster.move_hits = 1
+    context = _combat_context([], energy=0, monsters=[monster])
+    context.game.current_hp = 5
+    context.game.max_hp = 80
+    context.player_hp = 5
+    context.player_hp_pct = 5 / 80
+    context.game.monsters = context.monsters_alive
+    context.game.potions = [potion]
+    context.game.get_real_potions = lambda: [potion]
+    initial = SimulationState(context)
+
+    score = FastCombatSimulator(SynergyCardEvaluator()).calculate_outcome_score(
+        initial,
+        initial,
+        current_act=1,
+        context=context,
+    )
+
+    assert score != float("-inf")
+
+
 def test_looter_end_turn_escape_projection_removes_threat_without_kill_score():
     looter = Monster(
         name="Looter",

@@ -45,7 +45,7 @@ Status labels:
 | Monster lifecycle states | Darkling half-dead/revive plus Collector summon/reorder divergence evidence | n/a | synced for Darkling revive, death split, and concrete current-move summons without negative lifecycle damage score | synced | synced for SAFE timing bonus | synced for v2 state alive flag and reward exit handling | Random/generic summons still need explicit live evidence and concrete minion data before materialization. |
 | Combat escape settlement | Looter/Mugger escape and Smoke Bomb divergence evidence | n/a | synced for Smoke Bomb potion escape and Looter/Mugger end-turn escape projection without kill/lethal credit | n/a | n/a | synced for in-combat and combat-exit reward | Other escape monsters should be added only with explicit intent/move evidence. |
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
-| Player HP-loss prevention | Tungsten Rod Bloodletting and end-turn HP-loss divergence evidence | synced for HP-cost energy support cards | synced for card HP costs, Blue Candle, Thorns/Sharp Hide, and deterministic end-turn HP-loss projection | n/a | n/a | synced for survival and Guardian guard end-turn lethal checks | RL guard incoming is still aggregate-level; revisit per-hit/per-source reduction only with live evidence that it changes an action. |
+| Player HP-loss prevention / revive | Tungsten Rod Bloodletting and end-turn HP-loss evidence; Fairy in a Bottle end-turn lethal clean divergence | synced for HP-cost energy support cards | synced for card HP costs, Blue Candle, Thorns/Sharp Hide, deterministic end-turn HP-loss projection, Fairy HP-loss revival, and Fairy-aware outcome death checks | n/a | n/a | synced for survival and Guardian guard end-turn lethal checks where the guard owns the HP-loss path | RL aggregate incoming still does not consume per-hit revives; revisit only with live evidence that it changes an action. |
 | Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | synced for Pen Nib scalar fallback damage estimates, Nunchaku counter-9 refund-preserving attack-before-defense ordering, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective block before defense priority | synced for Pen Nib damage estimates, Nunchaku targeted lethal search, cache invalidation over relic counters plus draw-pile/hand/deck inputs, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective turn block before fallback block scoring | synced for direct and Havoc-top Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether non-damage relic counters are read or intentionally ignored. |
 | Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests plus fresh Havoc top-energy and Shockwave self-exhaust evidence | synced for deterministic top attacks, top-card exhaust damage, and visible top energy skills | synced | synced for deterministic Havoc top-card block, Feel No Pain fallback priority, and direct self-exhaust Feel No Pain block | synced for deterministic Havoc top-card block, Feel No Pain in fallback scoring, and direct self-exhaust Feel No Pain block | synced for survival and shared block guards where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
 | Card-play-count power damage | Panache clean divergence on fifth-card Anger AOE damage | synced for immediate-trigger support cards and attack-triggered exact search | synced | n/a | n/a | n/a | Upgrade damage and non-immediate pure support advancement need fresh live evidence before broader search expansion. |
@@ -54,6 +54,15 @@ Status labels:
 
 ## Confirmed Sync Work
 
+- 2026-06-08: Fairy in a Bottle revival is now synced from the fresh
+  Hexaghost end-turn lethal divergence into the diagnostic oracle and beam
+  outcome scoring. `sim_divergence.py` recognizes `FairyPotion` /
+  `Fairy in a Bottle`, restores 30% max HP when HP loss would kill the player,
+  and consumes one Fairy so repeated hits cannot revive indefinitely.
+  `FastCombatSimulator` carries Fairy revive count and revive HP in
+  `SimulationState`, routes shared HP-loss paths through the same one-shot
+  revival, and makes outcome scoring's death check ask whether projected
+  incoming damage is survivable after Fairy instead of returning `-inf`.
 - 2026-06-08: Panache fifth-card damage is now synced from fresh clean-trace
   Anger divergence evidence into the diagnostic oracle and live combat
   estimators. `sim_divergence.py` decrements the active Panache card counter

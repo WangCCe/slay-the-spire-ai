@@ -21,6 +21,8 @@ TRACE_ENV = "STS_SIM_DIVERGENCE_TRACE_FILE"
 DISABLED_VALUES = {"", "0", "false", "off", "none", "disabled"}
 PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
+FAIRY_REVIVE_FRACTION = 0.3
+FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
 
 BASE_ATTACK_DAMAGE = {
     "Anger": 6,
@@ -2012,6 +2014,41 @@ def _snapshot_has_relic(snapshot: Dict[str, Any], relic_name: str) -> bool:
     return False
 
 
+def _fairy_potion_index(snapshot: Dict[str, Any]) -> Optional[int]:
+    for index, potion in enumerate(snapshot.get("potions", []) or []):
+        effect_type = _normalize(_potion_attr(potion, "effect_type", ""))
+        identifiers = {
+            _normalize(_potion_attr(potion, "id", "")),
+            _normalize(_potion_attr(potion, "potion_id", "")),
+            _normalize(_potion_attr(potion, "name", "")),
+        }
+        if effect_type == "fairy" or not identifiers.isdisjoint(FAIRY_POTION_IDENTIFIERS):
+            return index
+    return None
+
+
+def _fairy_revive_hp(snapshot: Dict[str, Any], potion: Dict[str, Any]) -> int:
+    percent = _to_float(_potion_attr(potion, "effect_value", 0))
+    if percent <= 0 or percent > 1:
+        percent = FAIRY_REVIVE_FRACTION
+    max_hp = max(1, _to_int(snapshot.get("player", {}).get("max_hp"), default=1))
+    return max(1, int(max_hp * percent))
+
+
+def _consume_fairy_revive_if_dead(expected: Dict[str, Any]) -> bool:
+    player = expected.get("player", {})
+    if _to_int(player.get("current_hp")) > 0:
+        return False
+    potion_index = _fairy_potion_index(expected)
+    if potion_index is None:
+        return False
+    potions = expected.get("potions", []) or []
+    potion = potions[potion_index]
+    player["current_hp"] = _fairy_revive_hp(expected, potion)
+    potions.pop(potion_index)
+    return True
+
+
 def _heal_player(expected: Dict[str, Any], amount: int) -> None:
     if amount <= 0:
         return
@@ -2044,10 +2081,14 @@ def _damage_player(expected: Dict[str, Any], amount: int) -> int:
     blocked = min(block, amount)
     player["block"] = block - blocked
     remaining = amount - blocked
+    hp_lost = False
     if remaining > 0:
         remaining = _effective_player_hp_loss(expected, remaining)
-        player["current_hp"] = max(0, hp_before - remaining)
-    return 1 if _to_int(player.get("current_hp")) < hp_before else 0
+        hp_after_loss = max(0, hp_before - remaining)
+        hp_lost = hp_after_loss < hp_before
+        player["current_hp"] = hp_after_loss
+        _consume_fairy_revive_if_dead(expected)
+    return 1 if hp_lost else 0
 
 
 def _apply_end_turn_player_damage(
@@ -2101,8 +2142,11 @@ def _lose_player_hp(expected: Dict[str, Any], amount: int) -> int:
     player = expected.get("player", {})
     hp_before = _to_int(player.get("current_hp"))
     amount = _effective_player_hp_loss(expected, amount)
-    player["current_hp"] = max(0, hp_before - amount)
-    return 1 if _to_int(player.get("current_hp")) < hp_before else 0
+    hp_after_loss = max(0, hp_before - amount)
+    hp_lost = hp_after_loss < hp_before
+    player["current_hp"] = hp_after_loss
+    _consume_fairy_revive_if_dead(expected)
+    return 1 if hp_lost else 0
 
 
 def _effective_player_hp_loss(snapshot: Dict[str, Any], amount: int) -> int:
