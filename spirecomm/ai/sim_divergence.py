@@ -356,38 +356,35 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     before,
                     card_index,
                 )
-                hit_count *= attack_play_count
+                source_damage_before_weak = _card_damage_before_player_weak(
+                    card,
+                    expected.get("player", {}),
+                    energy_before_card,
+                    before,
+                    card_index,
+                )
+                damage_dealt = 0
                 if _is_all_enemy_attack(card):
-                    damage_dealt = _apply_expected_attack_to_all(
-                        expected,
-                        damage,
-                        hit_count,
-                        before,
-                        source_damage_before_weak=_card_damage_before_player_weak(
-                            card,
-                            expected.get("player", {}),
-                            energy_before_card,
+                    for _ in range(max(1, attack_play_count)):
+                        damage_dealt += _apply_expected_attack_to_all(
+                            expected,
+                            damage,
+                            hit_count,
                             before,
-                            card_index,
-                        ),
-                    )
+                            source_damage_before_weak=source_damage_before_weak,
+                        )
                     sharp_hide_damage = _sharp_hide_reflection_damage(before, all_targets=True)
                 else:
                     target_index = _target_index_for_action(action, game)
-                    damage_dealt = _apply_expected_attack(
-                        expected,
-                        target_index,
-                        damage,
-                        hit_count,
-                        before,
-                        source_damage_before_weak=_card_damage_before_player_weak(
-                            card,
-                            expected.get("player", {}),
-                            energy_before_card,
+                    for _ in range(max(1, attack_play_count)):
+                        damage_dealt += _apply_expected_attack(
+                            expected,
+                            target_index,
+                            damage,
+                            hit_count,
                             before,
-                            card_index,
-                        ),
-                    )
+                            source_damage_before_weak=source_damage_before_weak,
+                        )
                     sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
                     _apply_card_target_debuffs(expected, card, target_index)
                     _apply_feed_max_hp_gain(expected, card, target_index, before)

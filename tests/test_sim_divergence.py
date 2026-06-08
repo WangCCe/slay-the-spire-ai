@@ -162,6 +162,58 @@ def test_duplication_power_defend_applies_block_twice(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_duplication_power_attack_triggers_malleable_between_replayed_plays(
+    monkeypatch, tmp_path
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    strike = _card(
+        name="Strike",
+        card_id="Strike_R",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=6,
+    )
+    before = _game(
+        player=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            block=0,
+            energy=2,
+            powers=[Power("Duplication", "DuplicationPower", 1)],
+        ),
+        hand=[strike],
+        monsters=[
+            _monster(
+                name="Writhing Mass",
+                monster_id="WrithingMass",
+                hp=10,
+                block=0,
+                powers=[Power("Malleable", "Malleable", 3)],
+            )
+        ],
+    )
+    actual = _game(
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=1, powers=[]),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Writhing Mass",
+                monster_id="WrithingMass",
+                hp=1,
+                block=4,
+                powers=[Power("Malleable", "Malleable", 5)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_entrench_doubles_current_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

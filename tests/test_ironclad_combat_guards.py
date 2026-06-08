@@ -1070,6 +1070,31 @@ def test_simulation_duplication_power_defend_applies_block_twice():
     assert result.player_block == 10
 
 
+def test_simulation_duplication_power_attack_triggers_malleable_between_replayed_plays():
+    strike = _card("Strike_R", "Strike", cost=1)
+    target = _louse(current_hp=10)
+    target.name = "Writhing Mass"
+    target.monster_id = "WrithingMass"
+    target.powers = [SimpleNamespace(power_name="Malleable", amount=3)]
+    context = _combat_context([strike], energy=2, monsters=[target])
+    context.game.player.powers = [
+        SimpleNamespace(power_id="DuplicationPower", power_name="Duplication", amount=1)
+    ]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 9
+    assert result.monsters[0]["hp"] == 1
+    assert result.monsters[0]["block"] == 4
+    assert result.monsters[0]["malleable_block"] == 5
+
+
 def test_simulation_panache_triggers_aoe_on_fifth_card_play():
     anger = _card("Anger", "Anger", cost=0)
     anger.damage = 6
@@ -14013,6 +14038,29 @@ def test_lethal_detector_uses_duplication_power_for_next_attack(monkeypatch):
     sequence = detector.find_lethal_sequence(context)
     assert [action.card.uuid for action in sequence] == ["strike"]
     assert sequence[0].target_monster is context.monsters_alive[0]
+
+
+def test_lethal_detector_rejects_duplication_power_attack_through_malleable_block(
+    monkeypatch,
+):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    target = _louse(current_hp=10)
+    target.powers = [SimpleNamespace(power_name="Malleable", amount=3)]
+    context = _combat_context([strike], energy=1, monsters=[target])
+    context.game.player.powers = [
+        SimpleNamespace(power_id="DuplicationPower", power_name="Duplication", amount=1)
+    ]
+
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 12
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
 
 
 def test_lethal_detector_counts_panache_trigger_from_any_card():
