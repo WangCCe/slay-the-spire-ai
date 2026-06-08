@@ -499,6 +499,12 @@ Status labels:
   states stop further beam expansion and receive survival value based on
   avoided incoming HP loss, syncing the observed escape-potion divergence into
   live potion decision estimates.
+- 2026-06-08: Byrd `Flight` now keeps its attack damage reduction active for
+  every hit in one natural multi-hit attack card, then decrements once after
+  that card deals HP damage. The diagnostic oracle, `FastCombatSimulator`
+  single-target/AOE/random-target attack paths, and `CombatEndingDetector`
+  targeted lethal plus AOE-cleanup state now share this timing so Twin
+  Strike/Pummel-style hits do not overstate damage or false-prove lethal.
 
 ## Backlog
 

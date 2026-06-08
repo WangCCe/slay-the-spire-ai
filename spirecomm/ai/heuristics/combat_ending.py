@@ -69,6 +69,7 @@ class _TargetedLethalState:
     malleable: Tuple[int, ...]
     vulnerable: Tuple[int, ...]
     artifact: Tuple[int, ...]
+    flight: Tuple[int, ...]
     strength: int
     player_hp: int
     corruption_active: bool
@@ -89,6 +90,7 @@ class _TargetedLethalState:
             self.malleable,
             self.vulnerable,
             self.artifact,
+            self.flight,
             self.strength,
             self.player_hp,
             self.corruption_active,
@@ -1354,23 +1356,34 @@ class CombatEndingDetector:
         block_state: Tuple[int, ...],
         curl_up_state: Tuple[int, ...],
         malleable_state: Tuple[int, ...],
+        flight_state: Tuple[int, ...],
         monster_idx: int,
         total_damage: int,
         hit_count: int,
         apply_the_boot: bool = False,
-    ) -> Tuple[Tuple[int, ...], Tuple[int, ...], Tuple[int, ...], Tuple[int, ...], int]:
+    ) -> Tuple[
+        Tuple[int, ...],
+        Tuple[int, ...],
+        Tuple[int, ...],
+        Tuple[int, ...],
+        Tuple[int, ...],
+        int,
+    ]:
         next_hp = list(hp_state)
         next_block = list(block_state)
         next_curl_up = list(curl_up_state)
         next_malleable = list(malleable_state)
+        next_flight = list(flight_state)
         if monster_idx < 0 or monster_idx >= len(next_hp):
-            return hp_state, block_state, curl_up_state, malleable_state, 0
+            return hp_state, block_state, curl_up_state, malleable_state, flight_state, 0
 
         damage_progress = 0
         deferred_curl_up_block = 0
         deferred_malleable_block = 0
         curl_up_amount = max(0, next_curl_up[monster_idx])
         malleable_amount = max(0, next_malleable[monster_idx])
+        flight_amount = max(0, next_flight[monster_idx])
+        flight_hit_pending = False
 
         for damage_instance in self._damage_instances(total_damage, hit_count):
             if next_hp[monster_idx] <= 0:
@@ -1379,6 +1392,9 @@ class CombatEndingDetector:
             remaining_damage = max(0, damage_instance)
             if remaining_damage <= 0:
                 continue
+
+            if flight_amount > 0:
+                remaining_damage //= 2
 
             block_before = max(0, next_block[monster_idx])
             if block_before > 0:
@@ -1407,8 +1423,14 @@ class CombatEndingDetector:
                 deferred_malleable_block += malleable_amount
                 malleable_amount += 1
 
+            if hp_loss > 0:
+                flight_hit_pending = True
+
         next_curl_up[monster_idx] = curl_up_amount
         next_malleable[monster_idx] = malleable_amount
+        if flight_hit_pending and next_hp[monster_idx] > 0 and flight_amount > 0:
+            flight_amount = max(0, flight_amount - 1)
+        next_flight[monster_idx] = flight_amount
         if (
             (deferred_curl_up_block > 0 or deferred_malleable_block > 0)
             and next_hp[monster_idx] > 0
@@ -1424,6 +1446,7 @@ class CombatEndingDetector:
             tuple(max(0, block) for block in next_block),
             tuple(max(0, amount) for amount in next_curl_up),
             tuple(max(0, amount) for amount in next_malleable),
+            tuple(max(0, amount) for amount in next_flight),
             damage_progress,
         )
 
@@ -1622,6 +1645,10 @@ class CombatEndingDetector:
             self._get_monster_power_amount(monster, 'Artifact')
             for monster in context.monsters_alive
         )
+        starting_flight = tuple(
+            self._get_monster_power_amount(monster, 'Flight')
+            for monster in context.monsters_alive
+        )
         starting_state = _TargetedLethalState(
             hp=starting_hp,
             block=starting_block,
@@ -1629,6 +1656,7 @@ class CombatEndingDetector:
             malleable=starting_malleable,
             vulnerable=starting_vulnerable,
             artifact=starting_artifact,
+            flight=starting_flight,
             strength=getattr(context, 'strength', 0),
             player_hp=self._context_player_hp(context),
             corruption_active=self._context_corruption_active(context),
@@ -1982,6 +2010,7 @@ class CombatEndingDetector:
                     next_block = tuple(state.block)
                     next_curl_up = tuple(state.curl_up)
                     next_malleable = tuple(state.malleable)
+                    next_flight = tuple(state.flight)
                     next_vulnerable = state.vulnerable
                     next_artifact = state.artifact
                     next_panache_counter = state.panache_counter
@@ -2020,12 +2049,13 @@ class CombatEndingDetector:
                                     state.energy,
                                     monster_idx,
                                 )
-                                next_hp, next_block, next_curl_up, next_malleable, damage_progress = (
+                                next_hp, next_block, next_curl_up, next_malleable, next_flight, damage_progress = (
                                     self._apply_lethal_attack_damage_to_target(
                                         next_hp,
                                         next_block,
                                         next_curl_up,
                                         next_malleable,
+                                        next_flight,
                                         monster_idx,
                                         damage,
                                         hit_count,
@@ -2099,6 +2129,7 @@ class CombatEndingDetector:
                                 block=next_block,
                                 curl_up=next_curl_up,
                                 malleable=next_malleable,
+                                flight=next_flight,
                                 vulnerable=next_vulnerable,
                                 artifact=next_artifact,
                                 duplication_charges=next_duplication_charges,
@@ -2138,6 +2169,7 @@ class CombatEndingDetector:
                     next_block = tuple(state.block)
                     next_curl_up = tuple(state.curl_up)
                     next_malleable = tuple(state.malleable)
+                    next_flight = tuple(state.flight)
                     next_vulnerable = state.vulnerable
                     next_artifact = state.artifact
                     next_panache_counter = state.panache_counter
@@ -2189,12 +2221,13 @@ class CombatEndingDetector:
                                 monster_idx,
                                 fiend_fire_exhaust_count,
                             )
-                            next_hp, next_block, next_curl_up, next_malleable, damage_progress = (
+                            next_hp, next_block, next_curl_up, next_malleable, next_flight, damage_progress = (
                                 self._apply_lethal_attack_damage_to_target(
                                     next_hp,
                                     next_block,
                                     next_curl_up,
                                     next_malleable,
+                                    next_flight,
                                     monster_idx,
                                     damage,
                                     hit_count,
@@ -2274,6 +2307,7 @@ class CombatEndingDetector:
                                 block=next_block,
                                 curl_up=next_curl_up,
                                 malleable=next_malleable,
+                                flight=next_flight,
                                 vulnerable=next_vulnerable,
                                 artifact=next_artifact,
                                 duplication_charges=next_duplication_charges,
@@ -2478,6 +2512,7 @@ class CombatEndingDetector:
         next_block = tuple(state.block)
         next_curl_up = tuple(state.curl_up)
         next_malleable = tuple(state.malleable)
+        next_flight = tuple(state.flight)
         next_vulnerable = state.vulnerable
         next_artifact = state.artifact
         total_damage = 0
@@ -2516,12 +2551,13 @@ class CombatEndingDetector:
                         top_attack_energy,
                         monster_idx,
                     )
-                    next_hp, next_block, next_curl_up, next_malleable, damage_progress = (
+                    next_hp, next_block, next_curl_up, next_malleable, next_flight, damage_progress = (
                         self._apply_lethal_attack_damage_to_target(
                             next_hp,
                             next_block,
                             next_curl_up,
                             next_malleable,
+                            next_flight,
                             monster_idx,
                             damage,
                             hit_count,
@@ -2606,12 +2642,13 @@ class CombatEndingDetector:
                     top_attack_energy,
                     monster_idx,
                 )
-                next_hp, next_block, next_curl_up, next_malleable, damage_progress = (
+                next_hp, next_block, next_curl_up, next_malleable, next_flight, damage_progress = (
                     self._apply_lethal_attack_damage_to_target(
                         next_hp,
                         next_block,
                         next_curl_up,
                         next_malleable,
+                        next_flight,
                         monster_idx,
                         damage,
                         hit_count,
@@ -2681,6 +2718,7 @@ class CombatEndingDetector:
                 block=next_block,
                 curl_up=next_curl_up,
                 malleable=next_malleable,
+                flight=next_flight,
                 vulnerable=next_vulnerable,
                 artifact=next_artifact,
                 duplication_charges=next_duplication_charges,
@@ -2811,6 +2849,10 @@ class CombatEndingDetector:
                 self._get_monster_power_amount(monster, 'Curl Up')
                 for monster in context.monsters_alive
             )
+            flight_state = tuple(
+                self._get_monster_power_amount(monster, 'Flight')
+                for monster in context.monsters_alive
+            )
             survivors = []
             for monster_idx, monster in enumerate(context.monsters_alive):
                 damage = self._card_damage_against_monster(
@@ -2825,12 +2867,13 @@ class CombatEndingDetector:
                     available_energy,
                     monster_idx,
                 )
-                hp_state, block_state, curl_up_state, malleable_state, _damage_progress = (
+                hp_state, block_state, curl_up_state, malleable_state, flight_state, _damage_progress = (
                     self._apply_lethal_attack_damage_to_target(
                         hp_state,
                         block_state,
                         curl_up_state,
                         malleable_state,
+                        flight_state,
                         monster_idx,
                         damage,
                         hit_count,
@@ -2906,12 +2949,13 @@ class CombatEndingDetector:
                             candidate_block_list = list(candidate_block_state)
                             candidate_block_list[monster_idx] = 0
                             candidate_block_state = tuple(candidate_block_list)
-                        candidate_hp, candidate_block, candidate_curl_up, candidate_malleable, damage_progress = (
+                        candidate_hp, candidate_block, candidate_curl_up, candidate_malleable, candidate_flight, damage_progress = (
                             self._apply_lethal_attack_damage_to_target(
                                 hp_state,
                                 candidate_block_state,
                                 curl_up_state,
                                 malleable_state,
+                                flight_state,
                                 monster_idx,
                                 damage,
                                 hit_count,
@@ -2938,6 +2982,7 @@ class CombatEndingDetector:
                                 candidate_block,
                                 candidate_curl_up,
                                 candidate_malleable,
+                                candidate_flight,
                             )
                             best_priority = priority
 
@@ -2946,7 +2991,7 @@ class CombatEndingDetector:
                         break
 
                     sequence.append(self._play_card_action(best_card, monster))
-                    hp_state, block_state, curl_up_state, malleable_state = best_next_state
+                    hp_state, block_state, curl_up_state, malleable_state, flight_state = best_next_state
                     if self._base_card_name(best_card) == 'Fiend Fire':
                         played_cards.update(sequence_card_keys)
                     else:

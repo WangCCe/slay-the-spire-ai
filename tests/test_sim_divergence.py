@@ -5082,6 +5082,55 @@ def test_flight_zero_after_attack_sets_stun_intent(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_flight_reduction_persists_across_multihit_attack(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    twin_strike_plus = _card(
+        name="Twin Strike+",
+        card_id="Twin Strike",
+        damage=12,
+        upgrades=1,
+    )
+    before = _game(
+        floor=19,
+        turn=4,
+        player=SimpleNamespace(current_hp=65, max_hp=80, block=3, energy=3),
+        hand=[twin_strike_plus],
+        monsters=[
+            _monster(
+                name="Byrd",
+                monster_id="Byrd",
+                hp=22,
+                damage=6,
+                intent=Intent.ATTACK,
+                powers=[Power("Strength", "Strength", 1), Power("Flight", "Flight", 1)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=19,
+        turn=4,
+        player=SimpleNamespace(current_hp=65, max_hp=80, block=3, energy=2),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Byrd",
+                monster_id="Byrd",
+                hp=16,
+                damage=6,
+                intent=Intent.STUN,
+                powers=[Power("Strength", "Strength", 1)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_frail_player_block_does_not_create_false_player_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

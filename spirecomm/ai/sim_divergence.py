@@ -532,6 +532,7 @@ def _apply_expected_attack(
     damage_dealt = 0
     deferred_curl_up_block = 0
     deferred_malleable_block = 0
+    flight_hit_pending = False
     for _ in range(max(0, hit_count)):
         if target.get("gone") or target.get("half_dead") or _to_int(target.get("hp")) <= 0:
             break
@@ -555,13 +556,20 @@ def _apply_expected_attack(
             break
         if hp_loss > 0:
             _apply_guardian_mode_shift(target, hp_loss)
-            _decrement_flight(target)
+            flight_hit_pending = True
             deferred_malleable_block += _trigger_malleable(target, defer_block=True)
         if not curl_up_applied and hp_loss > 0:
             curl_up_block = max(0, _snapshot_power_amount(target, "Curl Up"))
             if curl_up_block > 0:
                 deferred_curl_up_block += curl_up_block
                 curl_up_applied = True
+    if (
+        flight_hit_pending
+        and not target.get("gone")
+        and not target.get("half_dead")
+        and _to_int(target.get("hp")) > 0
+    ):
+        _decrement_flight(target)
     if (
         (deferred_curl_up_block > 0 or deferred_malleable_block > 0)
         and not target.get("gone")

@@ -2471,6 +2471,40 @@ def test_byrd_flight_knockdown_stuns_current_attack():
     assert simulator._estimate_incoming_damage(state.monsters) == 0
 
 
+def test_byrd_flight_reduction_persists_across_multihit_attack(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "description": "Deal 5 damage twice.",
+        }
+    }
+    loader._wiki_data = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "text": "Deal [5|7] damage twice.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    twin_strike_plus = _card("Twin Strike", "Twin Strike", cost=1, upgrades=1)
+    target = _byrd(current_hp=22, flight=1)
+    context = _combat_context([twin_strike_plus], energy=1, monsters=[target])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        twin_strike_plus,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 6
+    assert result.monsters[0]["hp"] == 16
+    assert result.monsters[0]["flight_stacks"] == 0
+    assert result.monsters[0]["intent"] == Intent.STUN
+
+
 def test_simulator_rejects_nonfinite_flight_counter():
     context = _combat_context([], energy=0, monsters=[_byrd(flight=3)])
     state = SimulationState(context)
@@ -14080,6 +14114,33 @@ def test_lethal_detector_uses_duplication_power_for_next_attack(monkeypatch):
     sequence = detector.find_lethal_sequence(context)
     assert [action.card.uuid for action in sequence] == ["strike"]
     assert sequence[0].target_monster is context.monsters_alive[0]
+
+
+def test_lethal_detector_rejects_multihit_flight_knockdown_as_kill(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "description": "Deal 5 damage twice.",
+        }
+    }
+    loader._wiki_data = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "text": "Deal [5|7] damage twice.",
+        }
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+
+    twin_strike_plus = _card("Twin Strike", "Twin Strike", cost=1, upgrades=1)
+    target = _byrd(current_hp=11, flight=1)
+    context = _combat_context([twin_strike_plus], energy=1, monsters=[target])
+    context.vulnerable_stacks[0] = 1
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
 
 
 def test_lethal_detector_rejects_duplication_power_attack_through_malleable_block(

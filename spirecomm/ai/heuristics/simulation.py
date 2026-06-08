@@ -1490,6 +1490,7 @@ class FastCombatSimulator:
             for monster in state.monsters:
                 if not self._is_live_monster_state(monster):
                     continue
+                flight_hit_pending = False
                 for _ in range(hit_count):
                     if not self._is_live_monster_state(monster):
                         break
@@ -1502,15 +1503,20 @@ class FastCombatSimulator:
                         context,
                     )
                     damage = self._apply_slow_attack_damage(damage, monster)
-                    self._deal_damage_to_monster(
+                    hp_damage = self._deal_damage_to_monster(
                         state,
                         monster,
                         damage,
                         defer_curl_up_block=hit_count > 1,
                         defer_malleable_block=hit_count > 1,
                         apply_the_boot=True,
+                        defer_flight_hit=hit_count > 1,
                     )
+                    if hp_damage > 0 and self._is_live_monster_state(monster):
+                        flight_hit_pending = True
                     state.damage_instances += 1  # Track each damage instance
+                if flight_hit_pending:
+                    self._apply_flight_hit(monster)
                 self._flush_deferred_reactive_block(monster)
             if card_data:
                 description = self._get_card_effect_text(card_name, card_data)
@@ -1522,6 +1528,7 @@ class FastCombatSimulator:
                             continue
                         self._apply_monster_debuffs(monster, debuff_effects)
         elif self._is_random_target_attack(card) and target_index is None:
+            pending_flight_hits = []
             for hit_index in range(hit_count):
                 alive_monsters = [
                     monster for monster in state.monsters
@@ -1539,15 +1546,24 @@ class FastCombatSimulator:
                     context,
                 )
                 damage = self._apply_slow_attack_damage(damage, monster)
-                self._deal_damage_to_monster(
+                hp_damage = self._deal_damage_to_monster(
                     state,
                     monster,
                     damage,
                     defer_curl_up_block=hit_count > 1,
                     defer_malleable_block=hit_count > 1,
                     apply_the_boot=True,
+                    defer_flight_hit=hit_count > 1,
                 )
+                if (
+                    hp_damage > 0
+                    and self._is_live_monster_state(monster)
+                    and monster not in pending_flight_hits
+                ):
+                    pending_flight_hits.append(monster)
                 state.damage_instances += 1
+            for monster in pending_flight_hits:
+                self._apply_flight_hit(monster)
             for monster in state.monsters:
                 self._flush_deferred_reactive_block(monster)
         else:
@@ -1561,6 +1577,7 @@ class FastCombatSimulator:
                         hit_count,
                         monster,
                     )
+                    flight_hit_pending = False
                     if card_name == 'Melter':
                         monster['block'] = 0
                     for _ in range(target_hit_count):
@@ -1575,15 +1592,20 @@ class FastCombatSimulator:
                             context,
                         )
                         damage = self._apply_slow_attack_damage(damage, monster)
-                        self._deal_damage_to_monster(
+                        hp_damage = self._deal_damage_to_monster(
                             state,
                             monster,
                             damage,
                             defer_curl_up_block=target_hit_count > 1,
                             defer_malleable_block=target_hit_count > 1,
                             apply_the_boot=True,
+                            defer_flight_hit=target_hit_count > 1,
                         )
+                        if hp_damage > 0 and self._is_live_monster_state(monster):
+                            flight_hit_pending = True
                         state.damage_instances += 1  # Track damage instance
+                    if flight_hit_pending:
+                        self._apply_flight_hit(monster)
                     self._flush_deferred_reactive_block(monster)
 
                     # Check for card effects using game data
@@ -3134,25 +3156,26 @@ class FastCombatSimulator:
         defer_curl_up_block: bool = False,
         defer_malleable_block: bool = False,
         apply_the_boot: bool = False,
+        defer_flight_hit: bool = False,
     ):
         """Deal damage to monster, accounting for block and thorns."""
         if not self._is_live_monster_state(monster):
-            return
+            return 0
         try:
             damage = max(0, int(damage or 0))
         except (TypeError, ValueError):
             damage = 0
         if damage <= 0:
-            return
+            return 0
 
         if trigger_thorns:
             damage = self._apply_flight_damage_reduction(monster, damage)
             if damage <= 0:
-                return
+                return 0
 
         damage = self._apply_monster_intangible_damage_cap(monster, damage)
         if damage <= 0:
-            return
+            return 0
 
         # Damage block first
         block_damage = min(damage, monster['block'])
@@ -3176,7 +3199,8 @@ class FastCombatSimulator:
                 self._lose_player_hp(state, thorns, trigger_rupture=False)
 
         if trigger_thorns and hp_damage > 0 and monster['hp'] > 0:
-            self._apply_flight_hit(monster)
+            if not defer_flight_hit:
+                self._apply_flight_hit(monster)
             self._apply_reactive_monster_block(
                 monster,
                 defer_curl_up_block=defer_curl_up_block,
@@ -3189,6 +3213,8 @@ class FastCombatSimulator:
         if monster['hp'] <= 0:
             self._apply_monster_death_effects(state, monster)
             self._mark_monster_defeated(state, monster)
+
+        return hp_damage
 
     def _apply_shifting_strength_loss(self, monster: dict, hp_damage: int):
         if hp_damage <= 0 or not self._has_shifting_strength_loss(monster):
