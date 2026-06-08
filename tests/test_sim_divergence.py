@@ -7163,6 +7163,79 @@ def test_end_turn_orichalcum_block_reduces_incoming_damage(monkeypatch, tmp_path
     assert not trace_path.exists()
 
 
+def test_end_turn_buffer_absorbs_first_unblocked_damage_instance(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=29,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[Power("Buffer", "Buffer", 1)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Centurion",
+                monster_id="Centurion",
+                hp=37,
+                max_hp=80,
+                damage=12,
+                intent=Intent.ATTACK,
+            ),
+            _monster(
+                name="Mystic",
+                monster_id="Mystic",
+                hp=42,
+                max_hp=56,
+                damage=8,
+                intent=Intent.ATTACK,
+                index=1,
+            ),
+        ],
+    )
+    actual = _game(
+        floor=29,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=72,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Centurion",
+                monster_id="Centurion",
+                hp=37,
+                max_hp=80,
+                damage=12,
+                intent=Intent.ATTACK,
+            ),
+            _monster(
+                name="Mystic",
+                monster_id="Mystic",
+                hp=42,
+                max_hp=56,
+                damage=8,
+                intent=Intent.ATTACK,
+                index=1,
+            ),
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_horn_cleat_grants_block_after_monster_attacks(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

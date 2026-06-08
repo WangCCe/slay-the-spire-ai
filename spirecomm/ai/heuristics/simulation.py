@@ -508,6 +508,10 @@ class SimulationState:
             self._get_player_power_amount(context, 'Intangible'),
             self._get_player_power_amount(context, 'IntangiblePlayer'),
         )
+        self.player_buffer = max(
+            self._get_player_power_amount(context, 'Buffer'),
+            self._get_player_power_amount(context, 'BufferPower'),
+        )
         self.player_artifact = self._get_player_power_amount(context, 'Artifact')
         self.combat_escaped = False
         self.ascension_level = self._context_ascension_level(context)
@@ -962,6 +966,7 @@ class SimulationState:
             self.player_temp_dexterity,
             self.player_thorns,
             self.player_intangible,
+            self.player_buffer,
             self.player_artifact,
             self.combat_escaped,
             self.monsters_escaped,
@@ -4332,7 +4337,17 @@ class FastCombatSimulator:
         hp_loss = max(0, coerce_int(amount, 0))
         if hp_loss > 0 and getattr(state, 'has_tungsten_rod', False):
             hp_loss = max(0, hp_loss - 1)
+        if hp_loss > 0 and FastCombatSimulator._consume_player_buffer(state):
+            return 0
         return hp_loss
+
+    @staticmethod
+    def _consume_player_buffer(state: SimulationState) -> bool:
+        buffer_charges = max(0, coerce_int(getattr(state, 'player_buffer', 0), 0))
+        if buffer_charges <= 0:
+            return False
+        state.player_buffer = buffer_charges - 1
+        return True
 
     @staticmethod
     def _fairy_revive_hp(state: SimulationState) -> int:
@@ -4355,13 +4370,62 @@ class FastCombatSimulator:
 
     @staticmethod
     def _projected_player_hp_after_loss(state: SimulationState, amount: int) -> int:
-        hp_loss = FastCombatSimulator._effective_player_hp_loss(state, amount)
+        hp_loss = max(0, coerce_int(amount, 0))
         hp_after_loss = max(0, coerce_int(getattr(state, 'player_hp', 0), 0) - hp_loss)
         if hp_after_loss > 0:
             return hp_after_loss
         if max(0, coerce_int(getattr(state, 'fairy_revives', 0), 0)) > 0:
             return FastCombatSimulator._fairy_revive_hp(state)
         return 0
+
+    def _projected_hp_loss_after_block(
+        self,
+        state: SimulationState,
+        incoming_damage: int,
+        block: int,
+    ) -> int:
+        damage_events = self._estimate_incoming_damage_events(
+            getattr(state, 'monsters', []),
+            getattr(state, 'player_vulnerable_added', 0),
+            getattr(state, 'player_intangible', 0),
+        )
+        incoming_total = max(0, coerce_int(incoming_damage, 0))
+        if incoming_total <= 0:
+            damage_events = []
+        else:
+            event_total = sum(damage_events)
+            if event_total > incoming_total:
+                damage_events = [incoming_total]
+            elif 0 < event_total < incoming_total:
+                damage_events = list(damage_events) + [incoming_total - event_total]
+        if not damage_events:
+            damage_events = [incoming_total]
+        return self._projected_hp_loss_after_damage_events(state, damage_events, block)
+
+    @staticmethod
+    def _projected_hp_loss_after_damage_events(
+        state: SimulationState,
+        damage_events,
+        block: int,
+    ) -> int:
+        projected_state = state.clone()
+        remaining_block = max(0, coerce_int(block, 0))
+        hp_loss = 0
+        for amount in damage_events or []:
+            damage = max(0, coerce_int(amount, 0))
+            if damage <= 0:
+                continue
+            if remaining_block > 0:
+                blocked = min(remaining_block, damage)
+                remaining_block -= blocked
+                damage -= blocked
+            if damage <= 0:
+                continue
+            hp_loss += FastCombatSimulator._effective_player_hp_loss(
+                projected_state,
+                damage,
+            )
+        return hp_loss
 
     @staticmethod
     def _lose_player_hp(
@@ -4393,6 +4457,82 @@ class FastCombatSimulator:
             and not monster.get('half_dead', False)
             and monster.get('hp', monster.get('current_hp', 1)) > 0
         )
+
+    def _estimate_incoming_damage_events(
+        self,
+        monsters_state: list,
+        player_vulnerable_added: int = 0,
+        player_intangible: int = 0,
+    ) -> list[int]:
+        events = []
+        for monster in monsters_state:
+            events.extend(
+                self._estimate_monster_incoming_damage_events(
+                    monster,
+                    player_vulnerable_added,
+                    player_intangible,
+                )
+            )
+        return [event for event in events if event > 0]
+
+    def _estimate_monster_incoming_damage_events(
+        self,
+        monster: dict,
+        player_vulnerable_added: int = 0,
+        player_intangible: int = 0,
+    ) -> list[int]:
+        if not self._is_live_monster_state(monster):
+            return []
+
+        intent = monster.get('intent')
+        if intent is None:
+            return []
+
+        if intent_is_attack(intent):
+            has_adjusted_damage = 'move_adjusted_damage' in monster
+            raw_damage = monster.get('move_adjusted_damage', None)
+            damage = max(0, raw_damage) if isinstance(raw_damage, (int, float)) else 0
+            hits = self._positive_monster_hits(monster)
+            should_use_damage_fallback = not has_adjusted_damage or raw_damage is None
+
+            if should_use_damage_fallback:
+                damage = monster.get('move_base_damage', 0)
+
+            if should_use_damage_fallback and damage == 0:
+                monster_name = str(monster.get('name', '') or '')
+                damage = 15 if ('elite' in monster_name.lower() or 'boss' in monster_name.lower()) else 8
+
+            if should_use_damage_fallback:
+                damage = self._apply_monster_strength_to_per_hit_damage(
+                    damage,
+                    monster.get('strength', 0),
+                )
+                damage = self._apply_monster_weak_to_per_hit_damage(
+                    damage,
+                    monster.get('weak', 0),
+                )
+
+            total = max(0, coerce_int(damage, 0)) * hits
+            if player_vulnerable_added > 0:
+                total = self._apply_player_vulnerable_damage(
+                    total,
+                    player_vulnerable_added,
+                    hits,
+                )
+            if player_intangible > 0 and total > 0:
+                return [1] * hits
+            if total <= 0:
+                return []
+            if hits > 1:
+                per_hit, remainder = divmod(total, hits)
+                if remainder == 0:
+                    return [per_hit] * hits
+            return [total]
+
+        known_unknown_damage = known_unknown_move_immediate_damage(monster)
+        if known_unknown_damage > 0:
+            return [1 if player_intangible > 0 else known_unknown_damage]
+        return []
 
     def _estimate_incoming_damage(
         self,
@@ -6153,7 +6293,11 @@ class FastCombatSimulator:
             final_state.player_vulnerable_added,
             getattr(final_state, 'player_intangible', 0),
         )
-        hp_loss_next_turn = max(0, expected_incoming - final_turn_block)
+        hp_loss_next_turn = self._projected_hp_loss_after_block(
+            final_state,
+            expected_incoming,
+            final_turn_block,
+        )
 
         # Log defensive analysis for debugging
         if block_gained > 0 or final_turn_block > 0:
@@ -6269,7 +6413,11 @@ class FastCombatSimulator:
             state.player_vulnerable_added,
             getattr(state, 'player_intangible', 0),
         )
-        hp_loss_avoided = max(0, expected_incoming - state.turn_block())
+        hp_loss_avoided = self._projected_hp_loss_after_block(
+            state,
+            expected_incoming,
+            state.turn_block(),
+        )
         score = hp_loss_avoided * weights['W_DEATHRISK']
 
         act = max(1, coerce_int(current_act, 1))

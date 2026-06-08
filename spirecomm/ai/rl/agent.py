@@ -2863,6 +2863,28 @@ class CombatRLAgent:
         return total
 
     @classmethod
+    def _incoming_damage_events(cls, game: Game) -> list[int]:
+        events = []
+        for monster in cls._alive_monsters(game):
+            if intent_is_unknown(getattr(monster, "intent", None)):
+                known_damage = known_unknown_move_immediate_damage(monster)
+                if known_damage > 0:
+                    events.append(max(0, cls._safe_int(known_damage, default=0)))
+                    continue
+                if known_unknown_move_has_no_immediate_damage(monster):
+                    continue
+                events.append(max(0, 5 * cls._safe_int(getattr(game, "act", 1), default=1)))
+                continue
+            if not monster_intends_attack(monster):
+                continue
+            damage = getattr(monster, "move_adjusted_damage", None)
+            if damage is None:
+                damage = getattr(monster, "move_base_damage", 0) or 0
+            hits = max(1, cls._safe_int(getattr(monster, "move_hits", 1), default=1))
+            events.extend([max(0, cls._safe_int(damage, default=0))] * hits)
+        return [event for event in events if event > 0]
+
+    @classmethod
     def _monster_incoming_damage(cls, monster) -> int:
         if intent_is_unknown(getattr(monster, "intent", None)):
             known_damage = known_unknown_move_immediate_damage(monster)
@@ -2892,14 +2914,26 @@ class CombatRLAgent:
 
     @classmethod
     def _end_turn_status_damage(cls, game: Game) -> tuple[int, int]:
-        blockable_damage = 0
-        hp_loss = 0
+        return (
+            sum(cls._end_turn_status_blockable_damage_events(game)),
+            sum(cls._end_turn_status_hp_loss_events(game)),
+        )
+
+    @classmethod
+    def _end_turn_status_blockable_damage_events(cls, game: Game) -> list[int]:
+        events = []
         for card in getattr(game, "hand", []) or []:
             if cls._card_matches_normalized_names(card, {"burn"}):
-                blockable_damage += 4 if card_upgrade_count(card) > 0 else 2
-            elif cls._card_matches_normalized_names(card, {"decay"}):
-                hp_loss += 2
-        return blockable_damage, hp_loss
+                events.append(4 if card_upgrade_count(card) > 0 else 2)
+        return events
+
+    @classmethod
+    def _end_turn_status_hp_loss_events(cls, game: Game) -> list[int]:
+        events = []
+        for card in getattr(game, "hand", []) or []:
+            if cls._card_matches_normalized_names(card, {"decay"}):
+                events.append(2)
+        return events
 
     @classmethod
     def _end_turn_damage_after_block(
@@ -2909,14 +2943,119 @@ class CombatRLAgent:
         current_block: int,
         game: Optional[Game] = None,
     ) -> int:
+        if game is None:
+            return cls._end_turn_aggregate_damage_after_block(
+                blockable_damage,
+                status_hp_loss,
+                current_block,
+                game,
+            )
+
+        blockable_events = (
+            cls._end_turn_status_blockable_damage_events(game)
+            + cls._incoming_damage_events(game)
+        )
+        known_blockable_damage = sum(blockable_events)
+        extra_blockable_damage = max(0, blockable_damage - known_blockable_damage)
+        if extra_blockable_damage > 0:
+            blockable_events.append(extra_blockable_damage)
+
+        hp_loss_events = cls._end_turn_status_hp_loss_events(game)
+        known_status_hp_loss = sum(hp_loss_events)
+        extra_status_hp_loss = max(0, status_hp_loss - known_status_hp_loss)
+        if extra_status_hp_loss > 0:
+            hp_loss_events.append(extra_status_hp_loss)
+
+        return cls._end_turn_damage_events_after_block(
+            blockable_events,
+            hp_loss_events,
+            current_block,
+            game,
+        )
+
+    @classmethod
+    def _end_turn_aggregate_damage_after_block(
+        cls,
+        blockable_damage: int,
+        status_hp_loss: int,
+        current_block: int,
+        game: Optional[Game] = None,
+    ) -> int:
         blockable_hp_loss = max(0, blockable_damage - current_block)
         unblocked_status_hp_loss = max(0, status_hp_loss)
-        if game is not None and cls._relic_counter(game, "Tungsten Rod") is not None:
-            if blockable_hp_loss > 0:
-                blockable_hp_loss = max(0, blockable_hp_loss - 1)
-            if unblocked_status_hp_loss > 0:
-                unblocked_status_hp_loss = max(0, unblocked_status_hp_loss - 1)
-        return blockable_hp_loss + unblocked_status_hp_loss
+        return cls._prevented_hp_loss(
+            blockable_hp_loss,
+            game,
+        ) + cls._prevented_hp_loss(
+            unblocked_status_hp_loss,
+            game,
+        )
+
+    @classmethod
+    def _end_turn_damage_events_after_block(
+        cls,
+        blockable_events: list[int],
+        hp_loss_events: list[int],
+        current_block: int,
+        game: Optional[Game],
+    ) -> int:
+        remaining_block = max(0, current_block)
+        buffer_charges = cls._player_buffer_charges(game) if game is not None else 0
+        total_hp_loss = 0
+        for event_damage in blockable_events:
+            damage = max(0, cls._safe_int(event_damage, default=0))
+            if remaining_block > 0:
+                blocked = min(remaining_block, damage)
+                remaining_block -= blocked
+                damage -= blocked
+            if damage <= 0:
+                continue
+            damage = cls._prevented_hp_loss(damage, game)
+            if damage <= 0:
+                continue
+            if buffer_charges > 0:
+                buffer_charges -= 1
+                continue
+            total_hp_loss += damage
+
+        for event_damage in hp_loss_events:
+            damage = cls._prevented_hp_loss(event_damage, game)
+            if damage <= 0:
+                continue
+            if buffer_charges > 0:
+                buffer_charges -= 1
+                continue
+            total_hp_loss += damage
+        return total_hp_loss
+
+    @classmethod
+    def _prevented_hp_loss(cls, amount: int, game: Optional[Game]) -> int:
+        hp_loss = max(0, cls._safe_int(amount, default=0))
+        if hp_loss > 0 and game is not None and cls._relic_counter(game, "Tungsten Rod") is not None:
+            hp_loss = max(0, hp_loss - 1)
+        return hp_loss
+
+    @classmethod
+    def _player_buffer_charges(cls, game: Game) -> int:
+        return max(
+            cls._player_power_amount(game, "Buffer"),
+            cls._player_power_amount(game, "BufferPower"),
+        )
+
+    @classmethod
+    def _player_power_amount(cls, game: Game, power_name: str) -> int:
+        wanted = cls._normalize_identifier(power_name)
+        player = getattr(game, "player", None)
+        for power in getattr(player, "powers", []) or []:
+            identifiers = (
+                getattr(power, "power_id", None),
+                getattr(power, "power_name", None),
+                getattr(power, "id", None),
+                getattr(power, "name", None),
+            )
+            if any(cls._normalize_identifier(identifier) == wanted for identifier in identifiers):
+                return max(0, cls._safe_int(getattr(power, "amount", 1), default=1))
+        return 0
 
     @classmethod
     def _end_turn_block_for_game(cls, game: Game, current_block: int) -> int:

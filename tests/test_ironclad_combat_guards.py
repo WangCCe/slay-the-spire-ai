@@ -15058,6 +15058,17 @@ def test_ironclad_sequence_score_hard_penalizes_current_turn_lethal_incoming():
 
     assert intangible_score > -500
 
+    buffer_final = reckless_final.clone()
+    buffer_final.player_buffer = 1
+    buffer_score = planner._score_sequence(
+        [PlayCardAction(card=strike)],
+        initial,
+        buffer_final,
+        context,
+    )
+
+    assert buffer_score > -500
+
 
 def test_armaments_bonus_does_not_count_itself_when_uuid_is_missing():
     armaments_with_uuid = _card(

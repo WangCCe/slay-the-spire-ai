@@ -1545,7 +1545,13 @@ class IroncladCombatPlanner(CombatPlanner):
                 getattr(context, 'player_hp', getattr(getattr(context, 'game', None), 'current_hp', 0)),
             )
         )
-        unblocked_current_damage = max(0.0, current_turn_incoming - final_turn_block)
+        unblocked_current_damage = float(
+            self.simulator._projected_hp_loss_after_block(
+                final_state,
+                current_turn_incoming,
+                final_turn_block,
+            )
+        )
         if not all_killed and current_hp > 0 and unblocked_current_damage >= current_hp:
             lethal_penalty = 1000 + unblocked_current_damage * W_DEATHRISK
             score -= lethal_penalty

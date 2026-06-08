@@ -962,6 +962,34 @@ def test_survival_guard_treats_tungsten_rod_reduced_incoming_as_nonlethal():
     assert _agent()._get_survival_block_replacement(game) is None
 
 
+def test_survival_guard_treats_buffered_incoming_as_nonlethal():
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        block=5,
+    )
+    centurion = _monster(hp=42, damage=12, index=0, name="Centurion", monster_id="Centurion")
+    centurion.intent = Intent.ATTACK
+    game = _game(
+        hand=[defend],
+        monsters=[centurion],
+        current_hp=8,
+        player=SimpleNamespace(
+            energy=1,
+            block=0,
+            powers=[SimpleNamespace(power_name="Buffer", amount=1)],
+        ),
+        floor=29,
+        turn=2,
+    )
+
+    assert _agent()._get_survival_block_replacement(game) is None
+
+
 def test_survival_guard_counts_ornamental_fan_from_havoc_top_attack():
     defend = SimpleNamespace(
         name="Defend",

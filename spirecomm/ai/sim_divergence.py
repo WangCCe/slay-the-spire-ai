@@ -2221,7 +2221,23 @@ def _effective_player_hp_loss(snapshot: Dict[str, Any], amount: int) -> int:
     hp_loss = max(0, _to_int(amount))
     if hp_loss > 0 and _snapshot_has_relic(snapshot, "Tungsten Rod"):
         hp_loss = max(0, hp_loss - 1)
+    if hp_loss > 0 and _consume_player_buffer(snapshot):
+        return 0
     return hp_loss
+
+
+def _consume_player_buffer(snapshot: Dict[str, Any]) -> bool:
+    player = snapshot.get("player", {})
+    for power_name in ("Buffer", "BufferPower"):
+        amount = _snapshot_power_amount(player, power_name)
+        if amount <= 0:
+            continue
+        if amount > 1:
+            _set_snapshot_power_amount(player, power_name, amount - 1)
+        else:
+            _remove_snapshot_power(player, power_name)
+        return True
+    return False
 
 
 def _end_turn_status_damage_events(snapshot: Dict[str, Any]):

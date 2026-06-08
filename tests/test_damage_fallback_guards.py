@@ -6464,6 +6464,118 @@ def test_outcome_score_uses_intangible_for_current_incoming_damage():
     assert intangible_score > float("-inf")
 
 
+def test_outcome_score_uses_buffer_for_current_incoming_damage():
+    monster = SimpleNamespace(
+        name="Centurion",
+        monster_id="Centurion",
+        max_hp=80,
+        current_hp=80,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=30,
+        move_hits=1,
+        strength=0,
+        powers=[],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=20,
+            max_hp=80,
+            player=SimpleNamespace(
+                block=0,
+                powers=[SimpleNamespace(power_name="Buffer", amount=1)],
+            ),
+            monsters=[monster],
+            relics=[],
+        ),
+        act=1,
+        turn=1,
+        energy_available=0,
+        strength=0,
+        monsters_alive=[monster],
+        vulnerable_stacks={0: 0},
+        weak_stacks={0: 0},
+        frail_stacks={0: 0},
+        thorns_stacks={0: 0},
+        playable_cards=[],
+    )
+    simulator = FastCombatSimulator(None)
+    weights = simulation.get_combat_mode_weights(simulation.CombatMode.BALANCED)
+    initial_state = simulation.SimulationState(context)
+
+    score = simulator.calculate_outcome_score(
+        initial_state,
+        initial_state.clone(),
+        current_act=1,
+        weights=weights,
+        context=None,
+        sequence=[],
+    )
+
+    assert score > float("-inf")
+
+
+def test_outcome_score_charges_second_attack_after_buffer_consumes_first():
+    monsters = []
+    for name, damage in (("Centurion", 12), ("Mystic", 8)):
+        monsters.append(
+            SimpleNamespace(
+                name=name,
+                monster_id=name,
+                max_hp=80,
+                current_hp=80,
+                block=0,
+                intent=Intent.ATTACK,
+                half_dead=False,
+                is_gone=False,
+                move_id=1,
+                move_adjusted_damage=damage,
+                move_hits=1,
+                strength=0,
+                powers=[],
+            )
+        )
+    context = SimpleNamespace(
+        game=SimpleNamespace(
+            current_hp=5,
+            max_hp=80,
+            player=SimpleNamespace(
+                block=0,
+                powers=[SimpleNamespace(power_name="Buffer", amount=1)],
+            ),
+            monsters=monsters,
+            relics=[],
+        ),
+        act=1,
+        turn=1,
+        energy_available=0,
+        strength=0,
+        monsters_alive=monsters,
+        vulnerable_stacks={0: 0, 1: 0},
+        weak_stacks={0: 0, 1: 0},
+        frail_stacks={0: 0, 1: 0},
+        thorns_stacks={0: 0, 1: 0},
+        playable_cards=[],
+    )
+    simulator = FastCombatSimulator(None)
+    weights = simulation.get_combat_mode_weights(simulation.CombatMode.BALANCED)
+    initial_state = simulation.SimulationState(context)
+
+    score = simulator.calculate_outcome_score(
+        initial_state,
+        initial_state.clone(),
+        current_act=1,
+        weights=weights,
+        context=None,
+        sequence=[],
+    )
+
+    assert score == float("-inf")
+
+
 def test_beam_search_simulates_ancient_potion_as_player_artifact():
     potion = Potion(
         potion_id="AncientPotion",
