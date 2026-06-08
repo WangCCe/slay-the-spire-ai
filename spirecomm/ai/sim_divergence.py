@@ -523,6 +523,7 @@ def _apply_expected_attack(
     target = monsters[target_index]
     curl_up_applied = False
     damage_dealt = 0
+    deferred_curl_up_block = 0
     deferred_malleable_block = 0
     for _ in range(max(0, hit_count)):
         if target.get("gone") or target.get("half_dead") or _to_int(target.get("hp")) <= 0:
@@ -551,15 +552,19 @@ def _apply_expected_attack(
         if not curl_up_applied and hp_loss > 0:
             curl_up_block = max(0, _snapshot_power_amount(target, "Curl Up"))
             if curl_up_block > 0:
-                target["block"] += curl_up_block
+                deferred_curl_up_block += curl_up_block
                 curl_up_applied = True
     if (
-        deferred_malleable_block > 0
+        (deferred_curl_up_block > 0 or deferred_malleable_block > 0)
         and not target.get("gone")
         and not target.get("half_dead")
         and _to_int(target.get("hp")) > 0
     ):
-        target["block"] = max(0, _to_int(target.get("block"))) + deferred_malleable_block
+        target["block"] = (
+            max(0, _to_int(target.get("block")))
+            + deferred_curl_up_block
+            + deferred_malleable_block
+        )
     return damage_dealt
 
 

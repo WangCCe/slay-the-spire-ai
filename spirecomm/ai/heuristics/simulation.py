@@ -1484,10 +1484,11 @@ class FastCombatSimulator:
                         state,
                         monster,
                         damage,
+                        defer_curl_up_block=hit_count > 1,
                         defer_malleable_block=hit_count > 1,
                     )
                     state.damage_instances += 1  # Track each damage instance
-                self._flush_deferred_malleable_block(monster)
+                self._flush_deferred_reactive_block(monster)
             if card_data:
                 description = self._get_card_effect_text(card_name, card_data)
                 upgraded = is_card_upgraded(card)
@@ -1519,11 +1520,12 @@ class FastCombatSimulator:
                     state,
                     monster,
                     damage,
+                    defer_curl_up_block=hit_count > 1,
                     defer_malleable_block=hit_count > 1,
                 )
                 state.damage_instances += 1
             for monster in state.monsters:
-                self._flush_deferred_malleable_block(monster)
+                self._flush_deferred_reactive_block(monster)
         else:
             # Single-target attack
             if target_index is not None and 0 <= target_index < len(state.monsters):
@@ -1553,10 +1555,11 @@ class FastCombatSimulator:
                             state,
                             monster,
                             damage,
+                            defer_curl_up_block=target_hit_count > 1,
                             defer_malleable_block=target_hit_count > 1,
                         )
                         state.damage_instances += 1  # Track damage instance
-                    self._flush_deferred_malleable_block(monster)
+                    self._flush_deferred_reactive_block(monster)
 
                     # Check for card effects using game data
                     if card_data:
@@ -3090,6 +3093,7 @@ class FastCombatSimulator:
         monster: dict,
         damage: int,
         trigger_thorns: bool = True,
+        defer_curl_up_block: bool = False,
         defer_malleable_block: bool = False,
     ):
         """Deal damage to monster, accounting for block and thorns."""
@@ -3133,6 +3137,7 @@ class FastCombatSimulator:
             self._apply_flight_hit(monster)
             self._apply_reactive_monster_block(
                 monster,
+                defer_curl_up_block=defer_curl_up_block,
                 defer_malleable_block=defer_malleable_block,
             )
             self._apply_reactive_monster_strength(monster)
@@ -3234,13 +3239,20 @@ class FastCombatSimulator:
     def _apply_reactive_monster_block(
         self,
         monster: dict,
+        defer_curl_up_block: bool = False,
         defer_malleable_block: bool = False,
     ):
         """Apply non-lethal attack-damage reactions such as Curl Up and Malleable."""
         curl_up_block = self._non_negative_int(monster.get('curl_up_block', 0))
         monster['curl_up_block'] = curl_up_block
         if curl_up_block > 0 and not monster.get('curl_up_used', False):
-            monster['block'] += curl_up_block
+            if defer_curl_up_block:
+                monster['_deferred_curl_up_block'] = (
+                    self._non_negative_int(monster.get('_deferred_curl_up_block', 0))
+                    + curl_up_block
+                )
+            else:
+                monster['block'] += curl_up_block
             monster['curl_up_used'] = True
             monster['curl_up_block'] = 0
 
@@ -3256,13 +3268,16 @@ class FastCombatSimulator:
                 monster['block'] += malleable_block
             monster['malleable_block'] = malleable_block + 1
 
-    def _flush_deferred_malleable_block(self, monster: dict):
+    def _flush_deferred_reactive_block(self, monster: dict):
+        deferred_curl_up_block = self._non_negative_int(
+            monster.pop('_deferred_curl_up_block', 0)
+        )
         deferred_block = self._non_negative_int(monster.pop('_deferred_malleable_block', 0))
-        if deferred_block <= 0:
+        if deferred_curl_up_block <= 0 and deferred_block <= 0:
             return
         if not self._is_live_monster_state(monster) or monster.get('hp', 0) <= 0:
             return
-        monster['block'] += deferred_block
+        monster['block'] += deferred_curl_up_block + deferred_block
 
     def _apply_flight_damage_reduction(self, monster: dict, damage: int) -> int:
         """Apply Byrd Flight's attack damage reduction."""

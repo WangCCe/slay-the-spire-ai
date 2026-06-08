@@ -449,6 +449,49 @@ def test_malleable_multi_hit_block_does_not_absorb_later_hits(monkeypatch, tmp_p
     assert not trace_path.exists()
 
 
+def test_curl_up_multi_hit_block_does_not_absorb_later_hits(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    twin_strike = _card(
+        name="Twin Strike",
+        card_id="Twin Strike",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=10,
+    )
+    before = _game(
+        player=SimpleNamespace(current_hp=70, max_hp=80, block=0, energy=3),
+        hand=[twin_strike],
+        monsters=[
+            _monster(
+                name="Louse",
+                monster_id="FuzzyLouseNormal",
+                hp=12,
+                powers=[Power("Curl Up", "Curl Up", 4)],
+            )
+        ],
+    )
+    actual = _game(
+        player=SimpleNamespace(current_hp=70, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Louse",
+                monster_id="FuzzyLouseNormal",
+                hp=2,
+                block=4,
+                powers=[],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_guardian_sharp_hide_reflection_spends_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

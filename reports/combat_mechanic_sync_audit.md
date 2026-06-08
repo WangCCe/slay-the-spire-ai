@@ -40,6 +40,7 @@ Status labels:
 | Static zero-live attack damage, including upgrades | Headbutt and upgraded attack divergence tests | synced | synced | synced | synced | synced for survival guards and legacy state features | Check only if a new estimator reads raw `card.damage` directly. |
 | Context-dependent attack base damage | Mind Blast draw-pile-count divergence tests | synced | synced | synced | synced | synced for survival guards and legacy hand-state features | Context-free card-reward features remain `n/a`; they intentionally lack draw-pile context. |
 | X-energy and per-hit attacks | Whirlwind divergence and guard tests | synced | synced | synced | synced | synced for relevant RL survival multi-hit paths | Watch for newly added scalar damage shortcuts. |
+| Reactive monster block timing | Twin Strike into Curl Up Louse clean divergence; earlier Malleable multi-hit evidence | synced for Curl Up and Malleable between cards | synced for Curl Up and Malleable after the full multi-hit card | n/a for scalar fallback; target reaction is owned by simulator/lethal search | n/a unless timing starts simulating target reactions directly | n/a until a guard predicts target-side reactive block | Watch for any new direct lethal/target shortcut that bypasses the shared simulator or `CombatEndingDetector`. |
 | Hand-count attack damage | Fiend Fire divergence and guard tests | synced | synced | synced | synced | not currently duplicated outside encoded card identity | No immediate gap found; recheck only when RL adds Fiend Fire-specific damage guards. |
 | Target-side attack modifiers | Weak, Vulnerable, Paper Phrog divergence tests | synced | synced | synced | synced | synced for Slime split survival guard | Generic scoring that does not estimate player attack damage is `n/a`. |
 | Monster lifecycle states | Darkling half-dead/revive plus Collector summon/reorder divergence evidence | n/a | synced for Darkling revive, death split, and concrete current-move summons without negative lifecycle damage score | synced | synced for SAFE timing bonus | synced for v2 state alive flag and reward exit handling | Random/generic summons still need explicit live evidence and concrete minion data before materialization. |
@@ -56,6 +57,14 @@ Status labels:
 
 ## Confirmed Sync Work
 
+- 2026-06-08: Curl Up reactive block timing is now synced from fresh
+  `Twin Strike` clean divergence evidence into the diagnostic oracle, beam
+  simulation, and lethal detection. Multi-hit attack damage now resolves all
+  hits before the surviving monster gains Curl Up block, matching the live
+  Louse evidence where the block did not absorb the second Twin Strike hit.
+  Single-hit Curl Up behavior remains unchanged, and `CombatEndingDetector`
+  carries Curl Up state between attack cards so false lethal lines such as
+  `Twin Strike` plus `Strike` are rejected.
 - 2026-06-08: `sim_divergence.py` now models the confirmed `Feed`
   fatal reward from the post-Toy clean batch. When `Feed` kills a non-minion
   enemy, the diagnostic oracle increases both max HP and current HP by 3, or 4

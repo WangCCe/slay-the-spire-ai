@@ -2252,6 +2252,41 @@ def test_multihit_attack_malleable_block_does_not_absorb_later_hits(monkeypatch)
     assert result.monsters[0]["malleable_block"] == 5
 
 
+def test_multihit_attack_curl_up_block_does_not_absorb_later_hits(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "description": "Deal 5 damage twice.",
+        }
+    }
+    loader._wiki_data = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "text": "Deal [5|7] damage twice.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    twin_strike = _card("Twin Strike", "Twin Strike", cost=1)
+    target = _louse(current_hp=12)
+    target.powers = [SimpleNamespace(power_name="Curl Up", amount=4)]
+    context = _combat_context([twin_strike], energy=1, monsters=[target])
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        twin_strike,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 10
+    assert result.monsters[0]["hp"] == 2
+    assert result.monsters[0]["block"] == 4
+    assert result.monsters[0]["curl_up_used"] is True
+    assert result.monsters[0]["curl_up_block"] == 0
+
+
 def test_whirlwind_malleable_block_does_not_absorb_later_energy_hits():
     whirlwind = _card("Whirlwind", "Whirlwind", cost=-1, cost_for_turn=-1, has_target=False)
     target = Monster(
@@ -12608,6 +12643,43 @@ def test_lethal_detector_accounts_for_malleable_block_between_attack_cards(monke
     strike.uuid = "strike"
     target = _louse(current_hp=14)
     target.powers = [SimpleNamespace(power_name="Malleable", amount=3)]
+    context = _combat_context([twin_strike, strike], energy=2, monsters=[target])
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 16
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
+
+
+def test_lethal_detector_accounts_for_curl_up_block_between_attack_cards(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "description": "Deal 5 damage twice.",
+        },
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {
+        "twin strike": {
+            "name": "Twin Strike",
+            "text": "Deal [5|7] damage twice.",
+        },
+        "strike": {
+            "name": "Strike",
+            "text": "Deal 6 damage.",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    twin_strike = _card("Twin Strike", "Twin Strike", cost=1)
+    twin_strike.uuid = "twin-strike"
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    target = _louse(current_hp=14)
+    target.powers = [SimpleNamespace(power_name="Curl Up", amount=3)]
     context = _combat_context([twin_strike, strike], energy=2, monsters=[target])
     detector = CombatEndingDetector()
 
