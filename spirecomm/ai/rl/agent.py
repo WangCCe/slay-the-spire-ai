@@ -1945,6 +1945,7 @@ class CombatRLAgent:
             incoming + status_blockable_damage,
             status_hp_loss,
             current_block,
+            game,
         )
         if damage_without_attack >= current_hp:
             return None
@@ -1953,6 +1954,7 @@ class CombatRLAgent:
             incoming + sharp_hide_damage + status_blockable_damage,
             status_hp_loss,
             current_block,
+            game,
         )
         if damage_with_attack < current_hp:
             return None
@@ -2061,6 +2063,7 @@ class CombatRLAgent:
             incoming + status_blockable_damage,
             status_hp_loss,
             self._end_turn_block_for_game(game, current_block),
+            game,
         )
         if damage_after_block < current_hp:
             return None
@@ -2898,9 +2901,22 @@ class CombatRLAgent:
                 hp_loss += 2
         return blockable_damage, hp_loss
 
-    @staticmethod
-    def _end_turn_damage_after_block(blockable_damage: int, status_hp_loss: int, current_block: int) -> int:
-        return max(0, blockable_damage - current_block) + max(0, status_hp_loss)
+    @classmethod
+    def _end_turn_damage_after_block(
+        cls,
+        blockable_damage: int,
+        status_hp_loss: int,
+        current_block: int,
+        game: Optional[Game] = None,
+    ) -> int:
+        blockable_hp_loss = max(0, blockable_damage - current_block)
+        unblocked_status_hp_loss = max(0, status_hp_loss)
+        if game is not None and cls._relic_counter(game, "Tungsten Rod") is not None:
+            if blockable_hp_loss > 0:
+                blockable_hp_loss = max(0, blockable_hp_loss - 1)
+            if unblocked_status_hp_loss > 0:
+                unblocked_status_hp_loss = max(0, unblocked_status_hp_loss - 1)
+        return blockable_hp_loss + unblocked_status_hp_loss
 
     @classmethod
     def _end_turn_block_for_game(cls, game: Game, current_block: int) -> int:

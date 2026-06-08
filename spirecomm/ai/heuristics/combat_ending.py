@@ -1061,6 +1061,24 @@ class CombatEndingDetector:
             return 6
         return 0
 
+    def _effective_player_hp_loss(self, context: DecisionContext, amount: int) -> int:
+        hp_loss = max(0, self._safe_int(amount, default=0))
+        if hp_loss > 0 and self._context_has_relic(context, 'Tungsten Rod'):
+            hp_loss = max(0, hp_loss - 1)
+        return hp_loss
+
+    def _lethal_energy_hp_loss_for_repeats(
+        self,
+        card: Card,
+        context: DecisionContext,
+        repeats: int,
+    ) -> int:
+        per_play_loss = self._effective_player_hp_loss(
+            context,
+            self._lethal_energy_hp_loss(card),
+        )
+        return per_play_loss * max(1, repeats)
+
     def _context_player_hp(self, context: DecisionContext) -> int:
         hp, _ = player_hp_values(context)
         return hp
@@ -1483,7 +1501,11 @@ class CombatEndingDetector:
                         state.duplication_charges
                     )
                     energy_gain = self._lethal_energy_gain(card) * card_play_repeats
-                    hp_loss = self._lethal_energy_hp_loss(card) * card_play_repeats
+                    hp_loss = self._lethal_energy_hp_loss_for_repeats(
+                        card,
+                        context,
+                        card_play_repeats,
+                    )
                     if state.player_hp <= hp_loss:
                         continue
 
@@ -1992,7 +2014,10 @@ class CombatEndingDetector:
             state.duplication_charges
         )
         energy_gain = self._lethal_energy_gain(top_energy_card)
-        hp_loss = self._lethal_energy_hp_loss(top_energy_card)
+        hp_loss = self._effective_player_hp_loss(
+            context,
+            self._lethal_energy_hp_loss(top_energy_card),
+        )
         if energy_gain <= 0 or state.player_hp <= hp_loss:
             return None
 

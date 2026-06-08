@@ -937,6 +937,31 @@ def test_survival_guard_counts_ornamental_fan_attack_block():
     assert replacement.target_index == 0
 
 
+def test_survival_guard_treats_tungsten_rod_reduced_incoming_as_nonlethal():
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        block=5,
+    )
+    cultist = _monster(hp=42, damage=3, index=0)
+    cultist.intent = Intent.ATTACK
+    game = _game(
+        hand=[defend],
+        monsters=[cultist],
+        relics=[SimpleNamespace(name="Tungsten Rod", relic_id="TungstenRod")],
+        current_hp=3,
+        player=SimpleNamespace(energy=1, block=0, powers=[]),
+        floor=4,
+        turn=2,
+    )
+
+    assert _agent()._get_survival_block_replacement(game) is None
+
+
 def test_survival_guard_counts_ornamental_fan_from_havoc_top_attack():
     defend = SimpleNamespace(
         name="Defend",

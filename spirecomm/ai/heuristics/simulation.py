@@ -488,6 +488,7 @@ class SimulationState:
             bool(getattr(context, 'has_orichalcum', False))
             or self._context_relic_counter(context, 'Orichalcum') is not None
         )
+        self.has_tungsten_rod = self._context_relic_counter(context, 'Tungsten Rod') is not None
         self.corruption_active = self._has_player_power(context, 'Corruption')
         self.feel_no_pain_block_per_exhaust = self._get_player_power_amount(context, 'Feel No Pain')
         self.dark_embrace_draw_per_exhaust = self._get_player_power_amount(context, 'Dark Embrace')
@@ -912,6 +913,7 @@ class SimulationState:
             self.nunchaku_counter,
             self.ornamental_fan_attack_count,
             self.has_orichalcum,
+            self.has_tungsten_rod,
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
             self.dark_embrace_draw_per_exhaust,
@@ -3032,7 +3034,7 @@ class FastCombatSimulator:
             # Apply thorns/Sharp Hide as fixed damage per attack hit.
             thorns = monster.get('thorns', 0)
             if thorns > 0:
-                state.player_hp = max(0, state.player_hp - thorns)
+                self._lose_player_hp(state, thorns, trigger_rupture=False)
 
         if trigger_thorns and hp_damage > 0 and monster['hp'] > 0:
             self._apply_flight_hit(monster)
@@ -3290,17 +3292,15 @@ class FastCombatSimulator:
 
         hp_loss = max(0, getattr(projected, 'end_turn_hp_loss', 0))
         if hp_loss > 0:
-            projected.player_hp = max(0, projected.player_hp - hp_loss)
-            if projected.rupture_strength_per_hp_loss > 0:
-                projected.player_strength += projected.rupture_strength_per_hp_loss
+            self._lose_player_hp(projected, hp_loss)
 
         status_hp_loss = max(0, getattr(projected, 'end_turn_status_hp_loss', 0))
         if status_hp_loss > 0:
-            projected.player_hp = max(0, projected.player_hp - status_hp_loss)
+            self._lose_player_hp(projected, status_hp_loss, trigger_rupture=False)
 
         constricted_loss = max(0, getattr(projected, 'player_constricted', 0))
         if constricted_loss > 0:
-            projected.player_hp = max(0, projected.player_hp - constricted_loss)
+            self._lose_player_hp(projected, constricted_loss, trigger_rupture=False)
 
         aoe_damage = max(0, getattr(projected, 'end_turn_aoe_damage', 0))
         if aoe_damage > 0:
@@ -3325,7 +3325,7 @@ class FastCombatSimulator:
             projected.player_block -= blocked
             unblocked = status_damage - blocked
             if unblocked > 0:
-                projected.player_hp = max(0, projected.player_hp - unblocked)
+                self._lose_player_hp(projected, unblocked, trigger_rupture=False)
 
         projected.end_turn_aoe_damage = 0
         projected.end_turn_hp_loss = 0
@@ -4215,13 +4215,25 @@ class FastCombatSimulator:
         self._lose_player_hp(state, 1)
 
     @staticmethod
-    def _lose_player_hp(state: SimulationState, amount: int):
+    def _effective_player_hp_loss(state: SimulationState, amount: int) -> int:
         hp_loss = max(0, coerce_int(amount, 0))
+        if hp_loss > 0 and getattr(state, 'has_tungsten_rod', False):
+            hp_loss = max(0, hp_loss - 1)
+        return hp_loss
+
+    @staticmethod
+    def _lose_player_hp(
+        state: SimulationState,
+        amount: int,
+        *,
+        trigger_rupture: bool = True,
+    ):
+        hp_loss = FastCombatSimulator._effective_player_hp_loss(state, amount)
         if hp_loss <= 0:
             return
 
         state.player_hp = max(0, state.player_hp - hp_loss)
-        if state.rupture_strength_per_hp_loss > 0:
+        if trigger_rupture and state.rupture_strength_per_hp_loss > 0:
             state.player_strength += state.rupture_strength_per_hp_loss
 
     @staticmethod

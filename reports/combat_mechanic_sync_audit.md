@@ -45,6 +45,7 @@ Status labels:
 | Monster lifecycle states | Darkling half-dead/revive plus Collector summon/reorder divergence evidence | n/a | synced for Darkling revive, death split, and concrete current-move summons without negative lifecycle damage score | synced | synced for SAFE timing bonus | synced for v2 state alive flag and reward exit handling | Random/generic summons still need explicit live evidence and concrete minion data before materialization. |
 | Combat escape settlement | Looter/Mugger escape and Smoke Bomb divergence evidence | n/a | synced for Smoke Bomb potion escape and Looter/Mugger end-turn escape projection without kill/lethal credit | n/a | n/a | synced for in-combat and combat-exit reward | Other escape monsters should be added only with explicit intent/move evidence. |
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
+| Player HP-loss prevention | Tungsten Rod Bloodletting and end-turn HP-loss divergence evidence | synced for HP-cost energy support cards | synced for card HP costs, Blue Candle, Thorns/Sharp Hide, and deterministic end-turn HP-loss projection | n/a | n/a | synced for survival and Guardian guard end-turn lethal checks | RL guard incoming is still aggregate-level; revisit per-hit/per-source reduction only with live evidence that it changes an action. |
 | Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | synced for Pen Nib scalar fallback damage estimates, Nunchaku counter-9 refund-preserving attack-before-defense ordering, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective block before defense priority | synced for Pen Nib damage estimates, Nunchaku targeted lethal search, cache invalidation over relic counters plus draw-pile/hand/deck inputs, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective turn block before fallback block scoring | synced for direct and Havoc-top Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether non-damage relic counters are read or intentionally ignored. |
 | Exhaust-triggered block/damage | Havoc, Feel No Pain, Juggernaut divergence tests plus fresh Havoc top-energy and Shockwave self-exhaust evidence | synced for deterministic top attacks, top-card exhaust damage, and visible top energy skills | synced | synced for deterministic Havoc top-card block, Feel No Pain fallback priority, and direct self-exhaust Feel No Pain block | synced for deterministic Havoc top-card block, Feel No Pain in fallback scoring, and direct self-exhaust Feel No Pain block | synced for survival and shared block guards where guard can prove target/effect | Havoc random-target boundaries remain conservative by design. |
 | Next-card replay effects | DuplicationPower clean divergence on Defend block | synced for direct next-attack lethal search and deterministic support effects inside targeted lethal search | synced | partial; no direct fallback reader found in this round | partial; audit only if timing code starts reading DuplicationPower outside lethal/simulator paths | partial; no direct RL guard/reward reader found in this round | Keep future scalar shortcuts honest about whether the next card is executed twice while energy is paid once. |
@@ -52,6 +53,18 @@ Status labels:
 
 ## Confirmed Sync Work
 
+- 2026-06-08: Tungsten Rod HP-loss prevention is now synced from fresh
+  `Bloodletting` and end-turn clean-trace divergence evidence into the
+  diagnostic oracle and live estimators. `sim_divergence.py` reduces actual
+  player HP loss after block for self-damage, Blue Candle, Sharp Hide/Thorns,
+  monster attacks, status, Combust/Brutality, and Havoc top-card replay paths.
+  `FastCombatSimulator` carries the relic in `SimulationState` and routes card
+  HP costs plus deterministic end-turn HP-loss projections through the same
+  reduction while preserving existing Rupture trigger boundaries.
+  `CombatEndingDetector` applies the reduction per repeated HP-cost energy
+  support play, so 3 HP plus Tungsten Rod can still use Bloodletting for a
+  deterministic kill. `CombatRLAgent` survival and Guardian guards now count
+  Tungsten Rod when comparing end-turn HP loss against current HP.
 - 2026-06-08: `sim_divergence.py`, `FastCombatSimulator`, and
   `CombatEndingDetector` now model the confirmed `DuplicationPower` replay
   boundary in the paths touched by fresh evidence. The divergence oracle

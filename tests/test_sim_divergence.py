@@ -192,6 +192,40 @@ def test_blue_candle_curse_play_loses_one_hp(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_tungsten_rod_reduces_bloodletting_hp_loss(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    bloodletting = _card(
+        name="Bloodletting",
+        card_id="Bloodletting",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+    )
+    before = _game(
+        floor=25,
+        turn=3,
+        player=SimpleNamespace(current_hp=17, max_hp=85, block=0, energy=3),
+        hand=[bloodletting],
+        relics=[_relic("Tungsten Rod", "TungstenRod")],
+        monsters=[_monster(name="Centurion", monster_id="Centurion", hp=42, damage=12)],
+    )
+    actual = _game(
+        floor=25,
+        turn=3,
+        player=SimpleNamespace(current_hp=15, max_hp=85, block=0, energy=5),
+        hand=[],
+        relics=[_relic("Tungsten Rod", "TungstenRod")],
+        monsters=[_monster(name="Centurion", monster_id="Centurion", hp=42, damage=12)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_curse_play_without_blue_candle_does_not_lose_hp(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

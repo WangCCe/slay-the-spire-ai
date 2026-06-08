@@ -10226,6 +10226,39 @@ def test_energy_gain_skills_add_usable_energy(monkeypatch):
     assert result.energy_gained == 2
 
 
+def test_tungsten_rod_reduces_fast_sim_bloodletting_hp_loss(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "bloodletting": {
+            "name": "Bloodletting",
+            "description": "Lose 3 HP.\nGain [R] [R].",
+        },
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+
+    bloodletting = _card(
+        "Bloodletting",
+        "Bloodletting",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    context = _combat_context([bloodletting], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.relics = [SimpleNamespace(name="Tungsten Rod", relic_id="TungstenRod")]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        bloodletting,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 3
+    assert result.energy_gained == 2
+    assert result.player_hp == 78
+
+
 def test_wiki_escaped_newline_exhaust_triggers_feel_no_pain(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -13823,6 +13856,43 @@ def test_lethal_detector_rejects_bloodletting_energy_when_hp_would_hit_zero(monk
 
     assert detector.can_kill_all(context) is False
     assert detector.find_lethal_sequence(context) == []
+
+
+def test_lethal_detector_allows_bloodletting_energy_when_tungsten_rod_keeps_hp_positive(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {"strike": {"name": "Strike", "description": "Deal 6 damage."}}
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    bloodletting = _card(
+        "Bloodletting",
+        "Bloodletting",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    bloodletting.uuid = "bloodletting"
+    strike_1 = _card("Strike_R", "Strike", cost=1)
+    strike_1.uuid = "strike-1"
+    strike_2 = _card("Strike_R", "Strike", cost=1)
+    strike_2.uuid = "strike-2"
+    context = _combat_context(
+        [bloodletting, strike_1, strike_2],
+        energy=0,
+        monsters=[_louse(current_hp=12)],
+    )
+    context.game.current_hp = 3
+    context.player_hp = 3
+    context.player_hp_pct = 3 / 80
+    context.game.relics = [SimpleNamespace(name="Tungsten Rod", relic_id="TungstenRod")]
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == [
+        "bloodletting",
+        "strike-1",
+        "strike-2",
+    ]
 
 
 def test_lethal_detector_rejects_hp_cost_lethal_when_game_hp_is_stale_in_context(monkeypatch):

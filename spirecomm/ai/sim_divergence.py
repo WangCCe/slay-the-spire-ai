@@ -400,10 +400,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             if _is_attack_card(card):
                 self_damage *= attack_play_count
             if self_damage > 0:
-                expected["player"]["current_hp"] = max(
-                    0,
-                    expected["player"]["current_hp"] - self_damage,
-                )
+                _lose_player_hp(expected, self_damage)
             heal = _card_heal(card)
             if heal > 0:
                 _heal_player(expected, heal)
@@ -492,10 +489,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         expected["player"]["energy"] = 0
         brutality_loss = _brutality_start_turn_hp_loss(before)
         if brutality_loss > 0:
-            expected["player"]["current_hp"] = max(
-                0,
-                _to_int(expected["player"].get("current_hp")) - brutality_loss,
-            )
+            _lose_player_hp(expected, brutality_loss)
         _apply_darkling_end_turn_revives(expected, before)
         _prepare_monster_block_for_mercury_hourglass(expected, before)
         _apply_mercury_hourglass_damage(expected, before)
@@ -2020,6 +2014,7 @@ def _damage_player(expected: Dict[str, Any], amount: int) -> int:
     player["block"] = block - blocked
     remaining = amount - blocked
     if remaining > 0:
+        remaining = _effective_player_hp_loss(expected, remaining)
         player["current_hp"] = max(0, hp_before - remaining)
     return 1 if _to_int(player.get("current_hp")) < hp_before else 0
 
@@ -2074,8 +2069,16 @@ def _lose_player_hp(expected: Dict[str, Any], amount: int) -> int:
         return 0
     player = expected.get("player", {})
     hp_before = _to_int(player.get("current_hp"))
+    amount = _effective_player_hp_loss(expected, amount)
     player["current_hp"] = max(0, hp_before - amount)
     return 1 if _to_int(player.get("current_hp")) < hp_before else 0
+
+
+def _effective_player_hp_loss(snapshot: Dict[str, Any], amount: int) -> int:
+    hp_loss = max(0, _to_int(amount))
+    if hp_loss > 0 and _snapshot_has_relic(snapshot, "Tungsten Rod"):
+        hp_loss = max(0, hp_loss - 1)
+    return hp_loss
 
 
 def _end_turn_status_damage_events(snapshot: Dict[str, Any]):
@@ -2318,10 +2321,7 @@ def _apply_havoc_top_card(
     self_damage = _card_self_damage(top_card)
     self_damage += _blue_candle_curse_hp_loss(top_card, before)
     if self_damage > 0:
-        expected["player"]["current_hp"] = max(
-            0,
-            expected["player"]["current_hp"] - self_damage,
-        )
+        _lose_player_hp(expected, self_damage)
     heal = _card_heal(top_card)
     if heal > 0:
         _heal_player(expected, heal)
