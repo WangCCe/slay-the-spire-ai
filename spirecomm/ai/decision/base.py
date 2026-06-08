@@ -249,7 +249,10 @@ class DecisionContext:
             Base threat score from immediate damage and strength
         """
         threat = 0
-        if (
+        known_unknown_damage = known_unknown_move_immediate_damage(monster)
+        if known_unknown_damage > 0:
+            threat += known_unknown_damage
+        elif (
             self._should_count_immediate_damage(monster)
             and hasattr(monster, 'move_adjusted_damage')
             and monster.move_adjusted_damage is not None

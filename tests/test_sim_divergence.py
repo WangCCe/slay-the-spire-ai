@@ -8336,6 +8336,93 @@ def test_end_turn_flame_barrier_damages_attacker(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_end_turn_exploder_explosive_power_deals_blockable_damage_and_kills_exploders(
+    monkeypatch, tmp_path
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=46,
+        turn=3,
+        player=SimpleNamespace(current_hp=25, max_hp=85, block=8, energy=1),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Repulsor",
+                monster_id="Repulsor",
+                hp=10,
+                damage=-1,
+                intent=Intent.DEBUFF,
+                index=0,
+            ),
+            _monster(
+                name="Exploder",
+                monster_id="Exploder",
+                hp=25,
+                max_hp=30,
+                damage=-1,
+                intent=Intent.UNKNOWN,
+                index=1,
+                powers=[Power("Explosive", "Explosive", 1)],
+            ),
+            _monster(
+                name="Exploder",
+                monster_id="Exploder",
+                hp=19,
+                max_hp=30,
+                damage=-1,
+                intent=Intent.UNKNOWN,
+                index=2,
+                powers=[Power("Explosive", "Explosive", 1)],
+            ),
+        ],
+    )
+    actual = _game(
+        floor=46,
+        turn=4,
+        player=SimpleNamespace(current_hp=0, max_hp=85, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Repulsor",
+                monster_id="Repulsor",
+                hp=10,
+                damage=-1,
+                intent=Intent.DEBUFF,
+                index=0,
+            ),
+            _monster(
+                name="Exploder",
+                monster_id="Exploder",
+                hp=0,
+                max_hp=30,
+                damage=-1,
+                intent=Intent.UNKNOWN,
+                index=1,
+                powers=[Power("Explosive", "Explosive", 1)],
+            ),
+            _monster(
+                name="Exploder",
+                monster_id="Exploder",
+                hp=0,
+                max_hp=30,
+                damage=-1,
+                intent=Intent.UNKNOWN,
+                index=2,
+                powers=[Power("Explosive", "Explosive", 1)],
+            ),
+        ],
+    )
+    actual.monsters[1].is_gone = True
+    actual.monsters[2].is_gone = True
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_combat_rl_checks_pending_divergence_on_next_state(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

@@ -373,6 +373,48 @@ def test_incoming_damage_counts_known_unknown_damage_move():
     assert context._calculate_incoming_damage() == 30
 
 
+def test_incoming_damage_counts_exploder_explosive_power_without_move_id():
+    monster = SimpleNamespace(
+        name="Exploder",
+        monster_id="Exploder",
+        is_gone=False,
+        half_dead=False,
+        current_hp=30,
+        max_hp=30,
+        intent=Intent.UNKNOWN,
+        move_id=None,
+        move_adjusted_damage=0,
+        move_hits=1,
+        powers=[SimpleNamespace(power_name="Explosive", amount=1)],
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.game = SimpleNamespace(monsters=[monster])
+    context.act = 3
+
+    assert context._calculate_incoming_damage() == 30
+
+
+def test_compute_threat_counts_exploder_explosive_power_without_move_id():
+    monster = SimpleNamespace(
+        name="Exploder",
+        monster_id="Exploder",
+        is_gone=False,
+        half_dead=False,
+        current_hp=30,
+        max_hp=30,
+        intent=Intent.UNKNOWN,
+        move_id=None,
+        move_adjusted_damage=0,
+        move_hits=1,
+        powers=[SimpleNamespace(power_name="Explosive", amount=1)],
+    )
+    context = DecisionContext.__new__(DecisionContext)
+    context.game = SimpleNamespace(monsters=[monster])
+    context.act = 3
+
+    assert context.compute_threat(monster) >= 30
+
+
 def test_incoming_damage_ignores_known_no_damage_unknown_moves():
     monsters = [
         SimpleNamespace(

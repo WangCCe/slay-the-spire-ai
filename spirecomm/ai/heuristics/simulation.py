@@ -16,6 +16,7 @@ from spirecomm.spire.character import Monster, Intent
 from spirecomm.spire.numeric import coerce_float, coerce_int
 from spirecomm.communication.action import Action, PlayCardAction, EndTurnAction
 from spirecomm.ai.incoming_damage import (
+    exploder_explosion_damage,
     known_unknown_move_has_no_immediate_damage,
     known_unknown_move_immediate_damage,
     move_data_immediate_unknown_damage,
@@ -661,6 +662,11 @@ class SimulationState:
                     'IntangiblePower',
                     'IntangibleMonster',
                 ),
+                'explosive': self._get_monster_power_amount_any(
+                    monster,
+                    'Explosive',
+                    'ExplosivePower',
+                ),
                 'slow_active': self._has_monster_power_any(monster, 'Slow', 'SlowPower'),
                 'slow_stacks': self._get_monster_power_amount_any(
                     monster,
@@ -1054,6 +1060,7 @@ class SimulationState:
                 m.get('hit_strength_gain', 0),
                 m.get('flight_stacks', 0),
                 m.get('intangible', 0),
+                m.get('explosive', 0),
                 bool(m.get('slow_active', False)),
                 m.get('slow_stacks', 0),
                 bool(m.get('half_dead', False)),
@@ -4518,6 +4525,10 @@ class FastCombatSimulator:
         if intent is None:
             return []
 
+        explosion_damage = exploder_explosion_damage(monster)
+        if explosion_damage > 0:
+            return [1 if player_intangible > 0 else explosion_damage]
+
         if intent_is_attack(intent):
             has_adjusted_damage = 'move_adjusted_damage' in monster
             raw_damage = monster.get('move_adjusted_damage', None)
@@ -4872,6 +4883,16 @@ class FastCombatSimulator:
                     if split_info and self._is_death_split_due(monster, split_info):
                         monster['split_pending'] = True
                         split_due_this_turn = True
+                        continue
+
+                    explosion_damage = exploder_explosion_damage(monster)
+                    if explosion_damage > 0:
+                        discount = LOOKAHEAD_DAMAGE_DISCOUNT ** step
+                        turn_damage += int(explosion_damage * discount)
+                        monster['hp'] = 0
+                        monster['block'] = 0
+                        monster['is_gone'] = True
+                        monster['half_dead'] = False
                         continue
 
                     monster_name = _canonical_live_monster_name(monster)

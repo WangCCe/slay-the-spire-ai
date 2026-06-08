@@ -832,6 +832,13 @@ def _exploder_explode(current_hp=30):
     )
 
 
+def _exploder_explosive_countdown(current_hp=30):
+    monster = _exploder_explode(current_hp=current_hp)
+    monster.move_id = None
+    monster.powers = [SimpleNamespace(power_name="Explosive", amount=1)]
+    return monster
+
+
 def _transient_attack(current_hp=999, move_adjusted_damage=50):
     monster = Monster(
         name="Transient",
@@ -3733,6 +3740,30 @@ def test_enemy_lookahead_counts_live_unknown_damage_move():
     context = _combat_context([], energy=0, monsters=[_exploder_explode()])
     context.turn = 3
     simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    future_damage = simulator.simulate_enemy_lookahead(
+        SimulationState(context),
+        context,
+        look_ahead=1,
+    )
+
+    assert future_damage == 30
+
+
+def test_incoming_damage_estimate_counts_exploder_explosive_power_without_move_id():
+    context = _combat_context([], energy=0, monsters=[_exploder_explosive_countdown()])
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    state = SimulationState(context)
+
+    assert simulator._estimate_incoming_damage(state.monsters) == 30
+
+
+def test_enemy_lookahead_counts_exploder_explosive_power_without_move_id():
+    context = _combat_context([], energy=0, monsters=[_exploder_explosive_countdown()])
+    context.turn = 3
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    simulator._current_monster_move = lambda *_args, **_kwargs: None
+    simulator._predicted_monster_move_for_step = lambda *_args, **_kwargs: None
 
     future_damage = simulator.simulate_enemy_lookahead(
         SimulationState(context),

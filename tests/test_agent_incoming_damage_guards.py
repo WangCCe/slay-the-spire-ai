@@ -215,6 +215,25 @@ def test_simple_agent_incoming_damage_counts_known_unknown_damage_move():
     assert agent.get_incoming_damage() == 30
 
 
+def test_simple_agent_incoming_damage_counts_exploder_explosive_power_without_move_id():
+    monster = SimpleNamespace(
+        name="Exploder",
+        monster_id="Exploder",
+        current_hp=30,
+        is_gone=False,
+        half_dead=False,
+        intent=Intent.UNKNOWN,
+        move_id=None,
+        move_adjusted_damage=0,
+        move_hits=1,
+        powers=[SimpleNamespace(power_name="Explosive", amount=1)],
+    )
+    agent = _agent_with_monsters([monster])
+    agent.game.act = 3
+
+    assert agent.get_incoming_damage() == 30
+
+
 def test_simple_agent_incoming_damage_ignores_live_hexaghost_opening_activate_damage():
     monster = SimpleNamespace(
         name="Hexaghost",

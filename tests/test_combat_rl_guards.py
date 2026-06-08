@@ -750,6 +750,40 @@ def test_rl_incoming_damage_counts_known_unknown_damage_move():
     assert CombatRLAgent._incoming_damage(game) == 30
 
 
+def test_rl_incoming_damage_counts_exploder_explosive_power_without_move_id():
+    monster = _monster(
+        hp=30,
+        damage=0,
+        name="Exploder",
+        monster_id="Exploder",
+    )
+    monster.intent = Intent.UNKNOWN
+    monster.move_id = None
+    monster.powers = [SimpleNamespace(power_name="Explosive", amount=1)]
+    game = _game(monsters=[monster], act=3)
+
+    assert CombatRLAgent._incoming_damage(game) == 30
+
+
+def test_rl_end_turn_damage_after_block_counts_exploder_explosive_events():
+    first = _monster(hp=25, damage=0, name="Exploder", monster_id="Exploder")
+    first.intent = Intent.UNKNOWN
+    first.move_id = None
+    first.powers = [SimpleNamespace(power_name="Explosive", amount=1)]
+    second = _monster(hp=19, damage=0, index=1, name="Exploder", monster_id="Exploder")
+    second.intent = Intent.UNKNOWN
+    second.move_id = None
+    second.powers = [SimpleNamespace(power_name="Explosive", amount=1)]
+    game = _game(
+        monsters=[first, second],
+        current_hp=25,
+        player=SimpleNamespace(energy=1, block=8),
+        act=3,
+    )
+
+    assert CombatRLAgent._end_turn_damage_after_block(0, 0, 8, game) == 52
+
+
 def test_rl_incoming_damage_ignores_known_no_damage_unknown_moves():
     preparing = _monster(
         hp=99,

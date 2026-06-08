@@ -4838,6 +4838,27 @@ def test_heuristic_incoming_damage_counts_known_unknown_damage_move():
     assert HeuristicCombatPlanner()._get_incoming_damage(context) == 30
 
 
+def test_heuristic_incoming_damage_counts_exploder_explosive_power_without_move_id():
+    monster = SimpleNamespace(
+        name="Exploder",
+        monster_id="Exploder",
+        current_hp=30,
+        is_gone=False,
+        half_dead=False,
+        intent=Intent.UNKNOWN,
+        move_id=None,
+        move_adjusted_damage=0,
+        move_hits=1,
+        powers=[SimpleNamespace(power_name="Explosive", amount=1)],
+    )
+    context = SimpleNamespace(
+        game=SimpleNamespace(monsters=[monster]),
+        act=3,
+    )
+
+    assert HeuristicCombatPlanner()._get_incoming_damage(context) == 30
+
+
 def test_heuristic_incoming_damage_ignores_known_no_damage_unknown_moves():
     monsters = [
         SimpleNamespace(

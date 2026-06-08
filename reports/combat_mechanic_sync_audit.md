@@ -47,6 +47,7 @@ Status labels:
 | Monster lifecycle states | Darkling half-dead/revive plus Collector summon/reorder divergence evidence | n/a | synced for Darkling revive, death split, and concrete current-move summons without negative lifecycle damage score | synced | synced for SAFE timing bonus | synced for v2 state alive flag and reward exit handling | Random/generic summons still need explicit live evidence and concrete minion data before materialization. |
 | Combat escape settlement | Looter/Mugger escape and Smoke Bomb divergence evidence | n/a | synced for Smoke Bomb potion escape and Looter/Mugger end-turn escape projection without kill/lethal credit | n/a | n/a | synced for in-combat and combat-exit reward | Other escape monsters should be added only with explicit intent/move evidence. |
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
+| Countdown monster self-detonation | Fresh floor-46 EndTurnAction row: two Exploders with `Explosive=1` dealt blockable 30 damage each, died, and killed the player while the old sim expected no damage | n/a unless lethal search starts projecting enemy self-detonation | synced for diagnostic end-turn projection, fast incoming estimates, and enemy lookahead through shared Exploder countdown helper | synced for DecisionContext threat/targeting and heuristic incoming fallback | n/a unless timing starts modeling Exploder countdown separately | synced for RL incoming and event-by-event end-turn survival damage after block | Recheck future reward/state encoders only if live evidence shows they duplicate Exploder countdown risk. |
 | Player HP-loss prevention / revive | Tungsten Rod Bloodletting and end-turn HP-loss evidence; Buffer/Fossilized Helix end-turn clean divergence; Fairy in a Bottle end-turn lethal clean divergence | synced for HP-cost energy support cards | synced for card HP costs, Blue Candle, Thorns/Sharp Hide, deterministic end-turn HP-loss projection, Buffer/Fossilized Helix event-level damage prevention, Fairy HP-loss revival, and Fairy-aware outcome death checks | synced for current-turn lethal penalty using simulator HP-loss projection | n/a | synced for survival and Guardian guard end-turn lethal checks where the guard owns the HP-loss path, including Buffer event-level damage prevention | RL aggregate incoming still does not consume per-hit revives; revisit only with live evidence that it changes an action. |
 | Potion-triggered relic healing | Toy Ornithopter Energy Potion clean divergence | n/a | synced for diagnostic and beam potion state simulation after any potion use | n/a | n/a | partial; no deterministic RL guard/reward surface found in this round | Potion prefilter priority still does not add Toy-specific value; change it only with evidence that ranking or guard logic changes an action. |
 | Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | synced for Pen Nib scalar fallback damage estimates, Nunchaku counter-9 refund-preserving attack-before-defense ordering, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective block before defense priority | synced for Pen Nib damage estimates, Nunchaku targeted lethal search, cache invalidation over relic counters plus draw-pile/hand/deck inputs, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective turn block before fallback block scoring | synced for direct and Havoc-top Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether non-damage relic counters are read or intentionally ignored. |
@@ -59,6 +60,17 @@ Status labels:
 
 ## Confirmed Sync Work
 
+- 2026-06-08: Exploder countdown explosion is now synced from the fresh
+  floor-46 death row into the diagnostic oracle and live combat estimators.
+  `incoming_damage.py` exposes a shared helper that recognizes an `Exploder`
+  with `Explosive=1` and returns the current-turn blockable 30-damage
+  explosion. `sim_divergence.py` applies that damage during EndTurn
+  projection, then marks the exploding monsters gone so the oracle no longer
+  expects them to remain alive. `FastCombatSimulator` carries the countdown in
+  `SimulationState`, includes it in incoming-damage estimates and enemy
+  lookahead, and removes the monster after the explosion. `DecisionContext`,
+  heuristic incoming fallback, and RL survival guards now count the same risk
+  even when the live payload has `move_id=None` and `move_adjusted_damage=0`.
 - 2026-06-08: The Boot minimum attack HP damage is now synced from the fresh
   clean-trace Pummel/Strike/Reaper evidence into the diagnostic oracle and
   live combat estimators. `sim_divergence.py` applies the relic's 5-damage

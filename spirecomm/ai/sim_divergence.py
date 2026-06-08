@@ -15,6 +15,7 @@ from spirecomm.ai.heuristics.card_upgrades import (
     known_block_upgrade_bonus,
     known_damage_upgrade_bonus,
 )
+from spirecomm.ai.incoming_damage import exploder_explosion_damage
 
 
 TRACE_ENV = "STS_SIM_DIVERGENCE_TRACE_FILE"
@@ -2261,6 +2262,14 @@ def _apply_end_turn_player_damage(
         hp_loss_events += _damage_player(expected, amount)
     reflection_damage = _end_turn_attack_reflection_damage(before)
     for index, monster in enumerate(expected.get("monsters", []) or []):
+        explosion_damage = exploder_explosion_damage(monster)
+        if explosion_damage > 0:
+            hp_loss_events += _damage_player(expected, explosion_damage)
+            monster["hp"] = 0
+            monster["block"] = 0
+            monster["gone"] = True
+            monster["half_dead"] = False
+            continue
         damage = max(0, _to_int(monster.get("move_damage")))
         if damage <= 0 or _monster_attack_damage(monster) <= 0:
             continue
