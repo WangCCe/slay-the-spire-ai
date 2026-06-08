@@ -58,6 +58,7 @@ TARGETED_LETHAL_MAX_MONSTERS = 4
 AOE_ATTACK_NAMES = frozenset(['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper'])
 PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
+LETTER_OPENER_DAMAGE = 5
 THE_BOOT_MINIMUM_DAMAGE = 5
 
 
@@ -78,6 +79,7 @@ class _TargetedLethalState:
     nunchaku_counter: Optional[int]
     panache_counter: int
     panache_damage: int
+    letter_opener_counter: Optional[int]
     energy: int
     havoc_cards_consumed: int = 0
 
@@ -99,6 +101,7 @@ class _TargetedLethalState:
             self.nunchaku_counter,
             self.panache_counter,
             self.panache_damage,
+            self.letter_opener_counter,
             self.energy,
             self.havoc_cards_consumed,
         )
@@ -1306,6 +1309,15 @@ class CombatEndingDetector:
     def _context_panache_damage(self, context: DecisionContext) -> int:
         return PANACHE_DAMAGE if self._context_panache_counter(context) > 0 else 0
 
+    def _context_letter_opener_counter(
+        self,
+        context: DecisionContext,
+    ) -> Optional[int]:
+        counter = self._context_relic_counter(context, 'Letter Opener')
+        if counter is None:
+            return None
+        return max(0, self._safe_int(counter, default=0))
+
     @staticmethod
     def _lethal_card_play_repeats(duplication_charges: int) -> int:
         return 2 if duplication_charges > 0 else 1
@@ -1541,6 +1553,56 @@ class CombatEndingDetector:
             total_damage += damage
         return next_hp, next_block, next_counter, total_damage
 
+    def _apply_lethal_letter_opener_skill_play(
+        self,
+        hp_state: Tuple[int, ...],
+        block_state: Tuple[int, ...],
+        letter_opener_counter: Optional[int],
+    ) -> Tuple[Tuple[int, ...], Tuple[int, ...], Optional[int], int]:
+        if letter_opener_counter is None:
+            return hp_state, block_state, None, 0
+
+        counter = max(0, self._safe_int(letter_opener_counter, default=0))
+        if counter < 2:
+            return hp_state, block_state, counter + 1, 0
+
+        next_hp = tuple(hp_state)
+        next_block = tuple(block_state)
+        damage_progress = 0
+        for monster_idx, hp in enumerate(next_hp):
+            if hp <= 0:
+                continue
+            next_hp, next_block, dealt = self._apply_lethal_direct_damage_to_target(
+                next_hp,
+                next_block,
+                monster_idx,
+                LETTER_OPENER_DAMAGE,
+            )
+            damage_progress += dealt
+        return next_hp, next_block, 0, damage_progress
+
+    def _apply_lethal_letter_opener_skill_plays(
+        self,
+        hp_state: Tuple[int, ...],
+        block_state: Tuple[int, ...],
+        letter_opener_counter: Optional[int],
+        repeats: int,
+    ) -> Tuple[Tuple[int, ...], Tuple[int, ...], Optional[int], int]:
+        next_hp = tuple(hp_state)
+        next_block = tuple(block_state)
+        next_counter = letter_opener_counter
+        total_damage = 0
+        for _ in range(max(1, repeats)):
+            next_hp, next_block, next_counter, damage = (
+                self._apply_lethal_letter_opener_skill_play(
+                    next_hp,
+                    next_block,
+                    next_counter,
+                )
+            )
+            total_damage += damage
+        return next_hp, next_block, next_counter, total_damage
+
     def _apply_lethal_juggernaut_block_damage(
         self,
         card: Card,
@@ -1609,6 +1671,10 @@ class CombatEndingDetector:
                     and not self._card_requires_target(card)
                     and 0 < self._context_panache_counter(context) <= 1
                 )
+                or (
+                    card_type_name(card) == 'SKILL'
+                    and self._context_letter_opener_counter(context) is not None
+                )
             )
         ]
         sequence_cards = support_cards + sequence_cards
@@ -1665,6 +1731,7 @@ class CombatEndingDetector:
             nunchaku_counter=self._context_relic_counter(context, 'Nunchaku'),
             panache_counter=self._context_panache_counter(context),
             panache_damage=self._context_panache_damage(context),
+            letter_opener_counter=self._context_letter_opener_counter(context),
             energy=available_energy,
         )
         seen = set()
@@ -1689,6 +1756,15 @@ class CombatEndingDetector:
                 )
                 if panache_candidate is not None:
                     candidates.append(panache_candidate)
+
+                letter_opener_candidate = self._letter_opener_skill_lethal_candidate(
+                    card_pos,
+                    card,
+                    context,
+                    state,
+                )
+                if letter_opener_candidate is not None:
+                    candidates.append(letter_opener_candidate)
 
                 if self._is_juggernaut_block_card(card, context) and not is_attack_card(card):
                     cost = self._lethal_card_cost(
@@ -2408,6 +2484,69 @@ class CombatEndingDetector:
                 block=next_block,
                 duplication_charges=next_duplication_charges,
                 panache_counter=next_panache_counter,
+            ),
+        )
+
+    def _letter_opener_skill_lethal_candidate(
+        self,
+        card_pos: int,
+        card: Card,
+        context: DecisionContext,
+        state: _TargetedLethalState,
+    ) -> Optional[_TargetedLethalCandidate]:
+        if state.letter_opener_counter is None or card_type_name(card) != 'SKILL':
+            return None
+
+        cost = self._lethal_card_cost(
+            card,
+            context,
+            state.energy,
+            state.corruption_active,
+        )
+        if cost > state.energy:
+            return None
+
+        monster_idx = None
+        if self._card_requires_target(card):
+            monster_idx = self._single_alive_monster_index(state.hp)
+            if monster_idx is None:
+                return None
+
+        card_play_repeats = self._lethal_card_play_repeats(
+            state.duplication_charges
+        )
+        next_duplication_charges = self._duplication_charges_after_card(
+            state.duplication_charges
+        )
+        next_hp, next_block, next_counter, damage_progress = (
+            self._apply_lethal_letter_opener_skill_plays(
+                state.hp,
+                state.block,
+                state.letter_opener_counter,
+                card_play_repeats,
+            )
+        )
+        if (
+            damage_progress <= 0
+            and next_counter == state.letter_opener_counter
+        ):
+            return None
+
+        kill_count = sum(
+            1
+            for before_hp, after_hp in zip(state.hp, next_hp)
+            if before_hp > 0 and after_hp <= 0
+        )
+        return _TargetedLethalCandidate(
+            priority=(kill_count, 0, damage_progress, -cost),
+            card_pos=card_pos,
+            monster_idx=monster_idx,
+            next_state=state.after_spending(
+                cost,
+                hp=next_hp,
+                block=next_block,
+                duplication_charges=next_duplication_charges,
+                letter_opener_counter=next_counter,
             ),
         )
 

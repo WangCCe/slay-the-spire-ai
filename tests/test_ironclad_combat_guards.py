@@ -1120,6 +1120,106 @@ def test_simulation_panache_triggers_aoe_on_fifth_card_play():
     assert result.panache_counter == 5
 
 
+def test_simulation_letter_opener_counter_two_skill_deals_aoe_damage():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend.block = 5
+    first = _louse(current_hp=5)
+    second = _louse(current_hp=7)
+    context = _combat_context([defend], energy=1, monsters=[first, second])
+    context.game.relics = [
+        SimpleNamespace(relic_id="Letter Opener", name="Letter Opener", counter=2)
+    ]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        defend,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 10
+    assert result.monsters[0]["hp"] == 0
+    assert result.monsters[0]["is_gone"] is True
+    assert result.monsters[1]["hp"] == 2
+    assert result.letter_opener_counter == 0
+
+
+def test_simulation_bird_faced_urn_heals_when_power_is_played():
+    demon_form = _card(
+        "Demon Form",
+        "Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    context = _combat_context([demon_form], energy=3, monsters=[_louse(current_hp=30)])
+    context.player_hp = 25
+    context.player_hp_pct = 25 / 80
+    context.game.current_hp = 25
+    context.game.player.current_hp = 25
+    context.game.player.max_hp = 80
+    context.game.relics = [
+        SimpleNamespace(relic_id="Bird Faced Urn", name="Bird-Faced Urn", counter=-1)
+    ]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        demon_form,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_hp == 27
+    assert result.player_energy == 0
+
+
+def test_simulation_bird_faced_urn_heals_when_havoc_plays_top_power():
+    havoc = _card(
+        "Havoc",
+        "Havoc+",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+        upgrades=1,
+    )
+    barricade = _card(
+        "Barricade",
+        "Barricade",
+        card_type=CardType.POWER,
+        cost=3,
+        has_target=False,
+    )
+    context = _combat_context([havoc], energy=0, monsters=[_louse(current_hp=30)])
+    context.player_hp = 21
+    context.player_hp_pct = 21 / 80
+    context.game.current_hp = 21
+    context.game.player.current_hp = 21
+    context.game.player.max_hp = 80
+    context.game.draw_pile = [barricade]
+    context.game.relics = [
+        SimpleNamespace(relic_id="Bird Faced Urn", name="Bird-Faced Urn", counter=-1)
+    ]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        havoc,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_hp == 23
+    assert result.player_energy == 0
+
+
 def test_blue_candle_curse_play_loses_one_hp_without_spending_block():
     parasite = _card(
         "Parasite",
@@ -14183,6 +14283,33 @@ def test_lethal_detector_counts_panache_trigger_from_any_card():
     )
     context.game.player.powers = [
         SimpleNamespace(power_id="Panache", power_name="Panache", amount=1)
+    ]
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    sequence = detector.find_lethal_sequence(context)
+    assert [action.card.uuid for action in sequence] == ["defend"]
+    assert sequence[0].target_monster is None
+
+
+def test_lethal_detector_counts_letter_opener_trigger_from_skill():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    defend.block = 0
+    defend.uuid = "defend"
+    context = _combat_context(
+        [defend],
+        energy=0,
+        monsters=[_louse(current_hp=5), _louse(current_hp=5)],
+    )
+    context.game.relics = [
+        SimpleNamespace(relic_id="Letter Opener", name="Letter Opener", counter=2)
     ]
 
     detector = CombatEndingDetector()

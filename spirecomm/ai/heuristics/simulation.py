@@ -73,6 +73,8 @@ logger = logging.getLogger(__name__)
 
 PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
+LETTER_OPENER_DAMAGE = 5
+BIRD_FACED_URN_HEAL = 2
 FAIRY_REVIVE_FRACTION = 0.3
 FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
 TOY_ORNITHOPTER_HEAL = 5
@@ -552,12 +554,19 @@ class SimulationState:
             context,
             'Ornamental Fan',
         )
+        self.letter_opener_counter = self._context_relic_counter(
+            context,
+            'Letter Opener',
+        )
         self.has_orichalcum = (
             bool(getattr(context, 'has_orichalcum', False))
             or self._context_relic_counter(context, 'Orichalcum') is not None
         )
         self.has_tungsten_rod = self._context_relic_counter(context, 'Tungsten Rod') is not None
         self.has_the_boot = self._context_has_the_boot(context)
+        self.has_bird_faced_urn = (
+            self._context_relic_counter(context, 'Bird Faced Urn') is not None
+        )
         self.has_toy_ornithopter = (
             self._context_relic_counter(context, 'Toy Ornithopter') is not None
         )
@@ -1001,9 +1010,11 @@ class SimulationState:
             self.pen_nib_counter,
             self.nunchaku_counter,
             self.ornamental_fan_attack_count,
+            self.letter_opener_counter,
             self.has_orichalcum,
             self.has_tungsten_rod,
             self.has_the_boot,
+            self.has_bird_faced_urn,
             self.has_toy_ornithopter,
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
@@ -1243,6 +1254,7 @@ class FastCombatSimulator:
                     x_energy_spent=x_energy_spent,
                 )
                 self._apply_skill_reactive_monster_powers(new_state)
+                self._apply_letter_opener_skill_play(new_state)
                 if corruption_exhausts_skill and not self._skill_exhausts_itself(card):
                     new_state.exhaust_events += 1
             elif card_type == 'POWER':
@@ -1327,6 +1339,36 @@ class FastCombatSimulator:
                     trigger_thorns=False,
                 )
         state.panache_counter = PANACHE_RESET_COUNT
+
+    def _apply_letter_opener_skill_play(self, state: SimulationState):
+        counter = getattr(state, 'letter_opener_counter', None)
+        if counter is None:
+            return
+
+        counter = self._non_negative_int(counter)
+        if counter < 2:
+            state.letter_opener_counter = counter + 1
+            return
+
+        for monster in state.monsters:
+            if self._is_live_monster_state(monster):
+                self._deal_damage_to_monster(
+                    state,
+                    monster,
+                    LETTER_OPENER_DAMAGE,
+                    trigger_thorns=False,
+                )
+        state.letter_opener_counter = 0
+
+    @staticmethod
+    def _heal_player(state: SimulationState, amount: int):
+        heal = max(0, coerce_int(amount, 0))
+        if heal > 0:
+            state.player_hp = min(state.player_max_hp, state.player_hp + heal)
+
+    def _apply_bird_faced_urn_power_heal(self, state: SimulationState):
+        if getattr(state, 'has_bird_faced_urn', False):
+            self._heal_player(state, BIRD_FACED_URN_HEAL)
 
     def _apply_slow_card_play(self, state: SimulationState):
         """Giant Head's Slow gains a stack whenever the player plays a card."""
@@ -4176,6 +4218,7 @@ class FastCombatSimulator:
                 pass
 
         # Other powers can be added as needed
+        self._apply_bird_faced_urn_power_heal(state)
 
     def _apply_feel_no_pain_block(self, state: SimulationState, starting_exhaust_events: int):
         exhaust_delta = state.exhaust_events - starting_exhaust_events

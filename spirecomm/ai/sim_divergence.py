@@ -23,6 +23,8 @@ DISABLED_VALUES = {"", "0", "false", "off", "none", "disabled"}
 THE_BOOT_MINIMUM_DAMAGE = 5
 PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
+LETTER_OPENER_DAMAGE = 5
+BIRD_FACED_URN_HEAL = 2
 FAIRY_REVIVE_FRACTION = 0.3
 FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
 TOY_ORNITHOPTER_HEAL = 5
@@ -462,7 +464,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     feel_no_pain_events,
                 )
             _apply_havoc_top_card(expected, before, card)
+            _apply_bird_faced_urn_power_play(expected, card, card_play_count)
             for _ in range(card_play_count):
+                _apply_letter_opener_skill_play(expected, card)
                 _apply_panache_card_play(expected)
             if card_play_count > 1:
                 _consume_duplication_power(expected)
@@ -708,6 +712,46 @@ def _apply_panache_card_play(expected: Dict[str, Any]) -> int:
         )
     _set_snapshot_power_amount(player, "Panache", PANACHE_RESET_COUNT)
     return damage_dealt
+
+
+def _apply_letter_opener_skill_play(expected: Dict[str, Any], card) -> int:
+    if not _is_skill_card(card):
+        return 0
+    counter = _snapshot_relic_counter(expected, "Letter Opener")
+    if counter is None:
+        return 0
+
+    counter = max(0, counter)
+    if counter < 2:
+        _set_snapshot_relic_counter(expected, "Letter Opener", counter + 1)
+        return 0
+
+    damage_dealt = 0
+    for monster_index, monster in enumerate(expected.get("monsters", []) or []):
+        if (
+            monster.get("gone")
+            or monster.get("half_dead")
+            or _to_int(monster.get("hp")) <= 0
+        ):
+            continue
+        damage_dealt += _apply_direct_monster_damage(
+            expected,
+            monster_index,
+            LETTER_OPENER_DAMAGE,
+        )
+    _set_snapshot_relic_counter(expected, "Letter Opener", 0)
+    return damage_dealt
+
+
+def _apply_bird_faced_urn_power_play(
+    expected: Dict[str, Any],
+    card,
+    play_count: int = 1,
+) -> None:
+    if not _is_power_card(card) or not _snapshot_has_relic(expected, "Bird Faced Urn"):
+        return
+    for _ in range(max(1, play_count)):
+        _heal_player(expected, BIRD_FACED_URN_HEAL)
 
 
 def _mark_monster_defeated(monster: Dict[str, Any]) -> None:
@@ -1546,6 +1590,11 @@ def _is_skill_card(card) -> bool:
     return card_type in {"skill", "cardtypeskill"}
 
 
+def _is_power_card(card) -> bool:
+    card_type = _normalize(_card_attr(card, "type", _card_attr(card, "card_type", "")))
+    return card_type in {"power", "cardtypepower"}
+
+
 def _attack_card_play_count(snapshot: Dict[str, Any], card) -> int:
     play_count = _card_play_count(snapshot, card)
     if not _is_attack_card(card):
@@ -2163,6 +2212,37 @@ def _snapshot_has_relic(snapshot: Dict[str, Any], relic_name: str) -> bool:
     return False
 
 
+def _snapshot_relic_counter(
+    snapshot: Dict[str, Any],
+    relic_name: str,
+) -> Optional[int]:
+    target = _normalize(relic_name)
+    for relic in snapshot.get("relics", []) or []:
+        identifiers = {
+            _normalize(relic.get("id")),
+            _normalize(relic.get("name")),
+        }
+        if target in identifiers:
+            return _to_int(relic.get("counter"))
+    return None
+
+
+def _set_snapshot_relic_counter(
+    snapshot: Dict[str, Any],
+    relic_name: str,
+    counter: int,
+) -> None:
+    target = _normalize(relic_name)
+    for relic in snapshot.get("relics", []) or []:
+        identifiers = {
+            _normalize(relic.get("id")),
+            _normalize(relic.get("name")),
+        }
+        if target in identifiers:
+            relic["counter"] = counter
+            return
+
+
 def _fairy_potion_index(snapshot: Dict[str, Any]) -> Optional[int]:
     for index, potion in enumerate(snapshot.get("potions", []) or []):
         effect_type = _normalize(_potion_attr(potion, "effect_type", ""))
@@ -2670,6 +2750,8 @@ def _apply_expected_top_draw_card_played_by_effect(
     heal = _card_heal(top_card)
     if heal > 0:
         _heal_player(expected, heal)
+    _apply_bird_faced_urn_power_play(expected, top_card)
+    _apply_letter_opener_skill_play(expected, top_card)
     energy_gain = _card_energy_gain(top_card)
     energy_gain += _conditional_card_energy_gain(top_card, before, target_index)
     if energy_gain > 0:

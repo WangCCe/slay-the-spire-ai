@@ -329,6 +329,122 @@ def test_panache_triggers_aoe_on_fifth_card_play(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_letter_opener_third_skill_deals_aoe_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    defend = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+    )
+    before = _game(
+        floor=16,
+        turn=4,
+        player=SimpleNamespace(current_hp=28, max_hp=80, block=10, energy=1),
+        hand=[defend],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=202, damage=6)],
+        relics=[_relic("Letter Opener", counter=2)],
+    )
+    actual = _game(
+        floor=16,
+        turn=4,
+        player=SimpleNamespace(current_hp=28, max_hp=80, block=15, energy=0),
+        hand=[],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=197, damage=6)],
+        relics=[_relic("Letter Opener", counter=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_bird_faced_urn_heals_when_power_card_is_played(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    demon_form = _card(
+        name="Demon Form",
+        card_id="Demon Form",
+        card_type=CardType.POWER,
+        cost=3,
+        damage=0,
+        block=0,
+    )
+    before = _game(
+        floor=16,
+        turn=5,
+        player=SimpleNamespace(current_hp=25, max_hp=80, block=0, energy=3),
+        hand=[demon_form],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=180, damage=6)],
+        relics=[_relic("Bird-Faced Urn", relic_id="Bird Faced Urn", counter=-1)],
+    )
+    actual = _game(
+        floor=16,
+        turn=5,
+        player=SimpleNamespace(current_hp=27, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=180, damage=6)],
+        relics=[_relic("Bird-Faced Urn", relic_id="Bird Faced Urn", counter=-1)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_bird_faced_urn_heals_when_havoc_plays_top_power(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    havoc = _card(
+        name="Havoc+",
+        card_id="Havoc",
+        card_type=CardType.SKILL,
+        cost=0,
+        upgrades=1,
+        damage=0,
+        block=0,
+    )
+    barricade = _card(
+        name="Barricade",
+        card_id="Barricade",
+        card_type=CardType.POWER,
+        cost=3,
+        damage=0,
+        block=0,
+    )
+    before = _game(
+        floor=16,
+        turn=9,
+        player=SimpleNamespace(current_hp=21, max_hp=80, block=21, energy=0),
+        hand=[havoc],
+        draw_pile=[barricade],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=91, damage=6)],
+        relics=[_relic("Bird-Faced Urn", relic_id="Bird Faced Urn", counter=-1)],
+    )
+    actual = _game(
+        floor=16,
+        turn=9,
+        player=SimpleNamespace(current_hp=23, max_hp=80, block=21, energy=0),
+        hand=[],
+        draw_pile=[],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=91, damage=6)],
+        relics=[_relic("Bird-Faced Urn", relic_id="Bird Faced Urn", counter=-1)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_blue_candle_curse_play_loses_one_hp(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
