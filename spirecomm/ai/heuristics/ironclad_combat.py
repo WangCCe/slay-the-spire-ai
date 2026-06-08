@@ -1865,14 +1865,17 @@ class IroncladCombatPlanner(CombatPlanner):
                 count += 1
         return count
 
-    def _draw_pile_top_card_for_havoc_fallback(self, context: DecisionContext) -> Optional[Card]:
+    def _draw_pile_cards_for_havoc_fallback(self, context: DecisionContext) -> List[Card]:
         game = getattr(context, 'game', None)
         for owner in (game, context):
             draw_pile = getattr(owner, 'draw_pile', None)
             if isinstance(draw_pile, list):
-                for top_card in reversed(draw_pile):
-                    if isinstance(top_card, Card):
-                        return top_card
+                return [draw_card for draw_card in draw_pile if isinstance(draw_card, Card)]
+        return []
+
+    def _draw_pile_top_card_for_havoc_fallback(self, context: DecisionContext) -> Optional[Card]:
+        for top_card in reversed(self._draw_pile_cards_for_havoc_fallback(context)):
+            return top_card
         return None
 
     def _estimate_fallback_card_block(self, card: Card, context: DecisionContext) -> int:
@@ -1977,10 +1980,16 @@ class IroncladCombatPlanner(CombatPlanner):
             return 0
 
         top_card_block = 0
-        if canonical_card_name(top_card) != 'Havoc':
-            top_card_block = self._estimate_fallback_card_block(top_card, context)
+        exhausted_cards = 0
+        for visible_card in reversed(self._draw_pile_cards_for_havoc_fallback(context)):
+            exhausted_cards += 1
+            if canonical_card_name(visible_card) == 'Havoc':
+                continue
+            top_card_block = self._estimate_fallback_card_block(visible_card, context)
+            break
 
-        return max(0, top_card_block + self._feel_no_pain_block_per_exhaust(context))
+        feel_no_pain_block = exhausted_cards * self._feel_no_pain_block_per_exhaust(context)
+        return max(0, top_card_block + feel_no_pain_block)
 
     @staticmethod
     def _fallback_turn_block(context: DecisionContext) -> int:

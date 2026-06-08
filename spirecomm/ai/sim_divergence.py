@@ -2515,10 +2515,14 @@ def _apply_havoc_top_card(
     expected: Dict[str, Any],
     before: Dict[str, Any],
     havoc_card,
+    depth: int = 0,
 ) -> None:
     if _known_card_name(havoc_card, HAVOC_CARDS) != "Havoc":
         return
-    top_card = _draw_pile_top_card(before)
+    if depth > 20:
+        return
+
+    top_card = _draw_pile_top_card(expected)
     if top_card is None:
         return
 
@@ -2573,6 +2577,8 @@ def _apply_havoc_top_card(
             _gain_player_block(expected, before, ornamental_fan_block)
         if sharp_hide_damage > 0:
             _damage_player(expected, sharp_hide_damage)
+    elif _known_card_name(top_card, HAVOC_CARDS) == "Havoc":
+        _apply_havoc_top_card(expected, before, top_card, depth=depth + 1)
 
     self_damage = _card_self_damage(top_card)
     self_damage += _blue_candle_curse_hp_loss(top_card, before)

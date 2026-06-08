@@ -9839,6 +9839,48 @@ def test_havoc_consumes_visible_top_card_for_later_simulated_havoc():
     assert after_second.exhaust_events == 2
 
 
+def test_simulation_nested_havoc_top_card_applies_nested_top_skill_block():
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    top_havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    bottom_defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    bottom_defend.block = 5
+    context = _combat_context(
+        [havoc],
+        energy=0,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.game.draw_pile = [bottom_defend, top_havoc]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        havoc,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_block == 5
+
+
 def _patch_ritual_dagger_loader(monkeypatch, module):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -16130,6 +16172,40 @@ def test_ironclad_fallback_prefers_havoc_visible_top_card_block():
 
     assert len(sequence) == 1
     assert sequence[0].card is havoc
+
+
+def test_ironclad_fallback_counts_nested_havoc_visible_top_card_block():
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    top_havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    bottom_defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    bottom_defend.block = 5
+    context = _combat_context(
+        [havoc],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.game.draw_pile = [bottom_defend, top_havoc]
+    planner = IroncladCombatPlanner()
+
+    assert planner._estimate_havoc_visible_top_card_block(havoc, context) == 5
 
 
 def test_ironclad_fallback_counts_self_exhaust_feel_no_pain_block():

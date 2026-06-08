@@ -1811,6 +1811,55 @@ def test_havoc_exhausted_top_card_triggers_feel_no_pain_block(monkeypatch, tmp_p
     assert not trace_path.exists()
 
 
+def test_nested_havoc_top_card_applies_nested_top_skill_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    havoc = _card(
+        name="Havoc",
+        card_id="Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+    )
+    top_havoc = _card(
+        name="Havoc",
+        card_id="Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+    )
+    bottom_defend = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+    )
+    before = _game(
+        floor=16,
+        turn=3,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=12, energy=1),
+        hand=[havoc],
+        draw_pile=[bottom_defend, top_havoc],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=127, damage=6)],
+    )
+    actual = _game(
+        floor=16,
+        turn=3,
+        player=SimpleNamespace(current_hp=72, max_hp=80, block=17, energy=0),
+        hand=[],
+        draw_pile=[],
+        monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=127, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_rampage_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
