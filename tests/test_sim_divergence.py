@@ -2782,6 +2782,62 @@ def test_pen_nib_counter_nine_doubles_attack_before_player_weak(monkeypatch, tmp
     assert not trace_path.exists()
 
 
+def test_the_boot_raises_small_unblocked_attack_damage_per_hit(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    pummel = _card(name="Pummel", card_id="Pummel", damage=8, cost=1)
+    before = _game(
+        floor=18,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=2),
+        hand=[pummel],
+        relics=[_relic("The Boot", relic_id="Boot")],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=44, damage=11)],
+    )
+    actual = _game(
+        floor=18,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=1),
+        hand=[],
+        relics=[_relic("The Boot", relic_id="Boot")],
+        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=24, damage=11)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_the_boot_raises_small_damage_after_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    strike = _card(name="Strike", card_id="Strike_R", damage=6, cost=1)
+    before = _game(
+        floor=11,
+        turn=1,
+        player=SimpleNamespace(current_hp=51, max_hp=80, block=13, energy=1),
+        hand=[strike],
+        relics=[_relic("The Boot", relic_id="Boot")],
+        monsters=[_monster(name="Louse", monster_id="FuzzyLouseNormal", hp=7, block=5, damage=6)],
+    )
+    actual = _game(
+        floor=11,
+        turn=1,
+        player=SimpleNamespace(current_hp=51, max_hp=80, block=13, energy=0),
+        hand=[],
+        relics=[_relic("The Boot", relic_id="Boot")],
+        monsters=[_monster(name="Louse", monster_id="FuzzyLouseNormal", hp=2, block=0, damage=6)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_energy_potion_gains_two_energy(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

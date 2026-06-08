@@ -58,6 +58,7 @@ TARGETED_LETHAL_MAX_MONSTERS = 4
 AOE_ATTACK_NAMES = frozenset(['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper'])
 PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
+THE_BOOT_MINIMUM_DAMAGE = 5
 
 
 @dataclass(frozen=True)
@@ -600,6 +601,17 @@ class CombatEndingDetector:
                 monster_idx,
                 fiend_fire_exhaust_count,
             )
+        damage = self._apply_the_boot_minimum_attack_damage(
+            context,
+            damage,
+            self._get_vulnerable_damage_instance_count(
+                card,
+                context,
+                available_energy,
+                monster_idx,
+                fiend_fire_exhaust_count,
+            ),
+        )
         return max(0, damage)
 
     def _card_energy_cost_against_monster(
@@ -1345,6 +1357,7 @@ class CombatEndingDetector:
         monster_idx: int,
         total_damage: int,
         hit_count: int,
+        apply_the_boot: bool = False,
     ) -> Tuple[Tuple[int, ...], Tuple[int, ...], Tuple[int, ...], Tuple[int, ...], int]:
         next_hp = list(hp_state)
         next_block = list(block_state)
@@ -1373,6 +1386,9 @@ class CombatEndingDetector:
                 next_block[monster_idx] = block_before - blocked
                 remaining_damage -= blocked
                 damage_progress += blocked
+
+            if apply_the_boot and 0 < remaining_damage < THE_BOOT_MINIMUM_DAMAGE:
+                remaining_damage = THE_BOOT_MINIMUM_DAMAGE
 
             hp_before = max(0, next_hp[monster_idx])
             next_hp[monster_idx] = max(0, hp_before - remaining_damage)
@@ -2013,6 +2029,7 @@ class CombatEndingDetector:
                                         monster_idx,
                                         damage,
                                         hit_count,
+                                        apply_the_boot=self._context_has_the_boot(context),
                                     )
                                 )
                                 repeat_damage += damage_progress
@@ -2181,6 +2198,7 @@ class CombatEndingDetector:
                                     monster_idx,
                                     damage,
                                     hit_count,
+                                    apply_the_boot=self._context_has_the_boot(context),
                                 )
                             )
                             total_damage += damage_progress
@@ -2507,6 +2525,7 @@ class CombatEndingDetector:
                             monster_idx,
                             damage,
                             hit_count,
+                            apply_the_boot=self._context_has_the_boot(context),
                         )
                     )
                     repeat_damage += damage_progress
@@ -2596,6 +2615,7 @@ class CombatEndingDetector:
                         monster_idx,
                         damage,
                         hit_count,
+                        apply_the_boot=self._context_has_the_boot(context),
                     )
                 )
                 total_damage += damage_progress
@@ -2814,6 +2834,7 @@ class CombatEndingDetector:
                         monster_idx,
                         damage,
                         hit_count,
+                        apply_the_boot=self._context_has_the_boot(context),
                     )
                 )
                 if hp_state[monster_idx] > 0:
@@ -2894,6 +2915,7 @@ class CombatEndingDetector:
                                 monster_idx,
                                 damage,
                                 hit_count,
+                                apply_the_boot=self._context_has_the_boot(context),
                             )
                         )
                         refunds_energy = self._card_refunds_energy_against_monster(
@@ -3530,6 +3552,29 @@ class CombatEndingDetector:
                 if normalized == target:
                     return True
         return False
+
+    @staticmethod
+    def _context_has_the_boot(context: DecisionContext) -> bool:
+        return (
+            CombatEndingDetector._context_has_relic(context, 'The Boot')
+            or CombatEndingDetector._context_has_relic(context, 'Boot')
+        )
+
+    def _apply_the_boot_minimum_attack_damage(
+        self,
+        context: DecisionContext,
+        total_damage: int,
+        hit_count: int,
+    ) -> int:
+        if not self._context_has_the_boot(context):
+            return max(0, total_damage)
+
+        return sum(
+            THE_BOOT_MINIMUM_DAMAGE
+            if 0 < damage_instance < THE_BOOT_MINIMUM_DAMAGE
+            else max(0, damage_instance)
+            for damage_instance in self._damage_instances(total_damage, hit_count)
+        )
 
     def _get_vulnerable_damage_instance_count(
         self,

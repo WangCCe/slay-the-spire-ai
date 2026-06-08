@@ -75,6 +75,7 @@ PANACHE_RESET_COUNT = 5
 FAIRY_REVIVE_FRACTION = 0.3
 FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
 TOY_ORNITHOPTER_HEAL = 5
+THE_BOOT_MINIMUM_DAMAGE = 5
 
 
 def _normalized_potion_identifier(value) -> str:
@@ -555,6 +556,7 @@ class SimulationState:
             or self._context_relic_counter(context, 'Orichalcum') is not None
         )
         self.has_tungsten_rod = self._context_relic_counter(context, 'Tungsten Rod') is not None
+        self.has_the_boot = self._context_has_the_boot(context)
         self.has_toy_ornithopter = (
             self._context_relic_counter(context, 'Toy Ornithopter') is not None
         )
@@ -722,6 +724,13 @@ class SimulationState:
             if target in identifiers:
                 return coerce_int(getattr(relic, 'counter', 0), 0)
         return None
+
+    @staticmethod
+    def _context_has_the_boot(context: DecisionContext) -> bool:
+        return (
+            SimulationState._context_relic_counter(context, 'The Boot') is not None
+            or SimulationState._context_relic_counter(context, 'Boot') is not None
+        )
 
     def _get_player_hex_stacks(self, context: DecisionContext) -> int:
         """Hex is a persistent Chosen debuff; amount may be -1 in game state."""
@@ -988,6 +997,7 @@ class SimulationState:
             self.ornamental_fan_attack_count,
             self.has_orichalcum,
             self.has_tungsten_rod,
+            self.has_the_boot,
             self.has_toy_ornithopter,
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
@@ -1491,6 +1501,7 @@ class FastCombatSimulator:
                         damage,
                         defer_curl_up_block=hit_count > 1,
                         defer_malleable_block=hit_count > 1,
+                        apply_the_boot=True,
                     )
                     state.damage_instances += 1  # Track each damage instance
                 self._flush_deferred_reactive_block(monster)
@@ -1527,6 +1538,7 @@ class FastCombatSimulator:
                     damage,
                     defer_curl_up_block=hit_count > 1,
                     defer_malleable_block=hit_count > 1,
+                    apply_the_boot=True,
                 )
                 state.damage_instances += 1
             for monster in state.monsters:
@@ -1562,6 +1574,7 @@ class FastCombatSimulator:
                             damage,
                             defer_curl_up_block=target_hit_count > 1,
                             defer_malleable_block=target_hit_count > 1,
+                            apply_the_boot=True,
                         )
                         state.damage_instances += 1  # Track damage instance
                     self._flush_deferred_reactive_block(monster)
@@ -1986,6 +1999,19 @@ class FastCombatSimulator:
         if slow_stacks <= 0 or damage <= 0:
             return damage
         return int(damage * (1 + 0.1 * slow_stacks))
+
+    @staticmethod
+    def _apply_the_boot_minimum_attack_damage(
+        state: SimulationState,
+        hp_damage: int,
+    ) -> int:
+        hp_damage = max(0, coerce_int(hp_damage, 0))
+        if (
+            getattr(state, 'has_the_boot', False)
+            and 0 < hp_damage < THE_BOOT_MINIMUM_DAMAGE
+        ):
+            return THE_BOOT_MINIMUM_DAMAGE
+        return hp_damage
 
     def _apply_player_vulnerable_damage(
         self,
@@ -3100,6 +3126,7 @@ class FastCombatSimulator:
         trigger_thorns: bool = True,
         defer_curl_up_block: bool = False,
         defer_malleable_block: bool = False,
+        apply_the_boot: bool = False,
     ):
         """Deal damage to monster, accounting for block and thorns."""
         if not self._is_live_monster_state(monster):
@@ -3125,7 +3152,10 @@ class FastCombatSimulator:
         monster['block'] -= block_damage
 
         # Remaining damage to HP
-        hp_damage = min(max(0, damage - block_damage), max(0, monster['hp']))
+        hp_damage = max(0, damage - block_damage)
+        if apply_the_boot:
+            hp_damage = self._apply_the_boot_minimum_attack_damage(state, hp_damage)
+        hp_damage = min(hp_damage, max(0, monster['hp']))
         monster['hp'] -= hp_damage
         state.total_damage_dealt += hp_damage
 
@@ -7376,6 +7406,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             played_card_uuids=set(),
             rampage_damage_bonus_by_card={},
             pen_nib_counter=SimulationState._context_relic_counter(context, 'Pen Nib'),
+            has_the_boot=SimulationState._context_has_the_boot(context),
         )
 
         dynamic_damage_card = card_name in {'Body Slam', 'Mind Blast', 'Whirlwind'}
@@ -7429,6 +7460,10 @@ class HeuristicCombatPlanner(CombatPlanner):
             context,
         )
         per_hit_damage = self.simulator._apply_slow_attack_damage(per_hit_damage, target_state)
+        per_hit_damage = self.simulator._apply_the_boot_minimum_attack_damage(
+            estimator_state,
+            per_hit_damage,
+        )
 
         hit_count = self.simulator._get_attack_hit_count(card, estimator_state, context)
         hit_count = self.simulator._get_attack_hit_count_against_monster(

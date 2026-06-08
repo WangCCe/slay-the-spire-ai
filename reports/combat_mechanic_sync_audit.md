@@ -43,6 +43,7 @@ Status labels:
 | Reactive monster block timing | Twin Strike into Curl Up Louse clean divergence; earlier Malleable multi-hit evidence | synced for Curl Up and Malleable between cards | synced for Curl Up and Malleable after the full multi-hit card | n/a for scalar fallback; target reaction is owned by simulator/lethal search | n/a unless timing starts simulating target reactions directly | n/a until a guard predicts target-side reactive block | Watch for any new direct lethal/target shortcut that bypasses the shared simulator or `CombatEndingDetector`. |
 | Hand-count attack damage | Fiend Fire divergence and guard tests | synced | synced | synced | synced | not currently duplicated outside encoded card identity | No immediate gap found; recheck only when RL adds Fiend Fire-specific damage guards. |
 | Target-side attack modifiers | Weak, Vulnerable, Paper Phrog divergence tests | synced | synced | synced | synced | synced for Slime split survival guard | Generic scoring that does not estimate player attack damage is `n/a`. |
+| Minimum attack HP damage | The Boot Pummel, Reaper, Anger, and Strike-through-block clean divergence rows | synced for per-hit and after-block lethal paths | synced for attack-hit damage after block | synced for scalar per-hit fallback estimates | n/a unless timing adds The Boot-specific scalar shortcuts | no direct RL guard/reward surface found in this round | Watch for future damage shortcuts that skip the shared simulator or lethal detector. |
 | Monster lifecycle states | Darkling half-dead/revive plus Collector summon/reorder divergence evidence | n/a | synced for Darkling revive, death split, and concrete current-move summons without negative lifecycle damage score | synced | synced for SAFE timing bonus | synced for v2 state alive flag and reward exit handling | Random/generic summons still need explicit live evidence and concrete minion data before materialization. |
 | Combat escape settlement | Looter/Mugger escape and Smoke Bomb divergence evidence | n/a | synced for Smoke Bomb potion escape and Looter/Mugger end-turn escape projection without kill/lethal credit | n/a | n/a | synced for in-combat and combat-exit reward | Other escape monsters should be added only with explicit intent/move evidence. |
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
@@ -58,6 +59,19 @@ Status labels:
 
 ## Confirmed Sync Work
 
+- 2026-06-08: The Boot minimum attack HP damage is now synced from the fresh
+  clean-trace Pummel/Strike/Reaper evidence into the diagnostic oracle and
+  live combat estimators. `sim_divergence.py` applies the relic's 5-damage
+  floor after attack damage is reduced by monster block, eliminating false
+  monster HP divergence for small unblocked hits and small post-block HP
+  damage. `FastCombatSimulator` carries The Boot in `SimulationState`, applies
+  the same floor only on attack damage, and leaves direct damage such as
+  potions, Panache, Juggernaut, and end-turn effects unchanged.
+  `CombatEndingDetector` applies the floor both to per-hit total attack
+  estimates and to exact after-block target simulation, so Pummel-style
+  multi-hit lethal and Strike-through-block lethal lines are provable.
+  `IroncladCombatPlanner` fallback damage estimates now apply the same per-hit
+  floor after Weak handling.
 - 2026-06-08: Sentinel exhaust energy is now synced from fresh
   `Second Wind` clean divergence evidence into the diagnostic oracle and
   targeted lethal detection. `sim_divergence.py` models the +2/+3 energy

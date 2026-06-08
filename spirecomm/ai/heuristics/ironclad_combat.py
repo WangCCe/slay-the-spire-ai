@@ -21,6 +21,7 @@ from .simulation import (
     CombatPlanner,
     SimulationState,
     FastCombatSimulator,
+    THE_BOOT_MINIMUM_DAMAGE,
     W_DEATHRISK,
 )
 from .card_costs import effective_card_cost, is_x_cost_card, whirlwind_damage, x_effect_energy
@@ -1227,17 +1228,58 @@ class IroncladCombatPlanner(CombatPlanner):
     ) -> int:
         damage = max(0, int(damage))
         if player_debuff_stacks(context, 'Weak') <= 0:
+            return IroncladCombatPlanner._apply_the_boot_minimum_fallback_damage(
+                damage,
+                hit_count,
+                context,
+            )
+
+        hit_count = max(1, int(hit_count or 1))
+        if hit_count <= 1:
+            return IroncladCombatPlanner._apply_the_boot_minimum_fallback_damage(
+                damage * 3 // 4,
+                hit_count,
+                context,
+            )
+
+        per_hit_damage, remainder = divmod(damage, hit_count)
+        if remainder != 0:
+            return IroncladCombatPlanner._apply_the_boot_minimum_fallback_damage(
+                damage * 3 // 4,
+                hit_count,
+                context,
+            )
+
+        return IroncladCombatPlanner._apply_the_boot_minimum_fallback_damage(
+            per_hit_damage * 3 // 4 * hit_count,
+            hit_count,
+            context,
+        )
+
+    @staticmethod
+    def _apply_the_boot_minimum_fallback_damage(
+        damage: int,
+        hit_count: int,
+        context: DecisionContext,
+    ) -> int:
+        damage = max(0, int(damage))
+        if not SimulationState._context_has_the_boot(context):
             return damage
 
         hit_count = max(1, int(hit_count or 1))
         if hit_count <= 1:
-            return damage * 3 // 4
+            return THE_BOOT_MINIMUM_DAMAGE if 0 < damage < THE_BOOT_MINIMUM_DAMAGE else damage
 
         per_hit_damage, remainder = divmod(damage, hit_count)
-        if remainder != 0:
-            return damage * 3 // 4
-
-        return per_hit_damage * 3 // 4 * hit_count
+        instances = [per_hit_damage] * hit_count
+        if remainder:
+            instances[-1] += remainder
+        return sum(
+            THE_BOOT_MINIMUM_DAMAGE
+            if 0 < damage_instance < THE_BOOT_MINIMUM_DAMAGE
+            else damage_instance
+            for damage_instance in instances
+        )
 
     @staticmethod
     def _get_attack_hit_count(card: Card, context: Optional[DecisionContext] = None) -> int:

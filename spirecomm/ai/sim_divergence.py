@@ -19,6 +19,7 @@ from spirecomm.ai.heuristics.card_upgrades import (
 
 TRACE_ENV = "STS_SIM_DIVERGENCE_TRACE_FILE"
 DISABLED_VALUES = {"", "0", "false", "off", "none", "disabled"}
+THE_BOOT_MINIMUM_DAMAGE = 5
 PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
 FAIRY_REVIVE_FRACTION = 0.3
@@ -546,6 +547,7 @@ def _apply_expected_attack(
             blocked = min(target["block"], remaining_damage)
             target["block"] -= blocked
             remaining_damage -= blocked
+        remaining_damage = _the_boot_minimum_attack_damage(before, remaining_damage)
         hp_before = target["hp"]
         target["hp"] = max(0, target["hp"] - remaining_damage)
         hp_loss = max(0, hp_before - target["hp"])
@@ -2083,6 +2085,22 @@ def _pen_nib_damage_multiplier(snapshot: Optional[Dict[str, Any]], card) -> int:
         if target in identifiers and _to_int(relic.get("counter")) == 9:
             return 2
     return 1
+
+
+def _the_boot_minimum_attack_damage(
+    snapshot: Optional[Dict[str, Any]],
+    damage: int,
+) -> int:
+    if (
+        snapshot is not None
+        and 0 < damage < THE_BOOT_MINIMUM_DAMAGE
+        and (
+            _snapshot_has_relic(snapshot, "The Boot")
+            or _snapshot_has_relic(snapshot, "Boot")
+        )
+    ):
+        return THE_BOOT_MINIMUM_DAMAGE
+    return max(0, damage)
 
 
 def _snapshot_has_relic(snapshot: Dict[str, Any], relic_name: str) -> bool:

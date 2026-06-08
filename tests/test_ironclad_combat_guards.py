@@ -1273,6 +1273,48 @@ def test_simulate_card_play_applies_pen_nib_before_target_vulnerable():
     assert result.pen_nib_counter == 0
 
 
+def test_simulate_card_play_applies_the_boot_per_hit_minimum_damage():
+    pummel = _card("Pummel", "Pummel", cost=1)
+    pummel.damage = 2
+    target = _louse(current_hp=44)
+    context = _combat_context([pummel], energy=1, monsters=[target])
+    context.game.relics = [SimpleNamespace(relic_id="Boot", name="The Boot")]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        pummel,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 20
+    assert result.monsters[0]["hp"] == 24
+
+
+def test_simulate_card_play_applies_the_boot_after_block():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.damage = 6
+    target = _louse(current_hp=7)
+    target.block = 5
+    context = _combat_context([strike], energy=1, monsters=[target])
+    context.game.relics = [SimpleNamespace(relic_id="Boot", name="The Boot")]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 5
+    assert result.monsters[0]["block"] == 0
+    assert result.monsters[0]["hp"] == 2
+
+
 def test_simulate_card_play_nunchaku_counter_nine_refunds_energy():
     strike = _card("Strike_R", "Strike", cost=1)
     strike.damage = 6
@@ -1421,6 +1463,28 @@ def test_ironclad_fallback_attack_estimate_applies_weak_per_hit(monkeypatch):
         pummel,
         context,
     ) == 8
+
+
+def test_ironclad_fallback_attack_estimate_applies_the_boot_per_hit(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "pummel": {
+            "name": "Pummel",
+            "type": "ATTACK",
+            "cost": 1,
+            "description": "Deal 2 damage 4 times.",
+        },
+    }
+    monkeypatch.setattr(ironclad_combat, "game_data_loader", loader)
+    pummel = _card("Pummel", "Pummel", cost=1)
+    pummel.damage = 2
+    context = _combat_context([pummel], energy=1, monsters=[_louse(current_hp=50)])
+    context.game.relics = [SimpleNamespace(relic_id="Boot", name="The Boot")]
+
+    assert IroncladCombatPlanner()._estimate_attack_damage_without_simulation(
+        pummel,
+        context,
+    ) == 20
 
 
 def test_simulation_state_coerces_string_monster_hp_and_block():
@@ -11507,6 +11571,50 @@ def test_lethal_detector_allows_exact_single_target_kill(monkeypatch):
     detector = CombatEndingDetector()
 
     assert detector._calculate_affordable_damage(context) == 6
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["strike"]
+
+
+def test_lethal_detector_uses_the_boot_per_hit_minimum_damage(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "pummel": {
+            "name": "Pummel",
+            "description": "Deal 2 damage 4 times.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    pummel = _card("Pummel", "Pummel", cost=1)
+    pummel.damage = 2
+    pummel.uuid = "pummel"
+    context = _combat_context([pummel], energy=1, monsters=[_louse(current_hp=20)])
+    context.game.relics = [SimpleNamespace(relic_id="Boot", name="The Boot")]
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 20
+    assert detector.can_kill_all(context) is True
+    assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["pummel"]
+
+
+def test_lethal_detector_uses_the_boot_after_block(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.uuid = "strike"
+    target = _louse(current_hp=5)
+    target.block = 5
+    context = _combat_context([strike], energy=1, monsters=[target])
+    context.game.relics = [SimpleNamespace(relic_id="Boot", name="The Boot")]
+    detector = CombatEndingDetector()
+
     assert detector.can_kill_all(context) is True
     assert [action.card.uuid for action in detector.find_lethal_sequence(context)] == ["strike"]
 
