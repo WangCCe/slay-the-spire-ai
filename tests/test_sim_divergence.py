@@ -162,6 +162,55 @@ def test_duplication_power_defend_applies_block_twice(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_entrench_doubles_current_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    entrench = _card(
+        name="Entrench",
+        card_id="Entrench",
+        card_type=CardType.SKILL,
+        cost=2,
+        damage=0,
+        block=0,
+    )
+    before = _game(
+        floor=18,
+        turn=2,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=8, energy=3),
+        hand=[entrench],
+        monsters=[
+            _monster(
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                block=51,
+                damage=10,
+            )
+        ],
+    )
+    actual = _game(
+        floor=18,
+        turn=2,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=16, energy=1),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                block=51,
+                damage=10,
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_panache_triggers_aoe_on_fifth_card_play(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

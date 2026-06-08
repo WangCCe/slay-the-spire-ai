@@ -997,10 +997,13 @@ class CombatEndingDetector:
         )
 
     def _card_block_gain(self, card: Card, context: DecisionContext) -> int:
+        card_name = self._base_card_name(card)
+        if card_name == 'Entrench':
+            return max(0, player_block_value(context))
+
         if self._player_blocks_card_block(context):
             return 0
 
-        card_name = self._base_card_name(card)
         block_gain = max(0, self._safe_int(getattr(card, 'block', 0), default=0))
         if block_gain <= 0:
             card_data = self.game_data_loader.get_card_data(card_name) or {}

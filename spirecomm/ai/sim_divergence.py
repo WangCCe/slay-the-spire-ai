@@ -94,6 +94,10 @@ SECOND_WIND_BLOCK_PER_CARD = {
     "Second Wind": 5,
 }
 
+BLOCK_MULTIPLIER_SKILLS = {
+    "Entrench": 2,
+}
+
 EXHAUSTS_NON_ATTACK_HAND_CARDS = {
     "Second Wind": 0,
     "Sever Soul": 0,
@@ -418,6 +422,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 energy_gain += _nunchaku_energy_gain(before, card)
             if energy_gain > 0:
                 expected["player"]["energy"] += energy_gain
+            _apply_block_multiplier_card(expected, before, card, card_play_count)
             block = _card_block(card)
             if block > 0:
                 _gain_player_block(
@@ -1698,6 +1703,27 @@ def _card_block(card) -> int:
     if base_block is not None:
         return base_block + upgrade_bonus
     return 0
+
+
+def _apply_block_multiplier_card(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+    card,
+    play_count: int,
+) -> bool:
+    card_name = _known_card_name(card, BLOCK_MULTIPLIER_SKILLS)
+    if card_name is None:
+        return False
+    multiplier = max(1, _to_int(BLOCK_MULTIPLIER_SKILLS.get(card_name), default=1))
+    if multiplier <= 1:
+        return False
+
+    for _ in range(max(1, play_count)):
+        current_block = max(0, _to_int(expected.get("player", {}).get("block")))
+        block_gain = current_block * (multiplier - 1)
+        if block_gain > 0:
+            _gain_player_block(expected, before, block_gain)
+    return True
 
 
 def _second_wind_block(

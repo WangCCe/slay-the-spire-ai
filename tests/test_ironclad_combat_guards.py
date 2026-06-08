@@ -11714,6 +11714,27 @@ def test_lethal_detector_counts_juggernaut_block_damage():
     assert sequence[0].target_monster is None
 
 
+def test_lethal_detector_counts_juggernaut_entrench_block_damage():
+    entrench = _card(
+        "Entrench",
+        "Entrench",
+        card_type=CardType.SKILL,
+        cost=2,
+        has_target=False,
+    )
+    entrench.uuid = "entrench"
+    context = _combat_context([entrench], energy=2, monsters=[_louse(current_hp=5)])
+    context.game.player.block = 6
+    context.game.player.powers = [SimpleNamespace(power_name="Juggernaut", amount=5)]
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 5
+    assert detector.can_kill_all(context) is True
+    sequence = detector.find_lethal_sequence(context)
+    assert [action.card.uuid for action in sequence] == ["entrench"]
+    assert sequence[0].target_monster is None
+
+
 def test_lethal_detector_counts_juggernaut_after_blocking_attack():
     iron_wave = _card("Iron Wave", "Iron Wave", cost=1)
     iron_wave.uuid = "iron-wave"
