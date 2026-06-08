@@ -159,6 +159,7 @@ HP_LOSS_PENALTY = 10.0  # Penalty per HP lost this turn
 
 IRONCLAD_AOE_ATTACK_CARDS = {
     'Cleave',
+    'Dramatic Entrance',
     'Whirlwind',
     'Immolate',
     'Thunderclap',
@@ -1523,7 +1524,7 @@ class FastCombatSimulator:
         if card_data:
             is_aoe = game_data_loader._is_card_aoe(card_data)
         # Also check known AOE cards by name
-        if card_name in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']:
+        if card_name in IRONCLAD_AOE_ATTACK_CARDS:
             is_aoe = True
         hit_count = self._get_attack_hit_count(
             card,
@@ -6390,7 +6391,7 @@ class FastCombatSimulator:
 
         # AOE card bonus in multi-monster scenarios
         if sequence and num_monsters >= 2:
-            aoe_cards = ['Cleave', 'Whirlwind', 'Thunderclap', 'Immolate']
+            aoe_cards = IRONCLAD_AOE_ATTACK_CARDS
 
             for action in sequence:
                 if getattr(action, 'card', None) is not None:
@@ -8032,7 +8033,7 @@ class HeuristicCombatPlanner(CombatPlanner):
             player_class = 'IRONCLAD'
 
         if player_class == 'IRONCLAD':
-            is_aoe = card_name in ['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 'Reaper']
+            is_aoe = card_name in IRONCLAD_AOE_ATTACK_CARDS
 
         # Base damage estimate with AOE multiplier
         base_damage = 0

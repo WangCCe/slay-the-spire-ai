@@ -17243,3 +17243,51 @@ def test_draw_power_respects_no_draw_power():
     )
 
     assert result.cards_drawn == 0
+
+
+def test_fast_sim_dramatic_entrance_zero_card_damage_deals_aoe():
+    dramatic_entrance = _card(
+        "Dramatic Entrance",
+        "Dramatic Entrance",
+        cost=0,
+        has_target=False,
+    )
+    dramatic_entrance.damage = 0
+    monsters = [_louse(current_hp=20), _louse(current_hp=13)]
+    context = _combat_context([dramatic_entrance], energy=3, monsters=monsters)
+    state = SimulationState(context)
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        dramatic_entrance,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert [monster["hp"] for monster in result.monsters] == [12, 5]
+    assert result.total_damage_dealt == 16
+
+
+def test_fast_score_dramatic_entrance_uses_aoe_multiplier():
+    dramatic_entrance = _card(
+        "Dramatic Entrance",
+        "Dramatic Entrance",
+        cost=0,
+        has_target=False,
+    )
+    dramatic_entrance.damage = 0
+    context = _combat_context(
+        [dramatic_entrance],
+        energy=3,
+        monsters=[_louse(current_hp=20), _louse(current_hp=13)],
+    )
+    state = SimulationState(context)
+
+    score = HeuristicCombatPlanner(SynergyCardEvaluator()).fast_score_action(
+        dramatic_entrance,
+        state,
+        context,
+    )
+
+    assert score == 54

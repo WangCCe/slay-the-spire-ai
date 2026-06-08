@@ -37,7 +37,7 @@ Status labels:
 
 | Mechanic family | Diagnostic evidence | Lethal detection | Beam / fast sim | Ironclad fallback / targeting | Timing planner | RL guards / reward / state | Current gap |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Static zero-live attack damage, including upgrades | Headbutt and upgraded attack divergence tests | synced | synced | synced | synced | synced for survival guards and legacy state features | Check only if a new estimator reads raw `card.damage` directly. |
+| Static zero-live attack damage, including upgrades and static AOE colorless attacks | Headbutt, upgraded attack, and Dramatic Entrance divergence tests | synced | synced | synced, including Dramatic Entrance fast-score AOE pruning | synced | synced for survival guards and legacy state features | Check only if a new estimator reads raw `card.damage` or hardcodes AOE card names directly. |
 | Context-dependent attack base damage | Mind Blast draw-pile-count divergence tests | synced | synced | synced | synced | synced for survival guards and legacy hand-state features | Context-free card-reward features remain `n/a`; they intentionally lack draw-pile context. |
 | X-energy and per-hit attacks | Whirlwind divergence and guard tests | synced | synced | synced | synced | synced for relevant RL survival multi-hit paths | Watch for newly added scalar damage shortcuts. |
 | Reactive monster block timing | Twin Strike into Curl Up Louse clean divergence; earlier Malleable multi-hit evidence | synced for Curl Up and Malleable between cards | synced for Curl Up and Malleable after the full multi-hit card | n/a for scalar fallback; target reaction is owned by simulator/lethal search | n/a unless timing starts simulating target reactions directly | n/a until a guard predicts target-side reactive block | Watch for any new direct lethal/target shortcut that bypasses the shared simulator or `CombatEndingDetector`. |
@@ -63,6 +63,14 @@ Status labels:
 
 ## Confirmed Sync Work
 
+- 2026-06-08: `Dramatic Entrance` static AOE damage is now synced from the
+  fresh floor-16 Slime Boss row into the diagnostic oracle and fast-score
+  pruning. The live card payload reported `damage=0`, but playing the card
+  reduced Slime Boss HP from `140` to `132`. `sim_divergence.py` now knows the
+  card's base 8 damage and all-enemy shape, while `HeuristicCombatPlanner`
+  treats it as an AOE attack during lightweight fast scoring. The direct
+  `FastCombatSimulator` card-play path already handled the 8 AOE through card
+  data and is now covered by a focused guard.
 - 2026-06-08: Stone Calendar end-turn AOE damage is now synced from
   the fresh floor-16 Guardian `EndTurnAction` row into the diagnostic oracle
   and fast end-turn outcome projection. The live row had `Stone Calendar`

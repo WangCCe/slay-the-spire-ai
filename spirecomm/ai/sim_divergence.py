@@ -41,6 +41,7 @@ BASE_ATTACK_DAMAGE = {
     "Carnage": 20,
     "Cleave": 8,
     "Clothesline": 12,
+    "Dramatic Entrance": 8,
     "Dropkick": 5,
     "Feed": 10,
     "Fiend Fire": 7,
@@ -75,6 +76,7 @@ MULTI_HIT_ATTACKS = {
 
 ALL_ENEMY_ATTACKS = {
     "Cleave": 0,
+    "Dramatic Entrance": 0,
     "Immolate": 0,
     "Reaper": 0,
     "Thunderclap": 0,

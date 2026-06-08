@@ -8885,3 +8885,69 @@ def test_combat_rl_checks_pending_divergence_on_next_state(monkeypatch, tmp_path
     records = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines()]
     assert records[0]["reason"] == "monster_state_mismatch"
     assert records[0]["diffs"]["monsters[0].hp"] == {"expected": 36, "actual": 41}
+
+
+def test_dramatic_entrance_zero_card_damage_deals_aoe(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    dramatic_entrance = _card(
+        name="Dramatic Entrance",
+        card_id="Dramatic Entrance",
+        card_type=CardType.ATTACK,
+        cost=0,
+        damage=0,
+    )
+    before = _game(
+        floor=16,
+        turn=1,
+        player=SimpleNamespace(current_hp=69, max_hp=80, block=0, energy=3),
+        hand=[dramatic_entrance],
+        monsters=[
+            _monster(
+                name="Slime Boss",
+                monster_id="SlimeBoss",
+                hp=140,
+                damage=0,
+                intent=Intent.DEBUFF,
+                powers=[Power("Split", "Split", -1)],
+            ),
+            _monster(
+                name="Acid Slime (M)",
+                monster_id="AcidSlime_M",
+                hp=28,
+                index=1,
+                damage=7,
+                intent=Intent.ATTACK_DEBUFF,
+            ),
+        ],
+    )
+    actual = _game(
+        floor=16,
+        turn=1,
+        player=SimpleNamespace(current_hp=69, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Slime Boss",
+                monster_id="SlimeBoss",
+                hp=132,
+                damage=0,
+                intent=Intent.DEBUFF,
+                powers=[Power("Split", "Split", -1)],
+            ),
+            _monster(
+                name="Acid Slime (M)",
+                monster_id="AcidSlime_M",
+                hp=20,
+                index=1,
+                damage=7,
+                intent=Intent.ATTACK_DEBUFF,
+            ),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
