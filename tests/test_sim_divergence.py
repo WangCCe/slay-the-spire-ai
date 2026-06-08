@@ -3040,6 +3040,112 @@ def test_block_potion_gains_twelve_block(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_distilled_chaos_plays_visible_top_draw_cards(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    potion = _potion(
+        "Distilled Chaos",
+        potion_id="DistilledChaos",
+        effect_type="play_top_cards",
+        effect_value=3,
+        target_type="self",
+    )
+    bottom_bash = _card(name="Bash", card_id="Bash", damage=8)
+    top_defend = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        damage=0,
+        block=5,
+    )
+    top_headbutt = _card(
+        name="Headbutt+",
+        card_id="Headbutt",
+        damage=0,
+        upgrades=1,
+    )
+    top_defend_2 = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        damage=0,
+        block=5,
+    )
+    before = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(current_hp=49, max_hp=80, block=0, energy=2),
+        hand=[_card(name="Metallicize", card_id="Metallicize", damage=0)],
+        draw_pile=[bottom_bash, top_defend, top_headbutt, top_defend_2],
+        monsters=[_monster(name="Sentry", monster_id="Sentry", hp=16, damage=9)],
+        potions=[potion],
+    )
+    actual = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(current_hp=49, max_hp=80, block=10, energy=2),
+        hand=[_card(name="Metallicize", card_id="Metallicize", damage=0)],
+        draw_pile=[bottom_bash],
+        monsters=[_monster(name="Sentry", monster_id="Sentry", hp=4, damage=9)],
+        potions=[],
+    )
+
+    assert record_expected_action(PotionAction(use=True, potion=potion), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_distilled_chaos_top_attack_random_target_multi_monster_is_not_divergence(
+    monkeypatch,
+    tmp_path,
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    potion = _potion(
+        "Distilled Chaos",
+        potion_id="DistilledChaos",
+        effect_type="play_top_cards",
+        effect_value=1,
+        target_type="self",
+    )
+    top_headbutt = _card(
+        name="Headbutt+",
+        card_id="Headbutt",
+        damage=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(current_hp=49, max_hp=80, block=0, energy=2),
+        draw_pile=[top_headbutt],
+        monsters=[
+            _monster(name="Sentry", monster_id="Sentry", hp=16, damage=9, index=0),
+            _monster(name="Sentry", monster_id="Sentry", hp=16, damage=9, index=1),
+        ],
+        potions=[potion],
+    )
+    actual = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(current_hp=49, max_hp=80, block=0, energy=2),
+        draw_pile=[],
+        monsters=[
+            _monster(name="Sentry", monster_id="Sentry", hp=16, damage=9, index=0),
+            _monster(name="Sentry", monster_id="Sentry", hp=4, damage=9, index=1),
+        ],
+        potions=[],
+    )
+
+    assert record_expected_action(PotionAction(use=True, potion=potion), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_explosive_potion_deals_ten_to_all_monsters(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

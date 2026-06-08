@@ -16757,6 +16757,48 @@ def test_draw_potions_respect_no_draw_power():
         assert result.cards_drawn == 0
 
 
+def test_distilled_chaos_simulation_plays_visible_top_draw_cards():
+    potion = SimpleNamespace(
+        name="Distilled Chaos",
+        can_use=True,
+        requires_target=False,
+        effect_type="play_top_cards",
+        effect_value=3,
+        target_type="self",
+    )
+    bottom_bash = _card("Bash", "Bash")
+    top_defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    top_defend.block = 5
+    top_headbutt = _card("Headbutt", "Headbutt+", upgrades=1)
+    top_headbutt.damage = 12
+    top_defend_2 = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    top_defend_2.block = 5
+    target = _louse(current_hp=16)
+    context = _combat_context([], energy=2, monsters=[target])
+    context.game.draw_pile = [bottom_bash, top_defend, top_headbutt, top_defend_2]
+    context.draw_pile = context.game.draw_pile
+    state = SimulationState(context)
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+
+    result = planner._simulate_potion_use(state, potion, target=None, context=context)
+
+    assert result.player_block == 10
+    assert result.monsters[0]["hp"] == 4
+    assert result.damage_instances == 1
+
+
 def test_toy_ornithopter_heals_after_beam_potion_use():
     potion = SimpleNamespace(
         name="Energy Potion",

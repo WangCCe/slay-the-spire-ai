@@ -3977,6 +3977,18 @@ class FastCombatSimulator:
         state: SimulationState,
         context: Optional[DecisionContext],
     ):
+        self._apply_top_draw_card_by_effect(
+            state,
+            context,
+            exhaust_by_effect=True,
+        )
+
+    def _apply_top_draw_card_by_effect(
+        self,
+        state: SimulationState,
+        context: Optional[DecisionContext],
+        exhaust_by_effect: bool = False,
+    ):
         top_card = self._draw_pile_top_card(state, context)
         if top_card is None:
             return
@@ -4017,7 +4029,7 @@ class FastCombatSimulator:
             self._apply_power_reactive_monster_powers(state)
             self._apply_self_damage(state, top_card)
 
-        if not top_card_exhausted_by_effect:
+        if exhaust_by_effect and not top_card_exhausted_by_effect:
             state.exhaust_events += 1
 
     @staticmethod
@@ -6742,7 +6754,12 @@ class HeuristicCombatPlanner(CombatPlanner):
                         from spirecomm.communication.action import PotionAction
                         _, potion, target = card_idx
 
-                        new_state = self._simulate_potion_use(state, potion, target)
+                        new_state = self._simulate_potion_use(
+                            state,
+                            potion,
+                            target,
+                            context=context,
+                        )
 
                         # Create potion action
                         if target:
@@ -7065,9 +7082,15 @@ class HeuristicCombatPlanner(CombatPlanner):
 
         return score
 
-    def _simulate_potion_use(self, state: SimulationState, potion, target) -> SimulationState:
+    def _simulate_potion_use(
+        self,
+        state: SimulationState,
+        potion,
+        target,
+        context: Optional[DecisionContext] = None,
+    ) -> SimulationState:
         new_state = copy.deepcopy(state)
-        self._apply_potion_effect(new_state, potion, target)
+        self._apply_potion_effect(new_state, potion, target, context=context)
         return new_state
 
     def _apply_toy_ornithopter_potion_heal(self, state: SimulationState):
@@ -7077,7 +7100,13 @@ class HeuristicCombatPlanner(CombatPlanner):
                 state.player_hp + TOY_ORNITHOPTER_HEAL,
             )
 
-    def _apply_potion_effect(self, state: SimulationState, potion, target):
+    def _apply_potion_effect(
+        self,
+        state: SimulationState,
+        potion,
+        target,
+        context: Optional[DecisionContext] = None,
+    ):
         if potion.effect_type == 'damage':
             if potion.target_type == 'all_monsters':
                 for monster in state.monsters:
@@ -7159,6 +7188,13 @@ class HeuristicCombatPlanner(CombatPlanner):
         elif potion.effect_type == 'energy':
             state.player_energy += potion.effect_value
             state.energy_gained += potion.effect_value
+        elif potion.effect_type == 'play_top_cards':
+            for _ in range(self._non_negative_int(potion.effect_value)):
+                self.simulator._apply_top_draw_card_by_effect(
+                    state,
+                    context,
+                    exhaust_by_effect=False,
+                )
         elif potion.effect_type in ['draw', 'draw_randomize_cost']:
             self.simulator._add_card_draw(state, potion.effect_value)
         elif potion.effect_type == 'escape':

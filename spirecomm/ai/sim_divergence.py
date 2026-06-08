@@ -473,7 +473,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         _apply_pending_headbutt_select_effects(expected, before)
 
     elif action_type == "PotionAction":
-        _apply_expected_potion(expected, action, game)
+        _apply_expected_potion(expected, action, game, before)
 
     elif action_type == "EndTurnAction":
         metallicize_block = _metallicize_end_turn_block(before)
@@ -598,7 +598,12 @@ def _apply_expected_attack_to_all(
     return damage_dealt
 
 
-def _apply_expected_potion(expected: Dict[str, Any], action, game) -> None:
+def _apply_expected_potion(
+    expected: Dict[str, Any],
+    action,
+    game,
+    before: Dict[str, Any],
+) -> None:
     if not bool(getattr(action, "use", True)):
         return
     potion = _potion_for_action(action, game)
@@ -635,6 +640,8 @@ def _apply_expected_potion(expected: Dict[str, Any], action, game) -> None:
                     _target_index_for_action(action, game),
                     value,
                 )
+        elif effect_type == "playtopcards":
+            _apply_expected_play_top_cards_potion(expected, before, value)
 
     _apply_toy_ornithopter_potion_heal(expected)
 
@@ -1028,6 +1035,9 @@ def _ignored_diff_keys(pending: Dict[str, Any], actual: Optional[Dict[str, Any]]
     if _havoc_random_top_card_target_boundary(pending):
         ignored.update(_monster_state_diff_keys(pending, actual))
         return ignored
+    if _play_top_cards_random_attack_target_boundary(pending):
+        ignored.update(_monster_state_diff_keys(pending, actual))
+        return ignored
 
     ignored.update(_slime_split_ignored_diff_keys(pending, actual))
     ignored.update(_darkling_half_dead_animation_ignored_diff_keys(pending, actual))
@@ -1252,6 +1262,38 @@ def _havoc_random_top_card_target_boundary(pending: Dict[str, Any]) -> bool:
         if _snapshot_monster_active(monster)
     )
     return active_count > 1
+
+
+def _play_top_cards_random_attack_target_boundary(pending: Dict[str, Any]) -> bool:
+    action = pending.get("action") or {}
+    if action.get("type") != "PotionAction":
+        return False
+    potion = action.get("potion") or {}
+    if _normalize(_potion_attr(potion, "effect_type", "")) != "playtopcards":
+        return False
+
+    before = pending.get("before") or {}
+    active_count = sum(
+        1
+        for monster in before.get("monsters", []) or []
+        if _snapshot_monster_active(monster)
+    )
+    if active_count <= 1:
+        return False
+
+    draw_pile = before.get("draw_pile") or []
+    if not isinstance(draw_pile, list):
+        return False
+    count = max(0, _to_int(_potion_attr(potion, "effect_value", 0)))
+    for top_card in reversed(draw_pile[-count:] if count else []):
+        if not isinstance(top_card, dict):
+            continue
+        if not _snapshot_card_is_attack(top_card):
+            continue
+        if _is_all_enemy_attack(top_card):
+            continue
+        return True
+    return False
 
 
 def _add_diff(
@@ -2519,12 +2561,40 @@ def _apply_havoc_top_card(
 ) -> None:
     if _known_card_name(havoc_card, HAVOC_CARDS) != "Havoc":
         return
+    _apply_expected_top_draw_card_played_by_effect(
+        expected,
+        before,
+        depth=depth,
+        exhaust_by_effect=True,
+    )
+
+
+def _apply_expected_play_top_cards_potion(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+    count: int,
+) -> None:
+    for _ in range(max(0, count)):
+        if not _apply_expected_top_draw_card_played_by_effect(
+            expected,
+            before,
+            exhaust_by_effect=False,
+        ):
+            return
+
+
+def _apply_expected_top_draw_card_played_by_effect(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+    depth: int = 0,
+    exhaust_by_effect: bool = False,
+) -> bool:
     if depth > 20:
-        return
+        return False
 
     top_card = _draw_pile_top_card(expected)
     if top_card is None:
-        return
+        return False
 
     _pop_expected_draw_pile_top(expected)
     target_index = None
@@ -2578,7 +2648,12 @@ def _apply_havoc_top_card(
         if sharp_hide_damage > 0:
             _damage_player(expected, sharp_hide_damage)
     elif _known_card_name(top_card, HAVOC_CARDS) == "Havoc":
-        _apply_havoc_top_card(expected, before, top_card, depth=depth + 1)
+        _apply_expected_top_draw_card_played_by_effect(
+            expected,
+            before,
+            depth=depth + 1,
+            exhaust_by_effect=True,
+        )
 
     self_damage = _card_self_damage(top_card)
     self_damage += _blue_candle_curse_hp_loss(top_card, before)
@@ -2598,9 +2673,11 @@ def _apply_havoc_top_card(
             before,
             _modified_block(block, expected.get("player", {})),
         )
-    feel_no_pain_block = _havoc_top_card_feel_no_pain_block(before)
-    if feel_no_pain_block > 0:
-        _gain_player_block(expected, before, feel_no_pain_block)
+    if exhaust_by_effect:
+        feel_no_pain_block = _havoc_top_card_feel_no_pain_block(before)
+        if feel_no_pain_block > 0:
+            _gain_player_block(expected, before, feel_no_pain_block)
+    return True
 
 
 def _draw_pile_top_card(snapshot: Dict[str, Any]) -> Optional[Dict[str, Any]]:
