@@ -16315,6 +16315,32 @@ def test_draw_potions_respect_no_draw_power():
         assert result.cards_drawn == 0
 
 
+def test_toy_ornithopter_heals_after_beam_potion_use():
+    potion = SimpleNamespace(
+        name="Energy Potion",
+        can_use=True,
+        requires_target=False,
+        effect_type="energy",
+        effect_value=2,
+        target_type="self",
+    )
+    context = _combat_context([], energy=3, monsters=[_louse(current_hp=30)])
+    context.game.current_hp = 48
+    context.game.max_hp = 95
+    context.player_hp = 48
+    context.player_hp_pct = 48 / 95
+    context.game.relics = [
+        SimpleNamespace(name="Toy Ornithopter", relic_id="Toy Ornithopter", counter=-1)
+    ]
+    state = SimulationState(context)
+    planner = HeuristicCombatPlanner(SynergyCardEvaluator())
+
+    result = planner._simulate_potion_use(state, potion, target=None)
+
+    assert result.player_energy == 5
+    assert result.player_hp == 53
+
+
 def test_smoke_bomb_simulation_marks_combat_escaped_without_killing_monsters():
     potion = SimpleNamespace(
         name="Smoke Bomb",

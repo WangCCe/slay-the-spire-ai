@@ -74,6 +74,7 @@ PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
 FAIRY_REVIVE_FRACTION = 0.3
 FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
+TOY_ORNITHOPTER_HEAL = 5
 
 
 def _normalized_potion_identifier(value) -> str:
@@ -550,6 +551,9 @@ class SimulationState:
             or self._context_relic_counter(context, 'Orichalcum') is not None
         )
         self.has_tungsten_rod = self._context_relic_counter(context, 'Tungsten Rod') is not None
+        self.has_toy_ornithopter = (
+            self._context_relic_counter(context, 'Toy Ornithopter') is not None
+        )
         self.corruption_active = self._has_player_power(context, 'Corruption')
         self.feel_no_pain_block_per_exhaust = self._get_player_power_amount(context, 'Feel No Pain')
         self.dark_embrace_draw_per_exhaust = self._get_player_power_amount(context, 'Dark Embrace')
@@ -979,6 +983,7 @@ class SimulationState:
             self.ornamental_fan_attack_count,
             self.has_orichalcum,
             self.has_tungsten_rod,
+            self.has_toy_ornithopter,
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
             self.dark_embrace_draw_per_exhaust,
@@ -6851,6 +6856,13 @@ class HeuristicCombatPlanner(CombatPlanner):
         self._apply_potion_effect(new_state, potion, target)
         return new_state
 
+    def _apply_toy_ornithopter_potion_heal(self, state: SimulationState):
+        if getattr(state, 'has_toy_ornithopter', False):
+            state.player_hp = min(
+                state.player_max_hp,
+                state.player_hp + TOY_ORNITHOPTER_HEAL,
+            )
+
     def _apply_potion_effect(self, state: SimulationState, potion, target):
         if potion.effect_type == 'damage':
             if potion.target_type == 'all_monsters':
@@ -6863,19 +6875,19 @@ class HeuristicCombatPlanner(CombatPlanner):
                             trigger_thorns=False,
                         )
                         state.damage_instances += 1
-                return
 
-            target_index = self._state_monster_index_for_potion_target(state, target)
-            if target_index is not None:
-                monster = state.monsters[target_index]
-                if self.simulator._is_live_monster_state(monster):
-                    self.simulator._deal_damage_to_monster(
-                        state,
-                        monster,
-                        potion.effect_value,
-                        trigger_thorns=False,
-                    )
-                    state.damage_instances += 1
+            else:
+                target_index = self._state_monster_index_for_potion_target(state, target)
+                if target_index is not None:
+                    monster = state.monsters[target_index]
+                    if self.simulator._is_live_monster_state(monster):
+                        self.simulator._deal_damage_to_monster(
+                            state,
+                            monster,
+                            potion.effect_value,
+                            trigger_thorns=False,
+                        )
+                        state.damage_instances += 1
         elif potion.effect_type == 'poison':
             target_index = self._state_monster_index_for_potion_target(state, target)
             if target_index is not None:
@@ -6937,6 +6949,8 @@ class HeuristicCombatPlanner(CombatPlanner):
             self.simulator._add_card_draw(state, potion.effect_value)
         elif potion.effect_type == 'escape':
             state.combat_escaped = True
+
+        self._apply_toy_ornithopter_potion_heal(state)
 
     def _find_best_potion_target(self, potion, context: DecisionContext) -> Monster:
         """

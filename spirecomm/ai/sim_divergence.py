@@ -23,6 +23,7 @@ PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
 FAIRY_REVIVE_FRACTION = 0.3
 FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
+TOY_ORNITHOPTER_HEAL = 5
 
 BASE_ATTACK_DAMAGE = {
     "Anger": 6,
@@ -596,29 +597,30 @@ def _apply_expected_potion(expected: Dict[str, Any], action, game) -> None:
         percent = _to_float(raw_value)
         heal = int(_to_int(expected["player"].get("max_hp")) * percent)
         _heal_player(expected, heal)
+        _apply_toy_ornithopter_potion_heal(expected)
         return
 
     value = _to_int(raw_value)
-    if value <= 0:
-        return
+    if value > 0:
+        if effect_type == "energy":
+            expected["player"]["energy"] += value
+        elif effect_type == "block":
+            expected["player"]["block"] += value
+        elif effect_type == "maxhp" and target_type == "self":
+            expected["player"]["max_hp"] = _to_int(expected["player"].get("max_hp")) + value
+            _heal_player(expected, value)
+        elif effect_type == "damage":
+            if target_type == "allmonsters":
+                for index, _monster in enumerate(expected.get("monsters", [])):
+                    _apply_direct_monster_damage(expected, index, value)
+            elif target_type == "monster":
+                _apply_direct_monster_damage(
+                    expected,
+                    _target_index_for_action(action, game),
+                    value,
+                )
 
-    if effect_type == "energy":
-        expected["player"]["energy"] += value
-    elif effect_type == "block":
-        expected["player"]["block"] += value
-    elif effect_type == "maxhp" and target_type == "self":
-        expected["player"]["max_hp"] = _to_int(expected["player"].get("max_hp")) + value
-        _heal_player(expected, value)
-    elif effect_type == "damage":
-        if target_type == "allmonsters":
-            for index, _monster in enumerate(expected.get("monsters", [])):
-                _apply_direct_monster_damage(expected, index, value)
-        elif target_type == "monster":
-            _apply_direct_monster_damage(
-                expected,
-                _target_index_for_action(action, game),
-                value,
-            )
+    _apply_toy_ornithopter_potion_heal(expected)
 
 
 def _apply_direct_monster_damage(
@@ -2057,6 +2059,11 @@ def _heal_player(expected: Dict[str, Any], amount: int) -> None:
         _to_int(player.get("max_hp")),
         _to_int(player.get("current_hp")) + amount,
     )
+
+
+def _apply_toy_ornithopter_potion_heal(expected: Dict[str, Any]) -> None:
+    if _snapshot_has_relic(expected, "Toy Ornithopter"):
+        _heal_player(expected, TOY_ORNITHOPTER_HEAL)
 
 
 def _heal_monster(expected: Dict[str, Any], monster_index: int, amount: int) -> None:

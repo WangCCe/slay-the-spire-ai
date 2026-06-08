@@ -2654,6 +2654,41 @@ def test_energy_potion_gains_two_energy(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_toy_ornithopter_heals_after_energy_potion(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    potion = _potion(
+        "Energy Potion",
+        effect_type="energy",
+        effect_value=2,
+        target_type="self",
+    )
+    before = _game(
+        floor=14,
+        turn=1,
+        player=SimpleNamespace(current_hp=48, max_hp=95, block=0, energy=3),
+        hand=[_card(name="Headbutt", card_id="Headbutt", damage=9)],
+        monsters=[_monster(name="Spike Slime (S)", monster_id="SpikeSlime_S", hp=10)],
+        potions=[potion],
+        relics=[_relic("Burning Blood", counter=-1), _relic("Toy Ornithopter", counter=-1)],
+    )
+    actual = _game(
+        floor=14,
+        turn=1,
+        player=SimpleNamespace(current_hp=53, max_hp=95, block=0, energy=5),
+        hand=[_card(name="Headbutt", card_id="Headbutt", damage=9)],
+        monsters=[_monster(name="Spike Slime (S)", monster_id="SpikeSlime_S", hp=10)],
+        potions=[],
+        relics=[_relic("Burning Blood", counter=-1), _relic("Toy Ornithopter", counter=-1)],
+    )
+
+    assert record_expected_action(PotionAction(use=True, potion=potion), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_block_potion_gains_twelve_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
