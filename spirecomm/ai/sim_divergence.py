@@ -503,7 +503,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         if regeneration_heal > 0:
             _heal_player(expected, regeneration_heal)
         hp_loss_events += _apply_end_turn_player_damage(expected, before)
-        retained_block = _barricade_end_turn_block(before, expected.get("player", {}))
+        retained_block = _retained_end_turn_block(before, expected.get("player", {}))
         next_turn_block = 0
         if _to_int(expected.get("player", {}).get("current_hp")) > 0:
             next_turn_block += _next_turn_block_start_turn_block(before)
@@ -2612,8 +2612,10 @@ def _self_forming_clay_end_turn_block(snapshot: Dict[str, Any], hp_loss_events: 
     return hp_loss_events * 3
 
 
-def _barricade_end_turn_block(snapshot: Dict[str, Any], player: Dict[str, Any]) -> int:
+def _retained_end_turn_block(snapshot: Dict[str, Any], player: Dict[str, Any]) -> int:
     if not _snapshot_has_power(snapshot.get("player", {}), "Barricade"):
+        if _snapshot_has_relic(snapshot, "Calipers"):
+            return max(0, _to_int(player.get("block")) - 15)
         return 0
     return max(0, _to_int(player.get("block")))
 

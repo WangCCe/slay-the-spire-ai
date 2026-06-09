@@ -8209,6 +8209,35 @@ def test_end_turn_barricade_retains_remaining_block_after_attacks(monkeypatch, t
     assert not trace_path.exists()
 
 
+def test_end_turn_calipers_retains_block_minus_fifteen_after_attacks(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=16,
+        turn=3,
+        current_hp=60,
+        player=SimpleNamespace(current_hp=60, max_hp=80, block=28, energy=0),
+        hand=[],
+        relics=[_relic("Calipers")],
+        monsters=[_monster(name="Acid Slime (L)", monster_id="AcidSlime_L", hp=54, damage=11)],
+    )
+    actual = _game(
+        floor=16,
+        turn=4,
+        current_hp=60,
+        player=SimpleNamespace(current_hp=60, max_hp=80, block=2, energy=3),
+        hand=[],
+        relics=[_relic("Calipers")],
+        monsters=[_monster(name="Acid Slime (L)", monster_id="AcidSlime_L", hp=54, damage=0)],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_combust_loses_hp_and_damages_all_monsters(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

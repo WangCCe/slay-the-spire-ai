@@ -547,6 +547,12 @@ Status labels:
   single-target/AOE/random-target attack paths, and `CombatEndingDetector`
   targeted lethal plus AOE-cleanup state now share this timing so Twin
   Strike/Pummel-style hits do not overstate damage or false-prove lethal.
+- 2026-06-10: The diagnostic oracle now models Calipers block retention at
+  the next player turn as `max(0, remaining block after enemy attacks - 15)`,
+  with Barricade still taking precedence. Live combat estimators were not
+  changed in this round because their current block surfaces value this-turn
+  defense before enemy attacks; Calipers' decision value is cross-turn retained
+  block after attacks and needs a dedicated scoring/lookahead sync.
 
 ## Backlog
 
@@ -564,5 +570,8 @@ Status labels:
     Feel No Pain block value outside the simulator, lethal, Ironclad fallback,
     timing fallback, RL survival, and RL shared block-candidate surfaces already
     covered above.
+  - Calipers retained block valuation across beam/outcome scoring and any
+    multi-turn lookahead surfaces that can safely model post-attack block
+    without changing raw future-damage semantics by accident.
   - Monster lifecycle boundaries such as Slime split and Darkling revive.
   - Combat-exit boundaries beyond the Looter/Mugger reward sync.
