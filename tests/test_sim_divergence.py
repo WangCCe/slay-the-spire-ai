@@ -5614,7 +5614,15 @@ def test_double_tap_replays_attack_damage(monkeypatch, tmp_path):
             powers=[Power("Double Tap", "Double Tap", 1)],
         ),
         hand=[],
-        monsters=[_monster(name="Chosen", monster_id="Chosen", hp=25, damage=10)],
+        monsters=[
+            _monster(
+                name="Chosen",
+                monster_id="Chosen",
+                hp=19,
+                damage=10,
+                powers=[Power("Vulnerable", "Vulnerable", 6)],
+            )
+        ],
     )
 
     assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
@@ -5647,7 +5655,69 @@ def test_necronomicon_replays_first_two_cost_attack(monkeypatch, tmp_path):
         turn=1,
         player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=2),
         hand=[],
-        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=34, damage=10)],
+        monsters=[
+            _monster(
+                name="Mugger",
+                monster_id="Mugger",
+                hp=30,
+                damage=10,
+                powers=[Power("Vulnerable", "Vulnerable", 4)],
+            )
+        ],
+        relics=[_relic("Necronomicon")],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_necronomicon_replay_uses_bash_vulnerable_from_first_hit(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    bash = _card(
+        name="Bash",
+        card_id="Bash",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=8,
+    )
+    before = _game(
+        floor=28,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=60,
+            max_hp=90,
+            block=11,
+            energy=3,
+            powers=[Power("Strength", "Strength", 3)],
+        ),
+        hand=[bash],
+        monsters=[_monster(name="Mystic", monster_id="Healer", hp=50, damage=-1)],
+        relics=[_relic("Necronomicon")],
+    )
+    actual = _game(
+        floor=28,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=60,
+            max_hp=90,
+            block=11,
+            energy=1,
+            powers=[Power("Strength", "Strength", 3)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Mystic",
+                monster_id="Healer",
+                hp=23,
+                damage=-1,
+                powers=[Power("Vulnerable", "Vulnerable", 4)],
+            )
+        ],
         relics=[_relic("Necronomicon")],
     )
 
@@ -5695,7 +5765,15 @@ def test_necronomicon_ignores_prior_one_cost_attacks(monkeypatch, tmp_path):
         turn=1,
         player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=1),
         hand=[],
-        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=58, damage=10)],
+        monsters=[
+            _monster(
+                name="Mugger",
+                monster_id="Mugger",
+                hp=54,
+                damage=10,
+                powers=[Power("Vulnerable", "Vulnerable", 4)],
+            )
+        ],
         relics=relics,
     )
 
@@ -5723,7 +5801,15 @@ def test_necronomicon_replays_only_once_per_turn(monkeypatch, tmp_path):
         turn=1,
         player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=2),
         hand=[],
-        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=64, damage=10)],
+        monsters=[
+            _monster(
+                name="Mugger",
+                monster_id="Mugger",
+                hp=60,
+                damage=10,
+                powers=[Power("Vulnerable", "Vulnerable", 4)],
+            )
+        ],
         relics=relics,
     )
 
@@ -5735,7 +5821,15 @@ def test_necronomicon_replays_only_once_per_turn(monkeypatch, tmp_path):
         turn=1,
         player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=2),
         hand=[_card(name="Clothesline", card_id="Clothesline", damage=12, cost=2)],
-        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=64, damage=10)],
+        monsters=[
+            _monster(
+                name="Mugger",
+                monster_id="Mugger",
+                hp=60,
+                damage=10,
+                powers=[Power("Vulnerable", "Vulnerable", 4)],
+            )
+        ],
         relics=relics,
     )
     clothesline_actual = _game(
@@ -5743,7 +5837,15 @@ def test_necronomicon_replays_only_once_per_turn(monkeypatch, tmp_path):
         turn=1,
         player=SimpleNamespace(current_hp=63, max_hp=80, block=0, energy=0),
         hand=[],
-        monsters=[_monster(name="Mugger", monster_id="Mugger", hp=52, damage=10)],
+        monsters=[
+            _monster(
+                name="Mugger",
+                monster_id="Mugger",
+                hp=42,
+                damage=10,
+                powers=[Power("Vulnerable", "Vulnerable", 4)],
+            )
+        ],
         relics=relics,
     )
 

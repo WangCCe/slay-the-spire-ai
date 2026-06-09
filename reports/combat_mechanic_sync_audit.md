@@ -574,6 +574,14 @@ Status labels:
   `0` while the oracle expected no energy change. Live combat estimators
   already route X-cost planning through the shared `card_costs` helpers, so
   this round was an oracle-quality cleanup.
+- 2026-06-10: The diagnostic oracle now settles single-target attack debuffs
+  after each replayed attack copy, not after the full replay loop. This fixes
+  fresh `Necronomicon` + `Bash` rows where the first Bash applied Vulnerable
+  before the replayed Bash dealt damage. Existing replay fixtures for
+  `Necronomicon` and `Double Tap` now assert the live ordering and final
+  Vulnerable stacks. Code search found no separate live `Necronomicon`
+  estimator surface to update in this small oracle round; keep replay-order
+  live estimator coverage on the audit backlog.
 
 ## Backlog
 
@@ -594,5 +602,9 @@ Status labels:
   - Calipers retained block valuation across beam/outcome scoring and any
     multi-turn lookahead surfaces that can safely model post-attack block
     without changing raw future-damage semantics by accident.
+  - Replayed single-target attack debuff ordering across live estimator
+    surfaces that model `Double Tap`, `DuplicationPower`, or future
+    `Necronomicon` value, especially Bash Vulnerable before the second copy's
+    damage.
   - Monster lifecycle boundaries such as Slime split and Darkling revive.
   - Combat-exit boundaries beyond the Looter/Mugger reward sync.

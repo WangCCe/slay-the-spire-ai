@@ -400,8 +400,8 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                             before,
                             source_damage_before_weak=source_damage_before_weak,
                         )
+                        _apply_card_target_debuffs(expected, card, target_index)
                     sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
-                    _apply_card_target_debuffs(expected, card, target_index)
                     _apply_feed_max_hp_gain(expected, card, target_index, before)
                 if _is_reaper(card) and damage_dealt > 0:
                     _heal_player(expected, damage_dealt)
