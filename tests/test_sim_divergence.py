@@ -509,6 +509,56 @@ def test_tungsten_rod_reduces_bloodletting_hp_loss(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_x_cost_skill_consumes_all_current_energy(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    transmutation = _card(
+        name="Transmutation",
+        card_id="Transmutation",
+        card_type=CardType.SKILL,
+        cost=-1,
+        damage=0,
+    )
+    before = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(current_hp=78, max_hp=80, block=0, energy=3),
+        hand=[transmutation],
+        monsters=[
+            _monster(name="Sneaky Gremlin", monster_id="GremlinThief", hp=14, damage=9),
+            _monster(
+                name="Fat Gremlin",
+                monster_id="GremlinFat",
+                hp=14,
+                damage=4,
+                intent=Intent.ATTACK_DEBUFF,
+            ),
+        ],
+    )
+    actual = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(current_hp=78, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(name="Sneaky Gremlin", monster_id="GremlinThief", hp=14, damage=9),
+            _monster(
+                name="Fat Gremlin",
+                monster_id="GremlinFat",
+                hp=14,
+                damage=4,
+                intent=Intent.ATTACK_DEBUFF,
+            ),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_fairy_potion_revives_after_lethal_end_turn_attack(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

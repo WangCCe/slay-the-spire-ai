@@ -567,6 +567,13 @@ Status labels:
   `FastCombatSimulator` already had this death-effect surface, so this round
   was classified as an oracle-quality cleanup rather than a live estimator
   policy bug.
+- 2026-06-10: The diagnostic oracle now treats every raw negative-cost X-cost
+  card as spending all current player energy, while retaining the existing
+  `Whirlwind` compatibility path for zero-cost live payloads. This fixes a
+  fresh `Transmutation` false divergence where live energy went from `3` to
+  `0` while the oracle expected no energy change. Live combat estimators
+  already route X-cost planning through the shared `card_costs` helpers, so
+  this round was an oracle-quality cleanup.
 
 ## Backlog
 

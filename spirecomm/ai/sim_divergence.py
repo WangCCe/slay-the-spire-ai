@@ -355,7 +355,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             target_index = None
             card_play_count = _card_play_count(before, card)
             attack_play_count = _attack_card_play_count(before, card)
-            if _is_whirlwind(card):
+            if _is_x_cost_card(card) or _is_whirlwind(card):
                 expected["player"]["energy"] = 0
             else:
                 expected["player"]["energy"] = max(
@@ -1746,11 +1746,16 @@ def _is_reaper(card) -> bool:
     return _known_card_name(card, BASE_ATTACK_DAMAGE) == "Reaper"
 
 
+def _raw_card_cost(card) -> int:
+    return _to_int(_card_attr(card, "cost_for_turn", _card_attr(card, "cost", 0)))
+
+
+def _is_x_cost_card(card) -> bool:
+    return _raw_card_cost(card) < 0
+
+
 def _card_cost(card) -> int:
-    return max(
-        0,
-        _to_int(_card_attr(card, "cost_for_turn", _card_attr(card, "cost", 0))),
-    )
+    return max(0, _raw_card_cost(card))
 
 
 def _card_damage(card) -> int:
