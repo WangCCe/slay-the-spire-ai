@@ -59,6 +59,7 @@ AOE_ATTACK_NAMES = frozenset(['Cleave', 'Whirlwind', 'Immolate', 'Thunderclap', 
 PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
 LETTER_OPENER_DAMAGE = 5
+CHARONS_ASHES_DAMAGE = 3
 THE_BOOT_MINIMUM_DAMAGE = 5
 
 
@@ -1258,7 +1259,10 @@ class CombatEndingDetector:
         return max(0.0, hp / max_hp) if max_hp > 0 else 0.0
 
     def _context_corruption_active(self, context: DecisionContext) -> bool:
-        return self._get_player_debuff_stacks(context, 'Corruption') > 0
+        return (
+            self._get_player_debuff_stacks(context, 'Corruption') > 0
+            or player_has_power(context, 'Corruption')
+        )
 
     def _lethal_card_cost(
         self,
@@ -1625,6 +1629,124 @@ class CombatEndingDetector:
             damage,
         )
 
+    def _player_charons_ashes_damage_per_exhaust(self, context: DecisionContext) -> int:
+        return (
+            CHARONS_ASHES_DAMAGE
+            if self._context_has_relic(context, "Charon's Ashes")
+            else 0
+        )
+
+    def _charons_ashes_card_exhaust_events(
+        self,
+        card_pos: int,
+        card: Card,
+        remaining_cards: Sequence[Card],
+        context: DecisionContext,
+        corruption_active: bool,
+    ) -> int:
+        if self._player_charons_ashes_damage_per_exhaust(context) <= 0:
+            return 0
+
+        exhaust_events = len(
+            self._lethal_hand_exhausted_cards(
+                card_pos,
+                card,
+                remaining_cards,
+            )
+        )
+        if card_type_name(card) == 'SKILL' and corruption_active:
+            exhaust_events += 1
+        return max(0, exhaust_events)
+
+    def _apply_lethal_charons_ashes_damage(
+        self,
+        context: DecisionContext,
+        hp_state: Tuple[int, ...],
+        block_state: Tuple[int, ...],
+        exhaust_events: int,
+    ) -> Tuple[Tuple[int, ...], Tuple[int, ...], int]:
+        damage = self._player_charons_ashes_damage_per_exhaust(context)
+        if damage <= 0 or exhaust_events <= 0:
+            return hp_state, block_state, 0
+
+        next_hp = tuple(hp_state)
+        next_block = tuple(block_state)
+        total_damage = 0
+        for _ in range(exhaust_events):
+            for monster_idx, hp in enumerate(next_hp):
+                if hp <= 0:
+                    continue
+                next_hp, next_block, damage_progress = (
+                    self._apply_lethal_direct_damage_to_target(
+                        next_hp,
+                        next_block,
+                        monster_idx,
+                        damage,
+                    )
+                )
+                total_damage += damage_progress
+        return next_hp, next_block, total_damage
+
+    def _is_lethal_charons_ashes_support_card(
+        self,
+        card: Card,
+        context: DecisionContext,
+    ) -> bool:
+        if is_attack_card(card):
+            return False
+        if self._player_charons_ashes_damage_per_exhaust(context) <= 0:
+            return False
+        return (
+            card_type_name(card) == 'SKILL'
+            or self._base_card_name(card) in {'Second Wind', 'Sever Soul'}
+        )
+
+    def _charons_ashes_damage_potential(
+        self,
+        card: Card,
+        context: DecisionContext,
+        available_energy: int,
+    ) -> int:
+        if not self._is_lethal_charons_ashes_support_card(card, context):
+            return 0
+
+        cost = self._lethal_card_cost(
+            card,
+            context,
+            available_energy,
+            self._context_corruption_active(context),
+        )
+        if cost > available_energy:
+            return 0
+
+        cards = tuple(getattr(context, 'playable_cards', []) or [])
+        card_pos = self._card_position_in_sequence(card, cards)
+        if card_pos is None:
+            return 0
+
+        exhaust_events = self._charons_ashes_card_exhaust_events(
+            card_pos,
+            card,
+            cards,
+            context,
+            self._context_corruption_active(context),
+        )
+        hp_state = tuple(
+            self._monster_current_hp(monster)
+            for monster in getattr(context, 'monsters_alive', []) or []
+        )
+        block_state = tuple(
+            max(0, self._safe_int(getattr(monster, 'block', 0), default=0))
+            for monster in getattr(context, 'monsters_alive', []) or []
+        )
+        _next_hp, _next_block, damage = self._apply_lethal_charons_ashes_damage(
+            context,
+            hp_state,
+            block_state,
+            exhaust_events,
+        )
+        return damage
+
     def _is_lethal_vulnerable_support_card(self, card: Card) -> bool:
         if card_type_name(card) != 'SKILL':
             return False
@@ -1661,6 +1783,7 @@ class CombatEndingDetector:
                 or self._is_lethal_corruption_support_card(card)
                 or self._is_lethal_double_tap_support_card(card)
                 or self._is_lethal_vulnerable_support_card(card)
+                or self._is_lethal_charons_ashes_support_card(card, context)
                 or self._havoc_top_energy_support_card(card, context) is not None
                 or (
                     not is_attack_card(card)
@@ -1765,6 +1888,16 @@ class CombatEndingDetector:
                 )
                 if letter_opener_candidate is not None:
                     candidates.append(letter_opener_candidate)
+
+                charons_ashes_candidate = self._charons_ashes_lethal_candidate(
+                    card_pos,
+                    card,
+                    remaining_cards,
+                    context,
+                    state,
+                )
+                if charons_ashes_candidate is not None:
+                    candidates.append(charons_ashes_candidate)
 
                 if self._is_juggernaut_block_card(card, context) and not is_attack_card(card):
                     cost = self._lethal_card_cost(
@@ -2550,6 +2683,76 @@ class CombatEndingDetector:
             ),
         )
 
+    def _charons_ashes_lethal_candidate(
+        self,
+        card_pos: int,
+        card: Card,
+        remaining_cards: Tuple[Card, ...],
+        context: DecisionContext,
+        state: _TargetedLethalState,
+    ) -> Optional[_TargetedLethalCandidate]:
+        if not self._is_lethal_charons_ashes_support_card(card, context):
+            return None
+
+        cost = self._lethal_card_cost(
+            card,
+            context,
+            state.energy,
+            state.corruption_active,
+        )
+        if cost > state.energy:
+            return None
+
+        exhaust_events = self._charons_ashes_card_exhaust_events(
+            card_pos,
+            card,
+            remaining_cards,
+            context,
+            state.corruption_active,
+        )
+        if exhaust_events <= 0:
+            return None
+
+        card_play_repeats = self._lethal_card_play_repeats(
+            state.duplication_charges
+        )
+        next_duplication_charges = self._duplication_charges_after_card(
+            state.duplication_charges
+        )
+        next_hp = state.hp
+        next_block = state.block
+        total_damage = 0
+        for _ in range(card_play_repeats):
+            next_hp, next_block, damage_progress = (
+                self._apply_lethal_charons_ashes_damage(
+                    context,
+                    next_hp,
+                    next_block,
+                    exhaust_events,
+                )
+            )
+            total_damage += damage_progress
+
+        if total_damage <= 0:
+            return None
+
+        kill_count = sum(
+            1
+            for before_hp, after_hp in zip(state.hp, next_hp)
+            if before_hp > 0 and after_hp <= 0
+        )
+        return _TargetedLethalCandidate(
+            priority=(kill_count, 0, total_damage, -cost),
+            card_pos=card_pos,
+            monster_idx=None,
+            next_state=state.after_spending(
+                cost,
+                hp=next_hp,
+                block=next_block,
+                duplication_charges=next_duplication_charges,
+            ),
+        )
+
     def _havoc_top_energy_lethal_candidate(
         self,
         card_pos: int,
@@ -3272,6 +3475,25 @@ class CombatEndingDetector:
                 else:
                     efficiency = float('inf')
                 attack_cards.append((card, cost, havoc_exhaust_damage, efficiency))
+            elif (
+                charons_ashes_damage := self._charons_ashes_damage_potential(
+                    card,
+                    context,
+                    available_energy,
+                )
+            ) > 0:
+                cost = self._lethal_card_cost(
+                    card,
+                    context,
+                    available_energy,
+                    self._context_corruption_active(context),
+                )
+                logger.info(f"[LETHAL_CALC] {card.name}: cost={cost}, charons_ashes_damage={charons_ashes_damage}, eff={charons_ashes_damage/cost if cost > 0 else 'inf'}")
+                if cost > 0:
+                    efficiency = charons_ashes_damage / cost
+                else:
+                    efficiency = float('inf')
+                attack_cards.append((card, cost, charons_ashes_damage, efficiency))
             elif juggernaut_damage > 0:
                 cost = self._lethal_card_cost(card, context, available_energy)
                 damage = juggernaut_damage

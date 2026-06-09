@@ -75,6 +75,7 @@ PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
 LETTER_OPENER_DAMAGE = 5
 BIRD_FACED_URN_HEAL = 2
+CHARONS_ASHES_DAMAGE = 3
 STONE_CALENDAR_DAMAGE = 52
 STONE_CALENDAR_TRIGGER_COUNTER = 7
 FAIRY_REVIVE_FRACTION = 0.3
@@ -576,6 +577,11 @@ class SimulationState:
         )
         self.has_toy_ornithopter = (
             self._context_relic_counter(context, 'Toy Ornithopter') is not None
+        )
+        self.charons_ashes_damage_per_exhaust = (
+            CHARONS_ASHES_DAMAGE
+            if self._context_relic_counter(context, "Charon's Ashes") is not None
+            else 0
         )
         self.corruption_active = self._has_player_power(context, 'Corruption')
         self.feel_no_pain_block_per_exhaust = self._get_player_power_amount(context, 'Feel No Pain')
@@ -1280,6 +1286,7 @@ class FastCombatSimulator:
 
         self._apply_feel_no_pain_block(new_state, starting_exhaust_events)
         self._apply_dark_embrace_draw(new_state, starting_exhaust_events)
+        self._apply_charons_ashes_damage(new_state, starting_exhaust_events)
 
         return new_state
 
@@ -4261,6 +4268,23 @@ class FastCombatSimulator:
             return
 
         self._add_card_draw(state, exhaust_delta * state.dark_embrace_draw_per_exhaust)
+
+    def _apply_charons_ashes_damage(self, state: SimulationState, starting_exhaust_events: int):
+        exhaust_delta = state.exhaust_events - starting_exhaust_events
+        damage = getattr(state, 'charons_ashes_damage_per_exhaust', 0)
+        if exhaust_delta <= 0 or damage <= 0:
+            return
+
+        for _ in range(exhaust_delta):
+            for monster in state.monsters:
+                if not self._is_live_monster_state(monster):
+                    continue
+                self._deal_damage_to_monster(
+                    state,
+                    monster,
+                    damage,
+                    trigger_thorns=False,
+                )
 
     def _apply_strength_skill(
         self,

@@ -4624,6 +4624,51 @@ def test_feel_no_pain_grants_block_for_exhaust_events(monkeypatch):
     assert result.player_block == 10
 
 
+def test_charons_ashes_deals_aoe_for_corruption_skill_exhaust(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "defend": {
+            "name": "Defend",
+            "description": "Gain 5 Block.",
+        }
+    }
+    loader._wiki_data = {
+        "defend": {
+            "name": "Defend",
+            "text": "Gain [5|8] #Block.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    champ = _louse(current_hp=20)
+    champ.name = "The Champ"
+    champ.monster_id = "Champ"
+    champ.block = 5
+    cultist = _cultist_ritual(current_hp=12)
+    context = _combat_context([defend], energy=3, monsters=[champ, cultist])
+    context.game.player.powers = [SimpleNamespace(power_name="Corruption", amount=-1)]
+    context.game.relics = [SimpleNamespace(name="Charon's Ashes", relic_id="Charon's Ashes", counter=-1)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        defend,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.exhaust_events == 1
+    assert result.monsters[0]["hp"] == 20
+    assert result.monsters[0]["block"] == 2
+    assert result.monsters[1]["hp"] == 9
+
+
 def test_single_card_exhaust_skill_without_hand_card_has_no_exhaust_event(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
@@ -12064,6 +12109,32 @@ def test_lethal_detector_counts_juggernaut_block_damage():
     detector = CombatEndingDetector()
 
     assert detector._calculate_affordable_damage(context) == 5
+    assert detector.can_kill_all(context) is True
+    sequence = detector.find_lethal_sequence(context)
+    assert [action.card.uuid for action in sequence] == ["defend"]
+    assert sequence[0].target_monster is None
+
+
+def test_lethal_detector_counts_charons_ashes_corruption_skill_exhaust():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=0,
+        has_target=False,
+    )
+    defend.uuid = "defend"
+    defend.block = 5
+    context = _combat_context(
+        [defend],
+        energy=3,
+        monsters=[_louse(current_hp=3), _cultist_ritual(current_hp=3)],
+    )
+    context.game.player.powers = [SimpleNamespace(power_name="Corruption", amount=-1)]
+    context.game.relics = [SimpleNamespace(name="Charon's Ashes", relic_id="Charon's Ashes", counter=-1)]
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 6
     assert detector.can_kill_all(context) is True
     sequence = detector.find_lethal_sequence(context)
     assert [action.card.uuid for action in sequence] == ["defend"]

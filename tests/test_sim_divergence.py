@@ -9179,3 +9179,56 @@ def test_perfected_strike_zero_card_damage_counts_strike_cards(monkeypatch, tmp_
     assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
     assert observe_next_state(actual) is False
     assert not trace_path.exists()
+
+
+def test_charons_ashes_corruption_skill_exhaust_deals_aoe_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    defend = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        block=5,
+    )
+    before = _game(
+        floor=33,
+        turn=4,
+        player=SimpleNamespace(
+            current_hp=45,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Corruption", "Corruption", -1)],
+        ),
+        hand=[defend],
+        relics=[_relic("Charon's Ashes")],
+        monsters=[
+            _monster(name="The Champ", monster_id="Champ", hp=20, block=5),
+            _monster(name="Cultist", monster_id="Cultist", hp=12, block=0),
+        ],
+    )
+    actual = _game(
+        floor=33,
+        turn=4,
+        player=SimpleNamespace(
+            current_hp=45,
+            max_hp=80,
+            block=5,
+            energy=3,
+            powers=[Power("Corruption", "Corruption", -1)],
+        ),
+        hand=[],
+        relics=before.relics,
+        monsters=[
+            _monster(name="The Champ", monster_id="Champ", hp=20, block=2),
+            _monster(name="Cultist", monster_id="Cultist", hp=9, block=0),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()

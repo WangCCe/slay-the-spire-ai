@@ -26,6 +26,7 @@ PANACHE_DAMAGE = 10
 PANACHE_RESET_COUNT = 5
 LETTER_OPENER_DAMAGE = 5
 BIRD_FACED_URN_HEAL = 2
+CHARONS_ASHES_DAMAGE = 3
 STONE_CALENDAR_DAMAGE = 52
 STONE_CALENDAR_TRIGGER_COUNTER = 7
 FAIRY_REVIVE_FRACTION = 0.3
@@ -475,6 +476,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     feel_no_pain_block,
                     feel_no_pain_events,
                 )
+            _apply_charons_ashes_exhaust_damage(expected, before, card, card_index)
             _apply_havoc_top_card(expected, before, card)
             _apply_bird_faced_urn_power_play(expected, card, card_play_count)
             for _ in range(card_play_count):
@@ -2013,6 +2015,39 @@ def _feel_no_pain_exhaust_count(
     return exhaust_count
 
 
+def _apply_charons_ashes_exhaust_damage(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+    card,
+    card_index: int,
+) -> int:
+    return _apply_charons_ashes_damage_events(
+        expected,
+        before,
+        _feel_no_pain_exhaust_count(card, before, card_index),
+    )
+
+
+def _apply_charons_ashes_damage_events(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+    exhaust_events: int,
+) -> int:
+    if exhaust_events <= 0 or not _snapshot_has_relic(before, "Charon's Ashes"):
+        return 0
+
+    applied = 0
+    for _ in range(exhaust_events):
+        for index, _monster in enumerate(expected.get("monsters", []) or []):
+            if _apply_direct_monster_damage(
+                expected,
+                index,
+                CHARONS_ASHES_DAMAGE,
+            ):
+                applied += 1
+    return applied
+
+
 def _snapshot_card_is_attack(card: Dict[str, Any]) -> bool:
     return _normalize(card.get("type")) in {"attack", "cardtypeattack"}
 
@@ -2852,6 +2887,7 @@ def _apply_expected_top_draw_card_played_by_effect(
         feel_no_pain_block = _havoc_top_card_feel_no_pain_block(before)
         if feel_no_pain_block > 0:
             _gain_player_block(expected, before, feel_no_pain_block)
+        _apply_charons_ashes_damage_events(expected, before, 1)
     return True
 
 
