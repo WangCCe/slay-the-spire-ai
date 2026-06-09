@@ -199,6 +199,25 @@ def test_low_hp_deterministic_lethal():
     print(f"  Expected: True (HP safe, lethal detected)")
     print(f"  Result: {result2}")
 
+
+def test_thorns_lethal_sequence_must_leave_player_alive():
+    detector = CombatEndingDetector()
+    context = create_mock_context(
+        monsters_hp=[6],
+        playable_cards=[
+            {'name': 'Strike', 'cost': 1, 'damage': 6, 'type': 'ATTACK', 'has_target': True},
+        ],
+        energy=1,
+        player_hp=4,
+        player_max_hp=80,
+    )
+    context.thorns_stacks = {0: 5}
+
+    result = detector.can_kill_all(context)
+
+    assert result is False
+
+
 def test_all_lethal_bonus():
     """Test that ALL_LETHAL_BONUS is defined and larger than KILL_BONUS."""
     print("\n" + "="*80)

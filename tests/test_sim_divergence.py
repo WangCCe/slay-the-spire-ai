@@ -796,6 +796,45 @@ def test_guardian_sharp_hide_reflection_damages_hp_without_block(monkeypatch, tm
     assert not trace_path.exists()
 
 
+def test_spiker_thorns_reflection_spends_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    strike = _card(name="Strike", card_id="Strike_R", damage=6)
+    spiker = _monster(
+        name="Spiker",
+        monster_id="Spiker",
+        hp=45,
+        damage=-1,
+        intent=Intent.BUFF,
+        powers=[Power("Thorns", "Thorns", 5)],
+    )
+    before = _game(
+        player=SimpleNamespace(current_hp=73, max_hp=80, block=7, energy=1),
+        hand=[strike],
+        monsters=[spiker],
+    )
+    actual = _game(
+        player=SimpleNamespace(current_hp=73, max_hp=80, block=2, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Spiker",
+                monster_id="Spiker",
+                hp=39,
+                damage=-1,
+                intent=Intent.BUFF,
+                powers=[Power("Thorns", "Thorns", 5)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_guardian_mode_shift_gains_block_and_keeps_bash_vulnerable(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

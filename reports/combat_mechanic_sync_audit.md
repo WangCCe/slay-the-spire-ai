@@ -553,6 +553,12 @@ Status labels:
   changed in this round because their current block surfaces value this-turn
   defense before enemy attacks; Calipers' decision value is cross-turn retained
   block after attacks and needs a dedicated scoring/lookahead sync.
+- 2026-06-10: Spiker/monster `Thorns` reflection now spends player block before
+  HP when an attack hits the monster. The diagnostic oracle applies this to
+  targeted and AOE attacks, `FastCombatSimulator` uses block-first player
+  damage instead of direct HP loss, and `CombatEndingDetector` carries player
+  block plus monster thorns through targeted lethal and AOE-cleanup proofs so
+  reflected damage cannot prove a line that kills the player.
 
 ## Backlog
 

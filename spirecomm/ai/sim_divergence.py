@@ -570,6 +570,9 @@ def _apply_expected_attack(
         target["hp"] = max(0, target["hp"] - remaining_damage)
         hp_loss = max(0, hp_before - target["hp"])
         damage_dealt += hp_loss
+        thorns_damage = _thorns_reflection_damage(target)
+        if thorns_damage > 0:
+            _damage_player(expected, thorns_damage)
         if target["hp"] <= 0:
             _mark_monster_defeated(target)
             break
@@ -2950,6 +2953,12 @@ def _sharp_hide_reflection_damage(
         if amount > 0:
             return amount
     return 0
+
+
+def _thorns_reflection_damage(monster: Dict[str, Any]) -> int:
+    if monster.get("gone") or monster.get("half_dead"):
+        return 0
+    return max(0, _snapshot_power_amount(monster, "Thorns"))
 
 
 def _is_guardian_monster(monster: Dict[str, Any]) -> bool:

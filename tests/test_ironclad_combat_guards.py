@@ -1095,6 +1095,29 @@ def test_simulation_duplication_power_attack_triggers_malleable_between_replayed
     assert result.monsters[0]["malleable_block"] == 5
 
 
+def test_simulation_spiker_thorns_spends_block_before_hp():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.damage = 6
+    spiker = _louse(current_hp=45)
+    spiker.name = "Spiker"
+    spiker.monster_id = "Spiker"
+    context = _combat_context([strike], energy=1, monsters=[spiker])
+    context.thorns_stacks = {0: 5}
+    context.game.player.block = 7
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=spiker,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["hp"] == 39
+    assert result.player_block == 2
+    assert result.player_hp == 80
+
+
 def test_simulation_panache_triggers_aoe_on_fifth_card_play():
     anger = _card("Anger", "Anger", cost=0)
     anger.damage = 6

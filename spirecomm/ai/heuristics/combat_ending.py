@@ -72,8 +72,10 @@ class _TargetedLethalState:
     vulnerable: Tuple[int, ...]
     artifact: Tuple[int, ...]
     flight: Tuple[int, ...]
+    thorns: Tuple[int, ...]
     strength: int
     player_hp: int
+    player_block: int
     corruption_active: bool
     duplication_charges: int
     double_tap_charges: int
@@ -94,8 +96,10 @@ class _TargetedLethalState:
             self.vulnerable,
             self.artifact,
             self.flight,
+            self.thorns,
             self.strength,
             self.player_hp,
+            self.player_block,
             self.corruption_active,
             self.duplication_charges,
             self.double_tap_charges,
@@ -687,6 +691,23 @@ class CombatEndingDetector:
             )
         return 0
 
+    def _monster_thorns_stacks(self, context: DecisionContext, monster_idx: int) -> int:
+        thorns_stacks = getattr(context, 'thorns_stacks', {}) or {}
+        stacks = self._safe_int(thorns_stacks.get(monster_idx, 0), default=0)
+        if stacks > 0:
+            return stacks
+
+        monsters = getattr(context, 'monsters_alive', []) or []
+        if 0 <= monster_idx < len(monsters):
+            return max(
+                0,
+                self._safe_int(
+                    self._get_monster_power_amount(monsters[monster_idx], 'Thorns'),
+                    default=0,
+                ),
+            )
+        return 0
+
     def _monster_poison_stacks(self, context: DecisionContext, monster_idx: int) -> int:
         monsters = getattr(context, 'monsters_alive', []) or []
         if 0 <= monster_idx < len(monsters):
@@ -1238,6 +1259,22 @@ class CombatEndingDetector:
             hp_loss = max(0, hp_loss - 1)
         return hp_loss
 
+    def _apply_lethal_player_damage(
+        self,
+        context: DecisionContext,
+        player_hp: int,
+        player_block: int,
+        amount: int,
+    ) -> Tuple[int, int, int]:
+        damage = max(0, self._safe_int(amount, default=0))
+        block = max(0, self._safe_int(player_block, default=0))
+        blocked = min(block, damage)
+        remaining = damage - blocked
+        next_block = block - blocked
+        hp_loss = self._effective_player_hp_loss(context, remaining)
+        next_hp = max(0, self._safe_int(player_hp, default=0) - hp_loss)
+        return next_hp, next_block, hp_loss
+
     def _lethal_energy_hp_loss_for_repeats(
         self,
         card: Card,
@@ -1253,6 +1290,9 @@ class CombatEndingDetector:
     def _context_player_hp(self, context: DecisionContext) -> int:
         hp, _ = player_hp_values(context)
         return hp
+
+    def _context_player_block(self, context: DecisionContext) -> int:
+        return max(0, self._safe_int(player_block_value(context), default=0))
 
     def _context_player_hp_pct(self, context: DecisionContext) -> float:
         hp, max_hp = player_hp_values(context)
@@ -1838,6 +1878,10 @@ class CombatEndingDetector:
             self._get_monster_power_amount(monster, 'Flight')
             for monster in context.monsters_alive
         )
+        starting_thorns = tuple(
+            self._monster_thorns_stacks(context, monster_idx)
+            for monster_idx, _monster in enumerate(context.monsters_alive)
+        )
         starting_state = _TargetedLethalState(
             hp=starting_hp,
             block=starting_block,
@@ -1846,8 +1890,10 @@ class CombatEndingDetector:
             vulnerable=starting_vulnerable,
             artifact=starting_artifact,
             flight=starting_flight,
+            thorns=starting_thorns,
             strength=getattr(context, 'strength', 0),
             player_hp=self._context_player_hp(context),
+            player_block=self._context_player_block(context),
             corruption_active=self._context_corruption_active(context),
             duplication_charges=self._context_duplication_charges(context),
             double_tap_charges=self._context_double_tap_charges(context),
@@ -2223,9 +2269,12 @@ class CombatEndingDetector:
                     next_vulnerable = state.vulnerable
                     next_artifact = state.artifact
                     next_panache_counter = state.panache_counter
+                    next_player_hp = state.player_hp
+                    next_player_block = state.player_block
                     total_damage = 0
                     attack_plays_resolved = 0
                     rampage_bonus = 0
+                    player_dead = False
                     for _card_play_idx in range(card_play_repeats):
                         attack_repeats = self._lethal_attack_repeats(
                             card,
@@ -2272,8 +2321,21 @@ class CombatEndingDetector:
                                     )
                                 )
                                 repeat_damage += damage_progress
+                                thorns_damage = max(0, state.thorns[monster_idx]) * max(1, hit_count)
+                                if thorns_damage > 0:
+                                    next_player_hp, next_player_block, _hp_loss = (
+                                        self._apply_lethal_player_damage(
+                                            context,
+                                            next_player_hp,
+                                            next_player_block,
+                                            thorns_damage,
+                                        )
+                                    )
+                                    if next_player_hp <= 0:
+                                        player_dead = True
+                                        break
 
-                            if repeat_damage <= 0:
+                            if player_dead or repeat_damage <= 0:
                                 break
 
                             attack_plays_resolved += 1
@@ -2296,6 +2358,8 @@ class CombatEndingDetector:
                                 None,
                             )
                             rampage_bonus += self._rampage_scaling_per_play(card)
+                        if player_dead:
+                            break
                         next_hp, next_block, next_panache_counter, panache_damage = (
                             self._apply_lethal_panache_card_play(
                                 next_hp,
@@ -2306,7 +2370,7 @@ class CombatEndingDetector:
                         )
                         total_damage += panache_damage
 
-                    if total_damage <= 0:
+                    if player_dead or total_damage <= 0:
                         continue
 
                     nunchaku_energy_gain, next_nunchaku_counter = (
@@ -2341,6 +2405,8 @@ class CombatEndingDetector:
                                 flight=next_flight,
                                 vulnerable=next_vulnerable,
                                 artifact=next_artifact,
+                                player_hp=next_player_hp,
+                                player_block=next_player_block,
                                 duplication_charges=next_duplication_charges,
                                 double_tap_charges=next_double_tap_charges,
                                 nunchaku_counter=next_nunchaku_counter,
@@ -2382,10 +2448,13 @@ class CombatEndingDetector:
                     next_vulnerable = state.vulnerable
                     next_artifact = state.artifact
                     next_panache_counter = state.panache_counter
+                    next_player_hp = state.player_hp
+                    next_player_block = state.player_block
                     total_damage = 0
                     total_energy_refund = 0
                     attack_plays_resolved = 0
                     rampage_bonus = 0
+                    player_dead = False
                     for _card_play_idx in range(card_play_repeats):
                         attack_repeats = self._lethal_attack_repeats(
                             card,
@@ -2444,6 +2513,19 @@ class CombatEndingDetector:
                                 )
                             )
                             total_damage += damage_progress
+                            thorns_damage = max(0, state.thorns[monster_idx]) * max(1, hit_count)
+                            if thorns_damage > 0:
+                                next_player_hp, next_player_block, _hp_loss = (
+                                    self._apply_lethal_player_damage(
+                                        context,
+                                        next_player_hp,
+                                        next_player_block,
+                                        thorns_damage,
+                                    )
+                                )
+                                if next_player_hp <= 0:
+                                    player_dead = True
+                                    break
                             next_hp, next_block, juggernaut_damage = (
                                 self._apply_lethal_juggernaut_block_damage(
                                     card,
@@ -2462,6 +2544,8 @@ class CombatEndingDetector:
                                 monster_idx,
                             )
                             rampage_bonus += self._rampage_scaling_per_play(card)
+                        if player_dead:
+                            break
                         next_hp, next_block, next_panache_counter, panache_damage = (
                             self._apply_lethal_panache_card_play(
                                 next_hp,
@@ -2471,8 +2555,10 @@ class CombatEndingDetector:
                             )
                         )
                         total_damage += panache_damage
+                        if player_dead:
+                            break
 
-                    if total_damage <= 0:
+                    if player_dead or total_damage <= 0:
                         continue
 
                     nunchaku_energy_gain, next_nunchaku_counter = (
@@ -2519,6 +2605,8 @@ class CombatEndingDetector:
                                 flight=next_flight,
                                 vulnerable=next_vulnerable,
                                 artifact=next_artifact,
+                                player_hp=next_player_hp,
+                                player_block=next_player_block,
                                 duplication_charges=next_duplication_charges,
                                 double_tap_charges=next_double_tap_charges,
                                 nunchaku_counter=next_nunchaku_counter,
@@ -3195,6 +3283,13 @@ class CombatEndingDetector:
                 self._get_monster_power_amount(monster, 'Flight')
                 for monster in context.monsters_alive
             )
+            thorns_state = tuple(
+                self._monster_thorns_stacks(context, monster_idx)
+                for monster_idx, _monster in enumerate(context.monsters_alive)
+            )
+            player_hp = self._context_player_hp(context)
+            player_block = self._context_player_block(context)
+            player_dead = False
             survivors = []
             for monster_idx, monster in enumerate(context.monsters_alive):
                 damage = self._card_damage_against_monster(
@@ -3203,6 +3298,16 @@ class CombatEndingDetector:
                     monster_idx,
                     available_energy,
                 )
+                if damage <= 0:
+                    if hp_state[monster_idx] > 0:
+                        survivors.append(
+                            (
+                                hp_state[monster_idx] + block_state[monster_idx],
+                                monster_idx,
+                                monster,
+                            )
+                        )
+                    continue
                 hit_count = self._get_vulnerable_damage_instance_count(
                     aoe_card,
                     context,
@@ -3222,6 +3327,17 @@ class CombatEndingDetector:
                         apply_the_boot=self._context_has_the_boot(context),
                     )
                 )
+                thorns_damage = max(0, thorns_state[monster_idx]) * max(1, hit_count)
+                if thorns_damage > 0:
+                    player_hp, player_block, _hp_loss = self._apply_lethal_player_damage(
+                        context,
+                        player_hp,
+                        player_block,
+                        thorns_damage,
+                    )
+                    if player_hp <= 0:
+                        player_dead = True
+                        break
                 if hp_state[monster_idx] > 0:
                     survivors.append(
                         (
@@ -3230,6 +3346,9 @@ class CombatEndingDetector:
                             monster,
                         )
                     )
+
+            if player_dead:
+                continue
 
             if not survivors:
                 return [PlayCardAction(card=aoe_card)]
@@ -3279,6 +3398,8 @@ class CombatEndingDetector:
                             remaining_energy,
                             fiend_fire_exhaust_count,
                         )
+                        if damage <= 0:
+                            continue
                         hit_count = self._get_vulnerable_damage_instance_count(
                             card,
                             context,
@@ -3304,6 +3425,20 @@ class CombatEndingDetector:
                                 apply_the_boot=self._context_has_the_boot(context),
                             )
                         )
+                        candidate_player_hp = player_hp
+                        candidate_player_block = player_block
+                        thorns_damage = max(0, thorns_state[monster_idx]) * max(1, hit_count)
+                        if thorns_damage > 0:
+                            candidate_player_hp, candidate_player_block, _hp_loss = (
+                                self._apply_lethal_player_damage(
+                                    context,
+                                    candidate_player_hp,
+                                    candidate_player_block,
+                                    thorns_damage,
+                                )
+                            )
+                            if candidate_player_hp <= 0:
+                                continue
                         refunds_energy = self._card_refunds_energy_against_monster(
                             card,
                             context,
@@ -3325,6 +3460,8 @@ class CombatEndingDetector:
                                 candidate_curl_up,
                                 candidate_malleable,
                                 candidate_flight,
+                                candidate_player_hp,
+                                candidate_player_block,
                             )
                             best_priority = priority
 
@@ -3333,7 +3470,15 @@ class CombatEndingDetector:
                         break
 
                     sequence.append(self._play_card_action(best_card, monster))
-                    hp_state, block_state, curl_up_state, malleable_state, flight_state = best_next_state
+                    (
+                        hp_state,
+                        block_state,
+                        curl_up_state,
+                        malleable_state,
+                        flight_state,
+                        player_hp,
+                        player_block,
+                    ) = best_next_state
                     if self._base_card_name(best_card) == 'Fiend Fire':
                         played_cards.update(sequence_card_keys)
                     else:

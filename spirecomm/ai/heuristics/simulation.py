@@ -3253,7 +3253,7 @@ class FastCombatSimulator:
             # Apply thorns/Sharp Hide as fixed damage per attack hit.
             thorns = monster.get('thorns', 0)
             if thorns > 0:
-                self._lose_player_hp(state, thorns, trigger_rupture=False)
+                self._damage_player(state, thorns, trigger_rupture=False)
 
         if trigger_thorns and hp_damage > 0 and monster['hp'] > 0:
             if not defer_flight_hit:
@@ -4611,6 +4611,35 @@ class FastCombatSimulator:
         FastCombatSimulator._consume_fairy_revive_if_dead(state)
         if trigger_rupture and state.rupture_strength_per_hp_loss > 0:
             state.player_strength += state.rupture_strength_per_hp_loss
+
+    @staticmethod
+    def _damage_player(
+        state: SimulationState,
+        amount: int,
+        *,
+        trigger_rupture: bool = True,
+    ) -> int:
+        damage = max(0, coerce_int(amount, 0))
+        if damage <= 0:
+            return 0
+
+        block = max(0, coerce_int(getattr(state, 'player_block', 0), 0))
+        blocked = min(block, damage)
+        state.player_block = block - blocked
+        remaining = damage - blocked
+        if remaining <= 0:
+            return 0
+
+        hp_before = max(0, coerce_int(getattr(state, 'player_hp', 0), 0))
+        hp_loss = FastCombatSimulator._effective_player_hp_loss(state, remaining)
+        if hp_loss <= 0:
+            return 0
+
+        state.player_hp = max(0, hp_before - hp_loss)
+        FastCombatSimulator._consume_fairy_revive_if_dead(state)
+        if trigger_rupture and state.rupture_strength_per_hp_loss > 0:
+            state.player_strength += state.rupture_strength_per_hp_loss
+        return hp_loss
 
     @staticmethod
     def _positive_monster_hits(monster: dict) -> int:
