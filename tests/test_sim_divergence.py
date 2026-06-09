@@ -1873,6 +1873,78 @@ def test_havoc_top_attack_random_target_multi_monster_is_not_divergence(
     assert not trace_path.exists()
 
 
+def test_havoc_empty_draw_pile_discard_shuffle_is_not_divergence(
+    monkeypatch,
+    tmp_path,
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    havoc = _card(
+        name="Havoc",
+        card_id="Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+    )
+    strike = _card(name="Strike", card_id="Strike_R", damage=6, cost=1)
+    before = _game(
+        floor=28,
+        turn=4,
+        player=SimpleNamespace(
+            current_hp=53,
+            max_hp=80,
+            block=5,
+            energy=1,
+            powers=[Power("Strength", "Strength", 4)],
+        ),
+        hand=[havoc, _card(name="Spot Weakness", card_id="Spot Weakness", damage=0)],
+        draw_pile=[],
+        discard_pile=[strike],
+        monsters=[
+            _monster(name="Cultist", monster_id="Cultist", hp=0, damage=6),
+            _monster(name="Cultist", monster_id="Cultist", hp=47, damage=12),
+            _monster(
+                name="Cultist",
+                monster_id="Cultist",
+                hp=40,
+                damage=12,
+                powers=[Power("Vulnerable", "Vulnerable", 2)],
+            ),
+        ],
+    )
+    actual = _game(
+        floor=28,
+        turn=4,
+        player=SimpleNamespace(
+            current_hp=53,
+            max_hp=80,
+            block=5,
+            energy=0,
+            powers=[Power("Strength", "Strength", 4)],
+        ),
+        hand=[_card(name="Spot Weakness", card_id="Spot Weakness", damage=0)],
+        draw_pile=[],
+        discard_pile=[],
+        monsters=[
+            _monster(name="Cultist", monster_id="Cultist", hp=0, damage=6),
+            _monster(name="Cultist", monster_id="Cultist", hp=47, damage=12),
+            _monster(
+                name="Cultist",
+                monster_id="Cultist",
+                hp=25,
+                damage=12,
+                powers=[Power("Vulnerable", "Vulnerable", 2)],
+            ),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_havoc_exhausted_top_card_triggers_feel_no_pain_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

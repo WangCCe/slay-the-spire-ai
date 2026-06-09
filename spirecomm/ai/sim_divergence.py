@@ -321,6 +321,11 @@ def snapshot_combat_state(game) -> Dict[str, Any]:
             for card in _safe_iterable(getattr(game, "draw_pile", []))
         ],
         "draw_pile_count": _pile_count(game, "draw_pile"),
+        "discard_pile": [
+            _card_summary(card)
+            for card in _safe_iterable(getattr(game, "discard_pile", []))
+        ],
+        "discard_pile_count": _pile_count(game, "discard_pile"),
         "relics": [_relic_summary(relic) for relic in _safe_iterable(getattr(game, "relics", []))],
         "potions": [
             _potion_summary(potion)
@@ -1089,6 +1094,10 @@ def _ignored_diff_keys(pending: Dict[str, Any], actual: Optional[Dict[str, Any]]
     if _sword_boomerang_random_target_boundary(pending):
         ignored.update(_monster_state_diff_keys(pending, actual))
         return ignored
+    if _havoc_empty_draw_discard_shuffle_boundary(pending):
+        ignored.update(_monster_state_diff_keys(pending, actual))
+        ignored.update(_player_state_diff_keys())
+        return ignored
     if _havoc_random_top_card_target_boundary(pending):
         ignored.update(_monster_state_diff_keys(pending, actual))
         return ignored
@@ -1133,6 +1142,14 @@ def _monster_state_diff_keys(
         for field in ("hp", "block", "gone", "half_dead", "intent"):
             ignored.add(f"monsters[{index}].{field}")
     return ignored
+
+
+def _player_state_diff_keys() -> set:
+    return {
+        "player.current_hp",
+        "player.block",
+        "player.energy",
+    }
 
 
 def _slime_split_ignored_diff_keys(
@@ -1319,6 +1336,26 @@ def _havoc_random_top_card_target_boundary(pending: Dict[str, Any]) -> bool:
         if _snapshot_monster_active(monster)
     )
     return active_count > 1
+
+
+def _havoc_empty_draw_discard_shuffle_boundary(pending: Dict[str, Any]) -> bool:
+    action = pending.get("action") or {}
+    if action.get("type") != "PlayCardAction":
+        return False
+    if _snapshot_known_card_name(action.get("card") or {}, HAVOC_CARDS) != "Havoc":
+        return False
+
+    before = pending.get("before") or {}
+    draw_pile = before.get("draw_pile") or []
+    if isinstance(draw_pile, list) and draw_pile:
+        return False
+    if _to_int(before.get("draw_pile_count")) > 0:
+        return False
+
+    discard_pile = before.get("discard_pile") or []
+    if isinstance(discard_pile, list) and discard_pile:
+        return True
+    return _to_int(before.get("discard_pile_count")) > 0
 
 
 def _play_top_cards_random_attack_target_boundary(pending: Dict[str, Any]) -> bool:
