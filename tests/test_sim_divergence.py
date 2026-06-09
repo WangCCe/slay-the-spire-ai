@@ -8314,6 +8314,89 @@ def test_end_turn_combust_loses_hp_and_damages_all_monsters(monkeypatch, tmp_pat
     assert not trace_path.exists()
 
 
+def test_end_turn_combust_killing_spore_cloud_applies_vulnerable(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=11,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=9,
+            max_hp=80,
+            block=10,
+            energy=0,
+            powers=[
+                Power("Combust", "Combust", 7),
+                Power("Brutality", "Brutality", 1),
+            ],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Fungi Beast",
+                monster_id="FungiBeast",
+                hp=2,
+                damage=6,
+                powers=[Power("Spore Cloud", "Spore Cloud", 2)],
+            ),
+            _monster(
+                name="Fungi Beast",
+                monster_id="FungiBeast",
+                hp=13,
+                damage=9,
+                index=1,
+                powers=[
+                    Power("Spore Cloud", "Spore Cloud", 2),
+                    Power("Strength", "Strength", 3),
+                ],
+            ),
+        ],
+    )
+    actual = _game(
+        floor=11,
+        turn=4,
+        player=SimpleNamespace(
+            current_hp=4,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[
+                Power("Combust", "Combust", 7),
+                Power("Brutality", "Brutality", 1),
+                Power("Vulnerable", "Vulnerable", 1),
+            ],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Fungi Beast",
+                monster_id="FungiBeast",
+                hp=0,
+                damage=0,
+                powers=[],
+            ),
+            _monster(
+                name="Fungi Beast",
+                monster_id="FungiBeast",
+                hp=6,
+                damage=0,
+                index=1,
+                powers=[
+                    Power("Spore Cloud", "Spore Cloud", 2),
+                    Power("Strength", "Strength", 3),
+                ],
+            ),
+        ],
+    )
+    actual.monsters[0].is_gone = True
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_mercury_hourglass_damages_monsters(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

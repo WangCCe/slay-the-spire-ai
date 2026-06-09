@@ -530,6 +530,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         _apply_mercury_hourglass_damage(expected, before)
         _apply_stone_calendar_damage(expected, before)
 
+    expected.pop("_player_vulnerable_added_during_end_turn", None)
     return expected
 
 
@@ -574,7 +575,7 @@ def _apply_expected_attack(
         if thorns_damage > 0:
             _damage_player(expected, thorns_damage)
         if target["hp"] <= 0:
-            _mark_monster_defeated(target)
+            _mark_monster_defeated(target, expected)
             break
         if hp_loss > 0:
             _apply_guardian_mode_shift(target, hp_loss)
@@ -681,6 +682,8 @@ def _apply_direct_monster_damage(
     target_index: Optional[int],
     amount: int,
     ignore_block: bool = False,
+    spore_cloud_decay: int = 0,
+    mark_end_turn_vulnerable: bool = False,
 ) -> int:
     if target_index is None or target_index < 0 or amount <= 0:
         return 0
@@ -701,7 +704,12 @@ def _apply_direct_monster_damage(
     target["hp"] = max(0, hp_before - remaining)
     hp_loss = max(0, hp_before - target["hp"])
     if target["hp"] <= 0:
-        _mark_monster_defeated(target)
+        _mark_monster_defeated(
+            target,
+            expected,
+            spore_cloud_decay=spore_cloud_decay,
+            mark_end_turn_vulnerable=mark_end_turn_vulnerable,
+        )
     return hp_loss
 
 
@@ -772,13 +780,41 @@ def _apply_bird_faced_urn_power_play(
         _heal_player(expected, BIRD_FACED_URN_HEAL)
 
 
-def _mark_monster_defeated(monster: Dict[str, Any]) -> None:
+def _mark_monster_defeated(
+    monster: Dict[str, Any],
+    expected: Optional[Dict[str, Any]] = None,
+    spore_cloud_decay: int = 0,
+    mark_end_turn_vulnerable: bool = False,
+) -> None:
+    if expected is not None:
+        _apply_monster_death_effects(
+            expected,
+            monster,
+            spore_cloud_decay=spore_cloud_decay,
+            mark_end_turn_vulnerable=mark_end_turn_vulnerable,
+        )
     monster["hp"] = 0
     monster["gone"] = True
     if _is_darkling_monster(monster):
         monster["half_dead"] = True
         monster["intent"] = "Intent.UNKNOWN"
         monster["move_damage"] = -1
+
+
+def _apply_monster_death_effects(
+    expected: Dict[str, Any],
+    monster: Dict[str, Any],
+    spore_cloud_decay: int = 0,
+    mark_end_turn_vulnerable: bool = False,
+) -> None:
+    spore_cloud = max(0, _snapshot_power_amount(monster, "Spore Cloud"))
+    if spore_cloud <= 0:
+        return
+    applied_amount = max(1, spore_cloud - max(0, spore_cloud_decay))
+    if _apply_player_debuff(expected, "Vulnerable", applied_amount):
+        if not mark_end_turn_vulnerable:
+            return
+        expected["_player_vulnerable_added_during_end_turn"] = True
 
 
 def _apply_darkling_end_turn_revives(
@@ -2484,6 +2520,10 @@ def _damage_player(expected: Dict[str, Any], amount: int) -> int:
     return 1 if hp_lost else 0
 
 
+def _player_vulnerable_modified_damage(damage: int) -> int:
+    return max(0, _to_int(damage)) * 3 // 2
+
+
 def _apply_end_turn_player_damage(
     expected: Dict[str, Any],
     before: Dict[str, Any],
@@ -2506,6 +2546,8 @@ def _apply_end_turn_player_damage(
         damage = max(0, _to_int(monster.get("move_damage")))
         if damage <= 0 or _monster_attack_damage(monster) <= 0:
             continue
+        if expected.get("_player_vulnerable_added_during_end_turn"):
+            damage = _player_vulnerable_modified_damage(damage)
         for _ in range(_monster_attack_hits(monster)):
             hp_before = _to_int(expected.get("player", {}).get("current_hp"))
             hp_loss_events += _damage_player(expected, damage)
@@ -2518,6 +2560,8 @@ def _apply_end_turn_player_damage(
                     index,
                     reflection_damage,
                     ignore_block=True,
+                    spore_cloud_decay=1,
+                    mark_end_turn_vulnerable=True,
                 )
                 if monster.get("gone") or monster.get("half_dead"):
                     break
@@ -2533,7 +2577,13 @@ def _apply_combust_end_turn(
         return 0
     hp_loss_event = _lose_player_hp(expected, 1)
     for index, _monster in enumerate(expected.get("monsters", []) or []):
-        _apply_direct_monster_damage(expected, index, damage)
+        _apply_direct_monster_damage(
+            expected,
+            index,
+            damage,
+            spore_cloud_decay=1,
+            mark_end_turn_vulnerable=True,
+        )
     return hp_loss_event
 
 
@@ -2562,6 +2612,33 @@ def _effective_player_hp_loss(snapshot: Dict[str, Any], amount: int) -> int:
 def _consume_player_buffer(snapshot: Dict[str, Any]) -> bool:
     player = snapshot.get("player", {})
     for power_name in ("Buffer", "BufferPower"):
+        amount = _snapshot_power_amount(player, power_name)
+        if amount <= 0:
+            continue
+        if amount > 1:
+            _set_snapshot_power_amount(player, power_name, amount - 1)
+        else:
+            _remove_snapshot_power(player, power_name)
+        return True
+    return False
+
+
+def _apply_player_debuff(
+    expected: Dict[str, Any],
+    power_name: str,
+    amount: int,
+) -> bool:
+    if amount <= 0:
+        return False
+    if _consume_player_artifact(expected):
+        return False
+    _add_snapshot_power_amount(expected.setdefault("player", {}), power_name, amount)
+    return True
+
+
+def _consume_player_artifact(snapshot: Dict[str, Any]) -> bool:
+    player = snapshot.get("player", {})
+    for power_name in ("Artifact", "ArtifactPower"):
         amount = _snapshot_power_amount(player, power_name)
         if amount <= 0:
             continue
@@ -2699,6 +2776,8 @@ def _apply_end_turn_attack_reflection_damage(
             index,
             reflection_damage * _monster_attack_hits(monster),
             ignore_block=True,
+            spore_cloud_decay=1,
+            mark_end_turn_vulnerable=True,
         )
 
 

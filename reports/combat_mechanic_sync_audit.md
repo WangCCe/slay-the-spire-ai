@@ -559,6 +559,14 @@ Status labels:
   damage instead of direct HP loss, and `CombatEndingDetector` carries player
   block plus monster thorns through targeted lethal and AOE-cleanup proofs so
   reflected damage cannot prove a line that kills the player.
+- 2026-06-10: The diagnostic oracle now applies monster death effects from
+  `Spore Cloud` when deterministic end-turn damage such as `Combust` kills a
+  Fungi Beast before the remaining monsters attack. The oracle consumes player
+  Artifact when present, records the next-turn Vulnerable stack, and applies the
+  temporary Vulnerable multiplier to later attacks in the same settlement. Live
+  `FastCombatSimulator` already had this death-effect surface, so this round
+  was classified as an oracle-quality cleanup rather than a live estimator
+  policy bug.
 
 ## Backlog
 
