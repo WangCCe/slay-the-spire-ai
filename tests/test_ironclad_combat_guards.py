@@ -17269,6 +17269,25 @@ def test_fast_sim_dramatic_entrance_zero_card_damage_deals_aoe():
     assert result.total_damage_dealt == 16
 
 
+def test_fast_sim_clash_zero_card_damage_uses_card_data_damage():
+    clash = _card("Clash", "Clash", cost=0)
+    clash.damage = 0
+    target = _louse(current_hp=30)
+    context = _combat_context([clash], energy=3, monsters=[target])
+    state = SimulationState(context)
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        state,
+        clash,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["hp"] == 16
+    assert result.total_damage_dealt == 14
+
+
 def test_fast_score_dramatic_entrance_uses_aoe_multiplier():
     dramatic_entrance = _card(
         "Dramatic Entrance",

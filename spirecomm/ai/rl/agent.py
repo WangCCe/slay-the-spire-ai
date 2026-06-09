@@ -28,11 +28,12 @@ from spirecomm.ai.incoming_damage import (
 )
 from spirecomm.ai.heuristics.card_costs import effective_card_cost
 from spirecomm.ai.heuristics.card_exhaust import card_exhausts_itself
-from spirecomm.ai.heuristics.card_hits import fixed_attack_hit_count
+from spirecomm.ai.heuristics.card_hits import fixed_attack_hit_count, strike_card_count
 from spirecomm.ai.heuristics.card_upgrades import (
     card_upgrade_count,
     known_block_upgrade_bonus,
     known_damage_upgrade_bonus,
+    perfected_strike_bonus_per_strike,
 )
 from spirecomm.ai.heuristics.card_types import (
     COMMON_AOE_ATTACK_NAMES,
@@ -1031,10 +1032,12 @@ class CombatRLAgent:
         "anger": ("Anger", 6),
         "bash": ("Bash", 8),
         "carnage": ("Carnage", 20),
+        "clash": ("Clash", 14),
         "clothesline": ("Clothesline", 12),
         "headbutt": ("Headbutt", 9),
         "hemokinesis": ("Hemokinesis", 15),
         "ironwave": ("Iron Wave", 5),
+        "perfectedstrike": ("Perfected Strike", 6),
         "pommelstrike": ("Pommel Strike", 9),
         "pummel": ("Pummel", 2),
         "recklesscharge": ("Reckless Charge", 7),
@@ -3163,6 +3166,11 @@ class CombatRLAgent:
             if cls._card_matches_normalized_names(card, {normalized_name}):
                 damage = base_damage + known_damage_upgrade_bonus(card, card_name)
                 if game is not None:
+                    if card_name == "Perfected Strike":
+                        damage += (
+                            strike_card_count(game)
+                            * perfected_strike_bonus_per_strike(card)
+                        )
                     damage += player_power_amount(game, "Strength")
                 return max(0, damage)
         return 0

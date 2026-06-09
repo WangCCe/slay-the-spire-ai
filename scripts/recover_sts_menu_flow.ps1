@@ -5,13 +5,14 @@ Recover common stuck Slay the Spire UI flows for CommunicationMod batches.
 .DESCRIPTION
 This helper repeats the UI clicks used when a clean batch starts at the game
 main menu instead of emitting CommunicationMod state updates. It can also send
-one combat End Turn click for the revive-animation stuck state observed during
-live batches. It uses scaled window-relative coordinates so the same reference
-points work across DPI-aware and DPI-virtualized PowerShell sessions.
+one combat End Turn click or one bottom-left Talk/confirm click for stuck states
+observed during live batches. It uses scaled window-relative coordinates so the
+same reference points work across DPI-aware and DPI-virtualized PowerShell
+sessions.
 
 Run menu recovery only after a screenshot confirms the game is on a menu screen.
-Run EndTurn recovery only after a screenshot or live observation confirms the
-AI is stuck waiting on an end-turn UI click.
+Run EndTurn or Talk recovery only after a screenshot or live observation
+confirms the AI is stuck waiting on that UI click.
 
 .EXAMPLE
 scripts\recover_sts_menu_flow.ps1 -DryRun -StartScreen MainMenu
@@ -27,11 +28,17 @@ scripts\recover_sts_menu_flow.ps1 -Action EndTurn -DryRun
 
 .EXAMPLE
 scripts\recover_sts_menu_flow.ps1 -Action EndTurn
+
+.EXAMPLE
+scripts\recover_sts_menu_flow.ps1 -Action Talk -DryRun
+
+.EXAMPLE
+scripts\recover_sts_menu_flow.ps1 -Action Talk
 #>
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
 param(
     [string]$WindowTitlePattern = "Modded Slay the Spire|Slay the Spire",
-    [ValidateSet("MenuFlow", "EndTurn")]
+    [ValidateSet("MenuFlow", "EndTurn", "Talk")]
     [string]$Action = "MenuFlow",
     [ValidateSet("MainMenu", "PlayMenu", "CharacterSelect", "IroncladSelected", "PatchNotes")]
     [string]$StartScreen = "MainMenu",
@@ -207,15 +214,16 @@ $points = @{
     Ironclad = @{ X = 416; Y = 620 }
     Embark = @{ X = 1193; Y = 631 }
     EndTurn = @{ X = 1160; Y = 560 }
+    Talk = @{ X = 170; Y = 696 }
 }
 
 $sequence = @()
 
-if ($Action -eq "EndTurn") {
+if ($Action -in @("EndTurn", "Talk")) {
     if ($BackFirst) {
-        Write-RecoveryInfo "warning: -BackFirst is ignored for -Action EndTurn"
+        Write-RecoveryInfo "warning: -BackFirst is ignored for -Action $Action"
     }
-    $sequence += "EndTurn"
+    $sequence += $Action
 }
 else {
     if ($BackFirst -and $StartScreen -ne "PatchNotes") {

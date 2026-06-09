@@ -3014,6 +3014,47 @@ def test_survival_attack_damage_counts_mind_blast_draw_pile_with_strength_and_we
     assert CombatRLAgent._survival_attack_damage(mind_blast, game) == 8
 
 
+def test_survival_attack_damage_counts_clash_static_damage_when_live_damage_zero():
+    clash = SimpleNamespace(
+        name="Clash",
+        card_id="Clash",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=0,
+        has_target=True,
+        damage=0,
+    )
+    game = _game(player=SimpleNamespace(energy=1, powers=[]))
+
+    assert CombatRLAgent._survival_attack_damage(clash, game) == 14
+
+
+def test_survival_attack_damage_counts_perfected_strike_deck_scaling():
+    perfected_strike = SimpleNamespace(
+        name="Perfected Strike",
+        card_id="Perfected Strike",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+        damage=0,
+    )
+    game = _game(
+        player=SimpleNamespace(
+            energy=2,
+            powers=[SimpleNamespace(power_name="Strength", amount=1)],
+        ),
+        deck=[
+            SimpleNamespace(name="Strike", card_id="Strike_R"),
+            SimpleNamespace(name="Strike", card_id="Strike_R"),
+            SimpleNamespace(name="Twin Strike", card_id="Twin Strike"),
+            SimpleNamespace(name="Perfected Strike", card_id="Perfected Strike"),
+        ],
+    )
+
+    assert CombatRLAgent._survival_attack_damage(perfected_strike, game) == 15
+
+
 def test_survival_attack_damage_applies_player_weak_per_hit_for_multi_hit_attack():
     twin_strike = SimpleNamespace(
         name="Twin Strike",

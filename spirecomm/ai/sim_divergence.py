@@ -14,6 +14,7 @@ from spirecomm.ai.heuristics.card_upgrades import (
     heavy_blade_strength_multiplier,
     known_block_upgrade_bonus,
     known_damage_upgrade_bonus,
+    perfected_strike_bonus_per_strike,
 )
 from spirecomm.ai.incoming_damage import exploder_explosion_damage
 
@@ -39,6 +40,7 @@ BASE_ATTACK_DAMAGE = {
     "Bludgeon": 32,
     "Blood for Blood": 18,
     "Carnage": 20,
+    "Clash": 14,
     "Cleave": 8,
     "Clothesline": 12,
     "Dramatic Entrance": 8,
@@ -51,6 +53,7 @@ BASE_ATTACK_DAMAGE = {
     "Immolate": 21,
     "Iron Wave": 5,
     "Mind Blast": 0,
+    "Perfected Strike": 6,
     "Pommel Strike": 9,
     "Pummel": 8,
     "Rampage": 8,
@@ -1750,6 +1753,14 @@ def _card_damage_and_hits_for_snapshot(
     card_name = _known_card_name(card, BASE_ATTACK_DAMAGE)
     if card_name == "Mind Blast" and before is not None:
         damage = max(0, _to_int(before.get("draw_pile_count"), default=0))
+    if card_name == "Perfected Strike" and before is not None:
+        base_damage = BASE_ATTACK_DAMAGE[card_name] + known_damage_upgrade_bonus(card, card_name)
+        explicit = _to_int(_card_attr(card, "damage", 0))
+        if explicit <= base_damage:
+            damage += (
+                _snapshot_strike_card_count(before)
+                * perfected_strike_bonus_per_strike(card)
+            )
     if card_name == "Whirlwind":
         per_hit = _source_modified_attack_damage(
             damage,
@@ -1833,6 +1844,21 @@ def _multi_hit_damage_per_hit(card, card_name: str, hit_count: int) -> int:
     base_damage = BASE_ATTACK_DAMAGE[card_name]
     per_hit = base_damage // hit_count if hit_count > 0 else base_damage
     return per_hit + known_damage_upgrade_bonus(card, card_name)
+
+
+def _snapshot_strike_card_count(snapshot: Dict[str, Any]) -> int:
+    count = 0
+    for pile_name in ("hand", "draw_pile", "discard_pile", "exhaust_pile", "limbo"):
+        for card in snapshot.get(pile_name, []) or []:
+            if _snapshot_card_contains_strike(card):
+                count += 1
+    return max(0, count)
+
+
+def _snapshot_card_contains_strike(card: Dict[str, Any]) -> bool:
+    return "strike" in _normalize(
+        f"{card.get('name', '')} {card.get('id', '')} {card.get('card_id', '')}"
+    )
 
 
 def _card_block(card) -> int:

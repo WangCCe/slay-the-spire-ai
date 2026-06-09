@@ -57,10 +57,21 @@ def test_recovery_script_supports_combat_end_turn_action():
 
     text = SCRIPT.read_text(encoding="utf-8")
 
-    assert '[ValidateSet("MenuFlow", "EndTurn")]' in text
-    assert 'if ($Action -eq "EndTurn")' in text
+    assert '[ValidateSet("MenuFlow", "EndTurn", "Talk")]' in text
+    assert 'if ($Action -in @("EndTurn", "Talk"))' in text
     assert 'EndTurn = @{ X = 1160; Y = 560 }' in text
-    assert '$sequence += "EndTurn"' in text
+    assert '$sequence += $Action' in text
+
+
+def test_recovery_script_supports_combat_talk_action():
+    assert SCRIPT.exists()
+
+    text = SCRIPT.read_text(encoding="utf-8")
+
+    assert '[ValidateSet("MenuFlow", "EndTurn", "Talk")]' in text
+    assert 'if ($Action -in @("EndTurn", "Talk"))' in text
+    assert 'Talk = @{ X = 170; Y = 696 }' in text
+    assert '$sequence += $Action' in text
 
 
 def test_recovery_script_end_turn_action_parses_before_window_lookup():
@@ -96,7 +107,7 @@ def test_ui_recovery_script_is_canonical_wrapper():
     text = UI_SCRIPT.read_text(encoding="utf-8")
 
     assert 'Join-Path $PSScriptRoot "recover_sts_menu_flow.ps1"' in text
-    assert '[ValidateSet("MenuFlow", "EndTurn")]' in text
+    assert '[ValidateSet("MenuFlow", "EndTurn", "Talk")]' in text
     assert '[string]$Action = "EndTurn"' in text
 
 

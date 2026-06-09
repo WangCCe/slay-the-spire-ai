@@ -9052,3 +9052,130 @@ def test_dramatic_entrance_zero_card_damage_deals_aoe(monkeypatch, tmp_path):
     assert record_expected_action(PlayCardAction(card_index=0), before) is True
     assert observe_next_state(actual) is False
     assert not trace_path.exists()
+
+
+def test_clash_zero_card_damage_uses_base_attack_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    clash = _card(
+        name="Clash",
+        card_id="Clash",
+        card_type=CardType.ATTACK,
+        cost=0,
+        damage=0,
+    )
+    before = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(current_hp=13, max_hp=75, block=0, energy=3),
+        hand=[clash],
+        monsters=[
+            _monster(
+                name="Acid Slime (L)",
+                monster_id="AcidSlime_L",
+                hp=71,
+                damage=0,
+                intent=Intent.DEBUFF,
+            )
+        ],
+    )
+    actual = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(current_hp=13, max_hp=75, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Acid Slime (L)",
+                monster_id="AcidSlime_L",
+                hp=57,
+                damage=0,
+                intent=Intent.DEBUFF,
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_perfected_strike_zero_card_damage_counts_strike_cards(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    perfected_strike = _card(
+        name="Perfected Strike",
+        card_id="Perfected Strike",
+        card_type=CardType.ATTACK,
+        cost=0,
+        damage=0,
+    )
+    before = _game(
+        floor=10,
+        turn=2,
+        player=SimpleNamespace(current_hp=33, max_hp=75, block=0, energy=1),
+        hand=[perfected_strike],
+        draw_pile=[
+            _card(
+                name="Ascender's Bane",
+                card_id="AscendersBane",
+                card_type=CardType.CURSE,
+                cost=-2,
+                damage=0,
+            ),
+            _card(name="Strike", card_id="Strike_R", damage=6),
+        ],
+        discard_pile=[
+            _card(name="Strike", card_id="Strike_R", damage=6),
+            _card(
+                name="Defend",
+                card_id="Defend_R",
+                card_type=CardType.SKILL,
+                damage=0,
+                block=5,
+            ),
+            _card(
+                name="Clash",
+                card_id="Clash",
+                card_type=CardType.ATTACK,
+                cost=0,
+                damage=0,
+            ),
+        ],
+        monsters=[
+            _monster(
+                name="Acid Slime (M)",
+                monster_id="AcidSlime_M",
+                hp=13,
+                max_hp=26,
+                damage=8,
+                intent=Intent.ATTACK_DEBUFF,
+            )
+        ],
+    )
+    actual = _game(
+        floor=10,
+        turn=2,
+        player=SimpleNamespace(current_hp=33, max_hp=75, block=0, energy=1),
+        hand=[],
+        draw_pile=before.draw_pile,
+        discard_pile=before.discard_pile,
+        monsters=[
+            _monster(
+                name="Acid Slime (M)",
+                monster_id="AcidSlime_M",
+                hp=1,
+                max_hp=26,
+                damage=8,
+                intent=Intent.ATTACK_DEBUFF,
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()

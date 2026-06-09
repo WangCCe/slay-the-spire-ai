@@ -212,6 +212,23 @@ def test_rl_state_encoder_mind_blast_hand_damage_uses_draw_pile_count():
     assert hand_features[2] == 7 / 30
 
 
+def test_rl_state_encoder_perfected_strike_hand_damage_counts_deck_strikes():
+    encoder = StateEncoder()
+    perfected_strike = _card("Perfected Strike")
+    perfected_strike.damage = 0
+    game = _combat_game(hand=[perfected_strike])
+    game.deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Twin Strike"),
+        _card("Perfected Strike"),
+    ]
+
+    hand_features = encoder._encode_hand_cards(game)
+
+    assert hand_features[2] == 14 / 30
+
+
 def test_rl_state_encoder_mind_blast_single_card_without_game_stays_context_free():
     encoder = StateEncoder()
     mind_blast = _card("Mind Blast")

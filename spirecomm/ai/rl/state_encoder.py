@@ -7,11 +7,13 @@ import numpy as np
 from typing import List, Tuple
 from spirecomm.ai.heuristics.combat_state import power_amount
 from spirecomm.ai.heuristics.card_costs import raw_card_cost
+from spirecomm.ai.heuristics.card_hits import strike_card_count
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_types import card_requires_target, card_type_name
 from spirecomm.ai.heuristics.card_upgrades import (
     is_card_upgraded,
     known_damage_upgrade_bonus,
+    perfected_strike_bonus_per_strike,
 )
 from spirecomm.ai.heuristics.potions import (
     game_potion_available,
@@ -601,6 +603,11 @@ class StateEncoder:
                     parsed_damage = game_data_loader._parse_card_damage(card_data)
                     if parsed_damage:
                         damage = parsed_damage + known_damage_upgrade_bonus(card, card_name)
+                        if card_name == "Perfected Strike" and game is not None:
+                            damage += (
+                                strike_card_count(game)
+                                * perfected_strike_bonus_per_strike(card)
+                            )
 
         if block == 0 and hasattr(card, 'block'):
             try:

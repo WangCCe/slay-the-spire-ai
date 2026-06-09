@@ -37,6 +37,8 @@ def fiend_fire_exhaust_count(card: Any, context: Any) -> int:
 
 def strike_card_count(context: Any) -> int:
     deck = getattr(getattr(context, 'game', None), 'deck', None)
+    if deck is None and hasattr(context, 'deck'):
+        deck = getattr(context, 'deck', None)
     if not deck:
         return 0
 

@@ -6,8 +6,9 @@ Recover common Slay the Spire UI stalls during live AI batches.
 Canonical entry point for small UI recovery actions that unblock
 CommunicationMod validation batches without restarting the game. The default
 action clicks the combat End Turn button, matching the revive-animation stuck
-state observed during live play. Menu recovery is still available through
--Action MenuFlow and is delegated to recover_sts_menu_flow.ps1.
+state observed during live play. Talk/confirm recovery handles bottom-left
+combat dialog buttons. Menu recovery is still available through -Action MenuFlow
+and is delegated to recover_sts_menu_flow.ps1.
 
 Use -DryRun first to confirm the target window and scaled coordinates before
 clicking in the live desktop session.
@@ -20,11 +21,14 @@ scripts\recover_sts_ui.ps1
 
 .EXAMPLE
 scripts\recover_sts_ui.ps1 -Action MenuFlow -StartScreen MainMenu -DryRun
+
+.EXAMPLE
+scripts\recover_sts_ui.ps1 -Action Talk -DryRun
 #>
 [CmdletBinding()]
 param(
     [string]$WindowTitlePattern = "Modded Slay the Spire|Slay the Spire",
-    [ValidateSet("MenuFlow", "EndTurn")]
+    [ValidateSet("MenuFlow", "EndTurn", "Talk")]
     [string]$Action = "EndTurn",
     [ValidateSet("MainMenu", "PlayMenu", "CharacterSelect", "IroncladSelected", "PatchNotes")]
     [string]$StartScreen = "MainMenu",
