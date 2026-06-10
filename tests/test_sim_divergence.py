@@ -1021,6 +1021,36 @@ def test_feed_does_not_gain_max_hp_from_minion_kill(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_gremlin_horn_refunds_energy_on_attack_kill(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Gremlin Horn")]
+    strike = _card(name="Strike", card_id="Strike_R", damage=6)
+    before = _game(
+        floor=10,
+        turn=3,
+        player=SimpleNamespace(current_hp=56, max_hp=80, block=0, energy=3),
+        hand=[strike],
+        relics=relics,
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=6, damage=0)],
+    )
+    actual = _game(
+        floor=10,
+        turn=3,
+        player=SimpleNamespace(current_hp=56, max_hp=80, block=0, energy=3),
+        hand=[],
+        relics=relics,
+        monsters=[_monster(name="Fungi Beast", monster_id="FungiBeast", hp=0, damage=0)],
+    )
+    actual.monsters[0].is_gone = True
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_headbutt_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

@@ -1492,6 +1492,30 @@ def test_simulate_card_play_nunchaku_counter_nine_refunds_energy():
     assert result.nunchaku_counter == 0
 
 
+def test_simulate_card_play_gremlin_horn_refunds_energy_and_draws_on_kill():
+    strike = _card("Strike_R", "Strike", cost=1)
+    strike.damage = 6
+    target = _louse(current_hp=6)
+    context = _combat_context([strike], energy=1, monsters=[target])
+    context.game.relics = [
+        SimpleNamespace(relic_id="GremlinHorn", name="Gremlin Horn", counter=-1)
+    ]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        strike,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["is_gone"] is True
+    assert result.player_energy == 1
+    assert result.energy_gained == 1
+    assert result.cards_drawn == 1
+
+
 def test_fallback_attack_estimate_combines_player_weak_and_target_vulnerable_before_rounding():
     dropkick = _card("Dropkick", "Dropkick", cost=1)
     dropkick.damage = 5

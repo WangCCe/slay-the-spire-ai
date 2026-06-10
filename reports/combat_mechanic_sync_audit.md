@@ -596,6 +596,13 @@ Status labels:
   preserving HP. `FastCombatSimulator` already projected Looter/Mugger escape
   and excluded escaped monsters from kill scoring, so this round only synced
   the diagnostic oracle with the already-covered live estimator behavior.
+- 2026-06-10: `Gremlin Horn` now grants +1 energy on simulated monster death
+  in both the diagnostic oracle and `FastCombatSimulator`. Fresh clean rows
+  showed live keeping or increasing player energy after `Strike`, `Anger+`, or
+  `Clothesline` killed a monster with Gremlin Horn, while the old oracle only
+  subtracted the played card cost. The oracle also moves the visible draw-pile
+  top card into hand when draw is not blocked, and the fast simulator records
+  one `cards_drawn` event so beam scoring values the kill reward.
 
 ## Backlog
 

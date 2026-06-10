@@ -808,6 +808,7 @@ def _apply_monster_death_effects(
     spore_cloud_decay: int = 0,
     mark_end_turn_vulnerable: bool = False,
 ) -> None:
+    _apply_gremlin_horn_kill_reward(expected)
     spore_cloud = max(0, _snapshot_power_amount(monster, "Spore Cloud"))
     if spore_cloud <= 0:
         return
@@ -816,6 +817,24 @@ def _apply_monster_death_effects(
         if not mark_end_turn_vulnerable:
             return
         expected["_player_vulnerable_added_during_end_turn"] = True
+
+
+def _apply_gremlin_horn_kill_reward(expected: Dict[str, Any]) -> None:
+    if not _snapshot_has_relic(expected, "Gremlin Horn"):
+        return
+    expected["player"]["energy"] = (
+        max(0, _to_int(expected.get("player", {}).get("energy"))) + 1
+    )
+    if _snapshot_has_power(expected.get("player", {}), "No Draw") or _snapshot_has_power(
+        expected.get("player", {}),
+        "NoDraw",
+    ):
+        return
+    top_card = _draw_pile_top_card(expected)
+    if top_card is not None:
+        expected.setdefault("hand", []).append(copy.deepcopy(top_card))
+    if top_card is not None or _to_int(expected.get("draw_pile_count")) > 0:
+        _pop_expected_draw_pile_top(expected)
 
 
 def _apply_darkling_end_turn_revives(

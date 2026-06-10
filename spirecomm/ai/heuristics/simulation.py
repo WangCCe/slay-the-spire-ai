@@ -578,6 +578,9 @@ class SimulationState:
         self.has_toy_ornithopter = (
             self._context_relic_counter(context, 'Toy Ornithopter') is not None
         )
+        self.has_gremlin_horn = (
+            self._context_relic_counter(context, 'Gremlin Horn') is not None
+        )
         self.charons_ashes_damage_per_exhaust = (
             CHARONS_ASHES_DAMAGE
             if self._context_relic_counter(context, "Charon's Ashes") is not None
@@ -1030,6 +1033,7 @@ class SimulationState:
             self.has_the_boot,
             self.has_bird_faced_urn,
             self.has_toy_ornithopter,
+            self.has_gremlin_horn,
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
             self.dark_embrace_draw_per_exhaust,
@@ -3320,6 +3324,7 @@ class FastCombatSimulator:
         monster['is_gone'] = True
         monster['half_dead'] = False
         state.monsters_killed += 1
+        self._apply_gremlin_horn_kill_reward(state)
 
     def _has_life_link(self, monster: dict) -> bool:
         monster_name = _canonical_live_monster_name(monster)
@@ -3360,6 +3365,14 @@ class FastCombatSimulator:
                 other['half_dead'] = False
                 other['block'] = 0
                 state.monsters_killed += 1
+                self._apply_gremlin_horn_kill_reward(state)
+
+    def _apply_gremlin_horn_kill_reward(self, state: SimulationState):
+        if not getattr(state, 'has_gremlin_horn', False):
+            return
+        state.player_energy += 1
+        state.energy_gained += 1
+        self._add_card_draw(state, 1)
 
     def _apply_reactive_monster_block(
         self,
