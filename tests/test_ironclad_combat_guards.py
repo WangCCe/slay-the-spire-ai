@@ -10079,6 +10079,41 @@ def test_havoc_plays_known_draw_pile_top_attack_against_single_monster():
     assert result.exhaust_events == 1
 
 
+def test_havoc_top_attack_is_blocked_by_entangled():
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    bottom_defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        has_target=False,
+    )
+    top_strike = _card("Strike_R", "Strike")
+    top_strike.damage = 6
+    monster = _louse(current_hp=100)
+    context = _combat_context([havoc], energy=3, monsters=[monster])
+    context.game.draw_pile = [bottom_defend, top_strike]
+    context.game.player.powers = [SimpleNamespace(power_name="Entangled", amount=1)]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        havoc,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 2
+    assert result.total_damage_dealt == 0
+    assert result.monsters[0]["hp"] == 100
+    assert result.exhaust_events == 1
+
+
 def test_havoc_plays_known_draw_pile_top_skill_block():
     havoc = _card(
         "Havoc",
@@ -12420,6 +12455,35 @@ def test_lethal_detector_counts_havoc_visible_top_attack_damage(monkeypatch):
 
     assert [action.card.uuid for action in sequence] == ["havoc"]
     assert sequence[0].target_monster is None
+
+
+def test_lethal_detector_ignores_havoc_top_attack_when_entangled(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "strike": {
+            "name": "Strike",
+            "description": "Deal 6 damage.",
+        },
+    }
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    havoc.uuid = "havoc"
+    top_strike = _card("Strike_R", "Strike", cost=1)
+    top_strike.damage = 6
+    context = _combat_context([havoc], energy=1, monsters=[_louse(current_hp=6)])
+    context.game.draw_pile = [top_strike]
+    context.game.player.powers = [SimpleNamespace(power_name="Entangled", amount=1)]
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 0
+    assert detector.can_kill_all(context) is False
+    assert detector.find_lethal_sequence(context) == []
 
 
 def test_lethal_detector_counts_havoc_visible_top_aoe_attack(monkeypatch):
@@ -16844,6 +16908,29 @@ def test_ironclad_fallback_counts_ornamental_fan_from_havoc_top_attack():
 
     assert len(sequence) == 1
     assert sequence[0].card is havoc
+
+
+def test_ironclad_fallback_ignores_havoc_top_attack_fan_block_when_entangled():
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    top_strike = _card("Strike_R", "Strike", cost=1)
+    context = _combat_context(
+        [havoc],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.game.draw_pile = [top_strike]
+    context.game.relics = [SimpleNamespace(name="Ornamental Fan", counter=2)]
+    context.relics = context.game.relics
+    context.game.player.powers = [SimpleNamespace(power_name="Entangled", amount=1)]
+    planner = IroncladCombatPlanner()
+
+    assert planner._estimate_havoc_visible_top_card_block(havoc, context) == 0
 
 
 def test_ironclad_fallback_priority_values_bash_before_perfected_strike_with_strike_deck(monkeypatch):

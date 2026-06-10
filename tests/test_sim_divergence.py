@@ -1989,6 +1989,77 @@ def test_havoc_plus_uses_known_draw_pile_top_attack_damage(monkeypatch, tmp_path
     assert not trace_path.exists()
 
 
+def test_havoc_top_attack_is_blocked_by_entangled(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    havoc = _card(
+        name="Havoc",
+        card_id="Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+    )
+    bottom_defend = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        damage=0,
+        block=5,
+        cost=1,
+    )
+    top_strike = _card(name="Strike", card_id="Strike_R", damage=6, cost=1)
+    before = _game(
+        floor=6,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=66,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Entangled", "Entangled", 1)],
+        ),
+        hand=[havoc],
+        draw_pile=[bottom_defend, top_strike],
+        monsters=[
+            _monster(
+                name="Slaver",
+                monster_id="SlaverRed",
+                hp=22,
+                damage=8,
+                intent=Intent.ATTACK_DEBUFF,
+            )
+        ],
+    )
+    actual = _game(
+        floor=6,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=66,
+            max_hp=80,
+            block=0,
+            energy=2,
+            powers=[Power("Entangled", "Entangled", 1)],
+        ),
+        hand=[],
+        draw_pile=[bottom_defend],
+        monsters=[
+            _monster(
+                name="Slaver",
+                monster_id="SlaverRed",
+                hp=22,
+                damage=8,
+                intent=Intent.ATTACK_DEBUFF,
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_havoc_top_attack_random_target_multi_monster_is_not_divergence(
     monkeypatch,
     tmp_path,

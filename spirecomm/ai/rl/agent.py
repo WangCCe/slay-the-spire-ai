@@ -2489,6 +2489,9 @@ class CombatRLAgent:
 
     @classmethod
     def _havoc_visible_top_attack_is_deterministic(cls, game: Game) -> bool:
+        if cls._player_entangled(game):
+            return False
+
         top_card = cls._draw_pile_top_card(game)
         if top_card is None or not is_attack_card(top_card):
             return False
@@ -3097,10 +3100,19 @@ class CombatRLAgent:
         if top_card is None:
             return block_value
 
-        top_card_block = cls._survival_block_value(top_card)
-        top_card_fan_block = cls._ornamental_fan_block_for_card(top_card, game)
+        top_attack_blocked = is_attack_card(top_card) and cls._player_entangled(game)
+        top_card_block = 0 if top_attack_blocked else cls._survival_block_value(top_card)
+        top_card_fan_block = (
+            0
+            if top_attack_blocked
+            else cls._ornamental_fan_block_for_card(top_card, game)
+        )
         feel_no_pain_block = cls._feel_no_pain_block_per_exhaust(game)
         return block_value + top_card_block + top_card_fan_block + feel_no_pain_block
+
+    @classmethod
+    def _player_entangled(cls, game: Game) -> bool:
+        return player_debuff_stacks(game, "Entangled") > 0 or player_has_power(game, "Entangled")
 
     @classmethod
     def _feel_no_pain_block_per_exhaust(cls, game: Game) -> int:

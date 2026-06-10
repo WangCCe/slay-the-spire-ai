@@ -3109,7 +3109,8 @@ def _apply_expected_top_draw_card_played_by_effect(
     _pop_expected_draw_pile_top(expected)
     target_index = None
     pre_damage_block_applied = False
-    if _is_attack_card(top_card):
+    top_attack_blocked = _is_attack_card(top_card) and _snapshot_player_entangled(expected)
+    if _is_attack_card(top_card) and not top_attack_blocked:
         pre_damage_block_applied = _apply_attack_block_before_damage(
             expected,
             before,
@@ -3171,26 +3172,27 @@ def _apply_expected_top_draw_card_played_by_effect(
             exhaust_by_effect=True,
         )
 
-    self_damage = _card_self_damage(top_card)
-    self_damage += _blue_candle_curse_hp_loss(top_card, before)
-    if self_damage > 0:
-        _lose_player_hp(expected, self_damage)
-    heal = _card_heal(top_card)
-    if heal > 0:
-        _heal_player(expected, heal)
-    _apply_bird_faced_urn_power_play(expected, top_card)
-    _apply_letter_opener_skill_play(expected, top_card)
-    energy_gain = _card_energy_gain(top_card)
-    energy_gain += _conditional_card_energy_gain(top_card, before, target_index)
-    if energy_gain > 0:
-        expected["player"]["energy"] += energy_gain
-    block = _card_block(top_card)
-    if block > 0 and not pre_damage_block_applied:
-        _gain_player_block(
-            expected,
-            before,
-            _modified_block(block, expected.get("player", {})),
-        )
+    if not top_attack_blocked:
+        self_damage = _card_self_damage(top_card)
+        self_damage += _blue_candle_curse_hp_loss(top_card, before)
+        if self_damage > 0:
+            _lose_player_hp(expected, self_damage)
+        heal = _card_heal(top_card)
+        if heal > 0:
+            _heal_player(expected, heal)
+        _apply_bird_faced_urn_power_play(expected, top_card)
+        _apply_letter_opener_skill_play(expected, top_card)
+        energy_gain = _card_energy_gain(top_card)
+        energy_gain += _conditional_card_energy_gain(top_card, before, target_index)
+        if energy_gain > 0:
+            expected["player"]["energy"] += energy_gain
+        block = _card_block(top_card)
+        if block > 0 and not pre_damage_block_applied:
+            _gain_player_block(
+                expected,
+                before,
+                _modified_block(block, expected.get("player", {})),
+            )
     if exhaust_by_effect:
         feel_no_pain_block = _havoc_top_card_feel_no_pain_block(before)
         if feel_no_pain_block > 0:
@@ -3211,6 +3213,10 @@ def _havoc_top_card_feel_no_pain_block(snapshot: Dict[str, Any]) -> int:
     if _draw_pile_top_card(snapshot) is None:
         return 0
     return max(0, _snapshot_power_amount(snapshot.get("player", {}), "Feel No Pain"))
+
+
+def _snapshot_player_entangled(snapshot: Dict[str, Any]) -> bool:
+    return _snapshot_power_amount(snapshot.get("player", {}), "Entangled") > 0
 
 
 def _pop_expected_draw_pile_top(expected: Dict[str, Any]) -> None:

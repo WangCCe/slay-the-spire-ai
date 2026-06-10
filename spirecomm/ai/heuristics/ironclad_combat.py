@@ -1985,11 +1985,18 @@ class IroncladCombatPlanner(CombatPlanner):
             exhausted_cards += 1
             if canonical_card_name(visible_card) == 'Havoc':
                 continue
-            top_card_block = self._estimate_fallback_card_block(visible_card, context)
+            if is_attack_card(visible_card) and self._player_is_entangled(context):
+                top_card_block = 0
+            else:
+                top_card_block = self._estimate_fallback_card_block(visible_card, context)
             break
 
         feel_no_pain_block = exhausted_cards * self._feel_no_pain_block_per_exhaust(context)
         return max(0, top_card_block + feel_no_pain_block)
+
+    @staticmethod
+    def _player_is_entangled(context: DecisionContext) -> bool:
+        return player_debuff_stacks(context, 'Entangled') > 0 or player_has_power(context, 'Entangled')
 
     @staticmethod
     def _fallback_turn_block(context: DecisionContext) -> int:

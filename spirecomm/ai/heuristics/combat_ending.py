@@ -845,6 +845,8 @@ class CombatEndingDetector:
     ) -> Optional[Card]:
         if self._base_card_name(card) != 'Havoc':
             return None
+        if self._player_is_entangled(context):
+            return None
 
         top_card = self._draw_pile_top_card_for_havoc(context, consumed)
         if top_card is None or not is_attack_card(top_card):
@@ -4078,6 +4080,12 @@ class CombatEndingDetector:
 
     def _player_is_weak(self, context: DecisionContext) -> bool:
         return self._get_player_debuff_stacks(context, 'Weak') > 0
+
+    def _player_is_entangled(self, context: DecisionContext) -> bool:
+        return (
+            self._get_player_debuff_stacks(context, 'Entangled') > 0
+            or player_has_power(context, 'Entangled')
+        )
 
     def _nunchaku_energy_after_attack_plays(
         self,

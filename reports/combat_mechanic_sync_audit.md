@@ -624,6 +624,13 @@ Status labels:
   spending 3 of that block on `Sharp Hide` while HP stayed unchanged. The
   diagnostic oracle covers normal hand plays and Havoc/top-card settlement;
   the fast simulator applies the same pre-damage block timing for beam scoring.
+- 2026-06-10: `Entangled` now blocks attack cards played from the draw pile by
+  `Havoc` / top-card effects while preserving Havoc's top-card consumption and
+  effect-exhaust triggers. Fresh clean evidence showed `Havoc` consuming a top
+  `Strike` under `Entangled=1` without damaging Slaver Red. The diagnostic
+  oracle, `FastCombatSimulator`, `CombatEndingDetector`, Ironclad fallback
+  block scoring, and RL survival/Havoc guard estimates now stop counting the
+  blocked top attack's damage or attack-play triggers such as Ornamental Fan.
 
 ## Backlog
 
@@ -637,10 +644,10 @@ Status labels:
     any still-unaudited estimator surfaces.
   - Other dynamic base damage beyond the Mind Blast combat estimator and RL
     survival surfaces already covered above.
-  - Havoc random-target boundaries and any remaining non-Juggernaut
-    Feel No Pain block value outside the simulator, lethal, Ironclad fallback,
-    timing fallback, RL survival, and RL shared block-candidate surfaces already
-    covered above.
+  - Havoc random-target boundaries, `Distilled Chaos` / top-card trace
+    completeness, and any remaining non-Juggernaut Feel No Pain block value
+    outside the simulator, lethal, Ironclad fallback, timing fallback, RL
+    survival, and RL shared block-candidate surfaces already covered above.
   - Calipers retained block valuation across beam/outcome scoring and any
     multi-turn lookahead surfaces that can safely model post-attack block
     without changing raw future-damage semantics by accident.

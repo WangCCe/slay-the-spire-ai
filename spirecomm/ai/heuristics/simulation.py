@@ -546,6 +546,7 @@ class SimulationState:
         self.player_frail = self._get_player_debuff_stacks(context, 'Frail')
         self.player_hex = self._get_player_hex_stacks(context)
         self.player_constricted = self._get_player_constricted_stacks(context)
+        self.player_entangled = self._get_player_entangled_stacks(context)
         # Rage power: block gained per attack played.
         self.rage_block_per_attack = self._get_player_power_amount(context, 'Rage')
         self.draw_blocked = (
@@ -808,6 +809,11 @@ class SimulationState:
             self._get_player_debuff_stacks(context, 'ConstrictedPower'),
         )
 
+    def _get_player_entangled_stacks(self, context: DecisionContext) -> int:
+        if self._has_player_power(context, 'Entangled'):
+            return max(1, self._get_player_debuff_stacks(context, 'Entangled'))
+        return max(0, self._get_player_debuff_stacks(context, 'Entangled'))
+
     def _get_monster_power_amount(self, monster: Any, power_name: str) -> int:
         return power_amount(getattr(monster, 'powers', []), power_name, 1)
 
@@ -1048,6 +1054,7 @@ class SimulationState:
             self.player_frail,
             self.player_hex,
             self.player_constricted,
+            self.player_entangled,
             self.rage_block_per_attack,
             self.draw_blocked,
             self.card_block_blocked,
@@ -4198,20 +4205,21 @@ class FastCombatSimulator:
 
         top_card_exhausted_by_effect = False
         if top_card_type == 'ATTACK':
-            target_index = self._havoc_top_attack_target_index(state, top_card)
-            state.attacks_played += 1
-            self._apply_attack(
-                state,
-                top_card,
-                target=None,
-                target_index=target_index,
-                context=context,
-                x_energy_spent=0 if is_x_cost_card(top_card) else None,
-            )
-            self._apply_rage_block(state)
-            self._apply_ornamental_fan_block(state)
-            self._apply_self_damage(state, top_card)
-            top_card_exhausted_by_effect = self._card_exhausts_itself_from_data(top_card)
+            if state.player_entangled <= 0:
+                target_index = self._havoc_top_attack_target_index(state, top_card)
+                state.attacks_played += 1
+                self._apply_attack(
+                    state,
+                    top_card,
+                    target=None,
+                    target_index=target_index,
+                    context=context,
+                    x_energy_spent=0 if is_x_cost_card(top_card) else None,
+                )
+                self._apply_rage_block(state)
+                self._apply_ornamental_fan_block(state)
+                self._apply_self_damage(state, top_card)
+                top_card_exhausted_by_effect = self._card_exhausts_itself_from_data(top_card)
         elif top_card_type == 'SKILL':
             state.skills_played += 1
             self._apply_skill(
