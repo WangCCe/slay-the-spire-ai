@@ -545,7 +545,10 @@ class SimulationState:
             self._get_player_power_amount(context, 'DuplicationPower'),
             self._get_player_power_amount(context, 'Duplication'),
         )
-        self.double_tap_charges = 0
+        self.double_tap_charges = max(
+            self._get_player_power_amount(context, 'Double Tap'),
+            self._get_player_power_amount(context, 'DoubleTap'),
+        )
         self.panache_counter = self._get_player_power_amount(context, 'Panache')
         self.panache_damage = PANACHE_DAMAGE if (
             self.panache_counter > 0 or self._has_player_power(context, 'Panache')
@@ -580,6 +583,9 @@ class SimulationState:
         )
         self.has_gremlin_horn = (
             self._context_relic_counter(context, 'Gremlin Horn') is not None
+        )
+        self.necronomicon_available = (
+            self._context_relic_counter(context, 'Necronomicon') is not None
         )
         self.charons_ashes_damage_per_exhaust = (
             CHARONS_ASHES_DAMAGE
@@ -1034,6 +1040,7 @@ class SimulationState:
             self.has_bird_faced_urn,
             self.has_toy_ornithopter,
             self.has_gremlin_horn,
+            self.necronomicon_available,
             self.corruption_active,
             self.feel_no_pain_block_per_exhaust,
             self.dark_embrace_draw_per_exhaust,
@@ -1244,10 +1251,7 @@ class FastCombatSimulator:
             self._apply_slow_card_play(new_state)
 
             if card_type == 'ATTACK':
-                attack_repeats = 1
-                if new_state.double_tap_charges > 0:
-                    attack_repeats = 2
-                    new_state.double_tap_charges -= 1
+                attack_repeats = self._attack_replay_count(new_state, card, cost)
                 for _ in range(attack_repeats):
                     new_state.attacks_played += 1
                     self._apply_attack(
@@ -1293,6 +1297,33 @@ class FastCombatSimulator:
         self._apply_charons_ashes_damage(new_state, starting_exhaust_events)
 
         return new_state
+
+    def _attack_replay_count(
+        self,
+        state: SimulationState,
+        card: Card,
+        cost: int,
+    ) -> int:
+        repeats = 1
+        if state.double_tap_charges > 0:
+            repeats *= 2
+            state.double_tap_charges -= 1
+        if self._necronomicon_replays_attack(state, card, cost):
+            repeats *= 2
+            state.necronomicon_available = False
+        return repeats
+
+    def _necronomicon_replays_attack(
+        self,
+        state: SimulationState,
+        card: Card,
+        cost: int,
+    ) -> bool:
+        return (
+            getattr(state, 'necronomicon_available', False)
+            and is_attack_card(card)
+            and cost >= 2
+        )
 
     def _apply_skill_reactive_monster_powers(self, state: SimulationState):
         """Apply monster reactions such as Gremlin Nob's Anger after Skill cards."""

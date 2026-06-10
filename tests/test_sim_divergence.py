@@ -5756,6 +5756,67 @@ def test_necronomicon_replay_uses_bash_vulnerable_from_first_hit(monkeypatch, tm
     assert not trace_path.exists()
 
 
+def test_double_tap_and_necronomicon_stack_to_four_attack_plays(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    uppercut_plus = _card(
+        name="Uppercut+",
+        card_id="Uppercut",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=13,
+        upgrades=1,
+    )
+    before = _game(
+        floor=31,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=52,
+            max_hp=86,
+            block=5,
+            energy=2,
+            powers=[
+                Power("Strength", "Strength", 3),
+                Power("Double Tap", "Double Tap", 1),
+            ],
+        ),
+        hand=[uppercut_plus],
+        monsters=[_monster(name="Snake Plant", monster_id="SnakePlant", hp=70, damage=15)],
+        relics=[_relic("Necronomicon")],
+    )
+    actual = _game(
+        floor=31,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=52,
+            max_hp=86,
+            block=5,
+            energy=0,
+            powers=[Power("Strength", "Strength", 3)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Snake Plant",
+                monster_id="SnakePlant",
+                hp=6,
+                damage=15,
+                powers=[
+                    Power("Vulnerable", "Vulnerable", 6),
+                    Power("Weakened", "Weakened", 6),
+                ],
+            )
+        ],
+        relics=[_relic("Necronomicon")],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_necronomicon_ignores_prior_one_cost_attacks(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

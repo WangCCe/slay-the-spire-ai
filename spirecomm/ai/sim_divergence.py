@@ -1706,9 +1706,9 @@ def _attack_card_play_count(snapshot: Dict[str, Any], card) -> int:
     if not _is_attack_card(card):
         return play_count
     if _snapshot_power_amount(snapshot.get("player", {}), "Double Tap") > 0:
-        play_count += 1
+        play_count *= 2
     if _necronomicon_attack_replay(snapshot, card):
-        play_count += 1
+        play_count *= 2
     return play_count
 
 

@@ -79,6 +79,7 @@ class _TargetedLethalState:
     corruption_active: bool
     duplication_charges: int
     double_tap_charges: int
+    necronomicon_available: bool
     nunchaku_counter: Optional[int]
     panache_counter: int
     panache_damage: int
@@ -103,6 +104,7 @@ class _TargetedLethalState:
             self.corruption_active,
             self.duplication_charges,
             self.double_tap_charges,
+            self.necronomicon_available,
             self.nunchaku_counter,
             self.panache_counter,
             self.panache_damage,
@@ -1388,6 +1390,18 @@ class CombatEndingDetector:
     def _double_tap_charges_after_attack(self, double_tap_charges: int) -> int:
         return max(0, double_tap_charges - 1)
 
+    def _lethal_necronomicon_replays_attack(
+        self,
+        card: Card,
+        card_cost: int,
+        necronomicon_available: bool,
+    ) -> bool:
+        return (
+            necronomicon_available
+            and is_attack_card(card)
+            and card_cost >= 2
+        )
+
     def _rampage_scaling_per_play(self, card: Card) -> int:
         if self._base_card_name(card) != 'Rampage':
             return 0
@@ -1897,6 +1911,7 @@ class CombatEndingDetector:
             corruption_active=self._context_corruption_active(context),
             duplication_charges=self._context_duplication_charges(context),
             double_tap_charges=self._context_double_tap_charges(context),
+            necronomicon_available=self._context_has_relic(context, 'Necronomicon'),
             nunchaku_counter=self._context_relic_counter(context, 'Nunchaku'),
             panache_counter=self._context_panache_counter(context),
             panache_damage=self._context_panache_damage(context),
@@ -2261,6 +2276,7 @@ class CombatEndingDetector:
                         state.duplication_charges
                     )
                     next_double_tap_charges = state.double_tap_charges
+                    next_necronomicon_available = state.necronomicon_available
                     next_hp = tuple(state.hp)
                     next_block = tuple(state.block)
                     next_curl_up = tuple(state.curl_up)
@@ -2283,6 +2299,13 @@ class CombatEndingDetector:
                         next_double_tap_charges = self._double_tap_charges_after_attack(
                             next_double_tap_charges
                         )
+                        if self._lethal_necronomicon_replays_attack(
+                            card,
+                            cost,
+                            next_necronomicon_available,
+                        ):
+                            attack_repeats *= 2
+                            next_necronomicon_available = False
                         for _repeat_idx in range(attack_repeats):
                             repeat_damage = 0
                             for monster_idx, hp in enumerate(next_hp):
@@ -2409,6 +2432,7 @@ class CombatEndingDetector:
                                 player_block=next_player_block,
                                 duplication_charges=next_duplication_charges,
                                 double_tap_charges=next_double_tap_charges,
+                                necronomicon_available=next_necronomicon_available,
                                 nunchaku_counter=next_nunchaku_counter,
                                 panache_counter=next_panache_counter,
                             ),
@@ -2433,6 +2457,7 @@ class CombatEndingDetector:
                     upfront_cost = effective_card_cost(card, state.energy)
                     if upfront_cost > state.energy:
                         continue
+                    next_necronomicon_available = state.necronomicon_available
 
                     fiend_fire_exhaust_count = self._fiend_fire_exhaust_count_for_remaining_cards(
                         card,
@@ -2463,6 +2488,13 @@ class CombatEndingDetector:
                         next_double_tap_charges = self._double_tap_charges_after_attack(
                             next_double_tap_charges
                         )
+                        if self._lethal_necronomicon_replays_attack(
+                            card,
+                            upfront_cost,
+                            next_necronomicon_available,
+                        ):
+                            attack_repeats *= 2
+                            next_necronomicon_available = False
                         for _repeat_idx in range(attack_repeats):
                             current_hp = next_hp[monster_idx]
                             if current_hp <= 0:
@@ -2609,6 +2641,7 @@ class CombatEndingDetector:
                                 player_block=next_player_block,
                                 duplication_charges=next_duplication_charges,
                                 double_tap_charges=next_double_tap_charges,
+                                necronomicon_available=next_necronomicon_available,
                                 nunchaku_counter=next_nunchaku_counter,
                                 panache_counter=next_panache_counter,
                             ),

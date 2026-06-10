@@ -1095,6 +1095,33 @@ def test_simulation_duplication_power_attack_triggers_malleable_between_replayed
     assert result.monsters[0]["malleable_block"] == 5
 
 
+def test_simulate_card_play_double_tap_necronomicon_stacks_to_four_attack_plays():
+    clothesline = _card("Clothesline", "Clothesline", cost=2)
+    clothesline.damage = 12
+    target = _louse(current_hp=60)
+    context = _combat_context([clothesline], energy=2, monsters=[target])
+    context.strength = 3
+    context.game.player.powers = [
+        SimpleNamespace(power_id="Double Tap", power_name="Double Tap", amount=1)
+    ]
+    context.game.relics = [
+        SimpleNamespace(relic_id="Necronomicon", name="Necronomicon", counter=-1)
+    ]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        clothesline,
+        target=target,
+        target_index=0,
+        context=context,
+    )
+
+    assert result.monsters[0]["hp"] == 0
+    assert result.total_damage_dealt == 60
+    assert result.player_energy == 0
+    assert result.double_tap_charges == 0
+
+
 def test_simulation_spiker_thorns_spends_block_before_hp():
     strike = _card("Strike_R", "Strike", cost=1)
     strike.damage = 6
@@ -14517,6 +14544,36 @@ def test_lethal_detector_uses_upgraded_double_tap_for_two_attacks(monkeypatch):
         "strike-1",
         "strike-2",
     ]
+
+
+def test_lethal_detector_counts_double_tap_necronomicon_attack_replays(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "clothesline": {
+            "name": "Clothesline",
+            "description": "Deal 12 damage. Apply 2 Weak.",
+        }
+    }
+    loader._wiki_data = {}
+    monkeypatch.setattr(combat_ending, "game_data_loader", loader)
+    clothesline = _card("Clothesline", "Clothesline", cost=2)
+    clothesline.damage = 12
+    clothesline.uuid = "clothesline"
+    context = _combat_context([clothesline], energy=2, monsters=[_louse(current_hp=60)])
+    context.strength = 3
+    context.game.player.powers = [
+        SimpleNamespace(power_id="Double Tap", power_name="Double Tap", amount=1)
+    ]
+    context.game.relics = [
+        SimpleNamespace(relic_id="Necronomicon", name="Necronomicon", counter=-1)
+    ]
+
+    detector = CombatEndingDetector()
+
+    assert detector.can_kill_all(context) is True
+    sequence = detector.find_lethal_sequence(context)
+    assert [action.card.uuid for action in sequence] == ["clothesline"]
+    assert sequence[0].target_monster is context.monsters_alive[0]
 
 
 def test_lethal_detector_uses_double_tapped_dropkick_net_energy(monkeypatch):

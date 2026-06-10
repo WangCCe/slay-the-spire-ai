@@ -603,6 +603,14 @@ Status labels:
   subtracted the played card cost. The oracle also moves the visible draw-pile
   top card into hand when draw is not blocked, and the fast simulator records
   one `cards_drawn` event so beam scoring values the kill reward.
+- 2026-06-10: `Double Tap` and `Necronomicon` replay stacking is multiplicative
+  for 2-cost attacks. Fresh `Uppercut` rows showed live resolving four attack
+  copies when both effects were active, while the old diagnostic oracle counted
+  only three copies by adding the replay sources. The diagnostic oracle,
+  `FastCombatSimulator`, and `CombatEndingDetector` now share the one-card
+  replay count, spend the visible `Double Tap` charge, consume the one-use
+  `Necronomicon` availability, and include that availability in simulator and
+  lethal state keys.
 
 ## Backlog
 
@@ -626,6 +634,7 @@ Status labels:
   - Replayed single-target attack debuff ordering across live estimator
     surfaces that model `Double Tap`, `DuplicationPower`, or future
     `Necronomicon` value, especially Bash Vulnerable before the second copy's
-    damage.
+    damage. Replay count itself is now synced for the `Double Tap` plus
+    `Necronomicon` combination.
   - Monster lifecycle boundaries such as Slime split and Darkling revive.
   - Combat-exit boundaries beyond the Looter/Mugger reward sync.
