@@ -216,6 +216,56 @@ def test_duplication_power_attack_triggers_malleable_between_replayed_plays(
     assert not trace_path.exists()
 
 
+def test_writhing_mass_attack_damage_ignores_random_intent_change(
+    monkeypatch, tmp_path
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    strike = _card(
+        name="Strike",
+        card_id="Strike_R",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=6,
+    )
+    before = _game(
+        floor=39,
+        turn=1,
+        player=SimpleNamespace(current_hp=44, max_hp=80, block=0, energy=3),
+        hand=[strike],
+        monsters=[
+            _monster(
+                name="Writhing Mass",
+                monster_id="WrithingMass",
+                hp=160,
+                intent=Intent.ATTACK,
+                move_id=1,
+            )
+        ],
+    )
+    actual = _game(
+        floor=39,
+        turn=1,
+        player=SimpleNamespace(current_hp=44, max_hp=80, block=0, energy=2),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Writhing Mass",
+                monster_id="WrithingMass",
+                hp=154,
+                intent=Intent.ATTACK_DEFEND,
+                move_id=2,
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_entrench_doubles_current_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

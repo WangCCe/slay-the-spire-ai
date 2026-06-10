@@ -1620,6 +1620,7 @@ def _ignored_diff_keys(pending: Dict[str, Any], actual: Optional[Dict[str, Any]]
 
     ignored.update(_slime_split_ignored_diff_keys(pending, actual))
     ignored.update(_darkling_half_dead_animation_ignored_diff_keys(pending, actual))
+    ignored.update(_writhing_mass_random_intent_ignored_diff_keys(pending, actual))
 
     if action.get("type") == "EndTurnAction":
         ignored.add("player.energy")
@@ -1666,6 +1667,53 @@ def _monster_state_diff_keys(
         for field in ("hp", "block", "gone", "half_dead", "intent"):
             ignored.add(f"monsters[{index}].{field}")
     return ignored
+
+
+def _writhing_mass_random_intent_ignored_diff_keys(
+    pending: Dict[str, Any],
+    actual: Optional[Dict[str, Any]] = None,
+) -> set:
+    action = pending.get("action") or {}
+    if action.get("type") != "PlayCardAction":
+        return set()
+
+    actual = actual or {}
+    before = pending.get("before") or {}
+    expected = pending.get("expected") or {}
+    before_monsters = before.get("monsters") or []
+    expected_monsters = expected.get("monsters") or []
+    actual_monsters = actual.get("monsters") or []
+
+    ignored = set()
+    count = max(len(before_monsters), len(expected_monsters), len(actual_monsters))
+    for index in range(count):
+        before_monster = before_monsters[index] if index < len(before_monsters) else {}
+        expected_monster = (
+            expected_monsters[index] if index < len(expected_monsters) else {}
+        )
+        actual_monster = actual_monsters[index] if index < len(actual_monsters) else {}
+        if not _snapshot_monster_is_writhing_mass(before_monster):
+            continue
+        if not (
+            _snapshot_monster_active(before_monster)
+            and _snapshot_monster_active(expected_monster)
+            and _snapshot_monster_active(actual_monster)
+        ):
+            continue
+        before_hp = _to_int(before_monster.get("hp"))
+        expected_hp = _to_int(expected_monster.get("hp"))
+        actual_hp = _to_int(actual_monster.get("hp"))
+        if expected_hp != actual_hp or before_hp <= expected_hp:
+            continue
+        if expected_monster.get("intent") == actual_monster.get("intent"):
+            continue
+        ignored.add(f"monsters[{index}].intent")
+    return ignored
+
+
+def _snapshot_monster_is_writhing_mass(monster: Dict[str, Any]) -> bool:
+    identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
+    return "writhingmass" in identifiers
 
 
 def _player_state_diff_keys() -> set:
