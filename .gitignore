@@ -50,6 +50,8 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 .pytest-tmp/
+/.pytest-tmp-*/
+/.pytest_tmp_*/
 
 # Translations
 *.mo
@@ -135,3 +137,5 @@ dmypy.json
 /.serena/
 /.trae/
 /.tools/
+/.codex-tmp/
+/.tmp/
