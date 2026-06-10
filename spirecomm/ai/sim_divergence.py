@@ -2581,6 +2581,7 @@ def _apply_end_turn_player_damage(
         if _to_int(expected.get("player", {}).get("current_hp")) <= 0:
             return hp_loss_events
     _apply_end_turn_exhaust_effects(expected, before)
+    _clear_non_retained_monster_blocks_for_turn_start(expected)
     reflection_damage = _end_turn_attack_reflection_damage(before)
     for index, monster in enumerate(expected.get("monsters", []) or []):
         if _to_int(expected.get("player", {}).get("current_hp")) <= 0:
@@ -2891,6 +2892,16 @@ def _end_turn_attack_reflection_damage(snapshot: Dict[str, Any]) -> int:
         0,
         _snapshot_power_amount(player, "Flame Barrier"),
     )
+
+
+def _clear_non_retained_monster_blocks_for_turn_start(expected: Dict[str, Any]) -> None:
+    for monster in expected.get("monsters", []) or []:
+        if monster.get("gone") or monster.get("half_dead"):
+            monster["block"] = 0
+            continue
+        if _snapshot_has_power(monster, "Barricade"):
+            continue
+        monster["block"] = 0
 
 
 def _apply_mercury_hourglass_damage(

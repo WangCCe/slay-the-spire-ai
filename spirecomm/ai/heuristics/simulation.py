@@ -669,6 +669,11 @@ class SimulationState:
                 'thorns': self._non_negative_int(
                     context.thorns_stacks.get(i, 0)
                 ),  # Thorns/反伤 stacks (by index)
+                'retains_block': self._has_monster_power_any(
+                    monster,
+                    'Barricade',
+                    'BarricadePower',
+                ),
                 'artifact': self._get_monster_power_amount(monster, 'Artifact'),
                 'move_base_damage': self._non_negative_int(
                     getattr(monster, 'move_base_damage', 0)
@@ -1107,6 +1112,7 @@ class SimulationState:
                 m['frail'],
                 m.get('poison', 0),
                 m.get('thorns', 0),
+                bool(m.get('retains_block', False)),
                 m.get('mode_shift', 0),
                 m.get('artifact', 0),
                 m.get('strength', 0),
@@ -4980,6 +4986,8 @@ class FastCombatSimulator:
                 or not self._monster_intends_attack(monster)
             ):
                 continue
+            if not monster.get('retains_block', False):
+                monster['block'] = 0
             for attack_damage in self._estimate_monster_incoming_damage_events(
                 monster,
                 getattr(projected, 'player_vulnerable_added', 0),

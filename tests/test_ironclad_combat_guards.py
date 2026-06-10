@@ -14927,8 +14927,8 @@ def test_thorns_triggers_on_killing_attack_hit():
     assert result.player_hp == 77
 
 
-def test_player_thorns_score_spends_monster_block_before_hp():
-    monster = _louse(current_hp=1)
+def test_player_thorns_score_clears_non_barricade_monster_block_before_reflection():
+    monster = _louse(current_hp=8)
     monster.block = 99
     context = _combat_context([], energy=0, monsters=[monster])
     context.game.player.powers = [SimpleNamespace(power_name="Thorns", amount=3)]
@@ -14936,7 +14936,7 @@ def test_player_thorns_score_spends_monster_block_before_hp():
 
     reflected = FastCombatSimulator(SynergyCardEvaluator())._estimate_player_thorns_damage(state)
 
-    assert reflected == 0
+    assert reflected == 3
 
 
 def test_player_thorns_score_ignores_hit_that_kills_player():

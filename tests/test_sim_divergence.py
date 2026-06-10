@@ -9285,6 +9285,66 @@ def test_end_turn_thorns_spends_monster_block_before_hp(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_end_turn_flame_barrier_clears_non_barricade_monster_block_before_reflection(
+    monkeypatch,
+    tmp_path,
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=10,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=12,
+            max_hp=80,
+            block=17,
+            energy=0,
+            powers=[Power("Flame Barrier", "Flame Barrier", 4)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Jaw Worm",
+                monster_id="JawWorm",
+                hp=10,
+                block=6,
+                damage=14,
+                intent=Intent.ATTACK,
+                powers=[Power("Strength", "Strength", 3)],
+            ),
+        ],
+    )
+    actual = _game(
+        floor=10,
+        turn=4,
+        player=SimpleNamespace(
+            current_hp=12,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Flame Barrier", "Flame Barrier", 4)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Jaw Worm",
+                monster_id="JawWorm",
+                hp=6,
+                block=0,
+                damage=-1,
+                intent=Intent.DEFEND_BUFF,
+                powers=[Power("Strength", "Strength", 3)],
+            ),
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_lethal_attack_does_not_trigger_player_thorns(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
