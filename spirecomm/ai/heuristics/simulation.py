@@ -4972,19 +4972,34 @@ class FastCombatSimulator:
         if player_thorns <= 0:
             return 0
 
+        projected = state.clone()
         total_damage = 0
-        for monster in state.monsters:
+        for monster in projected.monsters:
             if (
                 not self._is_live_monster_state(monster)
                 or not self._monster_intends_attack(monster)
             ):
                 continue
-            hits = self._positive_monster_hits(monster)
-            reflected_damage = player_thorns * hits
-            block = max(0, coerce_int(monster.get('block', 0), 0))
-            effective_hp = max(0, coerce_int(monster.get('hp', 0), 0))
-            hp_damage = max(0, reflected_damage - block)
-            total_damage += min(hp_damage, effective_hp)
+            for attack_damage in self._estimate_monster_incoming_damage_events(
+                monster,
+                getattr(projected, 'player_vulnerable_added', 0),
+                getattr(projected, 'player_intangible', 0),
+            ):
+                self._damage_player(projected, attack_damage, trigger_rupture=False)
+                if projected.player_hp <= 0:
+                    return total_damage
+
+                block = max(0, coerce_int(monster.get('block', 0), 0))
+                blocked = min(block, player_thorns)
+                monster['block'] = block - blocked
+                hp_damage = min(
+                    max(0, player_thorns - blocked),
+                    max(0, coerce_int(monster.get('hp', 0), 0)),
+                )
+                monster['hp'] = max(0, coerce_int(monster.get('hp', 0), 0) - hp_damage)
+                total_damage += hp_damage
+                if not self._is_live_monster_state(monster):
+                    break
         return total_damage
 
     def _get_enemy_lookahead_depth(self, state: SimulationState, context: DecisionContext, max_depth: int = 2) -> int:

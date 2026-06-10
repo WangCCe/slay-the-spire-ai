@@ -9239,6 +9239,69 @@ def test_end_turn_thorns_spends_monster_block_before_hp(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_end_turn_lethal_attack_does_not_trigger_player_thorns(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    burn_plus = _card(
+        name="Burn+",
+        card_id="Burn",
+        card_type=CardType.STATUS,
+        cost=0,
+        damage=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=16,
+        turn=10,
+        player=SimpleNamespace(
+            current_hp=5,
+            max_hp=80,
+            block=9,
+            energy=0,
+            powers=[Power("Thorns", "Thorns", 3)],
+        ),
+        hand=[burn_plus, burn_plus],
+        monsters=[
+            _monster(
+                name="Hexaghost",
+                monster_id="Hexaghost",
+                hp=54,
+                damage=8,
+                hits=1,
+                intent=Intent.ATTACK_DEBUFF,
+            )
+        ],
+    )
+    actual = _game(
+        floor=16,
+        turn=11,
+        player=SimpleNamespace(
+            current_hp=0,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Thorns", "Thorns", 3)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Hexaghost",
+                monster_id="Hexaghost",
+                hp=54,
+                damage=8,
+                hits=1,
+                intent=Intent.ATTACK_DEBUFF,
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_thorns_killed_monster_still_deals_current_attack_damage(
     monkeypatch,
     tmp_path,

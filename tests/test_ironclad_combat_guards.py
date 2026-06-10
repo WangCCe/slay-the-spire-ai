@@ -14939,6 +14939,23 @@ def test_player_thorns_score_spends_monster_block_before_hp():
     assert reflected == 0
 
 
+def test_player_thorns_score_ignores_hit_that_kills_player():
+    monster = _louse(current_hp=8)
+    monster.move_adjusted_damage = 8
+    monster.move_hits = 1
+    context = _combat_context([], energy=0, monsters=[monster])
+    context.game.current_hp = 5
+    context.game.player.block = 1
+    context.game.player.powers = [SimpleNamespace(power_name="Thorns", amount=3)]
+    context.player_hp = 5
+    context.incoming_damage = 8
+    state = SimulationState(context)
+
+    reflected = FastCombatSimulator(SynergyCardEvaluator())._estimate_player_thorns_damage(state)
+
+    assert reflected == 0
+
+
 def test_flame_barrier_power_scores_as_current_attacker_reflection():
     context = _combat_context([], energy=0, monsters=[_louse(current_hp=8)])
     context.game.player.powers = [SimpleNamespace(power_name="Flame Barrier", amount=6)]

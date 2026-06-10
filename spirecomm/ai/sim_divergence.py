@@ -2562,11 +2562,17 @@ def _apply_end_turn_player_damage(
     hp_loss_events = 0
     for amount in _end_turn_status_hp_loss_events(before):
         hp_loss_events += _lose_player_hp(expected, amount)
+        if _to_int(expected.get("player", {}).get("current_hp")) <= 0:
+            return hp_loss_events
     for amount in _end_turn_status_damage_events(before):
         hp_loss_events += _damage_player(expected, amount)
+        if _to_int(expected.get("player", {}).get("current_hp")) <= 0:
+            return hp_loss_events
     _apply_end_turn_exhaust_effects(expected, before)
     reflection_damage = _end_turn_attack_reflection_damage(before)
     for index, monster in enumerate(expected.get("monsters", []) or []):
+        if _to_int(expected.get("player", {}).get("current_hp")) <= 0:
+            break
         explosion_damage = exploder_explosion_damage(monster)
         if explosion_damage > 0:
             hp_loss_events += _damage_player(expected, explosion_damage)
@@ -2583,9 +2589,12 @@ def _apply_end_turn_player_damage(
         for _ in range(_monster_attack_hits(monster)):
             hp_before = _to_int(expected.get("player", {}).get("current_hp"))
             hp_loss_events += _damage_player(expected, damage)
-            hp_lost = max(0, hp_before - _to_int(expected.get("player", {}).get("current_hp")))
+            hp_after = _to_int(expected.get("player", {}).get("current_hp"))
+            hp_lost = max(0, hp_before - hp_after)
             if _is_shelled_parasite_attack_buff(monster):
                 _heal_monster(expected, index, hp_lost)
+            if hp_after <= 0:
+                break
             if reflection_damage > 0:
                 _apply_direct_monster_damage(
                     expected,
