@@ -45,7 +45,7 @@ Status labels:
 | Target-side attack modifiers | Weak, Vulnerable, Paper Phrog divergence tests | synced | synced | synced | synced | synced for Slime split survival guard | Generic scoring that does not estimate player attack damage is `n/a`. |
 | Minimum attack HP damage | The Boot Pummel, Reaper, Anger, and Strike-through-block clean divergence rows | synced for per-hit and after-block lethal paths | synced for attack-hit damage after block | synced for scalar per-hit fallback estimates | n/a unless timing adds The Boot-specific scalar shortcuts | no direct RL guard/reward surface found in this round | Watch for future damage shortcuts that skip the shared simulator or lethal detector. |
 | End-turn relic damage | Fresh Stone Calendar floor-16 EndTurn row with counter `7` dealing 52 AOE to Guardian | n/a unless lethal search starts considering end-turn kills | synced for diagnostic end-turn projection and fast outcome projection | n/a unless fallback starts scoring EndTurn as a damaging action directly | n/a unless timing starts projecting end-turn relic damage separately | no direct RL guard/reward surface found in this round | Recheck only if another estimator adds explicit EndTurn kill or next-turn threat shortcuts. |
-| Monster lifecycle states | Darkling half-dead/revive plus Collector summon/reorder divergence evidence | n/a | synced for Darkling revive, death split, and concrete current-move summons without negative lifecycle damage score | synced | synced for SAFE timing bonus | synced for v2 state alive flag and reward exit handling | Random/generic summons still need explicit live evidence and concrete minion data before materialization. |
+| Monster lifecycle states | Darkling half-dead/revive plus Collector summon/reorder divergence evidence | n/a | synced for Darkling revive, death split, and concrete current-move summons without negative lifecycle damage score | synced | synced for SAFE timing bonus | synced for v2 state alive flag and reward exit handling | Diagnostic oracle and beam/fast sim cover database-backed current-move summons; random or unknown summon lines still need explicit live evidence and concrete minion data before materialization. |
 | Combat escape settlement | Looter/Mugger escape and Smoke Bomb divergence evidence | n/a | synced for Smoke Bomb potion escape and Looter/Mugger end-turn escape projection without kill/lethal credit | n/a | n/a | synced for in-combat and combat-exit reward | Other escape monsters should be added only with explicit intent/move evidence. |
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
 | Countdown monster self-detonation | Fresh floor-46 EndTurnAction row: two Exploders with `Explosive=1` dealt blockable 30 damage each, died, and killed the player while the old sim expected no damage | n/a unless lethal search starts projecting enemy self-detonation | synced for diagnostic end-turn projection, fast incoming estimates, and enemy lookahead through shared Exploder countdown helper | synced for DecisionContext threat/targeting and heuristic incoming fallback | n/a unless timing starts modeling Exploder countdown separately | synced for RL incoming and event-by-event end-turn survival damage after block | Recheck future reward/state encoders only if live evidence shows they duplicate Exploder countdown risk. |
@@ -64,6 +64,15 @@ Status labels:
 
 ## Confirmed Sync Work
 
+- 2026-06-10: The fresh 5-game clean batch produced one post-cutoff
+  divergence: The Collector ended turn on its Spawn move, live inserted two
+  Torch Heads before the boss, while `sim_divergence.py` kept the old one-boss
+  roster. `FastCombatSimulator` already had focused coverage for concrete
+  current-move summons, so this round synced the diagnostic oracle back to that
+  database-backed mechanism. The oracle now snapshots monster `move_id`,
+  materializes current-move summons at end turn, and ignores only the random HP
+  of newly summoned minions while still requiring the roster transition to be
+  represented.
 - 2026-06-10: Havoc empty-draw discard reshuffle is now classified as a
   diagnostic oracle boundary rather than a deterministic mechanics gap. The
   fresh floor-28 Cultist row had `Havoc` with an empty draw pile and non-empty

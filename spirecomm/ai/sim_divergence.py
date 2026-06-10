@@ -17,6 +17,7 @@ from spirecomm.ai.heuristics.card_upgrades import (
     perfected_strike_bonus_per_strike,
 )
 from spirecomm.ai.incoming_damage import exploder_explosion_damage
+from spirecomm.data.loader import game_data_loader
 
 
 TRACE_ENV = "STS_SIM_DIVERGENCE_TRACE_FILE"
@@ -561,6 +562,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         _prepare_monster_block_for_mercury_hourglass(expected, before)
         _apply_mercury_hourglass_damage(expected, before)
         _apply_stone_calendar_damage(expected, before)
+        _apply_end_turn_summons(expected, before)
 
     expected.pop("_player_vulnerable_added_during_end_turn", None)
     return expected
@@ -923,6 +925,225 @@ def _apply_darkling_end_turn_revives(
         monster["half_dead"] = False
 
 
+def _apply_end_turn_summons(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> None:
+    if _to_int(expected.get("player", {}).get("current_hp")) <= 0:
+        return
+
+    expected_monsters = expected.get("monsters", []) or []
+    before_monsters = before.get("monsters", []) or []
+    new_monsters: List[Dict[str, Any]] = []
+    changed = False
+
+    for index, monster in enumerate(expected_monsters):
+        before_monster = before_monsters[index] if index < len(before_monsters) else monster
+        summon_names = _end_turn_summon_names(before_monster)
+        if summon_names and _snapshot_monster_active(monster):
+            open_slots = _end_turn_summon_open_slots(expected_monsters, before_monster, summon_names)
+            for child_index, child_name in enumerate(summon_names[:open_slots]):
+                summoned = _summoned_monster_snapshot(child_name, before_monster, child_index)
+                if summoned is None:
+                    continue
+                new_monsters.append(summoned)
+                changed = True
+        new_monsters.append(monster)
+
+    if changed:
+        expected["monsters"] = new_monsters
+
+
+def _end_turn_summon_names(monster: Dict[str, Any]) -> List[str]:
+    if not _snapshot_monster_active(monster):
+        return []
+
+    move = _current_summon_move(monster)
+    if not move:
+        return []
+
+    raw_summons = move.get("summons")
+    if isinstance(raw_summons, str):
+        summon_names = [raw_summons]
+    elif isinstance(raw_summons, list):
+        summon_names = [name for name in raw_summons if isinstance(name, str)]
+    else:
+        summon_names = []
+
+    summon_names = [_canonical_monster_data_name(name) for name in summon_names]
+    summon_names = [name for name in summon_names if name]
+    if not summon_names:
+        return []
+
+    count = _summon_count_from_move(move, len(summon_names))
+    if count <= 0:
+        return []
+    if len(summon_names) == 1 and count > 1:
+        summon_names = summon_names * count
+    return summon_names[:count]
+
+
+def _current_summon_move(monster: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    move_id = _to_int(monster.get("move_id"), default=None)
+    if move_id is None:
+        return None
+
+    for monster_name in (monster.get("name"), monster.get("id")):
+        if not monster_name:
+            continue
+        try:
+            moves = game_data_loader.get_monster_moves(monster_name)
+        except Exception:
+            continue
+        for move in moves:
+            if "summons" not in move:
+                continue
+            if _to_int(move.get("move_id"), default=None) == move_id:
+                return move
+    return None
+
+
+def _canonical_monster_data_name(monster_name: str) -> Optional[str]:
+    try:
+        data = game_data_loader.get_enhanced_monster_data(monster_name)
+    except Exception:
+        data = None
+    if not data:
+        return None
+    return _safe_str(data.get("name") or monster_name)
+
+
+def _summon_count_from_move(move: Dict[str, Any], default_count: int) -> int:
+    count = move.get("summon_count")
+    if isinstance(count, dict):
+        values = [
+            _to_int(value, default=None)
+            for value in count.values()
+        ]
+        values = [value for value in values if value is not None]
+        return max(values, default=default_count)
+    return max(0, _to_int(count, default_count))
+
+
+def _end_turn_summon_open_slots(
+    monsters: List[Dict[str, Any]],
+    summoner: Dict[str, Any],
+    summon_names: List[str],
+) -> int:
+    max_minions = _summoner_max_minions(summoner, summon_names)
+    summon_identifiers = {_normalize(name) for name in summon_names}
+    live_minions = sum(
+        1
+        for monster in monsters
+        if (
+            _snapshot_monster_active(monster)
+            and (
+                _normalize(monster.get("name")) in summon_identifiers
+                or _normalize(monster.get("id")) in summon_identifiers
+            )
+        )
+    )
+    return max(0, max_minions - live_minions)
+
+
+def _summoner_max_minions(summoner: Dict[str, Any], summon_names: List[str]) -> int:
+    data = None
+    for monster_name in (summoner.get("name"), summoner.get("id")):
+        if not monster_name:
+            continue
+        try:
+            data = game_data_loader.get_enhanced_monster_data(monster_name)
+        except Exception:
+            data = None
+        if data:
+            break
+    mechanics = data.get("special_mechanics", {}) if data else {}
+    return max(
+        len(summon_names),
+        _to_int(mechanics.get("max_minions"), default=len(summon_names)),
+    )
+
+
+def _summoned_monster_snapshot(
+    child_name: str,
+    parent: Dict[str, Any],
+    child_index: int,
+) -> Optional[Dict[str, Any]]:
+    try:
+        data = game_data_loader.get_enhanced_monster_data(child_name)
+    except Exception:
+        data = None
+    if not data:
+        return None
+
+    hp = _summoned_monster_hp(data)
+    if hp <= 0:
+        return None
+
+    move = _first_monster_move(data)
+    damage = _move_damage(move)
+    hits = max(1, _to_int((move or {}).get("hits"), default=1))
+    move_id = _to_int((move or {}).get("move_id"), default=0)
+    intent = _safe_str((move or {}).get("intent") or "UNKNOWN")
+    if intent and not intent.startswith("Intent."):
+        intent = f"Intent.{intent}"
+
+    return {
+        "name": _safe_str(data.get("name") or child_name),
+        "id": _safe_str(data.get("monster_id") or child_name),
+        "hp": hp,
+        "max_hp": hp,
+        "block": 0,
+        "intent": intent,
+        "move_damage": damage,
+        "move_hits": hits,
+        "move_id": move_id,
+        "gone": False,
+        "half_dead": False,
+        "powers": [{"id": "Minion", "name": "Minion", "amount": -1}],
+        "summoned_by": _safe_str(parent.get("name")),
+        "summon_child_index": child_index,
+    }
+
+
+def _summoned_monster_hp(data: Dict[str, Any]) -> int:
+    hp_ranges = data.get("hp_ranges", {}) if data else {}
+    for key in ("normal", "base"):
+        hp_range = hp_ranges.get(key)
+        if isinstance(hp_range, dict):
+            return max(
+                0,
+                _to_int(hp_range.get("max"), default=0),
+                _to_int(hp_range.get("min"), default=0),
+            )
+    for hp_range in hp_ranges.values():
+        if isinstance(hp_range, dict):
+            return max(
+                0,
+                _to_int(hp_range.get("max"), default=0),
+                _to_int(hp_range.get("min"), default=0),
+            )
+    return 0
+
+
+def _first_monster_move(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    moves = data.get("moves", []) if data else []
+    if not isinstance(moves, list):
+        return None
+    return next((move for move in moves if isinstance(move, dict)), None)
+
+
+def _move_damage(move: Optional[Dict[str, Any]]) -> int:
+    if not isinstance(move, dict):
+        return 0
+    damage = move.get("damage", 0)
+    if isinstance(damage, dict):
+        values = [_to_int(value, default=None) for value in damage.values()]
+        values = [value for value in values if value is not None]
+        return max(values, default=0)
+    return max(0, _to_int(damage, default=0))
+
+
 def _darkling_revival_ready(monster: Dict[str, Any]) -> bool:
     return (
         _darkling_half_dead(monster)
@@ -1250,6 +1471,7 @@ def _ignored_diff_keys(pending: Dict[str, Any], actual: Optional[Dict[str, Any]]
 
     if action.get("type") == "EndTurnAction":
         ignored.add("player.energy")
+        ignored.update(_end_turn_summon_ignored_diff_keys(pending))
         monster_count = _monster_diff_count(pending, actual)
         mystic_support_turn = _has_mystic_support_turn(pending.get("before") or {})
         for index in range(monster_count):
@@ -1258,6 +1480,16 @@ def _ignored_diff_keys(pending: Dict[str, Any], actual: Optional[Dict[str, Any]]
             if mystic_support_turn:
                 ignored.add(f"monsters[{index}].hp")
         return ignored
+    return ignored
+
+
+def _end_turn_summon_ignored_diff_keys(pending: Dict[str, Any]) -> set:
+    expected = pending.get("expected") or {}
+    ignored = set()
+    for index, monster in enumerate(expected.get("monsters", []) or []):
+        if not monster.get("summoned_by"):
+            continue
+        ignored.add(f"monsters[{index}].hp")
     return ignored
 
 
@@ -1797,6 +2029,7 @@ def _monster_summary(monster) -> Dict[str, Any]:
         "intent": _safe_str(getattr(monster, "intent", "")),
         "move_damage": _to_int(getattr(monster, "move_adjusted_damage", None)),
         "move_hits": _to_int(getattr(monster, "move_hits", None), default=1),
+        "move_id": _to_int(getattr(monster, "move_id", None), default=-1),
         "gone": bool(getattr(monster, "is_gone", False)),
         "half_dead": bool(getattr(monster, "half_dead", False)),
         "powers": [_power_summary(power) for power in _safe_iterable(getattr(monster, "powers", []))],

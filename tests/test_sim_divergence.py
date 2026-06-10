@@ -58,6 +58,7 @@ def _monster(
     intent=Intent.ATTACK,
     index=0,
     powers=None,
+    move_id=0,
 ):
     return SimpleNamespace(
         name=name,
@@ -66,6 +67,7 @@ def _monster(
         max_hp=max(max_hp if max_hp is not None else hp, 1),
         block=block,
         intent=intent,
+        move_id=move_id,
         move_adjusted_damage=damage,
         move_hits=hits,
         monster_index=index,
@@ -591,6 +593,73 @@ def test_fairy_potion_revives_after_lethal_end_turn_attack(monkeypatch, tmp_path
         hand=[],
         potions=[],
         monsters=[_monster(name="Hexaghost", monster_id="Hexaghost", hp=69, damage=7, hits=2)],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_collector_spawn_end_turn_adds_torch_heads_without_monster_divergence(
+    monkeypatch, tmp_path
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=33,
+        turn=1,
+        act=2,
+        player=SimpleNamespace(current_hp=69, max_hp=80, block=5, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="The Collector",
+                monster_id="TheCollector",
+                hp=256,
+                max_hp=282,
+                damage=-1,
+                intent=Intent.UNKNOWN,
+                move_id=0,
+            )
+        ],
+    )
+    actual = _game(
+        floor=33,
+        turn=2,
+        act=2,
+        player=SimpleNamespace(current_hp=69, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Torch Head",
+                monster_id="TorchHead",
+                hp=38,
+                max_hp=38,
+                damage=7,
+                intent=Intent.ATTACK,
+                powers=[Power("Minion", "Minion", -1)],
+            ),
+            _monster(
+                name="Torch Head",
+                monster_id="TorchHead",
+                hp=38,
+                max_hp=38,
+                damage=7,
+                intent=Intent.ATTACK,
+                powers=[Power("Minion", "Minion", -1)],
+            ),
+            _monster(
+                name="The Collector",
+                monster_id="TheCollector",
+                hp=256,
+                max_hp=282,
+                damage=-1,
+                intent=Intent.DEFEND_BUFF,
+                move_id=2,
+            ),
+        ],
     )
 
     assert record_expected_action(EndTurnAction(), before) is True
