@@ -2700,10 +2700,17 @@ def _rage_attack_block(player: Dict[str, Any]) -> int:
 
 
 def _ornamental_fan_attack_block(snapshot: Dict[str, Any]) -> int:
-    if not _snapshot_has_relic(snapshot, "Ornamental Fan"):
-        return 0
-    attack_count_after_play = _attacks_played_this_turn + 1
-    return 4 if attack_count_after_play > 0 and attack_count_after_play % 3 == 0 else 0
+    counter = _snapshot_relic_counter(snapshot, "Ornamental Fan")
+    if counter is None:
+        if not _snapshot_has_relic(snapshot, "Ornamental Fan"):
+            return 0
+        attack_count_before_play = _attacks_played_this_turn
+    else:
+        attack_count_before_play = max(_attacks_played_this_turn, counter, 0)
+    attack_count_after_play = attack_count_before_play + 1
+    if attack_count_after_play > 0 and attack_count_after_play % 3 == 0:
+        return 4
+    return 0
 
 
 def _nunchaku_energy_gain(snapshot: Dict[str, Any], card) -> int:

@@ -3227,6 +3227,34 @@ def test_ornamental_fan_adds_block_on_every_third_attack(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_ornamental_fan_uses_live_relic_counter_for_next_attack(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    relics = [_relic("Ornamental Fan", counter=2)]
+    before = _game(
+        floor=18,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=1),
+        hand=[_card(name="Strike", card_id="Strike_R", damage=6)],
+        monsters=[_monster(name="Shelled Parasite", monster_id="ShelledParasite", hp=60, damage=5, hits=2)],
+        relics=relics,
+    )
+    actual = _game(
+        floor=18,
+        turn=1,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=4, energy=0),
+        hand=[],
+        monsters=[_monster(name="Shelled Parasite", monster_id="ShelledParasite", hp=54, damage=5, hits=2)],
+        relics=[_relic("Ornamental Fan", counter=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_ornamental_fan_attack_count_resets_each_turn(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
