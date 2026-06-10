@@ -631,6 +631,15 @@ Status labels:
   oracle, `FastCombatSimulator`, `CombatEndingDetector`, Ironclad fallback
   block scoring, and RL survival/Havoc guard estimates now stop counting the
   blocked top attack's damage or attack-play triggers such as Ornamental Fan.
+- 2026-06-10: `Distilled Chaos` / `play_top_cards` potion usage with an empty
+  visible draw pile and non-empty discard pile is now classified as a stochastic
+  diagnostic boundary. Fresh clean evidence showed live shuffling the discard
+  pile, playing unobserved top cards, ending combat, and triggering `Burning
+  Blood`; the trace does not expose the shuffle order, so the oracle now ignores
+  player and monster state diffs for this boundary instead of pretending to
+  know which cards were played. Deterministic visible-draw `Distilled Chaos`
+  rows remain modeled; no live estimator code changed in this oracle-quality
+  round.
 
 ## Backlog
 
@@ -645,9 +654,10 @@ Status labels:
   - Other dynamic base damage beyond the Mind Blast combat estimator and RL
     survival surfaces already covered above.
   - Havoc random-target boundaries, `Distilled Chaos` / top-card trace
-    completeness, and any remaining non-Juggernaut Feel No Pain block value
-    outside the simulator, lethal, Ironclad fallback, timing fallback, RL
-    survival, and RL shared block-candidate surfaces already covered above.
+    completeness beyond the now-covered empty-draw stochastic boundary, and any
+    remaining non-Juggernaut Feel No Pain block value outside the simulator,
+    lethal, Ironclad fallback, timing fallback, RL survival, and RL shared
+    block-candidate surfaces already covered above.
   - Calipers retained block valuation across beam/outcome scoring and any
     multi-turn lookahead surfaces that can safely model post-attack block
     without changing raw future-damage semantics by accident.

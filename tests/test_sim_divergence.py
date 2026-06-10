@@ -3613,6 +3613,118 @@ def test_distilled_chaos_plays_visible_top_draw_cards(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_distilled_chaos_empty_draw_pile_discard_shuffle_is_not_divergence(
+    monkeypatch,
+    tmp_path,
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    potion = _potion(
+        "Distilled Chaos",
+        potion_id="DistilledChaos",
+        effect_type="play_top_cards",
+        effect_value=3,
+        target_type="self",
+    )
+    before = _game(
+        floor=14,
+        turn=4,
+        room_type="MonsterRoom",
+        player=SimpleNamespace(
+            current_hp=29,
+            max_hp=85,
+            block=5,
+            energy=2,
+            powers=[
+                Power("Demon Form", "Demon Form", 3),
+                Power("Strength", "Strength", 9),
+                Power("Weakened", "Weakened", 1),
+            ],
+        ),
+        hand=[
+            _card(
+                name="True Grit+",
+                card_id="True Grit",
+                card_type=CardType.SKILL,
+                cost=1,
+                damage=0,
+                block=9,
+                upgrades=1,
+            ),
+            _card(
+                name="Defend",
+                card_id="Defend_R",
+                card_type=CardType.SKILL,
+                cost=1,
+                damage=0,
+                block=5,
+            ),
+            _card(name="Strike", card_id="Strike_R", damage=6),
+            _card(name="Strike", card_id="Strike_R", damage=6),
+        ],
+        draw_pile=[],
+        discard_pile=[
+            _card(name="Heavy Blade", card_id="Heavy Blade", cost=2, damage=14),
+            _card(name="Cleave", card_id="Cleave", cost=1, damage=8),
+            _card(
+                name="Battle Trance+",
+                card_id="Battle Trance",
+                card_type=CardType.SKILL,
+                cost=0,
+                damage=0,
+                upgrades=1,
+            ),
+            _card(
+                name="Defend",
+                card_id="Defend_R",
+                card_type=CardType.SKILL,
+                cost=1,
+                damage=0,
+                block=5,
+            ),
+            _card(name="Bash", card_id="Bash", cost=2, damage=8),
+            _card(name="Uppercut+", card_id="Uppercut", cost=2, damage=13, upgrades=1),
+        ],
+        monsters=[
+            _monster(
+                name="Acid Slime (M)",
+                monster_id="AcidSlime_M",
+                hp=11,
+                max_hp=11,
+                damage=7,
+                intent=Intent.ATTACK_DEBUFF,
+            ),
+        ],
+        relics=[
+            _relic("Burning Blood", counter=-1),
+            _relic("Gremlin Horn", counter=-1),
+        ],
+        potions=[potion],
+    )
+    actual = _game(
+        floor=14,
+        turn=0,
+        room_type="MonsterRoom",
+        in_combat=False,
+        player=SimpleNamespace(current_hp=35, max_hp=85, block=0, energy=0),
+        hand=[],
+        draw_pile=[],
+        discard_pile=[],
+        monsters=[],
+        relics=[
+            _relic("Burning Blood", counter=-1),
+            _relic("Gremlin Horn", counter=-1),
+        ],
+        potions=[],
+    )
+
+    assert record_expected_action(PotionAction(use=True, potion=potion), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_distilled_chaos_top_attack_random_target_multi_monster_is_not_divergence(
     monkeypatch,
     tmp_path,

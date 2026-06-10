@@ -1234,6 +1234,10 @@ def _ignored_diff_keys(pending: Dict[str, Any], actual: Optional[Dict[str, Any]]
         ignored.update(_monster_state_diff_keys(pending, actual))
         ignored.update(_player_state_diff_keys())
         return ignored
+    if _play_top_cards_empty_draw_discard_shuffle_boundary(pending):
+        ignored.update(_monster_state_diff_keys(pending, actual))
+        ignored.update(_player_state_diff_keys())
+        return ignored
     if _havoc_random_top_card_target_boundary(pending):
         ignored.update(_monster_state_diff_keys(pending, actual))
         return ignored
@@ -1479,6 +1483,29 @@ def _havoc_empty_draw_discard_shuffle_boundary(pending: Dict[str, Any]) -> bool:
     if action.get("type") != "PlayCardAction":
         return False
     if _snapshot_known_card_name(action.get("card") or {}, HAVOC_CARDS) != "Havoc":
+        return False
+
+    before = pending.get("before") or {}
+    draw_pile = before.get("draw_pile") or []
+    if isinstance(draw_pile, list) and draw_pile:
+        return False
+    if _to_int(before.get("draw_pile_count")) > 0:
+        return False
+
+    discard_pile = before.get("discard_pile") or []
+    if isinstance(discard_pile, list) and discard_pile:
+        return True
+    return _to_int(before.get("discard_pile_count")) > 0
+
+
+def _play_top_cards_empty_draw_discard_shuffle_boundary(
+    pending: Dict[str, Any],
+) -> bool:
+    action = pending.get("action") or {}
+    if action.get("type") != "PotionAction":
+        return False
+    potion = action.get("potion") or {}
+    if _normalize(_potion_attr(potion, "effect_type", "")) != "playtopcards":
         return False
 
     before = pending.get("before") or {}
