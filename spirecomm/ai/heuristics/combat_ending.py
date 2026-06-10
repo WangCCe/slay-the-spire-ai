@@ -37,7 +37,12 @@ from .card_costs import (
     whirlwind_damage,
     x_effect_energy,
 )
-from .card_types import card_requires_target, card_type_name, is_attack_card
+from .card_types import (
+    card_play_conditions_allow,
+    card_requires_target,
+    card_type_name,
+    is_attack_card,
+)
 from .card_hits import (
     fiend_fire_exhaust_count as context_fiend_fire_exhaust_count,
     fixed_attack_hit_count,
@@ -838,11 +843,33 @@ class CombatEndingDetector:
                     return top_card
         return None
 
+    def _remaining_hand_cards_after_effect_source(
+        self,
+        context: DecisionContext,
+        source_card: Card,
+        remaining_cards: Optional[Sequence[Card]] = None,
+    ) -> Tuple[Card, ...]:
+        hand_cards = remaining_cards
+        if hand_cards is None:
+            game = getattr(context, 'game', None)
+            hand_cards = getattr(game, 'hand', None)
+            if not hand_cards:
+                hand_cards = getattr(context, 'playable_cards', []) or []
+
+        source_key = card_play_key(source_card)
+        return tuple(
+            hand_card
+            for hand_card in hand_cards or ()
+            if hand_card is not source_card
+            and (source_key is None or card_play_key(hand_card) != source_key)
+        )
+
     def _havoc_top_attack_card(
         self,
         card: Card,
         context: DecisionContext,
         consumed: int = 0,
+        remaining_hand_cards: Optional[Sequence[Card]] = None,
     ) -> Optional[Card]:
         if self._base_card_name(card) != 'Havoc':
             return None
@@ -851,6 +878,13 @@ class CombatEndingDetector:
 
         top_card = self._draw_pile_top_card_for_havoc(context, consumed)
         if top_card is None or not is_attack_card(top_card):
+            return None
+        if remaining_hand_cards is None:
+            remaining_hand_cards = self._remaining_hand_cards_after_effect_source(
+                context,
+                card,
+            )
+        if not card_play_conditions_allow(top_card, remaining_hand_cards):
             return None
         return top_card
 
@@ -2263,6 +2297,7 @@ class CombatEndingDetector:
                 havoc_candidate = self._havoc_top_attack_lethal_candidate(
                     card_pos,
                     card,
+                    remaining_cards,
                     context,
                     state,
                 )
@@ -2963,13 +2998,20 @@ class CombatEndingDetector:
         self,
         card_pos: int,
         havoc_card: Card,
+        remaining_cards: Sequence[Card],
         context: DecisionContext,
         state: _TargetedLethalState,
     ) -> Optional[_TargetedLethalCandidate]:
+        remaining_hand_cards = self._remaining_hand_cards_after_effect_source(
+            context,
+            havoc_card,
+            remaining_cards,
+        )
         top_attack = self._havoc_top_attack_card(
             havoc_card,
             context,
             state.havoc_cards_consumed,
+            remaining_hand_cards=remaining_hand_cards,
         )
         if top_attack is None:
             return None

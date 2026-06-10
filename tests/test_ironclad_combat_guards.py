@@ -1066,6 +1066,36 @@ def test_lethal_detector_counts_havoc_top_whirlwind_current_energy_damage():
     assert detector.can_kill_all(context) is True
 
 
+def test_lethal_detector_ignores_havoc_top_clash_when_non_attack_remains():
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    top_clash = _card("Clash", "Clash", cost=0)
+    top_clash.damage = 14
+    context = _combat_context(
+        [havoc, defend],
+        energy=1,
+        monsters=[_louse(current_hp=14)],
+    )
+    context.game.draw_pile = [top_clash]
+
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 0
+    assert detector.can_kill_all(context) is False
+
+
 def test_project_end_turn_dazed_exhaust_triggers_feel_no_pain_before_enemy_attacks():
     dazed = _card(
         "Dazed",
@@ -10102,6 +10132,40 @@ def test_havoc_plays_known_draw_pile_top_attack_against_single_monster():
     assert result.exhaust_events == 1
 
 
+def test_havoc_top_clash_with_non_attack_hand_is_not_played():
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    top_clash = _card("Clash", "Clash", cost=0)
+    top_clash.damage = 14
+    context = _combat_context([defend, havoc], energy=1, monsters=[_louse(current_hp=100)])
+    context.game.draw_pile = [top_clash]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        havoc,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.player_energy == 0
+    assert result.total_damage_dealt == 0
+    assert result.monsters[0]["hp"] == 100
+    assert result.exhaust_events == 1
+
+
 def test_havoc_top_attack_is_blocked_by_entangled():
     havoc = _card(
         "Havoc",
@@ -16931,6 +16995,35 @@ def test_ironclad_fallback_counts_ornamental_fan_from_havoc_top_attack():
 
     assert len(sequence) == 1
     assert sequence[0].card is havoc
+
+
+def test_ironclad_fallback_ignores_havoc_top_clash_fan_block_when_unplayable():
+    defend = _card(
+        "Defend_R",
+        "Defend",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        has_target=False,
+    )
+    top_clash = _card("Clash", "Clash", cost=0)
+    top_clash.damage = 14
+    context = _combat_context(
+        [defend, havoc],
+        energy=1,
+        monsters=[_louse(current_hp=100)],
+    )
+    context.game.draw_pile = [top_clash]
+    context.game.relics = [SimpleNamespace(name="Ornamental Fan", counter=2)]
+    planner = IroncladCombatPlanner()
+
+    assert planner._estimate_havoc_visible_top_card_block(havoc, context) == 0
 
 
 def test_ironclad_fallback_ignores_havoc_top_attack_fan_block_when_entangled():

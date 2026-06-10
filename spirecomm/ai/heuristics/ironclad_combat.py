@@ -32,7 +32,12 @@ from .card_hits import (
 )
 from .card_exhaust import card_exhausts_itself
 from .card_names import canonical_card_name
-from .card_types import card_requires_target, card_type_name, is_attack_card
+from .card_types import (
+    card_play_conditions_allow,
+    card_requires_target,
+    card_type_name,
+    is_attack_card,
+)
 from .card_upgrades import (
     card_upgrade_count,
     heavy_blade_strength_multiplier,
@@ -42,6 +47,7 @@ from .card_upgrades import (
     perfected_strike_bonus_per_strike,
 )
 from .combat_state import (
+    card_play_key,
     draw_pile_count,
     is_card_played,
     mark_card_played,
@@ -1878,6 +1884,23 @@ class IroncladCombatPlanner(CombatPlanner):
             return top_card
         return None
 
+    def _remaining_hand_cards_after_effect_source(
+        self,
+        context: DecisionContext,
+        source_card: Card,
+    ) -> Tuple[Card, ...]:
+        game = getattr(context, 'game', None)
+        hand_cards = getattr(game, 'hand', None)
+        if not hand_cards:
+            hand_cards = getattr(context, 'playable_cards', []) or []
+        source_key = card_play_key(source_card)
+        return tuple(
+            hand_card
+            for hand_card in hand_cards or ()
+            if hand_card is not source_card
+            and (source_key is None or card_play_key(hand_card) != source_key)
+        )
+
     def _estimate_fallback_card_block(self, card: Card, context: DecisionContext) -> int:
         card_name = canonical_card_name(card)
         block_gain = self._non_negative_int(getattr(card, 'block', 0))
@@ -1981,11 +2004,19 @@ class IroncladCombatPlanner(CombatPlanner):
 
         top_card_block = 0
         exhausted_cards = 0
+        remaining_hand_cards = self._remaining_hand_cards_after_effect_source(
+            context,
+            card,
+        )
         for visible_card in reversed(self._draw_pile_cards_for_havoc_fallback(context)):
             exhausted_cards += 1
             if canonical_card_name(visible_card) == 'Havoc':
                 continue
-            if is_attack_card(visible_card) and self._player_is_entangled(context):
+            visible_attack_blocked = is_attack_card(visible_card) and (
+                self._player_is_entangled(context)
+                or not card_play_conditions_allow(visible_card, remaining_hand_cards)
+            )
+            if visible_attack_blocked:
                 top_card_block = 0
             else:
                 top_card_block = self._estimate_fallback_card_block(visible_card, context)

@@ -1113,6 +1113,48 @@ def test_survival_guard_ignores_havoc_top_attack_fan_block_when_entangled():
     assert CombatRLAgent._survival_block_value_for_game(havoc, game) == 0
 
 
+def test_survival_guard_ignores_havoc_top_clash_fan_block_when_unplayable():
+    havoc = SimpleNamespace(
+        name="Havoc",
+        card_id="Havoc",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    top_clash = SimpleNamespace(
+        name="Clash",
+        card_id="Clash",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=0,
+        has_target=True,
+        damage=14,
+    )
+    game = _game(
+        hand=[havoc, defend],
+        draw_pile=[top_clash],
+        relics=[
+            SimpleNamespace(
+                relic_id="Ornamental Fan",
+                name="Ornamental Fan",
+                counter=2,
+            )
+        ],
+        player=SimpleNamespace(energy=1, block=0, powers=[]),
+    )
+
+    assert CombatRLAgent._survival_block_value_for_game(havoc, game) == 0
+
+
 def test_survival_guard_counts_orichalcum_before_replacing_attack():
     strike = SimpleNamespace(
         name="Strike",
@@ -3451,6 +3493,42 @@ def test_havoc_guard_allows_visible_top_attack_against_single_monster():
     assert isinstance(action, PlayCardAction)
     assert action.card_index == 0
     assert agent._fallback_turn_key is None
+
+
+def test_havoc_guard_replaces_visible_top_clash_when_non_attack_remains():
+    havoc = SimpleNamespace(
+        name="Havoc",
+        card_id="Havoc",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    top_clash = SimpleNamespace(
+        name="Clash",
+        card_id="Clash",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=0,
+        has_target=True,
+        damage=14,
+    )
+    game = _game(
+        player=SimpleNamespace(energy=2),
+        hand=[havoc, defend],
+        draw_pile=[top_clash],
+        monsters=[_monster(hp=14, damage=8, index=0)],
+    )
+
+    assert _agent()._should_override_risky_havoc(PlayCardAction(card_index=0), game) is True
 
 
 def test_havoc_guard_does_not_allow_visible_top_attack_when_entangled():

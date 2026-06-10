@@ -51,6 +51,7 @@ from spirecomm.ai.heuristics.card_names import canonical_card_name
 from spirecomm.ai.heuristics.card_hits import fixed_attack_hit_count, strike_card_count
 from spirecomm.ai.heuristics.card_types import (
     card_is_playable,
+    card_play_conditions_allow,
     card_requires_target,
     card_type_name,
     is_attack_card,
@@ -4205,7 +4206,13 @@ class FastCombatSimulator:
 
         top_card_exhausted_by_effect = False
         if top_card_type == 'ATTACK':
-            if state.player_entangled <= 0:
+            remaining_hand = (
+                self._unplayed_hand_cards(state, context)
+                if context is not None
+                else []
+            )
+            attack_play_allowed = card_play_conditions_allow(top_card, remaining_hand)
+            if state.player_entangled <= 0 and attack_play_allowed:
                 target_index = self._havoc_top_attack_target_index(state, top_card)
                 state.attacks_played += 1
                 self._apply_attack(

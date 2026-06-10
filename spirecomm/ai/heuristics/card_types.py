@@ -64,6 +64,13 @@ def is_attack_card(card_or_type) -> bool:
     return is_card_type(card_or_type, "ATTACK")
 
 
+def card_play_conditions_allow(card, remaining_hand_cards=None) -> bool:
+    """Return whether special card-specific hand conditions allow play."""
+    if canonical_card_name(card) != "Clash":
+        return True
+    return all(is_attack_card(hand_card) for hand_card in (remaining_hand_cards or ()))
+
+
 def card_is_playable(card) -> bool:
     return not hasattr(card, "is_playable") or bool(card.is_playable)
 

@@ -177,6 +177,10 @@ HAVOC_CARDS = {
     "Havoc": 0,
 }
 
+CLASH_CARDS = {
+    "Clash": 0,
+}
+
 CARD_ID_ALIASES = {
     "Defend_R": "Defend",
     "Strike_R": "Strike",
@@ -3343,6 +3347,7 @@ def _apply_havoc_top_card(
         before,
         depth=depth,
         exhaust_by_effect=True,
+        source_card=havoc_card,
     )
 
 
@@ -3365,6 +3370,7 @@ def _apply_expected_top_draw_card_played_by_effect(
     before: Dict[str, Any],
     depth: int = 0,
     exhaust_by_effect: bool = False,
+    source_card=None,
 ) -> bool:
     if depth > 20:
         return False
@@ -3376,7 +3382,14 @@ def _apply_expected_top_draw_card_played_by_effect(
     _pop_expected_draw_pile_top(expected)
     target_index = None
     pre_damage_block_applied = False
-    top_attack_blocked = _is_attack_card(top_card) and _snapshot_player_entangled(expected)
+    top_attack_blocked = _is_attack_card(top_card) and (
+        _snapshot_player_entangled(expected)
+        or not _effect_played_card_conditions_allow(
+            top_card,
+            expected,
+            source_card,
+        )
+    )
     if _is_attack_card(top_card) and not top_attack_blocked:
         top_card_effect_energy = _to_int(
             (expected.get("player") or {}).get("energy"),
@@ -3441,6 +3454,7 @@ def _apply_expected_top_draw_card_played_by_effect(
             before,
             depth=depth + 1,
             exhaust_by_effect=True,
+            source_card=source_card,
         )
 
     if not top_attack_blocked:
@@ -3488,6 +3502,55 @@ def _havoc_top_card_feel_no_pain_block(snapshot: Dict[str, Any]) -> int:
 
 def _snapshot_player_entangled(snapshot: Dict[str, Any]) -> bool:
     return _snapshot_power_amount(snapshot.get("player", {}), "Entangled") > 0
+
+
+def _effect_played_card_conditions_allow(
+    card,
+    snapshot: Dict[str, Any],
+    source_card=None,
+) -> bool:
+    if _known_card_name(card, CLASH_CARDS) != "Clash":
+        return True
+    return all(
+        _snapshot_card_is_attack(hand_card)
+        for hand_card in _snapshot_remaining_hand_after_effect_source(
+            snapshot,
+            source_card,
+        )
+    )
+
+
+def _effect_source_identity(source_card) -> str:
+    if source_card is None:
+        return ""
+    if isinstance(source_card, dict):
+        return _snapshot_card_identity(source_card)
+    return _card_identity(source_card)
+
+
+def _snapshot_remaining_hand_after_effect_source(
+    snapshot: Dict[str, Any],
+    source_card=None,
+) -> List[Dict[str, Any]]:
+    source_identity = _effect_source_identity(source_card)
+    skipped_source = False
+    remaining: List[Dict[str, Any]] = []
+    for hand_card in snapshot.get("hand", []) or []:
+        if not isinstance(hand_card, dict):
+            continue
+        hand_identity = _snapshot_card_identity(hand_card)
+        if source_identity:
+            if source_identity.startswith("uuid:") and hand_identity == source_identity:
+                continue
+            if (
+                not source_identity.startswith("uuid:")
+                and not skipped_source
+                and hand_identity == source_identity
+            ):
+                skipped_source = True
+                continue
+        remaining.append(hand_card)
+    return remaining
 
 
 def _pop_expected_draw_pile_top(expected: Dict[str, Any]) -> None:

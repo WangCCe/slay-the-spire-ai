@@ -37,11 +37,13 @@ from spirecomm.ai.heuristics.card_upgrades import (
 )
 from spirecomm.ai.heuristics.card_types import (
     COMMON_AOE_ATTACK_NAMES,
+    card_play_conditions_allow,
     card_requires_target,
     card_type_name,
     is_attack_card,
 )
 from spirecomm.ai.heuristics.combat_state import (
+    card_play_key,
     draw_pile_count,
     player_debuff_stacks,
     player_has_power,
@@ -2478,7 +2480,8 @@ class CombatRLAgent:
             return False
         if not self._is_havoc_action(action, game):
             return False
-        if self._havoc_visible_top_attack_is_deterministic(game):
+        havoc_card = self._card_for_action(action, game)
+        if self._havoc_visible_top_attack_is_deterministic(game, havoc_card):
             return False
 
         energy = self._player_energy(game)
@@ -2488,12 +2491,21 @@ class CombatRLAgent:
         return False
 
     @classmethod
-    def _havoc_visible_top_attack_is_deterministic(cls, game: Game) -> bool:
+    def _havoc_visible_top_attack_is_deterministic(
+        cls,
+        game: Game,
+        source_card=None,
+    ) -> bool:
         if cls._player_entangled(game):
             return False
 
         top_card = cls._draw_pile_top_card(game)
         if top_card is None or not is_attack_card(top_card):
+            return False
+        if not card_play_conditions_allow(
+            top_card,
+            cls._remaining_hand_cards_after_effect_source(game, source_card),
+        ):
             return False
 
         alive_count = len(cls._alive_monsters(game))
@@ -2509,6 +2521,16 @@ class CombatRLAgent:
         if not isinstance(draw_pile, list) or not draw_pile:
             return None
         return draw_pile[-1]
+
+    @classmethod
+    def _remaining_hand_cards_after_effect_source(cls, game: Game, source_card=None):
+        source_key = card_play_key(source_card)
+        return tuple(
+            hand_card
+            for hand_card in getattr(game, "hand", []) or []
+            if hand_card is not source_card
+            and (source_key is None or card_play_key(hand_card) != source_key)
+        )
 
     def _get_havoc_safe_replacement(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction
@@ -3100,7 +3122,13 @@ class CombatRLAgent:
         if top_card is None:
             return block_value
 
-        top_attack_blocked = is_attack_card(top_card) and cls._player_entangled(game)
+        top_attack_blocked = is_attack_card(top_card) and (
+            cls._player_entangled(game)
+            or not card_play_conditions_allow(
+                top_card,
+                cls._remaining_hand_cards_after_effect_source(game, card),
+            )
+        )
         top_card_block = 0 if top_attack_blocked else cls._survival_block_value(top_card)
         top_card_fan_block = (
             0
