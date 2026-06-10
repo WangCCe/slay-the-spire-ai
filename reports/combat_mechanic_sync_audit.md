@@ -640,6 +640,15 @@ Status labels:
   know which cards were played. Deterministic visible-draw `Distilled Chaos`
   rows remain modeled; no live estimator code changed in this oracle-quality
   round.
+- 2026-06-10: `Havoc` / top-card effects now use current post-Havoc energy as
+  the X value when they play known X-effect attacks such as `Whirlwind`.
+  Fresh clean evidence showed `Havoc+` playing a visible top `Whirlwind`,
+  dealing 15 AOE damage at 3 energy while leaving player energy unchanged. The
+  diagnostic oracle now passes current player energy into top-card attack
+  damage without consuming it again, shared `card_costs` recognizes live
+  cost-0 `Whirlwind` / `Skewer` payloads as X-effect cards, and
+  `CombatEndingDetector` uses the same rule for Havoc affordable-damage and
+  exact lethal proofs.
 
 ## Backlog
 

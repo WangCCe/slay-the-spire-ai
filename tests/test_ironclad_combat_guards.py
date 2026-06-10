@@ -1043,6 +1043,29 @@ def test_x_cost_whirlwind_spends_current_energy_without_negative_simulation_stat
     assert result.total_damage_dealt == 30
 
 
+def test_lethal_detector_counts_havoc_top_whirlwind_current_energy_damage():
+    havoc = _card(
+        "Havoc",
+        "Havoc",
+        card_type=CardType.SKILL,
+        cost=0,
+        cost_for_turn=0,
+        has_target=False,
+    )
+    whirlwind = _card("Whirlwind", "Whirlwind", cost=0, cost_for_turn=0, has_target=False)
+    context = _combat_context(
+        [havoc],
+        energy=3,
+        monsters=[_louse(current_hp=10), _louse(current_hp=10)],
+    )
+    context.game.draw_pile = [whirlwind]
+
+    detector = CombatEndingDetector()
+
+    assert detector._calculate_affordable_damage(context) == 30
+    assert detector.can_kill_all(context) is True
+
+
 def test_project_end_turn_dazed_exhaust_triggers_feel_no_pain_before_enemy_attacks():
     dazed = _card(
         "Dazed",

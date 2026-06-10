@@ -3138,6 +3138,10 @@ def _apply_expected_top_draw_card_played_by_effect(
     pre_damage_block_applied = False
     top_attack_blocked = _is_attack_card(top_card) and _snapshot_player_entangled(expected)
     if _is_attack_card(top_card) and not top_attack_blocked:
+        top_card_effect_energy = _to_int(
+            (expected.get("player") or {}).get("energy"),
+            default=0,
+        )
         pre_damage_block_applied = _apply_attack_block_before_damage(
             expected,
             before,
@@ -3147,14 +3151,14 @@ def _apply_expected_top_draw_card_played_by_effect(
         damage, hit_count = _card_damage_and_hits_for_snapshot(
             top_card,
             expected.get("player", {}),
-            0,
+            top_card_effect_energy,
             before,
             -1,
         )
         source_damage_before_weak = _card_damage_before_player_weak(
             top_card,
             expected.get("player", {}),
-            0,
+            top_card_effect_energy,
             before,
             -1,
         )

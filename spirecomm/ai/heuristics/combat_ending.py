@@ -32,6 +32,7 @@ from .card_names import canonical_card_name
 from .card_costs import (
     effective_card_cost,
     energy_refund_for_card,
+    is_x_cost_card,
     playable_card_cost_after_refund,
     whirlwind_damage,
     x_effect_energy,
@@ -877,14 +878,18 @@ class CombatEndingDetector:
         if top_attack is None:
             return 0
 
-        if self._lethal_card_cost(havoc_card, context, available_energy) > available_energy:
+        havoc_cost = self._lethal_card_cost(havoc_card, context, available_energy)
+        if havoc_cost > available_energy:
             return 0
 
         monsters = getattr(context, 'monsters_alive', []) or []
         if not monsters:
             return 0
 
-        havoc_top_card_energy = 0
+        havoc_top_card_energy = self._havoc_top_attack_effect_energy(
+            top_attack,
+            available_energy - havoc_cost,
+        )
         if self._is_aoe_attack(top_attack):
             damage = self._get_card_damage(
                 top_attack,
@@ -907,6 +912,15 @@ class CombatEndingDetector:
             )
 
         return 0
+
+    def _havoc_top_attack_effect_energy(
+        self,
+        top_attack: Card,
+        remaining_energy: int,
+    ) -> int:
+        if not is_x_cost_card(top_attack):
+            return 0
+        return max(0, self._safe_int(remaining_energy, default=0))
 
     def _player_feel_no_pain_block_per_exhaust(self, context: DecisionContext) -> int:
         block = max(0, self._get_player_debuff_stacks(context, 'Feel No Pain'))
@@ -2972,7 +2986,10 @@ class CombatEndingDetector:
         next_duplication_charges = self._duplication_charges_after_card(
             state.duplication_charges
         )
-        top_attack_energy = 0
+        top_attack_energy = self._havoc_top_attack_effect_energy(
+            top_attack,
+            state.energy - cost,
+        )
         next_hp = tuple(state.hp)
         next_block = tuple(state.block)
         next_curl_up = tuple(state.curl_up)

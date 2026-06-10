@@ -1989,6 +1989,71 @@ def test_havoc_plus_uses_known_draw_pile_top_attack_damage(monkeypatch, tmp_path
     assert not trace_path.exists()
 
 
+def test_havoc_plus_uses_current_energy_for_top_whirlwind_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    havoc = _card(
+        name="Havoc+",
+        card_id="Havoc",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        upgrades=1,
+    )
+    bottom_defend = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        damage=0,
+        block=5,
+        cost=1,
+    )
+    top_whirlwind = _card(
+        name="Whirlwind",
+        card_id="Whirlwind",
+        damage=0,
+        cost=0,
+    )
+    before = _game(
+        floor=27,
+        turn=2,
+        player=SimpleNamespace(current_hp=62, max_hp=85, block=5, energy=3),
+        hand=[havoc],
+        draw_pile=[bottom_defend, top_whirlwind],
+        monsters=[
+            _monster(name="Cultist", monster_id="Cultist", hp=11, max_hp=51, damage=4),
+            _monster(name="Cultist", monster_id="Cultist", hp=42, max_hp=48, damage=6),
+            _monster(name="Cultist", monster_id="Cultist", hp=51, max_hp=51, damage=6),
+        ],
+    )
+    killed_cultist = _monster(
+        name="Cultist",
+        monster_id="Cultist",
+        hp=0,
+        max_hp=51,
+        damage=4,
+    )
+    killed_cultist.is_gone = True
+    actual = _game(
+        floor=27,
+        turn=2,
+        player=SimpleNamespace(current_hp=62, max_hp=85, block=5, energy=3),
+        hand=[],
+        draw_pile=[bottom_defend],
+        monsters=[
+            killed_cultist,
+            _monster(name="Cultist", monster_id="Cultist", hp=27, max_hp=48, damage=6),
+            _monster(name="Cultist", monster_id="Cultist", hp=36, max_hp=51, damage=6),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_havoc_top_attack_is_blocked_by_entangled(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

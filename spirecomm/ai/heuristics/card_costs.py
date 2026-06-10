@@ -9,6 +9,9 @@ from .card_names import canonical_card_name
 from .card_upgrades import is_card_upgraded
 
 
+KNOWN_X_COST_CARD_NAMES = frozenset({"Whirlwind", "Skewer"})
+
+
 def _safe_int(value: Any, default: int = 0) -> int:
     return coerce_int(value, default)
 
@@ -22,7 +25,10 @@ def raw_card_cost(card) -> int:
 
 
 def is_x_cost_card(card) -> bool:
-    return raw_card_cost(card) < 0
+    return (
+        raw_card_cost(card) < 0
+        or canonical_card_name(card) in KNOWN_X_COST_CARD_NAMES
+    )
 
 
 def effective_card_cost(card, available_energy: Optional[int] = None) -> int:
@@ -32,11 +38,11 @@ def effective_card_cost(card, available_energy: Optional[int] = None) -> int:
     currently available energy. Treating -1 as a numeric cost creates negative
     energy accounting in simulations and lethal checks.
     """
-    cost = raw_card_cost(card)
-    if cost < 0:
+    if is_x_cost_card(card):
         if available_energy is None:
             return 0
         return max(0, _safe_int(available_energy, 0))
+    cost = raw_card_cost(card)
     return max(0, cost)
 
 
