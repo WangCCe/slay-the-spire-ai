@@ -111,6 +111,18 @@ def test_ui_recovery_script_is_canonical_wrapper():
     assert '[string]$Action = "EndTurn"' in text
 
 
+def test_ui_recovery_wrapper_can_capture_before_and_after_clicking():
+    assert UI_SCRIPT.exists()
+
+    text = UI_SCRIPT.read_text(encoding="utf-8")
+
+    assert "[switch]$CaptureBefore" in text
+    assert "[switch]$CaptureAfter" in text
+    assert 'Join-Path $PSScriptRoot "capture_sts_screenshot.ps1"' in text
+    assert "-AllScreens" in text
+    assert "-OutputDir" in text
+
+
 def test_ui_recovery_wrapper_delegates_end_turn_action():
     assert UI_SCRIPT.exists()
 
