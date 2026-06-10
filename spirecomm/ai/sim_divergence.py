@@ -125,7 +125,6 @@ EXHAUSTS_NON_ATTACK_HAND_CARDS = {
 }
 
 SELF_EXHAUST_CARDS = {
-    "Burning Pact": 0,
     "Double Tap": 0,
     "Disarm": 0,
     "Exhume": 0,
@@ -195,6 +194,7 @@ _attack_count_state_turn: Optional[int] = None
 _attacks_played_this_turn = 0
 _necronomicon_used_this_turn = False
 _pending_headbutt_select_effects: Optional[Dict[str, Any]] = None
+_pending_burning_pact_select_effects: Optional[Dict[str, Any]] = None
 
 
 def card_upgrade_count(card) -> int:
@@ -216,6 +216,7 @@ def reset_pending_divergence() -> None:
     global _pending_expected, _rampage_damage_bonus_by_card, _rampage_state_floor
     global _attack_count_state_floor, _attack_count_state_turn, _attacks_played_this_turn
     global _necronomicon_used_this_turn, _pending_headbutt_select_effects
+    global _pending_burning_pact_select_effects
     _pending_expected = None
     _rampage_damage_bonus_by_card = {}
     _rampage_state_floor = None
@@ -224,17 +225,20 @@ def reset_pending_divergence() -> None:
     _attacks_played_this_turn = 0
     _necronomicon_used_this_turn = False
     _pending_headbutt_select_effects = None
+    _pending_burning_pact_select_effects = None
 
 
 def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
     """Record a read-only one-action expectation for the next live state."""
     global _pending_expected, _pending_headbutt_select_effects
+    global _pending_burning_pact_select_effects
 
     if divergence_trace_path(path) is None:
         return False
     if action is None or not getattr(game, "in_combat", False):
         _pending_expected = None
         _pending_headbutt_select_effects = None
+        _pending_burning_pact_select_effects = None
         return False
 
     try:
@@ -243,12 +247,22 @@ def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
         _sync_attack_count_state(before["floor"], before["turn"])
         if not _will_apply_pending_headbutt_select_effects(action, before):
             _pending_headbutt_select_effects = None
+        if not _will_apply_pending_burning_pact_select_effects(action, before):
+            _pending_burning_pact_select_effects = None
         action_summary = _action_summary(action, game)
         card = _card_for_action(action, game)
         if card is not None:
             delayed_headbutt_effects = _headbutt_select_delayed_effects(before, card)
             if delayed_headbutt_effects:
                 action_summary["delayed_headbutt_select_effects"] = delayed_headbutt_effects
+            delayed_burning_pact_effects = _burning_pact_select_delayed_effects(
+                before,
+                card,
+            )
+            if delayed_burning_pact_effects:
+                action_summary["delayed_burning_pact_select_effects"] = (
+                    delayed_burning_pact_effects
+                )
         _pending_expected = {
             "timestamp": _timestamp(),
             "unix_time": round(time.time(), 3),
@@ -262,6 +276,7 @@ def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
     except Exception as exc:
         _pending_expected = None
         _pending_headbutt_select_effects = None
+        _pending_burning_pact_select_effects = None
         logger.debug("sim divergence expected-state record failed: %s", exc)
         return False
 
@@ -294,10 +309,15 @@ def observe_next_state(game, path: Optional[Path] = None) -> bool:
         if _headbutt_select_delayed_diff_boundary(pending, actual, diffs):
             _arm_headbutt_select_boundary_if_applicable(pending, actual, diffs)
             return False
+        if _burning_pact_select_delayed_diff_boundary(pending, actual, diffs):
+            _arm_burning_pact_select_boundary_if_applicable(pending, actual, diffs)
+            return False
 
         _consume_headbutt_select_boundary_if_applicable(pending)
+        _consume_burning_pact_select_boundary_if_applicable(pending)
         if not diffs:
             _arm_headbutt_select_boundary_if_applicable(pending, actual, diffs)
+            _arm_burning_pact_select_boundary_if_applicable(pending, actual, diffs)
             return False
 
         event = {
@@ -525,6 +545,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
 
     elif action_type == "CardSelectAction":
         _apply_pending_headbutt_select_effects(expected, before)
+        _apply_pending_burning_pact_select_effects(expected, before)
 
     elif action_type == "PotionAction":
         _apply_expected_potion(expected, action, game, before)
@@ -1276,6 +1297,62 @@ def _apply_pending_headbutt_select_effects(
                 monsters[index][field] = value
 
 
+def _burning_pact_select_delayed_effects(
+    snapshot: Dict[str, Any],
+    card,
+) -> Dict[str, Any]:
+    if _known_card_name(card, {"Burning Pact": 0}) != "Burning Pact":
+        return {}
+    effects: Dict[str, Any] = {"burning_pact_select": True, "exhaust_events": 1}
+    feel_no_pain = max(
+        0,
+        _snapshot_power_amount(snapshot.get("player", {}), "Feel No Pain"),
+    )
+    if feel_no_pain > 0:
+        effects["block"] = feel_no_pain
+    if _snapshot_has_relic(snapshot, "Charon's Ashes"):
+        effects["charons_ashes_events"] = 1
+    return effects
+
+
+def _will_apply_pending_burning_pact_select_effects(
+    action,
+    snapshot: Dict[str, Any],
+) -> bool:
+    if type(action).__name__ != "CardSelectAction":
+        return False
+    return _pending_burning_pact_select_effects_match(snapshot)
+
+
+def _pending_burning_pact_select_effects_match(snapshot: Dict[str, Any]) -> bool:
+    effects = _pending_burning_pact_select_effects
+    if not effects or not snapshot.get("in_combat"):
+        return False
+    if _to_int(snapshot.get("player", {}).get("current_hp")) <= 0:
+        return False
+    return (
+        _to_int(snapshot.get("floor")) == _to_int(effects.get("floor"))
+        and _to_int(snapshot.get("turn")) == _to_int(effects.get("turn"))
+    )
+
+
+def _apply_pending_burning_pact_select_effects(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> None:
+    effects = _pending_burning_pact_select_effects
+    if not effects or not _pending_burning_pact_select_effects_match(before):
+        return
+    block = max(0, _to_int(effects.get("block")))
+    if block > 0:
+        _gain_player_block(expected, before, block)
+    _apply_charons_ashes_damage_events(
+        expected,
+        before,
+        max(0, _to_int(effects.get("charons_ashes_events"))),
+    )
+
+
 def _arm_headbutt_select_boundary_if_applicable(
     pending: Dict[str, Any],
     actual: Dict[str, Any],
@@ -1296,6 +1373,43 @@ def _arm_headbutt_select_boundary_if_applicable(
         "turn": actual.get("turn"),
         **effects,
     }
+
+
+def _arm_burning_pact_select_boundary_if_applicable(
+    pending: Dict[str, Any],
+    actual: Dict[str, Any],
+    diffs: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> None:
+    global _pending_burning_pact_select_effects
+
+    action = pending.get("action") or {}
+    if action.get("type") != "PlayCardAction":
+        return
+    effects = _burning_pact_select_effects_to_apply(pending, diffs)
+    if not effects or not actual.get("in_combat"):
+        return
+    if _to_int(actual.get("player", {}).get("current_hp")) <= 0:
+        return
+    _pending_burning_pact_select_effects = {
+        "floor": actual.get("floor"),
+        "turn": actual.get("turn"),
+        **effects,
+    }
+
+
+def _burning_pact_select_effects_to_apply(
+    pending: Dict[str, Any],
+    diffs: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    action = pending.get("action") or {}
+    effects = dict(action.get("delayed_burning_pact_select_effects") or {})
+    expected = pending.get("expected") or {}
+    for key in diffs or {}:
+        if key == "player.block" and "block" in effects:
+            effects.setdefault("player_fields", {})["block"] = (
+                expected.get("player") or {}
+            ).get("block")
+    return effects
 
 
 def _headbutt_select_effects_to_apply(
@@ -1322,6 +1436,30 @@ def _headbutt_select_effects_to_apply(
                 field
             ] = monsters[monster_index].get(field)
     return effects
+
+
+def _burning_pact_select_delayed_diff_boundary(
+    pending: Dict[str, Any],
+    actual: Dict[str, Any],
+    diffs: Dict[str, Dict[str, Any]],
+) -> bool:
+    if not diffs:
+        return False
+    action = pending.get("action") or {}
+    if action.get("type") != "PlayCardAction":
+        return False
+    if _snapshot_known_card_name(action.get("card") or {}, {"Burning Pact": 0}) != "Burning Pact":
+        return False
+    if not actual.get("in_combat"):
+        return False
+    if _to_int(actual.get("player", {}).get("current_hp")) <= 0:
+        return False
+    if _to_int(actual.get("floor")) != _to_int(pending.get("floor")):
+        return False
+    if _to_int(actual.get("turn")) != _to_int(pending.get("turn")):
+        return False
+    delayed_effects = action.get("delayed_burning_pact_select_effects") or {}
+    return set(diffs).issubset({"player.block"}) and "block" in delayed_effects
 
 
 def _headbutt_select_delayed_diff_boundary(
@@ -1439,6 +1577,16 @@ def _consume_headbutt_select_boundary_if_applicable(pending: Dict[str, Any]) -> 
         return
     if _pending_headbutt_select_effects_match(pending.get("before") or {}):
         _pending_headbutt_select_effects = None
+
+
+def _consume_burning_pact_select_boundary_if_applicable(pending: Dict[str, Any]) -> None:
+    global _pending_burning_pact_select_effects
+
+    action = pending.get("action") or {}
+    if action.get("type") != "CardSelectAction":
+        return
+    if _pending_burning_pact_select_effects_match(pending.get("before") or {}):
+        _pending_burning_pact_select_effects = None
 
 
 def _snapshot_monster_active(monster: Dict[str, Any]) -> bool:

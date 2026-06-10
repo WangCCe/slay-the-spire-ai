@@ -2376,6 +2376,104 @@ def test_havoc_exhausted_top_card_triggers_feel_no_pain_block(monkeypatch, tmp_p
     assert not trace_path.exists()
 
 
+def test_burning_pact_feel_no_pain_block_waits_for_card_select(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    feel_no_pain = Power("Feel No Pain", "Feel No Pain", 4)
+    burning_pact = _card(
+        name="Burning Pact+",
+        card_id="Burning Pact",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        upgrades=1,
+        uuid="burning-pact",
+    )
+    strike = _card(
+        name="Strike",
+        card_id="Strike_R",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=6,
+        uuid="strike",
+    )
+    defend = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+        uuid="defend",
+    )
+    heavy_blade = _card(
+        name="Heavy Blade",
+        card_id="Heavy Blade",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=14,
+        uuid="heavy-blade",
+    )
+    reaper = _card(
+        name="Reaper",
+        card_id="Reaper",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=4,
+        uuid="reaper",
+    )
+    before = _game(
+        floor=22,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=61,
+            max_hp=80,
+            block=5,
+            energy=2,
+            powers=[feel_no_pain],
+        ),
+        hand=[burning_pact, strike, defend],
+        draw_pile=[reaper, heavy_blade],
+        monsters=[_monster(name="Shelled Parasite", monster_id="Shelled Parasite", hp=69)],
+    )
+    after_play = _game(
+        floor=22,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=61,
+            max_hp=80,
+            block=5,
+            energy=1,
+            powers=[feel_no_pain],
+        ),
+        hand=[strike, defend],
+        draw_pile=[reaper, heavy_blade],
+        monsters=[_monster(name="Shelled Parasite", monster_id="Shelled Parasite", hp=69)],
+    )
+    after_select = _game(
+        floor=22,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=61,
+            max_hp=80,
+            block=9,
+            energy=1,
+            powers=[feel_no_pain],
+        ),
+        hand=[defend, heavy_blade, reaper],
+        draw_pile=[],
+        monsters=[_monster(name="Shelled Parasite", monster_id="Shelled Parasite", hp=69)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(after_play) is False
+    assert record_expected_action(CardSelectAction([strike]), after_play) is True
+    assert observe_next_state(after_select) is False
+    assert not trace_path.exists()
+
+
 def test_nested_havoc_top_card_applies_nested_top_skill_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
