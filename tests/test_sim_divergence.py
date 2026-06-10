@@ -4674,6 +4674,52 @@ def test_corruption_skill_exhaust_triggers_feel_no_pain(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_self_exhaust_skill_triggers_feel_no_pain(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    intimidate = _card(
+        name="Intimidate+",
+        card_id="Intimidate",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        block=0,
+        upgrades=1,
+    )
+    before = _game(
+        floor=29,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=2,
+            max_hp=94,
+            block=0,
+            energy=2,
+            powers=[Power("Feel No Pain", "Feel No Pain", 3)],
+        ),
+        hand=[intimidate],
+        monsters=[_monster(name="Byrd", monster_id="Byrd", hp=24, damage=0)],
+    )
+    actual = _game(
+        floor=29,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=2,
+            max_hp=94,
+            block=3,
+            energy=2,
+            powers=[Power("Feel No Pain", "Feel No Pain", 3)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Byrd", monster_id="Byrd", hp=24, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_swift_strike_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

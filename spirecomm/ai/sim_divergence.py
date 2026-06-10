@@ -119,7 +119,19 @@ EXHAUSTS_NON_ATTACK_HAND_CARDS = {
 
 SELF_EXHAUST_CARDS = {
     "Burning Pact": 0,
+    "Double Tap": 0,
     "Disarm": 0,
+    "Exhume": 0,
+    "Feed": 0,
+    "Fiend Fire": 0,
+    "Impervious": 0,
+    "Infernal Blade": 0,
+    "Intimidate": 0,
+    "Offering": 0,
+    "Reaper": 0,
+    "Seeing Red": 0,
+    "Shockwave": 0,
+    "Warcry": 0,
 }
 
 CARD_SELF_DAMAGE = {
