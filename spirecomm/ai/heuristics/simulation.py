@@ -472,6 +472,10 @@ class SimulationState:
 
         return 2
 
+    @staticmethod
+    def end_turn_exhausts_for_card(card: Any) -> bool:
+        return _canonical_card_name(card) == 'Dazed'
+
     def __init__(self, context: DecisionContext):
         """Initialize simulation state from decision context."""
         self.turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
@@ -607,9 +611,12 @@ class SimulationState:
         self.end_turn_hp_loss = 1 if self.end_turn_aoe_damage > 0 else 0
         self.end_turn_status_damage = 0
         self.end_turn_status_hp_loss = 0
+        self.end_turn_exhaust_events = 0
         for card in getattr(context.game, 'hand', []) or []:
             self.end_turn_status_damage += self.end_turn_status_damage_for_card(card)
             self.end_turn_status_hp_loss += self.end_turn_status_hp_loss_for_card(card)
+            if self.end_turn_exhausts_for_card(card):
+                self.end_turn_exhaust_events += 1
 
         # Monster state (each monster tracked independently)
         self.monsters = []
@@ -1050,6 +1057,7 @@ class SimulationState:
             self.end_turn_hp_loss,
             self.end_turn_status_damage,
             self.end_turn_status_hp_loss,
+            self.end_turn_exhaust_events,
             self.exhaust_events,
             self.cards_drawn,
             self.energy_gained,
@@ -1954,6 +1962,7 @@ class FastCombatSimulator:
     def _mark_cards_unavailable(self, state: SimulationState, cards: List[Card]):
         for card in cards:
             self._record_added_hand_status_exhausted(state, card)
+            self._remove_pending_end_turn_status(state, card)
             mark_card_played(state.played_card_uuids, card)
 
     def _effect_text_for_upgrade(self, description: str, upgraded: bool) -> str:
@@ -2571,6 +2580,8 @@ class FastCombatSimulator:
                 )
                 if status == 'burn':
                     state.end_turn_status_damage += 2
+                elif status == 'dazed':
+                    state.end_turn_exhaust_events += 1
 
     def _record_added_hand_status_exhausted(self, state: SimulationState, card: Card):
         status = getattr(card, 'simulated_added_status', None)
@@ -2579,7 +2590,6 @@ class FastCombatSimulator:
         state.status_cards_added = max(0, getattr(state, 'status_cards_added', 0) - 1)
         if status == 'dazed':
             state.dazed_cards_added = max(0, getattr(state, 'dazed_cards_added', 0) - 1)
-        self._remove_pending_end_turn_status(state, card)
 
     @staticmethod
     def _remove_pending_end_turn_status(state: SimulationState, card: Card):
@@ -2595,6 +2605,12 @@ class FastCombatSimulator:
             state.end_turn_status_hp_loss = max(
                 0,
                 getattr(state, 'end_turn_status_hp_loss', 0) - status_hp_loss,
+            )
+
+        if SimulationState.end_turn_exhausts_for_card(card):
+            state.end_turn_exhaust_events = max(
+                0,
+                getattr(state, 'end_turn_exhaust_events', 0) - 1,
             )
 
     def _extract_debuff_stacks(self, description: str, keyword: str, upgraded: bool) -> Optional[int]:
@@ -3606,10 +3622,22 @@ class FastCombatSimulator:
             if unblocked > 0:
                 self._lose_player_hp(projected, unblocked, trigger_rupture=False)
 
+        end_turn_exhaust_events = max(
+            0,
+            getattr(projected, 'end_turn_exhaust_events', 0),
+        )
+        if end_turn_exhaust_events > 0 and projected.player_hp > 0:
+            starting_exhaust_events = projected.exhaust_events
+            projected.exhaust_events += end_turn_exhaust_events
+            self._apply_feel_no_pain_block(projected, starting_exhaust_events)
+            self._apply_dark_embrace_draw(projected, starting_exhaust_events)
+            self._apply_charons_ashes_damage(projected, starting_exhaust_events)
+
         projected.end_turn_aoe_damage = 0
         projected.end_turn_hp_loss = 0
         projected.end_turn_status_damage = 0
         projected.end_turn_status_hp_loss = 0
+        projected.end_turn_exhaust_events = 0
         temp_strength = getattr(projected, 'player_temp_strength', 0)
         if temp_strength:
             projected.player_strength -= temp_strength

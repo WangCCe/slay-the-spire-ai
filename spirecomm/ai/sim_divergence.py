@@ -148,6 +148,10 @@ END_TURN_STATUS_HP_LOSS = {
     "Decay": 2,
 }
 
+END_TURN_EXHAUST_CARDS = {
+    "Dazed": 0,
+}
+
 HAVOC_CARDS = {
     "Havoc": 0,
 }
@@ -2558,6 +2562,7 @@ def _apply_end_turn_player_damage(
         hp_loss_events += _lose_player_hp(expected, amount)
     for amount in _end_turn_status_damage_events(before):
         hp_loss_events += _damage_player(expected, amount)
+    _apply_end_turn_exhaust_effects(expected, before)
     reflection_damage = _end_turn_attack_reflection_damage(before)
     for index, monster in enumerate(expected.get("monsters", []) or []):
         explosion_damage = exploder_explosion_damage(monster)
@@ -2590,6 +2595,29 @@ def _apply_end_turn_player_damage(
                 if monster.get("gone") or monster.get("half_dead"):
                     break
     return hp_loss_events
+
+
+def _apply_end_turn_exhaust_effects(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> int:
+    exhaust_events = _end_turn_exhaust_count(before)
+    if exhaust_events <= 0:
+        return 0
+
+    feel_no_pain = max(
+        0,
+        _snapshot_power_amount(before.get("player", {}), "Feel No Pain"),
+    )
+    if feel_no_pain > 0:
+        _gain_player_block(
+            expected,
+            before,
+            feel_no_pain * exhaust_events,
+            exhaust_events,
+        )
+    _apply_charons_ashes_damage_events(expected, before, exhaust_events)
+    return exhaust_events
 
 
 def _apply_combust_end_turn(
@@ -2694,6 +2722,16 @@ def _end_turn_status_hp_loss_events(snapshot: Dict[str, Any]):
         amount = END_TURN_STATUS_HP_LOSS[card_name]
         if amount > 0:
             yield amount
+
+
+def _end_turn_exhaust_count(snapshot: Dict[str, Any]) -> int:
+    return sum(1 for _card in _end_turn_exhaust_cards(snapshot))
+
+
+def _end_turn_exhaust_cards(snapshot: Dict[str, Any]):
+    for card in snapshot.get("hand", []) or []:
+        if _snapshot_known_card_name(card, END_TURN_EXHAUST_CARDS) is not None:
+            yield card
 
 
 def _end_turn_monster_attack_damage_events(snapshot: Dict[str, Any]):

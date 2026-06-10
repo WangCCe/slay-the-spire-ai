@@ -8135,6 +8135,71 @@ def test_end_turn_shelled_parasite_attack_buff_heals_unblocked_damage(monkeypatc
     assert not trace_path.exists()
 
 
+def test_end_turn_dazed_exhaust_triggers_feel_no_pain_before_monster_attack(
+    monkeypatch,
+    tmp_path,
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    dazed = _card(
+        name="Dazed",
+        card_id="Dazed",
+        card_type=CardType.STATUS,
+        cost=-2,
+        damage=0,
+    )
+    before = _game(
+        floor=29,
+        turn=5,
+        player=SimpleNamespace(
+            current_hp=53,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[Power("Feel No Pain", "Feel No Pain", 3)],
+        ),
+        hand=[dazed],
+        monsters=[
+            _monster(
+                name="Chosen",
+                monster_id="Chosen",
+                hp=30,
+                max_hp=99,
+                damage=15,
+                intent=Intent.ATTACK,
+            )
+        ],
+    )
+    actual = _game(
+        floor=29,
+        turn=6,
+        player=SimpleNamespace(
+            current_hp=41,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Feel No Pain", "Feel No Pain", 3)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Chosen",
+                monster_id="Chosen",
+                hp=30,
+                max_hp=99,
+                damage=15,
+                intent=Intent.ATTACK,
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_orichalcum_block_reduces_incoming_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

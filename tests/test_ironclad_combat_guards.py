@@ -1043,6 +1043,39 @@ def test_x_cost_whirlwind_spends_current_energy_without_negative_simulation_stat
     assert result.total_damage_dealt == 30
 
 
+def test_project_end_turn_dazed_exhaust_triggers_feel_no_pain_before_enemy_attacks():
+    dazed = _card(
+        "Dazed",
+        "Dazed",
+        card_type=CardType.STATUS,
+        cost=-2,
+        has_target=False,
+    )
+    monster = _louse(current_hp=20)
+    monster.intent = Intent.ATTACK
+    monster.move_adjusted_damage = 15
+    monster.move_hits = 1
+    context = _combat_context([], energy=0, monsters=[monster])
+    context.game.current_hp = 53
+    context.player_hp = 53
+    context.game.player.block = 0
+    context.game.player.powers = [SimpleNamespace(power_name="Feel No Pain", amount=3)]
+    context.game.hand = [dazed]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    projected = simulator.project_end_turn_effects(SimulationState(context))
+    incoming = simulator._estimate_incoming_damage(projected.monsters)
+    hp_loss = simulator._projected_hp_loss_after_block(
+        projected,
+        incoming,
+        projected.turn_block(),
+    )
+
+    assert projected.exhaust_events == 1
+    assert projected.player_block == 3
+    assert hp_loss == 12
+
+
 def test_simulation_duplication_power_defend_applies_block_twice():
     defend = _card(
         "Defend_R",
