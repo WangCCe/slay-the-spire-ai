@@ -7906,6 +7906,49 @@ def test_end_turn_plated_armor_block_reduces_incoming_damage(monkeypatch, tmp_pa
     assert not trace_path.exists()
 
 
+def test_end_turn_escape_intent_marks_monster_gone(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=19,
+        turn=4,
+        player=SimpleNamespace(current_hp=62, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Mugger",
+                monster_id="Mugger",
+                hp=13,
+                max_hp=52,
+                damage=-1,
+                intent=Intent.ESCAPE,
+            )
+        ],
+    )
+    escaped = _monster(
+        name="Mugger",
+        monster_id="Mugger",
+        hp=13,
+        max_hp=52,
+        damage=-1,
+        intent=Intent.ESCAPE,
+    )
+    escaped.is_gone = True
+    actual = _game(
+        floor=19,
+        turn=5,
+        player=SimpleNamespace(current_hp=62, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[escaped],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_shelled_parasite_attack_buff_heals_self(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

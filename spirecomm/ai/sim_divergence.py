@@ -508,6 +508,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         if regeneration_heal > 0:
             _heal_player(expected, regeneration_heal)
         hp_loss_events += _apply_end_turn_player_damage(expected, before)
+        _apply_end_turn_escape_intents(expected)
         retained_block = _retained_end_turn_block(before, expected.get("player", {}))
         next_turn_block = 0
         if _to_int(expected.get("player", {}).get("current_hp")) > 0:
@@ -2763,6 +2764,16 @@ def _retained_end_turn_block(snapshot: Dict[str, Any], player: Dict[str, Any]) -
             return max(0, _to_int(player.get("block")) - 15)
         return 0
     return max(0, _to_int(player.get("block")))
+
+
+def _apply_end_turn_escape_intents(expected: Dict[str, Any]) -> None:
+    for monster in expected.get("monsters", []) or []:
+        if not _snapshot_monster_active(monster):
+            continue
+        if _normalize(monster.get("intent")) not in {"escape", "intentescape"}:
+            continue
+        monster["gone"] = True
+        monster["half_dead"] = False
 
 
 def _apply_end_turn_attack_reflection_damage(

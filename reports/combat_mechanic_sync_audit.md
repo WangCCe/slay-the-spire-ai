@@ -590,6 +590,12 @@ Status labels:
   `sim_divergence.py` now routes end-turn player reflection through block-aware
   monster damage, and `FastCombatSimulator` only scores reflected HP damage
   after monster block is exhausted.
+- 2026-06-10: The diagnostic oracle now marks active monsters with
+  `ESCAPE` / `Intent.ESCAPE` as gone during end-turn settlement. Fresh
+  Looter/Mugger rows showed live marking an escaping Mugger `gone=true` while
+  preserving HP. `FastCombatSimulator` already projected Looter/Mugger escape
+  and excluded escaped monsters from kill scoring, so this round only synced
+  the diagnostic oracle with the already-covered live estimator behavior.
 
 ## Backlog
 
