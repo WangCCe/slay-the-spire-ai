@@ -3314,6 +3314,91 @@ def test_toy_ornithopter_heals_after_energy_potion(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_smoke_bomb_escape_finishes_combat_and_triggers_burning_blood(
+    monkeypatch,
+    tmp_path,
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    potion = _potion(
+        "Smoke Bomb",
+        potion_id="SmokeBomb",
+        effect_type="escape",
+        effect_value=0,
+        target_type="none",
+    )
+    before = _game(
+        floor=13,
+        turn=6,
+        room_type="MonsterRoom",
+        player=SimpleNamespace(current_hp=61, max_hp=80, block=0, energy=3),
+        hand=[
+            _card(
+                name="Parasite",
+                card_id="Parasite",
+                card_type=CardType.CURSE,
+                cost=0,
+                damage=0,
+            ),
+            _card(
+                name="Defend",
+                card_id="Defend_R",
+                card_type=CardType.SKILL,
+                damage=0,
+                block=5,
+            ),
+            _card(
+                name="Wound",
+                card_id="Wound",
+                card_type=CardType.STATUS,
+                cost=0,
+                damage=0,
+            ),
+            _card(name="Bash+", card_id="Bash", cost=2, damage=10),
+        ],
+        monsters=[
+            _monster(
+                name="Spike Slime (M)",
+                monster_id="SpikeSlime_M",
+                hp=8,
+                damage=8,
+                intent=Intent.ATTACK_DEBUFF,
+                index=0,
+            ),
+            _monster(
+                name="Spike Slime (M)",
+                monster_id="SpikeSlime_M",
+                hp=23,
+                damage=8,
+                intent=Intent.ATTACK_DEBUFF,
+                index=1,
+            ),
+        ],
+        potions=[potion],
+        relics=[_relic("Burning Blood", counter=-1)],
+    )
+    actual = _game(
+        floor=13,
+        turn=0,
+        room_type="MonsterRoom",
+        in_combat=False,
+        player=SimpleNamespace(current_hp=67, max_hp=80, block=0, energy=0, powers=[]),
+        hand=[],
+        monsters=[],
+        potions=[],
+        relics=[_relic("Burning Blood", counter=-1)],
+    )
+
+    assert record_expected_action(
+        PotionAction(use=True, potion=potion, target_index=0),
+        before,
+    ) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_block_potion_gains_twelve_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

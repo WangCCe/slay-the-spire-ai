@@ -611,6 +611,13 @@ Status labels:
   replay count, spend the visible `Double Tap` charge, consume the one-use
   `Necronomicon` availability, and include that availability in simulator and
   lethal state keys.
+- 2026-06-10: `Smoke Bomb` / `effect_type=escape` potion usage is now modeled
+  as a combat-exit boundary in the diagnostic oracle. Fresh floor-13 evidence
+  showed live clearing combat state and triggering `Burning Blood` healing
+  after the escape; the oracle had left monsters, energy, and HP unchanged.
+  `FastCombatSimulator` already represented escape potions with
+  `combat_escaped=True` and survival-only scoring, so this round was an
+  oracle-quality sync without a live estimator code change.
 
 ## Backlog
 

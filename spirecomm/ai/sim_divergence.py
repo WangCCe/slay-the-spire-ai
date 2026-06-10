@@ -36,6 +36,8 @@ MAGIC_FLOWER_HEAL_NUMERATOR = 3
 MAGIC_FLOWER_HEAL_DENOMINATOR = 2
 FEED_MAX_HP_GAIN = 3
 FEED_UPGRADED_MAX_HP_GAIN = 4
+BURNING_BLOOD_HEAL = 6
+BLACK_BLOOD_HEAL = 12
 
 BASE_ATTACK_DAMAGE = {
     "Anger": 6,
@@ -664,6 +666,10 @@ def _apply_expected_potion(
     target_type = _normalize(_potion_attr(potion, "target_type", ""))
     raw_value = _potion_attr(potion, "effect_value", 0)
 
+    if _is_escape_potion_snapshot(potion):
+        _apply_expected_escape_potion(expected, action, game)
+        return
+
     if effect_type == "healpercent" and target_type == "self":
         percent = _to_float(raw_value)
         heal = int(_to_int(expected["player"].get("max_hp")) * percent)
@@ -694,6 +700,43 @@ def _apply_expected_potion(
             _apply_expected_play_top_cards_potion(expected, before, value)
 
     _apply_toy_ornithopter_potion_heal(expected)
+
+
+def _apply_expected_escape_potion(expected: Dict[str, Any], action, game) -> None:
+    _apply_toy_ornithopter_potion_heal(expected)
+    _heal_player(expected, _combat_end_relic_heal(expected))
+    _consume_expected_action_potion(expected, action, game)
+    expected["in_combat"] = False
+    expected["turn"] = 0
+    expected["hand"] = []
+    expected["monsters"] = []
+    player = expected.get("player", {})
+    player["block"] = 0
+    player["energy"] = 0
+    player["powers"] = []
+
+
+def _combat_end_relic_heal(expected: Dict[str, Any]) -> int:
+    if _snapshot_has_relic(expected, "Black Blood"):
+        return BLACK_BLOOD_HEAL
+    if _snapshot_has_relic(expected, "Burning Blood"):
+        return BURNING_BLOOD_HEAL
+    return 0
+
+
+def _consume_expected_action_potion(expected: Dict[str, Any], action, game) -> None:
+    potions = expected.get("potions")
+    if not isinstance(potions, list):
+        return
+    potion_index = _to_int(getattr(action, "potion_index", -1), default=-1)
+    if potion_index < 0:
+        potion_identifiers = _potion_identifiers(_potion_for_action(action, game))
+        for index, candidate in enumerate(potions):
+            if not potion_identifiers.isdisjoint(_potion_identifiers(candidate)):
+                potion_index = index
+                break
+    if 0 <= potion_index < len(potions):
+        potions.pop(potion_index)
 
 
 def _apply_direct_monster_damage(
@@ -1676,6 +1719,24 @@ def _potion_summary(potion) -> Dict[str, Any]:
         "effect_value": _json_scalar(_potion_attr(potion, "effect_value", 0)),
         "target_type": _safe_str(_potion_attr(potion, "target_type", "")),
     }
+
+
+def _potion_identifiers(potion) -> set:
+    if potion is None:
+        return set()
+    return {
+        _normalize(_potion_attr(potion, "id", "")),
+        _normalize(_potion_attr(potion, "potion_id", "")),
+        _normalize(_potion_attr(potion, "name", "")),
+    }
+
+
+def _is_escape_potion_snapshot(potion) -> bool:
+    if potion is None:
+        return False
+    if _normalize(_potion_attr(potion, "effect_type", "")) == "escape":
+        return True
+    return "smokebomb" in _potion_identifiers(potion)
 
 
 def _power_summary(power) -> Dict[str, Any]:
