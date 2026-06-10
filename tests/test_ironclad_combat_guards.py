@@ -1076,6 +1076,26 @@ def test_project_end_turn_dazed_exhaust_triggers_feel_no_pain_before_enemy_attac
     assert hp_loss == 12
 
 
+def test_project_end_turn_regeneration_with_magic_flower_uses_scaled_heal():
+    monster = _louse(current_hp=20)
+    monster.intent = Intent.NONE
+    monster.move_adjusted_damage = 0
+    monster.move_hits = 1
+    context = _combat_context([], energy=0, monsters=[monster])
+    context.game.current_hp = 36
+    context.player_hp = 36
+    context.game.player.powers = [SimpleNamespace(power_name="Regeneration", amount=5)]
+    context.game.relics = [
+        SimpleNamespace(name="Magic Flower", relic_id="Magic Flower", counter=-1)
+    ]
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+
+    projected = simulator.project_end_turn_effects(SimulationState(context))
+
+    assert projected.player_hp == 44
+    assert projected.player_regen == 4
+
+
 def test_simulation_duplication_power_defend_applies_block_twice():
     defend = _card(
         "Defend_R",

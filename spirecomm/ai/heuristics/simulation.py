@@ -81,7 +81,18 @@ STONE_CALENDAR_TRIGGER_COUNTER = 7
 FAIRY_REVIVE_FRACTION = 0.3
 FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
 TOY_ORNITHOPTER_HEAL = 5
+MAGIC_FLOWER_HEAL_NUMERATOR = 3
+MAGIC_FLOWER_HEAL_DENOMINATOR = 2
 THE_BOOT_MINIMUM_DAMAGE = 5
+
+
+def _magic_flower_scaled_heal(amount: int) -> int:
+    heal = max(0, coerce_int(amount, 0))
+    if heal <= 0:
+        return 0
+    return (heal * MAGIC_FLOWER_HEAL_NUMERATOR + MAGIC_FLOWER_HEAL_DENOMINATOR - 1) // (
+        MAGIC_FLOWER_HEAL_DENOMINATOR
+    )
 
 
 def _normalized_potion_identifier(value) -> str:
@@ -585,6 +596,9 @@ class SimulationState:
         self.has_toy_ornithopter = (
             self._context_relic_counter(context, 'Toy Ornithopter') is not None
         )
+        self.has_magic_flower = (
+            self._context_relic_counter(context, 'Magic Flower') is not None
+        )
         self.has_gremlin_horn = (
             self._context_relic_counter(context, 'Gremlin Horn') is not None
         )
@@ -1046,6 +1060,7 @@ class SimulationState:
             self.has_the_boot,
             self.has_bird_faced_urn,
             self.has_toy_ornithopter,
+            self.has_magic_flower,
             self.has_gremlin_horn,
             self.necronomicon_available,
             self.corruption_active,
@@ -3647,7 +3662,12 @@ class FastCombatSimulator:
             projected.player_strength += ritual_strength
         regen = max(0, getattr(projected, 'player_regen', 0))
         if regen:
-            projected.player_hp = min(projected.player_max_hp, projected.player_hp + regen)
+            regen_heal = (
+                _magic_flower_scaled_heal(regen)
+                if getattr(projected, 'has_magic_flower', False)
+                else regen
+            )
+            projected.player_hp = min(projected.player_max_hp, projected.player_hp + regen_heal)
             projected.player_regen = regen - 1
         temp_dexterity = getattr(projected, 'player_temp_dexterity', 0)
         if temp_dexterity:

@@ -32,6 +32,8 @@ STONE_CALENDAR_TRIGGER_COUNTER = 7
 FAIRY_REVIVE_FRACTION = 0.3
 FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
 TOY_ORNITHOPTER_HEAL = 5
+MAGIC_FLOWER_HEAL_NUMERATOR = 3
+MAGIC_FLOWER_HEAL_DENOMINATOR = 2
 FEED_MAX_HP_GAIN = 3
 FEED_UPGRADED_MAX_HP_GAIN = 4
 
@@ -2760,10 +2762,20 @@ def _brutality_start_turn_hp_loss(snapshot: Dict[str, Any]) -> int:
 
 def _regeneration_end_turn_heal(snapshot: Dict[str, Any]) -> int:
     player = snapshot.get("player", {})
-    return max(
+    base_heal = max(
         0,
         _snapshot_power_amount(player, "Regeneration"),
         _snapshot_power_amount(player, "Regen"),
+    )
+    return _magic_flower_scaled_heal(snapshot, base_heal)
+
+
+def _magic_flower_scaled_heal(snapshot: Dict[str, Any], amount: int) -> int:
+    heal = max(0, _to_int(amount))
+    if heal <= 0 or not _snapshot_has_relic(snapshot, "Magic Flower"):
+        return heal
+    return (heal * MAGIC_FLOWER_HEAL_NUMERATOR + MAGIC_FLOWER_HEAL_DENOMINATOR - 1) // (
+        MAGIC_FLOWER_HEAL_DENOMINATOR
     )
 
 
