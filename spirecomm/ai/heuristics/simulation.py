@@ -4889,8 +4889,10 @@ class FastCombatSimulator:
                 continue
             hits = self._positive_monster_hits(monster)
             reflected_damage = player_thorns * hits
-            effective_hp = max(0, monster.get('hp', 0))
-            total_damage += min(reflected_damage, effective_hp)
+            block = max(0, coerce_int(monster.get('block', 0), 0))
+            effective_hp = max(0, coerce_int(monster.get('hp', 0), 0))
+            hp_damage = max(0, reflected_damage - block)
+            total_damage += min(hp_damage, effective_hp)
         return total_damage
 
     def _get_enemy_lookahead_depth(self, state: SimulationState, context: DecisionContext, max_depth: int = 2) -> int:

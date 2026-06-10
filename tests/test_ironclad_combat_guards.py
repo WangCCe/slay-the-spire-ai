@@ -14793,7 +14793,7 @@ def test_thorns_triggers_on_killing_attack_hit():
     assert result.player_hp == 77
 
 
-def test_player_thorns_score_bypasses_monster_block():
+def test_player_thorns_score_spends_monster_block_before_hp():
     monster = _louse(current_hp=1)
     monster.block = 99
     context = _combat_context([], energy=0, monsters=[monster])
@@ -14802,7 +14802,7 @@ def test_player_thorns_score_bypasses_monster_block():
 
     reflected = FastCombatSimulator(SynergyCardEvaluator())._estimate_player_thorns_damage(state)
 
-    assert reflected == 1
+    assert reflected == 0
 
 
 def test_flame_barrier_power_scores_as_current_attacker_reflection():

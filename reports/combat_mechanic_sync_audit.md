@@ -50,6 +50,7 @@ Status labels:
 | End-turn status damage | Burn/Burn+ and Decay divergence tests | n/a | synced | n/a | n/a | synced for RL survival/Guardian guards | No current target-selection surface uses status settlement directly. |
 | Countdown monster self-detonation | Fresh floor-46 EndTurnAction row: two Exploders with `Explosive=1` dealt blockable 30 damage each, died, and killed the player while the old sim expected no damage | n/a unless lethal search starts projecting enemy self-detonation | synced for diagnostic end-turn projection, fast incoming estimates, and enemy lookahead through shared Exploder countdown helper | synced for DecisionContext threat/targeting and heuristic incoming fallback | n/a unless timing starts modeling Exploder countdown separately | synced for RL incoming and event-by-event end-turn survival damage after block | Recheck future reward/state encoders only if live evidence shows they duplicate Exploder countdown risk. |
 | Player HP-loss prevention / revive | Tungsten Rod Bloodletting and end-turn HP-loss evidence; Buffer/Fossilized Helix end-turn clean divergence; Fairy in a Bottle end-turn lethal clean divergence | synced for HP-cost energy support cards | synced for card HP costs, Blue Candle, Thorns/Sharp Hide, deterministic end-turn HP-loss projection, Buffer/Fossilized Helix event-level damage prevention, Fairy HP-loss revival, and Fairy-aware outcome death checks | synced for current-turn lethal penalty using simulator HP-loss projection | n/a | synced for survival and Guardian guard end-turn lethal checks where the guard owns the HP-loss path, including Buffer event-level damage prevention | RL aggregate incoming still does not consume per-hit revives; revisit only with live evidence that it changes an action. |
+| Player attack reflection into attackers | Fresh Spheric Guardian EndTurn rows with player `Thorns=3`: live kept HP at `20` and reduced Barricade-retained block from `39` to `36` while the old oracle expected HP loss | n/a unless lethal search starts projecting monster attacks into player-reflection kills | synced for diagnostic end-turn projection and fast current-attacker reflection scoring | n/a | n/a | no direct RL guard/reward surface found in this round | Recheck any future EndTurn kill shortcut or target-priority scorer that values player `Thorns` / `Flame Barrier` as direct HP damage. |
 | Potion-triggered relic healing | Toy Ornithopter Energy Potion clean divergence | n/a | synced for diagnostic and beam potion state simulation after any potion use | n/a | n/a | partial; no deterministic RL guard/reward surface found in this round | Potion prefilter priority still does not add Toy-specific value; change it only with evidence that ranking or guard logic changes an action. |
 | Relic attack/resource effects | Pen Nib, Nunchaku, Ornamental Fan, Orichalcum divergence tests | synced where lethal is affected | synced | synced for Pen Nib scalar fallback damage estimates, Nunchaku counter-9 refund-preserving attack-before-defense ordering, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective block before defense priority | synced for Pen Nib damage estimates, Nunchaku targeted lethal search, cache invalidation over relic counters plus draw-pile/hand/deck inputs, Ornamental Fan direct/Havoc-top attack block, and Orichalcum effective turn block before fallback block scoring | synced for direct and Havoc-top Ornamental Fan survival block, Orichalcum survival block, and other survival/block guards already noted | Future scalar shortcuts must state whether non-damage relic counters are read or intentionally ignored. |
 | Card-play-triggered relic effects | Fresh Letter Opener `Defend` rows and Bird-Faced Urn `Demon Form` / Havoc-top `Barricade` rows | synced for Letter Opener skill-triggered lethal support | synced for Letter Opener skill damage and Bird-Faced Urn direct/Havoc-top power healing | n/a unless fallback starts estimating non-attack skill damage or power healing directly | n/a unless timing starts projecting these relic triggers directly | no direct RL guard/reward surface found this round | End-turn relic triggers are tracked separately from card-play-triggered relic effects. |
@@ -531,11 +532,11 @@ Status labels:
   Pending status costs are carried in the beam state key and removed when the
   status card is played or exhausted, keeping survival scoring aligned with the
   divergence oracle's end-turn status semantics.
-- 2026-06-07: `FastCombatSimulator` current-attacker reflection scoring now
-  treats Flame Barrier as player thorns and caps reflected damage by monster HP
-  only, not HP plus block. This syncs the confirmed Thorns/Flame Barrier
-  semantics that reflection bypasses monster block and can score the temporary
-  reflection from a simulated Flame Barrier play.
+- 2026-06-07: `FastCombatSimulator` current-attacker reflection scoring began
+  treating Flame Barrier as player thorns and scoring temporary reflection
+  from a simulated Flame Barrier play. Its original assumption that this
+  reflection bypassed monster block was superseded by fresh 2026-06-10 Spheric
+  Guardian evidence and corrected below.
 - 2026-06-07: `HeuristicCombatPlanner` now models Smoke Bomb as combat escape
   in potion beam scoring without awarding kill or all-lethal rewards. Escaped
   states stop further beam expansion and receive survival value based on
@@ -582,6 +583,13 @@ Status labels:
   Vulnerable stacks. Code search found no separate live `Necronomicon`
   estimator surface to update in this small oracle round; keep replay-order
   live estimator coverage on the audit backlog.
+- 2026-06-10: Player `Thorns` and temporary `Flame Barrier` reflection now
+  spend the attacking monster's block before HP. Fresh Spheric Guardian
+  EndTurn rows showed `Thorns=3` reducing retained Barricade block from `39`
+  to `36` while HP stayed at `20`; the old oracle used direct HP damage.
+  `sim_divergence.py` now routes end-turn player reflection through block-aware
+  monster damage, and `FastCombatSimulator` only scores reflected HP damage
+  after monster block is exhausted.
 
 ## Backlog
 

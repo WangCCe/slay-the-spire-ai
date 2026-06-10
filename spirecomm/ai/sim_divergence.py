@@ -2564,7 +2564,6 @@ def _apply_end_turn_player_damage(
                     expected,
                     index,
                     reflection_damage,
-                    ignore_block=True,
                     spore_cloud_decay=1,
                     mark_end_turn_vulnerable=True,
                 )
@@ -2780,7 +2779,6 @@ def _apply_end_turn_attack_reflection_damage(
             expected,
             index,
             reflection_damage * _monster_attack_hits(monster),
-            ignore_block=True,
             spore_cloud_decay=1,
             mark_end_turn_vulnerable=True,
         )

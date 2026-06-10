@@ -8925,47 +8925,39 @@ def test_end_turn_thorns_damages_each_attacking_hit(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
-def test_end_turn_thorns_bypasses_monster_block(monkeypatch, tmp_path):
+def test_end_turn_thorns_spends_monster_block_before_hp(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
     reset_pending_divergence()
 
     before = _game(
-        floor=2,
-        turn=1,
+        floor=18,
+        turn=3,
         player=SimpleNamespace(
-            current_hp=78,
+            current_hp=80,
             max_hp=80,
-            block=0,
+            block=16,
             energy=0,
             powers=[Power("Thorns", "Thorns", 3)],
         ),
         hand=[],
         monsters=[
             _monster(
-                name="Fuzzy Louse",
-                monster_id="FuzzyLouseDefensive",
-                hp=5,
-                block=1,
-                damage=7,
-                intent=Intent.ATTACK,
-            ),
-            _monster(
-                name="Fuzzy Louse",
-                monster_id="FuzzyLouseNormal",
-                hp=4,
-                block=5,
-                damage=5,
-                intent=Intent.ATTACK,
-                index=1,
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                block=39,
+                damage=11,
+                intent=Intent.ATTACK_DEBUFF,
+                powers=[Power("Barricade", "Barricade", -1)],
             ),
         ],
     )
     actual = _game(
-        floor=2,
-        turn=2,
+        floor=18,
+        turn=4,
         player=SimpleNamespace(
-            current_hp=66,
+            current_hp=80,
             max_hp=80,
             block=0,
             energy=3,
@@ -8974,21 +8966,13 @@ def test_end_turn_thorns_bypasses_monster_block(monkeypatch, tmp_path):
         hand=[],
         monsters=[
             _monster(
-                name="Fuzzy Louse",
-                monster_id="FuzzyLouseDefensive",
-                hp=2,
-                block=0,
-                damage=7,
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                block=36,
+                damage=11,
                 intent=Intent.ATTACK,
-            ),
-            _monster(
-                name="Fuzzy Louse",
-                monster_id="FuzzyLouseNormal",
-                hp=1,
-                block=0,
-                damage=-1,
-                intent=Intent.BUFF,
-                index=1,
+                powers=[Power("Barricade", "Barricade", -1)],
             ),
         ],
     )
