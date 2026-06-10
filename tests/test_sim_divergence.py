@@ -846,6 +846,59 @@ def test_guardian_sharp_hide_reflection_damages_hp_without_block(monkeypatch, tm
     assert not trace_path.exists()
 
 
+def test_iron_wave_block_absorbs_guardian_sharp_hide_reflection(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    iron_wave = _card(
+        name="Iron Wave",
+        card_id="Iron Wave",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=5,
+        block=5,
+    )
+    before = _game(
+        floor=16,
+        turn=9,
+        player=SimpleNamespace(current_hp=22, max_hp=80, block=0, energy=3),
+        hand=[iron_wave],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=129,
+                damage=8,
+                hits=2,
+                intent=Intent.ATTACK,
+                powers=[Power("Sharp Hide", "Sharp Hide", 3)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=16,
+        turn=9,
+        player=SimpleNamespace(current_hp=22, max_hp=80, block=2, energy=2),
+        hand=[],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=124,
+                damage=8,
+                hits=2,
+                intent=Intent.ATTACK,
+                powers=[Power("Sharp Hide", "Sharp Hide", 3)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_spiker_thorns_reflection_spends_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

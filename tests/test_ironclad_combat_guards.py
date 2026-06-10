@@ -7251,6 +7251,40 @@ def test_iron_wave_deals_damage_and_gains_block(monkeypatch):
     assert result.player_block == 7
 
 
+def test_iron_wave_block_absorbs_guardian_sharp_hide_reflection(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "iron wave": {
+            "name": "Iron Wave",
+            "description": "Gain 5 Block.\nDeal 5 damage.",
+        }
+    }
+    loader._wiki_data = {
+        "iron wave": {
+            "name": "Iron Wave",
+            "text": "Gain [5|7] #Block.\nDeal [5|7] damage.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    iron_wave = _card("Iron Wave", "Iron Wave", cost=1, upgrades=None)
+    guardian = _guardian(current_hp=129, thorns=3)
+    context = _combat_context([iron_wave], energy=1, monsters=[guardian])
+    context.thorns_stacks[0] = 3
+
+    result = simulator.simulate_card_play(
+        SimulationState(context),
+        iron_wave,
+        target=context.monsters_alive[0],
+        target_index=0,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 5
+    assert result.player_hp == 80
+    assert result.player_block == 2
+
+
 def test_thunderclap_applies_vulnerable_to_all_enemies(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

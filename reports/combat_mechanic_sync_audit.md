@@ -618,6 +618,12 @@ Status labels:
   `FastCombatSimulator` already represented escape potions with
   `combat_escaped=True` and survival-only scoring, so this round was an
   oracle-quality sync without a live estimator code change.
+- 2026-06-10: `Iron Wave` block now resolves before its attack damage and
+  Guardian `Sharp Hide` reflection in both the diagnostic oracle and
+  `FastCombatSimulator`. Fresh Guardian rows showed live gaining 5 block, then
+  spending 3 of that block on `Sharp Hide` while HP stayed unchanged. The
+  diagnostic oracle covers normal hand plays and Havoc/top-card settlement;
+  the fast simulator applies the same pre-damage block timing for beam scoring.
 
 ## Backlog
 

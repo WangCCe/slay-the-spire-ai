@@ -106,6 +106,10 @@ BASE_SKILL_BLOCK = {
     "True Grit": 7,
 }
 
+ATTACK_BLOCK_BEFORE_DAMAGE = {
+    "Iron Wave": 5,
+}
+
 SECOND_WIND_BLOCK_PER_CARD = {
     "Second Wind": 5,
 }
@@ -382,7 +386,14 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     0,
                     energy_before_card - max(0, _card_cost(card)),
                 )
+            pre_damage_block_applied = False
             if _is_attack_card(card):
+                pre_damage_block_applied = _apply_attack_block_before_damage(
+                    expected,
+                    before,
+                    card,
+                    attack_play_count,
+                )
                 sharp_hide_damage = 0
                 damage, hit_count = _card_damage_and_hits_for_snapshot(
                     card,
@@ -458,7 +469,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 expected["player"]["energy"] += energy_gain
             _apply_block_multiplier_card(expected, before, card, card_play_count)
             block = _card_block(card)
-            if block > 0:
+            if block > 0 and not pre_damage_block_applied:
                 _gain_player_block(
                     expected,
                     before,
@@ -2020,6 +2031,39 @@ def _card_block(card) -> int:
     return 0
 
 
+def _apply_attack_block_before_damage(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+    card,
+    play_count: int = 1,
+) -> bool:
+    if _known_card_name(card, ATTACK_BLOCK_BEFORE_DAMAGE) is None:
+        return False
+    return _apply_card_block_gain(expected, before, card, play_count)
+
+
+def _apply_card_block_gain(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+    card,
+    play_count: int = 1,
+) -> bool:
+    block = _card_block(card)
+    if block <= 0:
+        return False
+    trigger_count = max(1, _to_int(play_count, default=1))
+    _gain_player_block(
+        expected,
+        before,
+        sum(
+            _modified_block(block, expected.get("player", {}))
+            for _ in range(trigger_count)
+        ),
+        trigger_count,
+    )
+    return True
+
+
 def _apply_block_multiplier_card(
     expected: Dict[str, Any],
     before: Dict[str, Any],
@@ -3064,7 +3108,13 @@ def _apply_expected_top_draw_card_played_by_effect(
 
     _pop_expected_draw_pile_top(expected)
     target_index = None
+    pre_damage_block_applied = False
     if _is_attack_card(top_card):
+        pre_damage_block_applied = _apply_attack_block_before_damage(
+            expected,
+            before,
+            top_card,
+        )
         sharp_hide_damage = 0
         damage, hit_count = _card_damage_and_hits_for_snapshot(
             top_card,
@@ -3135,7 +3185,7 @@ def _apply_expected_top_draw_card_played_by_effect(
     if energy_gain > 0:
         expected["player"]["energy"] += energy_gain
     block = _card_block(top_card)
-    if block > 0:
+    if block > 0 and not pre_damage_block_applied:
         _gain_player_block(
             expected,
             before,

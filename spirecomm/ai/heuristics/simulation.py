@@ -1597,6 +1597,7 @@ class FastCombatSimulator:
         # Also check known AOE cards by name
         if card_name in IRONCLAD_AOE_ATTACK_CARDS:
             is_aoe = True
+        self._apply_attack_block_effects(state, card, card_data)
         hit_count = self._get_attack_hit_count(
             card,
             state,
@@ -1746,7 +1747,6 @@ class FastCombatSimulator:
             target_was_live_at_attack_start,
         )
         self._apply_attack_draw_effects(state, card, card_data)
-        self._apply_attack_block_effects(state, card, card_data)
         self._apply_attack_exhaust_effects(state, card, context, card_data)
         self._apply_card_status_pollution(state, card, card_data)
         self._apply_rampage_scaling(state, card)
