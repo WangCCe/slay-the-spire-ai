@@ -1894,6 +1894,7 @@ class CombatRLAgent:
             game,
             avoid_self_lethal=True,
             avoid_pressure_hp_loss=True,
+            avoid_low_hp_hp_loss_filler=True,
         )
 
     def _get_survival_action_replacement(self, action: Action, game: Game) -> Optional[Action]:
@@ -2290,6 +2291,7 @@ class CombatRLAgent:
             game,
             avoid_self_lethal=True,
             avoid_pressure_hp_loss=True,
+            avoid_low_hp_hp_loss_filler=True,
         )
 
     def _get_slime_split_aoe_survival_replacement(self, game: Game) -> Optional[Action]:
@@ -2545,6 +2547,7 @@ class CombatRLAgent:
         excluded_card_names=None,
         avoid_self_lethal: bool = False,
         avoid_pressure_hp_loss: bool = False,
+        avoid_low_hp_hp_loss_filler: bool = False,
     ) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
 
@@ -2574,6 +2577,17 @@ class CombatRLAgent:
             if avoid_pressure_hp_loss and self._would_hp_loss_expose_lethal_end_turn_damage(card, game):
                 logger.info(
                     "[ENERGY_GUARD] Skipping pressure-unsafe HP-loss fallback card=%s hp=%s hp_loss=%s",
+                    self._card_label(card),
+                    getattr(game, "current_hp", None),
+                    self._card_player_hp_loss(card, game),
+                )
+                continue
+            if (
+                avoid_low_hp_hp_loss_filler
+                and self._would_low_hp_hp_loss_be_filler_without_pressure(card, game)
+            ):
+                logger.info(
+                    "[ENERGY_GUARD] Skipping low-HP HP-loss filler card=%s hp=%s hp_loss=%s",
                     self._card_label(card),
                     getattr(game, "current_hp", None),
                     self._card_player_hp_loss(card, game),
@@ -2633,6 +2647,32 @@ class CombatRLAgent:
             game,
         )
         return current_damage > 0 and current_damage >= current_hp - hp_loss
+
+    @classmethod
+    def _would_low_hp_hp_loss_be_filler_without_pressure(cls, card, game: Game) -> bool:
+        hp_loss = cls._card_player_hp_loss(card, game)
+        if hp_loss <= 0:
+            return False
+        if is_attack_card(card):
+            return False
+
+        current_hp = cls._safe_int(getattr(game, "current_hp", 0), default=0)
+        max_hp = max(
+            cls._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
+            1,
+        )
+        if current_hp <= 0 or current_hp > max(16, max_hp * 0.25):
+            return False
+
+        current_block = cls._player_block(game)
+        status_blockable_damage, status_hp_loss = cls._end_turn_status_damage(game)
+        current_damage = cls._end_turn_damage_after_block(
+            cls._incoming_damage(game) + status_blockable_damage,
+            status_hp_loss,
+            cls._end_turn_block_for_game(game, current_block),
+            game,
+        )
+        return current_damage <= 0
 
     @classmethod
     def _card_player_hp_loss(cls, card, game: Game) -> int:
