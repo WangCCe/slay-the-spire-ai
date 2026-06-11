@@ -1672,5 +1672,5 @@
 - B/C leftovers: the floor-14 `Distilled Chaos` row crossed combat exit, `Burning Blood` healing, power cleanup, and turn reset after a potion that played top cards. It remains a terminal/combat-exit boundary, not an A-class deterministic mechanics fix from the current fields.
 - Regression: `test_burning_pact_panache_damage_waits_for_card_select` reproduces the fresh floor-22 Panache timing pair. `test_collector_spawn_live_move_id_one_materializes_torch_heads` and `test_collector_spawn_live_move_id_five_materializes_torch_heads` reproduce the two fresh Collector spawn ids.
 - Verification after fix: the three new regressions were red before implementation (`3 failed`), then green (`3 passed`). `tests/test_sim_divergence.py` passed `228 passed`; full pytest with disabled cache provider and repo-local basetemp passed `1947 passed`.
-- Commit: `4768a16 Sync Burning Pact Panache and Collector summons`.
+- Commit: `8832e14 Sync Burning Pact Panache and Collector summons`.
 - Next candidate: rerun another clean 5-game batch from this commit. If Burning Pact/Panache and Collector Spawn rows stay quiet, choose from the next fresh distribution. The only current leftover from this round is the Distilled Chaos terminal combat-exit row, which should stay B/C unless fresh trace adds deterministic top-card or terminal-state evidence.
