@@ -575,15 +575,15 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         _apply_expected_potion(expected, action, game, before)
 
     elif action_type == "EndTurnAction":
+        orichalcum_block = _orichalcum_end_turn_block(before, expected.get("player", {}))
+        if orichalcum_block > 0:
+            expected["player"]["block"] += orichalcum_block
         metallicize_block = _metallicize_end_turn_block(before)
         if metallicize_block > 0:
             expected["player"]["block"] += metallicize_block
         plated_armor_block = _plated_armor_end_turn_block(before)
         if plated_armor_block > 0:
             expected["player"]["block"] += plated_armor_block
-        orichalcum_block = _orichalcum_end_turn_block(before, expected.get("player", {}))
-        if orichalcum_block > 0:
-            expected["player"]["block"] += orichalcum_block
         hp_loss_events = _apply_combust_end_turn(expected, before)
         regeneration_heal = _regeneration_end_turn_heal(before)
         if regeneration_heal > 0:
@@ -661,6 +661,7 @@ def _apply_expected_attack(
             _mark_monster_defeated(target, expected)
             break
         if hp_loss > 0:
+            _apply_lagavulin_wake_stun(target)
             _apply_guardian_mode_shift(target, hp_loss)
             flight_hit_pending = True
             deferred_malleable_block += _trigger_malleable(target, defer_block=True)
@@ -2929,6 +2930,16 @@ def _apply_guardian_mode_shift(target: Dict[str, Any], hp_loss: int) -> None:
     _remove_snapshot_power(target, "Mode Shift")
 
 
+def _apply_lagavulin_wake_stun(target: Dict[str, Any]) -> None:
+    if not _is_lagavulin_monster(target):
+        return
+    if _normalize(target.get("intent")) not in {"sleep", "intentsleep"}:
+        return
+    target["intent"] = "Intent.STUN"
+    target["move_damage"] = -1
+    target["move_id"] = 4
+
+
 def _apply_card_target_debuffs(
     expected: Dict[str, Any],
     card,
@@ -3950,6 +3961,13 @@ def _is_guardian_monster(monster: Dict[str, Any]) -> bool:
     return (
         _normalize(monster.get("id")) == "theguardian"
         or _normalize(monster.get("name")) == "theguardian"
+    )
+
+
+def _is_lagavulin_monster(monster: Dict[str, Any]) -> bool:
+    return (
+        _normalize(monster.get("id")) == "lagavulin"
+        or _normalize(monster.get("name")) == "lagavulin"
     )
 
 

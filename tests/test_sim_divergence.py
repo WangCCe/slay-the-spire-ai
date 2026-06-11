@@ -6421,6 +6421,58 @@ def test_flight_zero_after_attack_sets_stun_intent(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_lagavulin_wakes_to_stun_after_sleeping_attack(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    twin_strike = _card(name="Twin Strike", card_id="Twin Strike", damage=10)
+    before = _game(
+        floor=6,
+        turn=1,
+        room_type="MonsterRoomElite",
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=2),
+        hand=[twin_strike],
+        monsters=[
+            _monster(
+                name="Lagavulin",
+                monster_id="Lagavulin",
+                hp=110,
+                max_hp=110,
+                block=2,
+                damage=-1,
+                intent=Intent.SLEEP,
+                move_id=5,
+                powers=[Power("Metallicize", "Metallicize", 12)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=6,
+        turn=1,
+        room_type="MonsterRoomElite",
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=1),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Lagavulin",
+                monster_id="Lagavulin",
+                hp=102,
+                max_hp=110,
+                block=0,
+                damage=-1,
+                intent=Intent.STUN,
+                move_id=4,
+                powers=[Power("Metallicize", "Metallicize", 4)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_flight_reduction_persists_across_multihit_attack(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
@@ -9365,6 +9417,66 @@ def test_end_turn_orichalcum_block_reduces_incoming_damage(monkeypatch, tmp_path
         hand=[],
         monsters=[_monster(name="Red Slaver", monster_id="SlaverRed", hp=11, damage=13)],
         relics=[_relic("Burning Blood"), _relic("Orichalcum"), _relic("Pear")],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_end_turn_orichalcum_triggers_before_plated_armor(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=16,
+        turn=2,
+        room_type="MonsterRoomBoss",
+        player=SimpleNamespace(
+            current_hp=75,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[Power("Plated Armor", "Plated Armor", 4)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=223,
+                max_hp=240,
+                damage=32,
+                intent=Intent.ATTACK,
+            )
+        ],
+        relics=[_relic("Burning Blood"), _relic("Orichalcum")],
+    )
+    actual = _game(
+        floor=16,
+        turn=3,
+        room_type="MonsterRoomBoss",
+        player=SimpleNamespace(
+            current_hp=53,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Plated Armor", "Plated Armor", 3)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=223,
+                max_hp=240,
+                damage=-1,
+                intent=Intent.STRONG_DEBUFF,
+                move_id=7,
+            )
+        ],
+        relics=[_relic("Burning Blood"), _relic("Orichalcum")],
     )
 
     assert record_expected_action(EndTurnAction(), before) is True
