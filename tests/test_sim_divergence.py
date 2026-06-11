@@ -2524,6 +2524,247 @@ def test_burning_pact_feel_no_pain_block_waits_for_card_select(monkeypatch, tmp_
     assert not trace_path.exists()
 
 
+def test_burning_pact_panache_damage_waits_for_card_select(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    panache_one = Power("Panache", "Panache", 1)
+    panache_reset = Power("Panache", "Panache", 5)
+    burning_pact = _card(
+        name="Burning Pact",
+        card_id="Burning Pact",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        uuid="burning-pact",
+    )
+    wound_one = _card(
+        name="Wound",
+        card_id="Wound",
+        card_type=CardType.STATUS,
+        cost=0,
+        damage=0,
+        uuid="wound-one",
+    )
+    wound_two = _card(
+        name="Wound",
+        card_id="Wound",
+        card_type=CardType.STATUS,
+        cost=0,
+        damage=0,
+        uuid="wound-two",
+    )
+    before = _game(
+        floor=22,
+        turn=1,
+        act=2,
+        player=SimpleNamespace(
+            current_hp=53,
+            max_hp=85,
+            block=20,
+            energy=1,
+            powers=[panache_one],
+        ),
+        hand=[burning_pact, wound_one, wound_two],
+        monsters=[
+            _monster(
+                name="Sentry",
+                monster_id="Sentry",
+                hp=38,
+                max_hp=38,
+                damage=-1,
+                intent=Intent.DEBUFF,
+                powers=[Power("Vulnerable", "Vulnerable", 5)],
+                move_id=3,
+            ),
+            _monster(
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                max_hp=20,
+                block=34,
+                damage=-1,
+                intent=Intent.DEFEND,
+                index=1,
+                powers=[
+                    Power("Barricade", "Barricade", -1),
+                    Power("Artifact", "Artifact", 1),
+                ],
+                move_id=2,
+            ),
+        ],
+    )
+    after_play = _game(
+        floor=22,
+        turn=1,
+        act=2,
+        player=SimpleNamespace(
+            current_hp=53,
+            max_hp=85,
+            block=20,
+            energy=1,
+            powers=[panache_reset],
+        ),
+        hand=[wound_one, wound_two],
+        monsters=[
+            _monster(
+                name="Sentry",
+                monster_id="Sentry",
+                hp=38,
+                max_hp=38,
+                damage=-1,
+                intent=Intent.DEBUFF,
+                powers=[Power("Vulnerable", "Vulnerable", 5)],
+                move_id=3,
+            ),
+            _monster(
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                max_hp=20,
+                block=34,
+                damage=-1,
+                intent=Intent.DEFEND,
+                index=1,
+                powers=[
+                    Power("Barricade", "Barricade", -1),
+                    Power("Artifact", "Artifact", 1),
+                ],
+                move_id=2,
+            ),
+        ],
+    )
+    after_select = _game(
+        floor=22,
+        turn=1,
+        act=2,
+        player=SimpleNamespace(
+            current_hp=53,
+            max_hp=85,
+            block=20,
+            energy=1,
+            powers=[panache_reset],
+        ),
+        hand=[wound_two],
+        monsters=[
+            _monster(
+                name="Sentry",
+                monster_id="Sentry",
+                hp=28,
+                max_hp=38,
+                damage=-1,
+                intent=Intent.DEBUFF,
+                powers=[Power("Vulnerable", "Vulnerable", 5)],
+                move_id=3,
+            ),
+            _monster(
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                max_hp=20,
+                block=24,
+                damage=-1,
+                intent=Intent.DEFEND,
+                index=1,
+                powers=[
+                    Power("Barricade", "Barricade", -1),
+                    Power("Artifact", "Artifact", 1),
+                ],
+                move_id=2,
+            ),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(after_play) is False
+    assert record_expected_action(CardSelectAction([wound_one]), after_play) is True
+    assert observe_next_state(after_select) is False
+    assert not trace_path.exists()
+
+
+def _collector_spawn_game(move_id):
+    return _game(
+        floor=33,
+        turn=1,
+        act=2,
+        player=SimpleNamespace(current_hp=85, max_hp=85, block=5, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="The Collector",
+                monster_id="TheCollector",
+                hp=275,
+                max_hp=282,
+                damage=-1,
+                intent=Intent.UNKNOWN,
+                move_id=move_id,
+            )
+        ],
+    )
+
+
+def _collector_after_spawn_game():
+    return _game(
+        floor=33,
+        turn=2,
+        act=2,
+        player=SimpleNamespace(current_hp=85, max_hp=85, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Torch Head",
+                monster_id="TorchHead",
+                hp=40,
+                max_hp=40,
+                damage=7,
+                intent=Intent.ATTACK,
+                move_id=1,
+            ),
+            _monster(
+                name="Torch Head",
+                monster_id="TorchHead",
+                hp=38,
+                max_hp=38,
+                damage=7,
+                intent=Intent.ATTACK,
+                index=1,
+                move_id=1,
+            ),
+            _monster(
+                name="The Collector",
+                monster_id="TheCollector",
+                hp=275,
+                max_hp=282,
+                damage=18,
+                intent=Intent.ATTACK,
+                index=2,
+                move_id=2,
+            ),
+        ],
+    )
+
+
+def test_collector_spawn_live_move_id_one_materializes_torch_heads(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    assert record_expected_action(EndTurnAction(), _collector_spawn_game(move_id=1)) is True
+    assert observe_next_state(_collector_after_spawn_game()) is False
+    assert not trace_path.exists()
+
+
+def test_collector_spawn_live_move_id_five_materializes_torch_heads(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    assert record_expected_action(EndTurnAction(), _collector_spawn_game(move_id=5)) is True
+    assert observe_next_state(_collector_after_spawn_game()) is False
+    assert not trace_path.exists()
+
+
 def test_nested_havoc_top_card_applies_nested_top_skill_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

@@ -400,6 +400,10 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         card_index = _to_int(getattr(action, "card_index", -1), default=-1)
         if card is not None:
             delayed_headbutt_effects = _headbutt_select_delayed_effects(before, card)
+            delayed_burning_pact_effects = _burning_pact_select_delayed_effects(
+                before,
+                card,
+            )
             energy_before_card = expected["player"]["energy"]
             target_index = None
             card_play_count = _card_play_count(before, card)
@@ -537,7 +541,10 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             _apply_bird_faced_urn_power_play(expected, card, card_play_count)
             for _ in range(card_play_count):
                 _apply_letter_opener_skill_play(expected, card)
-                _apply_panache_card_play(expected)
+                if delayed_burning_pact_effects:
+                    _advance_panache_card_play(expected)
+                else:
+                    _apply_panache_card_play(expected)
             if card_play_count > 1:
                 _consume_duplication_power(expected)
         if 0 <= card_index < len(expected["hand"]):
@@ -814,6 +821,13 @@ def _apply_direct_monster_damage(
 
 
 def _apply_panache_card_play(expected: Dict[str, Any]) -> int:
+    damage = _advance_panache_card_play(expected)
+    if damage <= 0:
+        return 0
+    return _apply_panache_damage(expected, damage)
+
+
+def _advance_panache_card_play(expected: Dict[str, Any]) -> int:
     player = expected.get("player", {})
     if not _snapshot_has_power(player, "Panache"):
         return 0
@@ -821,6 +835,15 @@ def _apply_panache_card_play(expected: Dict[str, Any]) -> int:
     counter = _snapshot_power_amount(player, "Panache")
     if counter > 1:
         _set_snapshot_power_amount(player, "Panache", counter - 1)
+        return 0
+
+    _set_snapshot_power_amount(player, "Panache", PANACHE_RESET_COUNT)
+    return PANACHE_DAMAGE
+
+
+def _apply_panache_damage(expected: Dict[str, Any], damage: int) -> int:
+    damage = max(0, _to_int(damage))
+    if damage <= 0:
         return 0
 
     damage_dealt = 0
@@ -834,9 +857,8 @@ def _apply_panache_card_play(expected: Dict[str, Any]) -> int:
         damage_dealt += _apply_direct_monster_damage(
             expected,
             monster_index,
-            PANACHE_DAMAGE,
+            damage,
         )
-    _set_snapshot_power_amount(player, "Panache", PANACHE_RESET_COUNT)
     return damage_dealt
 
 
@@ -1013,6 +1035,7 @@ def _current_summon_move(monster: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if move_id is None:
         return None
 
+    summon_moves: List[Dict[str, Any]] = []
     for monster_name in (monster.get("name"), monster.get("id")):
         if not monster_name:
             continue
@@ -1023,9 +1046,43 @@ def _current_summon_move(monster: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         for move in moves:
             if "summons" not in move:
                 continue
+            summon_moves.append(move)
             if _to_int(move.get("move_id"), default=None) == move_id:
                 return move
+        live_move = _current_summon_move_from_live_state(monster, summon_moves)
+        if live_move:
+            return live_move
     return None
+
+
+def _current_summon_move_from_live_state(
+    monster: Dict[str, Any],
+    summon_moves: List[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    live_intent = _normalized_intent(monster.get("intent"))
+    if not live_intent:
+        return None
+
+    live_damage = _to_int(monster.get("move_damage"), default=0)
+    live_hits = max(1, _to_int(monster.get("move_hits"), default=1))
+    matches: List[Dict[str, Any]] = []
+
+    for move in summon_moves:
+        if _normalized_intent(move.get("intent")) != live_intent:
+            continue
+        if "attack" in live_intent and live_damage > 0:
+            move_damage = _to_int(move.get("damage"), default=0)
+            move_hits = max(1, _to_int(move.get("hits"), default=1))
+            if move_damage > 0 and move_damage * move_hits != live_damage * live_hits:
+                continue
+        matches.append(move)
+
+    return matches[0] if len(matches) == 1 else None
+
+
+def _normalized_intent(value) -> str:
+    normalized = _normalize(value)
+    return normalized[6:] if normalized.startswith("intent") else normalized
 
 
 def _canonical_monster_data_name(monster_name: str) -> Optional[str]:
@@ -1312,7 +1369,17 @@ def _burning_pact_select_delayed_effects(
         effects["block"] = feel_no_pain
     if _snapshot_has_relic(snapshot, "Charon's Ashes"):
         effects["charons_ashes_events"] = 1
+    panache_damage = _panache_delayed_card_play_damage(snapshot)
+    if panache_damage > 0:
+        effects["panache_damage"] = panache_damage
     return effects
+
+
+def _panache_delayed_card_play_damage(snapshot: Dict[str, Any]) -> int:
+    player = snapshot.get("player", {})
+    if not _snapshot_has_power(player, "Panache"):
+        return 0
+    return PANACHE_DAMAGE if _snapshot_power_amount(player, "Panache") <= 1 else 0
 
 
 def _will_apply_pending_burning_pact_select_effects(
@@ -1351,6 +1418,7 @@ def _apply_pending_burning_pact_select_effects(
         before,
         max(0, _to_int(effects.get("charons_ashes_events"))),
     )
+    _apply_panache_damage(expected, effects.get("panache_damage", 0))
 
 
 def _arm_headbutt_select_boundary_if_applicable(
