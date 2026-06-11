@@ -3619,9 +3619,13 @@ class CombatRLAgent:
     @classmethod
     def _end_turn_status_hp_loss_events(cls, game: Game) -> list[int]:
         events = []
-        for card in getattr(game, "hand", []) or []:
+        hand = list(getattr(game, "hand", []) or [])
+        hand_size = len(hand)
+        for card in hand:
             if cls._card_matches_normalized_names(card, {"decay"}):
                 events.append(2)
+            if cls._card_matches_normalized_names(card, {"regret"}) and hand_size > 0:
+                events.append(hand_size)
         return events
 
     @classmethod

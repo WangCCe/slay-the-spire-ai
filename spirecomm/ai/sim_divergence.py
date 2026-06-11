@@ -3440,13 +3440,16 @@ def _end_turn_status_damage_events(snapshot: Dict[str, Any]):
 
 
 def _end_turn_status_hp_loss_events(snapshot: Dict[str, Any]):
-    for card in snapshot.get("hand", []) or []:
+    hand = snapshot.get("hand", []) or []
+    hand_size = len(hand)
+    for card in hand:
         card_name = _snapshot_known_card_name(card, END_TURN_STATUS_HP_LOSS)
-        if card_name is None:
-            continue
-        amount = END_TURN_STATUS_HP_LOSS[card_name]
-        if amount > 0:
-            yield amount
+        if card_name is not None:
+            amount = END_TURN_STATUS_HP_LOSS[card_name]
+            if amount > 0:
+                yield amount
+        if _snapshot_known_card_name(card, {"Regret": 0}) == "Regret" and hand_size > 0:
+            yield hand_size
 
 
 def _end_turn_exhaust_count(snapshot: Dict[str, Any]) -> int:
