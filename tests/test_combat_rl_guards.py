@@ -2674,6 +2674,87 @@ def test_hexaghost_setup_guard_treats_live_unknown_activate_as_no_damage():
     assert agent._fallback_turn_key == (16, 1)
 
 
+def test_hexaghost_setup_guard_replaces_empty_second_wind_with_attack():
+    second_wind = SimpleNamespace(
+        name="Second Wind+",
+        card_id="Second Wind",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    rampage = SimpleNamespace(
+        name="Rampage",
+        card_id="Rampage",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    rage = SimpleNamespace(
+        name="Rage",
+        card_id="Rage",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=0,
+        has_target=False,
+    )
+    game = _game(
+        floor=16,
+        turn=1,
+        act=1,
+        player=SimpleNamespace(energy=3),
+        hand=[second_wind, rampage, strike, defend, rage],
+        monsters=[
+            _monster(
+                hp=250,
+                damage=5,
+                index=0,
+                name="Hexaghost",
+                monster_id="Hexaghost",
+            )
+        ],
+        room_type="MonsterRoomBoss",
+    )
+    game.monsters[0].intent = Intent.UNKNOWN
+    game.monsters[0].move_id = 5
+    game.monsters[0].move_hits = 1
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=lambda _game: PlayCardAction(card_index=0))
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert CombatRLAgent._incoming_damage(game) == 0
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index == 0
+    assert agent._fallback_turn_key == (16, 1)
+
+
 def test_slime_boss_setup_guard_prioritizes_thunderclap_before_strike():
     strike = SimpleNamespace(
         name="Strike",

@@ -959,6 +959,7 @@ class CombatRLAgent:
             "ghostlyarmor",
             "powerthrough",
             "impervious",
+            "secondwind",
         }
     )
     SLIME_BOSS_VULNERABLE_SETUP_PRIORITY = (
@@ -2320,6 +2321,16 @@ class CombatRLAgent:
                         continue
                     return PlayCardAction(card_index=card_index, target_index=target_index)
                 return PlayCardAction(card_index=card_index)
+        for card_index, card in playable:
+            if not is_attack_card(card):
+                continue
+            if self._would_play_self_lethal_card(card, game):
+                continue
+            if card_requires_target(card):
+                if target_index is None:
+                    continue
+                return PlayCardAction(card_index=card_index, target_index=target_index)
+            return PlayCardAction(card_index=card_index)
         return None
 
     def _is_hexaghost_opening_setup_window(self, game: Game) -> bool:
