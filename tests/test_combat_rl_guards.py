@@ -1771,6 +1771,52 @@ def test_energy_guard_takeover_skips_bloodletting_when_hp_loss_would_kill():
     assert isinstance(action, EndTurnAction)
 
 
+def test_energy_guard_takeover_skips_bloodletting_when_hp_loss_makes_incoming_lethal():
+    bloodletting = SimpleNamespace(
+        name="Bloodletting",
+        card_id="Bloodletting",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=0,
+        has_target=False,
+    )
+    attacker = _monster(
+        hp=40,
+        damage=27,
+        index=0,
+        name="Slaver",
+        monster_id="SlaverRed",
+    )
+    attacker.intent = Intent.ATTACK
+    game = _game(
+        hand=[bloodletting],
+        monsters=[attacker],
+        current_hp=26,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=9,
+        player=SimpleNamespace(energy=0, block=3),
+    )
+
+    agent = _agent()
+    agent._fallback_turn_key = (16, 9)
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, EndTurnAction)
+
+
 def test_energy_guard_prefers_slime_split_aoe_when_block_still_dies():
     defend = SimpleNamespace(
         name="Defend",

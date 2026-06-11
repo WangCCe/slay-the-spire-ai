@@ -1253,6 +1253,12 @@ class CombatRLAgent:
                     self._describe_combat_action(fallback_action, game),
                 )
                 return self._with_combat_action_context(EndTurnAction(), game)
+            if self._is_pressure_unsafe_hp_loss_card_action(fallback_action, game):
+                logger.info(
+                    "[ENERGY_GUARD] Suppressing takeover pressure-unsafe HP-loss action %s; ending turn",
+                    self._describe_combat_action(fallback_action, game),
+                )
+                return self._with_combat_action_context(EndTurnAction(), game)
             return self._with_combat_action_context(
                 fallback_action, game
             )
@@ -1871,6 +1877,11 @@ class CombatRLAgent:
                         "[ENERGY_GUARD] Skipping fallback self-lethal action %s",
                         self._describe_combat_action(fallback_action, game),
                     )
+                elif self._is_pressure_unsafe_hp_loss_card_action(fallback_action, game):
+                    logger.info(
+                        "[ENERGY_GUARD] Skipping fallback pressure-unsafe HP-loss action %s",
+                        self._describe_combat_action(fallback_action, game),
+                    )
                 else:
                     return fallback_action
         except Exception as exc:
@@ -1879,7 +1890,11 @@ class CombatRLAgent:
         if guardian_pressure_replacement is not None:
             return guardian_pressure_replacement
 
-        return self._first_playable_card_action(game, avoid_self_lethal=True)
+        return self._first_playable_card_action(
+            game,
+            avoid_self_lethal=True,
+            avoid_pressure_hp_loss=True,
+        )
 
     def _get_survival_action_replacement(self, action: Action, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
@@ -2271,7 +2286,11 @@ class CombatRLAgent:
             if replacement is not None:
                 return replacement
 
-        return self._first_playable_card_action(game, avoid_self_lethal=True)
+        return self._first_playable_card_action(
+            game,
+            avoid_self_lethal=True,
+            avoid_pressure_hp_loss=True,
+        )
 
     def _get_slime_split_aoe_survival_replacement(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
@@ -2525,6 +2544,7 @@ class CombatRLAgent:
         allow_power: bool = True,
         excluded_card_names=None,
         avoid_self_lethal: bool = False,
+        avoid_pressure_hp_loss: bool = False,
     ) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
 
@@ -2551,6 +2571,14 @@ class CombatRLAgent:
                     self._card_player_hp_loss(card, game),
                 )
                 continue
+            if avoid_pressure_hp_loss and self._would_hp_loss_expose_lethal_end_turn_damage(card, game):
+                logger.info(
+                    "[ENERGY_GUARD] Skipping pressure-unsafe HP-loss fallback card=%s hp=%s hp_loss=%s",
+                    self._card_label(card),
+                    getattr(game, "current_hp", None),
+                    self._card_player_hp_loss(card, game),
+                )
+                continue
             if card_requires_target(card):
                 if target_index is None:
                     continue
@@ -2568,6 +2596,16 @@ class CombatRLAgent:
             game,
         )
 
+    def _is_pressure_unsafe_hp_loss_card_action(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        return self._would_hp_loss_expose_lethal_end_turn_damage(
+            self._card_for_action(action, game),
+            game,
+        )
+
     @classmethod
     def _would_play_self_lethal_card(cls, card, game: Game) -> bool:
         hp_loss = cls._card_player_hp_loss(card, game)
@@ -2575,6 +2613,26 @@ class CombatRLAgent:
             return False
         current_hp = cls._safe_int(getattr(game, "current_hp", 0), default=0)
         return current_hp > 0 and current_hp <= hp_loss
+
+    @classmethod
+    def _would_hp_loss_expose_lethal_end_turn_damage(cls, card, game: Game) -> bool:
+        hp_loss = cls._card_player_hp_loss(card, game)
+        if hp_loss <= 0:
+            return False
+
+        current_hp = cls._safe_int(getattr(game, "current_hp", 0), default=0)
+        if current_hp <= hp_loss:
+            return True
+
+        current_block = cls._player_block(game)
+        status_blockable_damage, status_hp_loss = cls._end_turn_status_damage(game)
+        current_damage = cls._end_turn_damage_after_block(
+            cls._incoming_damage(game) + status_blockable_damage,
+            status_hp_loss,
+            cls._end_turn_block_for_game(game, current_block),
+            game,
+        )
+        return current_damage > 0 and current_damage >= current_hp - hp_loss
 
     @classmethod
     def _card_player_hp_loss(cls, card, game: Game) -> int:
