@@ -925,6 +925,7 @@ class CombatRLAgent:
     """
 
     ACT1_BOSS_IDENTIFIERS = frozenset({"slimeboss", "hexaghost", "theguardian"})
+    GREMLIN_LEADER_IDENTIFIERS = frozenset({"gremlinleader"})
     GUARDIAN_PRESSURE_INCOMING = 24
     GUARDIAN_SHARP_HIDE_DAMAGE = 3
     GUARDIAN_SHARP_HIDE_ASCENSION_19_DAMAGE = 4
@@ -1280,6 +1281,16 @@ class CombatRLAgent:
                     self._fallback_turn_key = self._combat_turn_key(game)
                     logger.info(
                         "[SURVIVAL_GUARD] Replacing RL action with %s on floor=%s turn=%s",
+                        self._describe_combat_action(replacement, game),
+                        getattr(game, "floor", None),
+                        getattr(game, "turn", None),
+                    )
+                    return self._with_combat_action_context(replacement, game)
+                elif (replacement := self._get_gremlin_leader_minion_attack_replacement(action, game)) is not None:
+                    self.rl_failure_count = 0
+                    self._fallback_turn_key = self._combat_turn_key(game)
+                    logger.info(
+                        "[GREMLIN_LEADER_MINION_GUARD] Replacing RL action with %s on floor=%s turn=%s",
                         self._describe_combat_action(replacement, game),
                         getattr(game, "floor", None),
                         getattr(game, "turn", None),
@@ -1826,6 +1837,12 @@ class CombatRLAgent:
                 )
                 if guarded_action is not None:
                     return guarded_action
+                guarded_action = self._get_gremlin_leader_minion_attack_replacement(
+                    fallback_action,
+                    game,
+                )
+                if guarded_action is not None:
+                    return guarded_action
                 if guardian_pressure_replacement is not None:
                     guarded_action = self._get_guardian_pressure_action_replacement(
                         fallback_action,
@@ -1960,6 +1977,128 @@ class CombatRLAgent:
         )
         return PlayCardAction(card_index=card_index, target_index=target_index)
 
+    def _get_gremlin_leader_minion_attack_replacement(self, action: Action, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return None
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        if not getattr(game, "in_combat", False):
+            return None
+        if not self._is_gremlin_leader_combat(game):
+            return None
+
+        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        if current_hp <= 0:
+            return None
+
+        incoming = self._incoming_damage(game)
+        if incoming <= 0:
+            return None
+        max_hp = max(
+            self._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
+            1,
+        )
+        current_block = self._player_block(game)
+        status_blockable_damage, status_hp_loss = self._end_turn_status_damage(game)
+        current_damage = self._end_turn_aggregate_damage_after_block(
+            incoming + status_blockable_damage,
+            status_hp_loss,
+            self._end_turn_block_for_game(game, current_block),
+            game,
+        )
+        if (
+            current_damage < max(18, current_hp * 0.45)
+            and current_hp / max_hp > 0.45
+        ):
+            return None
+
+        card = self._card_for_action(action, game)
+        if card is None or not is_attack_card(card) or not card_requires_target(card):
+            return None
+        if self._would_play_self_lethal_card(card, game):
+            return None
+        card_index = self._safe_int(getattr(action, "card_index", -1), default=-1)
+        if card_index < 0:
+            return None
+        energy = self._player_energy(game)
+        if effective_card_cost(card, energy) > energy:
+            return None
+
+        source_attack_damage = self._survival_attack_damage_before_player_weak(card, game)
+        if source_attack_damage <= 0:
+            return None
+        source_attack_hits = self._survival_attack_hit_count(card)
+
+        current_target = self._safe_int(getattr(action, "target_index", -1), default=-1)
+        best_candidate = None
+        for monster_index, monster in enumerate(getattr(game, "monsters", []) or []):
+            if not self._is_targetable_monster(monster):
+                continue
+            if self._is_gremlin_leader_monster(monster):
+                continue
+            removed_incoming = self._monster_incoming_damage(monster)
+            if removed_incoming <= 0:
+                continue
+
+            effective_hp = (
+                self._safe_int(getattr(monster, "current_hp", 0), default=0)
+                + self._safe_int(getattr(monster, "block", 0), default=0)
+            )
+            attack_damage = self._apply_survival_attack_target_modifiers(
+                source_attack_damage,
+                game,
+                monster,
+                hit_count=source_attack_hits,
+            )
+            if attack_damage < effective_hp:
+                continue
+
+            damage_after_candidate = self._end_turn_aggregate_damage_after_block(
+                incoming - removed_incoming + status_blockable_damage,
+                status_hp_loss,
+                self._end_turn_block_for_game(game, current_block),
+                game,
+            )
+            if damage_after_candidate >= current_damage:
+                continue
+
+            damage_reduced = current_damage - damage_after_candidate
+            survival_margin = current_hp - damage_after_candidate
+            score = (
+                damage_reduced,
+                removed_incoming,
+                survival_margin,
+                -effective_hp,
+                -monster_index,
+            )
+            if best_candidate is None or score > best_candidate[0]:
+                best_candidate = (
+                    score,
+                    monster_index,
+                    monster,
+                    removed_incoming,
+                    effective_hp,
+                )
+
+        if best_candidate is None:
+            return None
+        _, target_index, target, removed_incoming, effective_hp = best_candidate
+        if current_target == target_index:
+            return None
+
+        logger.info(
+            "[GREMLIN_LEADER_MINION_GUARD] Retargeting %s to %s index=%s hp=%s removed_incoming=%s",
+            self._card_label(card),
+            getattr(target, "name", getattr(target, "monster_id", "UNKNOWN")),
+            target_index,
+            effective_hp,
+            removed_incoming,
+        )
+        return PlayCardAction(card_index=card_index, target_index=target_index)
+
     def _get_guardian_sharp_hide_action_replacement(self, action: Action, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction, PlayCardAction
         from spirecomm.spire.screen import ScreenType
@@ -1992,6 +2131,18 @@ class CombatRLAgent:
             current_block,
             game,
         )
+        immediate_sharp_hide_damage = max(0, sharp_hide_damage - current_block)
+        if damage_without_attack >= current_hp and immediate_sharp_hide_damage >= current_hp:
+            logger.info(
+                "[GUARDIAN_SHARP_HIDE_GUARD] Ending turn to avoid immediate lethal Sharp Hide attack hp=%s incoming=%s status_blockable_damage=%s status_hp_loss=%s sharp_hide=%s current_block=%s",
+                current_hp,
+                incoming,
+                status_blockable_damage,
+                status_hp_loss,
+                sharp_hide_damage,
+                current_block,
+            )
+            return EndTurnAction()
         if damage_without_attack >= current_hp:
             return None
 
@@ -2971,6 +3122,23 @@ class CombatRLAgent:
                 alive_split_slimes += 1
 
         return has_dead_slime_boss and alive_split_slimes >= 2
+
+    @classmethod
+    def _is_gremlin_leader_combat(cls, game: Game) -> bool:
+        return any(
+            cls._is_gremlin_leader_monster(monster)
+            for monster in cls._alive_monsters(game)
+        )
+
+    @classmethod
+    def _is_gremlin_leader_monster(cls, monster) -> bool:
+        for value in (
+            getattr(monster, "monster_id", None),
+            getattr(monster, "name", None),
+        ):
+            if cls._normalize_identifier(value) in cls.GREMLIN_LEADER_IDENTIFIERS:
+                return True
+        return False
 
     @classmethod
     def _has_guardian(cls, game: Game) -> bool:

@@ -1885,6 +1885,118 @@ def test_energy_guard_prefers_slime_split_aoe_when_block_still_dies():
     assert agent._fallback_turn_key == (16, 6)
 
 
+def test_gremlin_leader_guard_retargets_attack_to_kill_attacking_minion():
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        block=5,
+    )
+    headbutt = SimpleNamespace(
+        name="Headbutt",
+        card_id="Headbutt",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+        damage=9,
+    )
+    bash = SimpleNamespace(
+        name="Bash",
+        card_id="Bash",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+        damage=8,
+    )
+    twin_strike = SimpleNamespace(
+        name="Twin Strike+",
+        card_id="Twin Strike",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    demon_form = SimpleNamespace(
+        name="Demon Form",
+        card_id="Demon Form",
+        type=CardType.POWER,
+        is_playable=True,
+        cost=3,
+        has_target=False,
+    )
+    wizard = _monster(
+        hp=21,
+        damage=0,
+        index=0,
+        name="Gremlin Wizard",
+        monster_id="GremlinWizard",
+    )
+    wizard.block = 3
+    wizard.intent = Intent.UNKNOWN
+    gone_one = _monster(hp=0, damage=0, index=1, name="Gone", monster_id="Gone")
+    gone_one.is_gone = True
+    sneaky = _monster(
+        hp=7,
+        damage=12,
+        index=2,
+        name="Sneaky Gremlin",
+        monster_id="GremlinThief",
+    )
+    sneaky.block = 3
+    sneaky.intent = Intent.ATTACK
+    gone_three = _monster(hp=0, damage=0, index=3, name="Gone", monster_id="Gone")
+    gone_three.is_gone = True
+    leader = _monster(
+        hp=88,
+        damage=12,
+        index=4,
+        name="Gremlin Leader",
+        monster_id="GremlinLeader",
+    )
+    leader.block = 3
+    leader.intent = Intent.ATTACK
+    leader.move_hits = 3
+    game = _game(
+        floor=23,
+        turn=4,
+        act=2,
+        current_hp=65,
+        max_hp=75,
+        player=SimpleNamespace(energy=3, block=0),
+        hand=[defend, headbutt, bash, twin_strike, demon_form],
+        monsters=[wizard, gone_one, sneaky, gone_three, leader],
+        room_type="MonsterRoomElite",
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(
+            card_index=3,
+            target_index=4,
+        )
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert CombatRLAgent._incoming_damage(game) == 58
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 3
+    assert action.target_index == 2
+    assert agent._fallback_turn_key == (23, 4)
+
+
 def test_survival_guard_overrides_rl_attack_when_lethal_block_available():
     slimed = SimpleNamespace(
         name="Slimed",
@@ -2275,6 +2387,67 @@ def test_guardian_sharp_hide_guard_infers_attack_buff_reflection_without_power()
 
     assert isinstance(action, EndTurnAction)
     assert agent._fallback_turn_key == (16, 5)
+
+
+def test_guardian_sharp_hide_guard_blocks_immediate_self_lethal_attack_even_when_incoming_already_lethal():
+    heavy_blade = SimpleNamespace(
+        name="Heavy Blade",
+        card_id="Heavy Blade",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+        damage=32,
+    )
+    second_wind = SimpleNamespace(
+        name="Second Wind",
+        card_id="Second Wind",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    guardian = _monster(
+        hp=81,
+        damage=16,
+        index=0,
+        name="The Guardian",
+        monster_id="TheGuardian",
+    )
+    guardian.intent = Intent.ATTACK_BUFF
+    guardian.move_hits = 2
+    guardian.powers = [SimpleNamespace(power_id="SharpHide", amount=3)]
+    game = _game(
+        hand=[heavy_blade, second_wind],
+        monsters=[guardian],
+        current_hp=1,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=11,
+        player=SimpleNamespace(energy=3, block=0),
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0, target_index=0)
+    )
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, EndTurnAction)
+    assert agent._fallback_turn_key == (16, 11)
 
 
 def test_guardian_sharp_hide_guard_blocks_low_margin_attack_before_lethal():
