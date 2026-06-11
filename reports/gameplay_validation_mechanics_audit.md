@@ -1731,3 +1731,13 @@
 - Verification after fix: the two new regressions were red after reboot (`2 failed`), then green (`2 passed`). Adjacent Fairy/Combust regressions passed (`3 passed`). `tests/test_sim_divergence.py` passed `235 passed`; full pytest with disabled cache provider and repo-local basetemp passed `1954 passed`.
 - Commit: `44b993e Sync Lizard Tail revive and Combust death`.
 - Remaining candidates: rerun another clean 5-game batch from this commit. If these rows stay quiet, choose from the next fresh distribution. Keep the Automaton summon/reorder materialization row in B/C unless future trace adds deterministic ordering or identity evidence.
+
+## Round 157 - 2026-06-11
+
+- Preflight: after Round 156 was recorded as `cadd3b1 Record Round 156 sim divergence audit`, the branch was `master...origin/master [ahead 12]` with only local pytest temp directories untracked (`.codex_pytest/`, `.pytest_tmp/`). Recent commits were `cadd3b1`, `44b993e`, `8a5f776`, `11dbfa6`, `4468f33`, `f926814`, `abab823`, and `406b2bf`. CommunicationMod still used Windows Python with `scripts/run_training_batch.py --eval --max-games 5 --phase conservative --restart-guidance --truncate-log-after-backup` plus the clean decision/sim-divergence trace paths. A controlled `scripts\restart_sts_modded.ps1 -FreshRun` started a fresh batch at cutoff marker `1781192712`; the batch reached `Max games reached (5); exiting.`.
+- Validation: the fresh AI markers were `1781192837`, `1781192926`, `1781193030`, `1781193114`, and `1781193203`. The corresponding Ironclad run files were `1781192834.run`, `1781192923.run`, `1781193027.run`, `1781193111.run`, and `1781193200.run`; all had `victory=false`. Deaths were `The Guardian`, `Slime Boss`, `The Guardian`, `Slime Boss`, and `The Guardian`, all on floor 16.
+- Trace distribution: post-cutoff sim-divergence rows were `1` total: `player_state_mismatch` on floor 10 `EndTurnAction`, with only `player.block` differing.
+- Classification: no actionable A-class cluster was found. The only row was a Looter `ESCAPE` settlement/combat-exit boundary: before and actual had the same player HP (`19`), same monster HP (`7`), and the Looter became `gone=true`; live retained player block `5` while the oracle cleared it to `0`. This is a terminal escape/block-retention boundary with insufficient deterministic mechanism value for a small fix, so it remains B/C.
+- Verification: no production code was changed in this round. Full pytest with disabled cache provider and repo-local basetemp passed `1954 passed`.
+- Commit: audit-only record for this no-fix stop round.
+- Stop decision: fresh trace has no actionable A-class cluster. Per the stop condition, stop here and report rather than hard-fixing the Looter escape block-retention boundary.
