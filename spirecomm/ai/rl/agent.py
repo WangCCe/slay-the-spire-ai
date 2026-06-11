@@ -3622,6 +3622,7 @@ class CombatRLAgent:
             block_value += cls._ornamental_fan_block_for_card(card, game)
             if card_exhausts_itself(card, game_data_loader):
                 block_value += cls._feel_no_pain_block_per_exhaust(game)
+            block_value += cls._second_wind_block_value_for_game(card, game)
         if game is None or not cls._card_matches_normalized_names(card, {"havoc"}):
             return block_value
 
@@ -3644,6 +3645,23 @@ class CombatRLAgent:
         )
         feel_no_pain_block = cls._feel_no_pain_block_per_exhaust(game)
         return block_value + top_card_block + top_card_fan_block + feel_no_pain_block
+
+    @classmethod
+    def _second_wind_block_value_for_game(cls, card, game: Optional[Game]) -> int:
+        if game is None or not cls._card_matches_normalized_names(card, {"secondwind"}):
+            return 0
+
+        exhausted_count = sum(
+            1
+            for hand_card in cls._remaining_hand_cards_after_effect_source(game, card)
+            if not is_attack_card(hand_card)
+        )
+        if exhausted_count <= 0:
+            return 0
+
+        block_per_exhaust = 7 if card_upgrade_count(card) > 0 else 5
+        block_per_exhaust += cls._feel_no_pain_block_per_exhaust(game)
+        return exhausted_count * block_per_exhaust
 
     @classmethod
     def _player_entangled(cls, game: Game) -> bool:

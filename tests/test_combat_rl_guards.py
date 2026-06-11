@@ -1872,6 +1872,59 @@ def test_energy_guard_takeover_skips_low_hp_bloodletting_filler_without_incoming
     assert isinstance(action, EndTurnAction)
 
 
+def test_guardian_pressure_counts_second_wind_exhaust_block():
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        block=5,
+    )
+    second_wind = SimpleNamespace(
+        name="Second Wind+",
+        card_id="Second Wind",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        upgrades=1,
+    )
+    bash = SimpleNamespace(
+        name="Bash",
+        card_id="Bash",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+    )
+    guardian = _monster(
+        hp=102,
+        damage=9,
+        index=0,
+        name="The Guardian",
+        monster_id="TheGuardian",
+    )
+    guardian.intent = Intent.ATTACK
+    game = _game(
+        hand=[defend, second_wind, bash],
+        monsters=[guardian],
+        current_hp=15,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=8,
+        player=SimpleNamespace(energy=3, block=0),
+    )
+
+    action = _agent()._get_guardian_pressure_block_replacement(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+
+
 def test_energy_guard_prefers_slime_split_aoe_when_block_still_dies():
     defend = SimpleNamespace(
         name="Defend",
