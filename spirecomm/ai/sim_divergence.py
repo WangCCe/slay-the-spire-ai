@@ -408,6 +408,10 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             target_index = None
             card_play_count = _card_play_count(before, card)
             attack_play_count = _attack_card_play_count(before, card)
+            attack_self_damage = 0
+            if _is_attack_card(card):
+                attack_self_damage = _card_self_damage(card)
+                attack_self_damage += _blue_candle_curse_hp_loss(card, before)
             if _is_x_cost_card(card) or _is_whirlwind(card):
                 expected["player"]["energy"] = 0
             else:
@@ -417,6 +421,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 )
             pre_damage_block_applied = False
             if _is_attack_card(card):
+                attack_effects_resolved = False
                 pre_damage_block_applied = _apply_attack_block_before_damage(
                     expected,
                     before,
@@ -441,6 +446,10 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 damage_dealt = 0
                 if _is_all_enemy_attack(card):
                     for _ in range(max(1, attack_play_count)):
+                        if attack_self_damage > 0:
+                            _lose_player_hp(expected, attack_self_damage)
+                            if _snapshot_player_dead(expected):
+                                break
                         damage_dealt += _apply_expected_attack_to_all(
                             expected,
                             damage,
@@ -448,10 +457,16 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                             before,
                             source_damage_before_weak=source_damage_before_weak,
                         )
-                    sharp_hide_damage = _sharp_hide_reflection_damage(before, all_targets=True)
+                        attack_effects_resolved = True
+                    if attack_effects_resolved:
+                        sharp_hide_damage = _sharp_hide_reflection_damage(before, all_targets=True)
                 else:
                     target_index = _target_index_for_action(action, game)
                     for _ in range(max(1, attack_play_count)):
+                        if attack_self_damage > 0:
+                            _lose_player_hp(expected, attack_self_damage)
+                            if _snapshot_player_dead(expected):
+                                break
                         damage_dealt += _apply_expected_attack(
                             expected,
                             target_index,
@@ -461,30 +476,32 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                             source_damage_before_weak=source_damage_before_weak,
                         )
                         _apply_card_target_debuffs(expected, card, target_index)
-                    sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
-                    _apply_feed_max_hp_gain(expected, card, target_index, before)
-                if _is_reaper(card) and damage_dealt > 0:
+                        attack_effects_resolved = True
+                    if attack_effects_resolved:
+                        sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
+                        _apply_feed_max_hp_gain(expected, card, target_index, before)
+                if attack_effects_resolved and _is_reaper(card) and damage_dealt > 0:
                     _heal_player(expected, damage_dealt)
                 rage_block = (
                     0
                     if _to_int(delayed_headbutt_effects.get("rage_block")) > 0
                     else _rage_attack_block(expected.get("player", {}))
                 )
-                if rage_block > 0:
+                if attack_effects_resolved and rage_block > 0:
                     _gain_player_block(expected, before, rage_block)
                 ornamental_fan_block = (
                     0
                     if _to_int(delayed_headbutt_effects.get("ornamental_fan_block")) > 0
                     else _ornamental_fan_attack_block(before)
                 )
-                if ornamental_fan_block > 0:
+                if attack_effects_resolved and ornamental_fan_block > 0:
                     _gain_player_block(expected, before, ornamental_fan_block)
-                if sharp_hide_damage > 0:
+                if attack_effects_resolved and sharp_hide_damage > 0:
                     _damage_player(expected, sharp_hide_damage)
             self_damage = _card_self_damage(card)
             self_damage += _blue_candle_curse_hp_loss(card, before)
             if _is_attack_card(card):
-                self_damage *= attack_play_count
+                self_damage = 0
             if self_damage > 0:
                 _lose_player_hp(expected, self_damage)
             heal = _card_heal(card)
@@ -2867,6 +2884,10 @@ def _snapshot_player_is_weak(player: Dict[str, Any]) -> bool:
     )
 
 
+def _snapshot_player_dead(snapshot: Dict[str, Any]) -> bool:
+    return _to_int(snapshot.get("player", {}).get("current_hp")) <= 0
+
+
 def _decrement_flight(target: Dict[str, Any]) -> None:
     for power in target.get("powers", []) or []:
         identifiers = {
@@ -3313,6 +3334,8 @@ def _lose_player_hp(expected: Dict[str, Any], amount: int) -> int:
     hp_lost = hp_after_loss < hp_before
     player["current_hp"] = hp_after_loss
     _consume_fairy_revive_if_dead(expected)
+    if _snapshot_player_dead(expected):
+        player["block"] = 0
     return 1 if hp_lost else 0
 
 
@@ -3742,6 +3765,23 @@ def _apply_expected_top_draw_card_played_by_effect(
                 before,
                 _modified_block(block, expected.get("player", {})),
             )
+        second_wind_block = _effect_play_second_wind_block(
+            top_card,
+            before,
+            source_card,
+            expected.get("player", {}),
+        )
+        if second_wind_block > 0:
+            _gain_player_block(
+                expected,
+                before,
+                second_wind_block,
+                _effect_play_exhausts_non_attack_hand_count(
+                    top_card,
+                    before,
+                    source_card,
+                ),
+            )
     if exhaust_by_effect:
         feel_no_pain_block = _havoc_top_card_feel_no_pain_block(before)
         if feel_no_pain_block > 0:
@@ -3762,6 +3802,38 @@ def _havoc_top_card_feel_no_pain_block(snapshot: Dict[str, Any]) -> int:
     if _draw_pile_top_card(snapshot) is None:
         return 0
     return max(0, _snapshot_power_amount(snapshot.get("player", {}), "Feel No Pain"))
+
+
+def _effect_play_second_wind_block(
+    card,
+    before: Dict[str, Any],
+    source_card=None,
+    player: Optional[Dict[str, Any]] = None,
+) -> int:
+    card_name = _known_card_name(card, SECOND_WIND_BLOCK_PER_CARD)
+    if card_name is None:
+        return 0
+    per_card = SECOND_WIND_BLOCK_PER_CARD[card_name]
+    if card_upgrade_count(card) > 0:
+        per_card += 2
+    count = _effect_play_exhausts_non_attack_hand_count(card, before, source_card)
+    if player is not None:
+        return sum(_modified_block(per_card, player) for _ in range(count))
+    return count * per_card
+
+
+def _effect_play_exhausts_non_attack_hand_count(
+    card,
+    before: Dict[str, Any],
+    source_card=None,
+) -> int:
+    if _known_card_name(card, EXHAUSTS_NON_ATTACK_HAND_CARDS) is None:
+        return 0
+    return sum(
+        1
+        for hand_card in _snapshot_remaining_hand_after_effect_source(before, source_card)
+        if not _snapshot_card_is_attack(hand_card)
+    )
 
 
 def _snapshot_player_entangled(snapshot: Dict[str, Any]) -> bool:
