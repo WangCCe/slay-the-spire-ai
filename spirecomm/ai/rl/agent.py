@@ -1047,6 +1047,11 @@ class CombatRLAgent:
         "twinstrike": ("Twin Strike", 5),
         "wildstrike": ("Wild Strike", 12),
     }
+    CARD_HP_LOSS_VALUES = {
+        "bloodletting": 3,
+        "offering": 6,
+        "hemokinesis": 2,
+    }
 
     def __init__(
         self,
@@ -1215,6 +1220,12 @@ class CombatRLAgent:
                     )
                     return self._with_combat_action_context(replacement, game)
                 logger.info("[ENERGY_GUARD] Suppressing takeover PotionAction; ending turn")
+                return self._with_combat_action_context(EndTurnAction(), game)
+            if self._is_self_lethal_card_action(fallback_action, game):
+                logger.info(
+                    "[ENERGY_GUARD] Suppressing takeover self-lethal action %s; ending turn",
+                    self._describe_combat_action(fallback_action, game),
+                )
                 return self._with_combat_action_context(EndTurnAction(), game)
             return self._with_combat_action_context(
                 fallback_action, game
@@ -1799,14 +1810,20 @@ class CombatRLAgent:
                     )
                     if guarded_action is not None:
                         return guarded_action
-                return fallback_action
+                if self._is_self_lethal_card_action(fallback_action, game):
+                    logger.info(
+                        "[ENERGY_GUARD] Skipping fallback self-lethal action %s",
+                        self._describe_combat_action(fallback_action, game),
+                    )
+                else:
+                    return fallback_action
         except Exception as exc:
             logger.debug("[ENERGY_GUARD] Fallback action failed: %s", exc)
 
         if guardian_pressure_replacement is not None:
             return guardian_pressure_replacement
 
-        return self._first_playable_card_action(game)
+        return self._first_playable_card_action(game, avoid_self_lethal=True)
 
     def _get_survival_action_replacement(self, action: Action, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
@@ -1961,7 +1978,12 @@ class CombatRLAgent:
             current_block,
             game,
         )
-        if damage_with_attack < current_hp:
+        low_margin_after_attack = (
+            incoming > 0
+            and damage_with_attack < current_hp
+            and current_hp - damage_with_attack <= sharp_hide_damage * 2
+        )
+        if damage_with_attack < current_hp and not low_margin_after_attack:
             return None
 
         candidate = self._best_block_action_candidate(game)
@@ -1980,6 +2002,9 @@ class CombatRLAgent:
                     current_block,
                 )
                 return replacement
+
+        if low_margin_after_attack:
+            return None
 
         logger.info(
             "[GUARDIAN_SHARP_HIDE_GUARD] Ending turn to avoid lethal Sharp Hide attack hp=%s incoming=%s status_blockable_damage=%s status_hp_loss=%s sharp_hide=%s current_block=%s",
@@ -2052,7 +2077,7 @@ class CombatRLAgent:
             if replacement is not None:
                 return replacement
 
-        return self._first_playable_card_action(game)
+        return self._first_playable_card_action(game, avoid_self_lethal=True)
 
     def _get_survival_block_replacement(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
@@ -2178,6 +2203,7 @@ class CombatRLAgent:
         game: Game,
         allow_power: bool = True,
         excluded_card_names=None,
+        avoid_self_lethal: bool = False,
     ) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
 
@@ -2196,12 +2222,47 @@ class CombatRLAgent:
                 continue
             if excluded and self._card_matches_normalized_names(card, excluded):
                 continue
+            if avoid_self_lethal and self._would_play_self_lethal_card(card, game):
+                logger.info(
+                    "[ENERGY_GUARD] Skipping self-lethal fallback card=%s hp=%s hp_loss=%s",
+                    self._card_label(card),
+                    getattr(game, "current_hp", None),
+                    self._card_player_hp_loss(card, game),
+                )
+                continue
             if card_requires_target(card):
                 if target_index is None:
                     continue
                 return PlayCardAction(card_index=card_index, target_index=target_index)
             return PlayCardAction(card_index=card_index)
         return None
+
+    def _is_self_lethal_card_action(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        return self._would_play_self_lethal_card(
+            self._card_for_action(action, game),
+            game,
+        )
+
+    @classmethod
+    def _would_play_self_lethal_card(cls, card, game: Game) -> bool:
+        hp_loss = cls._card_player_hp_loss(card, game)
+        if hp_loss <= 0:
+            return False
+        current_hp = cls._safe_int(getattr(game, "current_hp", 0), default=0)
+        return current_hp > 0 and current_hp <= hp_loss
+
+    @classmethod
+    def _card_player_hp_loss(cls, card, game: Game) -> int:
+        if card is None:
+            return 0
+        for normalized_name, hp_loss in cls.CARD_HP_LOSS_VALUES.items():
+            if cls._card_matches_normalized_names(card, {normalized_name}):
+                return cls._prevented_hp_loss(hp_loss, game)
+        return 0
 
     def _get_awakened_one_safe_replacement(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction

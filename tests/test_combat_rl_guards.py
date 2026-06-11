@@ -1716,6 +1716,61 @@ def test_energy_guard_takeover_replaces_fallback_end_turn_with_playable_card():
     assert action.target_index == 0
 
 
+def test_energy_guard_takeover_skips_bloodletting_when_hp_loss_would_kill():
+    burning_pact = SimpleNamespace(
+        name="Burning Pact",
+        card_id="Burning Pact",
+        type=CardType.SKILL,
+        is_playable=False,
+        cost=1,
+        has_target=False,
+    )
+    bloodletting = SimpleNamespace(
+        name="Bloodletting",
+        card_id="Bloodletting",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=0,
+        has_target=False,
+    )
+    game = _game(
+        hand=[burning_pact, bloodletting],
+        monsters=[
+            _monster(
+                hp=24,
+                damage=0,
+                index=0,
+                name="Slaver",
+                monster_id="SlaverRed",
+            )
+        ],
+        current_hp=2,
+        max_hp=80,
+        room_type="MonsterRoomElite",
+        floor=13,
+        act=1,
+        turn=4,
+        player=SimpleNamespace(energy=0, block=0),
+    )
+    game.monsters[0].intent = Intent.STRONG_DEBUFF
+
+    agent = _agent()
+    agent._fallback_turn_key = (13, 4)
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, EndTurnAction)
+
+
 def test_survival_guard_overrides_rl_attack_when_lethal_block_available():
     slimed = SimpleNamespace(
         name="Slimed",
@@ -2106,6 +2161,68 @@ def test_guardian_sharp_hide_guard_infers_attack_buff_reflection_without_power()
 
     assert isinstance(action, EndTurnAction)
     assert agent._fallback_turn_key == (16, 5)
+
+
+def test_guardian_sharp_hide_guard_blocks_low_margin_attack_before_lethal():
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    guardian = _monster(
+        hp=117,
+        damage=8,
+        index=0,
+        name="The Guardian",
+        monster_id="TheGuardian",
+    )
+    guardian.intent = Intent.ATTACK_BUFF
+    guardian.move_hits = 2
+    guardian.powers = [SimpleNamespace(power_id="SharpHide", amount=3)]
+    game = _game(
+        hand=[strike, defend],
+        monsters=[guardian],
+        current_hp=25,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=13,
+        player=SimpleNamespace(energy=1, block=0),
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0, target_index=0)
+    )
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (16, 13)
 
 
 def test_energy_guard_prioritizes_hexaghost_opening_carnage_over_bash():
