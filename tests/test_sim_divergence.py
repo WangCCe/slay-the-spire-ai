@@ -650,6 +650,37 @@ def test_fairy_potion_revives_after_lethal_end_turn_attack(monkeypatch, tmp_path
     assert not trace_path.exists()
 
 
+def test_lizard_tail_revives_after_lethal_end_turn_attack(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=28,
+        turn=3,
+        current_hp=15,
+        max_hp=80,
+        player=SimpleNamespace(current_hp=15, max_hp=80, block=5, energy=0),
+        hand=[],
+        relics=[_relic("Burning Blood"), _relic("Lizard Tail")],
+        monsters=[_monster(name="Snecko", monster_id="Snecko", hp=30, damage=22)],
+    )
+    actual = _game(
+        floor=28,
+        turn=4,
+        current_hp=40,
+        max_hp=80,
+        player=SimpleNamespace(current_hp=40, max_hp=80, block=0, energy=3),
+        hand=[],
+        relics=[_relic("Burning Blood"), _relic("Lizard Tail", counter=-2)],
+        monsters=[_monster(name="Snecko", monster_id="Snecko", hp=30, damage=12)],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_collector_spawn_end_turn_adds_torch_heads_without_monster_divergence(
     monkeypatch, tmp_path
 ):
@@ -9915,6 +9946,67 @@ def test_end_turn_combust_loses_hp_and_damages_all_monsters(monkeypatch, tmp_pat
         ),
         hand=[],
         monsters=[_monster(name="Jaw Worm", monster_id="JawWorm", hp=12, damage=0)],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_end_turn_combust_lethal_self_damage_skips_monster_damage(
+    monkeypatch, tmp_path
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=33,
+        turn=6,
+        room_type="MonsterRoomBoss",
+        player=SimpleNamespace(
+            current_hp=1,
+            max_hp=80,
+            block=10,
+            energy=0,
+            powers=[Power("Combust", "Combust", 5)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Bronze Automaton",
+                monster_id="BronzeAutomaton",
+                hp=164,
+                max_hp=300,
+                damage=51,
+                intent=Intent.ATTACK,
+            )
+        ],
+        relics=[_relic("Burning Blood")],
+    )
+    actual = _game(
+        floor=33,
+        turn=6,
+        room_type="MonsterRoomBoss",
+        player=SimpleNamespace(
+            current_hp=0,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[Power("Combust", "Combust", 5)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Bronze Automaton",
+                monster_id="BronzeAutomaton",
+                hp=164,
+                max_hp=300,
+                damage=51,
+                intent=Intent.ATTACK,
+            )
+        ],
+        relics=[_relic("Burning Blood")],
     )
 
     assert record_expected_action(EndTurnAction(), before) is True

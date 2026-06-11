@@ -32,6 +32,8 @@ STONE_CALENDAR_DAMAGE = 52
 STONE_CALENDAR_TRIGGER_COUNTER = 7
 FAIRY_REVIVE_FRACTION = 0.3
 FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
+LIZARD_TAIL_REVIVE_FRACTION = 0.5
+LIZARD_TAIL_USED_COUNTER = -2
 TOY_ORNITHOPTER_HEAL = 5
 MAGIC_FLOWER_HEAL_NUMERATOR = 3
 MAGIC_FLOWER_HEAL_DENOMINATOR = 2
@@ -3135,6 +3137,25 @@ def _consume_fairy_revive_if_dead(expected: Dict[str, Any]) -> bool:
     return True
 
 
+def _consume_lizard_tail_revive_if_dead(expected: Dict[str, Any]) -> bool:
+    player = expected.get("player", {})
+    if _to_int(player.get("current_hp")) > 0:
+        return False
+    counter = _snapshot_relic_counter(expected, "Lizard Tail")
+    if counter is None or counter == LIZARD_TAIL_USED_COUNTER:
+        return False
+    max_hp = max(1, _to_int(player.get("max_hp"), default=1))
+    player["current_hp"] = max(1, int(max_hp * LIZARD_TAIL_REVIVE_FRACTION))
+    _set_snapshot_relic_counter(expected, "Lizard Tail", LIZARD_TAIL_USED_COUNTER)
+    return True
+
+
+def _consume_player_revive_if_dead(expected: Dict[str, Any]) -> bool:
+    if _consume_fairy_revive_if_dead(expected):
+        return True
+    return _consume_lizard_tail_revive_if_dead(expected)
+
+
 def _heal_player(expected: Dict[str, Any], amount: int) -> None:
     if amount <= 0:
         return
@@ -3231,7 +3252,7 @@ def _damage_player(expected: Dict[str, Any], amount: int) -> int:
         hp_after_loss = max(0, hp_before - remaining)
         hp_lost = hp_after_loss < hp_before
         player["current_hp"] = hp_after_loss
-        _consume_fairy_revive_if_dead(expected)
+        _consume_player_revive_if_dead(expected)
     return 1 if hp_lost else 0
 
 
@@ -3328,6 +3349,8 @@ def _apply_combust_end_turn(
     if damage <= 0:
         return 0
     hp_loss_event = _lose_player_hp(expected, 1)
+    if _snapshot_player_dead(expected):
+        return hp_loss_event
     for index, _monster in enumerate(expected.get("monsters", []) or []):
         _apply_direct_monster_damage(
             expected,
@@ -3348,7 +3371,7 @@ def _lose_player_hp(expected: Dict[str, Any], amount: int) -> int:
     hp_after_loss = max(0, hp_before - amount)
     hp_lost = hp_after_loss < hp_before
     player["current_hp"] = hp_after_loss
-    _consume_fairy_revive_if_dead(expected)
+    _consume_player_revive_if_dead(expected)
     if _snapshot_player_dead(expected):
         player["block"] = 0
     return 1 if hp_lost else 0
