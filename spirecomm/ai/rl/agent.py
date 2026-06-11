@@ -1231,6 +1231,22 @@ class CombatRLAgent:
                     return self._with_combat_action_context(replacement, game)
                 logger.info("[ENERGY_GUARD] Suppressing takeover PotionAction; ending turn")
                 return self._with_combat_action_context(EndTurnAction(), game)
+            guardian_pressure_replacement = self._get_guardian_pressure_action_replacement(
+                fallback_action,
+                game,
+            )
+            if guardian_pressure_replacement is not None:
+                logger.info(
+                    "[GUARDIAN_PRESSURE_GUARD] Replacing takeover action with %s",
+                    self._describe_combat_action(
+                        guardian_pressure_replacement,
+                        game,
+                    ),
+                )
+                return self._with_combat_action_context(
+                    guardian_pressure_replacement,
+                    game,
+                )
             if self._is_self_lethal_card_action(fallback_action, game):
                 logger.info(
                     "[ENERGY_GUARD] Suppressing takeover self-lethal action %s; ending turn",
@@ -2448,7 +2464,15 @@ class CombatRLAgent:
             return None
         if damage_after_block >= current_hp:
             return None
-        if incoming < self.GUARDIAN_PRESSURE_INCOMING:
+        max_hp = max(
+            self._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
+            1,
+        )
+        low_hp_pressure = (
+            current_hp <= max(16, max_hp * 0.25)
+            and damage_after_block >= max(5, current_hp * 0.45)
+        )
+        if incoming < self.GUARDIAN_PRESSURE_INCOMING and not low_hp_pressure:
             return None
 
         candidate = self._best_block_action_candidate(game)
