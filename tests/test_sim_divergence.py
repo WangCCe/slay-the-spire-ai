@@ -10668,6 +10668,78 @@ def test_end_turn_exploder_explosive_power_deals_blockable_damage_and_kills_expl
     assert not trace_path.exists()
 
 
+def test_end_turn_exploder_ignores_already_gone_explosive_power(
+    monkeypatch, tmp_path
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    active_exploder = _monster(
+        name="Exploder",
+        monster_id="Exploder",
+        hp=20,
+        max_hp=30,
+        damage=-1,
+        intent=Intent.UNKNOWN,
+        index=0,
+        powers=[Power("Explosive", "Explosive", 1)],
+    )
+    gone_exploder = _monster(
+        name="Exploder",
+        monster_id="Exploder",
+        hp=0,
+        max_hp=30,
+        damage=-1,
+        intent=Intent.UNKNOWN,
+        index=1,
+        powers=[Power("Explosive", "Explosive", 1)],
+    )
+    gone_exploder.is_gone = True
+
+    before = _game(
+        floor=45,
+        turn=4,
+        player=SimpleNamespace(current_hp=21, max_hp=85, block=16, energy=0),
+        hand=[],
+        monsters=[active_exploder, gone_exploder],
+    )
+    actual = _game(
+        floor=45,
+        turn=5,
+        player=SimpleNamespace(current_hp=7, max_hp=85, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Exploder",
+                monster_id="Exploder",
+                hp=0,
+                max_hp=30,
+                damage=-1,
+                intent=Intent.UNKNOWN,
+                index=0,
+                powers=[Power("Explosive", "Explosive", 1)],
+            ),
+            _monster(
+                name="Exploder",
+                monster_id="Exploder",
+                hp=0,
+                max_hp=30,
+                damage=-1,
+                intent=Intent.UNKNOWN,
+                index=1,
+                powers=[Power("Explosive", "Explosive", 1)],
+            ),
+        ],
+    )
+    actual.monsters[0].is_gone = True
+    actual.monsters[1].is_gone = True
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_combat_rl_checks_pending_divergence_on_next_state(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

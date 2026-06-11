@@ -3247,7 +3247,11 @@ def _apply_end_turn_player_damage(
     for index, monster in enumerate(expected.get("monsters", []) or []):
         if _to_int(expected.get("player", {}).get("current_hp")) <= 0:
             break
-        explosion_damage = exploder_explosion_damage(monster)
+        explosion_damage = (
+            exploder_explosion_damage(monster)
+            if _snapshot_monster_active(monster)
+            else 0
+        )
         if explosion_damage > 0:
             hp_loss_events += _damage_player(expected, explosion_damage)
             monster["hp"] = 0
