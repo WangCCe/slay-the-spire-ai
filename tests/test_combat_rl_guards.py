@@ -1771,6 +1771,120 @@ def test_energy_guard_takeover_skips_bloodletting_when_hp_loss_would_kill():
     assert isinstance(action, EndTurnAction)
 
 
+def test_energy_guard_prefers_slime_split_aoe_when_block_still_dies():
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        block=5,
+    )
+    pommel_strike = SimpleNamespace(
+        name="Pommel Strike",
+        card_id="Pommel Strike",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+        damage=9,
+    )
+    immolate = SimpleNamespace(
+        name="Immolate",
+        card_id="Immolate",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=False,
+        damage=21,
+    )
+    sever_soul = SimpleNamespace(
+        name="Sever Soul+",
+        card_id="Sever Soul",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+        damage=22,
+    )
+    first_attacker = _monster(
+        hp=10,
+        damage=8,
+        index=0,
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+    )
+    first_attacker.intent = Intent.ATTACK_DEBUFF
+    dead_large = _monster(
+        hp=0,
+        damage=0,
+        index=1,
+        name="Spike Slime (L)",
+        monster_id="SpikeSlime_L",
+    )
+    dead_large.is_gone = True
+    second_attacker = _monster(
+        hp=10,
+        damage=8,
+        index=2,
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+    )
+    second_attacker.intent = Intent.ATTACK_DEBUFF
+    dead_boss = _monster(
+        hp=0,
+        damage=0,
+        index=3,
+        name="Slime Boss",
+        monster_id="SlimeBoss",
+    )
+    dead_boss.is_gone = True
+    acid_attacker = _monster(
+        hp=36,
+        damage=16,
+        index=4,
+        name="Acid Slime (L)",
+        monster_id="AcidSlime_L",
+    )
+    acid_attacker.intent = Intent.ATTACK
+    game = _game(
+        floor=16,
+        turn=6,
+        act=1,
+        current_hp=18,
+        max_hp=80,
+        player=SimpleNamespace(energy=3, block=0),
+        hand=[defend, pommel_strike, defend, immolate, sever_soul],
+        monsters=[
+            first_attacker,
+            dead_large,
+            second_attacker,
+            dead_boss,
+            acid_attacker,
+        ],
+        room_type="MonsterRoomBoss",
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=lambda _game: EndTurnAction())
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert CombatRLAgent._incoming_damage(game) == 32
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 3
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (16, 6)
+
+
 def test_survival_guard_overrides_rl_attack_when_lethal_block_available():
     slimed = SimpleNamespace(
         name="Slimed",

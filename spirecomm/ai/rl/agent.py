@@ -1191,6 +1191,14 @@ class CombatRLAgent:
                 getattr(game, "floor", None),
                 getattr(game, "turn", None),
             )
+            replacement = self._get_slime_split_aoe_survival_replacement(game)
+            if replacement is not None:
+                logger.info(
+                    "[SLIME_SPLIT_SURVIVAL_GUARD] Continuing takeover with %s",
+                    self._describe_combat_action(replacement, game),
+                )
+                return self._with_combat_action_context(replacement, game)
+
             replacement = self._get_survival_block_replacement(game)
             if replacement is not None:
                 logger.info(
@@ -1247,6 +1255,16 @@ class CombatRLAgent:
                 if action is None:
                     logger.warning("RL agent returned None, falling back to OptimizedAgent")
                     self.rl_failure_count += 1
+                elif (replacement := self._get_slime_split_aoe_survival_replacement(game)) is not None:
+                    self.rl_failure_count = 0
+                    self._fallback_turn_key = self._combat_turn_key(game)
+                    logger.info(
+                        "[SLIME_SPLIT_SURVIVAL_GUARD] Replacing RL action with %s on floor=%s turn=%s",
+                        self._describe_combat_action(replacement, game),
+                        getattr(game, "floor", None),
+                        getattr(game, "turn", None),
+                    )
+                    return self._with_combat_action_context(replacement, game)
                 elif (replacement := self._get_slime_split_survival_attack_replacement(action, game)) is not None:
                     self.rl_failure_count = 0
                     self._fallback_turn_key = self._combat_turn_key(game)
@@ -1781,6 +1799,10 @@ class CombatRLAgent:
     def _get_non_end_turn_fallback(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction, PotionAction
 
+        replacement = self._get_slime_split_aoe_survival_replacement(game)
+        if replacement is not None:
+            return replacement
+
         replacement = self._get_survival_block_replacement(game)
         if replacement is not None:
             return replacement
@@ -2065,6 +2087,10 @@ class CombatRLAgent:
         return EndTurnAction()
 
     def _get_energy_guard_takeover_potion_replacement(self, game: Game) -> Optional[Action]:
+        replacement = self._get_slime_split_aoe_survival_replacement(game)
+        if replacement is not None:
+            return replacement
+
         replacement = self._get_survival_block_replacement(game)
         if replacement is not None:
             return replacement
@@ -2079,6 +2105,125 @@ class CombatRLAgent:
                 return replacement
 
         return self._first_playable_card_action(game, avoid_self_lethal=True)
+
+    def _get_slime_split_aoe_survival_replacement(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        if not getattr(game, "in_combat", False):
+            return None
+        if not self._is_slime_boss_split_phase(game):
+            return None
+
+        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        if current_hp <= 0:
+            return None
+
+        current_block = self._player_block(game)
+        status_blockable_damage, status_hp_loss = self._end_turn_status_damage(game)
+        incoming = self._incoming_damage(game)
+        current_damage = self._end_turn_damage_after_block(
+            incoming + status_blockable_damage,
+            status_hp_loss,
+            self._end_turn_block_for_game(game, current_block),
+            game,
+        )
+        if current_damage < current_hp:
+            return None
+
+        energy = self._player_energy(game)
+        aoe_names = {self._normalize_identifier(name) for name in COMMON_AOE_ATTACK_NAMES}
+        best_candidate = None
+        for card_index, card in self._playable_cards(game, energy):
+            if card_requires_target(card):
+                continue
+            if not is_attack_card(card):
+                continue
+            if not self._card_matches_normalized_names(card, aoe_names):
+                continue
+            if self._would_play_self_lethal_card(card, game):
+                continue
+            effective_cost = effective_card_cost(card, energy)
+            if effective_cost > energy:
+                continue
+
+            source_attack_damage = self._survival_attack_damage_before_player_weak(card, game)
+            if source_attack_damage <= 0:
+                continue
+
+            source_attack_hits = self._survival_attack_hit_count(card)
+            removed_incoming = 0
+            killed_attackers = 0
+            remaining_incoming = 0
+            for monster in getattr(game, "monsters", []) or []:
+                monster_incoming = self._monster_incoming_damage(monster)
+                if monster_incoming <= 0:
+                    continue
+                if not self._is_targetable_monster(monster):
+                    continue
+
+                effective_hp = (
+                    self._safe_int(getattr(monster, "current_hp", 0), default=0)
+                    + self._safe_int(getattr(monster, "block", 0), default=0)
+                )
+                attack_damage = self._apply_survival_attack_target_modifiers(
+                    source_attack_damage,
+                    game,
+                    monster,
+                    hit_count=source_attack_hits,
+                )
+                if attack_damage >= effective_hp:
+                    removed_incoming += monster_incoming
+                    killed_attackers += 1
+                else:
+                    remaining_incoming += monster_incoming
+
+            if removed_incoming <= 0:
+                continue
+
+            candidate_block = current_block + self._survival_block_value_for_game(card, game)
+            damage_after_candidate = self._end_turn_aggregate_damage_after_block(
+                remaining_incoming + status_blockable_damage,
+                status_hp_loss,
+                self._end_turn_block_for_game(game, candidate_block),
+                game,
+            )
+            if damage_after_candidate >= current_hp:
+                continue
+
+            survival_margin = current_hp - damage_after_candidate
+            score = (
+                survival_margin,
+                removed_incoming,
+                killed_attackers,
+                source_attack_damage,
+                -effective_cost,
+                -card_index,
+            )
+            if best_candidate is None or score > best_candidate[0]:
+                best_candidate = (
+                    score,
+                    card_index,
+                    card,
+                    removed_incoming,
+                    damage_after_candidate,
+                )
+
+        if best_candidate is None:
+            return None
+
+        _, card_index, card, removed_incoming, damage_after_candidate = best_candidate
+        logger.info(
+            "[SLIME_SPLIT_SURVIVAL_GUARD] Selecting %s to remove incoming=%s hp=%s current_damage=%s damage_after=%s",
+            self._card_label(card),
+            removed_incoming,
+            current_hp,
+            current_damage,
+            damage_after_candidate,
+        )
+        return PlayCardAction(card_index=card_index)
 
     def _get_survival_block_replacement(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
