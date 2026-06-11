@@ -2295,6 +2295,178 @@ def test_guardian_pressure_guard_overrides_rl_attack_when_big_nonlethal_block_av
     assert agent._fallback_turn_key == (16, 2)
 
 
+def test_act1_boss_pressure_guard_overrides_hexaghost_attack_for_block():
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    strike_plus = SimpleNamespace(
+        name="Strike+",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+        upgrades=1,
+    )
+    thunderclap = SimpleNamespace(
+        name="Thunderclap",
+        card_id="Thunderclap",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    defend_plus = SimpleNamespace(
+        name="Defend+",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        block=8,
+    )
+    hexaghost = _monster(
+        hp=217,
+        damage=4,
+        index=0,
+        name="Hexaghost",
+        monster_id="Hexaghost",
+    )
+    hexaghost.move_hits = 6
+    hexaghost.intent = Intent.ATTACK
+    game = _game(
+        hand=[defend_plus, defend_plus, strike, thunderclap, strike_plus],
+        monsters=[hexaghost],
+        current_hp=45,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=2,
+        player=SimpleNamespace(energy=3, block=0),
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=2, target_index=0)
+    )
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (16, 2)
+
+
+def test_act1_boss_pressure_guard_overrides_slime_split_bash_for_block():
+    bash = SimpleNamespace(
+        name="Bash",
+        card_id="Bash",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    defend_plus = SimpleNamespace(
+        name="Defend+",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        block=8,
+    )
+    slimed = SimpleNamespace(
+        name="Slimed",
+        card_id="Slimed",
+        type=CardType.STATUS,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    debuff_slime = _monster(
+        hp=21,
+        damage=0,
+        index=0,
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+    )
+    debuff_slime.intent = Intent.DEBUFF
+    second_debuff_slime = _monster(
+        hp=21,
+        damage=0,
+        index=1,
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+    )
+    second_debuff_slime.intent = Intent.DEBUFF
+    acid_attacker = _monster(
+        hp=60,
+        damage=11,
+        index=2,
+        name="Acid Slime (L)",
+        monster_id="AcidSlime_L",
+    )
+    acid_attacker.intent = Intent.ATTACK_DEBUFF
+    game = _game(
+        hand=[strike, slimed, bash, defend_plus, strike],
+        monsters=[debuff_slime, second_debuff_slime, acid_attacker],
+        current_hp=17,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=8,
+        player=SimpleNamespace(energy=3, block=0),
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=2, target_index=0)
+    )
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 3
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (16, 8)
+
+
 def test_guardian_takeover_prefers_remaining_block_over_attack_when_low_hp_pressure():
     strike = SimpleNamespace(
         name="Strike",

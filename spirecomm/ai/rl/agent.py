@@ -931,6 +931,10 @@ class CombatRLAgent:
     GUARDIAN_SHARP_HIDE_ASCENSION_19_DAMAGE = 4
     GUARDIAN_SHARP_HIDE_MOVE_IDS = frozenset({5, 6})
     GUARDIAN_SHARP_HIDE_INTENTS = frozenset({"attackbuff", "intentattackbuff"})
+    ACT1_BOSS_PRESSURE_HP_RATIO = 0.60
+    ACT1_BOSS_PRESSURE_MIN_HP = 20
+    ACT1_BOSS_PRESSURE_DAMAGE_RATIO = 0.40
+    ACT1_BOSS_PRESSURE_MIN_DAMAGE = 8
     GUARDIAN_PRESSURE_WEAK_ATTACKS = frozenset(
         {
             "clothesline",
@@ -1231,6 +1235,22 @@ class CombatRLAgent:
                     return self._with_combat_action_context(replacement, game)
                 logger.info("[ENERGY_GUARD] Suppressing takeover PotionAction; ending turn")
                 return self._with_combat_action_context(EndTurnAction(), game)
+            act1_boss_pressure_replacement = self._get_act1_boss_pressure_action_replacement(
+                fallback_action,
+                game,
+            )
+            if act1_boss_pressure_replacement is not None:
+                logger.info(
+                    "[ACT1_BOSS_PRESSURE_GUARD] Replacing takeover action with %s",
+                    self._describe_combat_action(
+                        act1_boss_pressure_replacement,
+                        game,
+                    ),
+                )
+                return self._with_combat_action_context(
+                    act1_boss_pressure_replacement,
+                    game,
+                )
             guardian_pressure_replacement = self._get_guardian_pressure_action_replacement(
                 fallback_action,
                 game,
@@ -1303,6 +1323,16 @@ class CombatRLAgent:
                     self._fallback_turn_key = self._combat_turn_key(game)
                     logger.info(
                         "[SURVIVAL_GUARD] Replacing RL action with %s on floor=%s turn=%s",
+                        self._describe_combat_action(replacement, game),
+                        getattr(game, "floor", None),
+                        getattr(game, "turn", None),
+                    )
+                    return self._with_combat_action_context(replacement, game)
+                elif (replacement := self._get_act1_boss_pressure_action_replacement(action, game)) is not None:
+                    self.rl_failure_count = 0
+                    self._fallback_turn_key = self._combat_turn_key(game)
+                    logger.info(
+                        "[ACT1_BOSS_PRESSURE_GUARD] Replacing RL action with %s on floor=%s turn=%s",
                         self._describe_combat_action(replacement, game),
                         getattr(game, "floor", None),
                         getattr(game, "turn", None),
@@ -2250,6 +2280,30 @@ class CombatRLAgent:
             return None
         return replacement
 
+    def _get_act1_boss_pressure_action_replacement(self, action: Action, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return None
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        if not getattr(game, "in_combat", False):
+            return None
+
+        replacement = self._get_act1_boss_pressure_block_replacement(game)
+        if not isinstance(replacement, PlayCardAction):
+            return None
+
+        current_card = self._card_for_action(action, game)
+        replacement_card = self._card_for_action(replacement, game)
+        if self._survival_block_value_for_game(
+            replacement_card,
+            game,
+        ) <= self._survival_block_value_for_game(current_card, game):
+            return None
+        return replacement
+
     def _get_non_potion_fallback(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction, PotionAction
 
@@ -2275,6 +2329,10 @@ class CombatRLAgent:
             return replacement
 
         replacement = self._get_survival_block_replacement(game)
+        if replacement is not None:
+            return replacement
+
+        replacement = self._get_act1_boss_pressure_block_replacement(game)
         if replacement is not None:
             return replacement
 
@@ -2507,6 +2565,62 @@ class CombatRLAgent:
             block_value,
             current_hp,
             incoming,
+            current_block,
+        )
+        return action
+
+    def _get_act1_boss_pressure_block_replacement(self, game: Game) -> Optional[Action]:
+        if not self._is_act1_boss_pressure_combat(game):
+            return None
+
+        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        if current_hp <= 0:
+            return None
+
+        incoming = self._incoming_damage(game)
+        status_blockable_damage, status_hp_loss = self._end_turn_status_damage(game)
+        current_block = self._player_block(game)
+        if incoming <= current_block:
+            return None
+        damage_after_block = self._end_turn_damage_after_block(
+            incoming + status_blockable_damage,
+            status_hp_loss,
+            self._end_turn_block_for_game(game, current_block),
+            game,
+        )
+        if damage_after_block <= 0:
+            return None
+        if damage_after_block >= current_hp:
+            return None
+
+        max_hp = max(
+            self._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
+            1,
+        )
+        if current_hp > max(
+            self.ACT1_BOSS_PRESSURE_MIN_HP,
+            max_hp * self.ACT1_BOSS_PRESSURE_HP_RATIO,
+        ):
+            return None
+        if damage_after_block < max(
+            self.ACT1_BOSS_PRESSURE_MIN_DAMAGE,
+            current_hp * self.ACT1_BOSS_PRESSURE_DAMAGE_RATIO,
+        ):
+            return None
+
+        candidate = self._best_block_action_candidate(game)
+        if candidate is None:
+            return None
+
+        action, card, block_value = candidate
+        logger.info(
+            "[ACT1_BOSS_PRESSURE_GUARD] Selecting %s for block=%s hp=%s incoming=%s status_blockable_damage=%s status_hp_loss=%s current_block=%s",
+            self._card_label(card),
+            block_value,
+            current_hp,
+            incoming,
+            status_blockable_damage,
+            status_hp_loss,
             current_block,
         )
         return action
@@ -3222,6 +3336,24 @@ class CombatRLAgent:
         return False
 
     @classmethod
+    def _is_act1_boss_pressure_combat(cls, game: Game) -> bool:
+        if cls._has_guardian(game):
+            return False
+
+        act = cls._safe_int(getattr(game, "act", 1), default=1)
+        floor = cls._safe_int(getattr(game, "floor", 0), default=0)
+        if act != 1 and floor != 16:
+            return False
+        if not cls._is_boss_combat(game):
+            return False
+
+        return (
+            cls._has_hexaghost(game)
+            or cls._has_slime_boss(game)
+            or cls._is_slime_boss_split_pressure_phase(game)
+        )
+
+    @classmethod
     def _is_slime_boss_split_phase(cls, game: Game) -> bool:
         if cls._safe_int(getattr(game, "floor", 0), default=0) != 16:
             return False
@@ -3244,6 +3376,28 @@ class CombatRLAgent:
                 alive_split_slimes += 1
 
         return has_dead_slime_boss and alive_split_slimes >= 2
+
+    @classmethod
+    def _is_slime_boss_split_pressure_phase(cls, game: Game) -> bool:
+        if cls._is_slime_boss_split_phase(game):
+            return True
+        if cls._safe_int(getattr(game, "floor", 0), default=0) != 16:
+            return False
+        if not cls._is_boss_combat(game):
+            return False
+
+        alive_split_slimes = 0
+        for monster in cls._alive_monsters(game):
+            normalized = {
+                cls._normalize_identifier(getattr(monster, "monster_id", None)),
+                cls._normalize_identifier(getattr(monster, "name", None)),
+            }
+            if any("slimeboss" in value for value in normalized):
+                return False
+            if any("slime" in value for value in normalized):
+                alive_split_slimes += 1
+
+        return alive_split_slimes >= 2
 
     @classmethod
     def _is_gremlin_leader_combat(cls, game: Game) -> bool:
