@@ -164,11 +164,10 @@ CARD_TARGET_DEBUFFS = {
 
 END_TURN_STATUS_DAMAGE = {
     "Burn": 2,
-}
-
-END_TURN_STATUS_HP_LOSS = {
     "Decay": 2,
 }
+
+END_TURN_STATUS_HP_LOSS = {}
 
 END_TURN_EXHAUST_CARDS = {
     "Dazed": 0,

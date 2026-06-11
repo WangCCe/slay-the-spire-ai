@@ -1433,7 +1433,7 @@ def test_survival_guard_lets_current_block_absorb_burn_damage():
     assert agent._fallback_turn_key is None
 
 
-def test_survival_guard_treats_decay_damage_as_unblocked_by_current_block():
+def test_survival_guard_lets_current_block_absorb_decay_damage():
     strike = SimpleNamespace(
         name="Strike",
         card_id="Strike_R",
@@ -1458,18 +1458,18 @@ def test_survival_guard_treats_decay_damage_as_unblocked_by_current_block():
         cost=-2,
         has_target=False,
     )
-    slime = _monster(hp=62, damage=8, index=0, name="Acid Slime (L)", monster_id="AcidSlime_L")
-    slime.intent = Intent.ATTACK
+    slime = _monster(hp=62, damage=0, index=0, name="Acid Slime (L)", monster_id="AcidSlime_L")
+    slime.intent = Intent.DEBUFF
     game = _game(
         hand=[strike, defend, decay],
         monsters=[slime],
-        current_hp=4,
+        current_hp=2,
         max_hp=80,
         room_type="MonsterRoom",
         floor=10,
         act=1,
         turn=1,
-        player=SimpleNamespace(energy=1, block=6),
+        player=SimpleNamespace(energy=1, block=2),
     )
     agent = _agent()
     agent.rl_agent = SimpleNamespace(
@@ -1486,9 +1486,9 @@ def test_survival_guard_treats_decay_damage_as_unblocked_by_current_block():
     action = agent.get_next_action_in_game(game)
 
     assert isinstance(action, PlayCardAction)
-    assert action.card_index == 1
-    assert action.target_index is None
-    assert agent._fallback_turn_key == (10, 1)
+    assert action.card_index == 0
+    assert action.target_index == 0
+    assert agent._fallback_turn_key is None
 
 
 def test_survival_guard_counts_regret_hand_size_hp_loss_through_block():

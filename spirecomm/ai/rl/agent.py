@@ -3614,6 +3614,8 @@ class CombatRLAgent:
         for card in getattr(game, "hand", []) or []:
             if cls._card_matches_normalized_names(card, {"burn"}):
                 events.append(4 if card_upgrade_count(card) > 0 else 2)
+            if cls._card_matches_normalized_names(card, {"decay"}):
+                events.append(2)
         return events
 
     @classmethod
@@ -3622,8 +3624,6 @@ class CombatRLAgent:
         hand = list(getattr(game, "hand", []) or [])
         hand_size = len(hand)
         for card in hand:
-            if cls._card_matches_normalized_names(card, {"decay"}):
-                events.append(2)
             if cls._card_matches_normalized_names(card, {"regret"}) and hand_size > 0:
                 events.append(hand_size)
         return events
