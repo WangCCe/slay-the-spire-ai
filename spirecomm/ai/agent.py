@@ -291,6 +291,8 @@ class SimpleAgent:
                 return False
 
             if gold >= price and not self.priorities.should_skip(card):
+                if not self._shop_card_is_cash_worthy(card):
+                    return False
                 if not screen.purge_available or gold - price >= purge_cost:
                     return True
         except Exception as e:
@@ -300,6 +302,39 @@ class SimpleAgent:
                 f"[SHOP_SCREEN] Error evaluating card {card_id}: {e}", file=sys.stderr
             )
         return False
+
+    def _shop_card_is_cash_worthy(self, card):
+        """Shop buys need a higher bar than free reward picks."""
+        card_name = self._normalize_card_name(card)
+        low_reliability_cards = {"Havoc", "Deep Breath", "Impatience"}
+        if card_name in low_reliability_cards:
+            logging.info(
+                "[SHOP_SCREEN] Skipping low-reliability shop card: %s",
+                card_name,
+            )
+            return False
+
+        deck_strategy = getattr(self, "deck_strategy", None)
+        if deck_strategy is not None and DecisionContext is not None:
+            try:
+                context = DecisionContext(self.game)
+                should_pick, reason = deck_strategy.should_pick_card(card, context)
+            except Exception as exc:
+                logging.info(
+                    "[SHOP_SCREEN] Deck strategy unavailable for %s: %s",
+                    card_name,
+                    exc,
+                )
+            else:
+                if not should_pick:
+                    logging.info(
+                        "[SHOP_SCREEN] Skipping shop card %s: %s",
+                        card_name,
+                        reason,
+                    )
+                    return False
+
+        return True
 
     def _should_buy_relic(self, relic, gold):
         """Determine if a relic should be purchased."""

@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 
 from spirecomm.ai.agent import SimpleAgent
+from spirecomm.ai.heuristics.ironclad_deck import IroncladDeckStrategy
+from spirecomm.ai.priorities import IroncladPriority
 from spirecomm.communication.action import (
     BuyCardAction,
     BuyPotionAction,
@@ -119,6 +121,48 @@ def test_shop_screen_continues_buying_after_purge_state_updates():
 
     assert isinstance(second, BuyCardAction)
     assert second.name == "Offering"
+
+
+def test_shop_screen_skips_low_reliability_act1_cards_after_purge():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[
+                _shop_card("Havoc", price=22),
+                _shop_card("Deep Breath", price=22),
+            ],
+            relics=[],
+            potions=[],
+            purge_available=False,
+        ),
+        gold=128,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Whirlwind", price=0),
+            _shop_card("Anger", price=0),
+            _shop_card("Second Wind", price=0),
+        ],
+        act=1,
+        floor=10,
+        in_combat=False,
+        current_hp=39,
+        max_hp=80,
+        relics=[],
+        player=SimpleNamespace(energy=3, powers=[]),
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CancelAction)
 
 
 def test_shop_screen_buy_card_accepts_string_gold_and_price():
