@@ -468,6 +468,39 @@ def test_ironclad_strategy_skips_duplicate_perfected_strike_when_alternatives_ar
     assert isinstance(action, CancelAction)
 
 
+def test_ironclad_strategy_takes_wild_strike_when_act1_frontload_is_empty():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Armaments"),
+        _card("Spot Weakness"),
+    ]
+    reward_cards = [
+        _card("Wild Strike"),
+        _card("Clash", cost=0),
+        _card("Rupture", cost=1),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=5,
+        hp=69,
+        max_hp=80,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Wild Strike"
+
+
 def test_ironclad_strategy_skips_fire_breathing_without_status_support():
     deck = [
         _card("Strike_R"),

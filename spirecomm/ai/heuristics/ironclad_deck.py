@@ -54,6 +54,8 @@ class IroncladDeckStrategy:
         'Hemokinesis', 'Carnage', 'Anger', 'Clothesline',
         'Thunderclap', 'Immolate',
     }
+    ACT_1_FRONTLOAD_ATTACKS = ACT_1_DAMAGE_PRIORITY - {'Inflame', 'Spot Weakness'}
+    EMERGENCY_ACT_1_FRONTLOAD_FILLERS = {'Wild Strike'}
 
     # HP-cost cards (spend HP to play, avoid at low HP)
     HP_COST_CARDS = {
@@ -159,6 +161,14 @@ class IroncladDeckStrategy:
 
         # Rule 2: Avoid clearly bad cards
         if card_id in self.AVOID_CARDS:
+            if (
+                card_id in self.EMERGENCY_ACT_1_FRONTLOAD_FILLERS
+                and self._needs_emergency_act_1_frontload(context, deck_size)
+            ):
+                return (
+                    True,
+                    f"Emergency Act 1 frontload filler: {card_id}",
+                )
             return (False, f"Card '{card_id}' is suboptimal")
 
         # Rule 3: HP risk assessment
@@ -221,6 +231,25 @@ class IroncladDeckStrategy:
             return (True, f"Acceptable card (score: {baseline_score})")
         else:
             return (False, f"Weak card (score: {baseline_score})")
+
+    def _needs_emergency_act_1_frontload(
+        self,
+        context: DecisionContext,
+        deck_size: int,
+    ) -> bool:
+        """Accept one rough attack only when early Act 1 has no real frontload yet."""
+        act = self._non_negative_int(getattr(context, 'act', 0))
+        floor = self._non_negative_int(getattr(context, 'floor', 0))
+        if act != 1 or floor > 8 or deck_size > 13:
+            return False
+
+        deck = list(getattr(context.game, 'deck', []) or [])
+        concrete_frontload = sum(
+            1
+            for deck_card in deck
+            if self._card_name(deck_card) in self.ACT_1_FRONTLOAD_ATTACKS
+        )
+        return concrete_frontload == 0
 
     def _act_1_card_supported(self, card: Card, context: DecisionContext) -> Tuple[bool, str]:
         """Avoid speculative Act 1 rewards before their support package exists."""
