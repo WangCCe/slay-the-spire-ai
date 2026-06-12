@@ -443,6 +443,68 @@ def test_ironclad_strategy_prefers_inflame_support_over_attack_with_heavy_blade(
     assert action.name == "Inflame"
 
 
+def test_ironclad_strategy_prefers_frontload_over_unsupported_havoc():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+    ]
+    reward_cards = [
+        _card("Havoc"),
+        _card("Cleave"),
+        _card("Wild Strike"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=1,
+        hp=73,
+        max_hp=80,
+        act_boss="Hexaghost",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Cleave"
+
+
+def test_ironclad_strategy_prefers_foundation_block_over_neow_havoc():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+    ]
+    reward_cards = [
+        _card("Havoc"),
+        _card("Iron Wave"),
+        _card("Warcry", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=0,
+        hp=80,
+        max_hp=80,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Iron Wave"
+
+
 def test_ironclad_strategy_prefers_power_through_for_guardian_survival_gap():
     deck = [
         _card("Strike_R", upgrades=1),

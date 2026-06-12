@@ -2584,8 +2584,27 @@ class OptimizedAgent(SimpleAgent):
                 "Uppercut",
                 "Whirlwind",
             }
+            act_1_havoc_support = {
+                "Burning Pact",
+                "Corruption",
+                "Dark Embrace",
+                "Feel No Pain",
+                "Fiend Fire",
+                "Headbutt",
+                "Second Wind",
+                "Sever Soul",
+            }
+            act_1_foundation_cards = (
+                act_1_efficient_frontload
+                | act_1_strength_enablers
+                | act_1_block_cards
+                | {"Armaments", "Battle Trance", "Offering", "Shockwave"}
+            )
             has_strength_support = any(
                 card_id in act_1_strength_enablers for card_id in deck_ids
+            )
+            has_havoc_support = any(
+                card_id in act_1_havoc_support for card_id in deck_ids
             )
             has_heavy_blade_in_deck = "Heavy Blade" in deck_ids
             has_heavy_blade = "Heavy Blade" in deck_ids or any(
@@ -2595,6 +2614,10 @@ class OptimizedAgent(SimpleAgent):
             has_better_unsupported_heavy_blade_option = any(
                 self._normalize_card_name(card)
                 in (act_1_efficient_frontload | act_1_strength_enablers)
+                for card in pickable_cards
+            )
+            has_better_unsupported_havoc_option = any(
+                self._normalize_card_name(card) in act_1_foundation_cards
                 for card in pickable_cards
             )
 
@@ -2635,6 +2658,12 @@ class OptimizedAgent(SimpleAgent):
                         and not has_strength_support
                     ):
                         score = max(score, 86)
+                    if (
+                        card_name == "Havoc"
+                        and not has_havoc_support
+                        and has_better_unsupported_havoc_option
+                    ):
+                        score = min(score, 48)
                     if (
                         card_name == "Heavy Blade"
                         and not has_strength_support
