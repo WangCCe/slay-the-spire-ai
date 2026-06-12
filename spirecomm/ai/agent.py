@@ -72,6 +72,7 @@ class SimpleAgent:
         self.skipped_cards = False
         self.visited_shop = False
         self.shop_purchase_made = False
+        self._shop_purchase_signature = None
         self._leaving_shop_room = False
         self._shop_exit_waits = 0
         self.map_route = []
@@ -231,6 +232,20 @@ class SimpleAgent:
             return LeaveAction()
         self._shop_exit_waits = 0
         return ProceedAction()
+
+    def _shop_state_signature(self, gold, screen):
+        return (
+            self._safe_int(gold, 0),
+            bool(getattr(screen, "purge_available", False)),
+            len(getattr(screen, "cards", []) or []),
+            len(getattr(screen, "relics", []) or []),
+            len(getattr(screen, "potions", []) or []),
+        )
+
+    def _mark_shop_purchase(self, gold, screen):
+        self.shop_purchase_made = True
+        self._shop_purchase_signature = self._shop_state_signature(gold, screen)
+        self._shop_exit_waits = 0
 
     def _validate_shop_cards(self, screen):
         """Validate that shop cards have required attributes."""
@@ -677,14 +692,17 @@ class SimpleAgent:
             if getattr(self, "_leaving_shop_room", False):
                 self.visited_shop = False
                 self.shop_purchase_made = False
+                self._shop_purchase_signature = None
                 return self._exit_shop()
             if not self.visited_shop:
                 self.visited_shop = True
                 self.shop_purchase_made = False
+                self._shop_purchase_signature = None
                 return ChooseShopkeeperAction()
             else:
                 self.visited_shop = False
                 self.shop_purchase_made = False
+                self._shop_purchase_signature = None
                 return self._exit_shop()
         elif self.game.screen_type == ScreenType.REST:
             return self.choose_rest_option()
@@ -749,8 +767,21 @@ class SimpleAgent:
                 )
 
                 if self.shop_purchase_made:
-                    logging.info("[SHOP_SCREEN] Purchase already made in this shop, exiting")
-                    return self._exit_shop()
+                    purchase_signature = getattr(self, "_shop_purchase_signature", None)
+                    current_signature = self._shop_state_signature(gold, screen)
+                    if (
+                        purchase_signature is not None
+                        and current_signature != purchase_signature
+                    ):
+                        logging.info(
+                            "[SHOP_SCREEN] Purchase state changed; continuing shop evaluation"
+                        )
+                        self.shop_purchase_made = False
+                        self._shop_purchase_signature = None
+                        self._shop_exit_waits = 0
+                    else:
+                        logging.info("[SHOP_SCREEN] Purchase already made in this shop, exiting")
+                        return self._exit_shop()
 
                 # Validate screen.cards exists
                 valid_cards = self._validate_shop_cards(screen)
@@ -773,7 +804,7 @@ class SimpleAgent:
                         if self._normalize_card_name(c) == "Defend"
                     ]
                     if len(strikes) >= 1 or len(defends) >= 1:
-                        self.shop_purchase_made = True
+                        self._mark_shop_purchase(gold, screen)
                         return ChooseAction(name="purge")
 
                 # Priority 2: Buy cards that are good for the deck
@@ -781,7 +812,7 @@ class SimpleAgent:
                     sorted_cards = self.priorities.get_sorted_cards(valid_cards)
                     for card in sorted_cards:
                         if self._should_buy_card(card, gold, purge_cost, screen):
-                            self.shop_purchase_made = True
+                            self._mark_shop_purchase(gold, screen)
                             return BuyCardAction(card)
                 else:
                     for card in valid_cards:
@@ -791,14 +822,14 @@ class SimpleAgent:
                             and gold >= price
                             and not self.priorities.should_skip(card)
                         ):
-                            self.shop_purchase_made = True
+                            self._mark_shop_purchase(gold, screen)
                             return BuyCardAction(card)
 
                 # Priority 3: Buy useful relics (consider price and value)
                 if hasattr(screen, "relics") and screen.relics:
                     for relic in screen.relics:
                         if self._should_buy_relic(relic, gold):
-                            self.shop_purchase_made = True
+                            self._mark_shop_purchase(gold, screen)
                             return BuyRelicAction(relic)
 
                 # Priority 4: Buy potions if needed and affordable
@@ -820,7 +851,7 @@ class SimpleAgent:
                                     "Strawberry",
                                 ]
                                 if potion.name in useful_potions:
-                                    self.shop_purchase_made = True
+                                    self._mark_shop_purchase(gold, screen)
                                     return BuyPotionAction(potion)
                         except Exception as e:
                             potion_name = getattr(potion, "name", "UNKNOWN")
@@ -835,7 +866,7 @@ class SimpleAgent:
 
                 # Priority 5: Purge as last resort if we have extra gold
                 if screen.purge_available and gold >= purge_cost:
-                    self.shop_purchase_made = True
+                    self._mark_shop_purchase(gold, screen)
                     return ChooseAction(name="purge")
 
                 # No good purchases available

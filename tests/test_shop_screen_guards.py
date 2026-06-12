@@ -88,6 +88,39 @@ def test_shop_screen_purge_accepts_string_gold_and_purge_cost():
     assert action.name == "purge"
 
 
+def test_shop_screen_continues_buying_after_purge_state_updates():
+    screen = SimpleNamespace(
+        cards=[_shop_card("Offering", price=100)],
+        relics=[],
+        potions=[],
+        purge_available=True,
+        purge_cost=75,
+    )
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=screen,
+        gold=250,
+        deck=[_shop_card("Strike_R", price=0)],
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = _BuyEverythingPriority()
+
+    first = agent.handle_screen()
+
+    assert isinstance(first, ChooseAction)
+    assert first.name == "purge"
+
+    agent.game.gold = 175
+    screen.purge_available = False
+
+    second = agent.handle_screen()
+
+    assert isinstance(second, BuyCardAction)
+    assert second.name == "Offering"
+
+
 def test_shop_screen_buy_card_accepts_string_gold_and_price():
     agent = _agent_for_shop(
         screen_type=ScreenType.SHOP_SCREEN,
