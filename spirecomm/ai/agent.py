@@ -2525,6 +2525,7 @@ class OptimizedAgent(SimpleAgent):
             act_1_frontload_cards.update(
                 {
                     "Bludgeon",
+                    "Combust",
                     "Feed",
                     "Fiend Fire",
                     "Heavy Blade",
@@ -2569,9 +2570,16 @@ class OptimizedAgent(SimpleAgent):
                 "Inflame",
                 "Spot Weakness",
             }
+            act_1_premium_frontload = {
+                "Bludgeon",
+                "Carnage",
+                "Fiend Fire",
+                "Immolate",
+            }
             act_1_efficient_frontload = {
                 "Anger",
                 "Carnage",
+                "Combust",
                 "Cleave",
                 "Clothesline",
                 "Fiend Fire",
@@ -2590,7 +2598,6 @@ class OptimizedAgent(SimpleAgent):
                 "Dark Embrace",
                 "Feel No Pain",
                 "Fiend Fire",
-                "Headbutt",
                 "Second Wind",
                 "Sever Soul",
             }
@@ -2606,6 +2613,7 @@ class OptimizedAgent(SimpleAgent):
             has_havoc_support = any(
                 card_id in act_1_havoc_support for card_id in deck_ids
             )
+            havoc_count = sum(1 for card_id in deck_ids if card_id == "Havoc")
             has_heavy_blade_in_deck = "Heavy Blade" in deck_ids
             has_heavy_blade = "Heavy Blade" in deck_ids or any(
                 self._normalize_card_name(card) == "Heavy Blade"
@@ -2652,12 +2660,16 @@ class OptimizedAgent(SimpleAgent):
                 ):
                     if card_name in act_1_strength_enablers and has_heavy_blade_in_deck:
                         score = max(score, 90)
+                    if card_name in act_1_premium_frontload:
+                        score = max(score, 108 if card_name == "Immolate" else 92)
                     if (
                         card_name in act_1_efficient_frontload
                         and has_heavy_blade_in_deck
                         and not has_strength_support
                     ):
                         score = max(score, 86)
+                    if card_name == "Havoc" and havoc_count > 0:
+                        score = min(score, 60)
                     if (
                         card_name == "Havoc"
                         and not has_havoc_support

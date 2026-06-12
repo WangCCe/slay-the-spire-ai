@@ -505,6 +505,113 @@ def test_ironclad_strategy_prefers_foundation_block_over_neow_havoc():
     assert action.name == "Iron Wave"
 
 
+def test_ironclad_strategy_prefers_combust_over_unsupported_havoc():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+    ]
+    reward_cards = [
+        _card("Combust", cost=1),
+        _card("Havoc"),
+        _card("Infernal Blade", cost=1),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=1,
+        hp=70,
+        max_hp=80,
+        act_boss="Slime Boss",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Combust"
+
+
+def test_ironclad_strategy_skips_duplicate_havoc_in_large_act1_deck():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Good Instincts", cost=0, upgrades=1),
+        _card("Intimidate", cost=0),
+        _card("Hemokinesis", upgrades=1),
+        _card("Whirlwind", cost=-1),
+        _card("Havoc", upgrades=1),
+        _card("Anger", cost=0),
+        _card("Twin Strike"),
+        _card("True Grit"),
+        _card("Fiend Fire", cost=2, upgrades=1),
+    ]
+    reward_cards = [
+        _card("Searing Blow", cost=2),
+        _card("Havoc"),
+        _card("Flex", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=14,
+        hp=48,
+        max_hp=80,
+        act_boss="Slime Boss",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CancelAction)
+
+
+def test_ironclad_strategy_prefers_immolate_over_anger_before_guardian():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Swift Strike", cost=0, upgrades=1),
+        _card("Clothesline", cost=2),
+        _card("Whirlwind", cost=-1),
+        _card("Shrug It Off", upgrades=1),
+        _card("Uppercut", cost=2),
+    ]
+    reward_cards = [
+        _card("Thunderclap"),
+        _card("Immolate", cost=2),
+        _card("Anger", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=7,
+        hp=58,
+        max_hp=80,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Immolate"
+
+
 def test_ironclad_strategy_prefers_power_through_for_guardian_survival_gap():
     deck = [
         _card("Strike_R", upgrades=1),
