@@ -1231,6 +1231,71 @@ def test_guardian_mode_shift_gains_block_and_keeps_bash_vulnerable(monkeypatch, 
     assert not trace_path.exists()
 
 
+def test_guardian_mode_shift_waits_until_multi_hit_attack_finishes(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    twin_strike = _card(
+        name="Twin Strike",
+        card_id="Twin Strike",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=10,
+    )
+    guardian = _monster(
+        name="The Guardian",
+        monster_id="TheGuardian",
+        hp=104,
+        block=0,
+        damage=-1,
+        intent=Intent.DEFEND,
+        move_id=6,
+        powers=[Power("Mode Shift", "Mode Shift", 4)],
+    )
+    before = _game(
+        floor=16,
+        turn=5,
+        player=SimpleNamespace(
+            current_hp=12,
+            max_hp=80,
+            block=11,
+            energy=2,
+            powers=[Power("Strength", "Strength", 2)],
+        ),
+        hand=[twin_strike],
+        monsters=[guardian],
+    )
+    actual = _game(
+        floor=16,
+        turn=5,
+        player=SimpleNamespace(
+            current_hp=12,
+            max_hp=80,
+            block=11,
+            energy=1,
+            powers=[Power("Strength", "Strength", 2)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=90,
+                block=20,
+                damage=-1,
+                intent=Intent.BUFF,
+                move_id=1,
+                powers=[],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_upgraded_attack_damage_does_not_create_false_monster_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

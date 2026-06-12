@@ -642,9 +642,12 @@ def _apply_expected_attack(
     curl_up_applied = False
     damage_dealt = 0
     deferred_curl_up_block = 0
+    deferred_guardian_mode_shift_hp_loss = 0
     deferred_malleable_block = 0
     flight_hit_pending = False
-    for _ in range(max(0, hit_count)):
+    total_hits = max(0, hit_count)
+    defer_guardian_mode_shift = _is_guardian_monster(target) and total_hits > 1
+    for _ in range(total_hits):
         if target.get("gone") or target.get("half_dead") or _to_int(target.get("hp")) <= 0:
             break
         remaining_damage = _modified_attack_damage(
@@ -670,7 +673,10 @@ def _apply_expected_attack(
             break
         if hp_loss > 0:
             _apply_lagavulin_wake_stun(target)
-            _apply_guardian_mode_shift(target, hp_loss)
+            if defer_guardian_mode_shift:
+                deferred_guardian_mode_shift_hp_loss += hp_loss
+            else:
+                _apply_guardian_mode_shift(target, hp_loss)
             flight_hit_pending = True
             deferred_malleable_block += _trigger_malleable(target, defer_block=True)
         if not curl_up_applied and hp_loss > 0:
@@ -685,6 +691,13 @@ def _apply_expected_attack(
         and _to_int(target.get("hp")) > 0
     ):
         _decrement_flight(target)
+    if (
+        deferred_guardian_mode_shift_hp_loss > 0
+        and not target.get("gone")
+        and not target.get("half_dead")
+        and _to_int(target.get("hp")) > 0
+    ):
+        _apply_guardian_mode_shift(target, deferred_guardian_mode_shift_hp_loss)
     if (
         (deferred_curl_up_block > 0 or deferred_malleable_block > 0)
         and not target.get("gone")
