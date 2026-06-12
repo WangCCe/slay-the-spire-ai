@@ -1822,6 +1822,56 @@ def test_energy_guard_takeover_suppresses_unpayable_cached_card():
     assert agent._fallback_turn_key is None
 
 
+def test_energy_guard_takeover_repairs_targetless_cached_attack():
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    game = _game(
+        hand=[strike],
+        monsters=[
+            _monster(
+                hp=20,
+                damage=0,
+                index=0,
+                name="The Guardian",
+                monster_id="TheGuardian",
+            )
+        ],
+        current_hp=64,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=3,
+        player=SimpleNamespace(energy=1, block=0),
+    )
+    game.monsters[0].intent = Intent.DEFEND
+
+    agent = _agent()
+    agent._fallback_turn_key = (16, 3)
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index == 0
+    assert agent._fallback_turn_key is None
+
+
 def test_energy_guard_takeover_skips_bloodletting_when_hp_loss_would_kill():
     burning_pact = SimpleNamespace(
         name="Burning Pact",

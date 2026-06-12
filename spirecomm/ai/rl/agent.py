@@ -1280,11 +1280,24 @@ class CombatRLAgent:
                 )
                 return self._with_combat_action_context(EndTurnAction(), game)
             if not self._is_current_combat_action_playable(fallback_action, game):
+                self._fallback_turn_key = None
+                replacement = self._first_playable_card_action(
+                    game,
+                    avoid_self_lethal=True,
+                    avoid_pressure_hp_loss=True,
+                    avoid_low_hp_hp_loss_filler=True,
+                )
+                if replacement is not None:
+                    logger.info(
+                        "[ENERGY_GUARD] Replacing takeover unplayable action %s with %s",
+                        self._describe_combat_action(fallback_action, game),
+                        self._describe_combat_action(replacement, game),
+                    )
+                    return self._with_combat_action_context(replacement, game)
                 logger.info(
                     "[ENERGY_GUARD] Suppressing takeover unplayable action %s; ending turn",
                     self._describe_combat_action(fallback_action, game),
                 )
-                self._fallback_turn_key = None
                 return self._with_combat_action_context(EndTurnAction(), game)
             return self._with_combat_action_context(
                 fallback_action, game
