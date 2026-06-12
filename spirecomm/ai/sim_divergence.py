@@ -202,6 +202,7 @@ _attacks_played_this_turn = 0
 _necronomicon_used_this_turn = False
 _pending_headbutt_select_effects: Optional[Dict[str, Any]] = None
 _pending_burning_pact_select_effects: Optional[Dict[str, Any]] = None
+_pending_true_grit_select_effects: Optional[Dict[str, Any]] = None
 
 
 def card_upgrade_count(card) -> int:
@@ -223,7 +224,7 @@ def reset_pending_divergence() -> None:
     global _pending_expected, _rampage_damage_bonus_by_card, _rampage_state_floor
     global _attack_count_state_floor, _attack_count_state_turn, _attacks_played_this_turn
     global _necronomicon_used_this_turn, _pending_headbutt_select_effects
-    global _pending_burning_pact_select_effects
+    global _pending_burning_pact_select_effects, _pending_true_grit_select_effects
     _pending_expected = None
     _rampage_damage_bonus_by_card = {}
     _rampage_state_floor = None
@@ -233,12 +234,13 @@ def reset_pending_divergence() -> None:
     _necronomicon_used_this_turn = False
     _pending_headbutt_select_effects = None
     _pending_burning_pact_select_effects = None
+    _pending_true_grit_select_effects = None
 
 
 def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
     """Record a read-only one-action expectation for the next live state."""
     global _pending_expected, _pending_headbutt_select_effects
-    global _pending_burning_pact_select_effects
+    global _pending_burning_pact_select_effects, _pending_true_grit_select_effects
 
     if divergence_trace_path(path) is None:
         return False
@@ -246,6 +248,7 @@ def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
         _pending_expected = None
         _pending_headbutt_select_effects = None
         _pending_burning_pact_select_effects = None
+        _pending_true_grit_select_effects = None
         return False
 
     try:
@@ -256,6 +259,8 @@ def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
             _pending_headbutt_select_effects = None
         if not _will_apply_pending_burning_pact_select_effects(action, before):
             _pending_burning_pact_select_effects = None
+        if not _will_apply_pending_true_grit_select_effects(action, before):
+            _pending_true_grit_select_effects = None
         action_summary = _action_summary(action, game)
         card = _card_for_action(action, game)
         if card is not None:
@@ -269,6 +274,14 @@ def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
             if delayed_burning_pact_effects:
                 action_summary["delayed_burning_pact_select_effects"] = (
                     delayed_burning_pact_effects
+                )
+            delayed_true_grit_effects = _true_grit_select_delayed_effects(
+                before,
+                card,
+            )
+            if delayed_true_grit_effects:
+                action_summary["delayed_true_grit_select_effects"] = (
+                    delayed_true_grit_effects
                 )
         _pending_expected = {
             "timestamp": _timestamp(),
@@ -284,6 +297,7 @@ def record_expected_action(action, game, path: Optional[Path] = None) -> bool:
         _pending_expected = None
         _pending_headbutt_select_effects = None
         _pending_burning_pact_select_effects = None
+        _pending_true_grit_select_effects = None
         logger.debug("sim divergence expected-state record failed: %s", exc)
         return False
 
@@ -322,9 +336,11 @@ def observe_next_state(game, path: Optional[Path] = None) -> bool:
 
         _consume_headbutt_select_boundary_if_applicable(pending)
         _consume_burning_pact_select_boundary_if_applicable(pending)
+        _consume_true_grit_select_boundary_if_applicable(pending)
         if not diffs:
             _arm_headbutt_select_boundary_if_applicable(pending, actual, diffs)
             _arm_burning_pact_select_boundary_if_applicable(pending, actual, diffs)
+            _arm_true_grit_select_boundary_if_applicable(pending, actual)
             return False
 
         event = {
@@ -408,6 +424,10 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         if card is not None:
             delayed_headbutt_effects = _headbutt_select_delayed_effects(before, card)
             delayed_burning_pact_effects = _burning_pact_select_delayed_effects(
+                before,
+                card,
+            )
+            delayed_true_grit_effects = _true_grit_select_delayed_effects(
                 before,
                 card,
             )
@@ -523,14 +543,21 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             _apply_block_multiplier_card(expected, before, card, card_play_count)
             block = _card_block(card)
             if block > 0 and not pre_damage_block_applied:
+                block_trigger_count = (
+                    attack_play_count if _is_attack_card(card) else card_play_count
+                )
+                if delayed_true_grit_effects:
+                    block_trigger_count = 0
                 _gain_player_block(
                     expected,
                     before,
                     sum(
                         _modified_block(block, expected.get("player", {}))
-                        for _ in range(attack_play_count if _is_attack_card(card) else card_play_count)
+                        for _ in range(
+                            attack_play_count if _is_attack_card(card) else card_play_count
+                        )
                     ),
-                    attack_play_count if _is_attack_card(card) else card_play_count,
+                    block_trigger_count,
                 )
             second_wind_block = _second_wind_block(
                 card,
@@ -578,6 +605,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
     elif action_type == "CardSelectAction":
         _apply_pending_headbutt_select_effects(expected, before)
         _apply_pending_burning_pact_select_effects(expected, before)
+        _apply_pending_true_grit_select_effects(expected, before)
 
     elif action_type == "PotionAction":
         _apply_expected_potion(expected, action, game, before)
@@ -1460,6 +1488,59 @@ def _apply_pending_burning_pact_select_effects(
     _apply_panache_damage(expected, effects.get("panache_damage", 0))
 
 
+def _true_grit_select_delayed_effects(
+    snapshot: Dict[str, Any],
+    card,
+) -> Dict[str, Any]:
+    if _known_card_name(card, BASE_SKILL_BLOCK) != "True Grit":
+        return {}
+    trigger_count = _card_play_count(snapshot, card)
+    if (
+        trigger_count <= 0
+        or _snapshot_power_amount(snapshot.get("player", {}), "Juggernaut") <= 0
+    ):
+        return {}
+    return {
+        "true_grit_select": True,
+        "juggernaut_block_triggers": trigger_count,
+    }
+
+
+def _will_apply_pending_true_grit_select_effects(
+    action,
+    snapshot: Dict[str, Any],
+) -> bool:
+    if type(action).__name__ != "CardSelectAction":
+        return False
+    return _pending_true_grit_select_effects_match(snapshot)
+
+
+def _pending_true_grit_select_effects_match(snapshot: Dict[str, Any]) -> bool:
+    effects = _pending_true_grit_select_effects
+    if not effects or not snapshot.get("in_combat"):
+        return False
+    if _to_int(snapshot.get("player", {}).get("current_hp")) <= 0:
+        return False
+    return (
+        _to_int(snapshot.get("floor")) == _to_int(effects.get("floor"))
+        and _to_int(snapshot.get("turn")) == _to_int(effects.get("turn"))
+    )
+
+
+def _apply_pending_true_grit_select_effects(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> None:
+    effects = _pending_true_grit_select_effects
+    if not effects or not _pending_true_grit_select_effects_match(before):
+        return
+    _apply_juggernaut_block_triggers(
+        expected,
+        before,
+        max(0, _to_int(effects.get("juggernaut_block_triggers"))),
+    )
+
+
 def _arm_headbutt_select_boundary_if_applicable(
     pending: Dict[str, Any],
     actual: Dict[str, Any],
@@ -1498,6 +1579,27 @@ def _arm_burning_pact_select_boundary_if_applicable(
     if _to_int(actual.get("player", {}).get("current_hp")) <= 0:
         return
     _pending_burning_pact_select_effects = {
+        "floor": actual.get("floor"),
+        "turn": actual.get("turn"),
+        **effects,
+    }
+
+
+def _arm_true_grit_select_boundary_if_applicable(
+    pending: Dict[str, Any],
+    actual: Dict[str, Any],
+) -> None:
+    global _pending_true_grit_select_effects
+
+    action = pending.get("action") or {}
+    if action.get("type") != "PlayCardAction":
+        return
+    effects = dict(action.get("delayed_true_grit_select_effects") or {})
+    if not effects or not actual.get("in_combat"):
+        return
+    if _to_int(actual.get("player", {}).get("current_hp")) <= 0:
+        return
+    _pending_true_grit_select_effects = {
         "floor": actual.get("floor"),
         "turn": actual.get("turn"),
         **effects,
@@ -1696,6 +1798,16 @@ def _consume_burning_pact_select_boundary_if_applicable(pending: Dict[str, Any])
         _pending_burning_pact_select_effects = None
 
 
+def _consume_true_grit_select_boundary_if_applicable(pending: Dict[str, Any]) -> None:
+    global _pending_true_grit_select_effects
+
+    action = pending.get("action") or {}
+    if action.get("type") != "CardSelectAction":
+        return
+    if _pending_true_grit_select_effects_match(pending.get("before") or {}):
+        _pending_true_grit_select_effects = None
+
+
 def _snapshot_monster_active(monster: Dict[str, Any]) -> bool:
     if monster.get("gone"):
         return False
@@ -1724,6 +1836,9 @@ def _ignored_diff_keys(pending: Dict[str, Any], actual: Optional[Dict[str, Any]]
     if _play_top_cards_random_attack_target_boundary(pending):
         ignored.update(_monster_state_diff_keys(pending, actual))
         return ignored
+
+    if _juggernaut_random_target_boundary(pending):
+        ignored.update(_monster_state_diff_keys(pending, actual))
 
     ignored.update(_slime_split_ignored_diff_keys(pending, actual))
     ignored.update(_darkling_half_dead_animation_ignored_diff_keys(pending, actual))
@@ -1829,6 +1944,44 @@ def _player_state_diff_keys() -> set:
         "player.block",
         "player.energy",
     }
+
+
+def _juggernaut_random_target_boundary(pending: Dict[str, Any]) -> bool:
+    before = pending.get("before") or {}
+    if _snapshot_power_amount(before.get("player", {}), "Juggernaut") <= 0:
+        return False
+    if _active_monster_count(before) <= 1:
+        return False
+
+    action = pending.get("action") or {}
+    action_type = action.get("type")
+    if action_type == "CardSelectAction":
+        return _pending_true_grit_select_effects_match(before)
+    if action_type != "PlayCardAction":
+        return False
+
+    card = action.get("card") or {}
+    if _snapshot_card_is_attack(card):
+        return False
+    return _expected_player_block_gain(pending) > 0
+
+
+def _active_monster_count(snapshot: Dict[str, Any]) -> int:
+    return sum(
+        1
+        for monster in snapshot.get("monsters", []) or []
+        if _snapshot_monster_active(monster)
+    )
+
+
+def _expected_player_block_gain(pending: Dict[str, Any]) -> int:
+    before_block = _to_int(
+        ((pending.get("before") or {}).get("player") or {}).get("block")
+    )
+    expected_block = _to_int(
+        ((pending.get("expected") or {}).get("player") or {}).get("block")
+    )
+    return max(0, expected_block - before_block)
 
 
 def _slime_split_ignored_diff_keys(

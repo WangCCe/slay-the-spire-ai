@@ -3958,6 +3958,147 @@ def test_juggernaut_damages_single_alive_monster_when_block_is_gained(monkeypatc
     assert not trace_path.exists()
 
 
+def test_juggernaut_random_target_block_card_does_not_create_monster_diff(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    defend_plus = _card(
+        name="Defend+",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+        upgrades=1,
+    )
+    before = _game(
+        floor=28,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=13,
+            max_hp=80,
+            block=0,
+            energy=2,
+            powers=[Power("Juggernaut", "Juggernaut", 5)],
+        ),
+        hand=[defend_plus],
+        monsters=[
+            _monster(name="Cultist", monster_id="Cultist", hp=42, damage=6),
+            _monster(name="Chosen", monster_id="Chosen", hp=97, damage=-1, intent=Intent.STRONG_DEBUFF),
+        ],
+    )
+    actual = _game(
+        floor=28,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=13,
+            max_hp=80,
+            block=8,
+            energy=1,
+            powers=[Power("Juggernaut", "Juggernaut", 5)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(name="Cultist", monster_id="Cultist", hp=37, damage=6),
+            _monster(name="Chosen", monster_id="Chosen", hp=97, damage=-1, intent=Intent.STRONG_DEBUFF),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_true_grit_juggernaut_damage_waits_for_card_select(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    true_grit_plus = _card(
+        name="True Grit+",
+        card_id="True Grit",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=9,
+        upgrades=1,
+    )
+    strike = _card(name="Strike", card_id="Strike_R", damage=6)
+    before = _game(
+        floor=30,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=8,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Juggernaut", "Juggernaut", 5)],
+        ),
+        hand=[true_grit_plus, strike],
+        monsters=[
+            _monster(
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                block=50,
+                damage=10,
+                powers=[Power("Barricade", "Barricade", -1)],
+            )
+        ],
+    )
+    select_screen = _game(
+        floor=30,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=8,
+            max_hp=80,
+            block=9,
+            energy=2,
+            powers=[Power("Juggernaut", "Juggernaut", 5)],
+        ),
+        hand=[strike],
+        monsters=[
+            _monster(
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                block=50,
+                damage=10,
+                powers=[Power("Barricade", "Barricade", -1)],
+            )
+        ],
+    )
+    after_select = _game(
+        floor=30,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=8,
+            max_hp=80,
+            block=9,
+            energy=2,
+            powers=[Power("Juggernaut", "Juggernaut", 5)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Spheric Guardian",
+                monster_id="SphericGuardian",
+                hp=20,
+                block=45,
+                damage=10,
+                powers=[Power("Barricade", "Barricade", -1)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(select_screen) is False
+    assert record_expected_action(CardSelectAction([strike]), select_screen) is True
+    assert observe_next_state(after_select) is False
+    assert not trace_path.exists()
+
+
 def test_ornamental_fan_adds_block_on_every_third_attack(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
