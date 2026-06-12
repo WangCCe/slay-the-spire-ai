@@ -213,8 +213,7 @@ class IroncladDeckStrategy:
             if deck_size > 0:
                 current_count = sum(1 for c in context.game.deck if self._card_name(c) == card_id)
                 if card_id == 'Demon Form' and current_count >= 1:
-                    # Second Demon Form is okay but low priority
-                    return (True, "Second Demon Form (low priority)")
+                    return (False, "Skipping duplicate Demon Form")
             return (True, f"Win condition card: {card_id}")
 
         # Rule 7: Defend/Strike removal consideration

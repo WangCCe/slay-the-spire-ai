@@ -1060,6 +1060,82 @@ def test_ironclad_strategy_prefers_immolate_over_armaments_before_act1_boss():
     assert action.name == "Immolate"
 
 
+def test_ironclad_strategy_prefers_feed_over_duplicate_demon_form_after_act1_boss():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Intimidate", cost=0),
+        _card("Anger", cost=0),
+        _card("Clothesline", cost=2),
+        _card("Demon Form", cost=3),
+        _card("Carnage", cost=2),
+        _card("Armaments"),
+        _card("Rage", cost=0),
+        _card("Uppercut", cost=2),
+    ]
+    reward_cards = [
+        _card("Demon Form", cost=3),
+        _card("Brutality", cost=0),
+        _card("Feed", cost=1),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=16,
+        act=1,
+        hp=24,
+        max_hp=80,
+        act_boss="Hexaghost",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Feed"
+
+
+def test_ironclad_strategy_prefers_frontload_over_early_rage_before_act1_boss():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Intimidate", cost=0),
+        _card("Anger", cost=0),
+        _card("Clothesline", cost=2),
+        _card("Demon Form", cost=3),
+        _card("Carnage", cost=2),
+        _card("Armaments"),
+    ]
+    reward_cards = [
+        _card("Rage", cost=0),
+        _card("Heavy Blade", cost=2),
+        _card("Twin Strike", cost=1),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=8,
+        act=1,
+        hp=54,
+        max_hp=80,
+        act_boss="Hexaghost",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name in {"Heavy Blade", "Twin Strike"}
+
+
 def test_ironclad_evaluator_treats_counted_upgraded_immolate_as_immolate():
     deck = [
         _card("Strike_R"),

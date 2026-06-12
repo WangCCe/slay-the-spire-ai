@@ -2726,6 +2726,10 @@ class OptimizedAgent(SimpleAgent):
                 self._normalize_card_name(card) in act_1_foundation_cards
                 for card in pickable_cards
             )
+            has_better_early_rage_option = any(
+                self._normalize_card_name(card) in act_1_frontload_cards
+                for card in pickable_cards
+            )
             current_hp = self._safe_float(getattr(self.game, "current_hp", 0), 0.0)
             max_hp = max(self._safe_float(getattr(self.game, "max_hp", 1), 1.0), 1.0)
             player_hp_pct = current_hp / max_hp
@@ -2801,6 +2805,8 @@ class OptimizedAgent(SimpleAgent):
                         and has_better_unsupported_heavy_blade_option
                     ):
                         score = min(score, 72)
+                    if card_name == "Rage" and has_better_early_rage_option:
+                        score = min(score, 60)
 
                 if slime_boss_frontload_gap:
                     if (
