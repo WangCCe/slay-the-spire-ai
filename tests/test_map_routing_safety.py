@@ -380,3 +380,80 @@ def test_conservative_route_prefers_complete_zero_elite_path_over_reward_bait():
 
     assert isinstance(action, ChooseMapNodeAction)
     assert action.node == safe_start
+
+
+def test_conservative_act1_route_prefers_early_fights_over_event_chain_when_underprepared():
+    agent = SimpleAgent(chosen_class=PlayerClass.IRONCLAD, elite_mode="conservative")
+    game_map = Map()
+
+    event_start = Node(0, 0, "M")
+    event_1 = Node(0, 1, "?")
+    event_2 = Node(0, 2, "?")
+    event_3 = Node(0, 3, "?")
+    event_rest = Node(0, 4, "R")
+
+    fight_start = Node(1, 0, "M")
+    fight_1 = Node(1, 1, "M")
+    fight_2 = Node(1, 2, "M")
+    fight_3 = Node(1, 3, "M")
+    fight_rest = Node(1, 4, "R")
+
+    event_start.children = [event_1]
+    event_1.children = [event_2]
+    event_2.children = [event_3]
+    event_3.children = [event_rest]
+
+    fight_start.children = [fight_1]
+    fight_1.children = [fight_2]
+    fight_2.children = [fight_3]
+    fight_3.children = [fight_rest]
+
+    for node in [
+        event_start,
+        event_1,
+        event_2,
+        event_3,
+        event_rest,
+        fight_start,
+        fight_1,
+        fight_2,
+        fight_3,
+        fight_rest,
+    ]:
+        game_map.add_node(node)
+
+    agent.game.map = game_map
+    agent.game.act = 1
+    agent.game.floor = 0
+    agent.game.current_hp = 75
+    agent.game.max_hp = 80
+    agent.game.deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash"),
+    ]
+    agent.game.hand = []
+    agent.game.monsters = []
+    agent.game.potions = []
+    agent.game.relics = ["Burning Blood"]
+    agent.game.screen = SimpleNamespace(
+        current_node=event_start,
+        next_nodes=[event_start, fight_start],
+        boss_available=False,
+    )
+
+    def event_bait_priority(node, context):
+        return 100 if node.symbol == "?" else 0
+
+    agent._calculate_map_node_priority = event_bait_priority
+
+    action = agent.make_map_choice()
+
+    assert isinstance(action, ChooseMapNodeAction)
+    assert action.node == fight_start
