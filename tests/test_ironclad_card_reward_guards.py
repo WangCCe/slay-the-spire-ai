@@ -377,6 +377,72 @@ def test_ironclad_strategy_prefers_spot_weakness_over_second_unsupported_heavy_b
     assert action.name == "Spot Weakness"
 
 
+def test_ironclad_strategy_prefers_fiend_fire_over_unsupported_heavy_blade():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Heavy Blade", cost=2),
+        _card("Thunderclap"),
+        _card("Armaments"),
+    ]
+    reward_cards = [
+        _card("Heavy Blade", cost=2),
+        _card("Fiend Fire", cost=2),
+        _card("Wild Strike"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=4,
+        hp=64,
+        max_hp=80,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Fiend Fire"
+
+
+def test_ironclad_strategy_prefers_inflame_support_over_attack_with_heavy_blade():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Heavy Blade", cost=2),
+    ]
+    reward_cards = [
+        _card("Thunderclap"),
+        _card("Clash", cost=0),
+        _card("Inflame", cost=1),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=2,
+        hp=64,
+        max_hp=80,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Inflame"
+
+
 def test_ironclad_strategy_prefers_power_through_for_guardian_survival_gap():
     deck = [
         _card("Strike_R", upgrades=1),

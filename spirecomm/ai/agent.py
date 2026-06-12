@@ -2564,16 +2564,17 @@ class OptimizedAgent(SimpleAgent):
                     len(deck_ids),
                 )
 
-            slime_boss_strength_enablers = {
+            act_1_strength_enablers = {
                 "Demon Form",
                 "Inflame",
                 "Spot Weakness",
             }
-            slime_boss_efficient_frontload = {
+            act_1_efficient_frontload = {
                 "Anger",
                 "Carnage",
                 "Cleave",
                 "Clothesline",
+                "Fiend Fire",
                 "Hemokinesis",
                 "Immolate",
                 "Iron Wave",
@@ -2584,15 +2585,16 @@ class OptimizedAgent(SimpleAgent):
                 "Whirlwind",
             }
             has_strength_support = any(
-                card_id in slime_boss_strength_enablers for card_id in deck_ids
+                card_id in act_1_strength_enablers for card_id in deck_ids
             )
+            has_heavy_blade_in_deck = "Heavy Blade" in deck_ids
             has_heavy_blade = "Heavy Blade" in deck_ids or any(
                 self._normalize_card_name(card) == "Heavy Blade"
                 for card in pickable_cards
             )
             has_better_unsupported_heavy_blade_option = any(
                 self._normalize_card_name(card)
-                in (slime_boss_efficient_frontload | slime_boss_strength_enablers)
+                in (act_1_efficient_frontload | act_1_strength_enablers)
                 for card in pickable_cards
             )
 
@@ -2620,10 +2622,29 @@ class OptimizedAgent(SimpleAgent):
                 else:
                     score = 50
 
-                if slime_boss_frontload_gap:
-                    card_name = self._normalize_card_name(card)
+                card_name = self._normalize_card_name(card)
+                if (
+                    getattr(context, "act", 0) == 1
+                    and (getattr(context, "floor", 0) or 0) <= 15
+                ):
+                    if card_name in act_1_strength_enablers and has_heavy_blade_in_deck:
+                        score = max(score, 90)
                     if (
-                        card_name in slime_boss_strength_enablers
+                        card_name in act_1_efficient_frontload
+                        and has_heavy_blade_in_deck
+                        and not has_strength_support
+                    ):
+                        score = max(score, 86)
+                    if (
+                        card_name == "Heavy Blade"
+                        and not has_strength_support
+                        and has_better_unsupported_heavy_blade_option
+                    ):
+                        score = min(score, 72)
+
+                if slime_boss_frontload_gap:
+                    if (
+                        card_name in act_1_strength_enablers
                         and has_heavy_blade
                     ):
                         return max(score, 94)
