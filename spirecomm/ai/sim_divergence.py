@@ -487,8 +487,6 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     if attack_effects_resolved:
                         sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
                         _apply_feed_max_hp_gain(expected, card, target_index, before)
-                if attack_effects_resolved and _is_reaper(card) and damage_dealt > 0:
-                    _heal_player(expected, damage_dealt)
                 rage_block = (
                     0
                     if _to_int(delayed_headbutt_effects.get("rage_block")) > 0
@@ -505,6 +503,8 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     _gain_player_block(expected, before, ornamental_fan_block)
                 if attack_effects_resolved and sharp_hide_damage > 0:
                     _damage_player(expected, sharp_hide_damage)
+                if attack_effects_resolved and _is_reaper(card) and damage_dealt > 0:
+                    _heal_player(expected, damage_dealt)
             self_damage = _card_self_damage(card)
             self_damage += _blue_candle_curse_hp_loss(card, before)
             if _is_attack_card(card):

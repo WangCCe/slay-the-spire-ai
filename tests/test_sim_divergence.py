@@ -1042,6 +1042,64 @@ def test_guardian_sharp_hide_reflection_damages_hp_without_block(monkeypatch, tm
     assert not trace_path.exists()
 
 
+def test_reaper_heals_after_guardian_sharp_hide_reflection(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    reaper = _card(
+        name="Reaper",
+        card_id="Reaper",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=4,
+    )
+    guardian = _monster(
+        name="The Guardian",
+        monster_id="TheGuardian",
+        hp=209,
+        damage=6,
+        intent=Intent.ATTACK,
+        powers=[Power("Sharp Hide", "Sharp Hide", 3)],
+    )
+    before = _game(
+        player=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Strength", "Strength", 2)],
+        ),
+        hand=[reaper],
+        monsters=[guardian],
+    )
+
+    actual = _game(
+        player=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            block=0,
+            energy=1,
+            powers=[Power("Strength", "Strength", 2)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=203,
+                damage=6,
+                intent=Intent.ATTACK,
+                powers=[Power("Sharp Hide", "Sharp Hide", 3)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_iron_wave_block_absorbs_guardian_sharp_hide_reflection(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
