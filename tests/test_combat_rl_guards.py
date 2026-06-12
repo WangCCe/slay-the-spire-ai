@@ -1940,6 +1940,71 @@ def test_energy_guard_takeover_repairs_stale_attack_with_sharp_hide_block():
     assert agent._fallback_turn_key is None
 
 
+def test_energy_guard_takeover_repairs_missing_target_without_changing_card():
+    wound = SimpleNamespace(
+        name="Wound",
+        card_id="Wound",
+        type=CardType.STATUS,
+        is_playable=False,
+        cost=-2,
+        has_target=False,
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    bash = SimpleNamespace(
+        name="Bash",
+        card_id="Bash",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+    )
+    guardian = _monster(
+        hp=147,
+        damage=20,
+        index=0,
+        name="The Guardian",
+        monster_id="TheGuardian",
+    )
+    guardian.intent = Intent.ATTACK
+    game = _game(
+        hand=[wound, strike, bash],
+        monsters=[guardian],
+        current_hp=9,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=10,
+        player=SimpleNamespace(energy=2, block=0),
+    )
+
+    agent = _agent()
+    agent._fallback_turn_key = (16, 10)
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=2)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 2
+    assert action.target_index == 0
+    assert agent._fallback_turn_key is None
+
+
 def test_energy_guard_takeover_skips_bloodletting_when_hp_loss_would_kill():
     burning_pact = SimpleNamespace(
         name="Burning Pact",

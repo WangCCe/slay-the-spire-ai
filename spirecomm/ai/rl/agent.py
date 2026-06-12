@@ -1281,12 +1281,17 @@ class CombatRLAgent:
                 return self._with_combat_action_context(EndTurnAction(), game)
             if not self._is_current_combat_action_playable(fallback_action, game):
                 self._fallback_turn_key = None
-                replacement = self._first_playable_card_action(
+                replacement = self._repair_current_play_card_target(
+                    fallback_action,
                     game,
-                    avoid_self_lethal=True,
-                    avoid_pressure_hp_loss=True,
-                    avoid_low_hp_hp_loss_filler=True,
                 )
+                if replacement is None:
+                    replacement = self._first_playable_card_action(
+                        game,
+                        avoid_self_lethal=True,
+                        avoid_pressure_hp_loss=True,
+                        avoid_low_hp_hp_loss_filler=True,
+                    )
                 if replacement is not None:
                     guarded_replacement = self._get_act1_boss_pressure_action_replacement(
                         replacement,
@@ -1972,6 +1977,38 @@ class CombatRLAgent:
             avoid_pressure_hp_loss=True,
             avoid_low_hp_hp_loss_filler=True,
         )
+
+    def _repair_current_play_card_target(self, action: Action, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+
+        if not isinstance(action, PlayCardAction):
+            return None
+
+        card_index = self._safe_int(
+            getattr(action, "card_index", -1),
+            default=-1,
+        )
+        if card_index < 0:
+            return None
+
+        card = self._card_for_action(action, game)
+        if card is None:
+            return None
+
+        if card_requires_target(card):
+            target_index = self._best_monster_index(game)
+            if target_index is None:
+                return None
+            repaired = PlayCardAction(
+                card_index=card_index,
+                target_index=target_index,
+            )
+        else:
+            repaired = PlayCardAction(card_index=card_index)
+
+        if self._is_current_combat_action_playable(repaired, game):
+            return repaired
+        return None
 
     def _get_survival_action_replacement(self, action: Action, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
