@@ -3617,6 +3617,16 @@ def _apply_mercury_hourglass_damage(
         _apply_direct_monster_damage(expected, index, 3)
 
 
+def _monster_move_block_before_mercury_hourglass(monster: Dict[str, Any]) -> int:
+    identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
+    if "hexaghost" not in identifiers:
+        return 0
+    intent = _normalized_intent(monster.get("intent"))
+    if _to_int(monster.get("move_id")) == 3 and "defend" in intent and "buff" in intent:
+        return 12
+    return 0
+
+
 def _apply_stone_calendar_damage(
     expected: Dict[str, Any],
     before: Dict[str, Any],
@@ -3644,6 +3654,7 @@ def _prepare_monster_block_for_mercury_hourglass(
 
         before_monster = before_monsters[index] if index < len(before_monsters) else {}
         block = max(0, _to_int(monster.get("block")))
+        block += _monster_move_block_before_mercury_hourglass(before_monster)
         block += max(0, _snapshot_power_amount(before_monster, "Plated Armor"))
         block += max(0, _snapshot_power_amount(before_monster, "Metallicize"))
         monster["block"] = block
