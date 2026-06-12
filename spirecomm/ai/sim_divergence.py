@@ -447,7 +447,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     before,
                     card_index,
                 )
-            if _is_x_cost_card(card) or _is_whirlwind(card):
+            if _card_spends_all_energy(card, before):
                 expected["player"]["energy"] = 0
             else:
                 expected["player"]["energy"] = max(
@@ -2642,6 +2642,12 @@ def _raw_card_cost(card) -> int:
 
 def _is_x_cost_card(card) -> bool:
     return _raw_card_cost(card) < 0
+
+
+def _card_spends_all_energy(card, snapshot: Dict[str, Any]) -> bool:
+    if _blue_candle_curse_hp_loss(card, snapshot) > 0:
+        return False
+    return _is_x_cost_card(card) or _is_whirlwind(card)
 
 
 def _card_cost(card) -> int:

@@ -527,6 +527,61 @@ def test_blue_candle_curse_play_loses_one_hp(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_blue_candle_raw_unplayable_curse_cost_keeps_energy(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    parasite = _card(
+        name="Parasite",
+        card_id="Parasite",
+        card_type=CardType.CURSE,
+        cost=-2,
+        damage=0,
+    )
+    before = _game(
+        player=SimpleNamespace(current_hp=56, max_hp=80, block=10, energy=2),
+        hand=[
+            parasite,
+            _card(name="Deep Breath", card_id="Deep Breath", card_type=CardType.SKILL, cost=0, damage=0),
+            _card(name="Bash+", card_id="Bash", card_type=CardType.ATTACK, cost=2, damage=10, upgrades=1),
+            _card(name="Thunderclap", card_id="Thunderclap", card_type=CardType.ATTACK, cost=1, damage=4),
+        ],
+        relics=[_relic("Burning Blood"), _relic("Blue Candle")],
+        monsters=[
+            _monster(
+                name="Hexaghost",
+                monster_id="Hexaghost",
+                hp=234,
+                max_hp=250,
+                damage=6,
+                intent=Intent.ATTACK_DEBUFF,
+                move_id=4,
+            )
+        ],
+    )
+    actual = _game(
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=10, energy=2),
+        hand=before.hand[1:],
+        relics=[_relic("Burning Blood"), _relic("Blue Candle")],
+        monsters=[
+            _monster(
+                name="Hexaghost",
+                monster_id="Hexaghost",
+                hp=234,
+                max_hp=250,
+                damage=6,
+                intent=Intent.ATTACK_DEBUFF,
+                move_id=4,
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card=parasite, card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_tungsten_rod_reduces_bloodletting_hp_loss(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
