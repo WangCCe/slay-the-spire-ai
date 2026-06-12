@@ -3934,6 +3934,45 @@ def test_guardian_sharp_hide_guard_blocks_low_margin_attack_before_lethal():
     assert agent._fallback_turn_key == (16, 13)
 
 
+def test_guardian_sharp_hide_guard_ends_turn_when_attack_only_reduces_survival_margin():
+    anger = SimpleNamespace(
+        name="Anger",
+        card_id="Anger",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=0,
+        has_target=True,
+    )
+    guardian = _monster(
+        hp=84,
+        damage=8,
+        index=0,
+        name="The Guardian",
+        monster_id="TheGuardian",
+    )
+    guardian.intent = Intent.ATTACK_BUFF
+    guardian.move_hits = 2
+    guardian.powers = [SimpleNamespace(power_id="SharpHide", amount=3)]
+    game = _game(
+        hand=[anger],
+        monsters=[guardian],
+        current_hp=9,
+        max_hp=85,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=9,
+        player=SimpleNamespace(energy=3, block=14),
+    )
+
+    replacement = _agent()._get_guardian_sharp_hide_action_replacement(
+        PlayCardAction(card_index=0, target_index=0),
+        game,
+    )
+
+    assert isinstance(replacement, EndTurnAction)
+
+
 def test_energy_guard_prioritizes_hexaghost_opening_carnage_over_bash():
     bash = SimpleNamespace(
         name="Bash",

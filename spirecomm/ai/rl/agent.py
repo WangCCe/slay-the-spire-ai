@@ -2743,6 +2743,19 @@ class CombatRLAgent:
                 return replacement
 
         if low_margin_after_attack:
+            if low_hp_sharp_hide_pressure and damage_with_attack > damage_without_attack:
+                logger.info(
+                    "[GUARDIAN_SHARP_HIDE_GUARD] Ending turn to preserve low-HP Sharp Hide margin hp=%s incoming=%s status_blockable_damage=%s status_hp_loss=%s sharp_hide=%s current_block=%s damage_without_attack=%s damage_with_attack=%s",
+                    current_hp,
+                    incoming,
+                    status_blockable_damage,
+                    status_hp_loss,
+                    sharp_hide_damage,
+                    current_block,
+                    damage_without_attack,
+                    damage_with_attack,
+                )
+                return EndTurnAction()
             return None
 
         logger.info(
