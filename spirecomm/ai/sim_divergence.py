@@ -651,6 +651,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             _heal_player(expected, regeneration_heal)
         combat_finished = _apply_the_bomb_end_turn(expected, before)
         if not combat_finished:
+            _apply_stone_calendar_damage(expected, before)
             hp_loss_events += _apply_end_turn_player_damage(expected, before)
             _apply_end_turn_escape_intents(expected)
             retained_block = _retained_end_turn_block(before, expected.get("player", {}))
@@ -673,7 +674,6 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             _apply_darkling_end_turn_revives(expected, before)
             _prepare_monster_block_for_mercury_hourglass(expected, before)
             _apply_mercury_hourglass_damage(expected, before)
-            _apply_stone_calendar_damage(expected, before)
             _apply_end_turn_summons(expected, before)
 
     expected.pop("_player_vulnerable_added_during_end_turn", None)
@@ -3905,8 +3905,26 @@ def _apply_stone_calendar_damage(
     counter = max(0, counter)
     if counter == STONE_CALENDAR_TRIGGER_COUNTER:
         for index, _monster in enumerate(expected.get("monsters", []) or []):
-            _apply_direct_monster_damage(expected, index, STONE_CALENDAR_DAMAGE)
+            _apply_direct_monster_damage(
+                expected,
+                index,
+                STONE_CALENDAR_DAMAGE,
+                ignore_block=True,
+            )
+        _mark_stone_calendar_slime_splits(expected)
     _set_snapshot_relic_counter(expected, "Stone Calendar", counter + 1)
+
+
+def _mark_stone_calendar_slime_splits(expected: Dict[str, Any]) -> None:
+    for monster in expected.get("monsters", []) or []:
+        if not _slime_split_ready(monster):
+            continue
+        monster["hp"] = 0
+        monster["block"] = 0
+        monster["gone"] = True
+        monster["half_dead"] = False
+        monster["intent"] = "Intent.UNKNOWN"
+        monster["move_damage"] = -1
 
 
 def _prepare_monster_block_for_mercury_hourglass(

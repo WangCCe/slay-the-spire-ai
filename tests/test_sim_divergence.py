@@ -10925,6 +10925,142 @@ def test_end_turn_stone_calendar_counter_seven_damages_monsters(
     assert not trace_path.exists()
 
 
+def test_end_turn_stone_calendar_ignores_monster_plated_armor_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=19,
+        turn=7,
+        act=2,
+        room_type="MonsterRoom",
+        player=SimpleNamespace(current_hp=65, max_hp=80, block=5, energy=0),
+        hand=[],
+        relics=[_relic("Stone Calendar", relic_id="StoneCalendar", counter=7)],
+        monsters=[
+            _monster(
+                name="Shelled Parasite",
+                monster_id="Shelled Parasite",
+                hp=69,
+                max_hp=69,
+                damage=6,
+                hits=2,
+                intent=Intent.ATTACK,
+                powers=[Power("Plated Armor", "Plated Armor", 13)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=19,
+        turn=8,
+        act=2,
+        room_type="MonsterRoom",
+        player=SimpleNamespace(current_hp=58, max_hp=80, block=0, energy=3),
+        hand=[],
+        relics=[_relic("Stone Calendar", relic_id="StoneCalendar", counter=8)],
+        monsters=[
+            _monster(
+                name="Shelled Parasite",
+                monster_id="Shelled Parasite",
+                hp=17,
+                max_hp=69,
+                block=13,
+                damage=10,
+                intent=Intent.ATTACK_BUFF,
+                powers=[Power("Plated Armor", "Plated Armor", 13)],
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_end_turn_stone_calendar_split_prevents_slime_attack(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    dead_boss = _monster(
+        name="Slime Boss",
+        monster_id="SlimeBoss",
+        hp=0,
+        max_hp=140,
+        damage=0,
+        intent=Intent.UNKNOWN,
+        index=1,
+        powers=[Power("Split", "Split", -1)],
+    )
+    dead_boss.is_gone = True
+    dead_acid_large = _monster(
+        name="Acid Slime (L)",
+        monster_id="AcidSlime_L",
+        hp=0,
+        max_hp=66,
+        damage=0,
+        intent=Intent.UNKNOWN,
+        index=5,
+        powers=[Power("Split", "Split", -1)],
+    )
+    dead_acid_large.is_gone = True
+
+    before = _game(
+        floor=16,
+        turn=7,
+        act=1,
+        room_type="MonsterRoomBoss",
+        player=SimpleNamespace(current_hp=41, max_hp=80, block=10, energy=1),
+        hand=[_card(name="Bash", card_id="Bash", cost=2, damage=8)],
+        relics=[_relic("Stone Calendar", relic_id="StoneCalendar", counter=7)],
+        monsters=[
+            _monster(
+                name="Spike Slime (L)",
+                monster_id="SpikeSlime_L",
+                hp=60,
+                max_hp=66,
+                damage=16,
+                intent=Intent.ATTACK_DEBUFF,
+                powers=[Power("Split", "Split", -1)],
+            ),
+            dead_boss,
+            _monster(
+                name="Acid Slime (L)",
+                monster_id="AcidSlime_L",
+                hp=66,
+                max_hp=66,
+                damage=0,
+                intent=Intent.DEBUFF,
+                index=2,
+                powers=[Power("Split", "Split", -1)],
+            ),
+        ],
+    )
+    actual = _game(
+        floor=16,
+        turn=8,
+        act=1,
+        room_type="MonsterRoomBoss",
+        player=SimpleNamespace(current_hp=41, max_hp=80, block=0, energy=3),
+        hand=[],
+        relics=[_relic("Stone Calendar", relic_id="StoneCalendar", counter=8)],
+        monsters=[
+            _monster(name="Spike Slime (M)", monster_id="SpikeSlime_M", hp=8, max_hp=8, damage=0, intent=Intent.DEBUFF),
+            _monster(name="Spike Slime (L)", monster_id="SpikeSlime_L", hp=0, max_hp=66, damage=0, intent=Intent.DEBUFF, index=1),
+            _monster(name="Spike Slime (M)", monster_id="SpikeSlime_M", hp=8, max_hp=8, damage=0, intent=Intent.DEBUFF, index=2),
+            _monster(name="Acid Slime (M)", monster_id="AcidSlime_M", hp=14, max_hp=14, damage=7, intent=Intent.ATTACK_DEBUFF, index=3),
+            dead_boss,
+            dead_acid_large,
+            _monster(name="Acid Slime (M)", monster_id="AcidSlime_M", hp=14, max_hp=14, damage=0, intent=Intent.DEBUFF, index=6),
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_mercury_hourglass_hits_monster_plated_armor_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
