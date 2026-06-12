@@ -41,6 +41,8 @@ FEED_MAX_HP_GAIN = 3
 FEED_UPGRADED_MAX_HP_GAIN = 4
 BURNING_BLOOD_HEAL = 6
 BLACK_BLOOD_HEAL = 12
+SUNDIAL_ENERGY = 2
+SUNDIAL_TRIGGER_COUNTER = 3
 
 BASE_ATTACK_DAMAGE = {
     "Anger": 6,
@@ -156,6 +158,10 @@ CARD_ENERGY_GAIN = {
 
 CARD_HEAL = {
     "Bandage Up": 4,
+}
+
+CARD_DRAW = {
+    "Battle Trance": (3, 4),
 }
 
 CARD_TARGET_DEBUFFS = {
@@ -556,6 +562,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 )
             _apply_charons_ashes_exhaust_damage(expected, before, card, card_index)
             _apply_havoc_top_card(expected, before, card)
+            _apply_card_draw(expected, card)
             _apply_bird_faced_urn_power_play(expected, card, card_play_count)
             for _ in range(card_play_count):
                 _apply_letter_opener_skill_play(expected, card)
@@ -3865,6 +3872,59 @@ def _apply_expected_top_draw_card_played_by_effect(
     return True
 
 
+def _apply_card_draw(expected: Dict[str, Any], card) -> None:
+    draw_count = _card_draw_count(card)
+    if draw_count <= 0:
+        return
+    if _snapshot_has_power(expected.get("player", {}), "No Draw"):
+        return
+
+    for _ in range(draw_count):
+        top_card = _draw_pile_top_card(expected)
+        if top_card is None and _to_int(expected.get("draw_pile_count")) <= 0:
+            if not _shuffle_discard_into_draw_pile(expected):
+                break
+            top_card = _draw_pile_top_card(expected)
+
+        if top_card is not None:
+            expected.setdefault("hand", []).append(copy.deepcopy(top_card))
+        _pop_expected_draw_pile_top(expected)
+
+    if _known_card_name(card, CARD_DRAW) == "Battle Trance":
+        _ensure_snapshot_power(expected.setdefault("player", {}), "No Draw", -1)
+
+
+def _shuffle_discard_into_draw_pile(expected: Dict[str, Any]) -> bool:
+    discard_pile = expected.get("discard_pile")
+    discard_count = _to_int(expected.get("discard_pile_count"))
+    if isinstance(discard_pile, list) and discard_pile:
+        expected["draw_pile"] = copy.deepcopy(discard_pile)
+        expected["draw_pile_count"] = len(expected["draw_pile"])
+        expected["discard_pile"] = []
+        expected["discard_pile_count"] = 0
+        _apply_sundial_shuffle(expected)
+        return True
+    if discard_count > 0:
+        expected["draw_pile_count"] = discard_count
+        expected["discard_pile_count"] = 0
+        _apply_sundial_shuffle(expected)
+        return True
+    return False
+
+
+def _apply_sundial_shuffle(expected: Dict[str, Any]) -> None:
+    counter = _snapshot_relic_counter(expected, "Sundial")
+    if counter is None:
+        return
+    counter = max(0, counter) + 1
+    if counter >= SUNDIAL_TRIGGER_COUNTER:
+        expected.setdefault("player", {})["energy"] = (
+            _to_int(expected.get("player", {}).get("energy")) + SUNDIAL_ENERGY
+        )
+        counter = 0
+    _set_snapshot_relic_counter(expected, "Sundial", counter)
+
+
 def _draw_pile_top_card(snapshot: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     draw_pile = snapshot.get("draw_pile") or []
     if not isinstance(draw_pile, list) or not draw_pile:
@@ -4083,6 +4143,14 @@ def _add_snapshot_power_amount(entity: Dict[str, Any], power_name: str, amount: 
     powers.append({"id": power_name, "name": power_name, "amount": amount})
 
 
+def _ensure_snapshot_power(entity: Dict[str, Any], power_name: str, amount: int) -> None:
+    if _snapshot_has_power(entity, power_name):
+        return
+    entity.setdefault("powers", []).append(
+        {"id": power_name, "name": power_name, "amount": amount}
+    )
+
+
 def _remove_snapshot_power(entity: Dict[str, Any], power_name: str) -> None:
     target = _normalize(power_name)
     entity["powers"] = [
@@ -4126,6 +4194,14 @@ def _card_heal(card) -> int:
     if card_name == "Bandage Up" and card_upgrade_count(card) > 0:
         heal += 2
     return heal
+
+
+def _card_draw_count(card) -> int:
+    card_name = _known_card_name(card, CARD_DRAW)
+    if card_name is None:
+        return 0
+    base_draw, upgraded_draw = CARD_DRAW[card_name]
+    return upgraded_draw if card_upgrade_count(card) > 0 else base_draw
 
 
 def _conditional_card_energy_gain(card, snapshot: Dict[str, Any], target_index: Optional[int]) -> int:

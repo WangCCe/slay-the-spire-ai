@@ -2508,6 +2508,102 @@ def test_havoc_empty_draw_pile_discard_shuffle_is_not_divergence(
     assert not trace_path.exists()
 
 
+def test_battle_trance_empty_draw_pile_sundial_shuffle_energy(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    battle_trance = _card(
+        name="Battle Trance+",
+        card_id="Battle Trance",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        upgrades=1,
+        uuid="battle-trance",
+    )
+    havoc = _card(
+        name="Havoc",
+        card_id="Havoc",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+    )
+    defend_one = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+        uuid="defend-one",
+    )
+    defend_two = _card(
+        name="Defend",
+        card_id="Defend_R",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+        uuid="defend-two",
+    )
+    discard_cards = [
+        _card(name="Shrug It Off", card_id="Shrug It Off", card_type=CardType.SKILL, cost=1, damage=0, block=8),
+        _card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, cost=1, damage=0, block=5),
+        _card(name="Bash", card_id="Bash", card_type=CardType.ATTACK, cost=2, damage=8),
+        _card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, cost=1, damage=0, block=5),
+        _card(name="Strike", card_id="Strike_R", cost=1, damage=6),
+        _card(name="Strike", card_id="Strike_R", cost=1, damage=6),
+        _card(name="Defend", card_id="Defend_R", card_type=CardType.SKILL, cost=1, damage=0, block=5),
+        _card(name="Anger", card_id="Anger", cost=0, damage=6),
+        _card(name="Clothesline", card_id="Clothesline", cost=2, damage=12),
+    ]
+    before = _game(
+        floor=13,
+        turn=3,
+        room_type="MonsterRoom",
+        player=SimpleNamespace(current_hp=55, max_hp=80, block=16, energy=0, powers=[]),
+        hand=[battle_trance, havoc, defend_one, defend_two],
+        draw_pile=[],
+        discard_pile=discard_cards,
+        relics=[
+            _relic("Burning Blood", counter=-1),
+            _relic("Lantern", counter=-1),
+            _relic("Sundial", counter=2),
+        ],
+        monsters=[
+            _monster(name="Gremlin Wizard", monster_id="GremlinWizard", hp=24, damage=25),
+        ],
+    )
+    actual = _game(
+        floor=13,
+        turn=3,
+        room_type="MonsterRoom",
+        player=SimpleNamespace(
+            current_hp=55,
+            max_hp=80,
+            block=16,
+            energy=2,
+            powers=[Power("No Draw", "No Draw", -1)],
+        ),
+        hand=[havoc, defend_one, defend_two] + discard_cards[:4],
+        draw_pile=discard_cards[4:],
+        discard_pile=[battle_trance],
+        relics=[
+            _relic("Burning Blood", counter=-1),
+            _relic("Lantern", counter=-1),
+            _relic("Sundial", counter=0),
+        ],
+        monsters=[
+            _monster(name="Gremlin Wizard", monster_id="GremlinWizard", hp=24, damage=25),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_havoc_exhausted_top_card_triggers_feel_no_pain_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
