@@ -30,6 +30,7 @@ BIRD_FACED_URN_HEAL = 2
 CHARONS_ASHES_DAMAGE = 3
 STONE_CALENDAR_DAMAGE = 52
 STONE_CALENDAR_TRIGGER_COUNTER = 7
+THE_BOMB_DAMAGE = 40
 FAIRY_REVIVE_FRACTION = 0.3
 FAIRY_POTION_IDENTIFIERS = {"fairy", "fairypotion", "fairyinabottle"}
 LIZARD_TAIL_REVIVE_FRACTION = 0.5
@@ -624,30 +625,32 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
         regeneration_heal = _regeneration_end_turn_heal(before)
         if regeneration_heal > 0:
             _heal_player(expected, regeneration_heal)
-        hp_loss_events += _apply_end_turn_player_damage(expected, before)
-        _apply_end_turn_escape_intents(expected)
-        retained_block = _retained_end_turn_block(before, expected.get("player", {}))
-        next_turn_block = 0
-        if _to_int(expected.get("player", {}).get("current_hp")) > 0:
-            next_turn_block += _next_turn_block_start_turn_block(before)
-            next_turn_block += _self_forming_clay_end_turn_block(
-                before,
-                hp_loss_events,
-            )
-            next_turn_block += _horn_cleat_start_turn_block(before)
-            next_turn_block += _captains_wheel_start_turn_block(before)
-            expected["player"]["block"] = retained_block + next_turn_block
-        else:
-            expected["player"]["block"] = 0
-        expected["player"]["energy"] = 0
-        brutality_loss = _brutality_start_turn_hp_loss(before)
-        if brutality_loss > 0:
-            _lose_player_hp(expected, brutality_loss)
-        _apply_darkling_end_turn_revives(expected, before)
-        _prepare_monster_block_for_mercury_hourglass(expected, before)
-        _apply_mercury_hourglass_damage(expected, before)
-        _apply_stone_calendar_damage(expected, before)
-        _apply_end_turn_summons(expected, before)
+        combat_finished = _apply_the_bomb_end_turn(expected, before)
+        if not combat_finished:
+            hp_loss_events += _apply_end_turn_player_damage(expected, before)
+            _apply_end_turn_escape_intents(expected)
+            retained_block = _retained_end_turn_block(before, expected.get("player", {}))
+            next_turn_block = 0
+            if _to_int(expected.get("player", {}).get("current_hp")) > 0:
+                next_turn_block += _next_turn_block_start_turn_block(before)
+                next_turn_block += _self_forming_clay_end_turn_block(
+                    before,
+                    hp_loss_events,
+                )
+                next_turn_block += _horn_cleat_start_turn_block(before)
+                next_turn_block += _captains_wheel_start_turn_block(before)
+                expected["player"]["block"] = retained_block + next_turn_block
+            else:
+                expected["player"]["block"] = 0
+            expected["player"]["energy"] = 0
+            brutality_loss = _brutality_start_turn_hp_loss(before)
+            if brutality_loss > 0:
+                _lose_player_hp(expected, brutality_loss)
+            _apply_darkling_end_turn_revives(expected, before)
+            _prepare_monster_block_for_mercury_hourglass(expected, before)
+            _apply_mercury_hourglass_damage(expected, before)
+            _apply_stone_calendar_damage(expected, before)
+            _apply_end_turn_summons(expected, before)
 
     expected.pop("_player_vulnerable_added_during_end_turn", None)
     return expected
@@ -672,7 +675,7 @@ def _apply_expected_attack(
     deferred_curl_up_block = 0
     deferred_guardian_mode_shift_hp_loss = 0
     deferred_malleable_block = 0
-    flight_hit_pending = False
+    flight_hit_count = 0
     total_hits = max(0, hit_count)
     defer_guardian_mode_shift = _is_guardian_monster(target) and total_hits > 1
     for _ in range(total_hits):
@@ -705,7 +708,8 @@ def _apply_expected_attack(
                 deferred_guardian_mode_shift_hp_loss += hp_loss
             else:
                 _apply_guardian_mode_shift(target, hp_loss)
-            flight_hit_pending = True
+            if _snapshot_power_amount(target, "Flight") > 0:
+                flight_hit_count += 1
             deferred_malleable_block += _trigger_malleable(target, defer_block=True)
         if not curl_up_applied and hp_loss > 0:
             curl_up_block = max(0, _snapshot_power_amount(target, "Curl Up"))
@@ -713,12 +717,12 @@ def _apply_expected_attack(
                 deferred_curl_up_block += curl_up_block
                 curl_up_applied = True
     if (
-        flight_hit_pending
+        flight_hit_count > 0
         and not target.get("gone")
         and not target.get("half_dead")
         and _to_int(target.get("hp")) > 0
     ):
-        _decrement_flight(target)
+        _decrement_flight(target, flight_hit_count)
     if (
         deferred_guardian_mode_shift_hp_loss > 0
         and not target.get("gone")
@@ -818,6 +822,10 @@ def _apply_expected_escape_potion(expected: Dict[str, Any], action, game) -> Non
     _apply_toy_ornithopter_potion_heal(expected)
     _heal_player(expected, _combat_end_relic_heal(expected))
     _consume_expected_action_potion(expected, action, game)
+    _finish_expected_combat(expected)
+
+
+def _finish_expected_combat(expected: Dict[str, Any]) -> None:
     expected["in_combat"] = False
     expected["turn"] = 0
     expected["hand"] = []
@@ -826,6 +834,34 @@ def _apply_expected_escape_potion(expected: Dict[str, Any], action, game) -> Non
     player["block"] = 0
     player["energy"] = 0
     player["powers"] = []
+
+
+def _apply_the_bomb_end_turn(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> bool:
+    player = before.get("player", {})
+    if _snapshot_power_amount(player, "The Bomb") != 1:
+        return False
+    if _to_int(expected.get("player", {}).get("current_hp")) <= 0:
+        return False
+
+    for index, monster in enumerate(expected.get("monsters", []) or []):
+        if (
+            monster.get("gone")
+            or monster.get("half_dead")
+            or _to_int(monster.get("hp")) <= 0
+        ):
+            continue
+        _apply_direct_monster_damage(expected, index, THE_BOMB_DAMAGE)
+
+    _remove_snapshot_power(expected.get("player", {}), "The Bomb")
+    if _active_monster_count(expected) > 0:
+        return False
+
+    _heal_player(expected, _combat_end_relic_heal(expected))
+    _finish_expected_combat(expected)
+    return True
 
 
 def _combat_end_relic_heal(expected: Dict[str, Any]) -> int:
@@ -3065,7 +3101,7 @@ def _snapshot_player_dead(snapshot: Dict[str, Any]) -> bool:
     return _to_int(snapshot.get("player", {}).get("current_hp")) <= 0
 
 
-def _decrement_flight(target: Dict[str, Any]) -> None:
+def _decrement_flight(target: Dict[str, Any], decrement: int = 1) -> None:
     for power in target.get("powers", []) or []:
         identifiers = {
             _normalize(power.get("id")),
@@ -3073,10 +3109,15 @@ def _decrement_flight(target: Dict[str, Any]) -> None:
         }
         if "flight" not in identifiers:
             continue
-        amount = max(0, _to_int(power.get("amount"), default=1) - 1)
+        amount = max(
+            0,
+            _to_int(power.get("amount"), default=1) - max(1, decrement),
+        )
         power["amount"] = amount
         if amount <= 0:
             target["intent"] = "Intent.STUN"
+            target["move_damage"] = -1
+            target["move_id"] = 4
         return
 
 

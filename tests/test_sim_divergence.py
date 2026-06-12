@@ -4625,6 +4625,79 @@ def test_smoke_bomb_escape_finishes_combat_and_triggers_burning_blood(
     assert not trace_path.exists()
 
 
+def test_end_turn_the_bomb_kills_before_enemy_attacks_and_heals_burning_blood(
+    monkeypatch,
+    tmp_path,
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=11,
+        turn=5,
+        room_type="MonsterRoom",
+        player=SimpleNamespace(
+            current_hp=29,
+            max_hp=80,
+            block=5,
+            energy=0,
+            powers=[
+                Power("TheBomb0", "The Bomb", 1),
+                Power("Weakened", "Weakened", 1),
+            ],
+        ),
+        hand=[
+            _card(
+                name="The Bomb",
+                card_id="The Bomb",
+                card_type=CardType.SKILL,
+                cost=2,
+                damage=0,
+            )
+        ],
+        monsters=[
+            _monster(
+                name="Acid Slime (M)",
+                monster_id="AcidSlime_M",
+                hp=20,
+                damage=7,
+                intent=Intent.ATTACK_DEBUFF,
+                move_id=1,
+            ),
+            _monster(
+                name="Acid Slime (M)",
+                monster_id="AcidSlime_M",
+                hp=29,
+                damage=7,
+                intent=Intent.ATTACK_DEBUFF,
+                move_id=1,
+            ),
+        ],
+        relics=[_relic("Burning Blood", counter=-1)],
+    )
+    actual = _game(
+        floor=11,
+        turn=0,
+        room_type="MonsterRoom",
+        in_combat=False,
+        player=SimpleNamespace(
+            current_hp=35,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[],
+        ),
+        hand=[],
+        monsters=[],
+        relics=[_relic("Burning Blood", counter=-1)],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_block_potion_gains_twelve_block(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
@@ -7006,6 +7079,76 @@ def test_flight_reduction_persists_across_multihit_attack(monkeypatch, tmp_path)
     )
 
     assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_whirlwind_reduces_flight_by_each_energy_hit_and_stuns(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    whirlwind = _card(
+        name="Whirlwind",
+        card_id="Whirlwind",
+        card_type=CardType.ATTACK,
+        cost=0,
+        damage=0,
+    )
+    before = _game(
+        floor=24,
+        turn=1,
+        player=SimpleNamespace(current_hp=31, max_hp=80, block=0, energy=4),
+        hand=[whirlwind],
+        monsters=[
+            _monster(
+                name="Byrd",
+                monster_id="Byrd",
+                hp=27,
+                damage=8,
+                intent=Intent.ATTACK,
+                move_id=1,
+                powers=[Power("Flight", "Flight", 3), Power("Strength", "Strength", 1)],
+            ),
+            _monster(
+                name="Chosen",
+                monster_id="Chosen",
+                hp=97,
+                damage=10,
+                intent=Intent.ATTACK,
+                move_id=5,
+                powers=[Power("Strength", "Strength", 1)],
+            ),
+        ],
+    )
+    actual = _game(
+        floor=24,
+        turn=1,
+        player=SimpleNamespace(current_hp=31, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Byrd",
+                monster_id="Byrd",
+                hp=19,
+                damage=-1,
+                intent=Intent.STUN,
+                move_id=4,
+                powers=[Power("Strength", "Strength", 1)],
+            ),
+            _monster(
+                name="Chosen",
+                monster_id="Chosen",
+                hp=77,
+                damage=10,
+                intent=Intent.ATTACK,
+                move_id=5,
+                powers=[Power("Strength", "Strength", 1)],
+            ),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
     assert observe_next_state(actual) is False
     assert not trace_path.exists()
 
