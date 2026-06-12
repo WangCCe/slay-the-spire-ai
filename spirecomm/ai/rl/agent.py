@@ -2014,25 +2014,124 @@ class CombatRLAgent:
             avoid_low_hp_hp_loss_filler=True,
         )
 
+    @classmethod
+    def _matching_hand_card_index(cls, wanted_card, hand) -> int:
+        if wanted_card is None:
+            return -1
+
+        for index, card in enumerate(hand):
+            if card is wanted_card:
+                return index
+
+        wanted_uuid = getattr(wanted_card, "uuid", None)
+        if wanted_uuid is not None:
+            for index, card in enumerate(hand):
+                if getattr(card, "uuid", None) == wanted_uuid:
+                    return index
+
+        wanted_keys = cls._card_match_keys(wanted_card)
+        if not wanted_keys:
+            return -1
+        wanted_upgrades = cls._card_upgrade_count(wanted_card)
+        wanted_has_upgrade_attr = cls._has_card_upgrade_attr(wanted_card)
+
+        for index, card in enumerate(hand):
+            if not (wanted_keys & cls._card_match_keys(card)):
+                continue
+            if (
+                wanted_has_upgrade_attr
+                and cls._has_card_upgrade_attr(card)
+                and cls._card_upgrade_count(card) != wanted_upgrades
+            ):
+                continue
+            return index
+
+        return -1
+
+    @classmethod
+    def _card_match_keys(cls, card) -> set:
+        keys = set()
+        for attr in ("card_id", "id", "name"):
+            value = getattr(card, attr, None)
+            if value is None:
+                continue
+            normalized = cls._normalize_identifier(value)
+            if normalized:
+                keys.add(normalized)
+        return keys
+
+    @classmethod
+    def _has_card_upgrade_attr(cls, card) -> bool:
+        return any(hasattr(card, attr) for attr in ("upgrades", "upgrade"))
+
+    @classmethod
+    def _card_upgrade_count(cls, card) -> int:
+        return cls._safe_int(
+            getattr(card, "upgrades", getattr(card, "upgrade", 0)),
+            default=0,
+        )
+
+    @classmethod
+    def _valid_monster_target_index(cls, game: Game, target_index: int) -> bool:
+        monsters = getattr(game, "monsters", []) or []
+        if target_index < 0 or target_index >= len(monsters):
+            return False
+        target = monsters[target_index]
+        return (
+            cls._safe_int(getattr(target, "current_hp", 0), default=0) > 0
+            and not getattr(target, "is_gone", False)
+            and not getattr(target, "half_dead", False)
+        )
+
+    @classmethod
+    def _target_index_for_play_card_action(cls, action: Action, game: Game) -> Optional[int]:
+        raw_target_index = getattr(action, "target_index", None)
+        if raw_target_index is not None:
+            target_index = cls._safe_int(raw_target_index, default=-1)
+            if cls._valid_monster_target_index(game, target_index):
+                return target_index
+
+        target_monster = getattr(action, "target_monster", None)
+        if target_monster is None:
+            return None
+
+        target_index = cls._safe_int(
+            getattr(target_monster, "monster_index", -1),
+            default=-1,
+        )
+        if cls._valid_monster_target_index(game, target_index):
+            return target_index
+
+        for index, monster in enumerate(getattr(game, "monsters", []) or []):
+            if monster is target_monster and cls._valid_monster_target_index(game, index):
+                return index
+
+        return None
+
     def _repair_current_play_card_target(self, action: Action, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
 
         if not isinstance(action, PlayCardAction):
             return None
 
+        hand = getattr(game, "hand", []) or []
         card_index = self._safe_int(
             getattr(action, "card_index", -1),
             default=-1,
         )
         if card_index < 0:
+            card_index = self._matching_hand_card_index(
+                getattr(action, "card", None),
+                hand,
+            )
+        if card_index < 0 or card_index >= len(hand):
             return None
 
-        card = self._card_for_action(action, game)
-        if card is None:
-            return None
-
+        card = hand[card_index]
         if card_requires_target(card):
-            target_index = self._best_monster_index(game)
+            target_index = self._target_index_for_play_card_action(action, game)
+            if target_index is None:
+                target_index = self._best_monster_index(game)
             if target_index is None:
                 return None
             repaired = PlayCardAction(

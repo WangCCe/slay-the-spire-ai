@@ -1901,6 +1901,71 @@ def test_energy_guard_takeover_repairs_targetless_cached_attack():
     assert agent._fallback_turn_key is None
 
 
+def test_energy_guard_takeover_repairs_card_object_attack_before_first_playable_defend():
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    stale_strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    acid_slime = _monster(
+        hp=7,
+        damage=5,
+        index=0,
+        name="Acid Slime (M)",
+        monster_id="AcidSlime_M",
+    )
+    acid_slime.intent = Intent.ATTACK_DEBUFF
+    game = _game(
+        hand=[defend, strike, strike, strike],
+        monsters=[acid_slime],
+        current_hp=73,
+        max_hp=80,
+        room_type="MonsterRoom",
+        floor=4,
+        act=1,
+        turn=3,
+        player=SimpleNamespace(energy=2, block=0),
+    )
+
+    agent = _agent()
+    agent._fallback_turn_key = (4, 3)
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card=stale_strike)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index == 0
+    assert agent._fallback_turn_key is None
+
+
 def test_energy_guard_takeover_repairs_stale_attack_with_sharp_hide_block():
     anger = SimpleNamespace(
         name="Anger",
