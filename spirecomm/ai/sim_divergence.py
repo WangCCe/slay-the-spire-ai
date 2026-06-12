@@ -2742,9 +2742,11 @@ def _feel_no_pain_exhaust_count(
     exhaust_count = _exhausts_non_attack_hand_count(card, before, card_index)
     if _known_card_name(card, BASE_SKILL_BLOCK) == "True Grit":
         exhaust_count += 1
-    if _known_card_name(card, SELF_EXHAUST_CARDS) is not None:
-        exhaust_count += 1
+
+    played_card_exhausts = _known_card_name(card, SELF_EXHAUST_CARDS) is not None
     if _is_skill_card(card) and _snapshot_has_power(before.get("player", {}), "Corruption"):
+        played_card_exhausts = True
+    if played_card_exhausts:
         exhaust_count += 1
     return exhaust_count
 
