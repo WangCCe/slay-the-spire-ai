@@ -12323,3 +12323,67 @@ def test_charons_ashes_corruption_skill_exhaust_deals_aoe_damage(monkeypatch, tm
     assert record_expected_action(PlayCardAction(card_index=0), before) is True
     assert observe_next_state(actual) is False
     assert not trace_path.exists()
+
+
+def test_charons_ashes_played_status_exhaust_deals_aoe_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    slimed = _card(
+        name="Slimed",
+        card_id="Slimed",
+        card_type=CardType.STATUS,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=16,
+        turn=5,
+        player=SimpleNamespace(current_hp=36, max_hp=80, block=5, energy=1),
+        hand=[slimed],
+        relics=[_relic("Charon's Ashes")],
+        monsters=[
+            _monster(
+                name="Spike Slime (L)",
+                monster_id="SpikeSlime_L",
+                hp=44,
+                max_hp=73,
+                damage=11,
+            ),
+            _monster(
+                name="Acid Slime (L)",
+                monster_id="AcidSlime_L",
+                hp=56,
+                max_hp=68,
+                damage=0,
+            ),
+        ],
+    )
+    actual = _game(
+        floor=16,
+        turn=5,
+        player=SimpleNamespace(current_hp=36, max_hp=80, block=5, energy=0),
+        hand=[],
+        relics=before.relics,
+        monsters=[
+            _monster(
+                name="Spike Slime (L)",
+                monster_id="SpikeSlime_L",
+                hp=41,
+                max_hp=73,
+                damage=11,
+            ),
+            _monster(
+                name="Acid Slime (L)",
+                monster_id="AcidSlime_L",
+                hp=53,
+                max_hp=68,
+                damage=0,
+            ),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()

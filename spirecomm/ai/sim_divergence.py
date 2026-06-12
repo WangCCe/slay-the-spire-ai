@@ -2571,6 +2571,11 @@ def _is_power_card(card) -> bool:
     return card_type in {"power", "cardtypepower"}
 
 
+def _is_status_or_curse_card(card) -> bool:
+    card_type = _normalize(_card_attr(card, "type", _card_attr(card, "card_type", "")))
+    return card_type in {"status", "cardtypestatus", "curse", "cardtypecurse"}
+
+
 def _attack_card_play_count(snapshot: Dict[str, Any], card) -> int:
     play_count = _card_play_count(snapshot, card)
     if not _is_attack_card(card):
@@ -2982,7 +2987,10 @@ def _feel_no_pain_exhaust_count(
     if _known_card_name(card, BASE_SKILL_BLOCK) == "True Grit":
         exhaust_count += 1
 
-    played_card_exhausts = _known_card_name(card, SELF_EXHAUST_CARDS) is not None
+    played_card_exhausts = (
+        _known_card_name(card, SELF_EXHAUST_CARDS) is not None
+        or _is_status_or_curse_card(card)
+    )
     if _is_skill_card(card) and _snapshot_has_power(before.get("player", {}), "Corruption"):
         played_card_exhausts = True
     if played_card_exhausts:
