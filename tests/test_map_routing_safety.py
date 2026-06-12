@@ -327,3 +327,56 @@ def test_initial_map_route_still_considers_all_starting_nodes():
 
     assert isinstance(action, ChooseMapNodeAction)
     assert action.node == safe_start
+
+
+def test_conservative_route_prefers_complete_zero_elite_path_over_reward_bait():
+    agent = SimpleAgent(chosen_class=PlayerClass.IRONCLAD, elite_mode="conservative")
+    game_map = Map()
+
+    safe_start = Node(0, 0, "M")
+    elite_start = Node(1, 0, "M")
+    safe_mid = Node(0, 1, "M")
+    elite_mid = Node(1, 1, "E")
+    safe_end = Node(0, 2, "M")
+    elite_reward = Node(1, 2, "T")
+
+    safe_start.children = [safe_mid]
+    elite_start.children = [elite_mid]
+    safe_mid.children = [safe_end]
+    elite_mid.children = [elite_reward]
+
+    for node in [
+        safe_start,
+        elite_start,
+        safe_mid,
+        elite_mid,
+        safe_end,
+        elite_reward,
+    ]:
+        game_map.add_node(node)
+
+    agent.game.map = game_map
+    agent.game.act = 1
+    agent.game.floor = 0
+    agent.game.current_hp = 80
+    agent.game.max_hp = 80
+    agent.game.deck = []
+    agent.game.hand = []
+    agent.game.monsters = []
+    agent.game.potions = []
+    agent.game.relics = []
+    agent.game.screen = SimpleNamespace(
+        current_node=safe_start,
+        next_nodes=[safe_start, elite_start],
+        boss_available=False,
+    )
+
+    def reward_bait_priority(node, context):
+        return 10000 if node is elite_reward else 0
+
+    agent._calculate_map_node_priority = reward_bait_priority
+
+    action = agent.make_map_choice()
+
+    assert isinstance(action, ChooseMapNodeAction)
+    assert action.node == safe_start
