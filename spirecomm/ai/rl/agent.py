@@ -1938,7 +1938,7 @@ class CombatRLAgent:
         return True
 
     def _get_non_end_turn_fallback(self, game: Game) -> Optional[Action]:
-        from spirecomm.communication.action import EndTurnAction, PotionAction
+        from spirecomm.communication.action import EndTurnAction, PlayCardAction, PotionAction
 
         replacement = self._get_slime_split_aoe_survival_replacement(game)
         if replacement is not None:
@@ -1965,6 +1965,21 @@ class CombatRLAgent:
                 fallback_action is not None
                 and not isinstance(fallback_action, (EndTurnAction, PotionAction))
             ):
+                if (
+                    isinstance(fallback_action, PlayCardAction)
+                    and not self._is_current_combat_action_playable(fallback_action, game)
+                ):
+                    repaired_action = self._repair_current_play_card_target(
+                        fallback_action,
+                        game,
+                    )
+                    if repaired_action is not None:
+                        logger.info(
+                            "[ENERGY_GUARD] Repaired fallback action %s to %s",
+                            self._describe_combat_action(fallback_action, game),
+                            self._describe_combat_action(repaired_action, game),
+                        )
+                        fallback_action = repaired_action
                 guarded_action = self._get_guardian_sharp_hide_action_replacement(
                     fallback_action,
                     game,
