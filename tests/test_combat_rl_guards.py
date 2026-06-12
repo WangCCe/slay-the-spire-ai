@@ -4641,6 +4641,58 @@ def test_status_guard_replaces_slimed_when_real_card_is_playable():
     assert agent._fallback_turn_key == (16, 8)
 
 
+def test_first_playable_prefers_real_card_before_slimed():
+    slimed = SimpleNamespace(
+        name="Slimed",
+        card_id="Slimed",
+        type=CardType.STATUS,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    game = _game(
+        player=SimpleNamespace(energy=1),
+        hand=[slimed, strike],
+        monsters=[_monster(hp=35, damage=12, index=0)],
+    )
+
+    action = _agent()._first_playable_card_action(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index == 0
+
+
+def test_first_playable_keeps_slimed_when_it_is_the_only_playable_card():
+    slimed = SimpleNamespace(
+        name="Slimed",
+        card_id="Slimed",
+        type=CardType.STATUS,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    game = _game(
+        player=SimpleNamespace(energy=1),
+        hand=[slimed],
+        monsters=[_monster(hp=35, damage=12, index=0)],
+    )
+
+    action = _agent()._first_playable_card_action(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index is None
+
+
 def test_ethereal_attack_guard_prioritizes_carnage_before_low_value_card():
     defend = SimpleNamespace(
         name="Defend",

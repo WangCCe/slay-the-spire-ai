@@ -2812,6 +2812,7 @@ class CombatRLAgent:
             for name in (excluded_card_names or [])
         }
         target_index = self._best_monster_index(game)
+        candidates = []
         for card_index, card in playable:
             if not allow_power and self._is_power_card(card):
                 continue
@@ -2847,9 +2848,19 @@ class CombatRLAgent:
             if card_requires_target(card):
                 if target_index is None:
                     continue
-                return PlayCardAction(card_index=card_index, target_index=target_index)
-            return PlayCardAction(card_index=card_index)
-        return None
+                action = PlayCardAction(card_index=card_index, target_index=target_index)
+            else:
+                action = PlayCardAction(card_index=card_index)
+            is_low_value_status = self._card_matches_normalized_names(
+                card,
+                self.LOW_VALUE_STATUS_CARDS,
+            )
+            candidates.append((is_low_value_status, action))
+
+        for is_low_value_status, action in candidates:
+            if not is_low_value_status:
+                return action
+        return candidates[0][1] if candidates else None
 
     def _is_self_lethal_card_action(self, action: Action, game: Game) -> bool:
         from spirecomm.communication.action import PlayCardAction
