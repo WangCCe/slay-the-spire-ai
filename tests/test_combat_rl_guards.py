@@ -1053,6 +1053,91 @@ def test_card_hp_loss_is_capped_by_player_intangible():
     assert CombatRLAgent._card_player_hp_loss(hemokinesis_plus, game) == 1
 
 
+def test_card_hp_loss_counts_pain_in_hand():
+    anger = SimpleNamespace(
+        name="Anger+",
+        card_id="Anger",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=0,
+        has_target=True,
+        upgrades=1,
+    )
+    pain = SimpleNamespace(
+        name="Pain",
+        card_id="Pain",
+        type=CardType.CURSE,
+        is_playable=False,
+        cost=-2,
+        has_target=False,
+    )
+    game = _game(
+        hand=[anger, pain],
+        current_hp=10,
+        player=SimpleNamespace(energy=0, block=0),
+    )
+
+    assert CombatRLAgent._card_player_hp_loss(anger, game) == 1
+
+
+def test_rl_pain_self_lethal_card_is_suppressed():
+    pain = SimpleNamespace(
+        name="Pain",
+        card_id="Pain",
+        type=CardType.CURSE,
+        is_playable=False,
+        cost=-2,
+        has_target=False,
+    )
+    anger = SimpleNamespace(
+        name="Anger+",
+        card_id="Anger",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=0,
+        has_target=True,
+        upgrades=1,
+        damage=8,
+    )
+    monster = _monster(
+        hp=342,
+        damage=7,
+        index=0,
+        name="Time Eater",
+        monster_id="TimeEater",
+    )
+    monster.intent = Intent.ATTACK
+    monster.move_hits = 3
+    game = _game(
+        floor=50,
+        turn=8,
+        room_type="MonsterRoomBoss",
+        current_hp=1,
+        max_hp=70,
+        player=SimpleNamespace(energy=0, block=16),
+        hand=[pain, anger],
+        monsters=[monster],
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=1, target_index=0)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, EndTurnAction)
+    assert action.expected_floor == 50
+    assert action.expected_turn == 8
+
+
 def test_survival_guard_counts_ornamental_fan_from_havoc_top_attack():
     defend = SimpleNamespace(
         name="Defend",

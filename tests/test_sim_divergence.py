@@ -607,6 +607,87 @@ def test_player_intangible_caps_hemokinesis_hp_loss(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_pain_hp_loss_can_kill_before_attack_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    battle_trance = _card(
+        name="Battle Trance+",
+        card_id="Battle Trance",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        upgrades=1,
+    )
+    pain = _card(
+        name="Pain",
+        card_id="Pain",
+        card_type=CardType.CURSE,
+        cost=0,
+        damage=0,
+    )
+    anger = _card(
+        name="Anger+",
+        card_id="Anger",
+        damage=8,
+        cost=0,
+        upgrades=1,
+    )
+    hemokinesis = _card(
+        name="Hemokinesis+",
+        card_id="Hemokinesis",
+        damage=20,
+        cost=1,
+        upgrades=1,
+    )
+    thunderclap = _card(
+        name="Thunderclap+",
+        card_id="Thunderclap",
+        damage=7,
+        cost=1,
+        upgrades=1,
+    )
+    before = _game(
+        floor=50,
+        turn=8,
+        player=SimpleNamespace(current_hp=1, max_hp=70, block=16, energy=0),
+        hand=[battle_trance, pain, anger, hemokinesis, thunderclap],
+        monsters=[
+            _monster(
+                name="Time Eater",
+                monster_id="TimeEater",
+                hp=342,
+                max_hp=456,
+                damage=7,
+                hits=3,
+                intent=Intent.ATTACK,
+            )
+        ],
+    )
+    actual = _game(
+        floor=50,
+        turn=8,
+        player=SimpleNamespace(current_hp=0, max_hp=70, block=16, energy=0),
+        hand=[battle_trance, pain, hemokinesis, thunderclap],
+        monsters=[
+            _monster(
+                name="Time Eater",
+                monster_id="TimeEater",
+                hp=342,
+                max_hp=456,
+                damage=7,
+                hits=3,
+                intent=Intent.ATTACK,
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=2, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_x_cost_skill_consumes_all_current_energy(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

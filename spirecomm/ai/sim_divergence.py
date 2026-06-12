@@ -151,6 +151,10 @@ CARD_SELF_DAMAGE = {
     "Offering": 6,
 }
 
+PAIN_CARDS = {
+    "Pain": 0,
+}
+
 CARD_ENERGY_GAIN = {
     "Bloodletting": 2,
     "Offering": 2,
@@ -436,10 +440,13 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             target_index = None
             card_play_count = _card_play_count(before, card)
             attack_play_count = _attack_card_play_count(before, card)
-            attack_self_damage = 0
+            attack_hp_loss_events = []
             if _is_attack_card(card):
-                attack_self_damage = _card_self_damage(card)
-                attack_self_damage += _blue_candle_curse_hp_loss(card, before)
+                attack_hp_loss_events = _card_play_hp_loss_events(
+                    card,
+                    before,
+                    card_index,
+                )
             if _is_x_cost_card(card) or _is_whirlwind(card):
                 expected["player"]["energy"] = 0
             else:
@@ -474,10 +481,16 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 damage_dealt = 0
                 if _is_all_enemy_attack(card):
                     for _ in range(max(1, attack_play_count)):
-                        if attack_self_damage > 0:
-                            _lose_player_hp(expected, attack_self_damage)
+                        for hp_loss, clear_block_on_death in attack_hp_loss_events:
+                            _lose_player_hp(
+                                expected,
+                                hp_loss,
+                                clear_block_on_death=clear_block_on_death,
+                            )
                             if _snapshot_player_dead(expected):
                                 break
+                        if _snapshot_player_dead(expected):
+                            break
                         damage_dealt += _apply_expected_attack_to_all(
                             expected,
                             damage,
@@ -491,10 +504,16 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 else:
                     target_index = _target_index_for_action(action, game)
                     for _ in range(max(1, attack_play_count)):
-                        if attack_self_damage > 0:
-                            _lose_player_hp(expected, attack_self_damage)
+                        for hp_loss, clear_block_on_death in attack_hp_loss_events:
+                            _lose_player_hp(
+                                expected,
+                                hp_loss,
+                                clear_block_on_death=clear_block_on_death,
+                            )
                             if _snapshot_player_dead(expected):
                                 break
+                        if _snapshot_player_dead(expected):
+                            break
                         damage_dealt += _apply_expected_attack(
                             expected,
                             target_index,
@@ -526,12 +545,17 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     _damage_player(expected, sharp_hide_damage)
                 if attack_effects_resolved and _is_reaper(card) and damage_dealt > 0:
                     _heal_player(expected, damage_dealt)
-            self_damage = _card_self_damage(card)
-            self_damage += _blue_candle_curse_hp_loss(card, before)
-            if _is_attack_card(card):
-                self_damage = 0
-            if self_damage > 0:
-                _lose_player_hp(expected, self_damage)
+            self_damage_events = (
+                [] if _is_attack_card(card) else _card_play_hp_loss_events(card, before, card_index)
+            )
+            for hp_loss, clear_block_on_death in self_damage_events:
+                _lose_player_hp(
+                    expected,
+                    hp_loss,
+                    clear_block_on_death=clear_block_on_death,
+                )
+                if _snapshot_player_dead(expected):
+                    break
             heal = _card_heal(card)
             if heal > 0:
                 _heal_player(expected, heal)
@@ -3577,7 +3601,12 @@ def _apply_combust_end_turn(
     return hp_loss_event
 
 
-def _lose_player_hp(expected: Dict[str, Any], amount: int) -> int:
+def _lose_player_hp(
+    expected: Dict[str, Any],
+    amount: int,
+    *,
+    clear_block_on_death: bool = True,
+) -> int:
     if amount <= 0:
         return 0
     player = expected.get("player", {})
@@ -3587,7 +3616,7 @@ def _lose_player_hp(expected: Dict[str, Any], amount: int) -> int:
     hp_lost = hp_after_loss < hp_before
     player["current_hp"] = hp_after_loss
     _consume_player_revive_if_dead(expected)
-    if _snapshot_player_dead(expected):
+    if clear_block_on_death and _snapshot_player_dead(expected):
         player["block"] = 0
     return 1 if hp_lost else 0
 
@@ -4376,6 +4405,37 @@ def _card_self_damage(card) -> int:
     if card_name is None:
         return 0
     return CARD_SELF_DAMAGE.get(card_name, 0)
+
+
+def _card_play_hp_loss_events(
+    card,
+    snapshot: Dict[str, Any],
+    card_index: int,
+) -> list[tuple[int, bool]]:
+    events = []
+    self_damage = _card_self_damage(card)
+    if self_damage > 0:
+        events.append((self_damage, True))
+    blue_candle_loss = _blue_candle_curse_hp_loss(card, snapshot)
+    if blue_candle_loss > 0:
+        events.append((blue_candle_loss, True))
+    events.extend(_pain_card_play_hp_loss_events(snapshot, card_index))
+    return events
+
+
+def _pain_card_play_hp_loss_events(
+    snapshot: Dict[str, Any],
+    card_index: int,
+) -> list[tuple[int, bool]]:
+    events = []
+    for index, hand_card in enumerate(snapshot.get("hand", []) or []):
+        if index == card_index:
+            continue
+        if not isinstance(hand_card, dict):
+            continue
+        if _snapshot_known_card_name(hand_card, PAIN_CARDS) == "Pain":
+            events.append((1, False))
+    return events
 
 
 def _blue_candle_curse_hp_loss(card, snapshot: Dict[str, Any]) -> int:

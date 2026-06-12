@@ -1592,6 +1592,31 @@ class CombatRLAgent:
                     self.rl_failure_count = 0
                     logger.info("[POTION_SAVE_GUARD] No replacement found; allowing PotionAction")
                     return self._with_combat_action_context(action, game)
+                elif self._is_self_lethal_card_action(action, game):
+                    from spirecomm.communication.action import EndTurnAction
+
+                    self.rl_failure_count = 0
+                    replacement = self._first_playable_card_action(
+                        game,
+                        avoid_self_lethal=True,
+                        avoid_pressure_hp_loss=True,
+                        avoid_low_hp_hp_loss_filler=True,
+                    )
+                    if replacement is not None:
+                        self._fallback_turn_key = self._combat_turn_key(game)
+                        logger.info(
+                            "[ENERGY_GUARD] Replacing RL self-lethal action %s with %s on floor=%s turn=%s",
+                            self._describe_combat_action(action, game),
+                            self._describe_combat_action(replacement, game),
+                            getattr(game, "floor", None),
+                            getattr(game, "turn", None),
+                        )
+                        return self._with_combat_action_context(replacement, game)
+                    logger.info(
+                        "[ENERGY_GUARD] Suppressing RL self-lethal action %s; ending turn",
+                        self._describe_combat_action(action, game),
+                    )
+                    return self._with_combat_action_context(EndTurnAction(), game)
                 elif self._is_valid_combat_action(action, game):
                     logger.info(f"[CombatRLAgent] RL action validated, returning it")
                     # Valid action for current combat context
@@ -3399,10 +3424,26 @@ class CombatRLAgent:
     def _card_player_hp_loss(cls, card, game: Game) -> int:
         if card is None:
             return 0
+        total = 0
         for normalized_name, hp_loss in cls.CARD_HP_LOSS_VALUES.items():
             if cls._card_matches_normalized_names(card, {normalized_name}):
-                return cls._prevented_hp_loss(hp_loss, game)
-        return 0
+                total += cls._prevented_hp_loss(hp_loss, game)
+                break
+        for hp_loss in cls._pain_card_play_hp_loss_events(card, game):
+            total += cls._prevented_hp_loss(hp_loss, game)
+        return total
+
+    @classmethod
+    def _pain_card_play_hp_loss_events(cls, card, game: Game) -> list[int]:
+        hand = list(getattr(game, "hand", []) or [])
+        played_index = cls._matching_hand_card_index(card, hand)
+        events = []
+        for index, hand_card in enumerate(hand):
+            if index == played_index or hand_card is card:
+                continue
+            if cls._card_matches_normalized_names(hand_card, {"pain"}):
+                events.append(1)
+        return events
 
     def _get_awakened_one_safe_replacement(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction
