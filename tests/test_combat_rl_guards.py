@@ -2819,6 +2819,142 @@ def test_act1_boss_pressure_guard_overrides_hexaghost_attack_for_block():
     assert agent._fallback_turn_key == (16, 2)
 
 
+def test_act1_boss_pressure_guard_prefers_shockwave_over_bash_on_slime_boss_big_hit():
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        block=5,
+    )
+    bash = SimpleNamespace(
+        name="Bash",
+        card_id="Bash",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+    )
+    shockwave = SimpleNamespace(
+        name="Shockwave+",
+        card_id="Shockwave",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=2,
+        has_target=False,
+    )
+    slimed = SimpleNamespace(
+        name="Slimed",
+        card_id="Slimed",
+        type=CardType.STATUS,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    slime_boss = _monster(
+        hp=105,
+        damage=35,
+        index=0,
+        name="Slime Boss",
+        monster_id="SlimeBoss",
+    )
+    slime_boss.intent = Intent.ATTACK
+    game = _game(
+        hand=[defend, defend, bash, shockwave, slimed],
+        monsters=[slime_boss],
+        current_hp=72,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=3,
+        player=SimpleNamespace(energy=3, block=0),
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=2, target_index=0)
+    )
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 3
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (16, 3)
+
+
+def test_act1_boss_pressure_guard_does_not_force_weak_without_incoming():
+    bash = SimpleNamespace(
+        name="Bash",
+        card_id="Bash",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+    )
+    shockwave = SimpleNamespace(
+        name="Shockwave+",
+        card_id="Shockwave",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=2,
+        has_target=False,
+    )
+    slime_boss = _monster(
+        hp=140,
+        damage=0,
+        index=0,
+        name="Slime Boss",
+        monster_id="SlimeBoss",
+    )
+    slime_boss.intent = Intent.STRONG_DEBUFF
+    game = _game(
+        hand=[bash, shockwave],
+        monsters=[slime_boss],
+        current_hp=72,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=1,
+        player=SimpleNamespace(energy=3, block=0),
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0, target_index=0)
+    )
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index == 0
+
+
 def test_act1_boss_pressure_guard_overrides_slime_split_bash_for_block():
     bash = SimpleNamespace(
         name="Bash",

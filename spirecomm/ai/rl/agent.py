@@ -1948,6 +1948,10 @@ class CombatRLAgent:
         if replacement is not None:
             return replacement
 
+        replacement = self._get_act1_boss_pressure_weak_replacement(game)
+        if replacement is not None:
+            return replacement
+
         guardian_pressure_replacement = self._get_guardian_pressure_block_replacement(game)
 
         if self._is_hexaghost_opening_setup_window(game):
@@ -2428,11 +2432,18 @@ class CombatRLAgent:
         if not getattr(game, "in_combat", False):
             return None
 
+        current_card = self._card_for_action(action, game)
+        if self._card_matches_normalized_names(current_card, self.GUARDIAN_PRESSURE_WEAK_ATTACKS):
+            return None
+
+        replacement = self._get_act1_boss_pressure_weak_replacement(game)
+        if isinstance(replacement, PlayCardAction):
+            return replacement
+
         replacement = self._get_act1_boss_pressure_block_replacement(game)
         if not isinstance(replacement, PlayCardAction):
             return None
 
-        current_card = self._card_for_action(action, game)
         replacement_card = self._card_for_action(replacement, game)
         if self._survival_block_value_for_game(
             replacement_card,
@@ -2466,6 +2477,10 @@ class CombatRLAgent:
             return replacement
 
         replacement = self._get_survival_block_replacement(game)
+        if replacement is not None:
+            return replacement
+
+        replacement = self._get_act1_boss_pressure_weak_replacement(game)
         if replacement is not None:
             return replacement
 
@@ -2607,6 +2622,85 @@ class CombatRLAgent:
             damage_after_candidate,
         )
         return PlayCardAction(card_index=card_index)
+
+    def _get_act1_boss_pressure_weak_replacement(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+
+        if not self._is_act1_boss_pressure_combat(game):
+            return None
+
+        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        if current_hp <= 0:
+            return None
+
+        incoming = self._incoming_damage(game)
+        current_block = self._player_block(game)
+        if incoming <= current_block:
+            return None
+
+        status_blockable_damage, status_hp_loss = self._end_turn_status_damage(game)
+        damage_after_block = self._end_turn_damage_after_block(
+            incoming + status_blockable_damage,
+            status_hp_loss,
+            self._end_turn_block_for_game(game, current_block),
+            game,
+        )
+        if damage_after_block <= 0 or damage_after_block >= current_hp:
+            return None
+
+        if incoming < max(24, current_hp * 0.35) and damage_after_block < max(
+            18,
+            current_hp * 0.30,
+        ):
+            return None
+
+        target_index = self._best_monster_index(game)
+        best_candidate = None
+        energy = self._player_energy(game)
+        for card_index, card in self._playable_cards(game, energy):
+            if not self._card_matches_normalized_names(
+                card,
+                self.GUARDIAN_PRESSURE_WEAK_ATTACKS,
+            ):
+                continue
+            if self._would_play_self_lethal_card(card, game):
+                continue
+            if card_requires_target(card) and target_index is None:
+                continue
+
+            effective_cost = effective_card_cost(card, energy)
+            normalized = {
+                self._normalize_identifier(getattr(card, "name", None)),
+                self._normalize_identifier(getattr(card, "card_id", None)),
+            }
+            if any(value.startswith("shockwave") for value in normalized):
+                priority = 3
+            elif any(value.startswith("uppercut") for value in normalized):
+                priority = 2
+            else:
+                priority = 1
+            score = (priority, -effective_cost, -card_index)
+            action = (
+                PlayCardAction(card_index=card_index, target_index=target_index)
+                if card_requires_target(card)
+                else PlayCardAction(card_index=card_index)
+            )
+            if best_candidate is None or score > best_candidate[0]:
+                best_candidate = (score, action, card)
+
+        if best_candidate is None:
+            return None
+
+        _, action, card = best_candidate
+        logger.info(
+            "[ACT1_BOSS_WEAK_GUARD] Selecting %s before large boss hit hp=%s incoming=%s damage_after_block=%s current_block=%s",
+            self._card_label(card),
+            current_hp,
+            incoming,
+            damage_after_block,
+            current_block,
+        )
+        return action
 
     def _get_survival_block_replacement(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
