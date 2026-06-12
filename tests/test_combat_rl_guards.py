@@ -1024,6 +1024,35 @@ def test_survival_guard_treats_buffered_incoming_as_nonlethal():
     assert _agent()._get_survival_block_replacement(game) is None
 
 
+def test_card_hp_loss_is_capped_by_player_intangible():
+    hemokinesis_plus = SimpleNamespace(
+        name="Hemokinesis+",
+        card_id="Hemokinesis",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+        upgrades=1,
+    )
+    game = _game(
+        hand=[hemokinesis_plus],
+        current_hp=22,
+        player=SimpleNamespace(
+            energy=1,
+            block=0,
+            powers=[
+                SimpleNamespace(
+                    power_id="IntangiblePlayer",
+                    power_name="Intangible",
+                    amount=1,
+                )
+            ],
+        ),
+    )
+
+    assert CombatRLAgent._card_player_hp_loss(hemokinesis_plus, game) == 1
+
+
 def test_survival_guard_counts_ornamental_fan_from_havoc_top_attack():
     defend = SimpleNamespace(
         name="Defend",

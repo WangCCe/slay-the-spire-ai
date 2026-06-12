@@ -3829,9 +3829,18 @@ class CombatRLAgent:
     @classmethod
     def _prevented_hp_loss(cls, amount: int, game: Optional[Game]) -> int:
         hp_loss = max(0, cls._safe_int(amount, default=0))
+        if hp_loss > 1 and game is not None and cls._player_intangible_charges(game) > 0:
+            hp_loss = 1
         if hp_loss > 0 and game is not None and cls._relic_counter(game, "Tungsten Rod") is not None:
             hp_loss = max(0, hp_loss - 1)
         return hp_loss
+
+    @classmethod
+    def _player_intangible_charges(cls, game: Game) -> int:
+        return max(
+            cls._player_power_amount(game, "IntangiblePlayer"),
+            cls._player_power_amount(game, "Intangible"),
+        )
 
     @classmethod
     def _player_buffer_charges(cls, game: Game) -> int:

@@ -3378,11 +3378,21 @@ def _lose_player_hp(expected: Dict[str, Any], amount: int) -> int:
 
 def _effective_player_hp_loss(snapshot: Dict[str, Any], amount: int) -> int:
     hp_loss = max(0, _to_int(amount))
+    if hp_loss > 1 and _snapshot_player_has_intangible(snapshot):
+        hp_loss = 1
     if hp_loss > 0 and _snapshot_has_relic(snapshot, "Tungsten Rod"):
         hp_loss = max(0, hp_loss - 1)
     if hp_loss > 0 and _consume_player_buffer(snapshot):
         return 0
     return hp_loss
+
+
+def _snapshot_player_has_intangible(snapshot: Dict[str, Any]) -> bool:
+    player = snapshot.get("player", {})
+    return (
+        _snapshot_power_amount(player, "IntangiblePlayer") > 0
+        or _snapshot_power_amount(player, "Intangible") > 0
+    )
 
 
 def _consume_player_buffer(snapshot: Dict[str, Any]) -> bool:
