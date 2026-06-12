@@ -417,6 +417,8 @@ class SimpleAgent:
             "GoldenShrine",
             "Drug Dealer",
             "The Library",
+            "NoteForYourself",
+            "Note For Yourself",
             "Dead Adventurer",
             "DeadAdventurer",
             "Mushrooms",
@@ -445,7 +447,7 @@ class SimpleAgent:
 
         choice_index = 0
         if event_id in risky_event_ids:
-            safe_keywords = ("leave", "ignore", "refuse", "decline", "move on")
+            safe_keywords = ("leave", "ignore", "refuse", "decline", "move on", "skip")
             if event_id == "Masked Bandits":
                 safe_keywords = ("pay", "give gold", "leave")
 

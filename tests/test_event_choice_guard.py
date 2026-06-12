@@ -116,3 +116,19 @@ def test_masked_bandits_pays_instead_of_taking_fight():
 
     assert isinstance(action, ChooseAction)
     assert action.choice_index == 0
+
+
+def test_note_for_yourself_leaves_instead_of_taking_starter_card():
+    agent = _agent_for_event(
+        "NoteForYourself",
+        [
+            EventOption("Take Card", "Strike_R"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Take Card", "Leave"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
