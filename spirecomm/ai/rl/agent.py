@@ -1213,6 +1213,14 @@ class CombatRLAgent:
                 )
                 return self._with_combat_action_context(replacement, game)
 
+            replacement = self._get_single_card_lethal_attack_replacement(game)
+            if replacement is not None:
+                logger.info(
+                    "[LETHAL_GUARD] Continuing takeover with %s",
+                    self._describe_combat_action(replacement, game),
+                )
+                return self._with_combat_action_context(replacement, game)
+
             replacement = self._get_survival_block_replacement(game)
             if replacement is not None:
                 logger.info(
@@ -1396,6 +1404,16 @@ class CombatRLAgent:
                     self._fallback_turn_key = self._combat_turn_key(game)
                     logger.info(
                         "[SLIME_SPLIT_SURVIVAL_GUARD] Replacing RL action with %s on floor=%s turn=%s",
+                        self._describe_combat_action(replacement, game),
+                        getattr(game, "floor", None),
+                        getattr(game, "turn", None),
+                    )
+                    return self._with_combat_action_context(replacement, game)
+                elif (replacement := self._get_single_card_lethal_attack_replacement(game)) is not None:
+                    self.rl_failure_count = 0
+                    self._fallback_turn_key = self._combat_turn_key(game)
+                    logger.info(
+                        "[LETHAL_GUARD] Replacing RL action with %s on floor=%s turn=%s",
                         self._describe_combat_action(replacement, game),
                         getattr(game, "floor", None),
                         getattr(game, "turn", None),
@@ -2206,6 +2224,98 @@ class CombatRLAgent:
         if self._is_current_combat_action_playable(repaired, game):
             return repaired
         return None
+
+    def _get_single_card_lethal_attack_replacement(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        if not getattr(game, "in_combat", False):
+            return None
+
+        alive_monsters = self._alive_monsters(game)
+        if len(alive_monsters) != 1:
+            return None
+
+        monster = alive_monsters[0]
+        target_index = getattr(monster, "monster_index", None)
+        if target_index is None:
+            for index, candidate in enumerate(getattr(game, "monsters", []) or []):
+                if candidate is monster:
+                    target_index = index
+                    break
+
+        effective_hp = (
+            self._safe_int(getattr(monster, "current_hp", 0), default=0)
+            + self._safe_int(getattr(monster, "block", 0), default=0)
+        )
+        if effective_hp <= 0:
+            return None
+
+        energy = self._player_energy(game)
+        best_candidate = None
+        for card_index, card in self._playable_cards(game, energy):
+            if not is_attack_card(card):
+                continue
+            if self._would_single_card_lethal_attack_self_kill(card, game):
+                continue
+            if card_requires_target(card) and target_index is None:
+                continue
+
+            source_damage = self._survival_attack_damage_before_player_weak(card, game)
+            if source_damage <= 0:
+                continue
+            attack_damage = self._apply_survival_attack_target_modifiers(
+                source_damage,
+                game,
+                monster,
+                hit_count=self._survival_attack_hit_count(card),
+            )
+            if attack_damage < effective_hp:
+                continue
+
+            effective_cost = effective_card_cost(card, energy)
+            score = (-effective_cost, attack_damage, -card_index)
+            action = (
+                PlayCardAction(card_index=card_index, target_index=target_index)
+                if card_requires_target(card)
+                else PlayCardAction(card_index=card_index)
+            )
+            if best_candidate is None or score > best_candidate[0]:
+                best_candidate = (score, action, card, attack_damage, effective_hp)
+
+        if best_candidate is None:
+            return None
+
+        _, action, card, attack_damage, effective_hp = best_candidate
+        logger.info(
+            "[LETHAL_GUARD] Selecting %s damage=%s effective_hp=%s hp=%s target_block=%s player_hp=%s sharp_hide=%s",
+            self._card_label(card),
+            attack_damage,
+            effective_hp,
+            getattr(monster, "current_hp", None),
+            getattr(monster, "block", None),
+            getattr(game, "current_hp", None),
+            self._guardian_sharp_hide_damage(game),
+        )
+        return action
+
+    def _would_single_card_lethal_attack_self_kill(self, card, game: Game) -> bool:
+        hp_loss = self._card_player_hp_loss(card, game)
+        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        if current_hp <= 0:
+            return True
+        if hp_loss >= current_hp:
+            return True
+
+        sharp_hide_damage = self._guardian_sharp_hide_damage(game)
+        if sharp_hide_damage <= 0:
+            return False
+
+        current_block = self._player_block(game)
+        unblocked_sharp_hide = max(0, sharp_hide_damage - current_block)
+        return current_hp - hp_loss <= unblocked_sharp_hide
 
     def _get_survival_action_replacement(self, action: Action, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction

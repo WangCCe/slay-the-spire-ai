@@ -2947,6 +2947,132 @@ def test_guardian_pressure_guard_overrides_rl_attack_when_big_nonlethal_block_av
     assert agent._fallback_turn_key == (16, 2)
 
 
+def test_guardian_survival_guard_prioritizes_single_card_lethal_over_block():
+    cleave = SimpleNamespace(
+        name="Cleave",
+        card_id="Cleave",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        damage=8,
+    )
+    carnage = SimpleNamespace(
+        name="Carnage",
+        card_id="Carnage",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+        damage=30,
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+        damage=6,
+    )
+    shrug = SimpleNamespace(
+        name="Shrug It Off+",
+        card_id="Shrug It Off",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        block=11,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        block=5,
+    )
+    guardian = _monster(
+        hp=12,
+        damage=32,
+        index=0,
+        name="The Guardian",
+        monster_id="TheGuardian",
+    )
+    guardian.block = 9
+    guardian.intent = Intent.ATTACK
+    guardian.powers = [SimpleNamespace(power_id="SharpHide", amount=3)]
+    game = _game(
+        hand=[cleave, carnage, strike, shrug, defend],
+        monsters=[guardian],
+        current_hp=5,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=11,
+        player=SimpleNamespace(energy=3, block=0),
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0)
+    )
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index == 0
+    assert agent._fallback_turn_key == (16, 11)
+
+
+def test_single_card_lethal_guard_skips_guardian_attack_when_sharp_hide_kills_player():
+    carnage = SimpleNamespace(
+        name="Carnage",
+        card_id="Carnage",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+        damage=30,
+    )
+    guardian = _monster(
+        hp=12,
+        damage=32,
+        index=0,
+        name="The Guardian",
+        monster_id="TheGuardian",
+    )
+    guardian.block = 9
+    guardian.intent = Intent.ATTACK
+    guardian.powers = [SimpleNamespace(power_id="SharpHide", amount=3)]
+    game = _game(
+        hand=[carnage],
+        monsters=[guardian],
+        current_hp=3,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=11,
+        player=SimpleNamespace(energy=3, block=0),
+    )
+
+    assert _agent()._get_single_card_lethal_attack_replacement(game) is None
+
+
 def test_act1_boss_pressure_guard_overrides_hexaghost_attack_for_block():
     strike = SimpleNamespace(
         name="Strike",
