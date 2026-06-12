@@ -40,6 +40,18 @@ class AdaptiveMapRouter:
         'R': 25,      # Rest
     }
 
+    ACT1_PREMIUM_ATTACKS = {
+        "Pommel Strike", "Anger", "Clothesline", "Uppercut",
+        "Hemokinesis", "Carnage", "Cleave", "Headbutt",
+        "Twin Strike", "Whirlwind", "Iron Wave", "Perfected Strike",
+        "Immolate", "Bludgeon", "Sever Soul", "Wild Strike",
+    }
+
+    ACT1_STRONG_BLOCKS = {
+        "Shrug It Off", "Flame Barrier", "Power Through",
+        "Ghostly Armor", "Metallicize", "Impervious", "Disarm",
+    }
+
     def __init__(self, player_class='IRONCLAD', elite_mode: str = None):
         """Initialize map router.
 
@@ -128,7 +140,15 @@ class AdaptiveMapRouter:
                 # route-blocking penalty unless every reachable path is forced.
                 return base - 5000
 
-            elif symbol == 'R':  # Rest
+            if self._act_1_needs_combat_rewards(context, floor, hp_pct):
+                if symbol == 'M':
+                    return base + 30
+                if symbol == '?':
+                    return base - 20
+                if symbol == '$' and self._act_1_low_value_early_shop(context, floor):
+                    return base - 35
+
+            if symbol == 'R':  # Rest
                 # Prioritize rest sites for card upgrades even when healthy
                 if hp_pct > 0.75:
                     return base + 50  # Worth it for upgrades (was -50)
@@ -152,6 +172,33 @@ class AdaptiveMapRouter:
 
         return base
 
+    def _act_1_needs_combat_rewards(self, context: DecisionContext, floor: int, hp_pct: float) -> bool:
+        """Act 1 weak decks need normal fights before events/shops starve rewards."""
+        if floor >= 15 or hp_pct < 0.55:
+            return False
+
+        game = getattr(context, "game", None)
+        deck = list(getattr(game, "deck", []) or [])
+        if not deck:
+            return False
+
+        card_names = [self._card_name(card) for card in deck]
+        premium_attacks = sum(1 for card_name in card_names if card_name in self.ACT1_PREMIUM_ATTACKS)
+        strong_blocks = sum(1 for card_name in card_names if card_name in self.ACT1_STRONG_BLOCKS)
+
+        if floor <= 6:
+            return len(deck) <= 11 or premium_attacks < 2
+        if floor <= 12:
+            return len(deck) <= 14 or premium_attacks < 3 or (premium_attacks + strong_blocks) < 5
+        return len(deck) <= 15 or premium_attacks < 4
+
+    def _act_1_low_value_early_shop(self, context: DecisionContext, floor: int) -> bool:
+        if floor > 8:
+            return False
+        game = getattr(context, "game", None)
+        gold = self._non_negative_int(getattr(game, "gold", 0))
+        return gold < 180
+
     def _act_1_elite_readiness_score(self, context: DecisionContext) -> int:
         """Estimate if the deck is ready for Nob/Lagavulin/Sentries."""
         game = getattr(context, "game", None)
@@ -166,15 +213,6 @@ class AdaptiveMapRouter:
             if is_card_upgraded(card)
         }
 
-        premium_attacks = {
-            "Pommel Strike", "Anger", "Clothesline", "Uppercut",
-            "Hemokinesis", "Carnage", "Cleave", "Headbutt",
-            "Twin Strike", "Whirlwind", "Iron Wave", "Perfected Strike",
-        }
-        strong_blocks = {
-            "Shrug It Off", "Flame Barrier", "Power Through",
-            "Ghostly Armor", "Metallicize", "Impervious", "Disarm",
-        }
         fight_potions = {
             "Fire Potion", "Attack Potion", "Strength Potion", "Flex Potion",
             "Dexterity Potion", "Skill Potion", "Power Potion", "Fear Potion",
@@ -187,8 +225,8 @@ class AdaptiveMapRouter:
         }
 
         score = 0
-        score += min(4, sum(1 for card_name in card_names if card_name in premium_attacks))
-        score += min(2, sum(1 for card_name in card_names if card_name in strong_blocks))
+        score += min(4, sum(1 for card_name in card_names if card_name in self.ACT1_PREMIUM_ATTACKS))
+        score += min(2, sum(1 for card_name in card_names if card_name in self.ACT1_STRONG_BLOCKS))
         if "Bash" in upgraded_ids:
             score += 1
         score += min(

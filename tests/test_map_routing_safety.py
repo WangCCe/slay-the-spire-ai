@@ -42,6 +42,57 @@ def test_conservative_act1_elite_penalty_blocks_future_reward_bait():
     assert elite_priority <= -1000
 
 
+def test_conservative_act1_underprepared_deck_prefers_monster_over_early_event():
+    router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
+    context = _context(
+        act=1,
+        floor=4,
+        hp_pct=0.9,
+        deck=[
+            _card("Strike_R"),
+            _card("Strike_R"),
+            _card("Strike_R"),
+            _card("Strike_R"),
+            _card("Defend_R"),
+            _card("Defend_R"),
+            _card("Defend_R"),
+            _card("Defend_R"),
+            _card("Bash"),
+        ],
+    )
+
+    monster_priority = router.calculate_node_priority(SimpleNamespace(symbol="M"), context)
+    event_priority = router.calculate_node_priority(SimpleNamespace(symbol="?"), context)
+
+    assert monster_priority > event_priority
+
+
+def test_conservative_act1_underprepared_low_gold_deck_prefers_monster_over_early_shop():
+    router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
+    context = _context(
+        act=1,
+        floor=3,
+        hp_pct=0.9,
+        deck=[
+            _card("Strike_R"),
+            _card("Strike_R"),
+            _card("Strike_R"),
+            _card("Strike_R"),
+            _card("Defend_R"),
+            _card("Defend_R"),
+            _card("Defend_R"),
+            _card("Defend_R"),
+            _card("Bash"),
+        ],
+    )
+    context.game.gold = 99
+
+    monster_priority = router.calculate_node_priority(SimpleNamespace(symbol="M"), context)
+    shop_priority = router.calculate_node_priority(SimpleNamespace(symbol="$"), context)
+
+    assert monster_priority > shop_priority
+
+
 def test_conservative_act2_elite_penalty_blocks_future_reward_bait():
     router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
     context = _context(act=2, floor=22, hp_pct=1.0)
