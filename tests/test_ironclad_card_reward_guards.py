@@ -309,6 +309,74 @@ def test_ironclad_slime_boss_frontload_gap_counts_upgraded_damage_cards():
     assert action.name == "Flame Barrier"
 
 
+def test_ironclad_strategy_prefers_anger_over_unsupported_heavy_blade_for_slime_boss():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Anger", cost=0),
+        _card("Armaments"),
+    ]
+    reward_cards = [
+        _card("Heavy Blade", cost=2),
+        _card("Anger", cost=0),
+        _card("Dual Wield", cost=1),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=3,
+        hp=64,
+        max_hp=80,
+        act_boss="Slime Boss",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Anger"
+
+
+def test_ironclad_strategy_prefers_spot_weakness_over_second_unsupported_heavy_blade():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Anger", cost=0),
+        _card("Armaments"),
+        _card("Heavy Blade", cost=2),
+        _card("Sever Soul", cost=2),
+    ]
+    reward_cards = [
+        _card("Heavy Blade", cost=2),
+        _card("Spot Weakness", cost=1),
+        _card("Warcry", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=7,
+        hp=64,
+        max_hp=80,
+        act_boss="Slime Boss",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Spot Weakness"
+
+
 def test_ironclad_strategy_prefers_power_through_for_guardian_survival_gap():
     deck = [
         _card("Strike_R", upgrades=1),

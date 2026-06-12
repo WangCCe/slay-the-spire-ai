@@ -2428,6 +2428,38 @@ class OptimizedAgent(SimpleAgent):
                     len(deck_ids),
                 )
 
+            slime_boss_strength_enablers = {
+                "Demon Form",
+                "Inflame",
+                "Spot Weakness",
+            }
+            slime_boss_efficient_frontload = {
+                "Anger",
+                "Carnage",
+                "Cleave",
+                "Clothesline",
+                "Hemokinesis",
+                "Immolate",
+                "Iron Wave",
+                "Pommel Strike",
+                "Sever Soul",
+                "Twin Strike",
+                "Uppercut",
+                "Whirlwind",
+            }
+            has_strength_support = any(
+                card_id in slime_boss_strength_enablers for card_id in deck_ids
+            )
+            has_heavy_blade = "Heavy Blade" in deck_ids or any(
+                self._normalize_card_name(card) == "Heavy Blade"
+                for card in pickable_cards
+            )
+            has_better_unsupported_heavy_blade_option = any(
+                self._normalize_card_name(card)
+                in (slime_boss_efficient_frontload | slime_boss_strength_enablers)
+                for card in pickable_cards
+            )
+
             def reward_selection_score(card):
                 strategy_score = strategy_scores.get(id(card))
                 evaluator_score = None
@@ -2454,6 +2486,17 @@ class OptimizedAgent(SimpleAgent):
 
                 if slime_boss_frontload_gap:
                     card_name = self._normalize_card_name(card)
+                    if (
+                        card_name in slime_boss_strength_enablers
+                        and has_heavy_blade
+                    ):
+                        return max(score, 94)
+                    if (
+                        card_name == "Heavy Blade"
+                        and not has_strength_support
+                        and has_better_unsupported_heavy_blade_option
+                    ):
+                        return min(score, 72)
                     if card_name in act_1_frontload_cards:
                         return max(score, 94)
                     if card_name in act_1_block_cards:
