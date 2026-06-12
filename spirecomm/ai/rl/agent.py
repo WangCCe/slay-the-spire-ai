@@ -1279,6 +1279,13 @@ class CombatRLAgent:
                     self._describe_combat_action(fallback_action, game),
                 )
                 return self._with_combat_action_context(EndTurnAction(), game)
+            if not self._is_current_combat_action_playable(fallback_action, game):
+                logger.info(
+                    "[ENERGY_GUARD] Suppressing takeover unplayable action %s; ending turn",
+                    self._describe_combat_action(fallback_action, game),
+                )
+                self._fallback_turn_key = None
+                return self._with_combat_action_context(EndTurnAction(), game)
             return self._with_combat_action_context(
                 fallback_action, game
             )
@@ -1910,6 +1917,11 @@ class CombatRLAgent:
                 elif self._is_pressure_unsafe_hp_loss_card_action(fallback_action, game):
                     logger.info(
                         "[ENERGY_GUARD] Skipping fallback pressure-unsafe HP-loss action %s",
+                        self._describe_combat_action(fallback_action, game),
+                    )
+                elif not self._is_current_combat_action_playable(fallback_action, game):
+                    logger.info(
+                        "[ENERGY_GUARD] Skipping fallback unplayable action %s",
                         self._describe_combat_action(fallback_action, game),
                     )
                 else:
@@ -4172,7 +4184,9 @@ class CombatRLAgent:
 
         # Main combat loop expects combat actions
         if getattr(game, 'screen_type', None) in (None, ScreenType.NONE):
-            return isinstance(action, (PlayCardAction, PotionAction, EndTurnAction))
+            if isinstance(action, PlayCardAction):
+                return self._is_current_combat_action_playable(action, game)
+            return isinstance(action, (PotionAction, EndTurnAction))
 
         # Combat popups accept selection/proceed actions
         return isinstance(
@@ -4188,6 +4202,52 @@ class CombatRLAgent:
                 CardRewardAction,
             ),
         )
+
+    def _is_current_combat_action_playable(self, action: Action, game: Game) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return True
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return False
+        if not getattr(game, "play_available", False):
+            return False
+
+        card = self._card_for_action(action, game)
+        if card is None:
+            return False
+        if hasattr(card, "is_playable") and not getattr(card, "is_playable", False):
+            return False
+        if not card_play_conditions_allow(card, game):
+            return False
+
+        energy = self._player_energy(game)
+        if effective_card_cost(card, energy) > energy:
+            return False
+
+        target_index = getattr(action, "target_index", None)
+        if card_requires_target(card):
+            if target_index is None:
+                return False
+            try:
+                target_index = int(target_index)
+            except (TypeError, ValueError):
+                return False
+            monsters = getattr(game, "monsters", []) or []
+            if target_index < 0 or target_index >= len(monsters):
+                return False
+            target = monsters[target_index]
+            if (
+                self._safe_int(getattr(target, "current_hp", 0), default=0) <= 0
+                or getattr(target, "is_gone", False)
+                or getattr(target, "half_dead", False)
+            ):
+                return False
+        elif target_index is not None:
+            return False
+
+        return True
 
     def get_next_action_out_of_game(self) -> Action:
         """Delegate out-of-game decisions to OptimizedAgent."""
