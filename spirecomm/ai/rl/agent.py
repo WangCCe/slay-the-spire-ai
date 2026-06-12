@@ -1288,6 +1288,27 @@ class CombatRLAgent:
                     avoid_low_hp_hp_loss_filler=True,
                 )
                 if replacement is not None:
+                    guarded_replacement = self._get_act1_boss_pressure_action_replacement(
+                        replacement,
+                        game,
+                    )
+                    if guarded_replacement is None:
+                        guarded_replacement = self._get_gremlin_leader_minion_attack_replacement(
+                            replacement,
+                            game,
+                        )
+                    if guarded_replacement is None:
+                        guarded_replacement = self._get_guardian_sharp_hide_action_replacement(
+                            replacement,
+                            game,
+                        )
+                    if guarded_replacement is None:
+                        guarded_replacement = self._get_guardian_pressure_action_replacement(
+                            replacement,
+                            game,
+                        )
+                    if guarded_replacement is not None:
+                        replacement = guarded_replacement
                     logger.info(
                         "[ENERGY_GUARD] Replacing takeover unplayable action %s with %s",
                         self._describe_combat_action(fallback_action, game),
@@ -2239,18 +2260,40 @@ class CombatRLAgent:
             current_block,
             game,
         )
+        max_hp = self._safe_int(getattr(game, "max_hp", 0), default=0)
+        low_hp_sharp_hide_pressure = (
+            incoming > 0
+            and current_hp <= max(16, max_hp // 4)
+            and damage_with_attack > damage_without_attack
+        )
         low_margin_after_attack = (
             incoming > 0
             and damage_with_attack < current_hp
             and current_hp - damage_with_attack <= sharp_hide_damage * 2
         )
-        if damage_with_attack < current_hp and not low_margin_after_attack:
+        if (
+            damage_with_attack < current_hp
+            and not low_margin_after_attack
+            and not low_hp_sharp_hide_pressure
+        ):
             return None
 
         candidate = self._best_block_action_candidate(game)
         if candidate is not None:
             replacement, card, block_value = candidate
-            if block_value > self._survival_block_value(current_card):
+            damage_with_block = self._end_turn_damage_after_block(
+                incoming + status_blockable_damage,
+                status_hp_loss,
+                current_block + block_value,
+                game,
+            )
+            if (
+                block_value > self._survival_block_value(current_card)
+                and (
+                    not low_hp_sharp_hide_pressure
+                    or damage_with_block < damage_with_attack
+                )
+            ):
                 logger.info(
                     "[GUARDIAN_SHARP_HIDE_GUARD] Selecting %s for block=%s hp=%s incoming=%s status_blockable_damage=%s status_hp_loss=%s sharp_hide=%s current_block=%s",
                     self._card_label(card),
