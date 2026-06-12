@@ -2601,6 +2601,15 @@ class OptimizedAgent(SimpleAgent):
                 "Second Wind",
                 "Sever Soul",
             }
+            act_1_power_through_support = {
+                "Burning Pact",
+                "Corruption",
+                "Dark Embrace",
+                "Evolve",
+                "Feel No Pain",
+                "Second Wind",
+                "True Grit",
+            }
             act_1_foundation_cards = (
                 act_1_efficient_frontload
                 | act_1_strength_enablers
@@ -2612,6 +2621,9 @@ class OptimizedAgent(SimpleAgent):
             )
             has_havoc_support = any(
                 card_id in act_1_havoc_support for card_id in deck_ids
+            )
+            has_power_through_support = any(
+                card_id in act_1_power_through_support for card_id in deck_ids
             )
             havoc_count = sum(1 for card_id in deck_ids if card_id == "Havoc")
             has_heavy_blade_in_deck = "Heavy Blade" in deck_ids
@@ -2627,6 +2639,25 @@ class OptimizedAgent(SimpleAgent):
             has_better_unsupported_havoc_option = any(
                 self._normalize_card_name(card) in act_1_foundation_cards
                 for card in pickable_cards
+            )
+            current_hp = self._safe_float(getattr(self.game, "current_hp", 0), 0.0)
+            max_hp = max(self._safe_float(getattr(self.game, "max_hp", 1), 1.0), 1.0)
+            player_hp_pct = current_hp / max_hp
+            has_act_1_boss_damage_plan = frontload_count >= 3 or any(
+                card_id
+                in {
+                    "Blood for Blood",
+                    "Heavy Blade",
+                    "Shockwave",
+                    "Thunderclap",
+                }
+                for card_id in deck_ids
+            )
+            power_through_survival_gap = (
+                getattr(context, "act", 0) == 1
+                and (getattr(context, "floor", 0) or 0) <= 15
+                and (has_power_through_support or has_act_1_boss_damage_plan)
+                and (player_hp_pct <= 0.75 or has_power_through_support)
             )
 
             def reward_selection_score(card):
@@ -2662,6 +2693,8 @@ class OptimizedAgent(SimpleAgent):
                         score = max(score, 90)
                     if card_name in act_1_premium_frontload:
                         score = max(score, 108 if card_name == "Immolate" else 92)
+                    if card_name == "Power Through" and power_through_survival_gap:
+                        score = max(score, 104)
                     if (
                         card_name in act_1_efficient_frontload
                         and has_heavy_blade_in_deck
@@ -2697,6 +2730,8 @@ class OptimizedAgent(SimpleAgent):
                         return min(score, 72)
                     if card_name in act_1_frontload_cards:
                         return max(score, 94)
+                    if card_name == "Power Through" and power_through_survival_gap:
+                        return max(score, 104)
                     if card_name in act_1_block_cards:
                         return min(score, 68)
                 return score

@@ -645,6 +645,79 @@ def test_ironclad_strategy_prefers_power_through_for_guardian_survival_gap():
     assert action.name == "Power Through"
 
 
+def test_ironclad_strategy_prefers_power_through_over_supported_havoc_before_guardian():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R", upgrades=1),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Anger", cost=0),
+        _card("Second Wind", upgrades=1),
+        _card("True Grit"),
+        _card("Armaments"),
+        _card("Headbutt"),
+    ]
+    reward_cards = [
+        _card("Havoc"),
+        _card("Power Through"),
+        _card("Hemokinesis", cost=1),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=8,
+        hp=55,
+        max_hp=94,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Power Through"
+
+
+def test_ironclad_strategy_prefers_power_through_over_duplicate_twin_strike_for_slime_boss():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Twin Strike"),
+        _card("Shockwave", cost=2, upgrades=1),
+        _card("Blood for Blood", cost=4),
+        _card("Flex", cost=0),
+        _card("Heavy Blade", cost=2),
+    ]
+    reward_cards = [
+        _card("Armaments"),
+        _card("Power Through"),
+        _card("Twin Strike"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=6,
+        hp=54,
+        max_hp=80,
+        act_boss="Slime Boss",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Power Through"
+
+
 def test_ironclad_strategy_rejects_perfected_strike_when_strike_density_is_low():
     deck = [
         _card("Strike_R"),
