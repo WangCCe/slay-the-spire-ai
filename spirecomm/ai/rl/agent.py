@@ -1205,6 +1205,14 @@ class CombatRLAgent:
                 )
                 return self._with_combat_action_context(replacement, game)
 
+            replacement = self._get_slime_split_weak_pressure_replacement(game)
+            if replacement is not None:
+                logger.info(
+                    "[SLIME_SPLIT_PRESSURE_GUARD] Continuing takeover with %s",
+                    self._describe_combat_action(replacement, game),
+                )
+                return self._with_combat_action_context(replacement, game)
+
             replacement = self._get_survival_block_replacement(game)
             if replacement is not None:
                 logger.info(
@@ -1368,6 +1376,16 @@ class CombatRLAgent:
                     self._fallback_turn_key = self._combat_turn_key(game)
                     logger.info(
                         "[SLIME_SPLIT_SURVIVAL_GUARD] Replacing RL action with %s on floor=%s turn=%s",
+                        self._describe_combat_action(replacement, game),
+                        getattr(game, "floor", None),
+                        getattr(game, "turn", None),
+                    )
+                    return self._with_combat_action_context(replacement, game)
+                elif (replacement := self._get_slime_split_weak_pressure_replacement(game)) is not None:
+                    self.rl_failure_count = 0
+                    self._fallback_turn_key = self._combat_turn_key(game)
+                    logger.info(
+                        "[SLIME_SPLIT_PRESSURE_GUARD] Replacing RL action with %s on floor=%s turn=%s",
                         self._describe_combat_action(replacement, game),
                         getattr(game, "floor", None),
                         getattr(game, "turn", None),
@@ -1966,6 +1984,10 @@ class CombatRLAgent:
         from spirecomm.communication.action import EndTurnAction, PlayCardAction, PotionAction
 
         replacement = self._get_slime_split_aoe_survival_replacement(game)
+        if replacement is not None:
+            return replacement
+
+        replacement = self._get_slime_split_weak_pressure_replacement(game)
         if replacement is not None:
             return replacement
 
@@ -2681,6 +2703,10 @@ class CombatRLAgent:
         if replacement is not None:
             return replacement
 
+        replacement = self._get_slime_split_weak_pressure_replacement(game)
+        if replacement is not None:
+            return replacement
+
         replacement = self._get_survival_block_replacement(game)
         if replacement is not None:
             return replacement
@@ -2711,6 +2737,10 @@ class CombatRLAgent:
 
     def _get_energy_guard_takeover_potion_replacement(self, game: Game) -> Optional[Action]:
         replacement = self._get_slime_split_aoe_survival_replacement(game)
+        if replacement is not None:
+            return replacement
+
+        replacement = self._get_slime_split_weak_pressure_replacement(game)
         if replacement is not None:
             return replacement
 
@@ -2858,6 +2888,145 @@ class CombatRLAgent:
             current_hp,
             current_damage,
             damage_after_candidate,
+        )
+        return PlayCardAction(card_index=card_index)
+
+    def _get_slime_split_weak_pressure_replacement(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        if not getattr(game, "in_combat", False):
+            return None
+        if not self._is_slime_boss_split_phase(game):
+            return None
+
+        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        if current_hp <= 0:
+            return None
+        max_hp = max(
+            self._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
+            1,
+        )
+
+        incoming_events = self._incoming_damage_events(game)
+        incoming = sum(incoming_events)
+        if incoming <= 0:
+            return None
+
+        current_block = self._player_block(game)
+        status_blockable_events = self._end_turn_status_blockable_damage_events(game)
+        status_hp_loss_events = self._end_turn_status_hp_loss_events(game)
+        current_damage = self._end_turn_damage_events_after_block(
+            status_blockable_events + incoming_events,
+            status_hp_loss_events,
+            self._end_turn_block_for_game(game, current_block),
+            game,
+        )
+        if current_damage <= 0:
+            return None
+
+        low_hp_pressure = current_hp <= max(20, max_hp * 0.25)
+        if (
+            current_damage < current_hp
+            and not low_hp_pressure
+            and current_hp - current_damage > 4
+        ):
+            return None
+
+        weak_incoming_events = self._incoming_damage_events_after_aoe_weak(game)
+        if weak_incoming_events is None:
+            return None
+        weak_incoming = sum(weak_incoming_events)
+        if weak_incoming >= incoming:
+            return None
+
+        energy = self._player_energy(game)
+        best_candidate = None
+        for card_index, card in self._playable_cards(game, energy):
+            if card_requires_target(card):
+                continue
+            if not self._card_matches_normalized_names(
+                card,
+                self.GUARDIAN_PRESSURE_WEAK_ATTACKS,
+            ):
+                continue
+            if self._would_play_self_lethal_card(card, game):
+                continue
+
+            effective_cost = effective_card_cost(card, energy)
+            remaining_energy = energy - effective_cost
+            if remaining_energy < 0:
+                continue
+
+            best_followup_block = 0
+            for other_index, other_card in self._playable_cards(game, remaining_energy):
+                if other_index == card_index:
+                    continue
+                best_followup_block = max(
+                    best_followup_block,
+                    self._survival_block_value_for_game(other_card, game),
+                )
+
+            projected_block = (
+                current_block
+                + self._survival_block_value_for_game(card, game)
+                + best_followup_block
+            )
+            projected_damage = self._end_turn_damage_events_after_block(
+                status_blockable_events + weak_incoming_events,
+                status_hp_loss_events,
+                self._end_turn_block_for_game(game, projected_block),
+                game,
+            )
+            if projected_damage >= current_damage:
+                continue
+            if projected_damage >= current_hp:
+                continue
+
+            damage_reduced = current_damage - projected_damage
+            lethal_save = current_damage >= current_hp
+            narrow_margin = current_hp - current_damage <= 4 and damage_reduced >= 2
+            low_hp_use = low_hp_pressure and damage_reduced >= 3
+            if not (lethal_save or narrow_margin or low_hp_use):
+                continue
+
+            normalized = {
+                self._normalize_identifier(getattr(card, "name", None)),
+                self._normalize_identifier(getattr(card, "card_id", None)),
+            }
+            priority = 3 if any(value.startswith("shockwave") for value in normalized) else 1
+            survival_margin = current_hp - projected_damage
+            score = (
+                survival_margin,
+                damage_reduced,
+                priority,
+                best_followup_block,
+                -effective_cost,
+                -card_index,
+            )
+            if best_candidate is None or score > best_candidate[0]:
+                best_candidate = (
+                    score,
+                    card_index,
+                    card,
+                    damage_reduced,
+                    projected_damage,
+                )
+
+        if best_candidate is None:
+            return None
+
+        _, card_index, card, damage_reduced, projected_damage = best_candidate
+        logger.info(
+            "[SLIME_SPLIT_PRESSURE_GUARD] Selecting %s hp=%s incoming=%s current_damage=%s damage_reduced=%s projected_damage=%s",
+            self._card_label(card),
+            current_hp,
+            incoming,
+            current_damage,
+            damage_reduced,
+            projected_damage,
         )
         return PlayCardAction(card_index=card_index)
 
@@ -4698,6 +4867,50 @@ class CombatRLAgent:
             damage = getattr(monster, "move_base_damage", 0) or 0
         hits = max(1, cls._safe_int(getattr(monster, "move_hits", 1), default=1))
         return max(0, cls._safe_int(damage, default=0) * 3 // 4) * hits
+
+    @classmethod
+    def _incoming_damage_events_after_aoe_weak(cls, game: Game) -> Optional[list[int]]:
+        events = []
+        changed = False
+        for monster in cls._alive_monsters(game):
+            if intent_is_unknown(getattr(monster, "intent", None)):
+                known_damage = known_unknown_move_immediate_damage(monster)
+                if known_damage > 0:
+                    damage = max(0, cls._safe_int(known_damage, default=0))
+                    if cls._monster_weak_stacks(monster) <= 0:
+                        damage = damage * 3 // 4
+                        changed = True
+                    if damage > 0:
+                        events.append(damage)
+                    continue
+                if known_unknown_move_has_no_immediate_damage(monster):
+                    continue
+                damage = max(
+                    0,
+                    5 * cls._safe_int(getattr(game, "act", 1), default=1),
+                )
+                if cls._monster_weak_stacks(monster) <= 0:
+                    damage = damage * 3 // 4
+                    changed = True
+                if damage > 0:
+                    events.append(damage)
+                continue
+
+            if not monster_intends_attack(monster):
+                continue
+            damage = getattr(monster, "move_adjusted_damage", None)
+            if damage is None:
+                damage = getattr(monster, "move_base_damage", 0) or 0
+            damage = max(0, cls._safe_int(damage, default=0))
+            if cls._monster_weak_stacks(monster) <= 0:
+                damage = damage * 3 // 4
+                changed = True
+            hits = max(1, cls._safe_int(getattr(monster, "move_hits", 1), default=1))
+            events.extend([damage] * hits)
+
+        if not changed:
+            return None
+        return [event for event in events if event > 0]
 
     @staticmethod
     def _player_energy(game: Game) -> int:
