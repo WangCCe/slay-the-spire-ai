@@ -1058,6 +1058,7 @@ class CombatRLAgent:
         "offering": 6,
         "hemokinesis": 2,
     }
+    SELF_VULNERABLE_CARDS = frozenset({"berserk"})
 
     def __init__(
         self,
@@ -1279,6 +1280,24 @@ class CombatRLAgent:
                     self._describe_combat_action(fallback_action, game),
                 )
                 return self._with_combat_action_context(EndTurnAction(), game)
+            self_vulnerable_replacement = self._get_self_vulnerable_pressure_action_replacement(
+                fallback_action,
+                game,
+            )
+            if self_vulnerable_replacement is not None:
+                if not isinstance(self_vulnerable_replacement, EndTurnAction):
+                    self._fallback_turn_key = self._combat_turn_key(game)
+                logger.info(
+                    "[SELF_VULN_GUARD] Replacing takeover action with %s",
+                    self._describe_combat_action(
+                        self_vulnerable_replacement,
+                        game,
+                    ),
+                )
+                return self._with_combat_action_context(
+                    self_vulnerable_replacement,
+                    game,
+                )
             if not self._is_current_combat_action_playable(fallback_action, game):
                 self._fallback_turn_key = None
                 replacement = self._repair_current_play_card_target(
@@ -1409,6 +1428,19 @@ class CombatRLAgent:
                     self._fallback_turn_key = self._combat_turn_key(game)
                     logger.info(
                         "[GUARDIAN_PRESSURE_GUARD] Replacing RL action with %s on floor=%s turn=%s",
+                        self._describe_combat_action(replacement, game),
+                        getattr(game, "floor", None),
+                        getattr(game, "turn", None),
+                    )
+                    return self._with_combat_action_context(replacement, game)
+                elif (replacement := self._get_self_vulnerable_pressure_action_replacement(action, game)) is not None:
+                    from spirecomm.communication.action import EndTurnAction
+
+                    self.rl_failure_count = 0
+                    if not isinstance(replacement, EndTurnAction):
+                        self._fallback_turn_key = self._combat_turn_key(game)
+                    logger.info(
+                        "[SELF_VULN_GUARD] Replacing RL action with %s on floor=%s turn=%s",
                         self._describe_combat_action(replacement, game),
                         getattr(game, "floor", None),
                         getattr(game, "turn", None),
@@ -2837,6 +2869,92 @@ class CombatRLAgent:
         return self._would_hp_loss_expose_lethal_end_turn_damage(
             self._card_for_action(action, game),
             game,
+        )
+
+    def _get_self_vulnerable_pressure_action_replacement(
+        self,
+        action: Action,
+        game: Game,
+    ) -> Optional[Action]:
+        from spirecomm.communication.action import EndTurnAction, PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return None
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        if not getattr(game, "in_combat", False):
+            return None
+
+        current_card = self._card_for_action(action, game)
+        if not self._would_self_vulnerable_expose_pressure_damage(current_card, game):
+            return None
+
+        candidate = self._best_block_action_candidate(game)
+        if candidate is not None:
+            replacement, card, block_value = candidate
+            if block_value > self._survival_block_value_for_game(current_card, game):
+                logger.info(
+                    "[SELF_VULN_GUARD] Selecting %s to avoid self-Vulnerable pressure hp=%s incoming=%s block=%s",
+                    self._card_label(card),
+                    getattr(game, "current_hp", None),
+                    self._incoming_damage(game),
+                    self._player_block(game),
+                )
+                return replacement
+
+        replacement = self._first_playable_card_action(
+            game,
+            excluded_card_names=self.SELF_VULNERABLE_CARDS,
+            avoid_self_lethal=True,
+            avoid_pressure_hp_loss=True,
+            avoid_low_hp_hp_loss_filler=True,
+        )
+        if replacement is not None:
+            return replacement
+        return EndTurnAction()
+
+    @classmethod
+    def _would_self_vulnerable_expose_pressure_damage(cls, card, game: Game) -> bool:
+        if not cls._card_matches_normalized_names(card, cls.SELF_VULNERABLE_CARDS):
+            return False
+        if player_debuff_stacks(game, "Vulnerable") > 0 or player_has_power(game, "Vulnerable"):
+            return False
+
+        incoming_events = cls._incoming_damage_events(game)
+        if not incoming_events:
+            return False
+
+        current_hp = cls._safe_int(getattr(game, "current_hp", 0), default=0)
+        if current_hp <= 0:
+            return False
+
+        current_block = cls._player_block(game)
+        status_blockable_damage, status_hp_loss = cls._end_turn_status_damage(game)
+        end_turn_block = cls._end_turn_block_for_game(game, current_block)
+        current_damage = cls._end_turn_damage_after_block(
+            sum(incoming_events) + status_blockable_damage,
+            status_hp_loss,
+            end_turn_block,
+            game,
+        )
+        vulnerable_damage = cls._end_turn_damage_after_block(
+            sum(event * 3 // 2 for event in incoming_events) + status_blockable_damage,
+            status_hp_loss,
+            end_turn_block,
+            game,
+        )
+        extra_damage = vulnerable_damage - current_damage
+        if extra_damage <= 0:
+            return False
+        if vulnerable_damage >= current_hp:
+            return True
+        return (
+            current_damage > 0
+            and (
+                vulnerable_damage >= max(18, current_hp * 0.45)
+                or extra_damage >= max(6, current_hp * 0.15)
+            )
         )
 
     @classmethod
