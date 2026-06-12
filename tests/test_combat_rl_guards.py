@@ -470,6 +470,62 @@ def test_rl_potion_action_is_blocked_in_low_risk_act1_hallway_before_boss():
     assert calls == {"rl": 1, "fallback": 1}
 
 
+def test_rl_boss_setup_potion_is_blocked_in_healthy_act1_hallway_before_boss():
+    potion = SimpleNamespace(
+        potion_id="StrengthPotion",
+        name="Strength Potion",
+        can_use=True,
+        requires_target=False,
+        effect_type="buff_strength",
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    game = _game(
+        potions=[potion],
+        monsters=[
+            _monster(hp=24, damage=5, index=0, name="Gremlin Wizard"),
+            _monster(hp=22, damage=4, index=1, name="Mad Gremlin"),
+            _monster(hp=20, damage=4, index=2, name="Fat Gremlin"),
+        ],
+        current_hp=72,
+        max_hp=80,
+        room_type="MonsterRoom",
+        floor=10,
+        act=1,
+        player=SimpleNamespace(energy=1),
+        hand=[strike],
+    )
+    calls = {"rl": 0, "fallback": 0}
+
+    def rl_decide(_game):
+        calls["rl"] += 1
+        return PotionAction(True, potion=potion)
+
+    def fallback_decide(_game):
+        calls["fallback"] += 1
+        return PlayCardAction(card_index=0, target_index=0)
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=rl_decide)
+    agent.fallback_agent = SimpleNamespace(get_next_action_in_game=fallback_decide)
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index == 0
+    assert calls == {"rl": 1, "fallback": 1}
+
+
 def test_rl_elixir_action_is_replaced_even_in_boss_combat():
     potion = SimpleNamespace(
         potion_id="ElixirPotion",

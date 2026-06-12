@@ -1919,7 +1919,8 @@ class CombatRLAgent:
             return False
         if not getattr(game, "in_combat", False):
             return False
-        if potion_is_exhaust_hand_select(self._potion_for_action(action, game)):
+        potion = self._potion_for_action(action, game)
+        if potion_is_exhaust_hand_select(potion):
             return True
 
         room_type = str(getattr(game, "room_type", "") or "")
@@ -1942,6 +1943,17 @@ class CombatRLAgent:
             1,
         )
         hp_pct = current_hp / max_hp
+        if self._should_save_act1_boss_setup_potion(
+            potion,
+            game,
+            incoming,
+            current_hp,
+            hp_pct,
+            is_elite=False,
+            is_boss=False,
+        ):
+            return True
+
         high_danger = (
             incoming >= current_hp
             or incoming >= max(18, current_hp * 0.45)
