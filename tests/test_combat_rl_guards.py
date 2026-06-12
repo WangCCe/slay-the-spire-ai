@@ -4405,6 +4405,123 @@ def test_slime_split_survival_guard_counts_zero_damage_multi_hit_static_attack()
     assert replacement.target_index == 0
 
 
+def test_slime_split_survival_guard_uses_stronger_attack_to_kill_attacker():
+    strike = SimpleNamespace(
+        name="Strike+",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+        damage=9,
+    )
+    second_wind = SimpleNamespace(
+        name="Second Wind+",
+        card_id="Second Wind",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        block=0,
+    )
+    clothesline = SimpleNamespace(
+        name="Clothesline",
+        card_id="Clothesline",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+        damage=12,
+    )
+    sever_soul = SimpleNamespace(
+        name="Sever Soul",
+        card_id="Sever Soul",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+        damage=16,
+    )
+    slimed = SimpleNamespace(
+        name="Slimed",
+        card_id="Slimed",
+        type=CardType.STATUS,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    weak_player_killable_attacker = _monster(
+        hp=12,
+        damage=8,
+        index=0,
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+    )
+    weak_player_killable_attacker.intent = Intent.ATTACK_DEBUFF
+    debuff_slime = _monster(
+        hp=22,
+        damage=0,
+        index=1,
+        name="Spike Slime (M)",
+        monster_id="SpikeSlime_M",
+    )
+    debuff_slime.intent = Intent.DEBUFF
+    acid_attacker = _monster(
+        hp=19,
+        damage=5,
+        index=2,
+        name="Acid Slime (M)",
+        monster_id="AcidSlime_M",
+    )
+    acid_attacker.intent = Intent.ATTACK_DEBUFF
+    second_acid_attacker = _monster(
+        hp=28,
+        damage=7,
+        index=3,
+        name="Acid Slime (M)",
+        monster_id="AcidSlime_M",
+    )
+    second_acid_attacker.intent = Intent.ATTACK_DEBUFF
+    dead_boss = _monster(
+        hp=0,
+        damage=0,
+        index=4,
+        name="Slime Boss",
+        monster_id="SlimeBoss",
+    )
+    dead_boss.is_gone = True
+
+    game = _game(
+        floor=16,
+        turn=11,
+        current_hp=20,
+        player=SimpleNamespace(
+            energy=3,
+            block=0,
+            powers=[SimpleNamespace(power_name="Weak", amount=1)],
+        ),
+        hand=[strike, second_wind, clothesline, sever_soul, slimed],
+        monsters=[
+            weak_player_killable_attacker,
+            debuff_slime,
+            acid_attacker,
+            second_acid_attacker,
+            dead_boss,
+        ],
+        room_type="MonsterRoomBoss",
+    )
+
+    replacement = _agent()._get_slime_split_survival_attack_replacement(
+        PlayCardAction(card_index=2, target_index=0),
+        game,
+    )
+
+    assert CombatRLAgent._incoming_damage(game) == 20
+    assert isinstance(replacement, PlayCardAction)
+    assert replacement.card_index == 3
+    assert replacement.target_index == 0
+
+
 def test_slime_split_survival_guard_combines_weak_and_vulnerable_attack_damage():
     carnage = SimpleNamespace(
         name="Carnage",

@@ -2142,21 +2142,100 @@ class CombatRLAgent:
                     effective_hp,
                 )
 
-        if best_candidate is None:
-            return None
-        _, target_index, target, removed_incoming, effective_hp = best_candidate
-        if current_target == target_index:
+        if best_candidate is not None:
+            _, target_index, target, removed_incoming, effective_hp = best_candidate
+            if current_target == target_index:
+                return None
+
+            logger.info(
+                "[SLIME_SPLIT_SURVIVAL_GUARD] Retargeting %s to %s index=%s hp=%s removed_incoming=%s",
+                self._card_label(card),
+                getattr(target, "name", getattr(target, "monster_id", "UNKNOWN")),
+                target_index,
+                effective_hp,
+                removed_incoming,
+            )
+            return PlayCardAction(card_index=card_index, target_index=target_index)
+
+        best_alternate = None
+        for alternate_card_index, alternate_card in self._playable_cards(game, energy):
+            if alternate_card_index == card_index:
+                continue
+            if not is_attack_card(alternate_card) or not card_requires_target(alternate_card):
+                continue
+            if self._would_play_self_lethal_card(alternate_card, game):
+                continue
+            effective_cost = effective_card_cost(alternate_card, energy)
+            if effective_cost > energy:
+                continue
+
+            alternate_damage = self._survival_attack_damage_before_player_weak(
+                alternate_card,
+                game,
+            )
+            if alternate_damage <= 0:
+                continue
+            alternate_hits = self._survival_attack_hit_count(alternate_card)
+
+            for monster_index, monster in enumerate(getattr(game, "monsters", []) or []):
+                if not self._is_targetable_monster(monster):
+                    continue
+                if not monster_intends_attack(monster):
+                    continue
+                effective_hp = (
+                    self._safe_int(getattr(monster, "current_hp", 0), default=0)
+                    + self._safe_int(getattr(monster, "block", 0), default=0)
+                )
+                attack_damage = self._apply_survival_attack_target_modifiers(
+                    alternate_damage,
+                    game,
+                    monster,
+                    hit_count=alternate_hits,
+                )
+                if attack_damage < effective_hp:
+                    continue
+                removed_incoming = self._monster_incoming_damage(monster)
+                if removed_incoming <= 0:
+                    continue
+                remaining_damage = max(0, incoming - removed_incoming - current_block)
+                if remaining_damage >= current_hp:
+                    continue
+                survival_margin = current_hp - remaining_damage
+                score = (
+                    survival_margin,
+                    removed_incoming,
+                    attack_damage,
+                    -effective_cost,
+                    -alternate_card_index,
+                    -monster_index,
+                )
+                if best_alternate is None or score > best_alternate[0]:
+                    best_alternate = (
+                        score,
+                        alternate_card_index,
+                        alternate_card,
+                        monster_index,
+                        monster,
+                        removed_incoming,
+                        effective_hp,
+                    )
+
+        if best_alternate is None:
             return None
 
+        _, alternate_card_index, alternate_card, target_index, target, removed_incoming, effective_hp = (
+            best_alternate
+        )
         logger.info(
-            "[SLIME_SPLIT_SURVIVAL_GUARD] Retargeting %s to %s index=%s hp=%s removed_incoming=%s",
+            "[SLIME_SPLIT_SURVIVAL_GUARD] Replacing %s with %s targeting %s index=%s hp=%s removed_incoming=%s",
             self._card_label(card),
+            self._card_label(alternate_card),
             getattr(target, "name", getattr(target, "monster_id", "UNKNOWN")),
             target_index,
             effective_hp,
             removed_incoming,
         )
-        return PlayCardAction(card_index=card_index, target_index=target_index)
+        return PlayCardAction(card_index=alternate_card_index, target_index=target_index)
 
     def _get_gremlin_leader_minion_attack_replacement(self, action: Action, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
