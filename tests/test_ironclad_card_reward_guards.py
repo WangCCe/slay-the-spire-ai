@@ -537,6 +537,69 @@ def test_ironclad_strategy_prefers_combust_over_unsupported_havoc():
     assert action.name == "Combust"
 
 
+def test_ironclad_strategy_prefers_thunderclap_over_unsupported_havoc():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Shrug It Off"),
+    ]
+    reward_cards = [
+        _card("Perfected Strike", cost=2),
+        _card("Havoc"),
+        _card("Thunderclap"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=1,
+        hp=72,
+        max_hp=80,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Thunderclap"
+
+
+def test_ironclad_strategy_prefers_twin_strike_over_unsupported_havoc():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+    ]
+    reward_cards = [
+        _card("Twin Strike"),
+        _card("Havoc"),
+        _card("Seeing Red", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=1,
+        hp=72,
+        max_hp=80,
+        act_boss="Hexaghost",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Twin Strike"
+
+
 def test_ironclad_strategy_skips_duplicate_havoc_in_large_act1_deck():
     deck = [
         _card("Strike_R"),

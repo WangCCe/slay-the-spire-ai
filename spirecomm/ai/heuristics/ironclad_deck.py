@@ -73,6 +73,7 @@ class IroncladDeckStrategy:
     SPECULATIVE_ENGINE_CARDS = {
         'Body Slam', 'Limit Break', 'Entrench', 'Barricade',
         'Feel No Pain', 'Dark Embrace', 'Rupture', 'Fire Breathing',
+        'Havoc',
     }
 
     STRENGTH_SUPPORT = {'Demon Form', 'Inflame', 'Spot Weakness', 'Flex'}
@@ -81,6 +82,10 @@ class IroncladDeckStrategy:
         'Ghostly Armor', 'Metallicize', 'Iron Wave', 'True Grit',
     }
     EXHAUST_SUPPORT = {'Corruption', 'True Grit', 'Second Wind', 'Fiend Fire', 'Sever Soul'}
+    HAVOC_SUPPORT = {
+        'Burning Pact', 'Corruption', 'Dark Embrace', 'Feel No Pain',
+        'Fiend Fire', 'Second Wind', 'Sever Soul',
+    }
     SELF_DAMAGE_SUPPORT = {'Offering', 'Bloodletting', 'Hemokinesis', 'Combust', 'Brutality'}
     STATUS_SUPPORT = {'Power Through', 'Wild Strike', 'Reckless Charge', 'Immolate'}
 
@@ -281,6 +286,11 @@ class IroncladDeckStrategy:
             if count(self.STATUS_SUPPORT) >= 2:
                 return (True, "Fire Breathing has status support")
             return (False, "Skipping Fire Breathing without status support")
+
+        if card_id == 'Havoc':
+            if count(self.HAVOC_SUPPORT) >= 1:
+                return (True, "Havoc has exhaust support")
+            return (False, "Skipping Havoc without exhaust support")
 
         if card_id == 'Rupture':
             if count(self.SELF_DAMAGE_SUPPORT) >= 2:

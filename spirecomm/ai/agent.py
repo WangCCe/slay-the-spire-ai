@@ -2783,6 +2783,12 @@ class OptimizedAgent(SimpleAgent):
                         score = max(score, 90)
                     if card_name in act_1_premium_frontload:
                         score = max(score, 108 if card_name == "Immolate" else 92)
+                    if (
+                        card_name == "Twin Strike"
+                        and (getattr(context, "floor", 0) or 0) <= 8
+                        and frontload_count < 3
+                    ):
+                        score = max(score, 78)
                     if card_name == "Power Through" and power_through_survival_gap:
                         score = max(score, 104)
                     if (
