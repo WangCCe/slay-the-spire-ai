@@ -10408,6 +10408,108 @@ def test_end_turn_mercury_hourglass_hits_hexaghost_defend_buff_block(monkeypatch
     assert not trace_path.exists()
 
 
+def test_end_turn_mercury_hourglass_hits_guardian_defend_block(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=16,
+        turn=2,
+        player=SimpleNamespace(current_hp=64, max_hp=80, block=0, energy=0),
+        hand=[],
+        relics=[_relic("Mercury Hourglass")],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=223,
+                max_hp=240,
+                block=0,
+                damage=0,
+                intent=Intent.DEFEND,
+                move_id=6,
+                powers=[Power("Mode Shift", "Mode Shift", 13)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=16,
+        turn=3,
+        player=SimpleNamespace(current_hp=64, max_hp=80, block=0, energy=3),
+        hand=[],
+        relics=[_relic("Mercury Hourglass")],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=223,
+                max_hp=240,
+                block=6,
+                damage=9,
+                intent=Intent.ATTACK,
+                move_id=2,
+                powers=[Power("Mode Shift", "Mode Shift", 13)],
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_end_turn_mercury_hourglass_does_not_trigger_after_player_death(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=16,
+        turn=7,
+        player=SimpleNamespace(current_hp=3, max_hp=80, block=0, energy=0),
+        hand=[],
+        relics=[_relic("Mercury Hourglass")],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=50,
+                max_hp=240,
+                block=0,
+                damage=9,
+                intent=Intent.ATTACK,
+                move_id=2,
+                powers=[Power("Mode Shift", "Mode Shift", 19)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=16,
+        turn=8,
+        player=SimpleNamespace(current_hp=0, max_hp=80, block=0, energy=1),
+        hand=[],
+        relics=[_relic("Mercury Hourglass")],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=50,
+                max_hp=240,
+                block=0,
+                damage=7,
+                intent=Intent.ATTACK,
+                move_id=7,
+                powers=[Power("Mode Shift", "Mode Shift", 19)],
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_mystic_heal_hp_change_is_ignored_without_move_history(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

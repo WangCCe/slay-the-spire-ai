@@ -3613,17 +3613,29 @@ def _apply_mercury_hourglass_damage(
 ) -> None:
     if not _snapshot_has_relic(before, "Mercury Hourglass"):
         return
+    if _to_int(expected.get("player", {}).get("current_hp")) <= 0:
+        return
     for index, _monster in enumerate(expected.get("monsters", []) or []):
         _apply_direct_monster_damage(expected, index, 3)
 
 
 def _monster_move_block_before_mercury_hourglass(monster: Dict[str, Any]) -> int:
     identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
-    if "hexaghost" not in identifiers:
-        return 0
     intent = _normalized_intent(monster.get("intent"))
-    if _to_int(monster.get("move_id")) == 3 and "defend" in intent and "buff" in intent:
+    move_id = _to_int(monster.get("move_id"))
+    if (
+        "hexaghost" in identifiers
+        and move_id == 3
+        and "defend" in intent
+        and "buff" in intent
+    ):
         return 12
+    if (
+        ("theguardian" in identifiers or "guardian" in identifiers)
+        and move_id == 6
+        and "defend" in intent
+    ):
+        return 9
     return 0
 
 
