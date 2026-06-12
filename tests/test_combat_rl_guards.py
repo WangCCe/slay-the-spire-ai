@@ -2955,6 +2955,73 @@ def test_act1_boss_pressure_guard_does_not_force_weak_without_incoming():
     assert action.target_index == 0
 
 
+def test_potion_fallback_prefers_clothesline_when_weak_plus_block_survives_slime_boss():
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    slimed = SimpleNamespace(
+        name="Slimed",
+        card_id="Slimed",
+        type=CardType.STATUS,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+        block=5,
+    )
+    clothesline = SimpleNamespace(
+        name="Clothesline",
+        card_id="Clothesline",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        has_target=True,
+    )
+    slime_boss = _monster(
+        hp=96,
+        damage=27,
+        index=0,
+        name="Slime Boss",
+        monster_id="SlimeBoss",
+    )
+    slime_boss.intent = Intent.ATTACK
+    game = _game(
+        floor=16,
+        turn=7,
+        room_type="MonsterRoomBoss",
+        current_hp=16,
+        max_hp=85,
+        player=SimpleNamespace(energy=3, block=0),
+        hand=[strike, slimed, defend, clothesline, defend],
+        monsters=[slime_boss],
+    )
+    agent = _agent()
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PotionAction(
+            potion=SimpleNamespace(name="Elixir", potion_id="ElixirPotion"),
+            potion_index=0,
+        )
+    )
+
+    action = agent._get_non_potion_fallback(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 3
+    assert action.target_index == 0
+
+
 def test_act1_boss_pressure_guard_overrides_slime_split_bash_for_block():
     bash = SimpleNamespace(
         name="Bash",

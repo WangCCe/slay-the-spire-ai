@@ -2455,6 +2455,26 @@ class CombatRLAgent:
     def _get_non_potion_fallback(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction, PotionAction
 
+        replacement = self._get_act1_boss_pressure_weak_replacement(game)
+        if replacement is not None:
+            return replacement
+
+        replacement = self._get_slime_split_aoe_survival_replacement(game)
+        if replacement is not None:
+            return replacement
+
+        replacement = self._get_survival_block_replacement(game)
+        if replacement is not None:
+            return replacement
+
+        replacement = self._get_act1_boss_pressure_block_replacement(game)
+        if replacement is not None:
+            return replacement
+
+        replacement = self._get_guardian_pressure_block_replacement(game)
+        if replacement is not None:
+            return replacement
+
         try:
             fallback_action = self.fallback_agent.get_next_action_in_game(game)
             if (
@@ -2645,14 +2665,16 @@ class CombatRLAgent:
             self._end_turn_block_for_game(game, current_block),
             game,
         )
-        if damage_after_block <= 0 or damage_after_block >= current_hp:
+        if damage_after_block <= 0:
             return None
 
-        if incoming < max(24, current_hp * 0.35) and damage_after_block < max(
-            18,
-            current_hp * 0.30,
-        ):
-            return None
+        immediate_lethal_pressure = damage_after_block >= current_hp
+        if not immediate_lethal_pressure:
+            if incoming < max(24, current_hp * 0.35) and damage_after_block < max(
+                18,
+                current_hp * 0.30,
+            ):
+                return None
 
         target_index = self._best_monster_index(game)
         best_candidate = None
@@ -2669,6 +2691,21 @@ class CombatRLAgent:
                 continue
 
             effective_cost = effective_card_cost(card, energy)
+            survival_margin = None
+            if immediate_lethal_pressure:
+                survival_margin = self._act1_boss_weak_survival_margin_after_card(
+                    card_index,
+                    card,
+                    game,
+                    current_hp,
+                    current_block,
+                    status_blockable_damage,
+                    status_hp_loss,
+                    energy,
+                )
+                if survival_margin is None:
+                    continue
+
             normalized = {
                 self._normalize_identifier(getattr(card, "name", None)),
                 self._normalize_identifier(getattr(card, "card_id", None)),
@@ -2679,7 +2716,12 @@ class CombatRLAgent:
                 priority = 2
             else:
                 priority = 1
-            score = (priority, -effective_cost, -card_index)
+            score = (
+                survival_margin if survival_margin is not None else 0,
+                priority,
+                -effective_cost,
+                -card_index,
+            )
             action = (
                 PlayCardAction(card_index=card_index, target_index=target_index)
                 if card_requires_target(card)
@@ -2701,6 +2743,50 @@ class CombatRLAgent:
             current_block,
         )
         return action
+
+    def _act1_boss_weak_survival_margin_after_card(
+        self,
+        card_index: int,
+        card,
+        game: Game,
+        current_hp: int,
+        current_block: int,
+        status_blockable_damage: int,
+        status_hp_loss: int,
+        energy: int,
+    ) -> Optional[int]:
+        weak_incoming = self._incoming_damage_after_single_target_weak(game)
+        if weak_incoming is None:
+            return None
+
+        effective_cost = effective_card_cost(card, energy)
+        remaining_energy = energy - effective_cost
+        if remaining_energy < 0:
+            return None
+
+        best_followup_block = 0
+        for other_index, other_card in self._playable_cards(game, remaining_energy):
+            if other_index == card_index:
+                continue
+            best_followup_block = max(
+                best_followup_block,
+                self._survival_block_value_for_game(other_card, game),
+            )
+
+        projected_block = (
+            current_block
+            + self._survival_block_value_for_game(card, game)
+            + best_followup_block
+        )
+        projected_damage = self._end_turn_aggregate_damage_after_block(
+            weak_incoming + status_blockable_damage,
+            status_hp_loss,
+            self._end_turn_block_for_game(game, projected_block),
+            game,
+        )
+        if projected_damage >= current_hp:
+            return None
+        return current_hp - projected_damage
 
     def _get_survival_block_replacement(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
@@ -4338,6 +4424,46 @@ class CombatRLAgent:
                 continue
             return cls._safe_int(getattr(power, "amount", 0), default=0)
         return 0
+
+    @classmethod
+    def _monster_weak_stacks(cls, monster) -> int:
+        for power in getattr(monster, "powers", []) or []:
+            identifiers = (
+                getattr(power, "power_id", None),
+                getattr(power, "power_name", None),
+                getattr(power, "name", None),
+            )
+            if not any("weak" in cls._normalize_identifier(value) for value in identifiers):
+                continue
+            return cls._safe_int(getattr(power, "amount", 0), default=0)
+        return 0
+
+    @classmethod
+    def _incoming_damage_after_single_target_weak(cls, game: Game) -> Optional[int]:
+        attackers = [
+            monster
+            for monster in cls._alive_monsters(game)
+            if cls._monster_incoming_damage(monster) > 0
+        ]
+        if len(attackers) != 1:
+            return None
+
+        monster = attackers[0]
+        if cls._monster_weak_stacks(monster) > 0:
+            return None
+        if intent_is_unknown(getattr(monster, "intent", None)):
+            known_damage = known_unknown_move_immediate_damage(monster)
+            if known_damage <= 0:
+                return None
+            return max(0, cls._safe_int(known_damage, default=0) * 3 // 4)
+        if not monster_intends_attack(monster):
+            return None
+
+        damage = getattr(monster, "move_adjusted_damage", None)
+        if damage is None:
+            damage = getattr(monster, "move_base_damage", 0) or 0
+        hits = max(1, cls._safe_int(getattr(monster, "move_hits", 1), default=1))
+        return max(0, cls._safe_int(damage, default=0) * 3 // 4) * hits
 
     @staticmethod
     def _player_energy(game: Game) -> int:
