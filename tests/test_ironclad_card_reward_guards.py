@@ -785,6 +785,43 @@ def test_ironclad_strategy_prefers_power_through_over_supported_havoc_before_gua
     assert action.name == "Power Through"
 
 
+def test_ironclad_strategy_rejects_unsupported_evolve_before_guardian():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Ghostly Armor"),
+        _card("Shockwave", cost=2, upgrades=1),
+        _card("Headbutt", upgrades=1),
+        _card("Headbutt", upgrades=1),
+        _card("Immolate", cost=2, upgrades=1),
+        _card("Metallicize"),
+        _card("Headbutt"),
+    ]
+    reward_cards = [
+        _card("Evolve"),
+        _card("Body Slam"),
+        _card("Twin Strike"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=14,
+        hp=64,
+        max_hp=80,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Twin Strike"
+
+
 def test_ironclad_strategy_prefers_power_through_over_duplicate_twin_strike_for_slime_boss():
     deck = [
         _card("Strike_R"),

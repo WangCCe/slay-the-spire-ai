@@ -132,6 +132,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
     SPECULATIVE_ENGINE_CARDS = {
         'Body Slam', 'Limit Break', 'Entrench', 'Barricade',
         'Feel No Pain', 'Dark Embrace', 'Rupture', 'Warcry',
+        'Evolve',
     }
 
     STRENGTH_SUPPORT = {'Demon Form', 'Inflame', 'Spot Weakness', 'Flex'}

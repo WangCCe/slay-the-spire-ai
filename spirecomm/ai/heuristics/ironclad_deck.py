@@ -73,7 +73,7 @@ class IroncladDeckStrategy:
     SPECULATIVE_ENGINE_CARDS = {
         'Body Slam', 'Limit Break', 'Entrench', 'Barricade',
         'Feel No Pain', 'Dark Embrace', 'Rupture', 'Fire Breathing',
-        'Havoc', 'Exhume',
+        'Evolve', 'Havoc', 'Exhume',
     }
 
     STRENGTH_SUPPORT = {'Demon Form', 'Inflame', 'Spot Weakness', 'Flex'}
@@ -287,10 +287,10 @@ class IroncladDeckStrategy:
                 return (True, f"{card_id} has exhaust support")
             return (False, f"Skipping {card_id} without exhaust support")
 
-        if card_id == 'Fire Breathing':
+        if card_id in {'Fire Breathing', 'Evolve'}:
             if count(self.STATUS_SUPPORT) >= 2:
-                return (True, "Fire Breathing has status support")
-            return (False, "Skipping Fire Breathing without status support")
+                return (True, f"{card_id} has status support")
+            return (False, f"Skipping {card_id} without status support")
 
         if card_id == 'Havoc':
             if count(self.HAVOC_SUPPORT) >= 1:
