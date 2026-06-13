@@ -142,6 +142,44 @@ def test_ironclad_strategy_rejects_hp_cost_card_at_string_low_hp():
     assert "35% HP" in reason
 
 
+def test_ironclad_strategy_allows_offering_on_post_boss_reward_low_hp():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Anger", cost=0),
+        _card("Shockwave", cost=2, upgrades=1),
+        _card("Thunderclap"),
+        _card("Shrug It Off", upgrades=1),
+        _card("Shrug It Off", upgrades=1),
+        _card("Pommel Strike"),
+        _card("Thunderclap"),
+        _card("Iron Wave"),
+    ]
+    reward_cards = [
+        _card("Demon Form", cost=3),
+        _card("Brutality", cost=0),
+        _card("Offering", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=16,
+        act=1,
+        hp=12,
+        max_hp=80,
+        act_boss="Hexaghost",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Offering"
+
+
 def test_ironclad_strategy_can_take_carnage_despite_legacy_zero_copy_cap():
     deck = [
         _card("Strike_R"),

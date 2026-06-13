@@ -184,7 +184,7 @@ class IroncladDeckStrategy:
         # Rule 3: HP risk assessment
         player_hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
         if player_hp_pct < 0.4:
-            if card_id in self.HP_COST_CARDS:
+            if card_id in self.HP_COST_CARDS and not self._is_post_boss_reward_before_act_heal(context):
                 return (False, f"Too risky at {player_hp_pct*100:.0f}% HP")
 
         if act == 1 and card_id in {'Brutality', 'Combust'}:
@@ -240,6 +240,12 @@ class IroncladDeckStrategy:
             return (True, f"Acceptable card (score: {baseline_score})")
         else:
             return (False, f"Weak card (score: {baseline_score})")
+
+    def _is_post_boss_reward_before_act_heal(self, context: DecisionContext) -> bool:
+        """Act 1/2 boss card rewards are evaluated before the between-act full heal."""
+        act = self._non_negative_int(getattr(context, 'act', 0))
+        floor = self._non_negative_int(getattr(context, 'floor', 0))
+        return act in {1, 2} and floor in {16, 33}
 
     def _needs_emergency_act_1_frontload(
         self,
