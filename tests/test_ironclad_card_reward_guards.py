@@ -655,6 +655,72 @@ def test_ironclad_strategy_prefers_foundation_block_over_neow_havoc():
     assert action.name == "Iron Wave"
 
 
+def test_ironclad_strategy_prefers_neow_dark_shackles_over_enlightenment():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+    ]
+    reward_cards = [
+        _card("Enlightenment", cost=0),
+        _card("Forethought", cost=0),
+        _card("Dark Shackles", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=0,
+        hp=80,
+        max_hp=80,
+        act_boss="Hexaghost",
+        can_skip=False,
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Dark Shackles"
+
+
+def test_ironclad_strategy_prefers_neow_panic_button_over_panacea():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+    ]
+    reward_cards = [
+        _card("Panacea", cost=0),
+        _card("PanicButton", cost=0),
+        _card("Purity", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=0,
+        hp=80,
+        max_hp=80,
+        act_boss="Hexaghost",
+        can_skip=False,
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "PanicButton"
+
+
 def test_ironclad_strategy_prefers_combust_over_unsupported_havoc():
     deck = [
         _card("Strike_R"),
