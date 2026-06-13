@@ -554,9 +554,35 @@ class SimpleAgent:
                 critical_hp = hp_known and (
                     current_hp <= 20 or current_hp / max_hp <= 0.35
                 )
-                preferred_keywords = ("desecrate",) if critical_hp else ("sacrifice",)
+                sacrifice_keywords = ("sacrifice", "shed blood")
+                sacrifice_available = any(
+                    any(keyword in label.lower() for keyword in sacrifice_keywords)
+                    for label in labels_for_selection
+                )
+                act = self._safe_int(getattr(self.game, "act", 0), 0)
+                estimated_sacrifice_damage = 20.0
+                estimated_sacrifice_max_hp_gain = 5.0
+                post_sacrifice_hp_pct = (
+                    (current_hp - estimated_sacrifice_damage)
+                    / max(max_hp + estimated_sacrifice_max_hp_gain, 1.0)
+                    if hp_known
+                    else 1.0
+                )
+                sacrifice_breaks_hp_margin = (
+                    hp_known
+                    and sacrifice_available
+                    and act >= 2
+                    and post_sacrifice_hp_pct < 0.60
+                )
+                preferred_keywords = (
+                    ("desecrate",)
+                    if critical_hp or sacrifice_breaks_hp_margin
+                    else sacrifice_keywords
+                )
                 fallback_keywords = (
-                    ("sacrifice", "desecrate") if critical_hp else ("desecrate",)
+                    (sacrifice_keywords + ("desecrate",))
+                    if critical_hp or sacrifice_breaks_hp_margin
+                    else ("desecrate",)
                 )
                 for idx, label in enumerate(labels_for_selection):
                     normalized_label = label.lower()

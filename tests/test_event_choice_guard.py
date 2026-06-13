@@ -139,6 +139,48 @@ def test_forgotten_altar_avoids_lethal_sacrifice_at_critical_hp():
     assert action.choice_index == 1
 
 
+def test_forgotten_altar_avoids_sacrifice_when_act2_hp_margin_breaks():
+    agent = _agent_for_event(
+        "Forgotten Altar",
+        [
+            EventOption("Locked", "Locked"),
+            EventOption("Sacrifice", "Sacrifice"),
+            EventOption("Desecrate", "Desecrate"),
+        ],
+        ["Sacrifice", "Desecrate"],
+        floor=21,
+        act=2,
+        hp=67,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_forgotten_altar_sacrifices_when_act2_hp_margin_stays_safe():
+    agent = _agent_for_event(
+        "Forgotten Altar",
+        [
+            EventOption("Locked", "Locked"),
+            EventOption("Sacrifice", "Sacrifice"),
+            EventOption("Desecrate", "Desecrate"),
+        ],
+        ["Sacrifice", "Desecrate"],
+        floor=21,
+        act=2,
+        hp=80,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+
 def test_shining_light_leaves_when_upgrade_damage_breaks_act1_hp_margin():
     agent = _agent_for_event(
         "Shining Light",
