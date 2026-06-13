@@ -1370,3 +1370,42 @@ def test_large_deck_reward_does_not_skip_strategy_good_card():
 
     assert isinstance(action, CardRewardAction)
     assert action.name == "Pommel Strike"
+
+
+def test_ironclad_strategy_prefers_first_disarm_before_act_2_champ():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Thunderclap"),
+        _card("Pommel Strike"),
+        _card("Heavy Blade", cost=2),
+        _card("Shrug It Off"),
+        _card("Anger", cost=0),
+        _card("Iron Wave"),
+        _card("Clothesline", cost=2),
+        _card("Clothesline", cost=2),
+        _card("Reaper", cost=2),
+    ]
+    reward_cards = [
+        _card("Headbutt"),
+        _card("Disarm", upgrades=1),
+        _card("Iron Wave", upgrades=1),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=20,
+        hp=67,
+        max_hp=80,
+        act=2,
+        act_boss="Champ",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Disarm"

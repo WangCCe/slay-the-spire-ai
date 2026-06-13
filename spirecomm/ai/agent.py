@@ -2725,6 +2725,7 @@ class OptimizedAgent(SimpleAgent):
                 card_id in act_1_power_through_support for card_id in deck_ids
             )
             havoc_count = sum(1 for card_id in deck_ids if card_id == "Havoc")
+            disarm_count = sum(1 for card_id in deck_ids if card_id == "Disarm")
             has_heavy_blade_in_deck = "Heavy Blade" in deck_ids
             has_heavy_blade = "Heavy Blade" in deck_ids or any(
                 self._normalize_card_name(card) == "Heavy Blade"
@@ -2788,6 +2789,13 @@ class OptimizedAgent(SimpleAgent):
                     score = 50
 
                 card_name = self._normalize_card_name(card)
+                if (
+                    card_name == "Disarm"
+                    and self._safe_int(getattr(context, "act", 0), 0) == 2
+                    and disarm_count == 0
+                ):
+                    score = max(score, 108 if "champ" in act_boss else 96)
+
                 if (
                     getattr(context, "act", 0) == 1
                     and (getattr(context, "floor", 0) or 0) <= 15
