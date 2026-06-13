@@ -505,3 +505,93 @@ def test_conservative_act1_route_prefers_early_fights_over_event_chain_when_unde
 
     assert isinstance(action, ChooseMapNodeAction)
     assert action.node == fight_start
+
+
+def test_conservative_route_delays_forced_act1_elite_until_after_rest():
+    agent = SimpleAgent(chosen_class=PlayerClass.IRONCLAD, elite_mode="conservative")
+    game_map = Map()
+
+    early_start = Node(0, 0, "M")
+    early_fight_1 = Node(0, 1, "M")
+    early_fight_2 = Node(0, 2, "M")
+    early_fight_3 = Node(0, 3, "M")
+    early_event = Node(0, 4, "?")
+    early_elite = Node(0, 5, "E")
+    early_after_1 = Node(0, 6, "M")
+    early_after_2 = Node(0, 7, "M")
+
+    delayed_start = Node(1, 0, "M")
+    delayed_event_1 = Node(1, 1, "?")
+    delayed_event_2 = Node(1, 2, "?")
+    delayed_event_3 = Node(1, 3, "?")
+    delayed_rest = Node(1, 4, "R")
+    delayed_fight_1 = Node(1, 5, "M")
+    delayed_fight_2 = Node(1, 6, "M")
+    delayed_elite = Node(1, 7, "E")
+
+    early_start.children = [early_fight_1]
+    early_fight_1.children = [early_fight_2]
+    early_fight_2.children = [early_fight_3]
+    early_fight_3.children = [early_event]
+    early_event.children = [early_elite]
+    early_elite.children = [early_after_1]
+    early_after_1.children = [early_after_2]
+
+    delayed_start.children = [delayed_event_1]
+    delayed_event_1.children = [delayed_event_2]
+    delayed_event_2.children = [delayed_event_3]
+    delayed_event_3.children = [delayed_rest]
+    delayed_rest.children = [delayed_fight_1]
+    delayed_fight_1.children = [delayed_fight_2]
+    delayed_fight_2.children = [delayed_elite]
+
+    for node in [
+        early_start,
+        early_fight_1,
+        early_fight_2,
+        early_fight_3,
+        early_event,
+        early_elite,
+        early_after_1,
+        early_after_2,
+        delayed_start,
+        delayed_event_1,
+        delayed_event_2,
+        delayed_event_3,
+        delayed_rest,
+        delayed_fight_1,
+        delayed_fight_2,
+        delayed_elite,
+    ]:
+        game_map.add_node(node)
+
+    agent.game.map = game_map
+    agent.game.act = 1
+    agent.game.floor = 0
+    agent.game.current_hp = 80
+    agent.game.max_hp = 80
+    agent.game.deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash"),
+    ]
+    agent.game.hand = []
+    agent.game.monsters = []
+    agent.game.potions = []
+    agent.game.relics = ["Burning Blood"]
+    agent.game.screen = SimpleNamespace(
+        current_node=early_start,
+        next_nodes=[early_start, delayed_start],
+        boss_available=False,
+    )
+
+    action = agent.make_map_choice()
+
+    assert isinstance(action, ChooseMapNodeAction)
+    assert action.node == delayed_start

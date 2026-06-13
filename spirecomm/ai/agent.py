@@ -1247,6 +1247,8 @@ class SimpleAgent:
         min_reward = -(10**9)
         unreachable_reward = min_reward * 20
         max_elites = 10**6
+        no_elite_floor = 10**6
+        unreachable_first_elite_floor = -1
         unreachable_combat_count = -(10**6)
         minimize_elites = self._route_should_minimize_elites()
         prioritize_act1_monsters = self._route_should_prioritize_act1_monsters(
@@ -1271,6 +1273,7 @@ class SimpleAgent:
         best_rewards = {}
         best_parents = {}
         best_elite_counts = {}
+        best_first_elite_floors = {}
         best_act1_monster_counts = {}
         if current_map_node is not None:
             best_rewards[start_y] = {
@@ -1286,6 +1289,11 @@ class SimpleAgent:
                 for node in self.game.map.nodes[start_y].values()
             }
             best_elite_counts[start_y][current_map_node.x] = 0
+            best_first_elite_floors[start_y] = {
+                node.x: unreachable_first_elite_floor
+                for node in self.game.map.nodes[start_y].values()
+            }
+            best_first_elite_floors[start_y][current_map_node.x] = no_elite_floor
             best_act1_monster_counts[start_y] = {
                 node.x: unreachable_combat_count
                 for node in self.game.map.nodes[start_y].values()
@@ -1309,6 +1317,14 @@ class SimpleAgent:
                 node.x: self._future_elite_count(node, minimize_elites)
                 for node in self.game.map.nodes[0].values()
             }
+            best_first_elite_floors[0] = {
+                node.x: self._first_elite_floor(
+                    node,
+                    minimize_elites,
+                    no_elite_floor,
+                )
+                for node in self.game.map.nodes[0].values()
+            }
             best_act1_monster_counts[0] = {
                 node.x: self._future_act1_monster_count(
                     node,
@@ -1329,6 +1345,10 @@ class SimpleAgent:
                 node.x: max_elites
                 for node in self.game.map.nodes[y + 1].values()
             }
+            best_first_elite_floors[y + 1] = {
+                node.x: unreachable_first_elite_floor
+                for node in self.game.map.nodes[y + 1].values()
+            }
             best_act1_monster_counts[y + 1] = {
                 node.x: unreachable_combat_count
                 for node in self.game.map.nodes[y + 1].values()
@@ -1345,6 +1365,12 @@ class SimpleAgent:
                         best_elite_counts[y][x]
                         + self._future_elite_count(child, minimize_elites)
                     )
+                    first_elite_floor = self._updated_first_elite_floor(
+                        best_first_elite_floors[y][x],
+                        child,
+                        minimize_elites,
+                        no_elite_floor,
+                    )
                     act1_monster_count = (
                         best_act1_monster_counts[y][x]
                         + self._future_act1_monster_count(
@@ -1355,9 +1381,13 @@ class SimpleAgent:
                     if self._is_better_map_route(
                         reward=test_child_reward,
                         elite_count=elite_count,
+                        first_elite_floor=first_elite_floor,
                         act1_monster_count=act1_monster_count,
                         current_reward=best_rewards[y + 1][child.x],
                         current_elite_count=best_elite_counts[y + 1][child.x],
+                        current_first_elite_floor=best_first_elite_floors[y + 1][
+                            child.x
+                        ],
                         current_act1_monster_count=best_act1_monster_counts[y + 1][
                             child.x
                         ],
@@ -1367,6 +1397,7 @@ class SimpleAgent:
                         best_rewards[y + 1][child.x] = test_child_reward
                         best_parents[y + 1][child.x] = node.x
                         best_elite_counts[y + 1][child.x] = elite_count
+                        best_first_elite_floors[y + 1][child.x] = first_elite_floor
                         best_act1_monster_counts[y + 1][child.x] = act1_monster_count
 
                     # Log node evaluation (first few floors)
@@ -1387,6 +1418,10 @@ class SimpleAgent:
                 final_candidates,
                 key=lambda x: (
                     best_elite_counts[map_height].get(x, max_elites),
+                    -best_first_elite_floors[map_height].get(
+                        x,
+                        unreachable_first_elite_floor,
+                    ),
                     -best_act1_monster_counts[map_height].get(
                         x,
                         unreachable_combat_count,
@@ -1455,6 +1490,27 @@ class SimpleAgent:
         return 1 if getattr(node, "symbol", None) == "E" else 0
 
     @staticmethod
+    def _first_elite_floor(node, minimize_elites, no_elite_floor):
+        if not minimize_elites:
+            return no_elite_floor
+        if getattr(node, "symbol", None) == "E":
+            return getattr(node, "y", 0)
+        return no_elite_floor
+
+    @staticmethod
+    def _updated_first_elite_floor(
+        current_first_elite_floor,
+        node,
+        minimize_elites,
+        no_elite_floor,
+    ):
+        if not minimize_elites:
+            return no_elite_floor
+        if current_first_elite_floor != no_elite_floor:
+            return current_first_elite_floor
+        return SimpleAgent._first_elite_floor(node, minimize_elites, no_elite_floor)
+
+    @staticmethod
     def _future_act1_monster_count(node, prioritize_act1_monsters):
         if not prioritize_act1_monsters:
             return 0
@@ -1466,9 +1522,11 @@ class SimpleAgent:
     def _is_better_map_route(
         reward,
         elite_count,
+        first_elite_floor,
         act1_monster_count,
         current_reward,
         current_elite_count,
+        current_first_elite_floor,
         current_act1_monster_count,
         minimize_elites,
         prioritize_act1_monsters,
@@ -1476,6 +1534,8 @@ class SimpleAgent:
         if minimize_elites:
             if elite_count != current_elite_count:
                 return elite_count < current_elite_count
+            if elite_count > 0 and first_elite_floor != current_first_elite_floor:
+                return first_elite_floor > current_first_elite_floor
         if prioritize_act1_monsters:
             if act1_monster_count != current_act1_monster_count:
                 return act1_monster_count > current_act1_monster_count
