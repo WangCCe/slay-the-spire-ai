@@ -211,6 +211,46 @@ def test_mushrooms_event_fights_instead_of_taking_parasite_heal_when_no_leave():
     assert action.choice_index == 0
 
 
+def test_mushrooms_event_takes_parasite_heal_when_mid_hp_after_act1_route_damage():
+    agent = _agent_for_event(
+        "Mushrooms",
+        [
+            EventOption("Stomp", "Fight"),
+            EventOption("Eat", "Heal"),
+        ],
+        ["Stomp", "Eat"],
+        floor=8,
+        act=1,
+        hp=62,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_mushrooms_event_still_fights_when_full_hp_after_act1_route_setup():
+    agent = _agent_for_event(
+        "Mushrooms",
+        [
+            EventOption("Stomp", "Fight"),
+            EventOption("Eat", "Heal"),
+        ],
+        ["Stomp", "Eat"],
+        floor=8,
+        act=1,
+        hp=80,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+
 def test_mushrooms_event_takes_parasite_heal_when_low_hp_before_act1_boss():
     agent = _agent_for_event(
         "Mushrooms",

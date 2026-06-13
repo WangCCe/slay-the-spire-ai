@@ -495,20 +495,21 @@ class SimpleAgent:
                 current_hp = self._safe_float(raw_current_hp, 0.0)
                 max_hp = max(self._safe_float(raw_max_hp, 0.0), 1.0)
                 hp_known = raw_current_hp is not None and raw_max_hp is not None
-                low_hp_before_act1_boss = (
+                hp_pct = current_hp / max_hp if hp_known else 1.0
+                weak_hp_margin_before_act1_boss = (
                     hp_known
                     and self._safe_int(getattr(self.game, "act", 0), 0) == 1
                     and self._safe_int(getattr(self.game, "floor", 0), 0) >= 7
-                    and current_hp / max_hp <= 0.5
+                    and hp_pct <= 0.8
                 )
                 preferred_keywords = (
                     ("eat", "heal")
-                    if low_hp_before_act1_boss
+                    if weak_hp_margin_before_act1_boss
                     else ("fight", "stomp")
                 )
                 fallback_keywords = (
                     ("fight", "stomp")
-                    if low_hp_before_act1_boss
+                    if weak_hp_margin_before_act1_boss
                     else ("eat", "heal")
                 )
                 for idx, label in enumerate(labels_for_selection):
