@@ -1077,6 +1077,7 @@ class IroncladPriority(Priority):
 
     BOSS_RELIC_PRIORITY_LIST = [
         "Sozu",
+        "Black Blood",
         "Snecko Eye",
         "Philosopher's Stone",
         "Runic Dome",
@@ -1092,7 +1093,6 @@ class IroncladPriority(Priority):
         "Lizard Tail",
         "Eternal Feather",
         "Coffee Dripper",
-        "Black Blood",
         "Tiny House",
         "Black Star",
         "Orrery",

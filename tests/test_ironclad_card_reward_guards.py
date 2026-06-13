@@ -107,6 +107,18 @@ def test_ironclad_boss_relic_selection_avoids_crown_and_dripper_for_low_risk_opt
     assert best_relic.relic_id == "Black Star"
 
 
+def test_ironclad_boss_relic_selection_prefers_black_blood_over_snecko_eye():
+    relics = [
+        _relic("Snecko Eye"),
+        _relic("Tiny House"),
+        _relic("Black Blood"),
+    ]
+
+    best_relic = IroncladPriority().get_best_boss_relic(relics)
+
+    assert best_relic.relic_id == "Black Blood"
+
+
 def test_ironclad_deck_quality_treats_none_upgrades_as_base_card():
     strategy = IroncladDeckStrategy()
     context = DecisionContext(
