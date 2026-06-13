@@ -139,6 +139,46 @@ def test_forgotten_altar_avoids_lethal_sacrifice_at_critical_hp():
     assert action.choice_index == 1
 
 
+def test_shining_light_leaves_when_upgrade_damage_breaks_act1_hp_margin():
+    agent = _agent_for_event(
+        "Shining Light",
+        [
+            EventOption("Enter", "Enter"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Enter", "Leave"],
+        floor=10,
+        act=1,
+        hp=55,
+        max_hp=75,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_shining_light_enters_when_hp_margin_stays_safe():
+    agent = _agent_for_event(
+        "Shining Light",
+        [
+            EventOption("Enter", "Enter"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Enter", "Leave"],
+        floor=4,
+        act=1,
+        hp=80,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+
 def test_mushrooms_event_leaves_instead_of_fighting_before_boss():
     agent = _agent_for_event(
         "Mushrooms",
