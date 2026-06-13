@@ -3056,8 +3056,13 @@ class OptimizedAgent(SimpleAgent):
                 self._normalize_card_name(card) in act_1_foundation_cards
                 for card in pickable_cards
             )
+            act_1_rage_better_options = (
+                act_1_frontload_cards
+                | act_1_block_cards
+                | {"Armaments", "Battle Trance", "Offering", "Shockwave"}
+            )
             has_better_early_rage_option = any(
-                self._normalize_card_name(card) in act_1_frontload_cards
+                self._normalize_card_name(card) in act_1_rage_better_options
                 for card in pickable_cards
             )
             has_better_slime_frontload_option = any(

@@ -255,6 +255,41 @@ def test_ironclad_strategy_prefers_shrug_when_act1_damage_is_already_covered():
     assert action.name == "Shrug It Off"
 
 
+def test_ironclad_strategy_prefers_shrug_over_early_unsupported_rage():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Pommel Strike"),
+        _card("Twin Strike"),
+    ]
+    reward_cards = [
+        _card("Rage", cost=0),
+        _card("Clash", cost=0),
+        _card("Shrug It Off", cost=1),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=2,
+        act=1,
+        hp=73,
+        max_hp=80,
+        act_boss="Slime Boss",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Shrug It Off"
+
+
 def test_ironclad_strategy_prefers_flame_barrier_before_boss_when_block_is_thin():
     deck = [
         _card("Strike_R"),
