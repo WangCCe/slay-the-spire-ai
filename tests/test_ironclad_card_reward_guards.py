@@ -719,6 +719,40 @@ def test_ironclad_strategy_prefers_thunderclap_over_unsupported_havoc():
     assert action.name == "Thunderclap"
 
 
+def test_ironclad_strategy_prefers_thunderclap_over_havoc_with_only_burning_pact_support():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Burning Pact", upgrades=1),
+        _card("Headbutt"),
+        _card("Shrug It Off", upgrades=1),
+    ]
+    reward_cards = [
+        _card("Havoc"),
+        _card("Thunderclap"),
+        _card("Cleave"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=4,
+        hp=60,
+        max_hp=80,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Thunderclap"
+
+
 def test_ironclad_strategy_prefers_twin_strike_over_unsupported_havoc():
     deck = [
         _card("Strike_R"),

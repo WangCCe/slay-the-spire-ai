@@ -88,8 +88,8 @@ class IroncladDeckStrategy:
         'True Grit',
     }
     HAVOC_SUPPORT = {
-        'Burning Pact', 'Corruption', 'Dark Embrace', 'Feel No Pain',
-        'Fiend Fire', 'Second Wind', 'Sever Soul',
+        'Corruption', 'Dark Embrace', 'Feel No Pain', 'Fiend Fire',
+        'Second Wind', 'Sever Soul',
     }
     SELF_DAMAGE_SUPPORT = {'Offering', 'Bloodletting', 'Hemokinesis', 'Combust', 'Brutality'}
     STATUS_SUPPORT = {'Power Through', 'Wild Strike', 'Reckless Charge', 'Immolate'}

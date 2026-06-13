@@ -3006,7 +3006,6 @@ class OptimizedAgent(SimpleAgent):
                 "Whirlwind",
             }
             act_1_havoc_support = {
-                "Burning Pact",
                 "Corruption",
                 "Dark Embrace",
                 "Feel No Pain",
