@@ -1078,7 +1078,6 @@ class IroncladPriority(Priority):
     BOSS_RELIC_PRIORITY_LIST = [
         "Sozu",
         "Black Blood",
-        "Snecko Eye",
         "Philosopher's Stone",
         "Runic Dome",
         "Cursed Key",
@@ -1086,6 +1085,7 @@ class IroncladPriority(Priority):
         "Velvet Choker",
         "Ectoplasm",
         "Mark of Pain",
+        "Snecko Eye",
         "Busted Crown",
         "Empty Cage",
         "Astrolabe",
