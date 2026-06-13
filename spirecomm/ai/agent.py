@@ -986,12 +986,11 @@ class SimpleAgent:
             logging.debug(
                 f"[GRID_SCREEN] Checking for_upgrade={self.game.screen.for_upgrade if hasattr(self.game.screen, 'for_upgrade') else 'N/A'}, choose_good_card={self.choose_good_card}"
             )
-            try:
-                for_upgrade = self.game.screen.for_upgrade
-            except Exception as e:
-                logging.error(f"[GRID_SCREEN] Error accessing for_upgrade: {e}")
-                return ProceedAction()
-            if for_upgrade or self.choose_good_card:
+            screen = self.game.screen
+            for_upgrade = bool(getattr(screen, "for_upgrade", False))
+            for_purge = bool(getattr(screen, "for_purge", False))
+            for_transform = bool(getattr(screen, "for_transform", False))
+            if for_upgrade:
                 # For upgrade: pick best cards
                 logging.debug(
                     f"[GRID_SCREEN] Calling get_sorted_cards for {len(self.game.screen.cards)} cards"
@@ -1010,8 +1009,8 @@ class SimpleAgent:
                 logging.debug(
                     f"[GRID_SCREEN] Got {len(available_cards)} sorted cards: {self._card_ids_for_tracking(available_cards)}"
                 )
-            else:
-                # For purge/remove: prioritize Strike_R, then Defend_R, then others by reverse priority
+            elif for_purge or for_transform:
+                # For purge/remove/transform: prioritize Strike_R, then Defend_R, then others by reverse priority
                 strikes = [
                     c for c in self.game.screen.cards
                     if self._normalize_card_name(c) == "Strike"
@@ -1032,6 +1031,15 @@ class SimpleAgent:
                 # Combine: strikes first, then defends, then others
                 available_cards = strikes + defends + others_sorted
                 logging.debug(f"[GRID_SCREEN] Got {len(available_cards)} cards: {self._card_ids_for_tracking(available_cards)}")
+            else:
+                # Neutral grids such as Duplicator copy/obtain a card; pick the best card, not the worst removal target.
+                available_cards = self.priorities.get_sorted_cards(
+                    self.game.screen.cards,
+                    reverse=False,
+                )
+                logging.debug(
+                    f"[GRID_SCREEN] Neutral good-card grid sorted cards: {self._card_ids_for_tracking(available_cards)}"
+                )
 
             num_cards = self.game.screen.num_cards
             selected_cards = available_cards[:num_cards]

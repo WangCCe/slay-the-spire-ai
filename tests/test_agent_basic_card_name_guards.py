@@ -141,6 +141,8 @@ def test_grid_removal_prioritizes_upgraded_strike_before_defend():
             num_cards=1,
             confirm_up=False,
             for_upgrade=False,
+            for_purge=True,
+            for_transform=False,
         ),
     )
 
@@ -148,6 +150,31 @@ def test_grid_removal_prioritizes_upgraded_strike_before_defend():
 
     assert isinstance(action, CardSelectAction)
     assert action.cards == [upgraded_strike]
+
+
+def test_grid_neutral_selection_copies_good_card_instead_of_removing_strike():
+    strike = _card("Strike_R")
+    defend = _card("Defend_R")
+    feed = _card("Feed")
+    agent = _agent(
+        screen_type=ScreenType.GRID,
+        choice_available=True,
+        available_commands=["choose", "key", "click", "wait", "state"],
+        screen=SimpleNamespace(
+            cards=[strike, defend, feed],
+            selected_cards=[],
+            num_cards=1,
+            confirm_up=False,
+            for_upgrade=False,
+            for_purge=False,
+            for_transform=False,
+        ),
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CardSelectAction)
+    assert action.cards == [feed]
 
 
 def test_count_copies_in_deck_counts_upgraded_and_display_name_variants():
