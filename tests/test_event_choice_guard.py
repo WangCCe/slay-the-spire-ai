@@ -179,6 +179,46 @@ def test_shining_light_enters_when_hp_margin_stays_safe():
     assert action.choice_index == 0
 
 
+def test_cursed_tome_leaves_when_reading_breaks_act2_hp_margin():
+    agent = _agent_for_event(
+        "Cursed Tome",
+        [
+            EventOption("Read", "Read"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Read", "Leave"],
+        floor=19,
+        act=2,
+        hp=61,
+        max_hp=85,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_cursed_tome_reads_when_hp_margin_stays_safe():
+    agent = _agent_for_event(
+        "Cursed Tome",
+        [
+            EventOption("Read", "Read"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Read", "Leave"],
+        floor=19,
+        act=2,
+        hp=85,
+        max_hp=85,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+
 def test_mushrooms_event_leaves_instead_of_fighting_before_boss():
     agent = _agent_for_event(
         "Mushrooms",

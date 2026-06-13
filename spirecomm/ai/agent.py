@@ -591,6 +591,40 @@ class SimpleAgent:
                     if any(keyword in normalized_label for keyword in fallback_keywords):
                         choice_index = idx
                         break
+        elif event_id in {"Cursed Tome", "CursedTome"}:
+            raw_current_hp = getattr(self.game, "current_hp", None)
+            raw_max_hp = getattr(self.game, "max_hp", None)
+            current_hp = self._safe_float(raw_current_hp, 0.0)
+            max_hp = max(self._safe_float(raw_max_hp, 0.0), 1.0)
+            hp_known = raw_current_hp is not None and raw_max_hp is not None
+            estimated_read_damage = max_hp * 0.20
+            should_leave_before_reading = (
+                hp_known
+                and (current_hp - estimated_read_damage) / max_hp < 0.60
+                and any("read" in label.lower() for label in labels_for_selection)
+            )
+            if should_leave_before_reading:
+                preferred_keywords = ("leave", "stop")
+            elif any("take" in label.lower() for label in labels_for_selection):
+                preferred_keywords = ("take", "book")
+            else:
+                preferred_keywords = ("read", "continue")
+            fallback_keywords = (
+                ("read", "continue", "take", "book")
+                if should_leave_before_reading
+                else ("leave", "stop")
+            )
+            for idx, label in enumerate(labels_for_selection):
+                normalized_label = label.lower()
+                if any(keyword in normalized_label for keyword in preferred_keywords):
+                    choice_index = idx
+                    break
+            else:
+                for idx, label in enumerate(labels_for_selection):
+                    normalized_label = label.lower()
+                    if any(keyword in normalized_label for keyword in fallback_keywords):
+                        choice_index = idx
+                        break
         elif event_id in risky_event_ids:
             safe_keywords = ("leave", "ignore", "refuse", "decline", "move on", "skip")
             if event_id == "Masked Bandits":
