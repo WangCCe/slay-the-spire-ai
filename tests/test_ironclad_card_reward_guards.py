@@ -396,6 +396,42 @@ def test_ironclad_strategy_prefers_slime_boss_frontload_when_damage_is_thin():
     assert action.name == "Heavy Blade"
 
 
+def test_ironclad_strategy_prefers_carnage_over_unsupported_blood_for_blood_for_slime_boss():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R", upgrades=1),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2, upgrades=1),
+        _card("Clothesline", cost=2),
+        _card("Thunderclap"),
+        _card("Anger", cost=0),
+        _card("Armaments"),
+        _card("Twin Strike"),
+    ]
+    reward_cards = [
+        _card("Blood for Blood", cost=4),
+        _card("Carnage", cost=2),
+        _card("Flex", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=12,
+        act=1,
+        hp=67,
+        max_hp=80,
+        act_boss="Slime Boss",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Carnage"
+
+
 def test_ironclad_slime_boss_frontload_gap_counts_upgraded_damage_cards():
     deck = [
         _card("Strike_R"),

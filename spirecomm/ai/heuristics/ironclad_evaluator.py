@@ -74,6 +74,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         'Limit Break': 35,   # Great only after strength support exists
         'Warcry': 30,        # Low-impact Act 1 filler
         'Rupture': 25,       # Needs self-damage engine
+        'Blood for Blood': 58,  # Strong only after self-damage support lowers its cost
     }
 
     # Archetype-specific bonuses
@@ -429,6 +430,12 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
             return 24 if exhaust_support >= 2 else -22
         if card_id == 'Rupture':
             return 26 if self_damage_support >= 2 else -34
+        if card_id == 'Blood for Blood':
+            if self_damage_support >= 2:
+                return 18
+            if self_damage_support >= 1:
+                return 8
+            return -8
         if card_id == 'Flex':
             has_payoff = any(card_id in card_ids for card_id in ('Heavy Blade', 'Limit Break', 'Reaper'))
             return 12 if has_payoff else -18
