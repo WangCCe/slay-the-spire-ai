@@ -369,6 +369,43 @@ def test_masked_bandits_pays_instead_of_taking_fight():
     assert action.choice_index == 0
 
 
+def test_nloth_offers_non_core_relic_instead_of_burning_blood():
+    agent = _agent_for_event(
+        "N'loth",
+        [
+            EventOption("Offer: Burning Blood", "Offer: Burning Blood"),
+            EventOption("Offer: Runic Cube", "Offer: Runic Cube"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Offer: Burning Blood", "Offer: Runic Cube", "Leave"],
+        floor=19,
+        act=2,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_nloth_leaves_when_only_core_relic_offer_is_available():
+    agent = _agent_for_event(
+        "N'loth",
+        [
+            EventOption("Offer: Burning Blood", "Offer: Burning Blood"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Offer: Burning Blood", "Leave"],
+        floor=19,
+        act=2,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
 def test_note_for_yourself_leaves_instead_of_taking_starter_card():
     agent = _agent_for_event(
         "NoteForYourself",

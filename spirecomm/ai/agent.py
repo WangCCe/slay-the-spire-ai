@@ -658,6 +658,29 @@ class SimpleAgent:
                     if any(keyword in normalized_label for keyword in fallback_keywords):
                         choice_index = idx
                         break
+        elif event_id in {"N'loth", "Nloth", "N\u2019loth"}:
+            protected_relic_keywords = ("burning blood", "black blood")
+            leave_keywords = ("leave", "ignore", "refuse", "decline", "move on", "skip")
+            leave_index = None
+            fallback_offer_index = None
+            for idx, label in enumerate(labels_for_selection):
+                normalized_label = label.lower()
+                if leave_index is None and any(
+                    keyword in normalized_label for keyword in leave_keywords
+                ):
+                    leave_index = idx
+                if "offer" not in normalized_label:
+                    continue
+                if any(
+                    keyword in normalized_label for keyword in protected_relic_keywords
+                ):
+                    continue
+                if fallback_offer_index is None:
+                    fallback_offer_index = idx
+            if fallback_offer_index is not None:
+                choice_index = fallback_offer_index
+            elif leave_index is not None:
+                choice_index = leave_index
         elif event_id in risky_event_ids:
             safe_keywords = ("leave", "ignore", "refuse", "decline", "move on", "skip")
             if event_id == "Masked Bandits":
