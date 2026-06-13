@@ -98,6 +98,26 @@ def test_dead_adventurer_leaves_instead_of_searching_for_elite_fight():
     assert action.choice_index == 1
 
 
+def test_mausoleum_leaves_instead_of_taking_writhe_curse():
+    agent = _agent_for_event(
+        "The Mausoleum",
+        [
+            EventOption("Open Coffin", "Open Coffin"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Open Coffin", "Leave"],
+        floor=29,
+        act=2,
+        hp=42,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
 def test_mushrooms_event_leaves_instead_of_fighting_before_boss():
     agent = _agent_for_event(
         "Mushrooms",

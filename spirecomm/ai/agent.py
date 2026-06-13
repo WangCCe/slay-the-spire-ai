@@ -421,6 +421,8 @@ class SimpleAgent:
             "Note For Yourself",
             "Dead Adventurer",
             "DeadAdventurer",
+            "The Mausoleum",
+            "Mausoleum",
             "Mushrooms",
             "The Mushroom Lair",
         }
