@@ -211,6 +211,48 @@ def test_shop_screen_skips_forethought_before_act1_boss():
     assert isinstance(action, CancelAction)
 
 
+def test_shop_screen_skips_paid_rage_when_no_high_attack_density_support():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[_shop_card("Rage", price=60)],
+            relics=[],
+            potions=[],
+            purge_available=False,
+        ),
+        gold=117,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Shrug It Off", price=0),
+            _shop_card("Anger", price=0),
+            _shop_card("True Grit", price=0),
+        ],
+        act=1,
+        floor=5,
+        in_combat=False,
+        current_hp=64,
+        max_hp=80,
+        relics=[],
+        player=SimpleNamespace(energy=3, powers=[]),
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CancelAction)
+
+
 def test_shop_screen_buy_card_accepts_string_gold_and_price():
     agent = _agent_for_shop(
         screen_type=ScreenType.SHOP_SCREEN,

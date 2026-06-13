@@ -340,7 +340,13 @@ class SimpleAgent:
     def _shop_card_is_cash_worthy(self, card):
         """Shop buys need a higher bar than free reward picks."""
         card_name = self._normalize_card_name(card)
-        low_reliability_cards = {"Havoc", "Deep Breath", "Impatience", "Forethought"}
+        low_reliability_cards = {
+            "Havoc",
+            "Deep Breath",
+            "Impatience",
+            "Forethought",
+            "Rage",
+        }
         if card_name in low_reliability_cards:
             logging.info(
                 "[SHOP_SCREEN] Skipping low-reliability shop card: %s",
