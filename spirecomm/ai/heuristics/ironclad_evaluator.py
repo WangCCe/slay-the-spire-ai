@@ -46,7 +46,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         'Impervious': 72,    # High block + draw, excellent for block decks
         'Barricade': 62,     # Strong payoff, bad before block density exists
         'Entrench': 45,      # Requires block engine; dangerous speculative Act 1 pick
-        'Rage': 75,          # Excellent damage boost, especially with Strength
+        'Rage': 60,          # Situational block-per-attack; avoid overvaluing over scaling powers
         'Whirlwind': 78,     # AOE damage, synergizes with Strength
         'Battle Trance': 80,  # Key card draw, essential for consistency
         'Double Tap': 72,    # Enables powerful combos, especially with heavy hitters
