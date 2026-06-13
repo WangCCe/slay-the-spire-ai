@@ -1821,6 +1821,49 @@ def test_large_deck_reward_takes_shockwave_before_act2_boss():
     assert action.name == "Shockwave"
 
 
+def test_large_deck_reward_takes_battle_trance_before_act2_boss():
+    deck = [
+        _card("Strike_R"),
+        _card("Defend_R", upgrades=1),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Uppercut", cost=2),
+        _card("Bloodletting", cost=0),
+        _card("Pommel Strike", upgrades=1),
+        _card("Anger", cost=0),
+        _card("Headbutt"),
+        _card("Flame Barrier", cost=2),
+        _card("Dark Shackles", cost=0),
+        _card("Headbutt"),
+        _card("Shrug It Off", upgrades=1),
+        _card("Corruption", cost=3),
+        _card("Second Wind", upgrades=1),
+        _card("Carnage", cost=2),
+        _card("Iron Wave"),
+        _card("Armaments"),
+    ]
+    reward_cards = [
+        _card("Iron Wave"),
+        _card("Battle Trance", cost=0),
+        _card("Body Slam", cost=1),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=28,
+        act=2,
+        hp=64,
+        max_hp=80,
+        act_boss="Champ",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Battle Trance"
+
+
 def test_ironclad_strategy_prefers_first_disarm_before_act_2_champ():
     deck = [
         _card("Strike_R"),

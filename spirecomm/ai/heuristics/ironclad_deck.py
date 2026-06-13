@@ -41,7 +41,7 @@ class IroncladDeckStrategy:
         # Tier 1 (Excellent)
         'Reaper', 'Shrug It Off', 'Feel No Pain', 'Spot Weakness',
         'Disarm', 'Headbutt', 'Uppercut', 'Pommel Strike',
-        'Whirlwind', 'True Grit', 'Inflame',
+        'Whirlwind', 'True Grit', 'Inflame', 'Battle Trance',
         'Hemokinesis', 'Carnage', 'Anger', 'Clothesline', 'Cleave',
         'Thunderclap', 'Shockwave', 'Immolate',
     }
