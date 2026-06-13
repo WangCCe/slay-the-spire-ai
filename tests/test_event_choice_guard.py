@@ -118,6 +118,27 @@ def test_mausoleum_leaves_instead_of_taking_writhe_curse():
     assert action.choice_index == 1
 
 
+def test_forgotten_altar_avoids_lethal_sacrifice_at_critical_hp():
+    agent = _agent_for_event(
+        "Forgotten Altar",
+        [
+            EventOption("Locked", "Locked"),
+            EventOption("Sacrifice", "Sacrifice"),
+            EventOption("Desecrate", "Desecrate"),
+        ],
+        ["Sacrifice", "Desecrate"],
+        floor=20,
+        act=2,
+        hp=10,
+        max_hp=85,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
 def test_mushrooms_event_leaves_instead_of_fighting_before_boss():
     agent = _agent_for_event(
         "Mushrooms",
