@@ -165,6 +165,52 @@ def test_shop_screen_skips_low_reliability_act1_cards_after_purge():
     assert isinstance(action, CancelAction)
 
 
+def test_shop_screen_skips_forethought_before_act1_boss():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[_shop_card("Forethought", price=75)],
+            relics=[],
+            potions=[],
+            purge_available=False,
+        ),
+        gold=140,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Cleave", price=0),
+            _shop_card("Headbutt", price=0),
+            _shop_card("Shockwave", price=0),
+            _shop_card("Shrug It Off", price=0),
+            _shop_card("Burning Pact", price=0),
+            _shop_card("Second Wind", price=0),
+        ],
+        act=1,
+        floor=14,
+        act_boss="Slime Boss",
+        in_combat=False,
+        current_hp=61,
+        max_hp=80,
+        relics=[],
+        player=SimpleNamespace(energy=3, powers=[]),
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CancelAction)
+
+
 def test_shop_screen_buy_card_accepts_string_gold_and_price():
     agent = _agent_for_shop(
         screen_type=ScreenType.SHOP_SCREEN,

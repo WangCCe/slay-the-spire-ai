@@ -340,7 +340,7 @@ class SimpleAgent:
     def _shop_card_is_cash_worthy(self, card):
         """Shop buys need a higher bar than free reward picks."""
         card_name = self._normalize_card_name(card)
-        low_reliability_cards = {"Havoc", "Deep Breath", "Impatience"}
+        low_reliability_cards = {"Havoc", "Deep Breath", "Impatience", "Forethought"}
         if card_name in low_reliability_cards:
             logging.info(
                 "[SHOP_SCREEN] Skipping low-reliability shop card: %s",
@@ -2924,6 +2924,10 @@ class OptimizedAgent(SimpleAgent):
                 self._normalize_card_name(card) in act_1_frontload_cards
                 for card in pickable_cards
             )
+            has_better_slime_frontload_option = any(
+                self._normalize_card_name(card) in act_1_frontload_cards
+                for card in pickable_cards
+            )
             duplicate_anger_upgrade_options = (
                 {"Inflame", "Spot Weakness", "Feed"}
                 | act_1_block_cards
@@ -2952,6 +2956,11 @@ class OptimizedAgent(SimpleAgent):
                 and (has_power_through_support or has_act_1_boss_damage_plan)
                 and (player_hp_pct <= 0.75 or has_power_through_support)
             )
+            slow_slime_boss_utility_cards = {
+                "Burning Pact",
+                "Second Wind",
+                "Forethought",
+            }
 
             def reward_selection_score(card):
                 strategy_score = strategy_scores.get(id(card))
@@ -3048,6 +3057,11 @@ class OptimizedAgent(SimpleAgent):
                         return max(score, 94)
                     if card_name == "Power Through" and power_through_survival_gap:
                         return max(score, 104)
+                    if (
+                        card_name in slow_slime_boss_utility_cards
+                        and has_better_slime_frontload_option
+                    ):
+                        return min(score, 64)
                     if card_name in act_1_block_cards:
                         return min(score, 68)
                 return score

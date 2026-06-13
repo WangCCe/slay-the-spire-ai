@@ -309,6 +309,42 @@ def test_ironclad_slime_boss_frontload_gap_counts_upgraded_damage_cards():
     assert action.name == "Flame Barrier"
 
 
+def test_ironclad_strategy_prefers_slime_boss_headbutt_over_early_burning_pact():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Cleave"),
+        _card("Headbutt"),
+        _card("Shockwave", cost=2),
+        _card("Shrug It Off"),
+    ]
+    reward_cards = [
+        _card("Perfected Strike", cost=2),
+        _card("Headbutt"),
+        _card("Burning Pact"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=5,
+        hp=79,
+        max_hp=80,
+        act_boss="Slime Boss",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Headbutt"
+
+
 def test_ironclad_strategy_prefers_anger_over_unsupported_heavy_blade_for_slime_boss():
     deck = [
         _card("Strike_R"),
