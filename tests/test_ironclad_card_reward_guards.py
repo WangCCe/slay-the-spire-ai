@@ -1123,6 +1123,41 @@ def test_ironclad_strategy_prefers_immolate_over_armaments_before_act1_boss():
     assert action.name == "Immolate"
 
 
+def test_ironclad_strategy_prefers_first_feed_over_supported_early_havoc():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Corruption", cost=3),
+        _card("Power Through"),
+        _card("Heavy Blade", cost=2),
+        _card("Anger", cost=0, upgrades=1),
+        _card("Flex", cost=0),
+    ]
+    reward_cards = [
+        _card("Havoc"),
+        _card("Ghostly Armor"),
+        _card("Feed"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=5,
+        hp=70,
+        max_hp=80,
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Feed"
+
+
 def test_ironclad_strategy_prefers_feed_over_duplicate_demon_form_after_act1_boss():
     deck = [
         _card("Strike_R"),

@@ -2863,6 +2863,7 @@ class OptimizedAgent(SimpleAgent):
             has_power_through_support = any(
                 card_id in act_1_power_through_support for card_id in deck_ids
             )
+            feed_count = sum(1 for card_id in deck_ids if card_id == "Feed")
             havoc_count = sum(1 for card_id in deck_ids if card_id == "Havoc")
             disarm_count = sum(1 for card_id in deck_ids if card_id == "Disarm")
             has_heavy_blade_in_deck = "Heavy Blade" in deck_ids
@@ -2951,6 +2952,8 @@ class OptimizedAgent(SimpleAgent):
                         score = max(score, 78)
                     if card_name == "Power Through" and power_through_survival_gap:
                         score = max(score, 104)
+                    if card_name == "Feed" and feed_count == 0:
+                        score = max(score, 100)
                     if (
                         card_name in act_1_efficient_frontload
                         and has_heavy_blade_in_deck
