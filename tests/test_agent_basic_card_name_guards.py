@@ -6,6 +6,7 @@ from spirecomm.communication.action import (
     CardSelectAction,
     ChooseAction,
     CombatRewardAction,
+    CancelAction,
     PlayCardAction,
     PotionAction,
 )
@@ -119,6 +120,65 @@ def test_shop_purges_upgraded_strike_before_buying_good_card():
         cancel_available=False,
         proceed_available=False,
         available_commands=["choose", "potion", "key", "click", "wait", "state"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.name == "purge"
+
+
+def test_shop_skips_last_resort_purge_without_bad_removal_target():
+    agent = _agent(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[
+                _card("Havoc", price=50),
+                _card("Deep Breath", price=50),
+            ],
+            relics=[],
+            potions=[],
+            purge_available=True,
+            purge_cost=75,
+        ),
+        gold=200,
+        deck=[
+            _card("Bash"),
+            _card("Metallicize", upgrades=1),
+            _card("Shrug It Off"),
+        ],
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["cancel", "choose", "key", "click", "wait", "state"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CancelAction)
+
+
+def test_shop_still_purges_curse_without_starter_cards():
+    agent = _agent(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[
+                _card("Havoc", price=50),
+                _card("Deep Breath", price=50),
+            ],
+            relics=[],
+            potions=[],
+            purge_available=True,
+            purge_cost=75,
+        ),
+        gold=200,
+        deck=[
+            _card("Writhe"),
+            _card("Metallicize", upgrades=1),
+            _card("Shrug It Off"),
+        ],
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["cancel", "choose", "key", "click", "wait", "state"],
     )
 
     action = agent.handle_screen()

@@ -65,6 +65,25 @@ except ImportError:
 
 
 class SimpleAgent:
+    SHOP_PURGE_TARGET_KEYS = {
+        "strike",
+        "defend",
+        "ascendersbane",
+        "curseofthebell",
+        "writhe",
+        "injury",
+        "clumsy",
+        "doubt",
+        "shame",
+        "regret",
+        "pain",
+        "parasite",
+        "normality",
+        "decay",
+        "necronomicurse",
+        "pride",
+    }
+
     def __init__(self, chosen_class=PlayerClass.THE_SILENT, elite_mode=None):
         self.game = Game()
         self.errors = 0
@@ -111,6 +130,10 @@ class SimpleAgent:
         if card is None:
             return ""
         return canonical_card_name(card).replace("_", " ")
+
+    @staticmethod
+    def _compact_card_key(value):
+        return "".join(ch for ch in str(value or "") if ch.isalnum()).lower()
 
     def _card_id_for_tracking(self, card):
         card_id = getattr(card, "card_id", None)
@@ -246,6 +269,17 @@ class SimpleAgent:
         self.shop_purchase_made = True
         self._shop_purchase_signature = self._shop_state_signature(gold, screen)
         self._shop_exit_waits = 0
+
+    def _has_paid_shop_purge_target(self):
+        for card in getattr(self.game, "deck", []) or []:
+            keys = {
+                self._compact_card_key(self._normalize_card_name(card)),
+                self._compact_card_key(getattr(card, "card_id", "")),
+                self._compact_card_key(getattr(card, "name", "")),
+            }
+            if keys & self.SHOP_PURGE_TARGET_KEYS:
+                return True
+        return False
 
     def _validate_shop_cards(self, screen):
         """Validate that shop cards have required attributes."""
@@ -873,18 +907,14 @@ class SimpleAgent:
                     if screen.purge_available
                     else float("inf")
                 )
-                if screen.purge_available and gold >= purge_cost:
-                    strikes = [
-                        c for c in self.game.deck
-                        if self._normalize_card_name(c) == "Strike"
-                    ]
-                    defends = [
-                        c for c in self.game.deck
-                        if self._normalize_card_name(c) == "Defend"
-                    ]
-                    if len(strikes) >= 1 or len(defends) >= 1:
-                        self._mark_shop_purchase(gold, screen)
-                        return ChooseAction(name="purge")
+                has_paid_purge_target = self._has_paid_shop_purge_target()
+                if (
+                    screen.purge_available
+                    and gold >= purge_cost
+                    and has_paid_purge_target
+                ):
+                    self._mark_shop_purchase(gold, screen)
+                    return ChooseAction(name="purge")
 
                 # Priority 2: Buy cards that are good for the deck
                 if hasattr(self.priorities, "get_sorted_cards"):
@@ -944,9 +974,17 @@ class SimpleAgent:
                             continue
 
                 # Priority 5: Purge as last resort if we have extra gold
-                if screen.purge_available and gold >= purge_cost:
+                if (
+                    screen.purge_available
+                    and gold >= purge_cost
+                    and has_paid_purge_target
+                ):
                     self._mark_shop_purchase(gold, screen)
                     return ChooseAction(name="purge")
+                if screen.purge_available and gold >= purge_cost:
+                    logging.info(
+                        "[SHOP_SCREEN] Skipping paid purge: no starter or curse removal target"
+                    )
 
                 # No good purchases available
                 return self._exit_shop()
