@@ -1628,6 +1628,50 @@ def test_large_deck_reward_does_not_skip_strategy_good_card():
     assert action.name == "Pommel Strike"
 
 
+def test_large_deck_reward_takes_shockwave_before_act2_boss():
+    deck = [
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Deep Breath", cost=0, upgrades=1),
+        _card("Clothesline", cost=2),
+        _card("Bloodletting", cost=0),
+        _card("Sever Soul", cost=2),
+        _card("Sever Soul", cost=2),
+        _card("Intimidate", cost=0),
+        _card("Anger", cost=0),
+        _card("Sever Soul", cost=2),
+        _card("Havoc", upgrades=1),
+        _card("Impervious", cost=2),
+        _card("Clothesline", cost=2),
+        _card("Corruption", cost=3),
+        _card("Armaments"),
+        _card("Headbutt"),
+        _card("Shrug It Off"),
+    ]
+    reward_cards = [
+        _card("Shockwave", cost=2),
+        _card("Sword Boomerang"),
+        _card("Armaments"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=31,
+        act=2,
+        hp=52,
+        max_hp=80,
+        act_boss="Automaton",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Shockwave"
+
+
 def test_ironclad_strategy_prefers_first_disarm_before_act_2_champ():
     deck = [
         _card("Strike_R"),

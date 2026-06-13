@@ -43,7 +43,7 @@ class IroncladDeckStrategy:
         'Disarm', 'Headbutt', 'Uppercut', 'Pommel Strike',
         'Whirlwind', 'True Grit', 'Inflame',
         'Hemokinesis', 'Carnage', 'Anger', 'Clothesline', 'Cleave',
-        'Thunderclap', 'Immolate',
+        'Thunderclap', 'Shockwave', 'Immolate',
     }
 
     # Act 1 damage priorities
