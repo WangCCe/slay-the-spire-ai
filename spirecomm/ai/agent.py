@@ -1079,16 +1079,20 @@ class SimpleAgent:
             act = self._safe_int(getattr(self.game, "act", 1), 1)
             hp_pct = current_hp / max_hp
             is_pre_boss = floor % 17 in (15, 16)
+            is_early_act1_low_margin = act == 1 and floor <= 7 and hp_pct < 0.6
             if RestOption.REST in rest_options and (
-                hp_pct < 0.5 or (is_pre_boss and hp_pct < 0.8)
+                hp_pct < 0.5
+                or is_early_act1_low_margin
+                or (is_pre_boss and hp_pct < 0.8)
             ):
                 logging.info(
-                    "[REST_GUARD] Forcing REST hp=%s/%s hp_pct=%.1f%% floor=%s pre_boss=%s",
+                    "[REST_GUARD] Forcing REST hp=%s/%s hp_pct=%.1f%% floor=%s pre_boss=%s early_act1_low_margin=%s",
                     current_hp,
                     max_hp,
                     hp_pct * 100,
                     floor,
                     is_pre_boss,
+                    is_early_act1_low_margin,
                 )
                 return RestAction(RestOption.REST)
             if self.map_router is not None and DecisionContext is not None:

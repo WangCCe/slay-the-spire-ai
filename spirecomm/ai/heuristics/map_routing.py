@@ -383,11 +383,14 @@ class AdaptiveMapRouter:
 
     def _should_force_rest(self, context: DecisionContext) -> tuple[bool, str]:
         hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
+        act = self._non_negative_int(getattr(context, 'act', 0))
         floor = self._non_negative_int(getattr(context, 'floor', 0))
         is_pre_boss = (floor % 17) in (15, 16)
 
         if hp_pct < 0.5:
             return True, "low_hp"
+        if act == 1 and floor <= 7 and hp_pct < 0.6:
+            return True, "early_act1_low_margin"
         if is_pre_boss and hp_pct < 0.8:
             return True, "pre_boss"
         return False, ""

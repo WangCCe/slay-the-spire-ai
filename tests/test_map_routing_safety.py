@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from spirecomm.ai.agent import SimpleAgent
 from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter
-from spirecomm.communication.action import ChooseMapNodeAction
+from spirecomm.communication.action import ChooseMapNodeAction, RestAction
 from spirecomm.spire.character import PlayerClass
 from spirecomm.spire.map import Map, Node
 from spirecomm.spire.screen import RestOption
@@ -220,6 +220,54 @@ def test_map_router_pre_boss_moderate_hp_still_forces_rest():
     )
 
     assert option == RestOption.REST
+
+
+def test_map_router_early_act1_low_margin_campfire_forces_rest():
+    router = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
+    context = _context(
+        floor=6,
+        hp_pct=41 / 80,
+        deck=[
+            _card("Pommel Strike"),
+            _card("Whirlwind"),
+            _card("Disarm"),
+            _card("Bash"),
+        ],
+    )
+
+    option = router.choose_campfire_option(
+        [RestOption.REST, RestOption.SMITH],
+        context,
+    )
+
+    assert option == RestOption.REST
+
+
+def test_simple_agent_early_act1_low_margin_campfire_rests():
+    agent = SimpleAgent(chosen_class=PlayerClass.IRONCLAD, elite_mode="conservative")
+    agent.game.current_hp = 41
+    agent.game.max_hp = 80
+    agent.game.floor = 6
+    agent.game.act = 1
+    agent.game.deck = [
+        _card("Pommel Strike"),
+        _card("Whirlwind"),
+        _card("Disarm"),
+        _card("Bash"),
+    ]
+    agent.game.hand = []
+    agent.game.monsters = []
+    agent.game.potions = []
+    agent.game.relics = ["Burning Blood"]
+    agent.game.screen = SimpleNamespace(
+        rest_options=[RestOption.REST, RestOption.SMITH],
+        has_rested=False,
+    )
+
+    action = agent.choose_rest_option()
+
+    assert isinstance(action, RestAction)
+    assert action.name == RestOption.REST.name
 
 
 def test_act1_elite_readiness_accepts_string_floor():
