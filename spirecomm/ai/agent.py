@@ -94,6 +94,7 @@ class SimpleAgent:
         self._shop_purchase_signature = None
         self._leaving_shop_room = False
         self._shop_exit_waits = 0
+        self._next_grid_selection_mode = None
         self.map_route = []
         self._last_route_hp_pct = None
         self._last_route_floor = None
@@ -644,6 +645,16 @@ class SimpleAgent:
             else:
                 choice_index = option_count - 1 if event_id in legacy_last_safe_events else 0
 
+        if event_id in {"Back to Basics", "BackToBasics"}:
+            selected_label = (
+                labels_for_selection[choice_index].lower()
+                if choice_index < len(labels_for_selection)
+                else ""
+            )
+            self._next_grid_selection_mode = (
+                "remove" if "elegance" in selected_label else None
+            )
+
         logger.info(
             "[EVENT_GUARD] event=%s choices=%s screen_options=%s selected=%s choice_labels=%s screen_labels=%s",
             event_id,
@@ -1139,6 +1150,7 @@ class SimpleAgent:
             for_upgrade = bool(getattr(screen, "for_upgrade", False))
             for_purge = bool(getattr(screen, "for_purge", False))
             for_transform = bool(getattr(screen, "for_transform", False))
+            grid_selection_mode = getattr(self, "_next_grid_selection_mode", None)
             if for_upgrade:
                 # For upgrade: pick best cards
                 logging.debug(
@@ -1158,7 +1170,7 @@ class SimpleAgent:
                 logging.debug(
                     f"[GRID_SCREEN] Got {len(available_cards)} sorted cards: {self._card_ids_for_tracking(available_cards)}"
                 )
-            elif for_purge or for_transform:
+            elif for_purge or for_transform or grid_selection_mode == "remove":
                 # For purge/remove/transform: prioritize Strike_R, then Defend_R, then others by reverse priority
                 strikes = [
                     c for c in self.game.screen.cards
@@ -1180,6 +1192,8 @@ class SimpleAgent:
                 # Combine: strikes first, then defends, then others
                 available_cards = strikes + defends + others_sorted
                 logging.debug(f"[GRID_SCREEN] Got {len(available_cards)} cards: {self._card_ids_for_tracking(available_cards)}")
+                if grid_selection_mode == "remove":
+                    self._next_grid_selection_mode = None
             else:
                 # Neutral grids such as Duplicator copy/obtain a card; pick the best card, not the worst removal target.
                 available_cards = self.priorities.get_sorted_cards(

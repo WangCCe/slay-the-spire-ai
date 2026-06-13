@@ -237,6 +237,56 @@ def test_grid_neutral_selection_copies_good_card_instead_of_removing_strike():
     assert action.cards == [feed]
 
 
+def test_back_to_basics_elegance_marks_next_grid_as_removal():
+    agent = _agent(
+        screen_type=ScreenType.EVENT,
+        choice_available=True,
+        choice_list=["Elegance", "Simplicity"],
+        available_commands=["choose", "key", "click", "wait", "state"],
+        screen=SimpleNamespace(
+            event_id="Back to Basics",
+            event_name="Back to Basics",
+            options=[
+                SimpleNamespace(label="Elegance", text="Elegance"),
+                SimpleNamespace(label="Simplicity", text="Simplicity"),
+            ],
+        ),
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+    assert agent._next_grid_selection_mode == "remove"
+
+
+def test_back_to_basics_elegance_grid_removes_starter_instead_of_good_card():
+    strike = _card("Strike_R")
+    defend = _card("Defend_R")
+    fiend_fire = _card("Fiend Fire")
+    agent = _agent(
+        screen_type=ScreenType.GRID,
+        choice_available=True,
+        available_commands=["choose", "key", "click", "wait", "state"],
+        screen=SimpleNamespace(
+            cards=[fiend_fire, strike, defend],
+            selected_cards=[],
+            num_cards=1,
+            confirm_up=False,
+            for_upgrade=False,
+            for_purge=False,
+            for_transform=False,
+        ),
+    )
+    agent._next_grid_selection_mode = "remove"
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CardSelectAction)
+    assert action.cards == [strike]
+    assert agent._next_grid_selection_mode is None
+
+
 def test_count_copies_in_deck_counts_upgraded_and_display_name_variants():
     agent = _agent(
         deck=[
