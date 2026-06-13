@@ -2903,6 +2903,7 @@ class OptimizedAgent(SimpleAgent):
                 card_id in act_1_power_through_support for card_id in deck_ids
             )
             feed_count = sum(1 for card_id in deck_ids if card_id == "Feed")
+            anger_count = sum(1 for card_id in deck_ids if card_id == "Anger")
             havoc_count = sum(1 for card_id in deck_ids if card_id == "Havoc")
             disarm_count = sum(1 for card_id in deck_ids if card_id == "Disarm")
             has_heavy_blade_in_deck = "Heavy Blade" in deck_ids
@@ -2921,6 +2922,15 @@ class OptimizedAgent(SimpleAgent):
             )
             has_better_early_rage_option = any(
                 self._normalize_card_name(card) in act_1_frontload_cards
+                for card in pickable_cards
+            )
+            duplicate_anger_upgrade_options = (
+                {"Inflame", "Spot Weakness", "Feed"}
+                | act_1_block_cards
+                | {"Armaments", "Battle Trance", "Offering", "Shockwave"}
+            )
+            has_better_duplicate_anger_option = any(
+                self._normalize_card_name(card) in duplicate_anger_upgrade_options
                 for card in pickable_cards
             )
             current_hp = self._safe_float(getattr(self.game, "current_hp", 0), 0.0)
@@ -3000,6 +3010,12 @@ class OptimizedAgent(SimpleAgent):
                     ):
                         score = max(score, 86)
                     if card_name == "Havoc" and havoc_count > 0:
+                        score = min(score, 60)
+                    if (
+                        card_name == "Anger"
+                        and anger_count > 0
+                        and has_better_duplicate_anger_option
+                    ):
                         score = min(score, 60)
                     if (
                         card_name == "Havoc"
