@@ -195,6 +195,14 @@ class IroncladDeckStrategy:
                 return (False, f"Skipping duplicate Act 1 self-damage power: {card_id}")
 
         if card_id == 'Perfected Strike':
+            if self._should_take_early_perfected_strike(context, deck_size):
+                strike_sources = self._strike_name_source_count(
+                    getattr(context.game, 'deck', []) or []
+                )
+                return (
+                    True,
+                    f"Emergency Act 1 Perfected Strike frontload with {strike_sources} Strike-name sources",
+                )
             return (
                 False,
                 "Skipping Perfected Strike because this AI removes Strike-name sources",
@@ -265,6 +273,38 @@ class IroncladDeckStrategy:
             if self._card_name(deck_card) in self.ACT_1_FRONTLOAD_ATTACKS
         )
         return concrete_frontload == 0
+
+    def _should_take_early_perfected_strike(
+        self,
+        context: DecisionContext,
+        deck_size: int,
+    ) -> bool:
+        """Accept one early Perfected Strike when it solves a real Act 1 damage gap."""
+        act = self._non_negative_int(getattr(context, 'act', 0))
+        floor = self._non_negative_int(getattr(context, 'floor', 0))
+        if act != 1 or floor > 4 or deck_size > 13:
+            return False
+
+        deck = list(getattr(context.game, 'deck', []) or [])
+        deck_ids = [self._card_name(deck_card) for deck_card in deck]
+        if any(card_id == 'Perfected Strike' for card_id in deck_ids):
+            return False
+
+        strike_sources = self._strike_name_source_count(deck)
+        if strike_sources < 5:
+            return False
+
+        real_frontload_count = sum(
+            1 for card_id in deck_ids if card_id in self.ACT_1_FRONTLOAD_ATTACKS
+        )
+        return real_frontload_count <= 1
+
+    def _strike_name_source_count(self, deck: List[Card]) -> int:
+        count = 0
+        for deck_card in deck:
+            if 'strike' in self._card_name(deck_card).lower():
+                count += 1
+        return count
 
     def _act_1_card_supported(self, card: Card, context: DecisionContext) -> Tuple[bool, str]:
         """Avoid speculative Act 1 rewards before their support package exists."""

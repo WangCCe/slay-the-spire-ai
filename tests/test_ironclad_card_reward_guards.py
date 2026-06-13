@@ -1163,6 +1163,41 @@ def test_ironclad_strategy_rejects_perfected_strike_even_with_starter_strikes():
     assert "Perfected Strike" in reason
 
 
+def test_ironclad_strategy_takes_emergency_perfected_strike_before_act1_gauntlet():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Armaments"),
+        _card("Battle Trance", cost=0),
+        _card("Pummel"),
+    ]
+    reward_cards = [
+        _card("Perfected Strike", cost=2),
+        _card("Havoc"),
+        _card("Body Slam"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=3,
+        hp=67,
+        max_hp=80,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Perfected Strike"
+
+
 def test_ironclad_strategy_skips_duplicate_perfected_strike_when_alternatives_are_bad():
     deck = [
         _card("Strike_R"),
