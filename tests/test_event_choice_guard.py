@@ -5,13 +5,25 @@ from spirecomm.communication.action import ChooseAction
 from spirecomm.spire.screen import EventOption, ScreenType
 
 
-def _agent_for_event(event_id, screen_options, choice_list):
+def _agent_for_event(
+    event_id,
+    screen_options,
+    choice_list,
+    floor=1,
+    act=1,
+    hp=80,
+    max_hp=80,
+):
     agent = SimpleAgent.__new__(SimpleAgent)
     agent.game = SimpleNamespace(
         screen_type=ScreenType.EVENT,
         choice_available=True,
         choice_list=choice_list,
         available_commands=["choose"],
+        floor=floor,
+        act=act,
+        current_hp=hp,
+        max_hp=max_hp,
         screen=SimpleNamespace(
             event_id=event_id,
             event_name=event_id,
@@ -116,6 +128,26 @@ def test_mushrooms_event_fights_instead_of_taking_parasite_heal_when_no_leave():
 
     assert isinstance(action, ChooseAction)
     assert action.choice_index == 0
+
+
+def test_mushrooms_event_takes_parasite_heal_when_low_hp_before_act1_boss():
+    agent = _agent_for_event(
+        "Mushrooms",
+        [
+            EventOption("Stomp", "Fight"),
+            EventOption("Eat", "Heal"),
+        ],
+        ["Stomp", "Eat"],
+        floor=12,
+        act=1,
+        hp=28,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
 
 
 def test_masked_bandits_pays_instead_of_taking_fight():
