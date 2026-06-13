@@ -73,7 +73,7 @@ class IroncladDeckStrategy:
     SPECULATIVE_ENGINE_CARDS = {
         'Body Slam', 'Limit Break', 'Entrench', 'Barricade',
         'Feel No Pain', 'Dark Embrace', 'Rupture', 'Fire Breathing',
-        'Havoc',
+        'Havoc', 'Exhume',
     }
 
     STRENGTH_SUPPORT = {'Demon Form', 'Inflame', 'Spot Weakness', 'Flex'}
@@ -82,6 +82,11 @@ class IroncladDeckStrategy:
         'Ghostly Armor', 'Metallicize', 'Iron Wave', 'True Grit',
     }
     EXHAUST_SUPPORT = {'Corruption', 'True Grit', 'Second Wind', 'Fiend Fire', 'Sever Soul'}
+    EXHUME_SUPPORT = {
+        'Burning Pact', 'Corruption', 'Disarm', 'Feed', 'Fiend Fire',
+        'Impervious', 'Offering', 'Second Wind', 'Sever Soul', 'Shockwave',
+        'True Grit',
+    }
     HAVOC_SUPPORT = {
         'Burning Pact', 'Corruption', 'Dark Embrace', 'Feel No Pain',
         'Fiend Fire', 'Second Wind', 'Sever Soul',
@@ -291,6 +296,11 @@ class IroncladDeckStrategy:
             if count(self.HAVOC_SUPPORT) >= 1:
                 return (True, "Havoc has exhaust support")
             return (False, "Skipping Havoc without exhaust support")
+
+        if card_id == 'Exhume':
+            if count(self.EXHUME_SUPPORT) >= 1:
+                return (True, "Exhume has high-value exhaust target support")
+            return (False, "Skipping Exhume without high-value exhaust targets")
 
         if card_id == 'Rupture':
             if count(self.SELF_DAMAGE_SUPPORT) >= 2:

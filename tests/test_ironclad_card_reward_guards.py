@@ -1409,3 +1409,36 @@ def test_ironclad_strategy_prefers_first_disarm_before_act_2_champ():
 
     assert isinstance(action, CardRewardAction)
     assert action.name == "Disarm"
+
+
+def test_ironclad_strategy_skips_unsupported_exhume_before_act_1_boss():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Whirlwind", cost=-1),
+        _card("Blood for Blood", cost=3, upgrades=1),
+    ]
+    reward_cards = [
+        _card("Exhume", cost=1),
+        _card("Havoc", cost=1),
+        _card("Wild Strike", cost=1),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=3,
+        hp=67,
+        max_hp=80,
+        act=1,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CancelAction)
