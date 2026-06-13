@@ -102,6 +102,22 @@ def test_mushrooms_event_leaves_instead_of_fighting_before_boss():
     assert action.choice_index == 1
 
 
+def test_mushrooms_event_fights_instead_of_taking_parasite_heal_when_no_leave():
+    agent = _agent_for_event(
+        "Mushrooms",
+        [
+            EventOption("Stomp", "Fight"),
+            EventOption("Eat", "Heal"),
+        ],
+        ["Fight", "Heal"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+
 def test_masked_bandits_pays_instead_of_taking_fight():
     agent = _agent_for_event(
         "Masked Bandits",
