@@ -1334,6 +1334,10 @@ class SimpleAgent:
             act,
             floor,
         )
+        act1_monster_target = self._route_act1_future_monster_target(
+            context,
+            prioritize_act1_monsters,
+        )
         screen = getattr(self.game, "screen", None)
         next_nodes = getattr(screen, "next_nodes", []) or []
         at_act_start = bool(next_nodes) and getattr(next_nodes[0], "y", None) == 0
@@ -1437,6 +1441,13 @@ class SimpleAgent:
                     continue
                 for child in node.children:
                     child_priority = self._calculate_map_node_priority(child, context)
+                    if (
+                        prioritize_act1_monsters
+                        and act1_monster_target > 0
+                        and getattr(child, "symbol", None) == "M"
+                        and best_act1_monster_counts[y][x] >= act1_monster_target
+                    ):
+                        child_priority -= 160
                     test_child_reward = best_node_reward + child_priority
                     elite_count = (
                         best_elite_counts[y][x]
@@ -1470,6 +1481,7 @@ class SimpleAgent:
                         ],
                         minimize_elites=minimize_elites,
                         prioritize_act1_monsters=prioritize_act1_monsters,
+                        act1_monster_target=act1_monster_target,
                     ):
                         best_rewards[y + 1][child.x] = test_child_reward
                         best_parents[y + 1][child.x] = node.x
@@ -1499,9 +1511,12 @@ class SimpleAgent:
                         x,
                         unreachable_first_elite_floor,
                     ),
-                    -best_act1_monster_counts[map_height].get(
-                        x,
-                        unreachable_combat_count,
+                    -self._route_capped_act1_monster_count(
+                        best_act1_monster_counts[map_height].get(
+                            x,
+                            unreachable_combat_count,
+                        ),
+                        act1_monster_target,
                     ) if prioritize_act1_monsters else 0,
                     -best_rewards[map_height][x],
                 ),
@@ -1510,9 +1525,12 @@ class SimpleAgent:
             best_path[map_height] = max(
                 final_candidates,
                 key=lambda x: (
-                    best_act1_monster_counts[map_height].get(
-                        x,
-                        unreachable_combat_count,
+                    self._route_capped_act1_monster_count(
+                        best_act1_monster_counts[map_height].get(
+                            x,
+                            unreachable_combat_count,
+                        ),
+                        act1_monster_target,
                     ),
                     best_rewards[map_height][x],
                 ),
@@ -1560,6 +1578,39 @@ class SimpleAgent:
             return False
         return bool(needs_rewards(context, self._safe_int(floor, 0), hp_pct))
 
+    def _route_act1_future_monster_target(self, context, prioritize_act1_monsters):
+        if not prioritize_act1_monsters or context is None or self.map_router is None:
+            return 0
+        game = getattr(context, "game", None)
+        deck = list(getattr(game, "deck", []) or [])
+        if not deck:
+            return 0
+
+        card_name = getattr(self.map_router, "_card_name", None)
+        if callable(card_name):
+            card_names = [card_name(card) for card in deck]
+        else:
+            card_names = [
+                getattr(card, "name", getattr(card, "card_id", "")) for card in deck
+            ]
+        premium_attacks = getattr(self.map_router, "ACT1_PREMIUM_ATTACKS", set())
+        strong_blocks = getattr(self.map_router, "ACT1_STRONG_BLOCKS", set())
+        premium_count = sum(1 for name in card_names if name in premium_attacks)
+        strong_block_count = sum(1 for name in card_names if name in strong_blocks)
+        floor = self._safe_int(getattr(context, "floor", 0), 0)
+
+        if floor <= 6:
+            future_needed = max(12 - len(deck), 2 - premium_count)
+        elif floor <= 12:
+            future_needed = max(
+                14 - len(deck),
+                3 - premium_count,
+                5 - (premium_count + strong_block_count),
+            )
+        else:
+            future_needed = max(15 - len(deck), 4 - premium_count)
+        return max(1, min(3, future_needed))
+
     @staticmethod
     def _future_elite_count(node, minimize_elites):
         if not minimize_elites:
@@ -1596,6 +1647,12 @@ class SimpleAgent:
         return 1 if getattr(node, "y", 0) <= 7 else 0
 
     @staticmethod
+    def _route_capped_act1_monster_count(count, target):
+        if target <= 0:
+            return count
+        return min(count, target)
+
+    @staticmethod
     def _is_better_map_route(
         reward,
         elite_count,
@@ -1607,6 +1664,7 @@ class SimpleAgent:
         current_act1_monster_count,
         minimize_elites,
         prioritize_act1_monsters,
+        act1_monster_target=0,
     ):
         if minimize_elites:
             if elite_count != current_elite_count:
@@ -1614,8 +1672,16 @@ class SimpleAgent:
             if elite_count > 0 and first_elite_floor != current_first_elite_floor:
                 return first_elite_floor > current_first_elite_floor
         if prioritize_act1_monsters:
-            if act1_monster_count != current_act1_monster_count:
-                return act1_monster_count > current_act1_monster_count
+            capped_count = SimpleAgent._route_capped_act1_monster_count(
+                act1_monster_count,
+                act1_monster_target,
+            )
+            current_capped_count = SimpleAgent._route_capped_act1_monster_count(
+                current_act1_monster_count,
+                act1_monster_target,
+            )
+            if capped_count != current_capped_count:
+                return capped_count > current_capped_count
         return reward > current_reward
 
     def _calculate_map_node_priority(self, node, context):

@@ -507,6 +507,85 @@ def test_conservative_act1_route_prefers_early_fights_over_event_chain_when_unde
     assert action.node == fight_start
 
 
+def test_conservative_act1_route_seeks_relief_after_early_reward_target():
+    agent = SimpleAgent(chosen_class=PlayerClass.IRONCLAD, elite_mode="conservative")
+    game_map = Map()
+
+    overfight_start = Node(0, 0, "M")
+    overfight_1 = Node(0, 1, "M")
+    overfight_2 = Node(0, 2, "M")
+    overfight_3 = Node(0, 3, "M")
+    overfight_4 = Node(0, 4, "M")
+    overfight_rest = Node(0, 5, "R")
+
+    relief_start = Node(1, 0, "M")
+    relief_1 = Node(1, 1, "M")
+    relief_2 = Node(1, 2, "M")
+    relief_shop = Node(1, 3, "$")
+    relief_rest = Node(1, 4, "R")
+    relief_followup = Node(1, 5, "M")
+
+    overfight_start.children = [overfight_1]
+    overfight_1.children = [overfight_2]
+    overfight_2.children = [overfight_3]
+    overfight_3.children = [overfight_4]
+    overfight_4.children = [overfight_rest]
+
+    relief_start.children = [relief_1]
+    relief_1.children = [relief_2]
+    relief_2.children = [relief_shop]
+    relief_shop.children = [relief_rest]
+    relief_rest.children = [relief_followup]
+
+    for node in [
+        overfight_start,
+        overfight_1,
+        overfight_2,
+        overfight_3,
+        overfight_4,
+        overfight_rest,
+        relief_start,
+        relief_1,
+        relief_2,
+        relief_shop,
+        relief_rest,
+        relief_followup,
+    ]:
+        game_map.add_node(node)
+
+    agent.game.map = game_map
+    agent.game.act = 1
+    agent.game.floor = 0
+    agent.game.current_hp = 80
+    agent.game.max_hp = 80
+    agent.game.gold = 120
+    agent.game.deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash"),
+    ]
+    agent.game.hand = []
+    agent.game.monsters = []
+    agent.game.potions = []
+    agent.game.relics = ["Burning Blood"]
+    agent.game.screen = SimpleNamespace(
+        current_node=overfight_start,
+        next_nodes=[overfight_start, relief_start],
+        boss_available=False,
+    )
+
+    action = agent.make_map_choice()
+
+    assert isinstance(action, ChooseMapNodeAction)
+    assert action.node == relief_start
+
+
 def test_conservative_route_delays_forced_act1_elite_until_after_rest():
     agent = SimpleAgent(chosen_class=PlayerClass.IRONCLAD, elite_mode="conservative")
     game_map = Map()
