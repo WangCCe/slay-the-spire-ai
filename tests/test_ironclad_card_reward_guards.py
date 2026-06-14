@@ -95,6 +95,65 @@ def test_ironclad_boss_relic_selection_avoids_runic_dome_when_safe_options_exist
     assert best_relic.relic_id == "Empty Cage"
 
 
+def test_neow_colorless_reward_prefers_blind_over_deep_breath_without_frontload():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+    ]
+    reward_cards = [
+        _card("Deep Breath", cost=0),
+        _card("Flash of Steel", cost=0),
+        _card("Blind", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=0,
+        act=1,
+        act_boss="Slime Boss",
+        can_skip=False,
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Blind"
+
+
+def test_early_ironclad_upgrade_prefers_headbutt_over_deep_breath():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Deep Breath", cost=0),
+        _card("Clothesline", cost=2),
+        _card("Clothesline", cost=2),
+        _card("Headbutt"),
+    ]
+    agent = _agent_for_reward([], deck, floor=6, act=1, act_boss="Slime Boss")
+    context = DecisionContext(agent.game)
+    deep_breath = next(card for card in deck if card.name == "Deep Breath")
+    headbutt = next(card for card in deck if card.name == "Headbutt")
+
+    assert agent._score_upgrade_candidate(headbutt, context) > agent._score_upgrade_candidate(
+        deep_breath,
+        context,
+    )
+
+
 def test_ironclad_boss_relic_selection_avoids_crown_and_dripper_for_low_risk_option():
     relics = [
         _relic("Busted Crown"),

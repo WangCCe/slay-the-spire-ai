@@ -75,6 +75,7 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         'Warcry': 30,        # Low-impact Act 1 filler
         'Rupture': 25,       # Needs self-damage engine
         'Blood for Blood': 58,  # Strong only after self-damage support lowers its cost
+        'Deep Breath': 45,   # Low-impact shuffle/draw; weak as an early Ironclad plan
     }
 
     # Archetype-specific bonuses
