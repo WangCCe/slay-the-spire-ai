@@ -46,18 +46,32 @@ param(
     [switch]$CaptureBefore,
     [switch]$CaptureAfter,
     [switch]$CaptureAllScreens,
-    [string]$ScreenshotOutputDir = (Join-Path (Split-Path -Parent $PSScriptRoot) "debug_screenshots")
+    [string]$ScreenshotOutputDir = ""
 )
 
 $ErrorActionPreference = "Stop"
 
-$delegate = Join-Path $PSScriptRoot "recover_sts_menu_flow.ps1"
+$scriptRoot = if ($PSScriptRoot) {
+    $PSScriptRoot
+}
+elseif ($PSCommandPath) {
+    Split-Path -Parent $PSCommandPath
+}
+else {
+    Split-Path -Parent $MyInvocation.MyCommand.Path
+}
+
+if (-not $ScreenshotOutputDir) {
+    $ScreenshotOutputDir = Join-Path (Split-Path -Parent $scriptRoot) "debug_screenshots"
+}
+
+$delegate = Join-Path $scriptRoot "recover_sts_menu_flow.ps1"
 if (-not (Test-Path -LiteralPath $delegate)) {
     [Console]::Error.WriteLine("[recover-sts-ui] Missing delegate script: $delegate")
     exit 2
 }
 
-$captureScript = Join-Path $PSScriptRoot "capture_sts_screenshot.ps1"
+$captureScript = Join-Path $scriptRoot "capture_sts_screenshot.ps1"
 if (($CaptureBefore -or $CaptureAfter) -and -not (Test-Path -LiteralPath $captureScript)) {
     [Console]::Error.WriteLine("[recover-sts-ui] Missing capture script: $captureScript")
     exit 2
@@ -88,18 +102,18 @@ function Invoke-RecoveryScreenshot {
         [string]$Phase
     )
 
-    $captureArgs = @(
-        "-WindowTitlePattern", $WindowTitlePattern,
-        "-OutputDir", $ScreenshotOutputDir
-    )
+    $captureArgs = @{
+        WindowTitlePattern = $WindowTitlePattern
+        OutputDir = $ScreenshotOutputDir
+    }
     if ($CaptureAllScreens) {
-        $captureArgs += "-AllScreens"
+        $captureArgs.AllScreens = $true
     }
     if ($NoActivate) {
-        $captureArgs += "-NoActivate"
+        $captureArgs.NoActivate = $true
     }
     if ($DryRun) {
-        $captureArgs += "-DryRun"
+        $captureArgs.DryRun = $true
     }
 
     Write-Host "[recover-sts-ui] capture_$Phase"
