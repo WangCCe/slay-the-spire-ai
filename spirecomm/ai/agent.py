@@ -3303,6 +3303,14 @@ class OptimizedAgent(SimpleAgent):
                 ):
                     score = max(score, 108 if "champ" in act_boss else 96)
                 if (
+                    card_name == "Disarm"
+                    and self._safe_int(getattr(context, "act", 0), 0) == 1
+                    and (getattr(context, "floor", 0) or 0) <= 15
+                    and disarm_count == 0
+                    and "hexaghost" in act_boss
+                ):
+                    score = max(score, 106)
+                if (
                     card_name == "Armaments"
                     and self._safe_int(getattr(context, "act", 0), 0) >= 2
                     and armaments_count > 0

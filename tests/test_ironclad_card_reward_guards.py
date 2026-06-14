@@ -549,6 +549,42 @@ def test_ironclad_strategy_prefers_flame_barrier_before_boss_when_block_is_thin(
     assert action.name == "Flame Barrier"
 
 
+def test_ironclad_strategy_prefers_first_disarm_before_hexaghost_over_extra_shrug():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Metallicize", cost=1),
+        _card("Cleave"),
+        _card("Cleave"),
+        _card("Shrug It Off", upgrades=1),
+        _card("Pummel"),
+        _card("Armaments", upgrades=1),
+    ]
+    reward_cards = [
+        _card("Shrug It Off"),
+        _card("Disarm"),
+        _card("Sword Boomerang"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=14,
+        act=1,
+        hp=60,
+        max_hp=80,
+        act_boss="Hexaghost",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Disarm"
+
+
 def test_ironclad_strategy_prefers_slime_boss_frontload_when_damage_is_thin():
     deck = [
         _card("Strike_R"),
