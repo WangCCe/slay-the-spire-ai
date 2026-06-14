@@ -1924,6 +1924,44 @@ def test_large_deck_reward_takes_battle_trance_before_act2_boss():
     assert action.name == "Battle Trance"
 
 
+def test_act2_reward_prefers_battle_trance_over_duplicate_armaments():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R", upgrades=1),
+        _card("Bash", cost=2),
+        _card("Sever Soul", cost=2, upgrades=1),
+        _card("Cleave"),
+        _card("Clothesline", cost=2),
+        _card("Headbutt", upgrades=1),
+        _card("Armaments", upgrades=1),
+        _card("Iron Wave", upgrades=1),
+        _card("Second Wind"),
+        _card("Impervious", cost=2),
+    ]
+    reward_cards = [
+        _card("Blood for Blood", cost=3, upgrades=1),
+        _card("Battle Trance", cost=0),
+        _card("Armaments"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=18,
+        act=2,
+        hp=44,
+        max_hp=80,
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Battle Trance"
+
+
 def test_ironclad_strategy_prefers_first_disarm_before_act_2_champ():
     deck = [
         _card("Strike_R"),

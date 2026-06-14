@@ -3104,6 +3104,15 @@ class OptimizedAgent(SimpleAgent):
             anger_count = sum(1 for card_id in deck_ids if card_id == "Anger")
             havoc_count = sum(1 for card_id in deck_ids if card_id == "Havoc")
             disarm_count = sum(1 for card_id in deck_ids if card_id == "Disarm")
+            armaments_count = sum(1 for card_id in deck_ids if card_id == "Armaments")
+            battle_trance_count = sum(1 for card_id in deck_ids if card_id == "Battle Trance")
+            has_first_battle_trance_reward = (
+                battle_trance_count == 0
+                and any(
+                    self._normalize_card_name(card) == "Battle Trance"
+                    for card in pickable_cards
+                )
+            )
             has_heavy_blade_in_deck = "Heavy Blade" in deck_ids
             has_heavy_blade = "Heavy Blade" in deck_ids or any(
                 self._normalize_card_name(card) == "Heavy Blade"
@@ -3196,6 +3205,13 @@ class OptimizedAgent(SimpleAgent):
                     and disarm_count == 0
                 ):
                     score = max(score, 108 if "champ" in act_boss else 96)
+                if (
+                    card_name == "Armaments"
+                    and self._safe_int(getattr(context, "act", 0), 0) >= 2
+                    and armaments_count > 0
+                    and has_first_battle_trance_reward
+                ):
+                    score = min(score, 82)
 
                 if (
                     getattr(context, "act", 0) == 1
