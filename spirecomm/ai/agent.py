@@ -92,6 +92,7 @@ class SimpleAgent:
         self.visited_shop = False
         self.shop_purchase_made = False
         self._shop_purchase_signature = None
+        self._shop_bought_card_this_shop = False
         self._leaving_shop_room = False
         self._shop_exit_waits = 0
         self._next_grid_selection_mode = None
@@ -266,9 +267,11 @@ class SimpleAgent:
             len(getattr(screen, "potions", []) or []),
         )
 
-    def _mark_shop_purchase(self, gold, screen):
+    def _mark_shop_purchase(self, gold, screen, *, bought_card=False):
         self.shop_purchase_made = True
         self._shop_purchase_signature = self._shop_state_signature(gold, screen)
+        if bought_card:
+            self._shop_bought_card_this_shop = True
         self._shop_exit_waits = 0
 
     def _has_paid_shop_purge_target(self):
@@ -975,16 +978,19 @@ class SimpleAgent:
                 self.visited_shop = False
                 self.shop_purchase_made = False
                 self._shop_purchase_signature = None
+                self._shop_bought_card_this_shop = False
                 return self._exit_shop()
             if not self.visited_shop:
                 self.visited_shop = True
                 self.shop_purchase_made = False
                 self._shop_purchase_signature = None
+                self._shop_bought_card_this_shop = False
                 return ChooseShopkeeperAction()
             else:
                 self.visited_shop = False
                 self.shop_purchase_made = False
                 self._shop_purchase_signature = None
+                self._shop_bought_card_this_shop = False
                 return self._exit_shop()
         elif self.game.screen_type == ScreenType.REST:
             return self.choose_rest_option()
@@ -1086,11 +1092,15 @@ class SimpleAgent:
                     return ChooseAction(name="purge")
 
                 # Priority 2: Buy cards that are good for the deck
-                if hasattr(self.priorities, "get_sorted_cards"):
+                if getattr(self, "_shop_bought_card_this_shop", False):
+                    logging.info(
+                        "[SHOP_SCREEN] Skipping additional card purchases after buying a card in this shop"
+                    )
+                elif hasattr(self.priorities, "get_sorted_cards"):
                     sorted_cards = self.priorities.get_sorted_cards(valid_cards)
                     for card in sorted_cards:
                         if self._should_buy_card(card, gold, purge_cost, screen):
-                            self._mark_shop_purchase(gold, screen)
+                            self._mark_shop_purchase(gold, screen, bought_card=True)
                             return BuyCardAction(card)
                 else:
                     for card in valid_cards:
@@ -1100,7 +1110,7 @@ class SimpleAgent:
                             and gold >= price
                             and not self.priorities.should_skip(card)
                         ):
-                            self._mark_shop_purchase(gold, screen)
+                            self._mark_shop_purchase(gold, screen, bought_card=True)
                             return BuyCardAction(card)
 
                 # Priority 3: Buy useful relics (consider price and value)

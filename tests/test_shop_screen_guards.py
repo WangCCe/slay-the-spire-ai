@@ -6,6 +6,7 @@ from spirecomm.ai.priorities import IroncladPriority
 from spirecomm.communication.action import (
     BuyCardAction,
     BuyPotionAction,
+    BuyRelicAction,
     CancelAction,
     ChooseShopkeeperAction,
     ChooseAction,
@@ -20,6 +21,7 @@ def _agent_for_shop(**game_overrides):
     agent = SimpleAgent.__new__(SimpleAgent)
     agent.visited_shop = False
     agent.shop_purchase_made = False
+    agent._shop_bought_card_this_shop = False
     agent._leaving_shop_room = False
     agent._shop_exit_waits = 0
     agent.game = SimpleNamespace(**game_overrides)
@@ -121,6 +123,91 @@ def test_shop_screen_continues_buying_after_purge_state_updates():
 
     assert isinstance(second, BuyCardAction)
     assert second.name == "Offering"
+
+
+def test_shop_screen_does_not_buy_second_card_after_card_purchase_updates():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[_shop_card("Shrug It Off", price=45)],
+            relics=[],
+            potions=[],
+            purge_available=False,
+        ),
+        gold=100,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Pommel Strike", price=0),
+            _shop_card("Disarm", price=0),
+            _shop_card("Corruption", price=0),
+        ],
+        act=2,
+        floor=31,
+        in_combat=False,
+        current_hp=54,
+        max_hp=80,
+        relics=[],
+        player=SimpleNamespace(energy=4, powers=[]),
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+    agent.shop_purchase_made = True
+    agent._shop_bought_card_this_shop = True
+    agent._shop_purchase_signature = (150, False, 2, 0, 0)
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CancelAction)
+
+
+def test_shop_screen_can_buy_relic_after_card_purchase_updates():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[_shop_card("Shrug It Off", price=45)],
+            relics=[SimpleNamespace(name="Burning Blood", price=50)],
+            potions=[],
+            purge_available=False,
+        ),
+        gold=100,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Pommel Strike", price=0),
+            _shop_card("Disarm", price=0),
+            _shop_card("Corruption", price=0),
+        ],
+        act=2,
+        floor=31,
+        in_combat=False,
+        current_hp=54,
+        max_hp=80,
+        relics=[],
+        player=SimpleNamespace(energy=4, powers=[]),
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+    agent.shop_purchase_made = True
+    agent._shop_bought_card_this_shop = True
+    agent._shop_purchase_signature = (150, False, 2, 1, 0)
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, BuyRelicAction)
+    assert action.name == "Burning Blood"
 
 
 def test_shop_screen_skips_low_reliability_act1_cards_after_purge():
