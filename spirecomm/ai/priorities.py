@@ -1078,13 +1078,14 @@ class IroncladPriority(Priority):
     BOSS_RELIC_PRIORITY_LIST = [
         "Sozu",
         "Black Blood",
-        "Philosopher's Stone",
-        "Runic Dome",
         "Cursed Key",
         "Fusion Hammer",
         "Velvet Choker",
         "Ectoplasm",
         "Mark of Pain",
+        "Calling Bell",
+        "Philosopher's Stone",
+        "Runic Dome",
         "Snecko Eye",
         "Busted Crown",
         "Empty Cage",
@@ -1099,7 +1100,6 @@ class IroncladPriority(Priority):
         "Runic Cube",
         "Pandora's Box",
         "White Beast Statue",
-        "Calling Bell",
     ]
 
     # Don't fight early Act 1 elites - build power first (A20 expert consensus)

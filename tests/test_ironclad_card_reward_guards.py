@@ -143,6 +143,18 @@ def test_ironclad_boss_relic_selection_prefers_mark_of_pain_over_snecko_eye():
     assert best_relic.relic_id == "Mark of Pain"
 
 
+def test_ironclad_boss_relic_selection_prefers_calling_bell_over_philosophers_stone():
+    relics = [
+        _relic("Philosopher's Stone"),
+        _relic("Snecko Eye"),
+        _relic("Calling Bell"),
+    ]
+
+    best_relic = IroncladPriority().get_best_boss_relic(relics)
+
+    assert best_relic.relic_id == "Calling Bell"
+
+
 def test_ironclad_deck_quality_treats_none_upgrades_as_base_card():
     strategy = IroncladDeckStrategy()
     context = DecisionContext(
