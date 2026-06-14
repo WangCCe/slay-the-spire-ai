@@ -9842,6 +9842,75 @@ def test_end_turn_brutality_loses_one_hp_after_monster_damage(monkeypatch, tmp_p
     assert not trace_path.exists()
 
 
+def test_end_turn_stacked_brutality_loses_power_amount_hp(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=14,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[Power("Brutality", "Brutality", 2)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Jaw Worm",
+                monster_id="JawWorm",
+                hp=5,
+                damage=7,
+                intent=Intent.ATTACK,
+            ),
+            _monster(
+                name="Spike Slime (M)",
+                monster_id="SpikeSlime_M",
+                hp=20,
+                damage=8,
+                intent=Intent.ATTACK_DEBUFF,
+                index=1,
+            ),
+        ],
+    )
+    actual = _game(
+        floor=14,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=23,
+            max_hp=80,
+            block=0,
+            energy=3,
+            powers=[Power("Brutality", "Brutality", 2)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Jaw Worm",
+                monster_id="JawWorm",
+                hp=5,
+                damage=7,
+                intent=Intent.ATTACK,
+            ),
+            _monster(
+                name="Spike Slime (M)",
+                monster_id="SpikeSlime_M",
+                hp=20,
+                damage=8,
+                intent=Intent.ATTACK_DEBUFF,
+                index=1,
+            ),
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_regeneration_heals_player(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

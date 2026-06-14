@@ -3778,7 +3778,7 @@ def _is_shelled_parasite_attack_buff(monster: Dict[str, Any]) -> bool:
 
 
 def _brutality_start_turn_hp_loss(snapshot: Dict[str, Any]) -> int:
-    return 1 if _snapshot_power_amount(snapshot.get("player", {}), "Brutality") > 0 else 0
+    return max(0, _snapshot_power_amount(snapshot.get("player", {}), "Brutality"))
 
 
 def _regeneration_end_turn_heal(snapshot: Dict[str, Any]) -> int:
