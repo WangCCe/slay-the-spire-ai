@@ -10959,6 +10959,19 @@ def test_tungsten_rod_reduces_fast_sim_bloodletting_hp_loss(monkeypatch):
     assert result.player_hp == 78
 
 
+def test_torii_reduces_projected_small_unblocked_attack_damage():
+    context = _combat_context([], energy=0, monsters=[_red_slaver()])
+    context.game.current_hp = 31
+    context.player_hp = 31
+    context.game.player.block = 5
+    context.game.relics = [SimpleNamespace(name="Torii", relic_id="Torii")]
+
+    simulator = FastCombatSimulator(SynergyCardEvaluator())
+    state = SimulationState(context)
+
+    assert simulator._projected_hp_loss_after_block(state, incoming_damage=8, block=5) == 1
+
+
 def test_wiki_escaped_newline_exhaust_triggers_feel_no_pain(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {

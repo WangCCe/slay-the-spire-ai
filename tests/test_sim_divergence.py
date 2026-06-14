@@ -701,6 +701,49 @@ def test_tungsten_rod_reduces_bloodletting_hp_loss(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_torii_reduces_small_unblocked_end_turn_attack_damage(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=11,
+        turn=3,
+        player=SimpleNamespace(current_hp=31, max_hp=80, block=5, energy=0),
+        hand=[],
+        relics=[_relic("Torii")],
+        monsters=[
+            _monster(
+                name="Slaver",
+                monster_id="SlaverRed",
+                hp=47,
+                damage=8,
+                intent=Intent.ATTACK_DEBUFF,
+            )
+        ],
+    )
+    actual = _game(
+        floor=11,
+        turn=4,
+        player=SimpleNamespace(current_hp=30, max_hp=80, block=0, energy=3),
+        hand=[],
+        relics=[_relic("Torii")],
+        monsters=[
+            _monster(
+                name="Slaver",
+                monster_id="SlaverRed",
+                hp=47,
+                damage=8,
+                intent=Intent.ATTACK_DEBUFF,
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_player_intangible_caps_hemokinesis_hp_loss(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

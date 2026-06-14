@@ -3535,7 +3535,12 @@ def _apply_monster_regenerate_end_turn(expected: Dict[str, Any]) -> None:
             _heal_monster(expected, index, regenerate)
 
 
-def _damage_player(expected: Dict[str, Any], amount: int) -> int:
+def _damage_player(
+    expected: Dict[str, Any],
+    amount: int,
+    *,
+    attack_damage: bool = False,
+) -> int:
     if amount <= 0:
         return 0
     player = expected.get("player", {})
@@ -3546,7 +3551,10 @@ def _damage_player(expected: Dict[str, Any], amount: int) -> int:
     remaining = amount - blocked
     hp_lost = False
     if remaining > 0:
-        remaining = _effective_player_hp_loss(expected, remaining)
+        if attack_damage:
+            remaining = _effective_player_attack_damage_loss(expected, remaining)
+        else:
+            remaining = _effective_player_hp_loss(expected, remaining)
         hp_after_loss = max(0, hp_before - remaining)
         hp_lost = hp_after_loss < hp_before
         player["current_hp"] = hp_after_loss
@@ -3601,7 +3609,7 @@ def _apply_end_turn_player_damage(
         for _ in range(_monster_attack_hits(monster)):
             hp_before = _to_int(expected.get("player", {}).get("current_hp"))
             if damage > 0:
-                hp_loss_events += _damage_player(expected, damage)
+                hp_loss_events += _damage_player(expected, damage, attack_damage=True)
             hp_after = _to_int(expected.get("player", {}).get("current_hp"))
             hp_lost = max(0, hp_before - hp_after)
             if _is_shelled_parasite_attack_buff(monster):
@@ -3688,6 +3696,22 @@ def _lose_player_hp(
 def _effective_player_hp_loss(snapshot: Dict[str, Any], amount: int) -> int:
     hp_loss = max(0, _to_int(amount))
     if hp_loss > 1 and _snapshot_player_has_intangible(snapshot):
+        hp_loss = 1
+    if hp_loss > 0 and _snapshot_has_relic(snapshot, "Tungsten Rod"):
+        hp_loss = max(0, hp_loss - 1)
+    if hp_loss > 0 and _consume_player_buffer(snapshot):
+        return 0
+    return hp_loss
+
+
+def _effective_player_attack_damage_loss(
+    snapshot: Dict[str, Any],
+    amount: int,
+) -> int:
+    hp_loss = max(0, _to_int(amount))
+    if hp_loss > 1 and _snapshot_player_has_intangible(snapshot):
+        hp_loss = 1
+    if 1 < hp_loss <= 5 and _snapshot_has_relic(snapshot, "Torii"):
         hp_loss = 1
     if hp_loss > 0 and _snapshot_has_relic(snapshot, "Tungsten Rod"):
         hp_loss = max(0, hp_loss - 1)

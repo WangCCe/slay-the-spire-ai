@@ -591,6 +591,7 @@ class SimulationState:
             or self._context_relic_counter(context, 'Orichalcum') is not None
         )
         self.has_tungsten_rod = self._context_relic_counter(context, 'Tungsten Rod') is not None
+        self.has_torii = self._context_relic_counter(context, 'Torii') is not None
         self.has_the_boot = self._context_has_the_boot(context)
         self.has_bird_faced_urn = (
             self._context_relic_counter(context, 'Bird Faced Urn') is not None
@@ -1070,6 +1071,7 @@ class SimulationState:
             self.stone_calendar_counter,
             self.has_orichalcum,
             self.has_tungsten_rod,
+            self.has_torii,
             self.has_the_boot,
             self.has_bird_faced_urn,
             self.has_toy_ornithopter,
@@ -4624,6 +4626,19 @@ class FastCombatSimulator:
         return hp_loss
 
     @staticmethod
+    def _effective_player_attack_damage_loss(state: SimulationState, amount: int) -> int:
+        hp_loss = max(0, coerce_int(amount, 0))
+        if hp_loss > 1 and coerce_int(getattr(state, 'player_intangible', 0), 0) > 0:
+            hp_loss = 1
+        if 1 < hp_loss <= 5 and getattr(state, 'has_torii', False):
+            hp_loss = 1
+        if hp_loss > 0 and getattr(state, 'has_tungsten_rod', False):
+            hp_loss = max(0, hp_loss - 1)
+        if hp_loss > 0 and FastCombatSimulator._consume_player_buffer(state):
+            return 0
+        return hp_loss
+
+    @staticmethod
     def _consume_player_buffer(state: SimulationState) -> bool:
         buffer_charges = max(0, coerce_int(getattr(state, 'player_buffer', 0), 0))
         if buffer_charges <= 0:
@@ -4703,7 +4718,7 @@ class FastCombatSimulator:
                 damage -= blocked
             if damage <= 0:
                 continue
-            hp_loss += FastCombatSimulator._effective_player_hp_loss(
+            hp_loss += FastCombatSimulator._effective_player_attack_damage_loss(
                 projected_state,
                 damage,
             )
@@ -4731,6 +4746,7 @@ class FastCombatSimulator:
         amount: int,
         *,
         trigger_rupture: bool = True,
+        attack_damage: bool = False,
     ) -> int:
         damage = max(0, coerce_int(amount, 0))
         if damage <= 0:
@@ -4744,7 +4760,13 @@ class FastCombatSimulator:
             return 0
 
         hp_before = max(0, coerce_int(getattr(state, 'player_hp', 0), 0))
-        hp_loss = FastCombatSimulator._effective_player_hp_loss(state, remaining)
+        if attack_damage:
+            hp_loss = FastCombatSimulator._effective_player_attack_damage_loss(
+                state,
+                remaining,
+            )
+        else:
+            hp_loss = FastCombatSimulator._effective_player_hp_loss(state, remaining)
         if hp_loss <= 0:
             return 0
 
@@ -5008,7 +5030,12 @@ class FastCombatSimulator:
                 getattr(projected, 'player_vulnerable_added', 0),
                 getattr(projected, 'player_intangible', 0),
             ):
-                self._damage_player(projected, attack_damage, trigger_rupture=False)
+                self._damage_player(
+                    projected,
+                    attack_damage,
+                    trigger_rupture=False,
+                    attack_damage=True,
+                )
                 if projected.player_hp <= 0:
                     return total_damage
 
