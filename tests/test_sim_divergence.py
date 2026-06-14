@@ -1263,6 +1263,70 @@ def test_guardian_sharp_hide_reflection_damages_hp_without_block(monkeypatch, tm
     assert not trace_path.exists()
 
 
+def test_double_tap_attack_triggers_guardian_sharp_hide_twice(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    sever_soul = _card(
+        name="Sever Soul",
+        card_id="Sever Soul",
+        card_type=CardType.ATTACK,
+        cost=2,
+        damage=16,
+    )
+    guardian = _monster(
+        name="The Guardian",
+        monster_id="TheGuardian",
+        hp=192,
+        damage=8,
+        hits=2,
+        intent=Intent.ATTACK_BUFF,
+        powers=[Power("Sharp Hide", "Sharp Hide", 3)],
+    )
+    before = _game(
+        floor=16,
+        turn=4,
+        player=SimpleNamespace(
+            current_hp=80,
+            max_hp=80,
+            block=0,
+            energy=2,
+            powers=[Power("Double Tap", "Double Tap", 1)],
+        ),
+        hand=[sever_soul],
+        monsters=[guardian],
+    )
+
+    actual = _game(
+        floor=16,
+        turn=4,
+        player=SimpleNamespace(
+            current_hp=74,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[Power("Double Tap", "Double Tap", 1)],
+        ),
+        hand=[],
+        monsters=[
+            _monster(
+                name="The Guardian",
+                monster_id="TheGuardian",
+                hp=160,
+                damage=8,
+                hits=2,
+                intent=Intent.ATTACK_BUFF,
+                powers=[Power("Sharp Hide", "Sharp Hide", 3)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_reaper_heals_after_guardian_sharp_hide_reflection(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

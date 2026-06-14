@@ -502,7 +502,10 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                         )
                         attack_effects_resolved = True
                     if attack_effects_resolved:
-                        sharp_hide_damage = _sharp_hide_reflection_damage(before, all_targets=True)
+                        sharp_hide_damage = _sharp_hide_reflection_damage(
+                            before,
+                            all_targets=True,
+                        ) * max(1, attack_play_count)
                 else:
                     target_index = _target_index_for_action(action, game)
                     for _ in range(max(1, attack_play_count)):
@@ -527,7 +530,10 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                         _apply_card_target_debuffs(expected, card, target_index)
                         attack_effects_resolved = True
                     if attack_effects_resolved:
-                        sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
+                        sharp_hide_damage = _sharp_hide_reflection_damage(
+                            before,
+                            target_index,
+                        ) * max(1, attack_play_count)
                         _apply_feed_max_hp_gain(expected, card, target_index, before)
                 rage_block = (
                     0
