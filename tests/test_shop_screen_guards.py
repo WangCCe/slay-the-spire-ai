@@ -22,6 +22,7 @@ def _agent_for_shop(**game_overrides):
     agent.visited_shop = False
     agent.shop_purchase_made = False
     agent._shop_bought_card_this_shop = False
+    agent._shop_purged_this_shop = False
     agent._leaving_shop_room = False
     agent._shop_exit_waits = 0
     agent.game = SimpleNamespace(**game_overrides)
@@ -123,6 +124,53 @@ def test_shop_screen_continues_buying_after_purge_state_updates():
 
     assert isinstance(second, BuyCardAction)
     assert second.name == "Offering"
+
+
+def test_shop_screen_leaves_after_purge_when_only_non_priority_card_remains():
+    screen = SimpleNamespace(
+        cards=[_shop_card("Shrug It Off", price=56)],
+        relics=[],
+        potions=[],
+        purge_available=True,
+        purge_cost=75,
+    )
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=screen,
+        gold=156,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Pommel Strike", price=0),
+        ],
+        act=1,
+        floor=2,
+        in_combat=False,
+        current_hp=68,
+        max_hp=80,
+        relics=[],
+        player=SimpleNamespace(energy=3, powers=[]),
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+
+    first = agent.handle_screen()
+
+    assert isinstance(first, ChooseAction)
+    assert first.name == "purge"
+
+    agent.game.gold = 81
+    screen.purge_available = False
+
+    second = agent.handle_screen()
+
+    assert isinstance(second, CancelAction)
 
 
 def test_shop_screen_does_not_buy_second_card_after_card_purchase_updates():

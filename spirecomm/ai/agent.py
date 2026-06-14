@@ -87,6 +87,11 @@ class SimpleAgent:
         "necronomicurse",
         "pride",
     }
+    SHOP_POST_PURGE_CARD_KEYS = {
+        "offering",
+        "battletrance",
+        "shockwave",
+    }
 
     def __init__(self, chosen_class=PlayerClass.THE_SILENT, elite_mode=None):
         self.game = Game()
@@ -97,6 +102,7 @@ class SimpleAgent:
         self.shop_purchase_made = False
         self._shop_purchase_signature = None
         self._shop_bought_card_this_shop = False
+        self._shop_purged_this_shop = False
         self._leaving_shop_room = False
         self._shop_exit_waits = 0
         self._next_grid_selection_mode = None
@@ -291,11 +297,13 @@ class SimpleAgent:
             len(getattr(screen, "potions", []) or []),
         )
 
-    def _mark_shop_purchase(self, gold, screen, *, bought_card=False):
+    def _mark_shop_purchase(self, gold, screen, *, bought_card=False, bought_purge=False):
         self.shop_purchase_made = True
         self._shop_purchase_signature = self._shop_state_signature(gold, screen)
         if bought_card:
             self._shop_bought_card_this_shop = True
+        if bought_purge:
+            self._shop_purged_this_shop = True
         self._shop_exit_waits = 0
 
     def _has_paid_shop_purge_target(self):
@@ -308,6 +316,14 @@ class SimpleAgent:
             if keys & self.SHOP_PURGE_TARGET_KEYS:
                 return True
         return False
+
+    def _shop_card_is_post_purge_priority(self, card):
+        keys = {
+            self._compact_card_key(self._normalize_card_name(card)),
+            self._compact_card_key(getattr(card, "card_id", "")),
+            self._compact_card_key(getattr(card, "name", "")),
+        }
+        return bool(keys & self.SHOP_POST_PURGE_CARD_KEYS)
 
     def _validate_shop_cards(self, screen):
         """Validate that shop cards have required attributes."""
@@ -1034,18 +1050,21 @@ class SimpleAgent:
                 self.shop_purchase_made = False
                 self._shop_purchase_signature = None
                 self._shop_bought_card_this_shop = False
+                self._shop_purged_this_shop = False
                 return self._exit_shop()
             if not self.visited_shop:
                 self.visited_shop = True
                 self.shop_purchase_made = False
                 self._shop_purchase_signature = None
                 self._shop_bought_card_this_shop = False
+                self._shop_purged_this_shop = False
                 return ChooseShopkeeperAction()
             else:
                 self.visited_shop = False
                 self.shop_purchase_made = False
                 self._shop_purchase_signature = None
                 self._shop_bought_card_this_shop = False
+                self._shop_purged_this_shop = False
                 return self._exit_shop()
         elif self.game.screen_type == ScreenType.REST:
             return self.choose_rest_option()
@@ -1143,7 +1162,7 @@ class SimpleAgent:
                     and gold >= purge_cost
                     and has_paid_purge_target
                 ):
-                    self._mark_shop_purchase(gold, screen)
+                    self._mark_shop_purchase(gold, screen, bought_purge=True)
                     return ChooseAction(name="purge")
 
                 # Priority 2: Buy cards that are good for the deck
@@ -1154,6 +1173,15 @@ class SimpleAgent:
                 elif hasattr(self.priorities, "get_sorted_cards"):
                     sorted_cards = self.priorities.get_sorted_cards(valid_cards)
                     for card in sorted_cards:
+                        if (
+                            getattr(self, "_shop_purged_this_shop", False)
+                            and not self._shop_card_is_post_purge_priority(card)
+                        ):
+                            logging.info(
+                                "[SHOP_SCREEN] Skipping post-purge non-priority card: %s",
+                                self._normalize_card_name(card),
+                            )
+                            continue
                         if self._should_buy_card(card, gold, purge_cost, screen):
                             self._mark_shop_purchase(gold, screen, bought_card=True)
                             return BuyCardAction(card)
@@ -1213,7 +1241,7 @@ class SimpleAgent:
                     and gold >= purge_cost
                     and has_paid_purge_target
                 ):
-                    self._mark_shop_purchase(gold, screen)
+                    self._mark_shop_purchase(gold, screen, bought_purge=True)
                     return ChooseAction(name="purge")
                 if screen.purge_available and gold >= purge_cost:
                     logging.info(

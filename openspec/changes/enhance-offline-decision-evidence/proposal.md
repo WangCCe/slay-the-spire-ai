@@ -11,5 +11,5 @@ The offline decision comparator POC can compare fixtures and `.run` summaries, b
 
 ## Impact
 - Affected specs: offline-decision-comparator
-- Affected code: `spirecomm/ai/decision_trace.py`, `analysis_scripts/offline_decision_comparator.py`, focused tests, generated comparator report
+- Affected code: `spirecomm/ai/decision_trace.py`, `analysis_scripts/offline_decision_comparator.py`, `spirecomm/ai/agent.py`, focused tests, generated comparator report
 - Out of scope: training, tuning, large agent rewrites, and combat play sequencing comparison

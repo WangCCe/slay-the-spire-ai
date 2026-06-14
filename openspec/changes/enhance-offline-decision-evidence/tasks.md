@@ -15,10 +15,10 @@
 - [x] 3.2 Inspect ranked non-fixture issues and document whether a repair is justified.
 
 ## 4. Repair Gate
-- [ ] 4.1 If repeated high-confidence non-fixture evidence exists, implement one minimal strategy fix with a red-green regression.
+- [x] 4.1 If repeated high-confidence non-fixture evidence exists, implement one minimal strategy fix with a red-green regression.
 - [x] 4.2 If no such evidence exists, leave gameplay code unchanged and state the remaining evidence gaps. Not applicable for this report: repeated high-confidence evidence exists.
 
 ## 5. Verification
 - [x] 5.1 Run focused pytest for decision trace and offline comparator tests.
 - [x] 5.2 Run OpenSpec strict validation for this change.
-- [x] 5.3 Run broader pytest only if gameplay decision code is changed. Not required for this evidence/comparator commit.
+- [x] 5.3 Run broader pytest only if gameplay decision code is changed. Full pytest passed after the shop strategy fix.
