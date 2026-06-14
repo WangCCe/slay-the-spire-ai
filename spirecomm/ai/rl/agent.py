@@ -1177,6 +1177,18 @@ class CombatRLAgent:
         current_screen = getattr(game, 'screen_type', None)
         logger.info(f"[CombatRLAgent] screen={current_screen}, use_rl_for_combat={self.use_rl_for_combat}, rl_failure_count={self.rl_failure_count}")
 
+        if (
+            self._should_end_reviving_combat_transition(game)
+            and self._has_half_dead_awakened_one(game)
+        ):
+            from spirecomm.communication.action import EndTurnAction
+
+            self._fallback_turn_key = None
+            logger.info(
+                "[POST_COMBAT_GUARD] Awakened One revive transition; ending turn to advance revive"
+            )
+            return self._with_combat_action_context(EndTurnAction(), game)
+
         if self._is_finished_combat_transition(game):
             from spirecomm.communication.action import EndTurnAction, WaitAction
 
@@ -4476,6 +4488,19 @@ class CombatRLAgent:
             getattr(monster, "half_dead", False)
             for monster in (getattr(game, "monsters", []) or [])
         )
+
+    @classmethod
+    def _has_half_dead_awakened_one(cls, game: Game) -> bool:
+        for monster in (getattr(game, "monsters", []) or []):
+            if not getattr(monster, "half_dead", False):
+                continue
+            for value in (
+                getattr(monster, "monster_id", None),
+                getattr(monster, "name", None),
+            ):
+                if cls._normalize_identifier(value) == "awakenedone":
+                    return True
+        return False
 
     @staticmethod
     def _incoming_damage(game: Game) -> int:
