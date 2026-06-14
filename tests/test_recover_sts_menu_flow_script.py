@@ -106,7 +106,8 @@ def test_ui_recovery_script_is_canonical_wrapper():
 
     text = UI_SCRIPT.read_text(encoding="utf-8")
 
-    assert 'Join-Path $PSScriptRoot "recover_sts_menu_flow.ps1"' in text
+    assert "$scriptRoot = if ($PSScriptRoot)" in text
+    assert 'Join-Path $scriptRoot "recover_sts_menu_flow.ps1"' in text
     assert '[ValidateSet("MenuFlow", "EndTurn", "Talk")]' in text
     assert '[string]$Action = "EndTurn"' in text
 
@@ -118,9 +119,10 @@ def test_ui_recovery_wrapper_can_capture_before_and_after_clicking():
 
     assert "[switch]$CaptureBefore" in text
     assert "[switch]$CaptureAfter" in text
-    assert 'Join-Path $PSScriptRoot "capture_sts_screenshot.ps1"' in text
-    assert "-AllScreens" in text
-    assert "-OutputDir" in text
+    assert 'Join-Path $scriptRoot "capture_sts_screenshot.ps1"' in text
+    assert "OutputDir = $ScreenshotOutputDir" in text
+    assert "$captureArgs.AllScreens = $true" in text
+    assert "& $captureScript @captureArgs" in text
 
 
 def test_ui_recovery_wrapper_delegates_end_turn_action():
