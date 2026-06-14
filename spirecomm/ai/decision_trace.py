@@ -6,7 +6,7 @@ import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 TRACE_ENV = "STS_DECISION_TRACE_FILE"
@@ -42,7 +42,13 @@ def build_decision_trace_event(
         "room_type": _safe_str(getattr(game, "room_type", "")),
         "screen_type": _safe_str(getattr(game, "screen_type", "")),
         "in_combat": bool(getattr(game, "in_combat", False)),
+        "gold": _to_int(getattr(game, "gold", None)),
         "player": _player_summary(game, player),
+        "deck": [_card_summary(card) for card in _safe_iterable(getattr(game, "deck", []))],
+        "relics": [
+            _relic_summary(relic)
+            for relic in _safe_iterable(getattr(game, "relics", []))
+        ],
         "hand": [_card_summary(card) for card in _safe_iterable(getattr(game, "hand", []))],
         "monsters": [
             _monster_summary(monster)
@@ -52,6 +58,11 @@ def build_decision_trace_event(
             _potion_summary(potion)
             for potion in _safe_iterable(getattr(game, "potions", []))
         ],
+        "available_commands": [
+            _safe_str(command)
+            for command in _safe_iterable(getattr(game, "available_commands", []))
+        ],
+        "screen": _screen_summary(game),
         "action": _action_summary(action, game),
     }
 
@@ -103,6 +114,16 @@ def _card_summary(card) -> Dict[str, Any]:
         ),
         "playable": _safe_bool(getattr(card, "is_playable", None)),
         "type": _safe_str(getattr(card, "card_type", "")),
+        "price": _to_int(getattr(card, "price", None), default=0),
+    }
+
+
+def _relic_summary(relic) -> Dict[str, Any]:
+    return {
+        "name": _safe_str(getattr(relic, "name", "")),
+        "id": _safe_str(getattr(relic, "relic_id", getattr(relic, "id", ""))),
+        "counter": _to_int(getattr(relic, "counter", None), default=0),
+        "price": _to_int(getattr(relic, "price", None), default=0),
     }
 
 
@@ -126,7 +147,172 @@ def _potion_summary(potion) -> Dict[str, Any]:
         "name": _safe_str(getattr(potion, "name", "")),
         "id": _safe_str(getattr(potion, "potion_id", getattr(potion, "id", ""))),
         "can_use": _safe_bool(getattr(potion, "can_use", None)),
+        "price": _to_int(getattr(potion, "price", None), default=0),
     }
+
+
+def _screen_summary(game) -> Dict[str, Any]:
+    screen = getattr(game, "screen", None)
+    screen_type = _safe_str(getattr(game, "screen_type", ""))
+    if screen is None:
+        return {}
+
+    summary: Dict[str, Any] = {"type": screen_type}
+    if "CARD_REWARD" in screen_type:
+        summary.update(
+            {
+                "cards": [
+                    _card_summary(card)
+                    for card in _safe_iterable(getattr(screen, "cards", []))
+                ],
+                "can_bowl": _safe_bool(getattr(screen, "can_bowl", None)),
+                "can_skip": _safe_bool(getattr(screen, "can_skip", None)),
+            }
+        )
+    elif "SHOP_SCREEN" in screen_type:
+        summary.update(
+            {
+                "cards": [
+                    _card_summary(card)
+                    for card in _safe_iterable(getattr(screen, "cards", []))
+                ],
+                "relics": [
+                    _relic_summary(relic)
+                    for relic in _safe_iterable(getattr(screen, "relics", []))
+                ],
+                "potions": [
+                    _potion_summary(potion)
+                    for potion in _safe_iterable(getattr(screen, "potions", []))
+                ],
+                "purge_available": _safe_bool(getattr(screen, "purge_available", None)),
+                "purge_cost": _to_int(getattr(screen, "purge_cost", None), default=None),
+            }
+        )
+    elif "EVENT" in screen_type:
+        summary.update(
+            {
+                "event_name": _safe_str(getattr(screen, "event_name", "")),
+                "event_id": _safe_str(getattr(screen, "event_id", "")),
+                "options": [
+                    _event_option_summary(option)
+                    for option in _safe_iterable(getattr(screen, "options", []))
+                ],
+            }
+        )
+    elif "MAP" in screen_type:
+        summary.update(
+            {
+                "current_node": _node_summary(getattr(screen, "current_node", None)),
+                "next_nodes": [
+                    _node_summary(node)
+                    for node in _safe_iterable(getattr(screen, "next_nodes", []))
+                ],
+                "boss_available": _safe_bool(getattr(screen, "boss_available", None)),
+                "map": _map_summary(getattr(game, "map", None)),
+                "paths": _map_paths_summary(screen, getattr(game, "map", None)),
+            }
+        )
+    return summary
+
+
+def _event_option_summary(option) -> Dict[str, Any]:
+    return {
+        "text": _safe_str(getattr(option, "text", "")),
+        "label": _safe_str(getattr(option, "label", "")),
+        "disabled": _safe_bool(getattr(option, "disabled", None)),
+        "choice_index": _to_int(getattr(option, "choice_index", None), default=None),
+    }
+
+
+def _node_summary(node) -> Optional[Dict[str, Any]]:
+    if node is None:
+        return None
+    return {
+        "x": _to_int(getattr(node, "x", None), default=None),
+        "y": _to_int(getattr(node, "y", None), default=None),
+        "symbol": _safe_str(getattr(node, "symbol", "")),
+    }
+
+
+def _map_summary(dungeon_map) -> Dict[str, Any]:
+    nodes_by_y = getattr(dungeon_map, "nodes", None)
+    if not isinstance(nodes_by_y, dict):
+        return {"nodes": []}
+
+    nodes = []
+    for y in sorted(nodes_by_y):
+        row = nodes_by_y.get(y)
+        if not isinstance(row, dict):
+            continue
+        for x in sorted(row):
+            node = row.get(x)
+            node_summary = _node_summary(node)
+            if node_summary is None:
+                continue
+            node_summary["children"] = [
+                {
+                    "x": _to_int(getattr(child, "x", None), default=None),
+                    "y": _to_int(getattr(child, "y", None), default=None),
+                }
+                for child in _safe_iterable(getattr(node, "children", []))
+            ]
+            nodes.append(node_summary)
+    return {"nodes": nodes}
+
+
+def _map_paths_summary(
+    screen,
+    dungeon_map=None,
+    max_depth: int = 6,
+    max_paths_per_choice: int = 4,
+) -> List[Dict[str, Any]]:
+    paths: List[Dict[str, Any]] = []
+    next_nodes = list(_safe_iterable(getattr(screen, "next_nodes", [])))
+    for choice, node in enumerate(next_nodes):
+        node = _resolve_map_node(dungeon_map, node) or node
+        choice_paths: List[List[Any]] = []
+        _collect_paths(node, [], choice_paths, max_depth=max_depth, max_paths=max_paths_per_choice)
+        for path in choice_paths:
+            node_labels = [_safe_str(getattr(path_node, "symbol", "")) for path_node in path]
+            paths.append(
+                {
+                    "choice": choice,
+                    "label": " -> ".join(
+                        f"{getattr(path_node, 'symbol', '')}@{getattr(path_node, 'x', '?')},{getattr(path_node, 'y', '?')}"
+                        for path_node in path
+                    ),
+                    "nodes": node_labels,
+                }
+            )
+    return paths
+
+
+def _resolve_map_node(dungeon_map, node):
+    if node is None:
+        return None
+    nodes_by_y = getattr(dungeon_map, "nodes", None)
+    if not isinstance(nodes_by_y, dict):
+        return None
+    y = getattr(node, "y", None)
+    x = getattr(node, "x", None)
+    row = nodes_by_y.get(y)
+    if not isinstance(row, dict):
+        return None
+    return row.get(x)
+
+
+def _collect_paths(node, prefix: List[Any], paths: List[List[Any]], max_depth: int, max_paths: int) -> None:
+    if node is None or len(paths) >= max_paths:
+        return
+    current = prefix + [node]
+    children = list(_safe_iterable(getattr(node, "children", [])))
+    if not children or len(current) >= max_depth:
+        paths.append(current)
+        return
+    for child in children:
+        _collect_paths(child, current, paths, max_depth=max_depth, max_paths=max_paths)
+        if len(paths) >= max_paths:
+            break
 
 
 def _action_summary(action, game) -> Dict[str, Any]:
@@ -134,7 +320,7 @@ def _action_summary(action, game) -> Dict[str, Any]:
         "type": type(action).__name__ if action is not None else None,
         "command": _safe_str(getattr(action, "command", "")),
     }
-    for attr in ("card_index", "target_index", "use"):
+    for attr in ("card_index", "target_index", "choice_index", "name", "use"):
         if hasattr(action, attr):
             summary[attr] = _json_scalar(getattr(action, attr))
 
@@ -162,6 +348,19 @@ def _action_summary(action, game) -> Dict[str, Any]:
             potion = potions[potion_index]
     if potion is not None:
         summary["potion"] = _potion_summary(potion)
+
+    node = getattr(action, "node", None)
+    if node is not None:
+        summary["node"] = _node_summary(node)
+        next_nodes = list(_safe_iterable(getattr(getattr(game, "screen", None), "next_nodes", [])))
+        try:
+            summary["choice_index"] = next_nodes.index(node)
+        except ValueError:
+            pass
+
+    card_to_purge = getattr(action, "card_to_purge", None)
+    if card_to_purge is not None:
+        summary["card_to_purge"] = _card_summary(card_to_purge)
 
     return summary
 

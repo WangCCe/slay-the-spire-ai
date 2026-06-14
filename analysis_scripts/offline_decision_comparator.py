@@ -235,7 +235,11 @@ def load_run_samples(path: Path | str, limit: Optional[int] = None) -> List[Deci
     return samples[:limit] if limit else samples
 
 
-def load_jsonl_samples(path: Path | str, tail: int = 2000) -> List[DecisionSample]:
+def load_jsonl_samples(
+    path: Path | str,
+    tail: int = 2000,
+    since_unix: Optional[float] = None,
+) -> List[DecisionSample]:
     rows: deque[str] = deque(maxlen=max(1, tail))
     with Path(path).open("r", encoding="utf-8", errors="replace") as handle:
         for line in handle:
@@ -247,6 +251,10 @@ def load_jsonl_samples(path: Path | str, tail: int = 2000) -> List[DecisionSampl
             event = json.loads(line)
         except json.JSONDecodeError:
             continue
+        if since_unix is not None:
+            event_time = _to_float(event.get("unix_time"), default=None)
+            if event_time is None or event_time < since_unix:
+                continue
         sample = _sample_from_trace_event(event, index)
         if sample:
             samples.append(sample)
@@ -282,15 +290,15 @@ def compare_samples(samples: Iterable[DecisionSample]) -> List[ComparisonRow]:
 def rank_issues(rows: Sequence[ComparisonRow], max_issues: int = 5) -> List[ComparisonRow]:
     priority = {"shop": 0, "event": 1, "route": 2, "card_reward": 3}
     confidence_score = {"high": 0, "medium": 1, "low": 2}
-    groups: Dict[tuple[str, str, str], List[ComparisonRow]] = {}
+    groups: Dict[tuple[str, str, str], Dict[tuple[str, str, Optional[int], str, str, str], ComparisonRow]] = {}
     for row in rows:
         if row.match or row.confidence not in {"high", "medium"}:
             continue
         if _is_fixture_source(row.source):
             continue
-        groups.setdefault(_issue_signature(row), []).append(row)
+        groups.setdefault(_issue_signature(row), {}).setdefault(_issue_occurrence_key(row), row)
 
-    repeated_groups = [members for members in groups.values() if len(members) >= 2]
+    repeated_groups = [list(members_by_occurrence.values()) for members_by_occurrence in groups.values() if len(members_by_occurrence) >= 2]
     repeated_groups.sort(
         key=lambda members: (
             confidence_score.get(_best_confidence(members), 3),
@@ -379,15 +387,19 @@ def render_markdown_report(
     else:
         lines.append("No repeated high-confidence operating-decision fix is recommended yet.")
 
-    lines.extend(
-        [
-            "",
-            "## Repair Gate",
-            "",
-            "No gameplay-code fix is applied. Treat these rows as candidates for later test-first review only when they repeat, remain high confidence, and are relevant to the first Ironclad win objective.",
-            "",
-        ]
-    )
+    lines.extend(["", "## Repair Gate", ""])
+    if issue_rows:
+        lines.append(
+            "Repair is justified by repeated high-confidence non-fixture evidence. "
+            "This report does not change gameplay code; apply one minimal strategy fix test-first, "
+            "starting from the top-ranked candidate."
+        )
+    else:
+        lines.append(
+            "No gameplay-code fix is applied. No repeated high-confidence non-fixture operating-decision "
+            "candidate is available yet."
+        )
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -395,6 +407,8 @@ def build_report(
     fixture_paths: Sequence[Path],
     run_paths: Sequence[Path],
     trace_paths: Sequence[Path],
+    trace_tail: int = 2000,
+    since_unix: Optional[float] = None,
 ) -> str:
     samples: List[DecisionSample] = []
     for path in fixture_paths:
@@ -402,7 +416,7 @@ def build_report(
     for path in run_paths:
         samples.extend(load_run_samples(path))
     for path in trace_paths:
-        samples.extend(load_jsonl_samples(path))
+        samples.extend(load_jsonl_samples(path, tail=trace_tail, since_unix=since_unix))
     rows = compare_samples(samples)
     return render_markdown_report(rows, rank_issues(rows))
 
@@ -412,10 +426,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--fixture", action="append", type=Path, default=[])
     parser.add_argument("--run", action="append", type=Path, default=[])
     parser.add_argument("--trace", action="append", type=Path, default=[])
+    parser.add_argument("--trace-tail", type=int, default=2000)
+    parser.add_argument("--since-unix", type=float)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
 
-    report = build_report(args.fixture, args.run, args.trace)
+    report = build_report(
+        args.fixture,
+        args.run,
+        args.trace,
+        trace_tail=args.trace_tail,
+        since_unix=args.since_unix,
+    )
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(report, encoding="utf-8")
@@ -439,7 +461,8 @@ def _sample_from_mapping(item: Dict[str, Any]) -> DecisionSample:
 
 
 def _sample_from_trace_event(event: Dict[str, Any], index: int) -> Optional[DecisionSample]:
-    screen_type = str(event.get("screen_type") or "")
+    screen = _as_mapping(event.get("screen"))
+    screen_type = str(event.get("screen_type") or screen.get("type") or "")
     category = ""
     if "SHOP_SCREEN" in screen_type:
         category = "shop"
@@ -453,6 +476,15 @@ def _sample_from_trace_event(event: Dict[str, Any], index: int) -> Optional[Deci
         return None
 
     action = dict(event.get("action") or {})
+    if category == "card_reward":
+        return _trace_card_reward_sample(event, screen, action, index)
+    if category == "shop":
+        return _trace_shop_sample(event, screen, action, index)
+    if category == "event":
+        return _trace_event_sample(event, screen, action, index)
+    if category == "route":
+        return _trace_route_sample(event, screen, action, index)
+
     return DecisionSample(
         sample_id=f"trace:{index}",
         category=category,
@@ -464,6 +496,273 @@ def _sample_from_trace_event(event: Dict[str, Any], index: int) -> Optional[Deci
         context={"trace_event": event},
         limitations=["trace row lacks normalized operating-decision context"],
     )
+
+
+def _trace_card_reward_sample(
+    event: Dict[str, Any],
+    screen: Dict[str, Any],
+    action: Dict[str, Any],
+    index: int,
+) -> DecisionSample:
+    offered = [_item_name(card) for card in _as_list(screen.get("cards"))]
+    deck = [_item_name(card) for card in _as_list(event.get("deck"))]
+    action_name = _action_name(action)
+    action_type = str(action.get("type") or "")
+    if action_type == "CancelAction" or _normalize_name(action_name) == "skip":
+        our_choice = {"kind": "skip", "name": "skip"}
+    elif _normalize_name(action_name) == "bowl":
+        our_choice = {"kind": "bowl", "name": "bowl"}
+    else:
+        our_choice = {"kind": "take", "name": action_name}
+
+    limitations = []
+    if not offered:
+        limitations.append("missing card reward options")
+    if "deck" not in event:
+        limitations.append("missing deck snapshot at reward time")
+    evidence_quality = "complete" if not limitations else "partial"
+    return DecisionSample(
+        sample_id=f"trace:{index}",
+        category="card_reward",
+        source="decision_trace",
+        floor=_to_int(event.get("floor"), default=None),
+        act=_to_int(event.get("act"), default=None),
+        evidence_quality=evidence_quality,
+        our_choice=our_choice,
+        context={
+            "offered": offered,
+            "deck": deck,
+            "can_skip": bool(screen.get("can_skip", True)),
+            "can_bowl": bool(screen.get("can_bowl", False)),
+        },
+        limitations=limitations,
+    )
+
+
+def _trace_shop_sample(
+    event: Dict[str, Any],
+    screen: Dict[str, Any],
+    action: Dict[str, Any],
+    index: int,
+) -> DecisionSample:
+    action_type = str(action.get("type") or "")
+    action_name = _action_name(action)
+    if action_type == "BuyCardAction":
+        our_choice = {"kind": "buy_card", "name": action_name}
+    elif action_type == "BuyPurgeAction" or _normalize_name(action_name) == "purge":
+        purge_target = _item_name(action.get("card_to_purge")) or action_name or "purge"
+        our_choice = {"kind": "purge", "name": purge_target}
+    elif action_type in {"BuyRelicAction", "BuyPotionAction"}:
+        our_choice = {"kind": "purchase", "name": action_name}
+    elif action_type in {"LeaveAction", "CancelAction"}:
+        our_choice = {"kind": "leave", "name": "leave"}
+    else:
+        our_choice = {"kind": "action", "name": action_name or str(action.get("command") or "")}
+
+    required_screen_keys = {"cards", "relics", "potions", "purge_available", "purge_cost"}
+    limitations = []
+    missing_screen = sorted(key for key in required_screen_keys if key not in screen)
+    if missing_screen:
+        limitations.append(f"missing shop screen fields: {', '.join(missing_screen)}")
+    if "gold" not in event:
+        limitations.append("missing gold at shop decision time")
+    if "deck" not in event:
+        limitations.append("missing deck snapshot at shop decision time")
+
+    evidence_quality = "complete" if not limitations else "partial"
+    return DecisionSample(
+        sample_id=f"trace:{index}",
+        category="shop",
+        source="decision_trace",
+        floor=_to_int(event.get("floor"), default=None),
+        act=_to_int(event.get("act"), default=None),
+        evidence_quality=evidence_quality,
+        our_choice=our_choice,
+        context={
+            "gold": _to_int(event.get("gold"), 0) or 0,
+            "purge_available": bool(screen.get("purge_available")),
+            "purge_cost": _to_int(screen.get("purge_cost"), 10**9) or 10**9,
+            "deck": [_item_name(card) for card in _as_list(event.get("deck"))],
+            "cards": [_priced_item(card) for card in _as_list(screen.get("cards"))],
+            "relics": [_priced_item(relic) for relic in _as_list(screen.get("relics"))],
+            "potions": [_priced_item(potion) for potion in _as_list(screen.get("potions"))],
+        },
+        limitations=limitations,
+    )
+
+
+def _trace_event_sample(
+    event: Dict[str, Any],
+    screen: Dict[str, Any],
+    action: Dict[str, Any],
+    index: int,
+) -> DecisionSample:
+    options = [
+        str(option.get("label") or option.get("text") or option.get("choice_index") or option_index)
+        for option_index, option in enumerate(_as_mapping_list(screen.get("options")))
+    ]
+    choice_index = _to_int(action.get("choice_index"), default=0) or 0
+    player = _as_mapping(event.get("player"))
+    limitations = []
+    if not screen.get("event_name"):
+        limitations.append("missing event name")
+    if not options:
+        limitations.append("missing event option labels")
+    if player.get("current_hp") is None or player.get("max_hp") is None:
+        limitations.append("missing hp at event decision time")
+    if "relics" not in event:
+        limitations.append("missing relic snapshot at event decision time")
+
+    evidence_quality = "complete" if not limitations else "partial"
+    return DecisionSample(
+        sample_id=f"trace:{index}",
+        category="event",
+        source="decision_trace",
+        floor=_to_int(event.get("floor"), default=None),
+        act=_to_int(event.get("act"), default=None),
+        evidence_quality=evidence_quality,
+        our_choice={
+            "kind": "choose",
+            "index": choice_index,
+            "label": _choice_label(options, choice_index),
+        },
+        context={
+            "event_name": screen.get("event_name") or "",
+            "choices": options,
+            "current_hp": _to_int(player.get("current_hp"), default=None),
+            "max_hp": _to_int(player.get("max_hp"), default=None),
+            "relics": [_item_name(relic) for relic in _as_list(event.get("relics"))],
+        },
+        limitations=limitations,
+    )
+
+
+def _trace_route_sample(
+    event: Dict[str, Any],
+    screen: Dict[str, Any],
+    action: Dict[str, Any],
+    index: int,
+) -> DecisionSample:
+    player = _as_mapping(event.get("player"))
+    paths, has_route_context = _route_paths_from_trace_screen(screen)
+    choice_index = _to_int(action.get("choice_index"), default=0) or 0
+    limitations = []
+    if not paths or not has_route_context:
+        limitations.append("missing route candidate paths at decision time")
+    if player.get("current_hp") is None or player.get("max_hp") is None:
+        limitations.append("missing hp at route decision time")
+    if "gold" not in event:
+        limitations.append("missing gold at route decision time")
+    if "relics" not in event:
+        limitations.append("missing relic snapshot at route decision time")
+
+    evidence_quality = "complete" if not limitations else "partial"
+    return DecisionSample(
+        sample_id=f"trace:{index}",
+        category="route",
+        source="decision_trace",
+        floor=_to_int(event.get("floor"), default=None),
+        act=_to_int(event.get("act"), default=None),
+        evidence_quality=evidence_quality,
+        our_choice={"kind": "map_node", "choice": choice_index},
+        context={
+            "paths": paths,
+            "current_hp": _to_int(player.get("current_hp"), default=None),
+            "max_hp": _to_int(player.get("max_hp"), default=None),
+            "gold": _to_int(event.get("gold"), default=0) or 0,
+            "relics": [_item_name(relic) for relic in _as_list(event.get("relics"))],
+        },
+        limitations=limitations,
+    )
+
+
+def _route_paths_from_trace_screen(screen: Dict[str, Any]) -> tuple[List[Dict[str, Any]], bool]:
+    explicit_paths = [
+        {
+            "choice": _to_int(path.get("choice"), default=path_index),
+            "label": path.get("label") or f"choice {path_index}",
+            "nodes": [str(node) for node in _as_list(path.get("nodes"))],
+        }
+        for path_index, path in enumerate(_as_mapping_list(screen.get("paths")))
+    ]
+    if explicit_paths and any(len(path["nodes"]) > 1 for path in explicit_paths):
+        return explicit_paths, True
+
+    reconstructed = _reconstruct_route_paths_from_map(screen)
+    if reconstructed:
+        return reconstructed, True
+    return explicit_paths, False
+
+
+def _reconstruct_route_paths_from_map(
+    screen: Dict[str, Any],
+    max_depth: int = 6,
+    max_paths_per_choice: int = 4,
+) -> List[Dict[str, Any]]:
+    nodes_by_coord = _trace_map_nodes_by_coord(screen)
+    if not nodes_by_coord:
+        return []
+
+    paths: List[Dict[str, Any]] = []
+    for choice, next_node in enumerate(_as_mapping_list(screen.get("next_nodes"))):
+        start = nodes_by_coord.get(_trace_node_key(next_node))
+        if not start:
+            continue
+        collected: List[List[Dict[str, Any]]] = []
+        _collect_trace_route_paths(start, nodes_by_coord, [], collected, max_depth, max_paths_per_choice)
+        for path in collected:
+            paths.append(
+                {
+                    "choice": choice,
+                    "label": " -> ".join(_trace_node_label(node) for node in path),
+                    "nodes": [str(node.get("symbol") or "") for node in path],
+                }
+            )
+    return paths
+
+
+def _trace_map_nodes_by_coord(screen: Dict[str, Any]) -> Dict[tuple[Optional[int], Optional[int]], Dict[str, Any]]:
+    map_summary = _as_mapping(screen.get("map"))
+    nodes = {}
+    for node in _as_mapping_list(map_summary.get("nodes")):
+        nodes[_trace_node_key(node)] = node
+    return nodes
+
+
+def _trace_node_key(node: Dict[str, Any]) -> tuple[Optional[int], Optional[int]]:
+    return (
+        _to_int(node.get("x"), default=None),
+        _to_int(node.get("y"), default=None),
+    )
+
+
+def _trace_node_label(node: Dict[str, Any]) -> str:
+    return f"{node.get('symbol') or ''}@{node.get('x')},{node.get('y')}"
+
+
+def _collect_trace_route_paths(
+    node: Dict[str, Any],
+    nodes_by_coord: Dict[tuple[Optional[int], Optional[int]], Dict[str, Any]],
+    prefix: List[Dict[str, Any]],
+    paths: List[List[Dict[str, Any]]],
+    max_depth: int,
+    max_paths: int,
+) -> None:
+    if len(paths) >= max_paths:
+        return
+    current = prefix + [node]
+    children = [
+        nodes_by_coord.get(_trace_node_key(child))
+        for child in _as_mapping_list(node.get("children"))
+    ]
+    children = [child for child in children if child is not None]
+    if not children or len(current) >= max_depth:
+        paths.append(current)
+        return
+    for child in children:
+        _collect_trace_route_paths(child, nodes_by_coord, current, paths, max_depth, max_paths)
+        if len(paths) >= max_paths:
+            break
 
 
 def _reference_for_sample(sample: DecisionSample) -> ReferenceDecision:
@@ -713,6 +1012,42 @@ def _as_list(value: Any) -> List[Any]:
     return value if isinstance(value, list) else []
 
 
+def _as_mapping(value: Any) -> Dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _as_mapping_list(value: Any) -> List[Dict[str, Any]]:
+    return [item for item in _as_list(value) if isinstance(item, dict)]
+
+
+def _item_name(value: Any) -> str:
+    if isinstance(value, dict):
+        return str(value.get("name") or value.get("id") or "")
+    return str(value or "")
+
+
+def _priced_item(value: Any) -> Dict[str, Any]:
+    mapping = _as_mapping(value)
+    return {
+        "name": str(mapping.get("name") or mapping.get("id") or ""),
+        "id": str(mapping.get("id") or mapping.get("name") or ""),
+        "price": _to_int(mapping.get("price"), default=0) or 0,
+    }
+
+
+def _action_name(action: Dict[str, Any]) -> str:
+    card = _as_mapping(action.get("card"))
+    potion = _as_mapping(action.get("potion"))
+    relic = _as_mapping(action.get("relic"))
+    return str(
+        action.get("name")
+        or card.get("name")
+        or potion.get("name")
+        or relic.get("name")
+        or ""
+    )
+
+
 def _list_get(values: Sequence[Any], index: int) -> Any:
     return values[index] if 0 <= index < len(values) else None
 
@@ -720,6 +1055,13 @@ def _list_get(values: Sequence[Any], index: int) -> Any:
 def _to_int(value: Any, default: Optional[int] = 0) -> Optional[int]:
     try:
         return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _to_float(value: Any, default: Optional[float] = 0.0) -> Optional[float]:
+    try:
+        return float(value)
     except (TypeError, ValueError):
         return default
 
@@ -785,6 +1127,17 @@ def _is_fixture_source(source: str) -> bool:
 def _issue_signature(row: ComparisonRow) -> tuple[str, str, str]:
     return (
         row.category,
+        _normalize_name(row.reference_choice),
+        _normalize_name(row.reason),
+    )
+
+
+def _issue_occurrence_key(row: ComparisonRow) -> tuple[str, str, Optional[int], str, str, str]:
+    return (
+        row.category,
+        row.source,
+        row.floor,
+        _normalize_name(row.current_choice),
         _normalize_name(row.reference_choice),
         _normalize_name(row.reason),
     )
