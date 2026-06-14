@@ -1102,6 +1102,12 @@ class IroncladPriority(Priority):
         "White Beast Statue",
     ]
 
+    def get_best_boss_relic(self, relic_list):
+        relic_keys = {relic_id(relic) for relic in relic_list}
+        if "Pandora's Box" in relic_keys and "Calling Bell" in relic_keys:
+            relic_list = [relic for relic in relic_list if relic_id(relic) != "Calling Bell"]
+        return super().get_best_boss_relic(relic_list)
+
     # Don't fight early Act 1 elites - build power first (A20 expert consensus)
     # Priorities: Rest > Shop ≈ Event > Monster >>> Elite (early game)
     # Only consider elites late Act 1 or when HP is high enough to survive.
