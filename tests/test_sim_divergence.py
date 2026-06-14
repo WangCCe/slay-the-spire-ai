@@ -9326,6 +9326,58 @@ def test_end_turn_energy_refresh_does_not_create_false_player_diff(monkeypatch, 
     assert not trace_path.exists()
 
 
+def test_end_turn_monster_regenerate_heals_active_monster(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    book = _monster(
+        name="Book of Stabbing",
+        monster_id="BookOfStabbing",
+        hp=143,
+        max_hp=164,
+        damage=6,
+        hits=2,
+        intent=Intent.ATTACK,
+        powers=[
+            Power("Painful Stabs", "Painful Stabs", -1),
+            Power("Regenerate", "Regenerate", 5),
+        ],
+    )
+    before = _game(
+        floor=24,
+        turn=2,
+        player=SimpleNamespace(current_hp=57, max_hp=80, block=5, energy=0),
+        hand=[],
+        monsters=[book],
+    )
+    actual = _game(
+        floor=24,
+        turn=3,
+        player=SimpleNamespace(current_hp=50, max_hp=80, block=0, energy=4),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Book of Stabbing",
+                monster_id="BookOfStabbing",
+                hp=148,
+                max_hp=164,
+                damage=6,
+                hits=3,
+                intent=Intent.ATTACK,
+                powers=[
+                    Power("Painful Stabs", "Painful Stabs", -1),
+                    Power("Regenerate", "Regenerate", 5),
+                ],
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_next_monster_intent_change_does_not_create_false_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

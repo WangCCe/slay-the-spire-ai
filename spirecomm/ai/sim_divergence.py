@@ -665,6 +665,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             _apply_stone_calendar_damage(expected, before)
             hp_loss_events += _apply_end_turn_player_damage(expected, before)
             _apply_end_turn_escape_intents(expected)
+            _apply_monster_regenerate_end_turn(expected)
             retained_block = _retained_end_turn_block(before, expected.get("player", {}))
             next_turn_block = 0
             if _to_int(expected.get("player", {}).get("current_hp")) > 0:
@@ -3519,6 +3520,19 @@ def _heal_monster(expected: Dict[str, Any], monster_index: int, amount: int) -> 
         _to_int(monster.get("max_hp")),
         _to_int(monster.get("hp")) + amount,
     )
+
+
+def _apply_monster_regenerate_end_turn(expected: Dict[str, Any]) -> None:
+    for index, monster in enumerate(expected.get("monsters", []) or []):
+        if (
+            monster.get("gone")
+            or monster.get("half_dead")
+            or _to_int(monster.get("hp")) <= 0
+        ):
+            continue
+        regenerate = max(0, _snapshot_power_amount(monster, "Regenerate"))
+        if regenerate > 0:
+            _heal_monster(expected, index, regenerate)
 
 
 def _damage_player(expected: Dict[str, Any], amount: int) -> int:
