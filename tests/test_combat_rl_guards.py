@@ -6047,3 +6047,58 @@ def test_half_dead_revive_transition_ends_turn_instead_of_waiting():
     assert action.expected_turn == 8
     assert agent._fallback_turn_key is None
     assert calls == {"rl": 0, "fallback": 0}
+
+
+def test_gone_half_dead_awakened_one_revive_transition_ends_turn():
+    dead_cultist = _monster(hp=0, index=0, name="Cultist", monster_id="Cultist")
+    dead_cultist.is_gone = True
+    reviving_boss = _monster(
+        hp=0,
+        index=1,
+        name="Awakened One",
+        monster_id="AwakenedOne",
+    )
+    reviving_boss.is_gone = True
+    reviving_boss.half_dead = True
+    calls = {"rl": 0, "fallback": 0}
+
+    def rl_decide(_game):
+        calls["rl"] += 1
+        return PlayCardAction(card_index=0, target_index=1)
+
+    def fallback_decide(_game):
+        calls["fallback"] += 1
+        return PlayCardAction(card_index=0, target_index=1)
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=rl_decide)
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=fallback_decide,
+        _track_game_state=lambda game: None,
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = (50, 6)
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+    game = _game(
+        screen_type=None,
+        in_combat=True,
+        play_available=True,
+        end_available=True,
+        available_commands=["end", "wait", "state"],
+        hand=[SimpleNamespace(is_playable=True, cost=0, has_target=False)],
+        monsters=[dead_cultist, reviving_boss],
+        floor=50,
+        turn=6,
+    )
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, EndTurnAction)
+    assert action.expected_floor == 50
+    assert action.expected_turn == 6
+    assert agent._fallback_turn_key is None
+    assert calls == {"rl": 0, "fallback": 0}

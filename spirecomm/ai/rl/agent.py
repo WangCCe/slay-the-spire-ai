@@ -4474,7 +4474,6 @@ class CombatRLAgent:
             return False
         return any(
             getattr(monster, "half_dead", False)
-            and not getattr(monster, "is_gone", False)
             for monster in (getattr(game, "monsters", []) or [])
         )
 
