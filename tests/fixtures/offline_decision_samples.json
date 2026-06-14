@@ -1,0 +1,96 @@
+{
+  "samples": [
+    {
+      "id": "fixture-shop-purge-over-anger",
+      "category": "shop",
+      "source": "fixture:shop",
+      "floor": 5,
+      "act": 1,
+      "evidence_quality": "complete",
+      "our_choice": {
+        "kind": "buy_card",
+        "name": "Anger"
+      },
+      "context": {
+        "gold": 180,
+        "purge_available": true,
+        "purge_cost": 75,
+        "deck": ["Strike_R", "Defend_R", "Bash"],
+        "cards": [
+          {"id": "Anger", "name": "Anger", "price": 55},
+          {"id": "Flex", "name": "Flex", "price": 45}
+        ],
+        "relics": [],
+        "potions": []
+      }
+    },
+    {
+      "id": "fixture-event-shining-light-low-hp",
+      "category": "event",
+      "source": "fixture:event",
+      "floor": 8,
+      "act": 1,
+      "evidence_quality": "complete",
+      "our_choice": {
+        "kind": "choose",
+        "index": 0,
+        "label": "Enter"
+      },
+      "context": {
+        "event_name": "Shining Light",
+        "current_hp": 35,
+        "max_hp": 80,
+        "choices": ["Enter", "Leave"],
+        "relics": []
+      }
+    },
+    {
+      "id": "fixture-route-avoid-elite-chain",
+      "category": "route",
+      "source": "fixture:route",
+      "floor": 1,
+      "act": 1,
+      "evidence_quality": "complete",
+      "our_choice": {
+        "kind": "map_node",
+        "choice": "0"
+      },
+      "context": {
+        "current_hp": 45,
+        "max_hp": 80,
+        "gold": 119,
+        "relics": ["Burning Blood"],
+        "paths": [
+          {
+            "choice": "0",
+            "nodes": ["M", "E", "E", "R"],
+            "label": "early double elite"
+          },
+          {
+            "choice": "1",
+            "nodes": ["M", "?", "R", "$"],
+            "label": "safer shop rest"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fixture-card-reward-offering-skipped",
+      "category": "card_reward",
+      "source": "fixture:card_reward",
+      "floor": 10,
+      "act": 1,
+      "evidence_quality": "complete",
+      "our_choice": {
+        "kind": "skip",
+        "name": "SKIP"
+      },
+      "context": {
+        "deck": ["Strike_R", "Defend_R", "Bash", "Perfected Strike"],
+        "offered": ["Offering", "Cleave", "Flex"],
+        "can_skip": true,
+        "room_phase": "COMPLETE"
+      }
+    }
+  ]
+}
