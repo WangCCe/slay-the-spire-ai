@@ -3566,14 +3566,19 @@ def _apply_end_turn_player_damage(
             monster["gone"] = True
             monster["half_dead"] = False
             continue
-        damage = max(0, _to_int(monster.get("move_damage")))
-        if damage <= 0 or _monster_attack_damage(monster) <= 0:
+        if not _snapshot_monster_active(monster):
             continue
-        if expected.get("_player_vulnerable_added_during_end_turn"):
+        if "attack" not in _normalize(monster.get("intent")):
+            continue
+        damage = max(0, _to_int(monster.get("move_damage")))
+        if damage <= 0 and reflection_damage <= 0:
+            continue
+        if damage > 0 and expected.get("_player_vulnerable_added_during_end_turn"):
             damage = _player_vulnerable_modified_damage(damage)
         for _ in range(_monster_attack_hits(monster)):
             hp_before = _to_int(expected.get("player", {}).get("current_hp"))
-            hp_loss_events += _damage_player(expected, damage)
+            if damage > 0:
+                hp_loss_events += _damage_player(expected, damage)
             hp_after = _to_int(expected.get("player", {}).get("current_hp"))
             hp_lost = max(0, hp_before - hp_after)
             if _is_shelled_parasite_attack_buff(monster):
