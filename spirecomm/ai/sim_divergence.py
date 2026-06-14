@@ -173,6 +173,7 @@ CARD_DRAW = {
 
 CARD_TARGET_DEBUFFS = {
     "Bash": ("Vulnerable", 2, 3),
+    "Thunderclap": ("Vulnerable", 1, 2),
 }
 
 END_TURN_STATUS_DAMAGE = {
@@ -522,6 +523,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                             before,
                             source_damage_before_weak=source_damage_before_weak,
                         )
+                        _apply_all_enemy_card_target_debuffs(expected, card)
                         attack_effects_resolved = True
                     if attack_effects_resolved:
                         sharp_hide_damage = _sharp_hide_reflection_damage(
@@ -664,8 +666,8 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
 
     elif action_type == "CardSelectAction":
         _apply_pending_headbutt_select_effects(expected, before)
-        _apply_pending_burning_pact_select_effects(expected, before)
-        _apply_pending_true_grit_select_effects(expected, before)
+        _apply_pending_burning_pact_select_effects(expected, before, action)
+        _apply_pending_true_grit_select_effects(expected, before, action)
         _apply_pending_armaments_select_effects(expected, before)
 
     elif action_type == "PotionAction":
@@ -1570,10 +1572,14 @@ def _pending_burning_pact_select_effects_match(snapshot: Dict[str, Any]) -> bool
 def _apply_pending_burning_pact_select_effects(
     expected: Dict[str, Any],
     before: Dict[str, Any],
+    action=None,
 ) -> None:
     effects = _pending_burning_pact_select_effects
     if not effects or not _pending_burning_pact_select_effects_match(before):
         return
+    sentinel_energy = _selected_sentinel_exhaust_energy(action)
+    if sentinel_energy > 0:
+        expected["player"]["energy"] += sentinel_energy
     block = max(0, _to_int(effects.get("block")))
     if block > 0:
         _gain_player_block(expected, before, block)
@@ -1627,10 +1633,14 @@ def _pending_true_grit_select_effects_match(snapshot: Dict[str, Any]) -> bool:
 def _apply_pending_true_grit_select_effects(
     expected: Dict[str, Any],
     before: Dict[str, Any],
+    action=None,
 ) -> None:
     effects = _pending_true_grit_select_effects
     if not effects or not _pending_true_grit_select_effects_match(before):
         return
+    sentinel_energy = _selected_sentinel_exhaust_energy(action)
+    if sentinel_energy > 0:
+        expected["player"]["energy"] += sentinel_energy
     _apply_juggernaut_block_triggers(
         expected,
         before,
@@ -3046,6 +3056,15 @@ def _hand_exhaust_sentinel_energy(
     return energy
 
 
+def _selected_sentinel_exhaust_energy(action) -> int:
+    energy = 0
+    for card in getattr(action, "cards", []) or []:
+        if _known_card_name(card, BASE_SKILL_BLOCK) != "Sentinel":
+            continue
+        energy += 3 if card_upgrade_count(card) > 0 else 2
+    return energy
+
+
 def _hand_exhausted_cards(
     card,
     before: Dict[str, Any],
@@ -3341,6 +3360,13 @@ def _apply_card_target_debuffs(
     power_name, base_amount, upgraded_amount = CARD_TARGET_DEBUFFS[card_name]
     amount = upgraded_amount if card_upgrade_count(card) > 0 else base_amount
     _add_snapshot_power_amount(target, power_name, amount)
+
+
+def _apply_all_enemy_card_target_debuffs(expected: Dict[str, Any], card) -> None:
+    if not _is_all_enemy_attack(card):
+        return
+    for index, _monster in enumerate(expected.get("monsters", []) or []):
+        _apply_card_target_debuffs(expected, card, index)
 
 
 def _modified_block(block: int, player: Dict[str, Any]) -> int:
@@ -4216,6 +4242,7 @@ def _apply_expected_top_draw_card_played_by_effect(
         )
     )
     if _is_attack_card(top_card) and not top_attack_blocked:
+        attack_play_count = _attack_card_play_count(expected, top_card)
         top_card_effect_energy = _to_int(
             (expected.get("player") or {}).get("energy"),
             default=0,
@@ -4241,28 +4268,40 @@ def _apply_expected_top_draw_card_played_by_effect(
             -1,
         )
         if _is_all_enemy_attack(top_card):
-            damage_dealt = _apply_expected_attack_to_all(
-                expected,
-                damage,
-                hit_count,
-                before,
-                source_damage_before_weak=source_damage_before_weak,
-            )
-            sharp_hide_damage = _sharp_hide_reflection_damage(before, all_targets=True)
-        else:
-            target_index = _single_alive_monster_index(expected)
-            if target_index is None:
-                damage_dealt = 0
-            else:
-                damage_dealt = _apply_expected_attack(
+            damage_dealt = 0
+            for _ in range(max(1, attack_play_count)):
+                damage_dealt += _apply_expected_attack_to_all(
                     expected,
-                    target_index,
                     damage,
                     hit_count,
                     before,
                     source_damage_before_weak=source_damage_before_weak,
                 )
-                sharp_hide_damage = _sharp_hide_reflection_damage(before, target_index)
+                _apply_all_enemy_card_target_debuffs(expected, top_card)
+            sharp_hide_damage = _sharp_hide_reflection_damage(
+                before,
+                all_targets=True,
+            ) * max(1, attack_play_count)
+        else:
+            target_index = _single_alive_monster_index(expected)
+            if target_index is None:
+                damage_dealt = 0
+            else:
+                damage_dealt = 0
+                for _ in range(max(1, attack_play_count)):
+                    damage_dealt += _apply_expected_attack(
+                        expected,
+                        target_index,
+                        damage,
+                        hit_count,
+                        before,
+                        source_damage_before_weak=source_damage_before_weak,
+                    )
+                    _apply_card_target_debuffs(expected, top_card, target_index)
+                sharp_hide_damage = (
+                    _sharp_hide_reflection_damage(before, target_index)
+                    * max(1, attack_play_count)
+                )
         if _is_reaper(top_card) and damage_dealt > 0:
             _heal_player(expected, damage_dealt)
         rage_block = _rage_attack_block(expected.get("player", {}))

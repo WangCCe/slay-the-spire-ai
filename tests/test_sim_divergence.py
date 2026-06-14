@@ -6362,6 +6362,80 @@ def test_fiend_fire_exhausting_sentinel_restores_energy(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_burning_pact_select_exhausting_sentinel_restores_energy(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    blood_for_blood = _card(
+        name="Blood for Blood",
+        card_id="Blood for Blood",
+        card_type=CardType.ATTACK,
+        cost=4,
+        damage=18,
+    )
+    sentinel = _card(
+        name="Sentinel",
+        card_id="Sentinel",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=0,
+    )
+    burning_pact = _card(
+        name="Burning Pact",
+        card_id="Burning Pact",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+    )
+    before = _game(
+        floor=22,
+        turn=1,
+        player=SimpleNamespace(current_hp=85, max_hp=85, block=9, energy=3),
+        hand=[blood_for_blood, sentinel, burning_pact],
+        draw_pile=[
+            _card(name="Havoc+", card_id="Havoc", card_type=CardType.SKILL, cost=0, upgrades=1),
+            _card(name="Shrug It Off+", card_id="Shrug It Off", card_type=CardType.SKILL, cost=1, block=11),
+        ],
+        monsters=[
+            _monster(name="Centurion", monster_id="Centurion", hp=78, damage=-1),
+            _monster(name="Mystic", monster_id="Healer", hp=52, damage=6),
+        ],
+    )
+    select_screen = _game(
+        floor=22,
+        turn=1,
+        player=SimpleNamespace(current_hp=85, max_hp=85, block=9, energy=2),
+        hand=[blood_for_blood, sentinel],
+        draw_pile=[
+            _card(name="Havoc+", card_id="Havoc", card_type=CardType.SKILL, cost=0, upgrades=1),
+            _card(name="Shrug It Off+", card_id="Shrug It Off", card_type=CardType.SKILL, cost=1, block=11),
+        ],
+        monsters=[
+            _monster(name="Centurion", monster_id="Centurion", hp=78, damage=-1),
+            _monster(name="Mystic", monster_id="Healer", hp=52, damage=6),
+        ],
+    )
+    after_select = _game(
+        floor=22,
+        turn=1,
+        player=SimpleNamespace(current_hp=85, max_hp=85, block=9, energy=4),
+        hand=[blood_for_blood],
+        draw_pile=[],
+        monsters=[
+            _monster(name="Centurion", monster_id="Centurion", hp=78, damage=-1),
+            _monster(name="Mystic", monster_id="Healer", hp=52, damage=6),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=2), before) is True
+    assert observe_next_state(select_screen) is False
+    assert record_expected_action(CardSelectAction([sentinel]), select_screen) is True
+    assert observe_next_state(after_select) is False
+    assert not trace_path.exists()
+
+
 def test_dropkick_zero_live_damage_uses_base_damage(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
@@ -8278,6 +8352,87 @@ def test_double_tap_replays_attack_self_damage(monkeypatch, tmp_path):
     )
 
     assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_havoc_top_attack_uses_double_tap_replay(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    havoc = _card(
+        name="Havoc+",
+        card_id="Havoc",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        upgrades=1,
+    )
+    thunderclap_plus = _card(
+        name="Thunderclap+",
+        card_id="Thunderclap",
+        card_type=CardType.ATTACK,
+        cost=1,
+        damage=7,
+        upgrades=1,
+    )
+    before = _game(
+        floor=30,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=11,
+            max_hp=85,
+            block=5,
+            energy=0,
+            powers=[Power("Double Tap", "Double Tap", 1)],
+        ),
+        hand=[
+            havoc,
+            _card(name="Blood for Blood+", card_id="Blood for Blood", damage=22, cost=2, upgrades=1),
+            _card(name="Dazed", card_id="Dazed", card_type=CardType.STATUS, cost=0, damage=0),
+            _card(name="Armaments", card_id="Armaments", card_type=CardType.SKILL, cost=1, block=5),
+        ],
+        draw_pile=[
+            _card(name="True Grit+", card_id="True Grit", card_type=CardType.SKILL, cost=1, block=9),
+            thunderclap_plus,
+        ],
+        monsters=[
+            _monster(name="Centurion", monster_id="Centurion", hp=80, damage=14),
+            _monster(name="Mystic", monster_id="Healer", hp=32, damage=-1),
+        ],
+    )
+    actual = _game(
+        floor=30,
+        turn=2,
+        player=SimpleNamespace(current_hp=11, max_hp=85, block=5, energy=0),
+        hand=[
+            _card(name="Blood for Blood+", card_id="Blood for Blood", damage=22, cost=2, upgrades=1),
+            _card(name="Dazed", card_id="Dazed", card_type=CardType.STATUS, cost=0, damage=0),
+            _card(name="Armaments", card_id="Armaments", card_type=CardType.SKILL, cost=1, block=5),
+        ],
+        draw_pile=[
+            _card(name="True Grit+", card_id="True Grit", card_type=CardType.SKILL, cost=1, block=9),
+        ],
+        monsters=[
+            _monster(
+                name="Centurion",
+                monster_id="Centurion",
+                hp=63,
+                damage=14,
+                powers=[Power("Vulnerable", "Vulnerable", 2)],
+            ),
+            _monster(
+                name="Mystic",
+                monster_id="Healer",
+                hp=15,
+                damage=-1,
+                powers=[Power("Vulnerable", "Vulnerable", 2)],
+            ),
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
     assert observe_next_state(actual) is False
     assert not trace_path.exists()
 
