@@ -595,20 +595,23 @@ class SimpleAgent:
                     if hp_known
                     else 1.0
                 )
-                sacrifice_breaks_hp_margin = (
+                sacrifice_breaks_survival_margin = (
                     hp_known
                     and sacrifice_available
                     and act >= 2
-                    and post_sacrifice_hp_pct < 0.60
+                    and (
+                        current_hp - estimated_sacrifice_damage <= 20
+                        or post_sacrifice_hp_pct < 0.30
+                    )
                 )
                 preferred_keywords = (
                     ("desecrate",)
-                    if critical_hp or sacrifice_breaks_hp_margin
+                    if critical_hp or sacrifice_breaks_survival_margin
                     else sacrifice_keywords
                 )
                 fallback_keywords = (
                     (sacrifice_keywords + ("desecrate",))
-                    if critical_hp or sacrifice_breaks_hp_margin
+                    if critical_hp or sacrifice_breaks_survival_margin
                     else ("desecrate",)
                 )
                 for idx, label in enumerate(labels_for_selection):

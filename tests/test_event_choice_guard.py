@@ -139,7 +139,7 @@ def test_forgotten_altar_avoids_lethal_sacrifice_at_critical_hp():
     assert action.choice_index == 1
 
 
-def test_forgotten_altar_avoids_sacrifice_when_act2_hp_margin_breaks():
+def test_forgotten_altar_sacrifices_at_mid_hp_to_avoid_decay_curse():
     agent = _agent_for_event(
         "Forgotten Altar",
         [
@@ -157,7 +157,7 @@ def test_forgotten_altar_avoids_sacrifice_when_act2_hp_margin_breaks():
     action = agent.handle_screen()
 
     assert isinstance(action, ChooseAction)
-    assert action.choice_index == 1
+    assert action.choice_index == 0
 
 
 def test_forgotten_altar_sacrifices_when_act2_hp_margin_stays_safe():
