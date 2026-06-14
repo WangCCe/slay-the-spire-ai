@@ -50,6 +50,7 @@ BASE_ATTACK_DAMAGE = {
     "Bash": 8,
     "Bludgeon": 32,
     "Blood for Blood": 18,
+    "Body Slam": 0,
     "Carnage": 20,
     "Clash": 14,
     "Cleave": 8,
@@ -2704,6 +2705,8 @@ def _card_damage_and_hits_for_snapshot(
     card_name = _known_card_name(card, BASE_ATTACK_DAMAGE)
     if card_name == "Mind Blast" and before is not None:
         damage = max(0, _to_int(before.get("draw_pile_count"), default=0))
+    if card_name == "Body Slam":
+        damage = max(0, _to_int(player.get("block")))
     if card_name == "Perfected Strike" and before is not None:
         base_damage = BASE_ATTACK_DAMAGE[card_name] + known_damage_upgrade_bonus(card, card_name)
         explicit = _to_int(_card_attr(card, "damage", 0))
@@ -3076,14 +3079,14 @@ def _source_modified_attack_damage(
     snapshot: Optional[Dict[str, Any]] = None,
     apply_weak: bool = True,
 ) -> int:
-    if damage <= 0:
-        return 0
     strength = _snapshot_power_amount(player, "Strength")
     if strength != 0:
         if _known_card_name(card, BASE_ATTACK_DAMAGE) == "Heavy Blade":
             damage += strength * heavy_blade_strength_multiplier(card)
         else:
             damage += strength
+    if damage <= 0:
+        return 0
     if _pen_nib_damage_multiplier(snapshot, card) > 1:
         damage *= 2
     if apply_weak and _snapshot_player_is_weak(player):
