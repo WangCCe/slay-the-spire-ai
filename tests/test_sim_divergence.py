@@ -4539,6 +4539,98 @@ def test_true_grit_juggernaut_damage_waits_for_card_select(monkeypatch, tmp_path
     assert not trace_path.exists()
 
 
+def test_armaments_juggernaut_damage_waits_for_card_select(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    armaments = _card(
+        name="Armaments",
+        card_id="Armaments",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=5,
+        upgrades=0,
+    )
+    twin_strike = _card(
+        name="Twin Strike",
+        card_id="Twin Strike",
+        damage=10,
+    )
+    before = _game(
+        floor=25,
+        turn=6,
+        act=2,
+        room_type="MonsterRoom",
+        player=SimpleNamespace(
+            current_hp=8,
+            max_hp=80,
+            block=11,
+            energy=3,
+            powers=[Power("Juggernaut", "Juggernaut", 5)],
+        ),
+        hand=[twin_strike, armaments],
+        monsters=[
+            _monster(name="Cultist", monster_id="Cultist", hp=0, damage=9),
+            _monster(name="Chosen", monster_id="Chosen", hp=28, damage=14, index=1),
+        ],
+    )
+    before.monsters[0].is_gone = True
+
+    select_screen = _game(
+        floor=25,
+        turn=6,
+        act=2,
+        room_type="MonsterRoom",
+        player=SimpleNamespace(
+            current_hp=8,
+            max_hp=80,
+            block=16,
+            energy=2,
+            powers=[Power("Juggernaut", "Juggernaut", 5)],
+        ),
+        hand=[twin_strike],
+        monsters=[
+            _monster(name="Cultist", monster_id="Cultist", hp=0, damage=9),
+            _monster(name="Chosen", monster_id="Chosen", hp=28, damage=14, index=1),
+        ],
+    )
+    select_screen.monsters[0].is_gone = True
+
+    twin_strike_plus = _card(
+        name="Twin Strike+",
+        card_id="Twin Strike",
+        damage=12,
+        upgrades=1,
+    )
+    after_select = _game(
+        floor=25,
+        turn=6,
+        act=2,
+        room_type="MonsterRoom",
+        player=SimpleNamespace(
+            current_hp=8,
+            max_hp=80,
+            block=16,
+            energy=2,
+            powers=[Power("Juggernaut", "Juggernaut", 5)],
+        ),
+        hand=[twin_strike_plus],
+        monsters=[
+            _monster(name="Cultist", monster_id="Cultist", hp=0, damage=9),
+            _monster(name="Chosen", monster_id="Chosen", hp=23, damage=14, index=1),
+        ],
+    )
+    after_select.monsters[0].is_gone = True
+
+    assert record_expected_action(PlayCardAction(card_index=1), before) is True
+    assert observe_next_state(select_screen) is False
+    assert record_expected_action(CardSelectAction([twin_strike]), select_screen) is True
+    assert observe_next_state(after_select) is False
+    assert not trace_path.exists()
+
+
 def test_ornamental_fan_adds_block_on_every_third_attack(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
