@@ -45,10 +45,7 @@ No gameplay-code fix is applied by this report.
 
 ## Most Worth Fixing
 
-1. **shop floor 5**: current `Anger` vs reference `purge` (high). Bottled REQUESTED_STRIKE shop priority prefers starter removal before optional purchases.
-2. **event floor 8**: current `choose 0: Enter` vs reference `choose 1: Leave` (high). Bottled REQUESTED_STRIKE enters Shining Light at 50%+ HP, otherwise leaves.
-3. **route floor 1**: current `choice 0` vs reference `choice 1` (high). Bottled common map scoring prefers reward-to-survivability 4.68: safer shop rest: reward=4.68, survivability=1.00
-4. **card_reward floor 10**: current `SKIP` vs reference `Offering` (high). Bottled REQUESTED_STRIKE desired-card list wants up to 1 copy/copies of Offering.
+No repeated high-confidence operating-decision fix is recommended yet.
 
 ## Repair Gate
 

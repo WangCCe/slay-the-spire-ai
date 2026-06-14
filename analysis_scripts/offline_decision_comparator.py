@@ -7,7 +7,7 @@ import argparse
 import json
 import re
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
@@ -282,19 +282,41 @@ def compare_samples(samples: Iterable[DecisionSample]) -> List[ComparisonRow]:
 def rank_issues(rows: Sequence[ComparisonRow], max_issues: int = 5) -> List[ComparisonRow]:
     priority = {"shop": 0, "event": 1, "route": 2, "card_reward": 3}
     confidence_score = {"high": 0, "medium": 1, "low": 2}
-    candidates = [
-        row for row in rows
-        if not row.match and row.confidence in {"high", "medium"}
-    ]
-    candidates.sort(
-        key=lambda row: (
-            confidence_score.get(row.confidence, 3),
-            priority.get(row.category, 9),
-            row.floor if row.floor is not None else 999,
-            row.sample_id,
+    groups: Dict[tuple[str, str, str], List[ComparisonRow]] = {}
+    for row in rows:
+        if row.match or row.confidence not in {"high", "medium"}:
+            continue
+        if _is_fixture_source(row.source):
+            continue
+        groups.setdefault(_issue_signature(row), []).append(row)
+
+    repeated_groups = [members for members in groups.values() if len(members) >= 2]
+    repeated_groups.sort(
+        key=lambda members: (
+            confidence_score.get(_best_confidence(members), 3),
+            priority.get(members[0].category, 9),
+            -len(members),
+            min(row.floor if row.floor is not None else 999 for row in members),
+            sorted(row.sample_id for row in members)[0],
         )
     )
-    return candidates[:max_issues]
+
+    issues: List[ComparisonRow] = []
+    for members in repeated_groups[:max_issues]:
+        representative = sorted(
+            members,
+            key=lambda row: (
+                row.floor if row.floor is not None else 999,
+                row.sample_id,
+            ),
+        )[0]
+        issues.append(
+            replace(
+                representative,
+                reason=f"{representative.reason} Repeated {len(members)}x in non-fixture evidence.",
+            )
+        )
+    return issues
 
 
 def render_markdown_report(
@@ -520,9 +542,25 @@ def _reference_event(sample: DecisionSample) -> ReferenceDecision:
         target_label = _choice_label(choices, target_index)
         reason = "Bottled REQUESTED_STRIKE enters Shining Light at 50%+ HP, otherwise leaves."
         return ReferenceDecision(f"choose {target_index}: {target_label}", reason, "high")
-    if event_name in {"dead adventurer", "the mausoleum", "golden shrine"}:
+    if event_name == "dead adventurer":
         index = _choice_index_by_keywords(choices, ["leave", "ignore"], default=1 if len(choices) > 1 else 0)
         return ReferenceDecision(f"choose {index}: {_choice_label(choices, index)}", f"Bottled common event handling avoids {ctx.get('event_name')} risk.", "high")
+    if event_name == "golden shrine":
+        relics = {_normalize_name(relic) for relic in _as_list(ctx.get("relics"))}
+        index = 1 if "omamori" in relics and "ectoplasm" not in relics and len(choices) > 1 else 0
+        return ReferenceDecision(
+            f"choose {index}: {_choice_label(choices, index)}",
+            "Bottled common event handling takes Golden Shrine gold, using Omamori for the curse option when available.",
+            "high",
+        )
+    if event_name == "the mausoleum":
+        relics = {_normalize_name(relic) for relic in _as_list(ctx.get("relics"))}
+        index = 0 if "omamori" in relics else 1 if len(choices) > 1 else 0
+        return ReferenceDecision(
+            f"choose {index}: {_choice_label(choices, index)}",
+            "Bottled common event handling opens The Mausoleum only when Omamori can absorb the curse.",
+            "high",
+        )
     if event_name == "world of goop":
         index = 0 if hp_pct >= 70 else 1
         return ReferenceDecision(f"choose {index}: {_choice_label(choices, index)}", "Bottled REQUESTED_STRIKE takes Goop gold only at 70%+ HP.", "high")
@@ -738,6 +776,26 @@ def _format_counts(counts: Dict[str, int]) -> str:
     if not counts:
         return "-"
     return ", ".join(f"{key}={counts[key]}" for key in sorted(counts))
+
+
+def _is_fixture_source(source: str) -> bool:
+    return str(source or "").startswith("fixture")
+
+
+def _issue_signature(row: ComparisonRow) -> tuple[str, str, str]:
+    return (
+        row.category,
+        _normalize_name(row.reference_choice),
+        _normalize_name(row.reason),
+    )
+
+
+def _best_confidence(rows: Sequence[ComparisonRow]) -> str:
+    confidence_score = {"high": 0, "medium": 1, "low": 2}
+    return min(
+        (row.confidence for row in rows),
+        key=lambda confidence: confidence_score.get(confidence, 3),
+    )
 
 
 def _md(value: Any) -> str:

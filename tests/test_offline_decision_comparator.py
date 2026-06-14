@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from analysis_scripts.offline_decision_comparator import (
+    DecisionSample,
     compare_samples,
     load_fixture_samples,
     load_run_samples,
@@ -84,14 +85,104 @@ def test_run_loader_marks_shop_purchases_as_partial_evidence(tmp_path):
     assert all("missing full shop offer" in sample.limitations for sample in shop_samples)
 
 
-def test_report_renders_ranked_issues_and_no_repair_gate():
+def test_fixture_only_differences_do_not_become_repair_candidates():
     rows = compare_samples(load_fixture_samples(FIXTURE_PATH))
     issues = rank_issues(rows)
     report = render_markdown_report(rows, issues)
 
-    assert 1 <= len(issues) <= 5
-    assert issues[0].confidence == "high"
+    assert issues == []
     assert "Current Choice" in report
     assert "Bottled Reference" in report
     assert "Most Worth Fixing" in report
+    assert "No repeated high-confidence" in report
     assert "No gameplay-code fix is applied" in report
+
+
+def test_rank_issues_requires_repeated_non_fixture_evidence():
+    samples = [
+        DecisionSample(
+            sample_id=f"trace-shop-{index}",
+            category="shop",
+            source="decision_trace",
+            floor=5 + index,
+            act=1,
+            evidence_quality="complete",
+            our_choice={"kind": "buy_card", "name": "Anger"},
+            context={
+                "gold": 180,
+                "purge_available": True,
+                "purge_cost": 75,
+                "deck": ["Strike_R", "Defend_R", "Bash"],
+                "cards": [{"id": "Anger", "name": "Anger", "price": 55}],
+                "relics": [],
+            },
+        )
+        for index in range(2)
+    ]
+
+    issues = rank_issues(compare_samples(samples))
+
+    assert len(issues) == 1
+    assert issues[0].reference_choice == "purge"
+    assert issues[0].confidence == "high"
+    assert "Repeated 2x" in issues[0].reason
+
+
+def test_event_reference_matches_bottled_golden_shrine_and_mausoleum():
+    rows = compare_samples(
+        [
+            DecisionSample(
+                sample_id="golden-shrine-no-omamori",
+                category="event",
+                source="fixture:event",
+                floor=6,
+                act=1,
+                evidence_quality="complete",
+                our_choice={"kind": "choose", "index": 1, "label": "Pray"},
+                context={
+                    "event_name": "Golden Shrine",
+                    "current_hp": 70,
+                    "max_hp": 80,
+                    "choices": ["Pray", "Desecrate"],
+                    "relics": [],
+                },
+            ),
+            DecisionSample(
+                sample_id="golden-shrine-omamori",
+                category="event",
+                source="fixture:event",
+                floor=6,
+                act=1,
+                evidence_quality="complete",
+                our_choice={"kind": "choose", "index": 0, "label": "Pray"},
+                context={
+                    "event_name": "Golden Shrine",
+                    "current_hp": 70,
+                    "max_hp": 80,
+                    "choices": ["Pray", "Desecrate"],
+                    "relics": ["Omamori"],
+                },
+            ),
+            DecisionSample(
+                sample_id="mausoleum-omamori",
+                category="event",
+                source="fixture:event",
+                floor=18,
+                act=2,
+                evidence_quality="complete",
+                our_choice={"kind": "choose", "index": 1, "label": "Leave"},
+                context={
+                    "event_name": "The Mausoleum",
+                    "current_hp": 60,
+                    "max_hp": 80,
+                    "choices": ["Open Coffin", "Leave"],
+                    "relics": ["Omamori"],
+                },
+            ),
+        ]
+    )
+    by_id = {row.sample_id: row for row in rows}
+
+    assert by_id["golden-shrine-no-omamori"].reference_choice == "choose 0: Pray"
+    assert by_id["golden-shrine-omamori"].reference_choice == "choose 1: Desecrate"
+    assert by_id["mausoleum-omamori"].reference_choice == "choose 0: Open Coffin"
