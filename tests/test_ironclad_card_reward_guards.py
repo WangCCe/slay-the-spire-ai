@@ -155,6 +155,18 @@ def test_ironclad_boss_relic_selection_prefers_calling_bell_over_philosophers_st
     assert best_relic.relic_id == "Calling Bell"
 
 
+def test_ironclad_boss_relic_selection_prefers_pandoras_box_over_tiny_house():
+    relics = [
+        _relic("Tiny House"),
+        _relic("SacredBark"),
+        _relic("Pandora's Box"),
+    ]
+
+    best_relic = IroncladPriority().get_best_boss_relic(relics)
+
+    assert best_relic.relic_id == "Pandora's Box"
+
+
 def test_ironclad_deck_quality_treats_none_upgrades_as_base_card():
     strategy = IroncladDeckStrategy()
     context = DecisionContext(

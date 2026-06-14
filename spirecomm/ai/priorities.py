@@ -1094,11 +1094,11 @@ class IroncladPriority(Priority):
         "Lizard Tail",
         "Eternal Feather",
         "Coffee Dripper",
+        "Pandora's Box",
         "Tiny House",
         "Black Star",
         "Orrery",
         "Runic Cube",
-        "Pandora's Box",
         "White Beast Statue",
     ]
 
