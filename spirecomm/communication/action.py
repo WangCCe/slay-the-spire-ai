@@ -277,6 +277,16 @@ class LeaveAction(Action):
         game_state = getattr(coordinator, "last_game_state", None)
         available_commands = getattr(game_state, "available_commands", None)
         if available_commands is not None and "leave" not in available_commands:
+            if (
+                getattr(game_state, "screen_type", None) == ScreenType.SHOP_ROOM
+                and "proceed" in available_commands
+            ):
+                logging.info(
+                    "LeaveAction reached SHOP_ROOM with proceed available; sending proceed"
+                )
+                coordinator.send_message("proceed")
+                _queue_ready_wait(coordinator)
+                return
             logging.warning(
                 "LeaveAction is stale for current commands %s; requesting state",
                 available_commands,

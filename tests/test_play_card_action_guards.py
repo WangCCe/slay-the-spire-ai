@@ -182,6 +182,33 @@ def test_leave_action_requests_state_when_leave_command_is_stale():
     assert sent_messages == ["state"]
 
 
+def test_leave_action_uses_proceed_after_shop_screen_returns_to_room():
+    sent_messages = []
+    queued_actions = []
+    coordinator = SimpleNamespace(
+        last_game_state=SimpleNamespace(
+            available_commands=[
+                "choose",
+                "potion",
+                "proceed",
+                "key",
+                "click",
+                "wait",
+                "state",
+            ],
+            screen_type=ScreenType.SHOP_ROOM,
+        ),
+        send_message=sent_messages.append,
+        add_action_to_queue=queued_actions.append,
+    )
+
+    LeaveAction().execute(coordinator)
+
+    assert sent_messages == ["proceed"]
+    assert len(queued_actions) == 1
+    assert isinstance(queued_actions[0], WaitAction)
+
+
 def test_leave_action_queues_ready_wait_after_successful_leave():
     sent_messages = []
     queued_actions = []

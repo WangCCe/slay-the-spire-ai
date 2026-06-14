@@ -167,6 +167,30 @@ def test_ironclad_boss_relic_selection_prefers_pandoras_box_over_tiny_house():
     assert best_relic.relic_id == "Pandora's Box"
 
 
+def test_ironclad_boss_relic_selection_prefers_pandoras_box_over_ectoplasm():
+    relics = [
+        _relic("Ectoplasm"),
+        _relic("Tiny House"),
+        _relic("Pandora's Box"),
+    ]
+
+    best_relic = IroncladPriority().get_best_boss_relic(relics)
+
+    assert best_relic.relic_id == "Pandora's Box"
+
+
+def test_ironclad_boss_relic_selection_prefers_astrolabe_over_ectoplasm():
+    relics = [
+        _relic("Ectoplasm"),
+        _relic("Astrolabe"),
+        _relic("Tiny House"),
+    ]
+
+    best_relic = IroncladPriority().get_best_boss_relic(relics)
+
+    assert best_relic.relic_id == "Astrolabe"
+
+
 def test_ironclad_deck_quality_treats_none_upgrades_as_base_card():
     strategy = IroncladDeckStrategy()
     context = DecisionContext(
@@ -2168,6 +2192,52 @@ def test_strength_archetype_large_deck_takes_immolate_before_act2_boss():
 
     assert isinstance(action, CardRewardAction)
     assert action.name == "Immolate"
+
+
+def test_large_deck_takes_fiend_fire_before_act2_boss():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R", upgrades=1),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Trip", cost=0),
+        _card("Iron Wave"),
+        _card("Uppercut", cost=2),
+        _card("Armaments", upgrades=1),
+        _card("Twin Strike"),
+        _card("Immolate", cost=2),
+        _card("Immolate", cost=2),
+        _card("Evolve", cost=1),
+        _card("Demon Form", cost=3),
+        _card("CurseOfTheBell"),
+        _card("Anger", cost=0, upgrades=1),
+        _card("Cleave", upgrades=1),
+        _card("Thunderclap", upgrades=1),
+        _card("Headbutt"),
+        _card("Headbutt", upgrades=1),
+        _card("Shame"),
+    ]
+    reward_cards = [
+        _card("Combust", cost=1, upgrades=1),
+        _card("Fiend Fire", cost=2),
+        _card("True Grit"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=30,
+        act=2,
+        hp=48,
+        max_hp=80,
+        act_boss="Champ",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Fiend Fire"
 
 
 def test_act2_reward_prefers_battle_trance_over_duplicate_armaments():
