@@ -194,7 +194,19 @@ class SimpleAgent:
                 synergy_boost = eval_score / 20.0
             except Exception:
                 pass
-        return priority_boost * 2.0 + bonus * 1.5 + synergy_boost
+        strategy_upgrade_boost = 0.0
+        deck_strategy = getattr(self, "deck_strategy", None)
+        if (
+            context is not None
+            and deck_strategy is not None
+            and hasattr(deck_strategy, "get_upgrade_priority")
+        ):
+            try:
+                strategy_priority = float(deck_strategy.get_upgrade_priority(card, context))
+                strategy_upgrade_boost = (strategy_priority - 5.0) * 6.0
+            except Exception:
+                pass
+        return priority_boost * 2.0 + bonus * 1.5 + synergy_boost + strategy_upgrade_boost
 
     def _best_upgrade_score(self, context=None):
         if not hasattr(self.game, "deck") or not self.game.deck:

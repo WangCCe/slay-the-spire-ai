@@ -154,6 +154,33 @@ def test_early_ironclad_upgrade_prefers_headbutt_over_deep_breath():
     )
 
 
+def test_early_ironclad_upgrade_prefers_whirlwind_over_reckless_charge():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Exhume", cost=1),
+        _card("Whirlwind", cost=-1),
+        _card("Reckless Charge"),
+        _card("Thunderclap"),
+    ]
+    agent = _agent_for_reward([], deck, floor=6, act=1, act_boss="Slime Boss")
+    context = DecisionContext(agent.game)
+    whirlwind = next(card for card in deck if card.name == "Whirlwind")
+    reckless_charge = next(card for card in deck if card.name == "Reckless Charge")
+
+    assert agent._score_upgrade_candidate(whirlwind, context) > agent._score_upgrade_candidate(
+        reckless_charge,
+        context,
+    )
+
+
 def test_ironclad_boss_relic_selection_avoids_crown_and_dripper_for_low_risk_option():
     relics = [
         _relic("Busted Crown"),
