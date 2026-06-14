@@ -3144,10 +3144,18 @@ class OptimizedAgent(SimpleAgent):
             disarm_count = sum(1 for card_id in deck_ids if card_id == "Disarm")
             armaments_count = sum(1 for card_id in deck_ids if card_id == "Armaments")
             battle_trance_count = sum(1 for card_id in deck_ids if card_id == "Battle Trance")
+            shockwave_count = sum(1 for card_id in deck_ids if card_id == "Shockwave")
             has_first_battle_trance_reward = (
                 battle_trance_count == 0
                 and any(
                     self._normalize_card_name(card) == "Battle Trance"
+                    for card in pickable_cards
+                )
+            )
+            has_first_shockwave_reward = (
+                shockwave_count == 0
+                and any(
+                    self._normalize_card_name(card) == "Shockwave"
                     for card in pickable_cards
                 )
             )
@@ -3269,6 +3277,18 @@ class OptimizedAgent(SimpleAgent):
                     getattr(context, "act", 0) == 1
                     and (getattr(context, "floor", 0) or 0) <= 15
                 ):
+                    if (
+                        card_name == "Shockwave"
+                        and has_first_shockwave_reward
+                        and (getattr(context, "floor", 0) or 0) <= 8
+                    ):
+                        score = max(score, 104)
+                    if (
+                        card_name == "Bloodletting"
+                        and has_first_shockwave_reward
+                        and (getattr(context, "floor", 0) or 0) <= 8
+                    ):
+                        score = min(score, 82)
                     if card_name in act_1_strength_enablers and has_heavy_blade_in_deck:
                         score = max(score, 90)
                     if card_name in act_1_premium_frontload:

@@ -1664,6 +1664,38 @@ def test_ironclad_act1_boss_reward_prefers_bludgeon_when_frontload_is_thin():
     assert action.name == "Bludgeon"
 
 
+def test_ironclad_strategy_prefers_early_shockwave_over_bloodletting():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R", upgrades=1),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+    ]
+    reward_cards = [
+        _card("Bloodletting", cost=0),
+        _card("Dual Wield", cost=1),
+        _card("Shockwave", cost=2),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=1,
+        act=1,
+        hp=68,
+        max_hp=80,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Shockwave"
+
+
 def test_ironclad_strategy_prefers_frontload_over_early_rage_before_act1_boss():
     deck = [
         _card("Strike_R"),
