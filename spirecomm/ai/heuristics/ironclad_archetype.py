@@ -48,6 +48,12 @@ class IroncladArchetypeManager:
         'Cleave', 'Uppercut', 'Headbutt', 'Anger',
     ]
 
+    ARCHETYPE_INDEPENDENT_PREMIUM = {
+        'Offering',
+        'Fiend Fire',
+        'Immolate',
+    }
+
     @staticmethod
     def _card_name(card: Card) -> str:
         return canonical_card_name(card)
@@ -201,6 +207,9 @@ class IroncladArchetypeManager:
         if archetype in self.ARCHETYPES:
             definition = self.ARCHETYPES[archetype]
             card_name = self._card_name(card)
+
+            if card_name in self.ARCHETYPE_INDEPENDENT_PREMIUM:
+                return (True, "Archetype-independent premium card")
 
             # Core card - always accept
             if card_name in definition['core']:

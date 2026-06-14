@@ -693,6 +693,43 @@ def test_ironclad_strategy_prefers_fiend_fire_over_unsupported_heavy_blade():
     assert action.name == "Fiend Fire"
 
 
+def test_ironclad_strategy_allows_fiend_fire_in_strength_archetype():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Panacea", cost=0, upgrades=1),
+        _card("Hemokinesis", upgrades=1),
+        _card("Power Through", cost=1),
+        _card("Disarm", cost=1),
+        _card("Spot Weakness", upgrades=1),
+        _card("Heavy Blade", cost=2),
+        _card("Inflame", cost=1, upgrades=1),
+    ]
+    context = DecisionContext(
+        SimpleNamespace(
+            deck=deck,
+            floor=16,
+            act=1,
+            act_boss="The Guardian",
+            current_hp=56,
+            max_hp=80,
+        )
+    )
+
+    should_pick, reason = IroncladDeckStrategy().should_pick_card(
+        _card("Fiend Fire", cost=2),
+        context,
+    )
+
+    assert should_pick, reason
+
+
 def test_ironclad_strategy_prefers_inflame_support_over_attack_with_heavy_blade():
     deck = [
         _card("Strike_R"),
@@ -2090,6 +2127,47 @@ def test_large_deck_reward_takes_impervious_over_thunderclap_in_act2():
 
     assert isinstance(action, CardRewardAction)
     assert action.name == "Impervious"
+
+
+def test_strength_archetype_large_deck_takes_immolate_before_act2_boss():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Panacea", cost=0, upgrades=1),
+        _card("Hemokinesis", upgrades=1),
+        _card("Power Through", cost=1),
+        _card("Disarm", cost=1),
+        _card("Spot Weakness", upgrades=1),
+        _card("Heavy Blade", cost=2),
+        _card("Inflame", cost=1, upgrades=1),
+        _card("Reaper", cost=2),
+        _card("Doubt"),
+        _card("Decay"),
+    ]
+    reward_cards = [
+        _card("Immolate", cost=2),
+        _card("Second Wind", cost=1, upgrades=1),
+        _card("Flex", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=31,
+        act=2,
+        hp=63,
+        max_hp=80,
+        act_boss="Collector",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Immolate"
 
 
 def test_act2_reward_prefers_battle_trance_over_duplicate_armaments():
