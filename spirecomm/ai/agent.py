@@ -661,6 +661,34 @@ class SimpleAgent:
                     if any(keyword in normalized_label for keyword in fallback_keywords):
                         choice_index = idx
                         break
+        elif event_id in {"MindBloom", "Mind Bloom"}:
+            raw_current_hp = getattr(self.game, "current_hp", None)
+            raw_max_hp = getattr(self.game, "max_hp", None)
+            current_hp = self._safe_float(raw_current_hp, 0.0)
+            max_hp = max(self._safe_float(raw_max_hp, 0.0), 1.0)
+            hp_known = raw_current_hp is not None and raw_max_hp is not None
+            should_avoid_boss_fight = hp_known and current_hp / max_hp < 0.60
+            preferred_keywords = (
+                ("awake",)
+                if should_avoid_boss_fight
+                else ("war", "fight")
+            )
+            fallback_keywords = (
+                ("rich", "war", "fight")
+                if should_avoid_boss_fight
+                else ("awake", "rich")
+            )
+            for idx, label in enumerate(labels_for_selection):
+                normalized_label = label.lower()
+                if any(keyword in normalized_label for keyword in preferred_keywords):
+                    choice_index = idx
+                    break
+            else:
+                for idx, label in enumerate(labels_for_selection):
+                    normalized_label = label.lower()
+                    if any(keyword in normalized_label for keyword in fallback_keywords):
+                        choice_index = idx
+                        break
         elif event_id in {"N'loth", "Nloth", "N\u2019loth"}:
             protected_relic_keywords = ("burning blood", "black blood")
             leave_keywords = ("leave", "ignore", "refuse", "decline", "move on", "skip")

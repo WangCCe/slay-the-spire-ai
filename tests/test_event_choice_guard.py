@@ -261,6 +261,48 @@ def test_cursed_tome_reads_when_hp_margin_stays_safe():
     assert action.choice_index == 0
 
 
+def test_mind_bloom_avoids_boss_fight_when_low_hp():
+    agent = _agent_for_event(
+        "MindBloom",
+        [
+            EventOption("I am War", "I am War"),
+            EventOption("I am Awake", "I am Awake"),
+            EventOption("I am Rich", "I am Rich"),
+        ],
+        ["I am War", "I am Awake", "I am Rich"],
+        floor=38,
+        act=3,
+        hp=21,
+        max_hp=95,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_mind_bloom_takes_boss_fight_when_hp_margin_is_healthy():
+    agent = _agent_for_event(
+        "MindBloom",
+        [
+            EventOption("I am War", "I am War"),
+            EventOption("I am Awake", "I am Awake"),
+            EventOption("I am Rich", "I am Rich"),
+        ],
+        ["I am War", "I am Awake", "I am Rich"],
+        floor=38,
+        act=3,
+        hp=95,
+        max_hp=95,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+
 def test_mushrooms_event_leaves_instead_of_fighting_before_boss():
     agent = _agent_for_event(
         "Mushrooms",
