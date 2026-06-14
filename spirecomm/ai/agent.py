@@ -3211,6 +3211,20 @@ class OptimizedAgent(SimpleAgent):
                 "Second Wind",
                 "Forethought",
             }
+            act_1_boss_reward_frontload_cards = {
+                "Bludgeon",
+                "Fiend Fire",
+                "Immolate",
+            }
+            act_1_boss_reward_frontload_gap = (
+                self._safe_int(getattr(context, "act", 0), 0) == 1
+                and self._safe_int(getattr(context, "floor", 0), 0) == 16
+                and frontload_count < 4
+            )
+            has_act_1_boss_reward_frontload_offer = any(
+                self._normalize_card_name(card) in act_1_boss_reward_frontload_cards
+                for card in pickable_cards
+            )
 
             def reward_selection_score(card):
                 strategy_score = strategy_scores.get(id(card))
@@ -3321,6 +3335,14 @@ class OptimizedAgent(SimpleAgent):
                         return min(score, 64)
                     if card_name in act_1_block_cards:
                         return min(score, 68)
+                if act_1_boss_reward_frontload_gap:
+                    if card_name in act_1_boss_reward_frontload_cards:
+                        score = max(score, 104)
+                    if (
+                        card_name == "Demon Form"
+                        and has_act_1_boss_reward_frontload_offer
+                    ):
+                        score = min(score, 90)
                 return score
 
             def reward_tiebreaker_score(card):

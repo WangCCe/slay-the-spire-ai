@@ -1627,6 +1627,43 @@ def test_ironclad_strategy_prefers_feed_over_duplicate_demon_form_after_act1_bos
     assert action.name == "Feed"
 
 
+def test_ironclad_act1_boss_reward_prefers_bludgeon_when_frontload_is_thin():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Clothesline", cost=2),
+        _card("Metallicize", cost=1),
+        _card("Shrug It Off", upgrades=1),
+        _card("Anger", cost=0),
+        _card("Clothesline", cost=2),
+        _card("Armaments"),
+        _card("Armaments"),
+    ]
+    reward_cards = [
+        _card("Bludgeon", cost=3),
+        _card("Demon Form", cost=3),
+        _card("Barricade", cost=3),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=16,
+        act=1,
+        hp=80,
+        max_hp=80,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Bludgeon"
+
+
 def test_ironclad_strategy_prefers_frontload_over_early_rage_before_act1_boss():
     deck = [
         _card("Strike_R"),
