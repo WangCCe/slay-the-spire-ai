@@ -2025,6 +2025,49 @@ def test_large_deck_reward_takes_battle_trance_before_act2_boss():
     assert action.name == "Battle Trance"
 
 
+def test_large_deck_reward_takes_impervious_over_thunderclap_in_act2():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R", upgrades=1),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Twin Strike"),
+        _card("Clothesline", cost=2),
+        _card("Berserk", cost=0),
+        _card("Immolate", cost=2, upgrades=1),
+        _card("Burning Pact", upgrades=1),
+        _card("Rage", cost=0),
+        _card("Shockwave", cost=2),
+        _card("Burning Pact"),
+        _card("Fiend Fire", cost=2),
+        _card("Anger", cost=0, upgrades=1),
+        _card("Clothesline", cost=2, upgrades=1),
+        _card("Shockwave", cost=2),
+    ]
+    reward_cards = [
+        _card("Body Slam"),
+        _card("Thunderclap"),
+        _card("Impervious", cost=2),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=25,
+        act=2,
+        hp=39,
+        max_hp=87,
+        act_boss="Champ",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Impervious"
+
+
 def test_act2_reward_prefers_battle_trance_over_duplicate_armaments():
     deck = [
         _card("Strike_R"),
