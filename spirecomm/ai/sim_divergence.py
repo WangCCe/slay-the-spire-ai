@@ -106,6 +106,7 @@ BASE_SKILL_BLOCK = {
     "Ghostly Armor": 10,
     "Impervious": 30,
     "Iron Wave": 5,
+    "Panic Button": 30,
     "Power Through": 15,
     "Sentinel": 5,
     "Shrug It Off": 8,
@@ -583,7 +584,9 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                         )
                     ),
                     block_trigger_count,
+                    from_card=True,
                 )
+            _apply_panic_button_no_block_power(expected, card)
             second_wind_block = _second_wind_block(
                 card,
                 before,
@@ -596,6 +599,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                     before,
                     second_wind_block,
                     _exhausts_non_attack_hand_count(card, before, card_index),
+                    from_card=True,
                 )
             hand_exhaust_energy = _hand_exhaust_sentinel_energy(card, before, card_index)
             if hand_exhaust_energy > 0:
@@ -2851,6 +2855,7 @@ def _apply_card_block_gain(
             for _ in range(trigger_count)
         ),
         trigger_count,
+        from_card=True,
     )
     return True
 
@@ -2872,7 +2877,7 @@ def _apply_block_multiplier_card(
         current_block = max(0, _to_int(expected.get("player", {}).get("block")))
         block_gain = current_block * (multiplier - 1)
         if block_gain > 0:
-            _gain_player_block(expected, before, block_gain)
+            _gain_player_block(expected, before, block_gain, from_card=True)
     return True
 
 
@@ -3228,11 +3233,28 @@ def _gain_player_block(
     before: Dict[str, Any],
     amount: int,
     trigger_count: int = 1,
+    from_card: bool = False,
 ) -> None:
     if amount <= 0:
         return
+    if from_card and _player_card_block_blocked(expected):
+        return
     expected["player"]["block"] += amount
     _apply_juggernaut_block_triggers(expected, before, trigger_count)
+
+
+def _player_card_block_blocked(snapshot: Dict[str, Any]) -> bool:
+    player = snapshot.get("player", {}) or {}
+    return any(
+        _snapshot_power_amount(player, power_name) > 0
+        for power_name in ("No Block", "NoBlock", "NoBlockPower")
+    )
+
+
+def _apply_panic_button_no_block_power(expected: Dict[str, Any], card) -> None:
+    if _known_card_name(card, BASE_SKILL_BLOCK) != "Panic Button":
+        return
+    _ensure_snapshot_power(expected.setdefault("player", {}), "No Block", 2)
 
 
 def _apply_juggernaut_block_triggers(
@@ -4114,7 +4136,9 @@ def _apply_expected_top_draw_card_played_by_effect(
                 expected,
                 before,
                 _modified_block(block, expected.get("player", {})),
+                from_card=True,
             )
+        _apply_panic_button_no_block_power(expected, top_card)
         second_wind_block = _effect_play_second_wind_block(
             top_card,
             before,
@@ -4131,6 +4155,7 @@ def _apply_expected_top_draw_card_played_by_effect(
                     before,
                     source_card,
                 ),
+                from_card=True,
             )
     if exhaust_by_effect:
         feel_no_pain_block = _havoc_top_card_feel_no_pain_block(before)

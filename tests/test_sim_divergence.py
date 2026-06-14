@@ -315,6 +315,91 @@ def test_entrench_doubles_current_block(monkeypatch, tmp_path):
     assert not trace_path.exists()
 
 
+def test_panic_button_grants_block_and_applies_no_block_power(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    panic_button = _card(
+        name="Panic Button",
+        card_id="PanicButton",
+        card_type=CardType.SKILL,
+        cost=0,
+        damage=0,
+        block=0,
+    )
+    before = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(current_hp=34, max_hp=80, block=15, energy=1),
+        hand=[panic_button],
+        monsters=[_monster(name="Large Slime", monster_id="SpikeSlime_L", hp=64)],
+    )
+    actual = _game(
+        floor=12,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=34,
+            max_hp=80,
+            block=45,
+            energy=1,
+            powers=[Power("No Block", "NoBlockPower", 2)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Large Slime", monster_id="SpikeSlime_L", hp=64)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_no_block_power_blocks_card_block_gain(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    shrug = _card(
+        name="Shrug It Off+",
+        card_id="Shrug It Off",
+        card_type=CardType.SKILL,
+        cost=1,
+        damage=0,
+        block=8,
+        upgrades=1,
+    )
+    before = _game(
+        floor=20,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=49,
+            max_hp=80,
+            block=32,
+            energy=1,
+            powers=[Power("No Block", "NoBlockPower", 2)],
+        ),
+        hand=[shrug],
+        monsters=[_monster(name="Shell Parasite", monster_id="Shelled Parasite", hp=70)],
+    )
+    actual = _game(
+        floor=20,
+        turn=1,
+        player=SimpleNamespace(
+            current_hp=49,
+            max_hp=80,
+            block=32,
+            energy=0,
+            powers=[Power("No Block", "NoBlockPower", 2)],
+        ),
+        hand=[],
+        monsters=[_monster(name="Shell Parasite", monster_id="Shelled Parasite", hp=70)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_panache_triggers_aoe_on_fifth_card_play(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
