@@ -3106,6 +3106,7 @@ class OptimizedAgent(SimpleAgent):
                 "Uppercut",
                 "Whirlwind",
             }
+            act_1_emergency_frontload_fillers = {"Wild Strike"}
             act_1_havoc_support = {
                 "Corruption",
                 "Dark Embrace",
@@ -3184,6 +3185,15 @@ class OptimizedAgent(SimpleAgent):
             )
             has_better_slime_frontload_option = any(
                 self._normalize_card_name(card) in act_1_frontload_cards
+                for card in pickable_cards
+            )
+            act_1_empty_frontload_gap = (
+                self._safe_int(getattr(context, "act", 0), 0) == 1
+                and self._safe_int(getattr(context, "floor", 0), 0) <= 8
+                and frontload_count == 0
+            )
+            has_act_1_emergency_frontload_offer = any(
+                self._normalize_card_name(card) in act_1_emergency_frontload_fillers
                 for card in pickable_cards
             )
             duplicate_anger_upgrade_options = (
@@ -3289,6 +3299,19 @@ class OptimizedAgent(SimpleAgent):
                         and (getattr(context, "floor", 0) or 0) <= 8
                     ):
                         score = min(score, 82)
+                    if (
+                        card_name in act_1_emergency_frontload_fillers
+                        and act_1_empty_frontload_gap
+                        and not has_better_slime_frontload_option
+                    ):
+                        score = max(score, 84)
+                    if (
+                        card_name == "Flex"
+                        and act_1_empty_frontload_gap
+                        and has_act_1_emergency_frontload_offer
+                        and not has_strength_support
+                    ):
+                        score = min(score, 54)
                     if card_name in act_1_strength_enablers and has_heavy_blade_in_deck:
                         score = max(score, 90)
                     if card_name in act_1_premium_frontload:

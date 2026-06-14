@@ -1696,6 +1696,38 @@ def test_ironclad_strategy_prefers_early_shockwave_over_bloodletting():
     assert action.name == "Shockwave"
 
 
+def test_ironclad_strategy_prefers_emergency_frontload_over_floor1_flex():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R", upgrades=1),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+    ]
+    reward_cards = [
+        _card("Flex", cost=0),
+        _card("Wild Strike", cost=1),
+        _card("Dark Embrace", cost=2),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=1,
+        act=1,
+        hp=80,
+        max_hp=80,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Wild Strike"
+
+
 def test_ironclad_strategy_prefers_frontload_over_early_rage_before_act1_boss():
     deck = [
         _card("Strike_R"),
