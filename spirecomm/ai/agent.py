@@ -3256,6 +3256,31 @@ class OptimizedAgent(SimpleAgent):
                 "Second Wind",
                 "Forethought",
             }
+            guardian_frontload_gap = (
+                self._safe_int(getattr(context, "act", 0), 0) == 1
+                and "guardian" in act_boss
+                and self._safe_int(getattr(context, "floor", 0), 0) <= 15
+                and frontload_count < 4
+            )
+            guardian_frontload_cards = act_1_frontload_cards | {
+                "Clothesline",
+                "Thunderclap",
+                "Uppercut",
+                "Pommel Strike",
+                "Headbutt",
+                "Twin Strike",
+                "Iron Wave",
+            }
+            slow_guardian_utility_cards = {
+                "Havoc",
+                "Burning Pact",
+                "Second Wind",
+                "Dual Wield",
+            }
+            has_guardian_frontload_offer = any(
+                self._normalize_card_name(card) in guardian_frontload_cards
+                for card in pickable_cards
+            )
             act_1_boss_reward_frontload_cards = {
                 "Bludgeon",
                 "Fiend Fire",
@@ -3413,6 +3438,24 @@ class OptimizedAgent(SimpleAgent):
                         return min(score, 64)
                     if card_name in act_1_block_cards:
                         return min(score, 68)
+                if guardian_frontload_gap:
+                    if card_name in act_1_premium_frontload:
+                        return max(score, 108)
+                    if card_name in act_1_strength_enablers and has_heavy_blade_in_deck:
+                        return max(score, 98)
+                    if (
+                        card_name == "Heavy Blade"
+                        and not has_strength_support
+                        and has_better_unsupported_heavy_blade_option
+                    ):
+                        return min(score, 72)
+                    if card_name in guardian_frontload_cards:
+                        return max(score, 96)
+                    if (
+                        card_name in slow_guardian_utility_cards
+                        and has_guardian_frontload_offer
+                    ):
+                        return min(score, 62)
                 if act_1_boss_reward_frontload_gap:
                     if card_name in act_1_boss_reward_frontload_cards:
                         score = max(score, 104)

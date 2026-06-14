@@ -2509,3 +2509,40 @@ def test_ironclad_strategy_skips_unsupported_exhume_before_act_1_boss():
     )._choose_card_reward_optimized()
 
     assert isinstance(action, CancelAction)
+
+
+def test_guardian_prep_takes_clothesline_over_slow_havoc_with_damage_gap():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Thunderclap"),
+        _card("Shockwave", cost=2),
+        _card("Armaments"),
+        _card("Second Wind"),
+        _card("Armaments"),
+        _card("Headbutt"),
+        _card("Burning Pact"),
+        _card("Shrug It Off"),
+    ]
+    reward_cards = [
+        _card("Havoc"),
+        _card("Pummel"),
+        _card("Clothesline", cost=2),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=13,
+        act=1,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Clothesline"
