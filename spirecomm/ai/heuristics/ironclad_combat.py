@@ -1586,11 +1586,19 @@ class IroncladCombatPlanner(CombatPlanner):
         except Exception as e:
             logger.warning("[CURRENT_LETHAL_PENALTY] Failed to adjust current incoming: %s", e)
 
+        context_player_hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
         current_hp = self._non_negative_float(
             getattr(
                 final_state,
                 'player_hp',
                 getattr(context, 'player_hp', getattr(getattr(context, 'game', None), 'current_hp', 0)),
+            )
+        )
+        current_max_hp = self._non_negative_float(
+            getattr(
+                final_state,
+                'player_max_hp',
+                getattr(getattr(context, 'game', None), 'max_hp', 0),
             )
         )
         unblocked_current_damage = float(
@@ -1610,6 +1618,29 @@ class IroncladCombatPlanner(CombatPlanner):
                 final_turn_block,
                 current_hp,
             )
+        elif not all_killed and current_hp > 0 and unblocked_current_damage > 0:
+            hp_after_current = max(0.0, current_hp - unblocked_current_damage)
+            hp_after_pct = (
+                hp_after_current / current_max_hp
+                if current_max_hp > 0
+                else context_player_hp_pct
+            )
+            if context_player_hp_pct < 0.5 or hp_after_pct < 0.35:
+                penalty_multiplier = (
+                    1.5
+                    if context_player_hp_pct < 0.3 or hp_after_pct < 0.2
+                    else 1.0
+                )
+                current_loss_penalty = unblocked_current_damage * W_DEATHRISK * penalty_multiplier
+                score -= current_loss_penalty
+                logger.info(
+                    "[CURRENT_HP_LOSS_PENALTY] -%.1f score: incoming=%.1f block=%s hp=%.1f hp_after=%.1f",
+                    current_loss_penalty,
+                    current_turn_incoming,
+                    final_turn_block,
+                    current_hp,
+                    hp_after_current,
+                )
 
         # 3.5. Future damage penalty (multi-turn enemy lookahead)
         try:
@@ -1633,7 +1664,6 @@ class IroncladCombatPlanner(CombatPlanner):
         # Draw/energy gains (Offering/Bloodletting/etc.)
         score += final_state.cards_drawn * 3
         score += final_state.energy_gained * 4
-        context_player_hp_pct = self._non_negative_float(getattr(context, 'player_hp_pct', 0))
         context_turn = self._non_negative_int(getattr(context, 'turn', 1)) or 1
         context_strength = self._non_negative_int(getattr(context, 'strength', 0))
         context_deck_size = (

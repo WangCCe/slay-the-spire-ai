@@ -11949,6 +11949,46 @@ def test_beam_search_does_not_play_more_cards_after_x_cost_whirlwind_spends_all_
     assert card_ids[-1] == "Whirlwind"
 
 
+def test_beam_search_returns_top_low_hp_block_candidate_for_snake_plant():
+    immolate = _card("Immolate", "Immolate", cost=2, has_target=False)
+    headbutt = _card("Headbutt", "Headbutt", cost=1)
+    shrug = _card("Shrug It Off", "Shrug It Off", card_type=CardType.SKILL, cost=1, has_target=False)
+    twin_strike = _card("Twin Strike", "Twin Strike", cost=1)
+    snake_plant = Monster(
+        name="Snake Plant",
+        monster_id="SnakePlant",
+        max_hp=78,
+        current_hp=78,
+        block=0,
+        intent=Intent.ATTACK,
+        half_dead=False,
+        is_gone=False,
+        move_id=1,
+        move_adjusted_damage=21,
+        move_hits=3,
+    )
+    snake_plant.powers = [SimpleNamespace(power_name="Malleable", amount=3)]
+    context = _combat_context(
+        [immolate, headbutt, shrug, twin_strike],
+        energy=2,
+        monsters=[snake_plant],
+    )
+    context.game_id = "snake-plant-low-hp-block"
+    context.game.current_hp = 27
+    context.game.player.block = 5
+    context.player_hp = 27
+    context.player_hp_pct = 27 / 80
+    context.incoming_damage = 21
+    context.floor = 27
+    context.act = 2
+    context.turn = 1
+    planner = IroncladCombatPlanner()
+
+    sequence = planner._beam_search_turn(context, context.playable_cards, beam_width=15, max_depth=5)
+
+    assert [action.card.card_id for action in sequence] == ["Shrug It Off", "Twin Strike"]
+
+
 def test_beam_search_uses_energy_gained_by_bloodletting_for_followup_cards(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
