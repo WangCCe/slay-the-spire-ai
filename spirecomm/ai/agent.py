@@ -65,6 +65,10 @@ except ImportError:
 
 
 class SimpleAgent:
+    LOW_VALUE_UPGRADE_PENALTIES = {
+        "Finesse": 80.0,
+    }
+
     SHOP_PURGE_TARGET_KEYS = {
         "strike",
         "defend",
@@ -179,9 +183,10 @@ class SimpleAgent:
     def _score_upgrade_candidate(self, card, context=None):
         if is_card_upgraded(card):
             return -999.0
+        base_name = self._normalize_card_name(card)
         bonus = self._get_upgrade_bonus(card)
         priority_rank = self.priorities.CARD_PRIORITIES_BY_NAME.get(
-            self._normalize_card_name(card)
+            base_name
         )
         priority_boost = 0.0
         if priority_rank is not None:
@@ -206,7 +211,14 @@ class SimpleAgent:
                 strategy_upgrade_boost = (strategy_priority - 5.0) * 6.0
             except Exception:
                 pass
-        return priority_boost * 2.0 + bonus * 1.5 + synergy_boost + strategy_upgrade_boost
+        low_value_upgrade_penalty = self.LOW_VALUE_UPGRADE_PENALTIES.get(base_name, 0.0)
+        return (
+            priority_boost * 2.0
+            + bonus * 1.5
+            + synergy_boost
+            + strategy_upgrade_boost
+            - low_value_upgrade_penalty
+        )
 
     def _best_upgrade_score(self, context=None):
         if not hasattr(self.game, "deck") or not self.game.deck:

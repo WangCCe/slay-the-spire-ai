@@ -181,6 +181,33 @@ def test_early_ironclad_upgrade_prefers_whirlwind_over_reckless_charge():
     )
 
 
+def test_act1_slime_boss_upgrade_prefers_frontload_over_finesse():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Finesse", cost=0),
+        _card("Clothesline", cost=2),
+        _card("Twin Strike"),
+        _card("Cleave"),
+    ]
+    agent = _agent_for_reward([], deck, floor=6, act=1, act_boss="Slime Boss")
+    context = DecisionContext(agent.game)
+    finesse = next(card for card in deck if card.name == "Finesse")
+    frontload = [
+        next(card for card in deck if card.name == card_name)
+        for card_name in ("Bash", "Clothesline", "Twin Strike", "Cleave")
+    ]
+
+    assert max(
+        agent._score_upgrade_candidate(card, context) for card in frontload
+    ) > agent._score_upgrade_candidate(finesse, context)
+
+
 def test_ironclad_boss_relic_selection_avoids_crown_and_dripper_for_low_risk_option():
     relics = [
         _relic("Busted Crown"),
