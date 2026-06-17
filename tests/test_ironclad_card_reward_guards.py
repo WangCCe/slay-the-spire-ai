@@ -2611,3 +2611,72 @@ def test_floor_one_reward_prefers_thunderclap_over_anger_from_trace():
 
     assert isinstance(action, CardRewardAction)
     assert action.name == "Thunderclap"
+
+
+def test_act1_reward_prefers_first_perfected_strike_over_heavy_blade_from_trace():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Demon Form", cost=3),
+        _card("Twin Strike"),
+        _card("Cleave"),
+    ]
+    reward_cards = [
+        _card("Heavy Blade", cost=2),
+        _card("Perfected Strike", cost=2),
+        _card("Flex", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=4,
+        act=1,
+        act_boss="Slime Boss",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Perfected Strike"
+
+
+def test_act1_reward_prefers_first_perfected_strike_over_carnage_from_trace():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2, upgrades=1),
+        _card("Headbutt"),
+        _card("Power Through"),
+        _card("Pommel Strike", upgrades=1),
+        _card("Sentinel"),
+        _card("Twin Strike"),
+    ]
+    reward_cards = [
+        _card("Perfected Strike", cost=2),
+        _card("Headbutt"),
+        _card("Carnage", cost=2),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=10,
+        act=1,
+        act_boss="Hexaghost",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Perfected Strike"

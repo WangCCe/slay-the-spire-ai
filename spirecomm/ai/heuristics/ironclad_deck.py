@@ -279,10 +279,10 @@ class IroncladDeckStrategy:
         context: DecisionContext,
         deck_size: int,
     ) -> bool:
-        """Accept one early Perfected Strike for damage-gap or duplicate-Anger decks."""
+        """Accept one Act 1 Perfected Strike while Strike-source density is still high."""
         act = self._non_negative_int(getattr(context, 'act', 0))
         floor = self._non_negative_int(getattr(context, 'floor', 0))
-        if act != 1 or deck_size > 13:
+        if act != 1 or deck_size > 14:
             return False
 
         deck = list(getattr(context.game, 'deck', []) or [])
@@ -295,7 +295,18 @@ class IroncladDeckStrategy:
         real_frontload_count = sum(
             1 for card_id in deck_ids if card_id in self.ACT_1_FRONTLOAD_ATTACKS
         )
-        if floor <= 4 and strike_sources >= 5 and real_frontload_count <= 1:
+        if floor <= 4 and strike_sources >= 5 and real_frontload_count <= 2:
+            return True
+
+        has_vulnerable_coverage = any(
+            card_id in {'Shockwave', 'Thunderclap'} for card_id in deck_ids
+        )
+        if (
+            8 <= floor <= 10
+            and strike_sources >= 4
+            and 2 <= real_frontload_count <= 3
+            and not has_vulnerable_coverage
+        ):
             return True
 
         anger_count = sum(1 for card_id in deck_ids if card_id == 'Anger')
