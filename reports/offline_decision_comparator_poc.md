@@ -5,422 +5,424 @@ No gameplay-code fix is applied by this report.
 
 ## Summary
 
-- Samples: 411
-- Differences: 252
-- Categories: card_reward=93, event=78, route=222, shop=18
-- Evidence quality: complete=320, partial=91
+- Samples: 413
+- Differences: 280
+- Categories: card_reward=113, event=54, route=214, shop=32
+- Evidence quality: complete=321, partial=92
 
 ## Comparison Rows
 
 | Category | Source | Floor | Evidence | Current Choice | Bottled Reference | Confidence | Reason |
 |---|---|---:|---|---|---|---|---|
-| card_reward | run:1781716984.run | 1 | partial | Anger | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781716984.run | 3 | partial | Anger | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781716984.run | 5 | partial | Anger | Perfected Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 5 copy/copies of Perfected Strike. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781716984.run | 7 | partial | Headbutt | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781716984.run | 10 | partial | Pommel Strike | Pommel Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781716984.run | 11 | partial | Uppercut | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781716984.run | 13 | partial | True Grit | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781716984.run | 14 | partial | Iron Wave | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| event | run:1781716984.run | 2 | partial | Gather Gold | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781716984.run | 8 | partial | Banana | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781716984.run | 12 | partial | Healed | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| shop | run:1781716984.run | 4 | partial | Strike_R | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
-| route | run:1781716984.run | 1 | partial | actual path | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate map at decision time |
-| card_reward | run:1781717072.run | 0 | partial | Blind | Dramatic Entrance | low | Bottled REQUESTED_STRIKE desired-card list wants up to 1 copy/copies of Dramatic Entrance. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717072.run | 1 | partial | Whirlwind | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717072.run | 3 | partial | Armaments | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717072.run | 5 | partial | Ghostly Armor | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717072.run | 7 | partial | Cleave | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717072.run | 12 | partial | Sword Boomerang | Perfected Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 5 copy/copies of Perfected Strike. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717072.run | 14 | partial | Shrug It Off | Shrug It Off | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Shrug It Off. Limitations: missing deck snapshot at reward time |
-| event | run:1781717072.run | 2 | partial | Healed | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781717072.run | 6 | partial | Forge | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| shop | run:1781717072.run | 11 | partial | Battle Trance | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
-| shop | run:1781717072.run | 11 | partial | Strike_R | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
-| route | run:1781717072.run | 1 | partial | actual path | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate map at decision time |
-| card_reward | run:1781717218.run | 1 | partial | Headbutt | Dropkick | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Dropkick. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717218.run | 4 | partial | Anger | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717218.run | 5 | partial | Carnage | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717218.run | 10 | partial | Iron Wave | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717218.run | 11 | partial | Disarm | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717218.run | 12 | partial | Cleave | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717218.run | 13 | partial | True Grit | Pommel Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717218.run | 14 | partial | Burning Pact | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717218.run | 16 | partial | Corruption | Reaper | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Reaper. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717218.run | 18 | partial | Clothesline | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717218.run | 19 | partial | Shockwave | Shockwave | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Shockwave. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717218.run | 24 | partial | Pommel Strike | Pommel Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. Limitations: missing deck snapshot at reward time |
-| event | run:1781717218.run | 2 | partial | Gather Gold | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781717218.run | 7 | partial | Success | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781717218.run | 11 | partial | Fought Mushrooms | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781717218.run | 20 | partial | Paid Fearfully | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781717218.run | 22 | partial | Ignored | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781717218.run | 27 | partial | Fight | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781717218.run | 27 | partial | Fled From Nobs | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| shop | run:1781717218.run | 3 | partial | Strike_R | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
-| route | run:1781717218.run | 1 | partial | actual path | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate map at decision time |
-| card_reward | run:1781717307.run | 1 | partial | Clothesline | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717307.run | 3 | partial | Twin Strike | Twin Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717307.run | 4 | partial | Pommel Strike | Pommel Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717307.run | 5 | partial | Uppercut | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717307.run | 7 | partial | Clothesline | Perfected Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 5 copy/copies of Perfected Strike. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717307.run | 11 | partial | Armaments | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717307.run | 13 | partial | True Grit | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| event | run:1781717307.run | 2 | partial | Purged | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781717307.run | 14 | partial | Card Removal | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| route | run:1781717307.run | 1 | partial | actual path | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate map at decision time |
-| card_reward | run:1781717464.run | 1 | partial | Anger | Shrug It Off | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Shrug It Off. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717464.run | 2 | partial | Heavy Blade | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717464.run | 4 | partial | Headbutt | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717464.run | 5 | partial | Demon Form | Flame Barrier | low | Bottled REQUESTED_STRIKE desired-card list wants up to 1 copy/copies of Flame Barrier. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717464.run | 11 | partial | Blood for Blood | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717464.run | 14 | partial | Thunderclap | Thunderclap | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717464.run | 16 | partial | Immolate | Reaper | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Reaper. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717464.run | 18 | partial | Pommel Strike | Pommel Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717464.run | 22 | partial | Whirlwind+1 | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717464.run | 24 | partial | Disarm | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717464.run | 29 | partial | Shrug It Off | Shrug It Off | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Shrug It Off. Limitations: missing deck snapshot at reward time |
-| card_reward | run:1781717464.run | 30 | partial | SKIP | Twin Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. Limitations: missing deck snapshot at reward time |
-| event | run:1781717464.run | 11 | partial | Fought Mushrooms | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781717464.run | 12 | partial | Forget | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781717464.run | 13 | partial | Paid Gold | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781717464.run | 20 | partial | Heal | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| event | run:1781717464.run | 21 | partial | Paid Fearfully | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
-| shop | run:1781717464.run | 3 | partial | Strike_R | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
-| route | run:1781717464.run | 1 | partial | actual path | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate map at decision time |
+| shop | fixture:shop | 5 | complete | Anger | purge | high | Bottled REQUESTED_STRIKE shop priority prefers starter removal before optional purchases. |
+| event | fixture:event | 8 | complete | choose 0: Enter | choose 1: Leave | high | Bottled REQUESTED_STRIKE enters Shining Light at 50%+ HP, otherwise leaves. |
+| route | fixture:route | 1 | complete | choice 0 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 4.68: safer shop rest: reward=4.68, survivability=1.00 |
+| card_reward | fixture:card_reward | 10 | complete | SKIP | Offering | high | Bottled REQUESTED_STRIKE desired-card list wants up to 1 copy/copies of Offering. |
+| card_reward | run:1781723341.run | 1 | partial | Perfected Strike | Perfected Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 5 copy/copies of Perfected Strike. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723341.run | 3 | partial | Cleave | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723341.run | 7 | partial | Second Wind | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723341.run | 10 | partial | Thunderclap | Thunderclap | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723341.run | 11 | partial | Pommel Strike | Pommel Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723341.run | 12 | partial | Twin Strike | Twin Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723341.run | 13 | partial | Carnage | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723341.run | 14 | partial | Spot Weakness | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723341.run | 16 | partial | Double Tap | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723341.run | 18 | partial | Heavy Blade | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723341.run | 19 | partial | SKIP | Twin Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723341.run | 22 | partial | Armaments | Pommel Strike+1 | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike+1. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723341.run | 24 | partial | Headbutt+1 | Pommel Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. Limitations: missing deck snapshot at reward time |
+| event | run:1781723341.run | 4 | partial | Forget | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
+| event | run:1781723341.run | 21 | partial | Paid Fearfully | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
+| shop | run:1781723341.run | 20 | partial | MealTicket | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
+| shop | run:1781723341.run | 2 | partial | Strike_R | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
+| shop | run:1781723341.run | 20 | partial | Strike_R | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
+| route | run:1781723341.run | 1 | partial | actual path | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate map at decision time |
+| card_reward | run:1781723385.run | 1 | partial | Clothesline | Twin Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723385.run | 3 | partial | Flex | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723385.run | 5 | partial | Intimidate | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| event | run:1781723385.run | 4 | partial | Gather Gold | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
+| shop | run:1781723385.run | 2 | partial | Strike_R | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
+| route | run:1781723385.run | 1 | partial | actual path | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate map at decision time |
+| card_reward | run:1781723548.run | 1 | partial | Anger | Thunderclap | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723548.run | 2 | partial | Disarm | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723548.run | 4 | partial | Bloodletting+1 | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723548.run | 7 | partial | Shrug It Off+1 | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723548.run | 8 | partial | True Grit+1 | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723548.run | 10 | partial | Carnage | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723548.run | 11 | partial | Clothesline | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723548.run | 12 | partial | Burning Pact+1 | Flame Barrier+1 | low | Bottled REQUESTED_STRIKE desired-card list wants up to 1 copy/copies of Flame Barrier+1. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723548.run | 14 | partial | Shrug It Off+1 | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723548.run | 15 | partial | Shockwave+1 | Shockwave+1 | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Shockwave+1. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723548.run | 16 | partial | Impervious+1 | Impervious+1 | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Impervious+1. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723548.run | 18 | partial | Cleave | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723548.run | 20 | partial | SKIP | Twin Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. Limitations: missing deck snapshot at reward time |
+| event | run:1781723548.run | 19 | partial | Stole From Cult | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
+| event | run:1781723548.run | 21 | partial | Traded Relic | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
+| shop | run:1781723548.run | 5 | partial | Block Potion | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
+| shop | run:1781723548.run | 5 | partial | Strike_R | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
+| shop | run:1781723548.run | 13 | partial | Strike_R | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
+| route | run:1781723548.run | 1 | partial | actual path | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate map at decision time |
+| card_reward | run:1781723677.run | 1 | partial | Burning Pact | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723677.run | 2 | partial | Headbutt | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723677.run | 3 | partial | Anger | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723677.run | 4 | partial | Whirlwind | Pommel Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723677.run | 7 | partial | Clothesline | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723677.run | 10 | partial | Second Wind | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723677.run | 11 | partial | Heavy Blade | Twin Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723677.run | 12 | partial | Second Wind | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723677.run | 14 | partial | Clothesline | Thunderclap | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723677.run | 16 | partial | Brutality | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723677.run | 18 | partial | Cleave+1 | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723677.run | 19 | partial | Flame Barrier+1 | Battle Trance | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Battle Trance. Limitations: missing deck snapshot at reward time |
+| event | run:1781723677.run | 5 | partial | Offered Basic | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
+| event | run:1781723677.run | 13 | partial | Banana | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
+| event | run:1781723677.run | 20 | partial | Inject Mutagens | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
+| route | run:1781723677.run | 1 | partial | actual path | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate map at decision time |
+| card_reward | run:1781723833.run | 1 | partial | True Grit | Thunderclap | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723833.run | 2 | partial | Twin Strike | Twin Strike | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723833.run | 7 | partial | Shrug It Off | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723833.run | 10 | partial | Spot Weakness | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723833.run | 12 | partial | Shockwave | Shockwave | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Shockwave. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723833.run | 13 | partial | Headbutt | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723833.run | 16 | partial | Impervious | Impervious | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Impervious. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723833.run | 18 | partial | Headbutt | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723833.run | 19 | partial | Thunderclap | Thunderclap | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723833.run | 20 | partial | Dark Embrace | Thunderclap | low | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723833.run | 21 | partial | Ghostly Armor | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723833.run | 28 | partial | Cleave | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723833.run | 29 | partial | Armaments | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| card_reward | run:1781723833.run | 31 | partial | Shrug It Off+1 | skip | low | Bottled card reward handler skips when no desired card is offered. Limitations: missing deck snapshot at reward time |
+| event | run:1781723833.run | 4 | partial | Entered Light | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
+| event | run:1781723833.run | 5 | partial | Touch | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
+| event | run:1781723833.run | 24 | partial | Gave Gold | unknown | low | Partial event evidence: option labels and hp at decision time are required for high-confidence comparison. Limitations: missing event option labels and hp at decision time |
+| shop | run:1781723833.run | 3 | partial | Strike_R | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
+| shop | run:1781723833.run | 14 | partial | Strike_R | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
+| shop | run:1781723833.run | 22 | partial | Strike_R | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
+| shop | run:1781723833.run | 30 | partial | Strike_R | unknown | low | Partial shop evidence: full offer and prices are required for a high-confidence Bottled-style shop comparison. Limitations: missing full shop offer |
+| route | run:1781723833.run | 1 | partial | actual path | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate map at decision time |
 | event | decision_trace | 0 | complete | choose 0: Talk | choose 0: Talk | medium | Bottled common event fallback chooses the first option. |
 | event | decision_trace | 0 | complete | choose 0: Obtain a random rare Card | choose 0: Obtain a random rare Card | medium | Bottled common event fallback chooses the first option. |
 | event | decision_trace | 0 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 0 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.68: M@2,0 -> ?@1,1 -> M@2,2 -> $@1,3 -> M@0,4 -> R@0,5: reward=7.68, survivability=1.00 |
-| route | decision_trace | 0 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
-| event | decision_trace | 0 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 0 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
-| route | decision_trace | 0 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
-| event | decision_trace | 0 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 0 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
-| card_reward | decision_trace | 1 | complete | Anger | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.76: ?@1,1 -> M@2,2 -> $@1,3 -> M@0,4 -> R@0,5 -> M@1,6: reward=7.76, survivability=1.00 |
-| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.76: ?@1,1 -> M@2,2 -> $@1,3 -> M@0,4 -> R@0,5 -> M@1,6: reward=7.76, survivability=1.00 |
-| event | decision_trace | 2 | complete | choose 0: Gather Gold | choose 0: Gather Gold | high | Bottled REQUESTED_STRIKE takes Goop gold only at 70%+ HP. |
-| event | decision_trace | 2 | complete | choose 0: Leave | choose 0: Leave | high | Bottled REQUESTED_STRIKE takes Goop gold only at 70%+ HP. |
-| route | decision_trace | 2 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.10: M@2,2 -> $@1,3 -> M@0,4 -> R@0,5 -> M@1,6 -> ?@1,7: reward=9.10, survivability=1.00 |
-| route | decision_trace | 2 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.10: M@2,2 -> $@1,3 -> M@0,4 -> R@0,5 -> M@1,6 -> ?@1,7: reward=9.10, survivability=1.00 |
-| card_reward | decision_trace | 3 | complete | Anger | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.60: $@1,3 -> M@0,4 -> R@0,5 -> M@1,6 -> ?@1,7 -> T@0,8: reward=9.60, survivability=1.00 |
-| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.60: $@1,3 -> M@0,4 -> R@0,5 -> M@1,6 -> ?@1,7 -> T@0,8: reward=9.60, survivability=1.00 |
-| shop | decision_trace | 4 | complete | purge | purge | high | Bottled REQUESTED_STRIKE shop priority prefers starter removal before optional purchases. |
-| shop | decision_trace | 4 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
-| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: M@0,4 -> R@0,5 -> M@1,6 -> ?@1,7 -> T@1,8 -> R@2,9: reward=6.70, survivability=1.00 |
-| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: M@0,4 -> R@0,5 -> M@1,6 -> ?@1,7 -> T@1,8 -> R@2,9: reward=6.70, survivability=1.00 |
-| card_reward | decision_trace | 5 | complete | Anger | Perfected Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 5 copy/copies of Perfected Strike. |
-| route | decision_trace | 5 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: R@0,5 -> M@1,6 -> ?@1,7 -> T@1,8 -> R@2,9 -> M@2,10: reward=6.70, survivability=1.00 |
-| route | decision_trace | 5 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: R@0,5 -> M@1,6 -> ?@1,7 -> T@1,8 -> R@2,9 -> M@2,10: reward=6.70, survivability=1.00 |
-| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: M@1,6 -> ?@1,7 -> T@1,8 -> R@2,9 -> M@2,10 -> R@1,11: reward=6.70, survivability=1.00 |
-| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: M@1,6 -> ?@1,7 -> T@1,8 -> R@2,9 -> M@2,10 -> R@1,11: reward=6.70, survivability=1.00 |
-| card_reward | decision_trace | 7 | complete | Headbutt | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 7 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: ?@1,7 -> T@1,8 -> R@2,9 -> M@2,10 -> R@1,11 -> ?@1,12: reward=6.70, survivability=1.00 |
-| route | decision_trace | 7 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: ?@1,7 -> T@1,8 -> R@2,9 -> M@2,10 -> R@1,11 -> ?@1,12: reward=6.70, survivability=1.00 |
-| event | decision_trace | 8 | complete | choose 0: Banana | choose 0: Banana | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 8 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 8 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 8.20: T@1,8 -> R@2,9 -> M@2,10 -> R@1,11 -> ?@1,12 -> E@1,13: reward=8.20, survivability=1.00 |
-| route | decision_trace | 8 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 8.20: T@1,8 -> R@2,9 -> M@2,10 -> R@1,11 -> ?@1,12 -> E@1,13: reward=8.20, survivability=1.00 |
-| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.70: M@1,9 -> M@2,10 -> R@1,11 -> ?@1,12 -> E@1,13 -> R@1,14: reward=7.70, survivability=1.00 |
-| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.70: M@1,9 -> M@2,10 -> R@1,11 -> ?@1,12 -> E@1,13 -> R@1,14: reward=7.70, survivability=1.00 |
-| card_reward | decision_trace | 10 | complete | Pommel Strike | Pommel Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. |
-| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: M@2,10 -> R@1,11 -> ?@1,12 -> E@1,13 -> R@1,14: reward=6.70, survivability=1.00 |
-| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: M@2,10 -> R@1,11 -> ?@1,12 -> E@1,13 -> R@1,14: reward=6.70, survivability=1.00 |
-| card_reward | decision_trace | 11 | complete | Uppercut | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 11 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 5.60: ?@3,11 -> M@3,12 -> E@2,13 -> R@1,14: reward=5.60, survivability=1.00 |
-| route | decision_trace | 11 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 5.60: ?@3,11 -> M@3,12 -> E@2,13 -> R@1,14: reward=5.60, survivability=1.00 |
-| event | decision_trace | 12 | complete | choose 0: Heal | choose 0: Heal | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 12 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 4.60: M@3,12 -> E@2,13 -> R@1,14: reward=4.60, survivability=1.00 |
-| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 4.60: M@3,12 -> E@2,13 -> R@1,14: reward=4.60, survivability=1.00 |
-| card_reward | decision_trace | 13 | complete | True Grit | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 13 | complete | choice 2 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.60: E@2,13 -> R@1,14: reward=3.60, survivability=1.00 |
-| route | decision_trace | 13 | complete | choice 2 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.60: E@2,13 -> R@1,14: reward=3.60, survivability=1.00 |
-| card_reward | decision_trace | 14 | complete | Iron Wave | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@4,14: reward=1.10, survivability=1.00 |
-| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@4,14: reward=1.10, survivability=1.00 |
+| route | decision_trace | 0 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.78: M@0,0 -> $@0,1 -> M@1,2 -> ?@1,3 -> ?@2,4 -> E@3,5: reward=8.78, survivability=1.00 |
+| route | decision_trace | 0 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.78: M@0,0 -> $@0,1 -> M@1,2 -> ?@1,3 -> ?@2,4 -> E@3,5: reward=8.78, survivability=1.00 |
+| card_reward | decision_trace | 1 | complete | Perfected Strike | Perfected Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 5 copy/copies of Perfected Strike. |
+| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.80: $@0,1 -> M@1,2 -> ?@1,3 -> ?@2,4 -> E@3,5 -> R@3,6: reward=8.80, survivability=1.00 |
+| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.80: $@0,1 -> M@1,2 -> ?@1,3 -> ?@2,4 -> E@3,5 -> R@3,6: reward=8.80, survivability=1.00 |
+| shop | decision_trace | 2 | complete | purge | purge | high | Bottled REQUESTED_STRIKE shop priority prefers starter removal before optional purchases. |
+| shop | decision_trace | 2 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
+| route | decision_trace | 2 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.20: M@1,2 -> ?@1,3 -> M@1,4 -> R@1,5 -> M@2,6 -> R@2,7: reward=6.20, survivability=1.00 |
+| route | decision_trace | 2 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.20: M@1,2 -> ?@1,3 -> M@1,4 -> R@1,5 -> M@2,6 -> R@2,7: reward=6.20, survivability=1.00 |
+| card_reward | decision_trace | 3 | complete | Cleave | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: ?@1,3 -> M@1,4 -> R@1,5 -> M@2,6 -> R@2,7 -> T@2,8: reward=6.70, survivability=1.00 |
+| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: ?@1,3 -> M@1,4 -> R@1,5 -> M@2,6 -> R@2,7 -> T@2,8: reward=6.70, survivability=1.00 |
+| event | decision_trace | 4 | complete | choose 0: Forget | choose 0: Forget | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 4 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
+| route | decision_trace | 4 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: M@1,4 -> R@1,5 -> M@2,6 -> R@2,7 -> T@2,8 -> M@2,9: reward=6.70, survivability=1.00 |
+| route | decision_trace | 4 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: M@1,4 -> R@1,5 -> M@2,6 -> R@2,7 -> T@2,8 -> M@2,9: reward=6.70, survivability=1.00 |
+| route | decision_trace | 5 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 9.60: E@3,5 -> M@2,6 -> R@2,7 -> T@2,8 -> M@2,9 -> E@3,10: reward=9.60, survivability=1.00 |
+| route | decision_trace | 5 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 9.60: E@3,5 -> M@2,6 -> R@2,7 -> T@2,8 -> M@2,9 -> E@3,10: reward=9.60, survivability=1.00 |
+| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.10: M@2,6 -> R@2,7 -> T@2,8 -> M@2,9 -> E@3,10 -> M@4,11: reward=8.10, survivability=1.00 |
+| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.10: M@2,6 -> R@2,7 -> T@2,8 -> M@2,9 -> E@3,10 -> M@4,11: reward=8.10, survivability=1.00 |
+| card_reward | decision_trace | 7 | complete | Second Wind | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 7 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.60: R@2,7 -> T@2,8 -> M@2,9 -> E@3,10 -> M@4,11 -> E@3,12: reward=9.60, survivability=1.00 |
+| route | decision_trace | 7 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.60: R@2,7 -> T@2,8 -> M@2,9 -> E@3,10 -> M@4,11 -> E@3,12: reward=9.60, survivability=1.00 |
+| route | decision_trace | 8 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: T@2,8 -> M@2,9 -> M@1,10 -> M@0,11 -> M@1,12 -> M@0,13: reward=6.50, survivability=1.00 |
+| route | decision_trace | 8 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: T@2,8 -> M@2,9 -> M@1,10 -> M@0,11 -> M@1,12 -> M@0,13: reward=6.50, survivability=1.00 |
+| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.10: M@2,9 -> M@1,10 -> M@0,11 -> M@1,12 -> M@0,13 -> R@1,14: reward=6.10, survivability=1.00 |
+| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.10: M@2,9 -> M@1,10 -> M@0,11 -> M@1,12 -> M@0,13 -> R@1,14: reward=6.10, survivability=1.00 |
+| card_reward | decision_trace | 10 | complete | Thunderclap | Thunderclap | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. |
+| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.10: M@1,10 -> M@0,11 -> M@1,12 -> M@0,13 -> R@1,14: reward=5.10, survivability=1.00 |
+| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.10: M@1,10 -> M@0,11 -> M@1,12 -> M@0,13 -> R@1,14: reward=5.10, survivability=1.00 |
+| card_reward | decision_trace | 11 | complete | Pommel Strike | Pommel Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. |
+| route | decision_trace | 11 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 4.10: M@0,11 -> M@1,12 -> M@0,13 -> R@1,14: reward=4.10, survivability=1.00 |
+| route | decision_trace | 11 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 4.10: M@0,11 -> M@1,12 -> M@0,13 -> R@1,14: reward=4.10, survivability=1.00 |
+| card_reward | decision_trace | 12 | complete | Twin Strike | Twin Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. |
+| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.10: M@1,12 -> M@0,13 -> R@1,14: reward=3.10, survivability=1.00 |
+| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.10: M@1,12 -> M@0,13 -> R@1,14: reward=3.10, survivability=1.00 |
+| card_reward | decision_trace | 13 | complete | Carnage | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.10: M@0,13 -> R@1,14: reward=2.10, survivability=1.00 |
+| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.10: M@0,13 -> R@1,14: reward=2.10, survivability=1.00 |
+| card_reward | decision_trace | 14 | complete | Spot Weakness | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@1,14: reward=1.10, survivability=1.00 |
+| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@1,14: reward=1.10, survivability=1.00 |
 | route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
 | route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
-| card_reward | decision_trace | 16 | complete | Cleave | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| event | decision_trace | 0 | complete | choose 0: Talk | choose 0: Talk | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 0 | complete | choose 0: Choose a colorless Card to obtain | choose 0: Choose a colorless Card to obtain | medium | Bottled common event fallback chooses the first option. |
-| card_reward | decision_trace | 0 | complete | Blind | Blind | high | Bottled REQUESTED_STRIKE desired-card list wants up to 1 copy/copies of Blind. |
-| event | decision_trace | 0 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 0 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.50: M@0,0 -> M@1,1 -> M@1,2 -> M@2,3 -> M@1,4 -> E@2,5: reward=7.50, survivability=1.00 |
-| route | decision_trace | 0 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.50: M@0,0 -> M@1,1 -> M@1,2 -> M@2,3 -> M@1,4 -> E@2,5: reward=7.50, survivability=1.00 |
-| card_reward | decision_trace | 1 | complete | Whirlwind | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.50: ?@4,1 -> M@4,2 -> ?@4,3 -> M@5,4 -> E@4,5 -> M@4,6: reward=7.50, survivability=1.00 |
-| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.50: ?@4,1 -> M@4,2 -> ?@4,3 -> M@5,4 -> E@4,5 -> M@4,6: reward=7.50, survivability=1.00 |
-| event | decision_trace | 2 | complete | choose 0: Heal | choose 0: Heal | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 2 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 2 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.60: M@4,2 -> ?@4,3 -> M@5,4 -> E@4,5 -> M@4,6 -> R@5,7: reward=7.60, survivability=1.00 |
-| route | decision_trace | 2 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.60: M@4,2 -> ?@4,3 -> M@5,4 -> E@4,5 -> M@4,6 -> R@5,7: reward=7.60, survivability=1.00 |
-| card_reward | decision_trace | 3 | complete | Armaments | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.10: ?@4,3 -> M@5,4 -> E@4,5 -> M@4,6 -> R@5,7 -> T@4,8: reward=8.10, survivability=1.00 |
-| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.10: ?@4,3 -> M@5,4 -> E@4,5 -> M@4,6 -> R@5,7 -> T@4,8: reward=8.10, survivability=1.00 |
-| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.20: M@5,4 -> E@4,5 -> M@4,6 -> R@5,7 -> T@4,8 -> R@3,9: reward=8.20, survivability=1.00 |
-| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.20: M@5,4 -> E@4,5 -> M@4,6 -> R@5,7 -> T@4,8 -> R@3,9: reward=8.20, survivability=1.00 |
-| card_reward | decision_trace | 5 | complete | Ghostly Armor | Ghostly Armor | high | Bottled REQUESTED_STRIKE desired-card list wants up to 1 copy/copies of Ghostly Armor. |
-| route | decision_trace | 5 | complete | choice 2 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 11.10: E@4,5 -> M@4,6 -> R@5,7 -> T@4,8 -> M@4,9 -> $@5,10: reward=11.10, survivability=1.00 |
-| route | decision_trace | 5 | complete | choice 2 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 11.10: E@4,5 -> M@4,6 -> R@5,7 -> T@4,8 -> M@4,9 -> $@5,10: reward=11.10, survivability=1.00 |
-| event | decision_trace | 6 | complete | choose 0: Forge | choose 0: Forge | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 6 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.94: E@6,6 -> R@5,7 -> T@4,8 -> M@4,9 -> $@5,10 -> M@5,11: reward=10.94, survivability=1.00 |
-| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.94: E@6,6 -> R@5,7 -> T@4,8 -> M@4,9 -> $@5,10 -> M@5,11: reward=10.94, survivability=1.00 |
-| card_reward | decision_trace | 7 | complete | Cleave | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 7 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 8.50: M@6,7 -> T@6,8 -> R@5,9 -> ?@6,10 -> M@5,11 -> $@6,12: reward=8.50, survivability=1.00 |
-| route | decision_trace | 7 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 8.50: M@6,7 -> T@6,8 -> R@5,9 -> ?@6,10 -> M@5,11 -> $@6,12: reward=8.50, survivability=1.00 |
-| route | decision_trace | 8 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 9.04: T@6,8 -> R@5,9 -> $@5,10 -> M@5,11 -> M@5,12 -> M@4,13: reward=9.04, survivability=1.00 |
-| route | decision_trace | 8 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 9.04: T@6,8 -> R@5,9 -> $@5,10 -> M@5,11 -> M@5,12 -> M@4,13: reward=9.04, survivability=1.00 |
-| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.64: R@5,9 -> $@5,10 -> M@5,11 -> M@5,12 -> M@4,13 -> R@4,14: reward=8.64, survivability=1.00 |
-| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.64: R@5,9 -> $@5,10 -> M@5,11 -> M@5,12 -> M@4,13 -> R@4,14: reward=8.64, survivability=1.00 |
-| route | decision_trace | 10 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 7.84: ?@6,10 -> M@5,11 -> $@6,12 -> M@6,13 -> R@5,14: reward=7.84, survivability=1.00 |
-| route | decision_trace | 10 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 7.84: ?@6,10 -> M@5,11 -> $@6,12 -> M@6,13 -> R@5,14: reward=7.84, survivability=1.00 |
-| shop | decision_trace | 11 | complete | purge | Membership Card | high | Bottled shop priority buys affordable Membership Card. |
-| shop | decision_trace | 11 | complete | Battle Trance | Battle Trance | high | Bottled shop card list ranks Battle Trance as buyable. |
-| shop | decision_trace | 11 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
-| route | decision_trace | 11 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 4.10: M@5,11 -> M@5,12 -> M@4,13 -> R@4,14: reward=4.10, survivability=1.00 |
-| route | decision_trace | 11 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 4.10: M@5,11 -> M@5,12 -> M@4,13 -> R@4,14: reward=4.10, survivability=1.00 |
-| card_reward | decision_trace | 12 | complete | Sword Boomerang | Perfected Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 5 copy/copies of Perfected Strike. |
-| route | decision_trace | 12 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.00: M@5,12 -> M@4,13 -> R@4,14: reward=2.00, survivability=1.00 |
-| route | decision_trace | 12 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.00: M@5,12 -> M@4,13 -> R@4,14: reward=2.00, survivability=1.00 |
-| shop | decision_trace | 13 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
-| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.00: M@6,13 -> R@5,14: reward=1.00, survivability=1.00 |
-| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.00: M@6,13 -> R@5,14: reward=1.00, survivability=1.00 |
-| card_reward | decision_trace | 14 | complete | Shrug It Off | Pommel Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. |
-| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 0.00: R@5,14: reward=0.00, survivability=1.00 |
-| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 0.00: R@5,14: reward=0.00, survivability=1.00 |
-| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
-| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
-| event | decision_trace | 0 | complete | choose 0: Talk | choose 0: Talk | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 0 | complete | choose 0: Remove a Card from your deck | choose 0: Remove a Card from your deck | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 0 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 0 | complete | choice map_node | choice 2 | high | Bottled common map scoring prefers reward-to-survivability 9.38: M@5,0 -> M@6,1 -> M@6,2 -> $@5,3 -> M@4,4 -> E@3,5: reward=9.38, survivability=1.00 |
-| route | decision_trace | 0 | complete | choice map_node | choice 2 | high | Bottled common map scoring prefers reward-to-survivability 9.38: M@5,0 -> M@6,1 -> M@6,2 -> $@5,3 -> M@4,4 -> E@3,5: reward=9.38, survivability=1.00 |
-| card_reward | decision_trace | 1 | complete | Headbutt | Dropkick | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Dropkick. |
-| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.92: ?@1,1 -> $@2,2 -> ?@1,3 -> ?@1,4 -> E@0,5 -> R@0,6: reward=8.92, survivability=1.00 |
-| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.92: ?@1,1 -> $@2,2 -> ?@1,3 -> ?@1,4 -> E@0,5 -> R@0,6: reward=8.92, survivability=1.00 |
-| event | decision_trace | 2 | complete | choose 0: Gather Gold | choose 0: Gather Gold | high | Bottled REQUESTED_STRIKE takes Goop gold only at 70%+ HP. |
-| event | decision_trace | 2 | complete | choose 0: Leave | choose 0: Leave | high | Bottled REQUESTED_STRIKE takes Goop gold only at 70%+ HP. |
-| route | decision_trace | 2 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.82: $@2,2 -> ?@1,3 -> ?@1,4 -> E@0,5 -> R@0,6 -> E@0,7: reward=10.82, survivability=1.00 |
-| route | decision_trace | 2 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.82: $@2,2 -> ?@1,3 -> ?@1,4 -> E@0,5 -> R@0,6 -> E@0,7: reward=10.82, survivability=1.00 |
-| shop | decision_trace | 3 | complete | purge | purge | high | Bottled REQUESTED_STRIKE shop priority prefers starter removal before optional purchases. |
-| shop | decision_trace | 3 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
-| route | decision_trace | 3 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.50: ?@1,3 -> ?@1,4 -> E@0,5 -> R@0,6 -> E@0,7 -> T@0,8: reward=8.50, survivability=1.00 |
-| route | decision_trace | 3 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.50: ?@1,3 -> ?@1,4 -> E@0,5 -> R@0,6 -> E@0,7 -> T@0,8: reward=8.50, survivability=1.00 |
-| card_reward | decision_trace | 4 | complete | Anger | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: M@2,4 -> R@1,5 -> ?@2,6 -> R@1,7 -> T@1,8 -> M@2,9: reward=6.70, survivability=1.00 |
-| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: M@2,4 -> R@1,5 -> ?@2,6 -> R@1,7 -> T@1,8 -> M@2,9: reward=6.70, survivability=1.00 |
-| card_reward | decision_trace | 5 | complete | Carnage | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 5 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: R@1,5 -> ?@2,6 -> R@1,7 -> T@1,8 -> M@2,9 -> ?@1,10: reward=6.70, survivability=1.00 |
-| route | decision_trace | 5 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.70: R@1,5 -> ?@2,6 -> R@1,7 -> T@1,8 -> M@2,9 -> ?@1,10: reward=6.70, survivability=1.00 |
-| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.60: ?@2,6 -> R@1,7 -> T@1,8 -> M@2,9 -> ?@1,10 -> M@1,11: reward=6.60, survivability=1.00 |
-| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.60: ?@2,6 -> R@1,7 -> T@1,8 -> M@2,9 -> ?@1,10 -> M@1,11: reward=6.60, survivability=1.00 |
-| event | decision_trace | 7 | complete | choose 0: Reach Inside | choose 0: Reach Inside | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 7 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 7 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.60: R@1,7 -> T@1,8 -> M@2,9 -> ?@1,10 -> M@1,11 -> M@0,12: reward=6.60, survivability=1.00 |
-| route | decision_trace | 7 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.60: R@1,7 -> T@1,8 -> M@2,9 -> ?@1,10 -> M@1,11 -> M@0,12: reward=6.60, survivability=1.00 |
-| route | decision_trace | 8 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: T@1,8 -> M@2,9 -> ?@1,10 -> M@1,11 -> M@0,12 -> M@0,13: reward=6.50, survivability=1.00 |
-| route | decision_trace | 8 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: T@1,8 -> M@2,9 -> ?@1,10 -> M@1,11 -> M@0,12 -> M@0,13: reward=6.50, survivability=1.00 |
-| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.10: M@2,9 -> ?@1,10 -> M@1,11 -> M@0,12 -> M@0,13 -> R@0,14: reward=6.10, survivability=1.00 |
-| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.10: M@2,9 -> ?@1,10 -> M@1,11 -> M@0,12 -> M@0,13 -> R@0,14: reward=6.10, survivability=1.00 |
-| card_reward | decision_trace | 10 | complete | Iron Wave | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.10: ?@1,10 -> M@1,11 -> M@0,12 -> M@0,13 -> R@0,14: reward=5.10, survivability=1.00 |
-| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.10: ?@1,10 -> M@1,11 -> M@0,12 -> M@0,13 -> R@0,14: reward=5.10, survivability=1.00 |
-| event | decision_trace | 11 | complete | choose 0: Stomp | choose 0: Stomp | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 11 | complete | choose 0: Fight | choose 0: Fight | medium | Bottled common event fallback chooses the first option. |
-| card_reward | decision_trace | 11 | complete | Disarm | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 11 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.00: M@1,11 -> M@0,12 -> M@0,13 -> R@0,14: reward=3.00, survivability=1.00 |
-| route | decision_trace | 11 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.00: M@1,11 -> M@0,12 -> M@0,13 -> R@0,14: reward=3.00, survivability=1.00 |
-| card_reward | decision_trace | 12 | complete | Cleave | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.00: M@0,12 -> M@0,13 -> R@0,14: reward=2.00, survivability=1.00 |
-| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.00: M@0,12 -> M@0,13 -> R@0,14: reward=2.00, survivability=1.00 |
-| card_reward | decision_trace | 13 | complete | True Grit | Pommel Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. |
-| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.10: M@0,13 -> R@0,14: reward=2.10, survivability=1.00 |
-| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.10: M@0,13 -> R@0,14: reward=2.10, survivability=1.00 |
-| card_reward | decision_trace | 14 | complete | Burning Pact | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@0,14: reward=1.10, survivability=1.00 |
-| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@0,14: reward=1.10, survivability=1.00 |
-| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
-| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
-| card_reward | decision_trace | 16 | complete | Corruption | Reaper | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Reaper. |
-| route | decision_trace | 17 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 10.10: M@2,0 -> M@2,1 -> ?@1,2 -> $@2,3 -> ?@3,4 -> R@2,5: reward=10.10, survivability=1.00 |
-| route | decision_trace | 17 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 10.10: M@2,0 -> M@2,1 -> ?@1,2 -> $@2,3 -> ?@3,4 -> R@2,5: reward=10.10, survivability=1.00 |
-| card_reward | decision_trace | 18 | complete | Clothesline | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 18 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.00: M@0,1 -> ?@1,2 -> M@1,3 -> ?@1,4 -> R@1,5 -> M@2,6: reward=6.00, survivability=1.00 |
-| route | decision_trace | 18 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.00: M@0,1 -> ?@1,2 -> M@1,3 -> ?@1,4 -> R@1,5 -> M@2,6: reward=6.00, survivability=1.00 |
-| card_reward | decision_trace | 19 | complete | Shockwave | Pommel Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. |
-| route | decision_trace | 19 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 7.26: ?@1,2 -> $@2,3 -> ?@3,4 -> R@2,5 -> M@3,6 -> R@3,7: reward=8.00, survivability=0.95 |
-| route | decision_trace | 19 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 7.26: ?@1,2 -> $@2,3 -> ?@3,4 -> R@2,5 -> M@3,6 -> R@3,7: reward=8.00, survivability=0.95 |
-| event | decision_trace | 20 | complete | choose 0: Pay | choose 0: Pay | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 20 | complete | choose 0: Continue | choose 0: Continue | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 20 | complete | choose 0: Continue | choose 0: Continue | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 20 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 20 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 3.50: $@2,3 -> ?@3,4 -> R@2,5 -> M@3,6 -> R@3,7 -> T@2,8: reward=4.00, survivability=0.97 |
-| route | decision_trace | 20 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 3.50: $@2,3 -> ?@3,4 -> R@2,5 -> M@3,6 -> R@3,7 -> T@2,8: reward=4.00, survivability=0.97 |
-| shop | decision_trace | 21 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
-| route | decision_trace | 21 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 6.25: ?@3,4 -> R@2,5 -> M@3,6 -> R@3,7 -> T@2,8 -> E@1,9: reward=6.50, survivability=0.98 |
-| route | decision_trace | 21 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 6.25: ?@3,4 -> R@2,5 -> M@3,6 -> R@3,7 -> T@2,8 -> E@1,9: reward=6.50, survivability=0.98 |
-| event | decision_trace | 22 | complete | choose 1: Leave | choose 1: Leave | high | Bottled common event handling opens The Mausoleum only when Omamori can absorb the curse. |
-| event | decision_trace | 22 | complete | choose 0: Leave | choose 0: Leave | high | Bottled common event handling opens The Mausoleum only when Omamori can absorb the curse. |
-| route | decision_trace | 22 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: R@2,5 -> M@3,6 -> R@3,7 -> T@2,8 -> E@1,9 -> ?@1,10: reward=6.50, survivability=1.00 |
-| route | decision_trace | 22 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: R@2,5 -> M@3,6 -> R@3,7 -> T@2,8 -> E@1,9 -> ?@1,10: reward=6.50, survivability=1.00 |
-| route | decision_trace | 23 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.40: M@3,6 -> R@3,7 -> T@2,8 -> E@1,9 -> ?@1,10 -> $@2,11: reward=7.40, survivability=1.00 |
-| route | decision_trace | 23 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.40: M@3,6 -> R@3,7 -> T@2,8 -> E@1,9 -> ?@1,10 -> $@2,11: reward=7.40, survivability=1.00 |
-| card_reward | decision_trace | 24 | complete | Pommel Strike | Pommel Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. |
-| route | decision_trace | 24 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 0.08: R@3,7 -> T@2,8 -> E@1,9 -> ?@1,10 -> $@2,11 -> R@1,12: reward=6.40, survivability=0.58 |
-| route | decision_trace | 24 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 0.08: R@3,7 -> T@2,8 -> E@1,9 -> ?@1,10 -> $@2,11 -> R@1,12: reward=6.40, survivability=0.58 |
-| route | decision_trace | 25 | complete | choice 2 | choice 2 | high | Bottled common map scoring prefers reward-to-survivability 7.00: T@4,8 -> ?@4,9 -> ?@4,10 -> M@5,11 -> R@4,12 -> ?@4,13: reward=7.00, survivability=1.00 |
-| route | decision_trace | 25 | complete | choice 2 | choice 2 | high | Bottled common map scoring prefers reward-to-survivability 7.00: T@4,8 -> ?@4,9 -> ?@4,10 -> M@5,11 -> R@4,12 -> ?@4,13: reward=7.00, survivability=1.00 |
-| route | decision_trace | 26 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 6.60: ?@4,9 -> ?@4,10 -> M@5,11 -> R@4,12 -> ?@4,13 -> R@5,14: reward=6.60, survivability=1.00 |
-| route | decision_trace | 26 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 6.60: ?@4,9 -> ?@4,10 -> M@5,11 -> R@4,12 -> ?@4,13 -> R@5,14: reward=6.60, survivability=1.00 |
-| event | decision_trace | 27 | complete | choose 0: Continue | choose 0: Continue | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 27 | complete | choose 0: Fight | choose 0: Fight | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 27 | complete | choose 0: COWARDICE | choose 0: COWARDICE | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 27 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability -2.58: ?@4,10 -> M@5,11 -> R@4,12 -> ?@4,13 -> R@5,14: reward=4.00, survivability=0.56 |
-| route | decision_trace | 27 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability -2.58: ?@4,10 -> M@5,11 -> R@4,12 -> ?@4,13 -> R@5,14: reward=4.00, survivability=0.56 |
-| event | decision_trace | 0 | complete | choose 0: Talk | choose 0: Talk | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 0 | complete | choose 0: Upgrade a Card | choose 0: Upgrade a Card | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 0 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 0 | complete | choice 2 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.78: M@0,0 -> $@1,1 -> M@0,2 -> M@0,3 -> ?@1,4 -> E@0,5: reward=8.78, survivability=1.00 |
-| route | decision_trace | 0 | complete | choice 2 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.78: M@0,0 -> $@1,1 -> M@0,2 -> M@0,3 -> ?@1,4 -> E@0,5: reward=8.78, survivability=1.00 |
-| card_reward | decision_trace | 1 | complete | Clothesline | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.60: ?@4,1 -> ?@4,2 -> M@4,3 -> M@4,4 -> E@3,5 -> R@2,6: reward=7.60, survivability=1.00 |
-| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.60: ?@4,1 -> ?@4,2 -> M@4,3 -> M@4,4 -> E@3,5 -> R@2,6: reward=7.60, survivability=1.00 |
-| event | decision_trace | 2 | complete | choose 0: Pray | choose 0: Pray | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 2 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 2 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.70: ?@4,2 -> M@4,3 -> M@4,4 -> R@5,5 -> E@6,6 -> R@5,7: reward=7.70, survivability=1.00 |
-| route | decision_trace | 2 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.70: ?@4,2 -> M@4,3 -> M@4,4 -> R@5,5 -> E@6,6 -> R@5,7: reward=7.70, survivability=1.00 |
-| card_reward | decision_trace | 3 | complete | Twin Strike | Twin Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. |
-| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.20: M@4,3 -> M@4,4 -> R@5,5 -> E@6,6 -> R@5,7 -> T@4,8: reward=8.20, survivability=1.00 |
-| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.20: M@4,3 -> M@4,4 -> R@5,5 -> E@6,6 -> R@5,7 -> T@4,8: reward=8.20, survivability=1.00 |
-| card_reward | decision_trace | 4 | complete | Pommel Strike | Pommel Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. |
-| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.30: M@4,4 -> R@5,5 -> E@6,6 -> R@5,7 -> T@4,8 -> R@3,9: reward=8.30, survivability=1.00 |
-| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.30: M@4,4 -> R@5,5 -> E@6,6 -> R@5,7 -> T@4,8 -> R@3,9: reward=8.30, survivability=1.00 |
-| card_reward | decision_trace | 5 | complete | Uppercut | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 5 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 11.10: R@5,5 -> E@6,6 -> ?@6,7 -> T@5,8 -> M@4,9 -> $@4,10: reward=11.10, survivability=1.00 |
-| route | decision_trace | 5 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 11.10: R@5,5 -> E@6,6 -> ?@6,7 -> T@5,8 -> M@4,9 -> $@4,10: reward=11.10, survivability=1.00 |
-| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.00: E@6,6 -> R@5,7 -> T@5,8 -> M@4,9 -> $@4,10 -> M@4,11: reward=10.00, survivability=1.00 |
-| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.00: E@6,6 -> R@5,7 -> T@5,8 -> M@4,9 -> $@4,10 -> M@4,11: reward=10.00, survivability=1.00 |
-| card_reward | decision_trace | 7 | complete | Clothesline | Perfected Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 5 copy/copies of Perfected Strike. |
-| route | decision_trace | 7 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 9.50: ?@6,7 -> T@5,8 -> M@4,9 -> $@4,10 -> M@4,11 -> ?@5,12: reward=9.50, survivability=1.00 |
-| route | decision_trace | 7 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 9.50: ?@6,7 -> T@5,8 -> M@4,9 -> $@4,10 -> M@4,11 -> ?@5,12: reward=9.50, survivability=1.00 |
-| route | decision_trace | 8 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 9.50: T@5,8 -> M@4,9 -> $@4,10 -> M@4,11 -> ?@5,12 -> M@5,13: reward=9.50, survivability=1.00 |
-| route | decision_trace | 8 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 9.50: T@5,8 -> M@4,9 -> $@4,10 -> M@4,11 -> ?@5,12 -> M@5,13: reward=9.50, survivability=1.00 |
-| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.30: R@3,9 -> M@3,10 -> R@3,11 -> M@4,12 -> ?@3,13 -> R@3,14: reward=6.30, survivability=1.00 |
-| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.30: R@3,9 -> M@3,10 -> R@3,11 -> M@4,12 -> ?@3,13 -> R@3,14: reward=6.30, survivability=1.00 |
-| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.20: M@3,10 -> R@3,11 -> M@4,12 -> ?@3,13 -> R@3,14: reward=5.20, survivability=1.00 |
-| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.20: M@3,10 -> R@3,11 -> M@4,12 -> ?@3,13 -> R@3,14: reward=5.20, survivability=1.00 |
-| card_reward | decision_trace | 11 | complete | Armaments | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 11 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 4.20: R@3,11 -> M@4,12 -> ?@3,13 -> R@3,14: reward=4.20, survivability=1.00 |
-| route | decision_trace | 11 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 4.20: R@3,11 -> M@4,12 -> ?@3,13 -> R@3,14: reward=4.20, survivability=1.00 |
-| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.10: M@4,12 -> ?@3,13 -> R@3,14: reward=3.10, survivability=1.00 |
-| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.10: M@4,12 -> ?@3,13 -> R@3,14: reward=3.10, survivability=1.00 |
-| card_reward | decision_trace | 13 | complete | True Grit | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.00: ?@3,13 -> R@3,14: reward=1.00, survivability=1.00 |
-| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.00: ?@3,13 -> R@3,14: reward=1.00, survivability=1.00 |
-| event | decision_trace | 14 | complete | choose 0: Pray | choose 1: Destroy | high | Bottled REQUESTED_STRIKE purges at Wing Statue only at 60%+ HP. |
-| event | decision_trace | 14 | complete | choose 0: Continue | choose 1: 1 | high | Bottled REQUESTED_STRIKE purges at Wing Statue only at 60%+ HP. |
-| event | decision_trace | 14 | complete | choose 0: Leave | choose 1: 1 | high | Bottled REQUESTED_STRIKE purges at Wing Statue only at 60%+ HP. |
-| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 0.00: R@3,14: reward=0.00, survivability=1.00 |
-| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 0.00: R@3,14: reward=0.00, survivability=1.00 |
-| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
-| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
-| event | decision_trace | 0 | complete | choose 0: Talk | choose 0: Talk | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 0 | complete | choose 0: Remove a Card from your deck | choose 0: Remove a Card from your deck | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 0 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 0 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.08: M@2,0 -> M@3,1 -> $@4,2 -> M@5,3 -> ?@5,4 -> E@4,5: reward=9.08, survivability=1.00 |
-| route | decision_trace | 0 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.08: M@2,0 -> M@3,1 -> $@4,2 -> M@5,3 -> ?@5,4 -> E@4,5: reward=9.08, survivability=1.00 |
-| card_reward | decision_trace | 1 | complete | Anger | Shrug It Off | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Shrug It Off. |
-| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.98: M@3,1 -> $@4,2 -> M@5,3 -> ?@5,4 -> E@4,5 -> ?@3,6: reward=8.98, survivability=1.00 |
-| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.98: M@3,1 -> $@4,2 -> M@5,3 -> ?@5,4 -> E@4,5 -> ?@3,6: reward=8.98, survivability=1.00 |
-| card_reward | decision_trace | 2 | complete | Heavy Blade | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 2 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 10.58: $@4,2 -> M@5,3 -> ?@5,4 -> E@4,5 -> ?@3,6 -> E@2,7: reward=10.58, survivability=1.00 |
-| route | decision_trace | 2 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 10.58: $@4,2 -> M@5,3 -> ?@5,4 -> E@4,5 -> ?@3,6 -> E@2,7: reward=10.58, survivability=1.00 |
-| shop | decision_trace | 3 | complete | purge | purge | high | Bottled REQUESTED_STRIKE shop priority prefers starter removal before optional purchases. |
-| shop | decision_trace | 3 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
-| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.50: M@5,3 -> ?@5,4 -> E@4,5 -> ?@3,6 -> E@2,7 -> T@1,8: reward=9.50, survivability=1.00 |
-| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.50: M@5,3 -> ?@5,4 -> E@4,5 -> ?@3,6 -> E@2,7 -> T@1,8: reward=9.50, survivability=1.00 |
-| card_reward | decision_trace | 4 | complete | Headbutt | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.50: ?@5,4 -> E@4,5 -> ?@3,6 -> E@2,7 -> T@2,8 -> M@3,9: reward=9.50, survivability=1.00 |
-| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.50: ?@5,4 -> E@4,5 -> ?@3,6 -> E@2,7 -> T@2,8 -> M@3,9: reward=9.50, survivability=1.00 |
-| card_reward | decision_trace | 5 | complete | Demon Form | Flame Barrier | high | Bottled REQUESTED_STRIKE desired-card list wants up to 1 copy/copies of Flame Barrier. |
-| route | decision_trace | 5 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.00: E@4,5 -> ?@3,6 -> E@2,7 -> T@1,8 -> R@2,9 -> E@2,10: reward=10.00, survivability=1.00 |
-| route | decision_trace | 5 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.00: E@4,5 -> ?@3,6 -> E@2,7 -> T@1,8 -> R@2,9 -> E@2,10: reward=10.00, survivability=1.00 |
-| route | decision_trace | 6 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.50: E@4,6 -> ?@4,7 -> T@4,8 -> M@3,9 -> E@2,10 -> ?@1,11: reward=9.50, survivability=1.00 |
-| route | decision_trace | 6 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.50: E@4,6 -> ?@4,7 -> T@4,8 -> M@3,9 -> E@2,10 -> ?@1,11: reward=9.50, survivability=1.00 |
-| route | decision_trace | 7 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.60: M@6,7 -> T@5,8 -> R@4,9 -> ?@4,10 -> ?@4,11 -> ?@5,12: reward=6.60, survivability=1.00 |
-| route | decision_trace | 7 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.60: M@6,7 -> T@5,8 -> R@4,9 -> ?@4,10 -> ?@4,11 -> ?@5,12: reward=6.60, survivability=1.00 |
-| route | decision_trace | 8 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.60: T@5,8 -> R@4,9 -> ?@4,10 -> ?@4,11 -> ?@5,12 -> M@6,13: reward=6.60, survivability=1.00 |
-| route | decision_trace | 8 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.60: T@5,8 -> R@4,9 -> ?@4,10 -> ?@4,11 -> ?@5,12 -> M@6,13: reward=6.60, survivability=1.00 |
-| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.20: R@4,9 -> ?@4,10 -> ?@4,11 -> ?@5,12 -> M@6,13 -> R@5,14: reward=6.20, survivability=1.00 |
-| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.20: R@4,9 -> ?@4,10 -> ?@4,11 -> ?@5,12 -> M@6,13 -> R@5,14: reward=6.20, survivability=1.00 |
-| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.10: ?@4,10 -> ?@4,11 -> ?@5,12 -> M@6,13 -> R@5,14: reward=5.10, survivability=1.00 |
-| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.10: ?@4,10 -> ?@4,11 -> ?@5,12 -> M@6,13 -> R@5,14: reward=5.10, survivability=1.00 |
-| event | decision_trace | 11 | complete | choose 0: Stomp | choose 0: Stomp | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 11 | complete | choose 0: Fight | choose 0: Fight | medium | Bottled common event fallback chooses the first option. |
-| card_reward | decision_trace | 11 | complete | Blood for Blood | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 11 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 4.10: ?@4,11 -> ?@5,12 -> M@6,13 -> R@5,14: reward=4.10, survivability=1.00 |
-| route | decision_trace | 11 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 4.10: ?@4,11 -> ?@5,12 -> M@6,13 -> R@5,14: reward=4.10, survivability=1.00 |
-| event | decision_trace | 12 | complete | choose 0: Forget | choose 0: Forget | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 12 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.10: ?@5,12 -> M@6,13 -> R@5,14: reward=3.10, survivability=1.00 |
-| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.10: ?@5,12 -> M@6,13 -> R@5,14: reward=3.10, survivability=1.00 |
-| event | decision_trace | 13 | complete | choose 0: Locked | choose 0: Locked | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 13 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.10: M@6,13 -> R@5,14: reward=2.10, survivability=1.00 |
-| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.10: M@6,13 -> R@5,14: reward=2.10, survivability=1.00 |
-| card_reward | decision_trace | 14 | complete | Thunderclap | Thunderclap | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. |
-| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@5,14: reward=1.10, survivability=1.00 |
-| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@5,14: reward=1.10, survivability=1.00 |
-| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
-| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
-| card_reward | decision_trace | 16 | complete | Immolate | Reaper | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Reaper. |
-| route | decision_trace | 17 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 10.68: M@1,0 -> ?@2,1 -> ?@3,2 -> ?@2,3 -> $@1,4 -> E@2,5: reward=10.68, survivability=1.00 |
-| route | decision_trace | 17 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 10.68: M@1,0 -> ?@2,1 -> ?@3,2 -> ?@2,3 -> $@1,4 -> E@2,5: reward=10.68, survivability=1.00 |
-| card_reward | decision_trace | 18 | complete | Pommel Strike | Dropkick | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Dropkick. |
-| route | decision_trace | 18 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 11.48: ?@2,1 -> ?@3,2 -> ?@2,3 -> M@3,4 -> E@3,5 -> $@3,6: reward=11.48, survivability=1.00 |
-| route | decision_trace | 18 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 11.48: ?@2,1 -> ?@3,2 -> ?@2,3 -> M@3,4 -> E@3,5 -> $@3,6: reward=11.48, survivability=1.00 |
-| route | decision_trace | 19 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.98: ?@3,2 -> ?@2,3 -> M@3,4 -> E@3,5 -> $@3,6 -> M@3,7: reward=10.98, survivability=1.00 |
-| route | decision_trace | 19 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.98: ?@3,2 -> ?@2,3 -> M@3,4 -> E@3,5 -> $@3,6 -> M@3,7: reward=10.98, survivability=1.00 |
-| event | decision_trace | 20 | complete | choose 1: Sleep | choose 0: Read | medium | Bottled common event fallback chooses the first option. |
-| event | decision_trace | 20 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 20 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.98: ?@2,3 -> M@3,4 -> E@3,5 -> $@3,6 -> M@3,7 -> T@3,8: reward=10.98, survivability=1.00 |
-| route | decision_trace | 20 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.98: ?@2,3 -> M@3,4 -> E@3,5 -> $@3,6 -> M@3,7 -> T@3,8: reward=10.98, survivability=1.00 |
+| card_reward | decision_trace | 16 | complete | Double Tap | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 17 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 11.00: M@1,0 -> $@0,1 -> M@1,2 -> ?@1,3 -> M@2,4 -> E@2,5: reward=11.00, survivability=1.00 |
+| route | decision_trace | 17 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 11.00: M@1,0 -> $@0,1 -> M@1,2 -> ?@1,3 -> M@2,4 -> E@2,5: reward=11.00, survivability=1.00 |
+| card_reward | decision_trace | 18 | complete | Heavy Blade | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 18 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.75: $@0,1 -> M@1,2 -> ?@1,3 -> M@2,4 -> M@3,5 -> E@3,6: reward=11.00, survivability=0.92 |
+| route | decision_trace | 18 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.75: $@0,1 -> M@1,2 -> ?@1,3 -> M@2,4 -> M@3,5 -> E@3,6: reward=11.00, survivability=0.92 |
+| card_reward | decision_trace | 19 | complete | skip | Twin Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. |
+| route | decision_trace | 19 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 9.60: $@3,2 -> ?@3,3 -> M@2,4 -> R@1,5 -> M@2,6 -> M@3,7: reward=9.60, survivability=1.00 |
+| route | decision_trace | 19 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 9.60: $@3,2 -> ?@3,3 -> M@2,4 -> R@1,5 -> M@2,6 -> M@3,7: reward=9.60, survivability=1.00 |
+| shop | decision_trace | 20 | complete | purge | purge | high | Bottled REQUESTED_STRIKE shop priority prefers starter removal before optional purchases. |
+| shop | decision_trace | 20 | complete | Meal Ticket | Meal Ticket | high | Bottled shop relic list ranks Meal Ticket as buyable. |
+| shop | decision_trace | 20 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
+| route | decision_trace | 20 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.10: ?@3,3 -> M@2,4 -> R@1,5 -> M@2,6 -> M@3,7 -> T@4,8: reward=7.10, survivability=1.00 |
+| route | decision_trace | 20 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.10: ?@3,3 -> M@2,4 -> R@1,5 -> M@2,6 -> M@3,7 -> T@4,8: reward=7.10, survivability=1.00 |
 | event | decision_trace | 21 | complete | choose 0: Pay | choose 0: Pay | medium | Bottled common event fallback chooses the first option. |
 | event | decision_trace | 21 | complete | choose 0: Continue | choose 0: Continue | medium | Bottled common event fallback chooses the first option. |
 | event | decision_trace | 21 | complete | choose 0: Continue | choose 0: Continue | medium | Bottled common event fallback chooses the first option. |
 | event | decision_trace | 21 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
-| route | decision_trace | 21 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 8.40: M@3,4 -> E@3,5 -> $@3,6 -> M@3,7 -> T@3,8 -> ?@4,9: reward=8.40, survivability=1.00 |
-| route | decision_trace | 21 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 8.40: M@3,4 -> E@3,5 -> $@3,6 -> M@3,7 -> T@3,8 -> ?@4,9: reward=8.40, survivability=1.00 |
-| card_reward | decision_trace | 22 | complete | Whirlwind+ | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 22 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 6.70: R@4,5 -> M@4,6 -> $@4,7 -> T@3,8 -> R@3,9 -> ?@2,10: reward=6.70, survivability=1.00 |
-| route | decision_trace | 22 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 6.70: R@4,5 -> M@4,6 -> $@4,7 -> T@3,8 -> R@3,9 -> ?@2,10: reward=6.70, survivability=1.00 |
-| route | decision_trace | 23 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.60: M@4,6 -> $@4,7 -> T@3,8 -> R@3,9 -> ?@2,10 -> M@1,11: reward=6.60, survivability=1.00 |
-| route | decision_trace | 23 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.60: M@4,6 -> $@4,7 -> T@3,8 -> R@3,9 -> ?@2,10 -> M@1,11: reward=6.60, survivability=1.00 |
-| card_reward | decision_trace | 24 | complete | Disarm | skip | medium | Bottled card reward handler skips when no desired card is offered. |
-| route | decision_trace | 24 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.10: $@4,7 -> T@3,8 -> M@2,9 -> ?@2,10 -> M@1,11 -> ?@1,12: reward=7.10, survivability=1.00 |
-| route | decision_trace | 24 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.10: $@4,7 -> T@3,8 -> M@2,9 -> ?@2,10 -> M@1,11 -> ?@1,12: reward=7.10, survivability=1.00 |
-| shop | decision_trace | 25 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
-| route | decision_trace | 25 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: T@3,8 -> M@2,9 -> ?@2,10 -> M@1,11 -> ?@1,12 -> ?@2,13: reward=8.00, survivability=1.00 |
-| route | decision_trace | 25 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: T@3,8 -> M@2,9 -> ?@2,10 -> M@1,11 -> ?@1,12 -> ?@2,13: reward=8.00, survivability=1.00 |
-| route | decision_trace | 26 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 6.60: R@3,9 -> ?@2,10 -> M@1,11 -> ?@1,12 -> ?@2,13 -> R@1,14: reward=6.60, survivability=1.00 |
-| route | decision_trace | 26 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 6.60: R@3,9 -> ?@2,10 -> M@1,11 -> ?@1,12 -> ?@2,13 -> R@1,14: reward=6.60, survivability=1.00 |
-| route | decision_trace | 27 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.50: ?@2,10 -> M@1,11 -> ?@1,12 -> ?@2,13 -> R@1,14: reward=5.50, survivability=1.00 |
-| route | decision_trace | 27 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.50: ?@2,10 -> M@1,11 -> ?@1,12 -> ?@2,13 -> R@1,14: reward=5.50, survivability=1.00 |
-| route | decision_trace | 28 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 4.00: M@1,11 -> ?@1,12 -> ?@2,13 -> R@1,14: reward=4.00, survivability=1.00 |
-| route | decision_trace | 28 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 4.00: M@1,11 -> ?@1,12 -> ?@2,13 -> R@1,14: reward=4.00, survivability=1.00 |
-| card_reward | decision_trace | 29 | complete | Shrug It Off | Shrug It Off | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Shrug It Off. |
-| route | decision_trace | 29 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.00: ?@1,12 -> ?@2,13 -> R@1,14: reward=3.00, survivability=1.00 |
-| route | decision_trace | 29 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.00: ?@1,12 -> ?@2,13 -> R@1,14: reward=3.00, survivability=1.00 |
-| card_reward | decision_trace | 30 | complete | skip | Twin Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. |
-| route | decision_trace | 30 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 1.50: ?@2,13 -> R@1,14: reward=1.50, survivability=1.00 |
-| route | decision_trace | 30 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 1.50: ?@2,13 -> R@1,14: reward=1.50, survivability=1.00 |
-| shop | decision_trace | 31 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
+| route | decision_trace | 21 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 7.50: ?@3,4 -> M@3,5 -> M@2,6 -> R@2,7 -> T@3,8 -> E@2,9: reward=7.50, survivability=1.00 |
+| route | decision_trace | 21 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 7.50: ?@3,4 -> M@3,5 -> M@2,6 -> R@2,7 -> T@3,8 -> E@2,9: reward=7.50, survivability=1.00 |
+| card_reward | decision_trace | 22 | complete | Armaments | Pommel Strike+ | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike+. |
+| route | decision_trace | 22 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.10: R@1,5 -> M@2,6 -> M@3,7 -> T@4,8 -> R@4,9 -> ?@3,10: reward=6.10, survivability=1.00 |
+| route | decision_trace | 22 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.10: R@1,5 -> M@2,6 -> M@3,7 -> T@4,8 -> R@4,9 -> ?@3,10: reward=6.10, survivability=1.00 |
+| route | decision_trace | 23 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.50: M@2,6 -> M@3,7 -> T@4,8 -> M@3,9 -> ?@3,10 -> ?@3,11: reward=7.50, survivability=1.00 |
+| route | decision_trace | 23 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.50: M@2,6 -> M@3,7 -> T@4,8 -> M@3,9 -> ?@3,10 -> ?@3,11: reward=7.50, survivability=1.00 |
+| card_reward | decision_trace | 24 | complete | Headbutt+ | Pommel Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. |
+| route | decision_trace | 24 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 7.25: M@3,7 -> T@4,8 -> R@4,9 -> ?@3,10 -> M@2,11 -> E@3,12: reward=7.50, survivability=0.98 |
+| route | decision_trace | 24 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 7.25: M@3,7 -> T@4,8 -> R@4,9 -> ?@3,10 -> M@2,11 -> E@3,12: reward=7.50, survivability=0.98 |
+| event | decision_trace | 0 | complete | choose 0: Talk | choose 0: Talk | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 0 | complete | choose 0: Transform a Card | choose 0: Transform a Card | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 0 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
+| route | decision_trace | 0 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.78: M@0,0 -> $@1,1 -> M@1,2 -> M@1,3 -> M@0,4 -> E@0,5: reward=8.78, survivability=1.00 |
+| route | decision_trace | 0 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.78: M@0,0 -> $@1,1 -> M@1,2 -> M@1,3 -> M@0,4 -> E@0,5: reward=8.78, survivability=1.00 |
+| card_reward | decision_trace | 1 | complete | Clothesline | Twin Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. |
+| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.86: $@1,1 -> M@1,2 -> M@1,3 -> M@0,4 -> E@0,5 -> ?@1,6: reward=8.86, survivability=1.00 |
+| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.86: $@1,1 -> M@1,2 -> M@1,3 -> M@0,4 -> E@0,5 -> ?@1,6: reward=8.86, survivability=1.00 |
+| shop | decision_trace | 2 | complete | purge | purge | high | Bottled REQUESTED_STRIKE shop priority prefers starter removal before optional purchases. |
+| shop | decision_trace | 2 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
+| route | decision_trace | 2 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.50: M@1,2 -> M@1,3 -> M@0,4 -> E@0,5 -> ?@1,6 -> M@2,7: reward=7.50, survivability=1.00 |
+| route | decision_trace | 2 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.50: M@1,2 -> M@1,3 -> M@0,4 -> E@0,5 -> ?@1,6 -> M@2,7: reward=7.50, survivability=1.00 |
+| card_reward | decision_trace | 3 | complete | Flex | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 3 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: M@1,3 -> M@0,4 -> E@0,5 -> ?@1,6 -> M@2,7 -> T@1,8: reward=8.00, survivability=1.00 |
+| route | decision_trace | 3 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: M@1,3 -> M@0,4 -> E@0,5 -> ?@1,6 -> M@2,7 -> T@1,8: reward=8.00, survivability=1.00 |
+| event | decision_trace | 4 | complete | choose 0: Gather Gold | choose 0: Gather Gold | high | Bottled REQUESTED_STRIKE takes Goop gold only at 70%+ HP. |
+| event | decision_trace | 4 | complete | choose 0: Leave | choose 0: Leave | high | Bottled REQUESTED_STRIKE takes Goop gold only at 70%+ HP. |
+| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.90: M@2,4 -> E@1,5 -> ?@2,6 -> M@2,7 -> T@1,8 -> $@2,9: reward=10.90, survivability=1.00 |
+| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.90: M@2,4 -> E@1,5 -> ?@2,6 -> M@2,7 -> T@1,8 -> $@2,9: reward=10.90, survivability=1.00 |
+| card_reward | decision_trace | 5 | complete | Intimidate | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 5 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.94: E@1,5 -> ?@2,6 -> M@2,7 -> T@1,8 -> $@2,9 -> ?@2,10: reward=10.94, survivability=1.00 |
+| route | decision_trace | 5 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.94: E@1,5 -> ?@2,6 -> M@2,7 -> T@1,8 -> $@2,9 -> ?@2,10: reward=10.94, survivability=1.00 |
+| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.24: M@3,6 -> M@2,7 -> T@1,8 -> $@2,9 -> ?@2,10 -> R@1,11: reward=9.24, survivability=1.00 |
+| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.24: M@3,6 -> M@2,7 -> T@1,8 -> $@2,9 -> ?@2,10 -> R@1,11: reward=9.24, survivability=1.00 |
+| event | decision_trace | 0 | complete | choose 0: Talk | choose 0: Talk | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 0 | complete | choose 0: Enemies in your next three combats have 1 HP | choose 0: Enemies in your next three combats have 1 HP | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 0 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
+| route | decision_trace | 0 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.68: M@0,0 -> M@1,1 -> M@2,2 -> M@1,3 -> $@2,4 -> E@2,5: reward=9.68, survivability=1.00 |
+| route | decision_trace | 0 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.68: M@0,0 -> M@1,1 -> M@2,2 -> M@1,3 -> $@2,4 -> E@2,5: reward=9.68, survivability=1.00 |
+| card_reward | decision_trace | 1 | complete | Anger | Thunderclap | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. |
+| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.32: M@2,1 -> M@2,2 -> M@1,3 -> $@2,4 -> E@2,5 -> $@2,6: reward=9.32, survivability=1.00 |
+| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.32: M@2,1 -> M@2,2 -> M@1,3 -> $@2,4 -> E@2,5 -> $@2,6: reward=9.32, survivability=1.00 |
+| card_reward | decision_trace | 2 | complete | Disarm | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 2 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.22: M@2,2 -> M@1,3 -> $@2,4 -> E@2,5 -> $@2,6 -> ?@3,7: reward=9.22, survivability=1.00 |
+| route | decision_trace | 2 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.22: M@2,2 -> M@1,3 -> $@2,4 -> E@2,5 -> $@2,6 -> ?@3,7: reward=9.22, survivability=1.00 |
+| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.42: M@2,3 -> $@2,4 -> E@2,5 -> $@2,6 -> ?@3,7 -> T@2,8: reward=9.42, survivability=1.00 |
+| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.42: M@2,3 -> $@2,4 -> E@2,5 -> $@2,6 -> ?@3,7 -> T@2,8: reward=9.42, survivability=1.00 |
+| card_reward | decision_trace | 4 | complete | Bloodletting+ | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.46: $@2,4 -> E@2,5 -> $@2,6 -> ?@3,7 -> T@2,8 -> M@1,9: reward=9.46, survivability=1.00 |
+| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.46: $@2,4 -> E@2,5 -> $@2,6 -> ?@3,7 -> T@2,8 -> M@1,9: reward=9.46, survivability=1.00 |
+| shop | decision_trace | 5 | complete | purge | purge | high | Bottled REQUESTED_STRIKE shop priority prefers starter removal before optional purchases. |
+| shop | decision_trace | 5 | complete | Block Potion | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
+| shop | decision_trace | 5 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
+| route | decision_trace | 5 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.92: E@2,5 -> $@2,6 -> ?@3,7 -> T@2,8 -> M@1,9 -> M@1,10: reward=7.92, survivability=1.00 |
+| route | decision_trace | 5 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.92: E@2,5 -> $@2,6 -> ?@3,7 -> T@2,8 -> M@1,9 -> M@1,10: reward=7.92, survivability=1.00 |
+| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: M@3,6 -> ?@3,7 -> T@2,8 -> M@1,9 -> M@1,10 -> E@0,11: reward=8.00, survivability=1.00 |
+| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: M@3,6 -> ?@3,7 -> T@2,8 -> M@1,9 -> M@1,10 -> E@0,11: reward=8.00, survivability=1.00 |
+| card_reward | decision_trace | 7 | complete | Shrug It Off+ | Shrug It Off+ | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Shrug It Off+. |
+| route | decision_trace | 7 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: ?@3,7 -> T@2,8 -> M@1,9 -> M@1,10 -> E@0,11 -> ?@1,12: reward=8.00, survivability=1.00 |
+| route | decision_trace | 7 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: ?@3,7 -> T@2,8 -> M@1,9 -> M@1,10 -> E@0,11 -> ?@1,12: reward=8.00, survivability=1.00 |
+| card_reward | decision_trace | 8 | complete | True Grit+ | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 8 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: T@2,8 -> M@1,9 -> M@1,10 -> E@0,11 -> ?@1,12 -> ?@0,13: reward=8.00, survivability=1.00 |
+| route | decision_trace | 8 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: T@2,8 -> M@1,9 -> M@1,10 -> E@0,11 -> ?@1,12 -> ?@0,13: reward=8.00, survivability=1.00 |
+| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.60: M@1,9 -> M@1,10 -> E@0,11 -> ?@1,12 -> ?@0,13 -> R@0,14: reward=7.60, survivability=1.00 |
+| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.60: M@1,9 -> M@1,10 -> E@0,11 -> ?@1,12 -> ?@0,13 -> R@0,14: reward=7.60, survivability=1.00 |
+| card_reward | decision_trace | 10 | complete | Carnage | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.42: M@1,10 -> M@1,11 -> $@2,12 -> M@2,13 -> R@2,14: reward=6.42, survivability=1.00 |
+| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.42: M@1,10 -> M@1,11 -> $@2,12 -> M@2,13 -> R@2,14: reward=6.42, survivability=1.00 |
+| card_reward | decision_trace | 11 | complete | Clothesline | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 11 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 5.32: M@1,11 -> $@2,12 -> M@2,13 -> R@2,14: reward=5.32, survivability=1.00 |
+| route | decision_trace | 11 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 5.32: M@1,11 -> $@2,12 -> M@2,13 -> R@2,14: reward=5.32, survivability=1.00 |
+| card_reward | decision_trace | 12 | complete | Burning Pact+ | Flame Barrier+ | high | Bottled REQUESTED_STRIKE desired-card list wants up to 1 copy/copies of Flame Barrier+. |
+| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 4.34: $@2,12 -> M@2,13 -> R@2,14: reward=4.34, survivability=1.00 |
+| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 4.34: $@2,12 -> M@2,13 -> R@2,14: reward=4.34, survivability=1.00 |
+| shop | decision_trace | 13 | complete | purge | purge | high | Bottled REQUESTED_STRIKE shop priority prefers starter removal before optional purchases. |
+| shop | decision_trace | 13 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
+| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.10: M@2,13 -> R@2,14: reward=2.10, survivability=1.00 |
+| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.10: M@2,13 -> R@2,14: reward=2.10, survivability=1.00 |
+| card_reward | decision_trace | 14 | complete | Shrug It Off+ | Shrug It Off+ | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Shrug It Off+. |
+| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@2,14: reward=1.10, survivability=1.00 |
+| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@2,14: reward=1.10, survivability=1.00 |
+| card_reward | decision_trace | 15 | complete | Shockwave+ | Thunderclap | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. |
+| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
+| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
+| card_reward | decision_trace | 16 | complete | Metallicize | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| card_reward | decision_trace | 16 | complete | Impervious+ | Impervious+ | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Impervious+. |
+| route | decision_trace | 17 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.64: M@1,0 -> ?@2,1 -> M@3,2 -> $@3,3 -> M@4,4 -> E@5,5: reward=9.64, survivability=1.00 |
+| route | decision_trace | 17 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.64: M@1,0 -> ?@2,1 -> M@3,2 -> $@3,3 -> M@4,4 -> E@5,5: reward=9.64, survivability=1.00 |
+| card_reward | decision_trace | 18 | complete | Evolve | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| card_reward | decision_trace | 18 | complete | Cleave | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 18 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.44: ?@2,1 -> ?@2,2 -> ?@1,3 -> M@1,4 -> R@1,5 -> $@0,6: reward=7.44, survivability=1.00 |
+| route | decision_trace | 18 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.44: ?@2,1 -> ?@2,2 -> ?@1,3 -> M@1,4 -> R@1,5 -> $@0,6: reward=7.44, survivability=1.00 |
+| event | decision_trace | 19 | complete | choose 0: Continue | choose 0: Continue | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 19 | complete | choose 0: Smash and Grab | choose 0: Smash and Grab | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 19 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
+| route | decision_trace | 19 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.17: ?@2,2 -> ?@1,3 -> M@1,4 -> R@1,5 -> $@0,6 -> E@1,7: reward=10.42, survivability=0.98 |
+| route | decision_trace | 19 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.17: ?@2,2 -> ?@1,3 -> M@1,4 -> R@1,5 -> $@0,6 -> E@1,7: reward=10.42, survivability=0.98 |
+| card_reward | decision_trace | 20 | complete | skip | Twin Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. |
+| route | decision_trace | 20 | complete | choice 2 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 8.26: $@3,3 -> M@4,4 -> R@4,5 -> ?@3,6 -> ?@4,7 -> T@5,8: reward=8.26, survivability=1.00 |
+| route | decision_trace | 20 | complete | choice 2 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 8.26: $@3,3 -> M@4,4 -> R@4,5 -> ?@3,6 -> ?@4,7 -> T@5,8: reward=8.26, survivability=1.00 |
+| event | decision_trace | 21 | complete | choose 0: Offer: Neow's Lament | choose 0: Offer: Neow's Lament | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 21 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
+| route | decision_trace | 21 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: M@4,4 -> R@4,5 -> ?@3,6 -> ?@4,7 -> T@5,8 -> M@5,9: reward=6.50, survivability=1.00 |
+| route | decision_trace | 21 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: M@4,4 -> R@4,5 -> ?@3,6 -> ?@4,7 -> T@5,8 -> M@5,9: reward=6.50, survivability=1.00 |
+| event | decision_trace | 0 | complete | choose 0: Talk | choose 0: Talk | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 0 | complete | choose 0: Remove a Card from your deck | choose 0: Remove a Card from your deck | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 0 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
+| route | decision_trace | 0 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.50: M@1,0 -> M@2,1 -> ?@3,2 -> M@4,3 -> M@3,4 -> E@4,5: reward=7.50, survivability=1.00 |
+| route | decision_trace | 0 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.50: M@1,0 -> M@2,1 -> ?@3,2 -> M@4,3 -> M@3,4 -> E@4,5: reward=7.50, survivability=1.00 |
+| card_reward | decision_trace | 1 | complete | Burning Pact | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.60: M@2,1 -> ?@3,2 -> M@4,3 -> M@3,4 -> E@4,5 -> R@4,6: reward=7.60, survivability=1.00 |
+| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.60: M@2,1 -> ?@3,2 -> M@4,3 -> M@3,4 -> E@4,5 -> R@4,6: reward=7.60, survivability=1.00 |
+| card_reward | decision_trace | 2 | complete | Headbutt | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 2 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 10.50: ?@3,2 -> M@4,3 -> M@3,4 -> E@4,5 -> M@5,6 -> $@5,7: reward=10.50, survivability=1.00 |
+| route | decision_trace | 2 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 10.50: ?@3,2 -> M@4,3 -> M@3,4 -> E@4,5 -> M@5,6 -> $@5,7: reward=10.50, survivability=1.00 |
+| card_reward | decision_trace | 3 | complete | Anger | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.40: M@2,3 -> M@1,4 -> R@0,5 -> M@1,6 -> $@1,7 -> T@1,8: reward=9.40, survivability=1.00 |
+| route | decision_trace | 3 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.40: M@2,3 -> M@1,4 -> R@0,5 -> M@1,6 -> $@1,7 -> T@1,8: reward=9.40, survivability=1.00 |
+| card_reward | decision_trace | 4 | complete | Whirlwind | Pommel Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. |
+| route | decision_trace | 4 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.40: M@1,4 -> R@0,5 -> M@1,6 -> $@1,7 -> T@1,8 -> ?@2,9: reward=9.40, survivability=1.00 |
+| route | decision_trace | 4 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.40: M@1,4 -> R@0,5 -> M@1,6 -> $@1,7 -> T@1,8 -> ?@2,9: reward=9.40, survivability=1.00 |
+| event | decision_trace | 5 | complete | choose 0: Continue | choose 0: Continue | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 5 | complete | choose 0: Offer | choose 0: Offer | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 5 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
+| route | decision_trace | 5 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.60: R@2,5 -> M@1,6 -> $@1,7 -> T@1,8 -> ?@2,9 -> E@3,10: reward=10.60, survivability=1.00 |
+| route | decision_trace | 5 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.60: R@2,5 -> M@1,6 -> $@1,7 -> T@1,8 -> ?@2,9 -> E@3,10: reward=10.60, survivability=1.00 |
+| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.00: M@1,6 -> $@1,7 -> T@1,8 -> ?@2,9 -> M@1,10 -> M@1,11: reward=9.00, survivability=1.00 |
+| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.00: M@1,6 -> $@1,7 -> T@1,8 -> ?@2,9 -> M@1,10 -> M@1,11: reward=9.00, survivability=1.00 |
+| card_reward | decision_trace | 7 | complete | Clothesline | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 7 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 11.40: $@1,7 -> T@1,8 -> ?@2,9 -> E@3,10 -> M@3,11 -> E@2,12: reward=11.90, survivability=0.97 |
+| route | decision_trace | 7 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 11.40: $@1,7 -> T@1,8 -> ?@2,9 -> E@3,10 -> M@3,11 -> E@2,12: reward=11.90, survivability=0.97 |
+| route | decision_trace | 8 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: T@0,8 -> ?@1,9 -> M@1,10 -> ?@2,11 -> E@2,12 -> ?@1,13: reward=8.00, survivability=1.00 |
+| route | decision_trace | 8 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: T@0,8 -> ?@1,9 -> M@1,10 -> ?@2,11 -> E@2,12 -> ?@1,13: reward=8.00, survivability=1.00 |
+| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: ?@1,9 -> M@1,10 -> ?@2,11 -> E@2,12 -> ?@1,13 -> R@0,14: reward=6.50, survivability=1.00 |
+| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: ?@1,9 -> M@1,10 -> ?@2,11 -> E@2,12 -> ?@1,13 -> R@0,14: reward=6.50, survivability=1.00 |
+| card_reward | decision_trace | 10 | complete | Second Wind | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.50: M@1,10 -> ?@2,11 -> E@2,12 -> ?@1,13 -> R@0,14: reward=5.50, survivability=1.00 |
+| route | decision_trace | 10 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.50: M@1,10 -> ?@2,11 -> E@2,12 -> ?@1,13 -> R@0,14: reward=5.50, survivability=1.00 |
+| card_reward | decision_trace | 11 | complete | Heavy Blade | Twin Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. |
+| route | decision_trace | 11 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 4.50: ?@2,11 -> E@2,12 -> ?@1,13 -> R@0,14: reward=4.50, survivability=1.00 |
+| route | decision_trace | 11 | complete | choice map_node | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 4.50: ?@2,11 -> E@2,12 -> ?@1,13 -> R@0,14: reward=4.50, survivability=1.00 |
+| card_reward | decision_trace | 12 | complete | Second Wind | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.00: ?@0,12 -> M@0,13 -> R@0,14: reward=2.00, survivability=1.00 |
+| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.00: ?@0,12 -> M@0,13 -> R@0,14: reward=2.00, survivability=1.00 |
+| event | decision_trace | 13 | complete | choose 0: Banana | choose 0: Banana | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 13 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
+| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.10: M@0,13 -> R@0,14: reward=2.10, survivability=1.00 |
+| route | decision_trace | 13 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.10: M@0,13 -> R@0,14: reward=2.10, survivability=1.00 |
+| card_reward | decision_trace | 14 | complete | Clothesline | Thunderclap | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. |
+| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@0,14: reward=1.10, survivability=1.00 |
+| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@0,14: reward=1.10, survivability=1.00 |
+| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
+| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
+| card_reward | decision_trace | 16 | complete | Brutality | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 17 | complete | choice 2 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.60: M@0,0 -> M@1,1 -> ?@2,2 -> $@3,3 -> M@2,4 -> R@3,5: reward=9.60, survivability=1.00 |
+| route | decision_trace | 17 | complete | choice 2 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.60: M@0,0 -> M@1,1 -> ?@2,2 -> $@3,3 -> M@2,4 -> R@3,5: reward=9.60, survivability=1.00 |
+| card_reward | decision_trace | 18 | complete | Cleave+ | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 18 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: M@4,1 -> ?@3,2 -> M@4,3 -> ?@3,4 -> R@3,5 -> ?@3,6: reward=6.50, survivability=1.00 |
+| route | decision_trace | 18 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: M@4,1 -> ?@3,2 -> M@4,3 -> ?@3,4 -> R@3,5 -> ?@3,6: reward=6.50, survivability=1.00 |
+| card_reward | decision_trace | 19 | complete | Flame Barrier+ | Flame Barrier+ | high | Bottled REQUESTED_STRIKE desired-card list wants up to 1 copy/copies of Flame Barrier+. |
+| route | decision_trace | 19 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability -0.68: ?@3,2 -> M@4,3 -> ?@3,4 -> R@3,5 -> ?@3,6 -> M@3,7: reward=6.50, survivability=0.52 |
+| route | decision_trace | 19 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability -0.68: ?@3,2 -> M@4,3 -> ?@3,4 -> R@3,5 -> ?@3,6 -> M@3,7: reward=6.50, survivability=0.52 |
+| event | decision_trace | 20 | complete | choose 2: Ingest Mutagens | choose 0: Test J.A.X. | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 20 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
+| route | decision_trace | 20 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 0.20: M@4,3 -> ?@3,4 -> R@3,5 -> M@2,6 -> M@3,7 -> T@2,8: reward=6.00, survivability=0.61 |
+| route | decision_trace | 20 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 0.20: M@4,3 -> ?@3,4 -> R@3,5 -> M@2,6 -> M@3,7 -> T@2,8: reward=6.00, survivability=0.61 |
+| event | decision_trace | 0 | complete | choose 0: Talk | choose 0: Talk | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 0 | complete | choose 0: Obtain a random rare Card | choose 0: Obtain a random rare Card | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 0 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
+| route | decision_trace | 0 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.78: M@2,0 -> $@3,1 -> M@3,2 -> M@2,3 -> M@2,4 -> E@3,5: reward=8.78, survivability=1.00 |
+| route | decision_trace | 0 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.78: M@2,0 -> $@3,1 -> M@3,2 -> M@2,3 -> M@2,4 -> E@3,5: reward=8.78, survivability=1.00 |
+| card_reward | decision_trace | 1 | complete | True Grit | Thunderclap | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. |
+| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.50: M@4,1 -> M@3,2 -> M@2,3 -> M@2,4 -> E@3,5 -> M@3,6: reward=7.50, survivability=1.00 |
+| route | decision_trace | 1 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 7.50: M@4,1 -> M@3,2 -> M@2,3 -> M@2,4 -> E@3,5 -> M@3,6: reward=7.50, survivability=1.00 |
+| card_reward | decision_trace | 2 | complete | Twin Strike | Twin Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. |
+| route | decision_trace | 2 | complete | choice 2 | choice 2 | high | Bottled common map scoring prefers reward-to-survivability 9.20: $@5,2 -> M@5,3 -> M@4,4 -> E@3,5 -> M@3,6 -> R@2,7: reward=9.20, survivability=1.00 |
+| route | decision_trace | 2 | complete | choice 2 | choice 2 | high | Bottled common map scoring prefers reward-to-survivability 9.20: $@5,2 -> M@5,3 -> M@4,4 -> E@3,5 -> M@3,6 -> R@2,7: reward=9.20, survivability=1.00 |
+| shop | decision_trace | 3 | complete | purge | purge | high | Bottled REQUESTED_STRIKE shop priority prefers starter removal before optional purchases. |
+| shop | decision_trace | 3 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
+| route | decision_trace | 3 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.10: M@5,3 -> M@4,4 -> E@3,5 -> M@3,6 -> R@2,7 -> T@1,8: reward=8.10, survivability=1.00 |
+| route | decision_trace | 3 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.10: M@5,3 -> M@4,4 -> E@3,5 -> M@3,6 -> R@2,7 -> T@1,8: reward=8.10, survivability=1.00 |
+| event | decision_trace | 4 | complete | choose 0: Enter | choose 0: Enter | high | Bottled REQUESTED_STRIKE enters Shining Light at 50%+ HP, otherwise leaves. |
+| event | decision_trace | 4 | complete | choose 0: Leave | choose 0: Leave | high | Bottled REQUESTED_STRIKE enters Shining Light at 50%+ HP, otherwise leaves. |
+| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.10: ?@5,4 -> R@4,5 -> M@3,6 -> M@3,7 -> T@3,8 -> E@3,9: reward=8.10, survivability=1.00 |
+| route | decision_trace | 4 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.10: ?@5,4 -> R@4,5 -> M@3,6 -> M@3,7 -> T@3,8 -> E@3,9: reward=8.10, survivability=1.00 |
+| event | decision_trace | 5 | complete | choose 0: Continue | choose 0: Continue | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 5 | complete | choose 0: Touch | choose 0: Touch | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 5 | complete | choose 0: Leave | choose 0: Leave | medium | Bottled common event fallback chooses the first option. |
+| route | decision_trace | 5 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.20: R@4,5 -> M@3,6 -> R@2,7 -> T@1,8 -> M@1,9 -> E@0,10: reward=8.20, survivability=1.00 |
+| route | decision_trace | 5 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.20: R@4,5 -> M@3,6 -> R@2,7 -> T@1,8 -> M@1,9 -> E@0,10: reward=8.20, survivability=1.00 |
+| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.10: M@3,6 -> R@2,7 -> T@1,8 -> M@1,9 -> E@0,10 -> ?@1,11: reward=8.10, survivability=1.00 |
+| route | decision_trace | 6 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.10: M@3,6 -> R@2,7 -> T@1,8 -> M@1,9 -> E@0,10 -> ?@1,11: reward=8.10, survivability=1.00 |
+| card_reward | decision_trace | 7 | complete | Shrug It Off | Shrug It Off | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Shrug It Off. |
+| route | decision_trace | 7 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.10: R@2,7 -> T@1,8 -> M@1,9 -> E@0,10 -> ?@1,11 -> M@1,12: reward=8.10, survivability=1.00 |
+| route | decision_trace | 7 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.10: R@2,7 -> T@1,8 -> M@1,9 -> E@0,10 -> ?@1,11 -> M@1,12: reward=8.10, survivability=1.00 |
+| route | decision_trace | 8 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 11.00: T@1,8 -> M@1,9 -> E@0,10 -> ?@1,11 -> M@1,12 -> $@1,13: reward=11.00, survivability=1.00 |
+| route | decision_trace | 8 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 11.00: T@1,8 -> M@1,9 -> E@0,10 -> ?@1,11 -> M@1,12 -> $@1,13: reward=11.00, survivability=1.00 |
+| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.20: M@2,9 -> R@2,10 -> M@2,11 -> M@1,12 -> $@1,13 -> R@1,14: reward=9.20, survivability=1.00 |
+| route | decision_trace | 9 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.20: M@2,9 -> R@2,10 -> M@2,11 -> M@1,12 -> $@1,13 -> R@1,14: reward=9.20, survivability=1.00 |
+| card_reward | decision_trace | 10 | complete | Spot Weakness | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 10 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 7.10: R@2,10 -> M@2,11 -> M@1,12 -> $@1,13 -> R@1,14: reward=7.10, survivability=1.00 |
+| route | decision_trace | 10 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 7.10: R@2,10 -> M@2,11 -> M@1,12 -> $@1,13 -> R@1,14: reward=7.10, survivability=1.00 |
+| route | decision_trace | 11 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.00: M@2,11 -> M@1,12 -> $@1,13 -> R@1,14: reward=6.00, survivability=1.00 |
+| route | decision_trace | 11 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.00: M@2,11 -> M@1,12 -> $@1,13 -> R@1,14: reward=6.00, survivability=1.00 |
+| card_reward | decision_trace | 12 | complete | Shockwave | Perfected Strike | high | Bottled REQUESTED_STRIKE desired-card list wants up to 5 copy/copies of Perfected Strike. |
+| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.00: M@1,12 -> $@1,13 -> R@1,14: reward=5.00, survivability=1.00 |
+| route | decision_trace | 12 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.00: M@1,12 -> $@1,13 -> R@1,14: reward=5.00, survivability=1.00 |
+| card_reward | decision_trace | 13 | complete | Headbutt | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 13 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 5.10: $@1,13 -> R@1,14: reward=5.10, survivability=1.00 |
+| route | decision_trace | 13 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 5.10: $@1,13 -> R@1,14: reward=5.10, survivability=1.00 |
+| shop | decision_trace | 14 | complete | purge | purge | high | Bottled REQUESTED_STRIKE shop priority prefers starter removal before optional purchases. |
+| shop | decision_trace | 14 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
+| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@1,14: reward=1.10, survivability=1.00 |
+| route | decision_trace | 14 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.10: R@1,14: reward=1.10, survivability=1.00 |
+| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
+| route | decision_trace | 15 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
+| card_reward | decision_trace | 16 | complete | Impervious | Impervious | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Impervious. |
+| route | decision_trace | 17 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.50: M@1,0 -> M@2,1 -> M@2,2 -> M@3,3 -> $@4,4 -> E@4,5: reward=10.50, survivability=1.00 |
+| route | decision_trace | 17 | complete | choice 1 | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 10.50: M@1,0 -> M@2,1 -> M@2,2 -> M@3,3 -> $@4,4 -> E@4,5: reward=10.50, survivability=1.00 |
+| card_reward | decision_trace | 18 | complete | Headbutt | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 18 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 11.00: M@3,1 -> M@2,2 -> M@3,3 -> $@4,4 -> E@4,5 -> ?@3,6: reward=11.00, survivability=1.00 |
+| route | decision_trace | 18 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 11.00: M@3,1 -> M@2,2 -> M@3,3 -> $@4,4 -> E@4,5 -> ?@3,6: reward=11.00, survivability=1.00 |
+| card_reward | decision_trace | 19 | complete | Thunderclap | Thunderclap | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. |
+| route | decision_trace | 19 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 9.10: ?@3,2 -> M@3,3 -> ?@2,4 -> R@3,5 -> ?@3,6 -> E@2,7: reward=9.10, survivability=1.00 |
+| route | decision_trace | 19 | complete | choice 1 | choice 1 | high | Bottled common map scoring prefers reward-to-survivability 9.10: ?@3,2 -> M@3,3 -> ?@2,4 -> R@3,5 -> ?@3,6 -> E@2,7: reward=9.10, survivability=1.00 |
+| card_reward | decision_trace | 20 | complete | Dark Embrace | Thunderclap | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. |
+| route | decision_trace | 20 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.10: M@3,3 -> ?@2,4 -> R@3,5 -> ?@3,6 -> E@2,7 -> T@1,8: reward=9.10, survivability=1.00 |
+| route | decision_trace | 20 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 9.10: M@3,3 -> ?@2,4 -> R@3,5 -> ?@3,6 -> E@2,7 -> T@1,8: reward=9.10, survivability=1.00 |
+| card_reward | decision_trace | 21 | complete | Ghostly Armor | Ghostly Armor | high | Bottled REQUESTED_STRIKE desired-card list wants up to 1 copy/copies of Ghostly Armor. |
+| route | decision_trace | 21 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.60: ?@2,4 -> R@3,5 -> ?@3,6 -> ?@4,7 -> T@3,8 -> ?@3,9: reward=8.60, survivability=1.00 |
+| route | decision_trace | 21 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.60: ?@2,4 -> R@3,5 -> ?@3,6 -> ?@4,7 -> T@3,8 -> ?@3,9: reward=8.60, survivability=1.00 |
+| shop | decision_trace | 22 | complete | purge | purge | high | Bottled REQUESTED_STRIKE shop priority prefers starter removal before optional purchases. |
+| shop | decision_trace | 22 | complete | leave | Anchor | high | Bottled shop relic list ranks Anchor as buyable. |
+| route | decision_trace | 22 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.60: R@3,5 -> ?@3,6 -> ?@4,7 -> T@3,8 -> ?@3,9 -> ?@2,10: reward=8.60, survivability=1.00 |
+| route | decision_trace | 22 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.60: R@3,5 -> ?@3,6 -> ?@4,7 -> T@3,8 -> ?@3,9 -> ?@2,10: reward=8.60, survivability=1.00 |
+| route | decision_trace | 23 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.50: ?@3,6 -> ?@4,7 -> T@3,8 -> ?@3,9 -> ?@2,10 -> M@2,11: reward=8.50, survivability=1.00 |
+| route | decision_trace | 23 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.50: ?@3,6 -> ?@4,7 -> T@3,8 -> ?@3,9 -> ?@2,10 -> M@2,11: reward=8.50, survivability=1.00 |
+| event | decision_trace | 24 | complete | choose 0: Offer Gold | choose 0: Offer Gold | medium | Bottled common event fallback chooses the first option. |
+| event | decision_trace | 24 | complete | choose 0: Continue | choose 0: Continue | medium | Bottled common event fallback chooses the first option. |
+| route | decision_trace | 24 | complete | choice 1 | choice 2 | high | Bottled common map scoring prefers reward-to-survivability 8.50: ?@4,7 -> T@3,8 -> ?@3,9 -> ?@2,10 -> M@2,11 -> ?@2,12: reward=8.50, survivability=1.00 |
+| route | decision_trace | 24 | complete | choice 1 | choice 2 | high | Bottled common map scoring prefers reward-to-survivability 8.50: ?@4,7 -> T@3,8 -> ?@3,9 -> ?@2,10 -> M@2,11 -> ?@2,12: reward=8.50, survivability=1.00 |
+| route | decision_trace | 25 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: T@3,8 -> ?@3,9 -> ?@2,10 -> M@2,11 -> ?@2,12 -> M@2,13: reward=8.00, survivability=1.00 |
+| route | decision_trace | 25 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 8.00: T@3,8 -> ?@3,9 -> ?@2,10 -> M@2,11 -> ?@2,12 -> M@2,13: reward=8.00, survivability=1.00 |
+| route | decision_trace | 26 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: ?@3,9 -> ?@2,10 -> M@2,11 -> ?@2,12 -> M@2,13 -> R@1,14: reward=6.50, survivability=1.00 |
+| route | decision_trace | 26 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 6.50: ?@3,9 -> ?@2,10 -> M@2,11 -> ?@2,12 -> M@2,13 -> R@1,14: reward=6.50, survivability=1.00 |
+| route | decision_trace | 27 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.00: ?@2,10 -> M@2,11 -> ?@2,12 -> M@2,13 -> R@1,14: reward=5.00, survivability=1.00 |
+| route | decision_trace | 27 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 5.00: ?@2,10 -> M@2,11 -> ?@2,12 -> M@2,13 -> R@1,14: reward=5.00, survivability=1.00 |
+| card_reward | decision_trace | 28 | complete | Cleave | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 28 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.50: M@2,11 -> ?@2,12 -> M@2,13 -> R@1,14: reward=3.50, survivability=1.00 |
+| route | decision_trace | 28 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 3.50: M@2,11 -> ?@2,12 -> M@2,13 -> R@1,14: reward=3.50, survivability=1.00 |
+| card_reward | decision_trace | 29 | complete | Armaments | skip | medium | Bottled card reward handler skips when no desired card is offered. |
+| route | decision_trace | 29 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.50: ?@2,12 -> M@2,13 -> R@1,14: reward=2.50, survivability=1.00 |
+| route | decision_trace | 29 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 2.50: ?@2,12 -> M@2,13 -> R@1,14: reward=2.50, survivability=1.00 |
+| shop | decision_trace | 30 | complete | purge | Perfected Strike | high | Bottled REQUESTED_STRIKE buys affordable Perfected Strike before general purge. |
+| shop | decision_trace | 30 | complete | leave | leave | high | Bottled shop handler leaves when no priority purchase is affordable. |
+| route | decision_trace | 30 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.00: M@2,13 -> R@1,14: reward=1.00, survivability=1.00 |
+| route | decision_trace | 30 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 1.00: M@2,13 -> R@1,14: reward=1.00, survivability=1.00 |
+| card_reward | decision_trace | 31 | complete | Shrug It Off+ | Shrug It Off+ | high | Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Shrug It Off+. |
 | route | decision_trace | 31 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 0.00: R@1,14: reward=0.00, survivability=1.00 |
 | route | decision_trace | 31 | complete | choice map_node | choice 0 | high | Bottled common map scoring prefers reward-to-survivability 0.00: R@1,14: reward=0.00, survivability=1.00 |
 | route | decision_trace | 32 | partial | choice map_node | unknown | low | Partial route evidence: candidate map paths are required for Bottled reward-to-survivability scoring. Limitations: missing route candidate paths at decision time |
@@ -428,11 +430,11 @@ No gameplay-code fix is applied by this report.
 
 ## Most Worth Fixing
 
-1. **event floor 14**: current `choose 0: Continue` vs reference `choose 1: 1` (high). Bottled REQUESTED_STRIKE purges at Wing Statue only at 60%+ HP. Repeated 2x in non-fixture evidence.
-2. **card_reward floor 5**: current `Anger` vs reference `Perfected Strike` (high). Bottled REQUESTED_STRIKE desired-card list wants up to 5 copy/copies of Perfected Strike. Repeated 3x in non-fixture evidence.
-3. **card_reward floor 13**: current `True Grit` vs reference `Pommel Strike` (high). Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. Repeated 3x in non-fixture evidence.
-4. **card_reward floor 1**: current `Headbutt` vs reference `Dropkick` (high). Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Dropkick. Repeated 2x in non-fixture evidence.
-5. **card_reward floor 16**: current `Corruption` vs reference `Reaper` (high). Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Reaper. Repeated 2x in non-fixture evidence.
+1. **route floor ?**: current `choice 1` vs reference `choice 0` (high). Bottled common map scoring prefers reward-to-survivability 8.78: M@0,0 -> $@1,1 -> M@1,2 -> M@1,3 -> M@0,4 -> E@0,5: reward=8.78, survivability=1.00 Repeated 2x in non-fixture evidence.
+2. **card_reward floor 1**: current `Anger` vs reference `Thunderclap` (high). Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Thunderclap. Repeated 5x in non-fixture evidence.
+3. **card_reward floor 1**: current `Clothesline` vs reference `Twin Strike` (high). Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Twin Strike. Repeated 4x in non-fixture evidence.
+4. **card_reward floor 4**: current `Whirlwind` vs reference `Pommel Strike` (high). Bottled REQUESTED_STRIKE desired-card list wants up to 2 copy/copies of Pommel Strike. Repeated 2x in non-fixture evidence.
+5. **card_reward floor 1**: current `Burning Pact` vs reference `skip` (medium). Bottled card reward handler skips when no desired card is offered. Repeated 28x in non-fixture evidence.
 
 ## Repair Gate
 

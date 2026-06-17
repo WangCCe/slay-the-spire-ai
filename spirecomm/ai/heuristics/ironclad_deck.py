@@ -201,7 +201,7 @@ class IroncladDeckStrategy:
                 )
                 return (
                     True,
-                    f"Emergency Act 1 Perfected Strike frontload with {strike_sources} Strike-name sources",
+                    f"Early Act 1 Perfected Strike with {strike_sources} Strike-name sources",
                 )
             return (
                 False,
@@ -279,10 +279,10 @@ class IroncladDeckStrategy:
         context: DecisionContext,
         deck_size: int,
     ) -> bool:
-        """Accept one early Perfected Strike when it solves a real Act 1 damage gap."""
+        """Accept one early Perfected Strike for damage-gap or duplicate-Anger decks."""
         act = self._non_negative_int(getattr(context, 'act', 0))
         floor = self._non_negative_int(getattr(context, 'floor', 0))
-        if act != 1 or floor > 4 or deck_size > 13:
+        if act != 1 or deck_size > 13:
             return False
 
         deck = list(getattr(context.game, 'deck', []) or [])
@@ -291,13 +291,15 @@ class IroncladDeckStrategy:
             return False
 
         strike_sources = self._strike_name_source_count(deck)
-        if strike_sources < 5:
-            return False
 
         real_frontload_count = sum(
             1 for card_id in deck_ids if card_id in self.ACT_1_FRONTLOAD_ATTACKS
         )
-        return real_frontload_count <= 1
+        if floor <= 4 and strike_sources >= 5 and real_frontload_count <= 1:
+            return True
+
+        anger_count = sum(1 for card_id in deck_ids if card_id == 'Anger')
+        return floor <= 7 and strike_sources >= 4 and anger_count >= 2
 
     def _strike_name_source_count(self, deck: List[Card]) -> int:
         count = 0
