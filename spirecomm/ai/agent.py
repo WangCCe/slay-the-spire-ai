@@ -1215,7 +1215,6 @@ class SimpleAgent:
                             if price is not None and gold >= price:
                                 useful_potions = [
                                     "Healing Potion",
-                                    "Fire Potion",
                                     "Ice Potion",
                                     "Block Potion",
                                     "Strawberry",

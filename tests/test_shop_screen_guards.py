@@ -234,6 +234,69 @@ def test_shop_screen_skips_strength_potion_when_no_priority_purchase_is_availabl
     assert isinstance(action, LeaveAction)
 
 
+def test_shop_screen_skips_fire_potion_after_purge_when_no_priority_purchase_is_available():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[
+                _shop_card("Sword Boomerang", price=50),
+                _shop_card("Iron Wave", price=49),
+                _shop_card("True Grit", price=22),
+                _shop_card("Dual Wield", price=82),
+                _shop_card("Berserk", price=153),
+                _shop_card("Purity", price=85),
+                _shop_card("Violence", price=165),
+            ],
+            relics=[
+                SimpleNamespace(name="Frozen Egg", price=241),
+                SimpleNamespace(name="Bottled Flame", price=257),
+                SimpleNamespace(name="Hand Drill", price=149),
+            ],
+            potions=[
+                SimpleNamespace(name="Dexterity Potion", price=50),
+                SimpleNamespace(name="Skill Potion", price=50),
+                SimpleNamespace(name="Fire Potion", price=50),
+            ],
+            purge_available=False,
+            purge_cost=100,
+        ),
+        gold=70,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Shockwave", price=0),
+            _shop_card("Reckless Charge", price=0),
+            _shop_card("Shockwave", price=0),
+            _shop_card("Iron Wave", price=0),
+        ],
+        act=1,
+        floor=4,
+        in_combat=False,
+        current_hp=56,
+        max_hp=80,
+        relics=[],
+        player=SimpleNamespace(energy=3, powers=[]),
+        are_potions_full=lambda: False,
+        cancel_available=False,
+        proceed_available=False,
+        available_commands=["choose", "potion", "leave", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+    agent._shop_purged_this_shop = True
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, LeaveAction)
+
+
 def test_shop_screen_does_not_buy_second_card_after_card_purchase_updates():
     agent = _agent_for_shop(
         screen_type=ScreenType.SHOP_SCREEN,
@@ -501,7 +564,7 @@ def test_shop_screen_buy_potion_accepts_string_gold_and_price():
         screen=SimpleNamespace(
             cards=[_shop_card("Skip Me", price="1")],
             relics=[],
-            potions=[SimpleNamespace(name="Fire Potion", price="75")],
+            potions=[SimpleNamespace(name="Healing Potion", price="75")],
             purge_available=False,
         ),
         gold="200",
@@ -516,7 +579,7 @@ def test_shop_screen_buy_potion_accepts_string_gold_and_price():
     action = agent.handle_screen()
 
     assert isinstance(action, BuyPotionAction)
-    assert action.name == "Fire Potion"
+    assert action.name == "Healing Potion"
 
 
 def test_shop_relic_helper_accepts_string_gold_and_price():
