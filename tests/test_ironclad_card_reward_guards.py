@@ -2580,3 +2580,34 @@ def test_guardian_prep_takes_clothesline_over_slow_havoc_with_damage_gap():
 
     assert isinstance(action, CardRewardAction)
     assert action.name == "Clothesline"
+
+
+def test_floor_one_reward_prefers_thunderclap_over_anger_from_trace():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+    ]
+    reward_cards = [
+        _card("Thunderclap"),
+        _card("Anger", cost=0),
+        _card("Flex", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=1,
+        act=1,
+        act_boss="Hexaghost",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Thunderclap"

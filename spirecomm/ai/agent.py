@@ -3194,6 +3194,7 @@ class OptimizedAgent(SimpleAgent):
             )
             feed_count = sum(1 for card_id in deck_ids if card_id == "Feed")
             anger_count = sum(1 for card_id in deck_ids if card_id == "Anger")
+            thunderclap_count = sum(1 for card_id in deck_ids if card_id == "Thunderclap")
             havoc_count = sum(1 for card_id in deck_ids if card_id == "Havoc")
             disarm_count = sum(1 for card_id in deck_ids if card_id == "Disarm")
             armaments_count = sum(1 for card_id in deck_ids if card_id == "Armaments")
@@ -3210,6 +3211,20 @@ class OptimizedAgent(SimpleAgent):
                 shockwave_count == 0
                 and any(
                     self._normalize_card_name(card) == "Shockwave"
+                    for card in pickable_cards
+                )
+            )
+            has_first_thunderclap_reward = (
+                thunderclap_count == 0
+                and any(
+                    self._normalize_card_name(card) == "Thunderclap"
+                    for card in pickable_cards
+                )
+            )
+            has_first_anger_reward = (
+                anger_count == 0
+                and any(
+                    self._normalize_card_name(card) == "Anger"
                     for card in pickable_cards
                 )
             )
@@ -3402,6 +3417,15 @@ class OptimizedAgent(SimpleAgent):
                         score = max(score, 90)
                     if card_name in act_1_premium_frontload:
                         score = max(score, 108 if card_name == "Immolate" else 92)
+                    if (
+                        has_first_thunderclap_reward
+                        and has_first_anger_reward
+                        and act_1_empty_frontload_gap
+                    ):
+                        if card_name == "Thunderclap":
+                            score = max(score, 96)
+                        elif card_name == "Anger":
+                            score = min(score, 92)
                     if (
                         card_name == "Twin Strike"
                         and (getattr(context, "floor", 0) or 0) <= 8
