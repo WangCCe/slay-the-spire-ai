@@ -498,6 +498,10 @@ def _sample_from_trace_event(event: Dict[str, Any], index: int) -> Optional[Deci
     )
 
 
+def sample_from_trace_event(event: Dict[str, Any], index: int = 0) -> Optional[DecisionSample]:
+    return _sample_from_trace_event(event, index)
+
+
 def _trace_card_reward_sample(
     event: Dict[str, Any],
     screen: Dict[str, Any],
