@@ -139,3 +139,6 @@ dmypy.json
 /.tools/
 /.codex-tmp/
 /.tmp/
+/.codex_pytest/
+/.pytest_tmp/
+/-WindowTitlePattern/
