@@ -500,6 +500,8 @@ def _selected_action_id(decision_sample, candidates: List[Dict[str, Any]]) -> Op
         if kind == "buy_card":
             return _candidate_by_kind_and_slug(candidates, "buy_card", name)
         if kind == "purge":
+            if _slug(name) in {"", "purge"}:
+                return _candidate_by_kind(candidates, "purge")
             return _candidate_by_kind_and_slug(candidates, "purge", name)
         if kind == "leave":
             return "shop:leave"

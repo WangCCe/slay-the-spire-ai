@@ -3,21 +3,21 @@
 ## Summary
 
 - Promotion status: allowed
-- Samples: 397
+- Samples: 389
 - Blocking reasons: none
 
 ## Sample Coverage
 
-- Categories: card_reward=60, event=76, route=246, shop=15
-- Evidence quality: complete=383, partial=14
+- Categories: card_reward=64, event=57, route=242, shop=26
+- Evidence quality: complete=375, partial=14
 
 ## Bottled Agreement
 
-- Current/Bottled action-id matches: 264/397
+- Current/Bottled action-id matches: 267/389
 
 ## Live Outcomes
 
-- Matched outcomes included in gate: 145
+- Matched outcomes included in gate: 184
 
 ## Reward readiness
 
@@ -26,7 +26,7 @@
 ## Promotion Gate
 
 - Readiness: {'state': 'present', 'action': 'present', 'reward': 'present', 'evaluation': 'present'}
-- Metrics: {'sample_count': 397, 'category_counts': {'event': 76, 'route': 246, 'card_reward': 60, 'shop': 15}, 'complete_category_counts': {'event': 76, 'route': 232, 'card_reward': 60, 'shop': 15}, 'matched_outcomes': 145}
+- Metrics: {'sample_count': 389, 'category_counts': {'route': 242, 'card_reward': 64, 'event': 57, 'shop': 26}, 'complete_category_counts': {'route': 228, 'card_reward': 64, 'event': 57, 'shop': 26}, 'matched_outcomes': 184}
 
 ## Training Guard
 

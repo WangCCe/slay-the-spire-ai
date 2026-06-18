@@ -199,6 +199,17 @@ def run_post_analysis(args):
     return subprocess.call(command)
 
 
+def run_main_command(command, env):
+    """Run the AI child with explicit stdio inheritance for CommunicationMod pipes."""
+    return subprocess.call(
+        command,
+        env=env,
+        stdin=sys.stdin,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+    )
+
+
 def print_restart_guidance(args):
     if not args.restart_guidance:
         return
@@ -358,7 +369,7 @@ def main():
     if not args.skip_log_backup:
         backup_log_file(args)
 
-    result = subprocess.call(main_command, env=child_env)
+    result = run_main_command(main_command, child_env)
 
     maintenance_result = 0
     if not args.skip_maintenance:

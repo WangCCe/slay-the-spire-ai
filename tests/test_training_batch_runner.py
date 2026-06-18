@@ -1,3 +1,6 @@
+import sys
+
+from scripts import run_training_batch
 from scripts.run_training_batch import build_child_env, build_main_command, PHASES
 
 
@@ -108,3 +111,23 @@ def test_batch_child_env_can_skip_sim_divergence_trace(monkeypatch):
     env = build_child_env(args)
 
     assert "STS_SIM_DIVERGENCE_TRACE_FILE" not in env
+
+
+def test_run_main_command_explicitly_inherits_stdio(monkeypatch):
+    captured = {}
+
+    def fake_call(command, **kwargs):
+        captured["command"] = command
+        captured["kwargs"] = kwargs
+        return 0
+
+    monkeypatch.setattr(run_training_batch.subprocess, "call", fake_call)
+
+    result = run_training_batch.run_main_command(["python", "main.py"], {"A": "B"})
+
+    assert result == 0
+    assert captured["command"] == ["python", "main.py"]
+    assert captured["kwargs"]["env"] == {"A": "B"}
+    assert captured["kwargs"]["stdin"] is sys.stdin
+    assert captured["kwargs"]["stdout"] is sys.stdout
+    assert captured["kwargs"]["stderr"] is sys.stderr

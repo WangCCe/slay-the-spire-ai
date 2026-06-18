@@ -143,6 +143,34 @@ def test_partial_trace_sample_preserves_limitations(tmp_path):
     assert sample["candidate_actions"][-1]["action_id"] == "shop:leave"
 
 
+def test_generic_shop_purge_action_maps_to_purge_candidate(tmp_path):
+    from analysis_scripts.noncombat_rl_decision_loop import export_samples_from_trace
+
+    trace_path = tmp_path / "trace.jsonl"
+    _write_trace(
+        trace_path,
+        [
+            _base_trace_row(
+                "SHOP_SCREEN",
+                {"type": "BuyPurgeAction", "name": "purge"},
+                {
+                    "type": "SHOP_SCREEN",
+                    "cards": [],
+                    "relics": [],
+                    "potions": [],
+                    "purge_available": True,
+                    "purge_cost": 75,
+                },
+            )
+        ],
+    )
+
+    [sample] = export_samples_from_trace(trace_path)
+
+    assert sample["selected_action_id"] == "shop:purge:strike"
+    assert sample["current_policy_label"]["label"] == "purge Strike"
+
+
 def test_attach_live_outcomes_matches_exactly_one_run():
     from analysis_scripts.noncombat_rl_decision_loop import attach_live_outcomes
 
