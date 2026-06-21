@@ -699,6 +699,145 @@ def test_ironclad_slime_boss_frontload_gap_counts_upgraded_damage_cards():
     assert action.name == "Flame Barrier"
 
 
+def test_act1_reward_prefers_pommel_over_duplicate_armaments_without_boss_metadata():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2, upgrades=1),
+        _card("Armaments"),
+        _card("Shrug It Off", upgrades=1),
+    ]
+    reward_cards = [
+        _card("Pommel Strike"),
+        _card("Armaments"),
+        _card("Sword Boomerang"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=11,
+        hp=76,
+        max_hp=80,
+        act_boss=None,
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Pommel Strike"
+
+
+def test_act1_reward_prefers_twin_strike_over_duplicate_armaments():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Pommel Strike"),
+        _card("Headbutt"),
+        _card("Headbutt"),
+        _card("Impervious", upgrades=1),
+        _card("Reaper"),
+        _card("Spot Weakness"),
+        _card("Armaments"),
+    ]
+    reward_cards = [
+        _card("Armaments"),
+        _card("Twin Strike"),
+        _card("Wild Strike"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=10,
+        hp=20,
+        max_hp=80,
+        act_boss=None,
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Twin Strike"
+
+
+def test_act1_reward_prefers_twin_strike_over_iron_wave_when_frontload_is_thin():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Limit Break"),
+        _card("Anger", upgrades=1),
+        _card("Clothesline", cost=2),
+    ]
+    reward_cards = [
+        _card("Twin Strike"),
+        _card("Iron Wave"),
+        _card("Searing Blow", cost=2),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=8,
+        hp=80,
+        max_hp=80,
+        act_boss=None,
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Twin Strike"
+
+
+def test_act1_reward_prefers_pommel_strike_over_uppercut_when_frontload_is_thin():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Finesse", cost=0),
+        _card("Hemokinesis", upgrades=1),
+        _card("Iron Wave"),
+        _card("Ghostly Armor", upgrades=1),
+        _card("Clothesline", cost=2),
+        _card("Iron Wave"),
+    ]
+    reward_cards = [
+        _card("Pommel Strike"),
+        _card("Thunderclap"),
+        _card("Uppercut", cost=2),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=12,
+        hp=57,
+        max_hp=80,
+        act_boss=None,
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Pommel Strike"
+
+
 def test_ironclad_strategy_prefers_slime_boss_headbutt_over_early_burning_pact():
     deck = [
         _card("Strike_R"),

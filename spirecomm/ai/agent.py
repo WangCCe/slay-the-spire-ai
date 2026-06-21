@@ -3290,6 +3290,14 @@ class OptimizedAgent(SimpleAgent):
                     for card in pickable_cards
                 )
             )
+            has_pommel_strike_reward = any(
+                self._normalize_card_name(card) == "Pommel Strike"
+                for card in pickable_cards
+            )
+            has_twin_strike_reward = any(
+                self._normalize_card_name(card) == "Twin Strike"
+                for card in pickable_cards
+            )
             has_heavy_blade_in_deck = "Heavy Blade" in deck_ids
             has_heavy_blade = "Heavy Blade" in deck_ids or any(
                 self._normalize_card_name(card) == "Heavy Blade"
@@ -3512,6 +3520,29 @@ class OptimizedAgent(SimpleAgent):
                         and has_better_duplicate_anger_option
                     ):
                         score = min(score, 60)
+                    if (
+                        card_name == "Armaments"
+                        and armaments_count > 0
+                        and (
+                            has_pommel_strike_reward
+                            or has_twin_strike_reward
+                            or has_first_thunderclap_reward
+                        )
+                    ):
+                        score = min(score, 60)
+                    if (
+                        card_name == "Twin Strike"
+                        and has_twin_strike_reward
+                        and armaments_count > 0
+                        and frontload_count < 5
+                    ):
+                        score = max(score, 82)
+                    if (
+                        card_name == "Uppercut"
+                        and has_pommel_strike_reward
+                        and frontload_count < 5
+                    ):
+                        score = min(score, 78)
                     if (
                         card_name == "Havoc"
                         and not has_havoc_support
