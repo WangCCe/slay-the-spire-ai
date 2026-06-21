@@ -92,6 +92,9 @@ class SimpleAgent:
         "battletrance",
         "shockwave",
     }
+    SHOP_PRE_PURGE_CARD_KEYS = {
+        "perfectedstrike",
+    }
 
     def __init__(self, chosen_class=PlayerClass.THE_SILENT, elite_mode=None):
         self.game = Game()
@@ -318,12 +321,18 @@ class SimpleAgent:
         return False
 
     def _shop_card_is_post_purge_priority(self, card):
+        return bool(self._shop_card_keys(card) & self.SHOP_POST_PURGE_CARD_KEYS)
+
+    def _shop_card_is_pre_purge_priority(self, card):
+        return bool(self._shop_card_keys(card) & self.SHOP_PRE_PURGE_CARD_KEYS)
+
+    def _shop_card_keys(self, card):
         keys = {
             self._compact_card_key(self._normalize_card_name(card)),
             self._compact_card_key(getattr(card, "card_id", "")),
             self._compact_card_key(getattr(card, "name", "")),
         }
-        return bool(keys & self.SHOP_POST_PURGE_CARD_KEYS)
+        return keys
 
     def _validate_shop_cards(self, screen):
         """Validate that shop cards have required attributes."""
@@ -357,7 +366,16 @@ class SimpleAgent:
             return self.game.has_potion_space()
         return not self.game.are_potions_full()
 
-    def _should_buy_card(self, card, gold, purge_cost, screen):
+    def _should_buy_card(
+        self,
+        card,
+        gold,
+        purge_cost,
+        screen,
+        *,
+        preserve_purge_budget=True,
+        allow_priority_skip=False,
+    ):
         """Determine if a card should be purchased."""
         try:
             if not hasattr(card, "price") or not hasattr(card, "card_id"):
@@ -368,10 +386,19 @@ class SimpleAgent:
             if price is None:
                 return False
 
-            if gold >= price and not self.priorities.should_skip(card):
-                if not self._shop_card_is_cash_worthy(card):
+            priority_skip = self.priorities.should_skip(card)
+            require_strategy_approval = priority_skip and allow_priority_skip
+            if gold >= price and (not priority_skip or allow_priority_skip):
+                if not self._shop_card_is_cash_worthy(
+                    card,
+                    require_strategy_approval=require_strategy_approval,
+                ):
                     return False
-                if not screen.purge_available or gold - price >= purge_cost:
+                if (
+                    not screen.purge_available
+                    or not preserve_purge_budget
+                    or gold - price >= purge_cost
+                ):
                     return True
         except Exception as e:
             card_id = getattr(card, "card_id", "UNKNOWN")
@@ -381,7 +408,7 @@ class SimpleAgent:
             )
         return False
 
-    def _shop_card_is_cash_worthy(self, card):
+    def _shop_card_is_cash_worthy(self, card, *, require_strategy_approval=False):
         """Shop buys need a higher bar than free reward picks."""
         card_name = self._normalize_card_name(card)
         low_reliability_cards = {
@@ -399,6 +426,10 @@ class SimpleAgent:
             return False
 
         deck_strategy = getattr(self, "deck_strategy", None)
+        if require_strategy_approval and (
+            deck_strategy is None or DecisionContext is None
+        ):
+            return False
         if deck_strategy is not None and DecisionContext is not None:
             try:
                 context = DecisionContext(self.game)
@@ -409,6 +440,8 @@ class SimpleAgent:
                     card_name,
                     exc,
                 )
+                if require_strategy_approval:
+                    return False
             else:
                 if not should_pick:
                     logging.info(
@@ -1157,6 +1190,30 @@ class SimpleAgent:
                     else float("inf")
                 )
                 has_paid_purge_target = self._has_paid_shop_purge_target()
+                sorted_cards = (
+                    self.priorities.get_sorted_cards(valid_cards)
+                    if hasattr(self.priorities, "get_sorted_cards")
+                    else valid_cards
+                )
+                if (
+                    screen.purge_available
+                    and gold >= purge_cost
+                    and has_paid_purge_target
+                    and not getattr(self, "_shop_bought_card_this_shop", False)
+                ):
+                    for card in sorted_cards:
+                        if not self._shop_card_is_pre_purge_priority(card):
+                            continue
+                        if self._should_buy_card(
+                            card,
+                            gold,
+                            purge_cost,
+                            screen,
+                            preserve_purge_budget=False,
+                            allow_priority_skip=True,
+                        ):
+                            self._mark_shop_purchase(gold, screen, bought_card=True)
+                            return BuyCardAction(card)
                 if (
                     screen.purge_available
                     and gold >= purge_cost
@@ -1171,7 +1228,6 @@ class SimpleAgent:
                         "[SHOP_SCREEN] Skipping additional card purchases after buying a card in this shop"
                     )
                 elif hasattr(self.priorities, "get_sorted_cards"):
-                    sorted_cards = self.priorities.get_sorted_cards(valid_cards)
                     for card in sorted_cards:
                         if (
                             getattr(self, "_shop_purged_this_shop", False)
@@ -1182,7 +1238,13 @@ class SimpleAgent:
                                 self._normalize_card_name(card),
                             )
                             continue
-                        if self._should_buy_card(card, gold, purge_cost, screen):
+                        if self._should_buy_card(
+                            card,
+                            gold,
+                            purge_cost,
+                            screen,
+                            allow_priority_skip=self._shop_card_is_pre_purge_priority(card),
+                        ):
                             self._mark_shop_purchase(gold, screen, bought_card=True)
                             return BuyCardAction(card)
                 else:
