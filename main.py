@@ -41,6 +41,7 @@ def _load_rl_components():
     if _RL_COMPONENTS_LOADED:
         return
 
+    logging.info("Loading RL components...")
     try:
         from spirecomm.ai.rl import (
             RLAgent as loaded_rl_agent,
@@ -68,6 +69,11 @@ def _load_rl_components():
         RL_V2_AVAILABLE = RLAgentV2 is not None
     finally:
         _RL_COMPONENTS_LOADED = True
+        logging.info(
+            "RL components loaded: rl_available=%s rl_v2_available=%s",
+            RL_AVAILABLE,
+            RL_V2_AVAILABLE,
+        )
 
 # Setup logging to file with rotation (all logs go to ai_debug.log)
 # Note: We don't use StreamHandler because Communication Mod uses stdout for commands
@@ -797,8 +803,11 @@ if __name__ == "__main__":
     # CRITICAL: Setup coordinator and signal ready BEFORE creating agent
     # Communication Mod has ~10 second timeout waiting for 'ready' signal
     # RL agent creation (PyTorch import, model loading) can take 5-15 seconds
+    logging.info("Creating CommunicationMod coordinator")
     coordinator = Coordinator()
+    logging.info("CommunicationMod coordinator created; signaling ready")
     coordinator.signal_ready()
+    logging.info("CommunicationMod ready signal queued; creating agent")
 
     # Create agent with player class and RL-specific options
     # This may take several seconds for RL agents (PyTorch, model loading)
