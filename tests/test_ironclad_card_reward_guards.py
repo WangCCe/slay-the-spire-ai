@@ -1586,6 +1586,73 @@ def test_ironclad_strategy_takes_emergency_perfected_strike_before_act1_gauntlet
     assert action.name == "Perfected Strike"
 
 
+def test_ironclad_strategy_prefers_perfected_strike_over_rage_with_thunderclap_trace():
+    deck = [
+        _card("Strike"),
+        _card("Strike"),
+        _card("Strike"),
+        _card("Strike"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Thunderclap"),
+    ]
+    reward_cards = [
+        _card("Perfected Strike", cost=2),
+        _card("Rage", cost=0),
+        _card("Intimidate", cost=0),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=3,
+        hp=65,
+        max_hp=80,
+        act_boss="Slime Boss",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Perfected Strike"
+
+
+def test_ironclad_strategy_prefers_late_act1_perfected_strike_over_duplicate_rage_trace():
+    deck = [
+        _card("Strike"),
+        _card("Strike"),
+        _card("Strike"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Thunderclap"),
+        _card("Rage", cost=0),
+        _card("Anger", cost=0, upgrades=1),
+        _card("Pommel Strike", upgrades=1),
+        _card("Parasite"),
+    ]
+    reward_cards = [
+        _card("Perfected Strike", cost=2),
+        _card("Rage", cost=0),
+        _card("Sentinel"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=11,
+        hp=59,
+        max_hp=80,
+        act_boss="Hexaghost",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Perfected Strike"
+
+
 def test_ironclad_strategy_skips_duplicate_perfected_strike_when_alternatives_are_bad():
     deck = [
         _card("Strike_R"),

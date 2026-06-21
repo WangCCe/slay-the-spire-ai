@@ -302,6 +302,17 @@ class IroncladDeckStrategy:
             card_id in {'Shockwave', 'Thunderclap'} for card_id in deck_ids
         )
         if (
+            floor <= 11
+            and strike_sources >= 4
+            and has_vulnerable_coverage
+            and (
+                (floor <= 7 and real_frontload_count <= 1)
+                or (8 <= floor <= 11 and real_frontload_count <= 3)
+            )
+        ):
+            return True
+
+        if (
             8 <= floor <= 10
             and strike_sources >= 4
             and 2 <= real_frontload_count <= 3
