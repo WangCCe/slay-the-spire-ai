@@ -832,6 +832,82 @@ def test_act1_reward_prefers_twin_strike_over_iron_wave_when_frontload_is_thin()
     assert action.name == "Twin Strike"
 
 
+def test_act1_reward_prefers_pommel_strike_over_first_armaments_when_frontload_is_thin():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Bloodletting", cost=0, upgrades=1),
+        _card("Heavy Blade", cost=2),
+        _card("Thunderclap"),
+        _card("Anger", cost=0),
+        _card("Combust"),
+        _card("Flame Barrier", cost=2),
+    ]
+    reward_cards = [
+        _card("Armaments"),
+        _card("Pommel Strike"),
+        _card("Clash"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=11,
+        act=1,
+        hp=34,
+        max_hp=80,
+        act_boss="Slime Boss",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Pommel Strike"
+
+
+def test_act1_reward_prefers_twin_strike_over_shrug_when_frontload_is_thin():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Bandage Up", cost=0),
+        _card("Metallicize"),
+        _card("Second Wind", upgrades=1),
+        _card("Shrug It Off", upgrades=1),
+        _card("Headbutt"),
+        _card("Sever Soul", cost=2),
+    ]
+    reward_cards = [
+        _card("Twin Strike"),
+        _card("Entrench", cost=2),
+        _card("Shrug It Off"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=11,
+        act=1,
+        hp=58,
+        max_hp=80,
+        act_boss="Slime Boss",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Twin Strike"
+
+
 def test_act1_reward_prefers_twin_strike_over_duplicate_iron_wave_trace():
     deck = [
         _card("Strike_R"),

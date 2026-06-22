@@ -3518,6 +3518,14 @@ class OptimizedAgent(SimpleAgent):
                         and frontload_count < 4
                     ):
                         score = max(score, 88)
+                    if (
+                        card_name == "Pommel Strike"
+                        and has_pommel_strike_reward
+                        and has_armaments_reward
+                        and armaments_count == 0
+                        and frontload_count < 5
+                    ):
+                        score = max(score, 88)
                     if card_name == "Power Through" and power_through_survival_gap:
                         score = max(score, 104)
                     if card_name == "Feed" and feed_count == 0:
@@ -3539,8 +3547,8 @@ class OptimizedAgent(SimpleAgent):
                     if (
                         card_name == "Armaments"
                         and armaments_count == 0
-                        and has_twin_strike_reward
-                        and frontload_count < 4
+                        and (has_twin_strike_reward or has_pommel_strike_reward)
+                        and frontload_count < 5
                     ):
                         score = min(score, 76)
                     if (
