@@ -768,6 +768,37 @@ def test_act1_reward_prefers_twin_strike_over_duplicate_armaments():
     assert action.name == "Twin Strike"
 
 
+def test_act1_reward_prefers_twin_strike_over_first_armaments_when_frontload_is_thin():
+    deck = [
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Body Slam"),
+        _card("Headbutt"),
+        _card("Sever Soul", cost=2),
+    ]
+    reward_cards = [
+        _card("Twin Strike"),
+        _card("Perfected Strike", cost=2),
+        _card("Armaments"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=5,
+        act=1,
+        hp=66,
+        max_hp=80,
+        act_boss="Hexaghost",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Twin Strike"
+
+
 def test_act1_reward_prefers_twin_strike_over_iron_wave_when_frontload_is_thin():
     deck = [
         _card("Strike_R"),

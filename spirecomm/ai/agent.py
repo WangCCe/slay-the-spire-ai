@@ -3299,6 +3299,10 @@ class OptimizedAgent(SimpleAgent):
                 self._normalize_card_name(card) == "Twin Strike"
                 for card in pickable_cards
             )
+            has_armaments_reward = any(
+                self._normalize_card_name(card) == "Armaments"
+                for card in pickable_cards
+            )
             has_heavy_blade_in_deck = "Heavy Blade" in deck_ids
             has_heavy_blade = "Heavy Blade" in deck_ids or any(
                 self._normalize_card_name(card) == "Heavy Blade"
@@ -3503,6 +3507,14 @@ class OptimizedAgent(SimpleAgent):
                         and frontload_count < 3
                     ):
                         score = max(score, 78)
+                    if (
+                        card_name == "Twin Strike"
+                        and has_twin_strike_reward
+                        and has_armaments_reward
+                        and armaments_count == 0
+                        and frontload_count < 4
+                    ):
+                        score = max(score, 88)
                     if card_name == "Power Through" and power_through_survival_gap:
                         score = max(score, 104)
                     if card_name == "Feed" and feed_count == 0:
@@ -3521,6 +3533,13 @@ class OptimizedAgent(SimpleAgent):
                         and has_better_duplicate_anger_option
                     ):
                         score = min(score, 60)
+                    if (
+                        card_name == "Armaments"
+                        and armaments_count == 0
+                        and has_twin_strike_reward
+                        and frontload_count < 4
+                    ):
+                        score = min(score, 76)
                     if (
                         card_name == "Armaments"
                         and armaments_count > 0
