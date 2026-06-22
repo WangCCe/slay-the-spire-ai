@@ -801,6 +801,39 @@ def test_act1_reward_prefers_twin_strike_over_iron_wave_when_frontload_is_thin()
     assert action.name == "Twin Strike"
 
 
+def test_act1_reward_prefers_twin_strike_over_duplicate_iron_wave_trace():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Thunderclap"),
+        _card("Iron Wave", upgrades=1),
+        _card("Pommel Strike", upgrades=1),
+        _card("Clothesline", cost=2),
+    ]
+    reward_cards = [
+        _card("Twin Strike"),
+        _card("Sword Boomerang"),
+        _card("Iron Wave"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=11,
+        hp=62,
+        max_hp=80,
+        act_boss=None,
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Twin Strike"
+
+
 def test_act1_reward_prefers_pommel_strike_over_uppercut_when_frontload_is_thin():
     deck = [
         _card("Strike_R"),

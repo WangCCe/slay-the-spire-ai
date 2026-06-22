@@ -3260,6 +3260,7 @@ class OptimizedAgent(SimpleAgent):
             havoc_count = sum(1 for card_id in deck_ids if card_id == "Havoc")
             disarm_count = sum(1 for card_id in deck_ids if card_id == "Disarm")
             armaments_count = sum(1 for card_id in deck_ids if card_id == "Armaments")
+            iron_wave_count = sum(1 for card_id in deck_ids if card_id == "Iron Wave")
             battle_trance_count = sum(1 for card_id in deck_ids if card_id == "Battle Trance")
             shockwave_count = sum(1 for card_id in deck_ids if card_id == "Shockwave")
             has_first_battle_trance_reward = (
@@ -3537,6 +3538,20 @@ class OptimizedAgent(SimpleAgent):
                         and frontload_count < 5
                     ):
                         score = max(score, 82)
+                    if (
+                        card_name == "Twin Strike"
+                        and has_twin_strike_reward
+                        and iron_wave_count > 0
+                        and frontload_count < 5
+                    ):
+                        score = max(score, 84)
+                    if (
+                        card_name == "Iron Wave"
+                        and iron_wave_count > 0
+                        and has_twin_strike_reward
+                        and frontload_count < 5
+                    ):
+                        score = min(score, 66)
                     if (
                         card_name == "Uppercut"
                         and has_pommel_strike_reward
