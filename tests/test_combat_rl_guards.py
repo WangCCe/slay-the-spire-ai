@@ -4119,6 +4119,43 @@ def test_wasteful_end_turn_hands_rest_of_turn_to_fallback():
     assert calls == {"rl": 1, "fallback": 2}
 
 
+def test_wasteful_end_turn_uses_available_commands_when_play_flag_missing():
+    card = SimpleNamespace(is_playable=True, cost=1, has_target=True)
+    game = _game(
+        hand=[card],
+        monsters=[_monster(hp=30, damage=8, index=0)],
+        available_commands=["play", "end", "wait", "state"],
+    )
+    del game.play_available
+    calls = {"rl": 0, "fallback": 0}
+
+    def rl_decide(_game):
+        calls["rl"] += 1
+        return EndTurnAction()
+
+    def fallback_decide(_game):
+        calls["fallback"] += 1
+        return PlayCardAction(card_index=0, target_index=0)
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=rl_decide)
+    agent.fallback_agent = SimpleNamespace(get_next_action_in_game=fallback_decide)
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 0
+    assert action.target_index == 0
+    assert calls == {"rl": 1, "fallback": 1}
+
+
 def test_rl_end_turn_action_is_stamped_with_combat_turn_context():
     game = _game(
         floor=20,

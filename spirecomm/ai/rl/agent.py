@@ -1982,7 +1982,7 @@ class CombatRLAgent:
             return False
         if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
             return False
-        if not getattr(game, "play_available", False):
+        if not self._command_available(game, "play", "play_available"):
             return False
         energy = self._player_energy(game)
         if energy <= 0:
@@ -4503,6 +4503,13 @@ class CombatRLAgent:
         return False
 
     @staticmethod
+    def _command_available(game: Game, command: str, legacy_flag: str) -> bool:
+        available_commands = getattr(game, "available_commands", None)
+        if available_commands is not None:
+            return command in available_commands
+        return bool(getattr(game, legacy_flag, False))
+
+    @staticmethod
     def _incoming_damage(game: Game) -> int:
         total = 0
         for monster in CombatRLAgent._alive_monsters(game):
@@ -5268,7 +5275,7 @@ class CombatRLAgent:
             return True
         if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
             return False
-        if not getattr(game, "play_available", False):
+        if not self._command_available(game, "play", "play_available"):
             return False
 
         card = self._card_for_action(action, game)
