@@ -383,6 +383,68 @@ def test_shop_screen_skips_fire_potion_after_purge_when_no_priority_purchase_is_
     assert isinstance(action, LeaveAction)
 
 
+def test_shop_screen_buys_act1_frontload_after_purge_before_block_potion():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[
+                _shop_card("Carnage", price=69),
+                _shop_card("Twin Strike", price=26),
+                _shop_card("Flame Barrier", price=77),
+                _shop_card("Bloodletting", price=78),
+                _shop_card("Rupture", price=75),
+                _shop_card("Panacea", price=81),
+                _shop_card("Apotheosis", price=197),
+            ],
+            relics=[
+                SimpleNamespace(name="Wing Boots", price=309),
+                SimpleNamespace(name="Bird-Faced Urn", price=312),
+                SimpleNamespace(name="Orrery", price=151),
+            ],
+            potions=[
+                SimpleNamespace(name="Fairy in a Bottle", price=101),
+                SimpleNamespace(name="Block Potion", price=48),
+                SimpleNamespace(name="Block Potion", price=50),
+            ],
+            purge_available=False,
+            purge_cost=100,
+        ),
+        gold=70,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Flex", price=0),
+            _shop_card("Cleave", price=0),
+            _shop_card("Hemokinesis", price=0),
+        ],
+        act=1,
+        floor=4,
+        in_combat=False,
+        current_hp=71,
+        max_hp=80,
+        relics=[],
+        player=SimpleNamespace(energy=3, powers=[]),
+        are_potions_full=lambda: False,
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+    agent._shop_purged_this_shop = True
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, BuyCardAction)
+    assert action.name in {"Carnage", "Twin Strike"}
+
+
 def test_shop_screen_does_not_buy_second_card_after_card_purchase_updates():
     agent = _agent_for_shop(
         screen_type=ScreenType.SHOP_SCREEN,

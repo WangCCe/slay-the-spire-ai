@@ -91,6 +91,9 @@ class SimpleAgent:
         "offering",
         "battletrance",
         "shockwave",
+        "carnage",
+        "twinstrike",
+        "clothesline",
     }
     SHOP_PRE_PURGE_CARD_KEYS = {
         "perfectedstrike",
