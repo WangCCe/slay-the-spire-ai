@@ -1011,6 +1011,18 @@ class CombatRLAgent:
         }
     )
     LOW_VALUE_STATUS_CARDS = frozenset({"slimed"})
+    ACT1_BOSS_NO_PRESSURE_LOW_VALUE_CARDS = frozenset(
+        {
+            "defend",
+            "flamebarrier",
+            "ghostlyarmor",
+            "impervious",
+            "powerthrough",
+            "secondwind",
+            "shrugitoff",
+            "truegrit",
+        }
+    )
     URGENT_ETHEREAL_ATTACKS = frozenset({"carnage"})
     LOW_VALUE_BEFORE_URGENT_ETHEREAL = frozenset(
         {
@@ -1326,6 +1338,24 @@ class CombatRLAgent:
                     self_vulnerable_replacement,
                     game,
                 )
+            act1_boss_no_pressure_replacement = (
+                self._get_act1_boss_no_pressure_attack_replacement(
+                    fallback_action,
+                    game,
+                )
+            )
+            if act1_boss_no_pressure_replacement is not None:
+                logger.info(
+                    "[ACT1_BOSS_NO_PRESSURE_GUARD] Replacing takeover action with %s",
+                    self._describe_combat_action(
+                        act1_boss_no_pressure_replacement,
+                        game,
+                    ),
+                )
+                return self._with_combat_action_context(
+                    act1_boss_no_pressure_replacement,
+                    game,
+                )
             if not self._is_current_combat_action_playable(fallback_action, game):
                 self._fallback_turn_key = None
                 replacement = self._repair_current_play_card_target(
@@ -1553,6 +1583,16 @@ class CombatRLAgent:
                     self.rl_failure_count = 0
                     logger.info("[SLIME_VULN_GUARD] No vulnerable setup replacement found; allowing action")
                     return self._with_combat_action_context(action, game)
+                elif (replacement := self._get_act1_boss_no_pressure_attack_replacement(action, game)) is not None:
+                    self.rl_failure_count = 0
+                    self._fallback_turn_key = self._combat_turn_key(game)
+                    logger.info(
+                        "[ACT1_BOSS_NO_PRESSURE_GUARD] Replacing low-value action with %s on floor=%s turn=%s",
+                        self._describe_combat_action(replacement, game),
+                        getattr(game, "floor", None),
+                        getattr(game, "turn", None),
+                    )
+                    return self._with_combat_action_context(replacement, game)
                 elif self._should_override_urgent_ethereal_attack(action, game):
                     replacement = self._get_urgent_ethereal_attack_replacement(game, action)
                     if replacement is not None:
@@ -3896,6 +3936,77 @@ class CombatRLAgent:
         if target_index is None or target_index >= len(monsters):
             return False
         return self._monster_vulnerable_stacks(monsters[target_index]) <= 0
+
+    def _get_act1_boss_no_pressure_attack_replacement(self, action: Action, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return None
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        if not getattr(game, "in_combat", False):
+            return None
+        if self._safe_int(getattr(game, "act", 1), default=1) != 1:
+            return None
+        if not self._is_boss_combat(game):
+            return None
+
+        current_card = self._card_for_action(action, game)
+        if not self._card_matches_normalized_names(
+            current_card,
+            self.ACT1_BOSS_NO_PRESSURE_LOW_VALUE_CARDS,
+        ):
+            return None
+
+        incoming = self._incoming_damage(game)
+        current_block = self._player_block(game)
+        status_blockable_damage, status_hp_loss = self._end_turn_status_damage(game)
+        if incoming + status_blockable_damage > current_block or status_hp_loss > 0:
+            return None
+
+        energy = self._player_energy(game)
+        target_index = self._best_monster_index(game)
+        best_candidate = None
+        for card_index, card in self._playable_cards(game, energy):
+            if not is_attack_card(card):
+                continue
+            if self._would_play_self_lethal_card(card, game):
+                continue
+            if self._would_hp_loss_expose_lethal_end_turn_damage(card, game):
+                continue
+            if self._would_low_hp_hp_loss_be_filler_without_pressure(card, game):
+                continue
+            if card_requires_target(card):
+                if target_index is None:
+                    continue
+                replacement = PlayCardAction(
+                    card_index=card_index,
+                    target_index=target_index,
+                )
+            else:
+                replacement = PlayCardAction(card_index=card_index)
+            if self._get_guardian_sharp_hide_action_replacement(replacement, game) is not None:
+                continue
+
+            damage = max(1, self._survival_attack_damage(card, game))
+            effective_cost = effective_card_cost(card, energy)
+            score = (damage, -effective_cost, -card_index)
+            if best_candidate is None or score > best_candidate[0]:
+                best_candidate = (score, replacement, card)
+
+        if best_candidate is None:
+            return None
+
+        _, replacement, card = best_candidate
+        logger.info(
+            "[ACT1_BOSS_NO_PRESSURE_GUARD] Selecting %s over %s with no incoming hp=%s block=%s",
+            self._card_label(card),
+            self._card_label(current_card),
+            getattr(game, "current_hp", None),
+            current_block,
+        )
+        return replacement
 
     def _should_override_urgent_ethereal_attack(self, action: Action, game: Game) -> bool:
         from spirecomm.communication.action import PlayCardAction
