@@ -98,6 +98,7 @@ class SimpleAgent:
     SHOP_PRE_PURGE_CARD_KEYS = {
         "perfectedstrike",
     }
+    SHOP_DISCOUNTED_PERFECTED_STRIKE_MAX_PRICE = 35
 
     def __init__(self, chosen_class=PlayerClass.THE_SILENT, elite_mode=None):
         self.game = Game()
@@ -415,6 +416,12 @@ class SimpleAgent:
     def _shop_card_is_cash_worthy(self, card, *, require_strategy_approval=False):
         """Shop buys need a higher bar than free reward picks."""
         card_name = self._normalize_card_name(card)
+        if self._should_buy_discounted_act1_perfected_strike(card):
+            logging.info(
+                "[SHOP_SCREEN] Buying discounted Act 1 Perfected Strike before boss",
+            )
+            return True
+
         low_reliability_cards = {
             "Havoc",
             "Deep Breath",
@@ -456,6 +463,33 @@ class SimpleAgent:
                     return False
 
         return True
+
+    def _should_buy_discounted_act1_perfected_strike(self, card):
+        if not (self._shop_card_keys(card) & {"perfectedstrike"}):
+            return False
+
+        price = self._safe_int(getattr(card, "price", None), None)
+        if price is None or price > self.SHOP_DISCOUNTED_PERFECTED_STRIKE_MAX_PRICE:
+            return False
+
+        act = self._safe_int(getattr(self.game, "act", 0), 0)
+        floor = self._safe_int(getattr(self.game, "floor", 0), 0)
+        if act != 1 or floor > 11:
+            return False
+
+        deck = list(getattr(self.game, "deck", []) or [])
+        if len(deck) > 18:
+            return False
+
+        deck_keys = [
+            self._compact_card_key(self._normalize_card_name(deck_card))
+            for deck_card in deck
+        ]
+        if "perfectedstrike" in deck_keys:
+            return False
+
+        strike_sources = sum(1 for deck_key in deck_keys if "strike" in deck_key)
+        return strike_sources >= 4
 
     def _should_buy_relic(self, relic, gold):
         """Determine if a relic should be purchased."""
