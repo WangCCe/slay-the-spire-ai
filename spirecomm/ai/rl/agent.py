@@ -1338,6 +1338,23 @@ class CombatRLAgent:
                     self_vulnerable_replacement,
                     game,
                 )
+            empty_second_wind_replacement = self._get_empty_second_wind_replacement(
+                fallback_action,
+                game,
+            )
+            if empty_second_wind_replacement is not None:
+                self._fallback_turn_key = self._combat_turn_key(game)
+                logger.info(
+                    "[SECOND_WIND_GUARD] Replacing takeover empty Second Wind with %s",
+                    self._describe_combat_action(
+                        empty_second_wind_replacement,
+                        game,
+                    ),
+                )
+                return self._with_combat_action_context(
+                    empty_second_wind_replacement,
+                    game,
+                )
             act1_boss_no_pressure_replacement = (
                 self._get_act1_boss_no_pressure_attack_replacement(
                     fallback_action,
@@ -1644,6 +1661,16 @@ class CombatRLAgent:
                     self.rl_failure_count = 0
                     logger.info("[HAVOC_GUARD] No safe replacement found; allowing Havoc")
                     return self._with_combat_action_context(action, game)
+                elif (replacement := self._get_empty_second_wind_replacement(action, game)) is not None:
+                    self.rl_failure_count = 0
+                    self._fallback_turn_key = self._combat_turn_key(game)
+                    logger.info(
+                        "[SECOND_WIND_GUARD] Replacing empty Second Wind with %s on floor=%s turn=%s",
+                        self._describe_combat_action(replacement, game),
+                        getattr(game, "floor", None),
+                        getattr(game, "turn", None),
+                    )
+                    return self._with_combat_action_context(replacement, game)
                 elif self._should_override_low_value_status_card(action, game):
                     replacement = self._get_status_card_safe_replacement(game)
                     if replacement is not None:
@@ -4234,6 +4261,31 @@ class CombatRLAgent:
         if not isinstance(action, PlayCardAction):
             return False
         return self._card_matches_normalized_names(self._card_for_action(action, game), {"havoc"})
+
+    def _get_empty_second_wind_replacement(self, action: Action, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, PlayCardAction):
+            return None
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            return None
+        if not getattr(game, "in_combat", False):
+            return None
+
+        card = self._card_for_action(action, game)
+        if not self._card_matches_normalized_names(card, {"secondwind"}):
+            return None
+        if self._survival_block_value_for_game(card, game) > 0:
+            return None
+
+        return self._first_playable_card_action(
+            game,
+            excluded_card_names={"secondwind"},
+            avoid_self_lethal=True,
+            avoid_pressure_hp_loss=True,
+            avoid_low_hp_hp_loss_filler=True,
+        )
 
     def _should_override_low_value_status_card(self, action: Action, game: Game) -> bool:
         from spirecomm.communication.action import PlayCardAction
