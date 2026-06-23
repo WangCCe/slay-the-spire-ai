@@ -357,6 +357,32 @@ class IroncladCardEvaluator(SynergyCardEvaluator):
         bonus = 0.0
         card_id = self._card_name(card)
 
+        if card_id == 'Perfected Strike' and deck_size <= 14 and floor <= 11:
+            deck = list(getattr(context.game, 'deck', []) or [])
+            deck_ids = [self._card_name(deck_card) for deck_card in deck]
+            strike_sources = sum(
+                1 for deck_card_id in deck_ids if 'strike' in deck_card_id.lower()
+            )
+            real_frontload = sum(
+                1 for deck_card_id in deck_ids if deck_card_id in self.ACT_1_FRONTLOAD_COVERAGE
+            )
+            has_vulnerable_coverage = any(
+                deck_card_id in {'Shockwave', 'Thunderclap'} for deck_card_id in deck_ids
+            )
+            has_perfected_strike = any(
+                deck_card_id == 'Perfected Strike' for deck_card_id in deck_ids
+            )
+            if (
+                not has_perfected_strike
+                and strike_sources >= 4
+                and (
+                    (floor <= 4 and real_frontload <= 2)
+                    or (has_vulnerable_coverage and real_frontload <= 3)
+                    or (8 <= floor <= 10 and 2 <= real_frontload <= 3)
+                )
+            ):
+                bonus += 10
+
         if card_id in self.ACT_1_PREMIUM_FRONTLOAD:
             if deck_size <= 13 or floor <= 8:
                 bonus += 22

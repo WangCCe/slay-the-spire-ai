@@ -2993,6 +2993,40 @@ def test_act1_reward_prefers_first_perfected_strike_over_heavy_blade_from_trace(
     assert action.name == "Perfected Strike"
 
 
+def test_act1_reward_prefers_first_perfected_strike_with_four_strikes_and_vulnerable_trace():
+    deck = [
+        _card("Strike"),
+        _card("Strike"),
+        _card("Strike"),
+        _card("Strike"),
+        _card("Defend"),
+        _card("Defend"),
+        _card("Defend"),
+        _card("Defend"),
+        _card("Bash", cost=2),
+        _card("Impervious", cost=2),
+        _card("Shockwave", cost=2),
+    ]
+    reward_cards = [
+        _card("Sword Boomerang"),
+        _card("Perfected Strike", cost=2),
+        _card("Heavy Blade", cost=2),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=3,
+        act=1,
+        hp=80,
+        max_hp=80,
+        act_boss="The Guardian",
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Perfected Strike"
+
+
 def test_act1_reward_prefers_first_perfected_strike_over_carnage_from_trace():
     deck = [
         _card("Strike_R"),
