@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from spirecomm.ai.agent import OptimizedAgent, SimpleAgent
 from spirecomm.ai.priorities import IroncladPriority
 from spirecomm.communication.action import (
+    BuyCardAction,
     CardSelectAction,
     ChooseAction,
     CombatRewardAction,
@@ -185,6 +186,45 @@ def test_shop_still_purges_curse_without_starter_cards():
 
     assert isinstance(action, ChooseAction)
     assert action.name == "purge"
+
+
+def test_shop_buys_good_card_when_purge_is_available_but_unaffordable():
+    agent = _agent(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[
+                _card("Anger", price=45),
+                _card("Rage", price=68),
+            ],
+            relics=[],
+            potions=[
+                SimpleNamespace(name="Attack Potion", price=51),
+                SimpleNamespace(name="Block Potion", price=52),
+            ],
+            purge_available=True,
+            purge_cost=100,
+        ),
+        gold=61,
+        are_potions_full=lambda: False,
+        deck=[
+            _card("Strike_R"),
+            _card("Strike_R"),
+            _card("Strike_R"),
+            _card("Defend_R"),
+            _card("Defend_R"),
+            _card("Bash"),
+            _card("Feed"),
+            _card("Shockwave"),
+        ],
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["cancel", "choose", "potion", "key", "click", "wait", "state"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, BuyCardAction)
+    assert action.name == "Anger"
 
 
 def test_grid_removal_prioritizes_upgraded_strike_before_defend():

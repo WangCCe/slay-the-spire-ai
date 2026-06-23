@@ -400,6 +400,7 @@ class SimpleAgent:
                 if (
                     not screen.purge_available
                     or not preserve_purge_budget
+                    or gold < purge_cost
                     or gold - price >= purge_cost
                 ):
                     return True
