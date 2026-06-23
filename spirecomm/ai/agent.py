@@ -98,7 +98,7 @@ class SimpleAgent:
     SHOP_PRE_PURGE_CARD_KEYS = {
         "perfectedstrike",
     }
-    SHOP_DISCOUNTED_PERFECTED_STRIKE_MAX_PRICE = 35
+    SHOP_SUPPORTED_PERFECTED_STRIKE_MAX_PRICE = 55
 
     def __init__(self, chosen_class=PlayerClass.THE_SILENT, elite_mode=None):
         self.game = Game()
@@ -469,7 +469,7 @@ class SimpleAgent:
             return False
 
         price = self._safe_int(getattr(card, "price", None), None)
-        if price is None or price > self.SHOP_DISCOUNTED_PERFECTED_STRIKE_MAX_PRICE:
+        if price is None or price > self.SHOP_SUPPORTED_PERFECTED_STRIKE_MAX_PRICE:
             return False
 
         act = self._safe_int(getattr(self.game, "act", 0), 0)
@@ -3333,6 +3333,10 @@ class OptimizedAgent(SimpleAgent):
                 self._normalize_card_name(card) == "Pommel Strike"
                 for card in pickable_cards
             )
+            has_burning_pact_reward = any(
+                self._normalize_card_name(card) == "Burning Pact"
+                for card in pickable_cards
+            )
             has_twin_strike_reward = any(
                 self._normalize_card_name(card) == "Twin Strike"
                 for card in pickable_cards
@@ -3404,6 +3408,17 @@ class OptimizedAgent(SimpleAgent):
                 and (getattr(context, "floor", 0) or 0) <= 15
                 and (has_power_through_support or has_act_1_boss_damage_plan)
                 and (player_hp_pct <= 0.75 or has_power_through_support)
+            )
+            pommel_over_burning_pact_frontload_gap = (
+                self._safe_int(getattr(context, "act", 0), 0) == 1
+                and self._safe_int(getattr(context, "floor", 0), 0) <= 15
+                and has_pommel_strike_reward
+                and has_burning_pact_reward
+                and frontload_count < 5
+                and (
+                    self._safe_int(getattr(context, "floor", 0), 0) <= 4
+                    or player_hp_pct <= 0.50
+                )
             )
             slow_slime_boss_utility_cards = {
                 "Burning Pact",
@@ -3561,6 +3576,16 @@ class OptimizedAgent(SimpleAgent):
                         and frontload_count < 5
                     ):
                         score = max(score, 88)
+                    if (
+                        card_name == "Pommel Strike"
+                        and pommel_over_burning_pact_frontload_gap
+                    ):
+                        score = max(score, 96)
+                    if (
+                        card_name == "Burning Pact"
+                        and pommel_over_burning_pact_frontload_gap
+                    ):
+                        score = min(score, 64)
                     if card_name == "Power Through" and power_through_survival_gap:
                         score = max(score, 104)
                     if card_name == "Feed" and feed_count == 0:

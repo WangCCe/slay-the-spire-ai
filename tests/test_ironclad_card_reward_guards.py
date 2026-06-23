@@ -978,6 +978,75 @@ def test_act1_reward_prefers_pommel_strike_over_uppercut_when_frontload_is_thin(
     assert action.name == "Pommel Strike"
 
 
+def test_act1_reward_prefers_early_pommel_strike_over_burning_pact_trace():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Headbutt"),
+        _card("Power Through"),
+    ]
+    reward_cards = [
+        _card("Pommel Strike"),
+        _card("Rupture"),
+        _card("Burning Pact"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=2,
+        act=1,
+        hp=79,
+        max_hp=80,
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Pommel Strike"
+
+
+def test_act1_reward_prefers_late_low_hp_pommel_strike_over_burning_pact_trace():
+    deck = [
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Strike_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Defend_R"),
+        _card("Bash", cost=2),
+        _card("Pommel Strike", upgrades=1),
+        _card("Thunderclap"),
+        _card("Spot Weakness", upgrades=1),
+        _card("True Grit", upgrades=1),
+        _card("Armaments"),
+    ]
+    reward_cards = [
+        _card("Sword Boomerang"),
+        _card("Pommel Strike"),
+        _card("Burning Pact"),
+    ]
+
+    action = _agent_for_reward(
+        reward_cards,
+        deck,
+        floor=14,
+        act=1,
+        hp=28,
+        max_hp=80,
+    )._choose_card_reward_optimized()
+
+    assert isinstance(action, CardRewardAction)
+    assert action.name == "Pommel Strike"
+
+
 def test_ironclad_strategy_prefers_slime_boss_headbutt_over_early_burning_pact():
     deck = [
         _card("Strike_R"),
