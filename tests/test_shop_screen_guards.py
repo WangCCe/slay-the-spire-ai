@@ -33,6 +33,13 @@ def _shop_card(card_id, price):
     return SimpleNamespace(card_id=card_id, name=card_id, price=price, upgrades=0)
 
 
+def _upgraded_shop_card(card_id, price):
+    card = _shop_card(card_id, price)
+    card.name = f"{card_id}+"
+    card.upgrades = 1
+    return card
+
+
 class _BuyEverythingPriority:
     def should_skip(self, _card):
         return False
@@ -605,6 +612,84 @@ def test_shop_screen_buys_supported_act1_perfected_strike_after_purge_trace():
     assert action.name == "Perfected Strike"
 
 
+def test_shop_screen_buys_discounted_supported_perfected_strike_after_act2_purge_trace():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[
+                _upgraded_shop_card("Heavy Blade", price=18),
+                _upgraded_shop_card("Perfected Strike", price=38),
+                _shop_card("Havoc", price=38),
+                _shop_card("True Grit", price=37),
+                _shop_card("Dark Embrace", price=62),
+                _upgraded_shop_card("Swift Strike", price=77),
+                _shop_card("Magnetism", price=135),
+            ],
+            relics=[
+                SimpleNamespace(name="Eternal Feather", price=210),
+                SimpleNamespace(name="Ginger", price=233),
+                SimpleNamespace(name="Prismatic Shard", price=121),
+            ],
+            potions=[],
+            purge_available=False,
+            purge_cost=100,
+        ),
+        gold=191,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _upgraded_shop_card("Bash", price=0),
+            _upgraded_shop_card("Second Wind", price=0),
+            _upgraded_shop_card("True Grit", price=0),
+            _upgraded_shop_card("Bloodletting", price=0),
+            _upgraded_shop_card("Clothesline", price=0),
+            _upgraded_shop_card("Havoc", price=0),
+            _upgraded_shop_card("Feed", price=0),
+            _upgraded_shop_card("Immolate", price=0),
+            _shop_card("Curse of the Bell", price=0),
+            _upgraded_shop_card("Thunderclap", price=0),
+            _shop_card("Bloodletting", price=0),
+            _upgraded_shop_card("Cleave", price=0),
+        ],
+        act=2,
+        floor=27,
+        in_combat=False,
+        current_hp=51,
+        max_hp=91,
+        relics=[
+            "Burning Blood",
+            "Neow's Lament",
+            "Molten Egg",
+            "Mercury Hourglass",
+            "Calling Bell",
+            "Strawberry",
+            "The Courier",
+            "Peace Pipe",
+            "Lizard Tail",
+        ],
+        player=SimpleNamespace(energy=3, powers=[]),
+        are_potions_full=lambda: True,
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+    agent.shop_purchase_made = True
+    agent._shop_purged_this_shop = True
+    agent._shop_purchase_signature = (271, True, 7, 3, 0)
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, BuyCardAction)
+    assert "Perfected Strike" in action.name
+
+
 def test_shop_screen_does_not_buy_second_card_after_card_purchase_updates():
     agent = _agent_for_shop(
         screen_type=ScreenType.SHOP_SCREEN,
@@ -895,6 +980,13 @@ def test_shop_relic_helper_accepts_string_gold_and_price():
     relic = SimpleNamespace(name="Burning Blood", price="100")
 
     assert agent._should_buy_relic(relic, gold="200") is True
+
+
+def test_shop_relic_helper_rejects_prismatic_shard_generic_budget():
+    agent = _agent_for_shop()
+    relic = SimpleNamespace(name="Prismatic Shard", price=121)
+
+    assert agent._should_buy_relic(relic, gold=191) is False
 
 
 def test_shop_screen_exit_uses_proceed_when_that_is_the_available_exit():
