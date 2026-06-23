@@ -3087,6 +3087,75 @@ def test_survival_guard_overrides_rl_attack_when_lethal_block_available():
     assert agent._fallback_turn_key == (16, 7)
 
 
+def test_survival_guard_uses_player_hp_when_game_hp_is_stale():
+    battle_trance = SimpleNamespace(
+        name="Battle Trance",
+        card_id="Battle Trance",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=0,
+        has_target=False,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    pommel_strike = SimpleNamespace(
+        name="Pommel Strike+",
+        card_id="Pommel Strike",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+        upgrades=1,
+    )
+    book = _monster(
+        hp=139,
+        damage=18,
+        index=0,
+        name="Book of Stabbing",
+        monster_id="BookOfStabbing",
+    )
+    book.intent = Intent.ATTACK
+    game = _game(
+        hand=[battle_trance, defend, pommel_strike],
+        monsters=[book],
+        current_hp=21,
+        max_hp=80,
+        room_type="MonsterRoomElite",
+        floor=23,
+        act=2,
+        turn=2,
+        player=SimpleNamespace(energy=3, block=0, current_hp=15, max_hp=80),
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0)
+    )
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: EndTurnAction()
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (23, 2)
+
+
 def test_guardian_pressure_guard_overrides_rl_attack_when_big_nonlethal_block_available():
     strike = SimpleNamespace(
         name="Strike",

@@ -1809,11 +1809,8 @@ class CombatRLAgent:
             return None
 
         incoming = self._incoming_damage(game)
-        current_hp = max(self._safe_int(getattr(game, "current_hp", 0), default=0), 1)
-        max_hp = max(
-            self._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
-            1,
-        )
+        current_hp = max(self._player_current_hp(game), 1)
+        max_hp = max(self._player_max_hp(game, default=current_hp), 1)
         hp_pct = current_hp / max_hp
         room_type = str(getattr(game, "room_type", "") or "")
         is_elite = "Elite" in room_type
@@ -2016,11 +2013,8 @@ class CombatRLAgent:
             return False
 
         incoming = self._incoming_damage(game)
-        current_hp = max(self._safe_int(getattr(game, "current_hp", 0), default=0), 1)
-        max_hp = max(
-            self._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
-            1,
-        )
+        current_hp = max(self._player_current_hp(game), 1)
+        max_hp = max(self._player_max_hp(game, default=current_hp), 1)
         hp_pct = current_hp / max_hp
         if self._should_save_act1_boss_setup_potion(
             potion,
@@ -2387,14 +2381,14 @@ class CombatRLAgent:
             effective_hp,
             getattr(monster, "current_hp", None),
             getattr(monster, "block", None),
-            getattr(game, "current_hp", None),
+            self._player_current_hp(game),
             self._guardian_sharp_hide_damage(game),
         )
         return action
 
     def _would_single_card_lethal_attack_self_kill(self, card, game: Game) -> bool:
         hp_loss = self._card_player_hp_loss(card, game)
-        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        current_hp = self._player_current_hp(game)
         if current_hp <= 0:
             return True
         if hp_loss >= current_hp:
@@ -2445,7 +2439,7 @@ class CombatRLAgent:
         if not self._is_slime_boss_split_phase(game):
             return None
 
-        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        current_hp = self._player_current_hp(game)
         if current_hp <= 0:
             return None
         current_block = self._player_block(game)
@@ -2612,17 +2606,14 @@ class CombatRLAgent:
         if not self._is_gremlin_leader_combat(game):
             return None
 
-        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        current_hp = self._player_current_hp(game)
         if current_hp <= 0:
             return None
 
         incoming = self._incoming_damage(game)
         if incoming <= 0:
             return None
-        max_hp = max(
-            self._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
-            1,
-        )
+        max_hp = max(self._player_max_hp(game, default=current_hp), 1)
         current_block = self._player_block(game)
         status_blockable_damage, status_hp_loss = self._end_turn_status_damage(game)
         current_damage = self._end_turn_aggregate_damage_after_block(
@@ -2740,7 +2731,7 @@ class CombatRLAgent:
         if sharp_hide_damage <= 0:
             return None
 
-        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        current_hp = self._player_current_hp(game)
         if current_hp <= 0:
             return None
 
@@ -2774,7 +2765,7 @@ class CombatRLAgent:
             current_block,
             game,
         )
-        max_hp = self._safe_int(getattr(game, "max_hp", 0), default=0)
+        max_hp = self._player_max_hp(game)
         low_hp_sharp_hide_pressure = (
             incoming > 0
             and current_hp <= max(16, max_hp // 4)
@@ -2997,7 +2988,7 @@ class CombatRLAgent:
         if not self._is_slime_boss_split_phase(game):
             return None
 
-        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        current_hp = self._player_current_hp(game)
         if current_hp <= 0:
             return None
 
@@ -3116,13 +3107,10 @@ class CombatRLAgent:
         if not self._is_slime_boss_split_phase(game):
             return None
 
-        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        current_hp = self._player_current_hp(game)
         if current_hp <= 0:
             return None
-        max_hp = max(
-            self._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
-            1,
-        )
+        max_hp = max(self._player_max_hp(game, default=current_hp), 1)
 
         incoming_events = self._incoming_damage_events(game)
         incoming = sum(incoming_events)
@@ -3250,7 +3238,7 @@ class CombatRLAgent:
         if not self._is_act1_boss_pressure_combat(game):
             return None
 
-        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        current_hp = self._player_current_hp(game)
         if current_hp <= 0:
             return None
 
@@ -3392,7 +3380,7 @@ class CombatRLAgent:
     def _get_survival_block_replacement(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import PlayCardAction
 
-        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        current_hp = self._player_current_hp(game)
         if current_hp <= 0:
             return None
 
@@ -3450,7 +3438,7 @@ class CombatRLAgent:
         if not self._has_guardian(game):
             return None
 
-        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        current_hp = self._player_current_hp(game)
         if current_hp <= 0:
             return None
 
@@ -3461,10 +3449,7 @@ class CombatRLAgent:
             return None
         if damage_after_block >= current_hp:
             return None
-        max_hp = max(
-            self._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
-            1,
-        )
+        max_hp = max(self._player_max_hp(game, default=current_hp), 1)
         low_hp_pressure = (
             current_hp <= max(16, max_hp * 0.25)
             and damage_after_block >= max(5, current_hp * 0.45)
@@ -3491,7 +3476,7 @@ class CombatRLAgent:
         if not self._is_act1_boss_pressure_combat(game):
             return None
 
-        current_hp = self._safe_int(getattr(game, "current_hp", 0), default=0)
+        current_hp = self._player_current_hp(game)
         if current_hp <= 0:
             return None
 
@@ -3511,10 +3496,7 @@ class CombatRLAgent:
         if damage_after_block >= current_hp:
             return None
 
-        max_hp = max(
-            self._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
-            1,
-        )
+        max_hp = max(self._player_max_hp(game, default=current_hp), 1)
         if current_hp > max(
             self.ACT1_BOSS_PRESSURE_MIN_HP,
             max_hp * self.ACT1_BOSS_PRESSURE_HP_RATIO,
@@ -3603,7 +3585,7 @@ class CombatRLAgent:
                 logger.info(
                     "[ENERGY_GUARD] Skipping self-lethal fallback card=%s hp=%s hp_loss=%s",
                     self._card_label(card),
-                    getattr(game, "current_hp", None),
+                    self._player_current_hp(game),
                     self._card_player_hp_loss(card, game),
                 )
                 continue
@@ -3611,7 +3593,7 @@ class CombatRLAgent:
                 logger.info(
                     "[ENERGY_GUARD] Skipping pressure-unsafe HP-loss fallback card=%s hp=%s hp_loss=%s",
                     self._card_label(card),
-                    getattr(game, "current_hp", None),
+                    self._player_current_hp(game),
                     self._card_player_hp_loss(card, game),
                 )
                 continue
@@ -3622,7 +3604,7 @@ class CombatRLAgent:
                 logger.info(
                     "[ENERGY_GUARD] Skipping low-HP HP-loss filler card=%s hp=%s hp_loss=%s",
                     self._card_label(card),
-                    getattr(game, "current_hp", None),
+                    self._player_current_hp(game),
                     self._card_player_hp_loss(card, game),
                 )
                 continue
@@ -3689,7 +3671,7 @@ class CombatRLAgent:
                 logger.info(
                     "[SELF_VULN_GUARD] Selecting %s to avoid self-Vulnerable pressure hp=%s incoming=%s block=%s",
                     self._card_label(card),
-                    getattr(game, "current_hp", None),
+                    self._player_current_hp(game),
                     self._incoming_damage(game),
                     self._player_block(game),
                 )
@@ -3717,7 +3699,7 @@ class CombatRLAgent:
         if not incoming_events:
             return False
 
-        current_hp = cls._safe_int(getattr(game, "current_hp", 0), default=0)
+        current_hp = cls._player_current_hp(game)
         if current_hp <= 0:
             return False
 
@@ -3754,7 +3736,7 @@ class CombatRLAgent:
         hp_loss = cls._card_player_hp_loss(card, game)
         if hp_loss <= 0:
             return False
-        current_hp = cls._safe_int(getattr(game, "current_hp", 0), default=0)
+        current_hp = cls._player_current_hp(game)
         return current_hp > 0 and current_hp <= hp_loss
 
     @classmethod
@@ -3763,7 +3745,7 @@ class CombatRLAgent:
         if hp_loss <= 0:
             return False
 
-        current_hp = cls._safe_int(getattr(game, "current_hp", 0), default=0)
+        current_hp = cls._player_current_hp(game)
         if current_hp <= hp_loss:
             return True
 
@@ -3785,11 +3767,8 @@ class CombatRLAgent:
         if is_attack_card(card):
             return False
 
-        current_hp = cls._safe_int(getattr(game, "current_hp", 0), default=0)
-        max_hp = max(
-            cls._safe_int(getattr(game, "max_hp", current_hp), default=current_hp),
-            1,
-        )
+        current_hp = cls._player_current_hp(game)
+        max_hp = max(cls._player_max_hp(game, default=current_hp), 1)
         if current_hp <= 0 or current_hp > max(16, max_hp * 0.25):
             return False
 
@@ -4030,7 +4009,7 @@ class CombatRLAgent:
             "[ACT1_BOSS_NO_PRESSURE_GUARD] Selecting %s over %s with no incoming hp=%s block=%s",
             self._card_label(card),
             self._card_label(current_card),
-            getattr(game, "current_hp", None),
+            self._player_current_hp(game),
             current_block,
         )
         return replacement
@@ -4612,6 +4591,24 @@ class CombatRLAgent:
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:
         return coerce_int(value, default)
+
+    @classmethod
+    def _player_current_hp(cls, game: Game, default: int = 0) -> int:
+        player = getattr(game, "player", None)
+        hp = getattr(player, "current_hp", None) if player is not None else None
+        if hp is None:
+            hp = getattr(game, "current_hp", default)
+        return max(0, cls._safe_int(hp, default=default))
+
+    @classmethod
+    def _player_max_hp(cls, game: Game, default: Optional[int] = None) -> int:
+        if default is None:
+            default = cls._player_current_hp(game)
+        player = getattr(game, "player", None)
+        hp = getattr(player, "max_hp", None) if player is not None else None
+        if hp is None:
+            hp = getattr(game, "max_hp", default)
+        return max(0, cls._safe_int(hp, default=default))
 
     @staticmethod
     def _alive_monsters(game: Game):
