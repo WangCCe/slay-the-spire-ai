@@ -219,6 +219,54 @@ def test_shop_screen_keeps_purge_before_unsupported_perfected_strike():
     assert action.name == "purge"
 
 
+def test_shop_screen_buys_membership_card_before_paid_purge():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[_shop_card("Flex", price=60), _shop_card("Havoc", price=50)],
+            relics=[SimpleNamespace(name="Membership Card", price=168)],
+            potions=[],
+            purge_available=True,
+            purge_cost=75,
+        ),
+        gold=185,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Whirlwind", price=0),
+            _shop_card("Shrug It Off+", price=0),
+            _shop_card("Pommel Strike", price=0),
+            _shop_card("Anger", price=0),
+            _shop_card("Sever Soul", price=0),
+            _shop_card("Ghostly Armor", price=0),
+        ],
+        act=1,
+        floor=14,
+        in_combat=False,
+        current_hp=62,
+        max_hp=80,
+        relics=[],
+        player=SimpleNamespace(energy=3, powers=[]),
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, BuyRelicAction)
+    assert action.name == "Membership Card"
+
+
 def test_shop_screen_leaves_after_purge_when_only_non_priority_card_remains():
     screen = SimpleNamespace(
         cards=[_shop_card("Shrug It Off", price=56)],

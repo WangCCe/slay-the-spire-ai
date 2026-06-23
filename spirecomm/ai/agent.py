@@ -104,6 +104,9 @@ class SimpleAgent:
     SHOP_LOW_RELIABILITY_RELIC_KEYS = {
         "prismaticshard",
     }
+    SHOP_PRE_PURGE_RELIC_KEYS = {
+        "membershipcard",
+    }
 
     def __init__(self, chosen_class=PlayerClass.THE_SILENT, elite_mode=None):
         self.game = Game()
@@ -343,6 +346,15 @@ class SimpleAgent:
         }
         return keys
 
+    def _shop_relic_keys(self, relic):
+        return {
+            self._compact_card_key(getattr(relic, "relic_id", "")),
+            self._compact_card_key(getattr(relic, "name", "")),
+        }
+
+    def _shop_relic_is_pre_purge_priority(self, relic):
+        return bool(self._shop_relic_keys(relic) & self.SHOP_PRE_PURGE_RELIC_KEYS)
+
     def _validate_shop_cards(self, screen):
         """Validate that shop cards have required attributes."""
         if not hasattr(screen, "cards") or not screen.cards:
@@ -517,13 +529,19 @@ class SimpleAgent:
             if price is None:
                 return False
 
-            if gold >= price and price <= gold * 0.7:
-                relic_key = self._compact_card_key(getattr(relic, "name", ""))
-                if relic_key in self.SHOP_LOW_RELIABILITY_RELIC_KEYS:
+            if gold >= price:
+                relic_keys = self._shop_relic_keys(relic)
+                if relic_keys & self.SHOP_LOW_RELIABILITY_RELIC_KEYS:
                     logging.info(
                         "[SHOP_SCREEN] Skipping low-reliability shop relic: %s",
                         getattr(relic, "name", "UNKNOWN"),
                     )
+                    return False
+
+                if relic_keys & self.SHOP_PRE_PURGE_RELIC_KEYS:
+                    return True
+
+                if price > gold * 0.7:
                     return False
 
                 useful_relics = [
@@ -1278,6 +1296,14 @@ class SimpleAgent:
                         ):
                             self._mark_shop_purchase(gold, screen, bought_card=True)
                             return BuyCardAction(card)
+                    if hasattr(screen, "relics") and screen.relics:
+                        for relic in screen.relics:
+                            if (
+                                self._shop_relic_is_pre_purge_priority(relic)
+                                and self._should_buy_relic(relic, gold)
+                            ):
+                                self._mark_shop_purchase(gold, screen)
+                                return BuyRelicAction(relic)
                 if (
                     screen.purge_available
                     and gold >= purge_cost
