@@ -601,10 +601,19 @@ def _trace_event_sample(
     action: Dict[str, Any],
     index: int,
 ) -> DecisionSample:
-    options = [
-        str(option.get("label") or option.get("text") or option.get("choice_index") or option_index)
-        for option_index, option in enumerate(_as_mapping_list(screen.get("options")))
-    ]
+    options = []
+    for option_index, option in enumerate(_as_mapping_list(screen.get("options"))):
+        disabled = option.get("disabled")
+        if disabled is True or str(disabled).lower() == "true":
+            continue
+        options.append(
+            str(
+                option.get("label")
+                or option.get("text")
+                or option.get("choice_index")
+                or option_index
+            )
+        )
     choice_index = _to_int(action.get("choice_index"), default=0) or 0
     player = _as_mapping(event.get("player"))
     limitations = []
@@ -837,6 +846,12 @@ def _reference_event(sample: DecisionSample) -> ReferenceDecision:
         return ReferenceDecision(
             "unknown",
             "Partial event evidence: option labels and hp at decision time are required for high-confidence comparison.",
+            "low",
+        )
+    if len(choices) <= 1:
+        return ReferenceDecision(
+            f"choose 0: {_choice_label(choices, 0)}",
+            "Forced single available event option; not a strategic Bottled choice.",
             "low",
         )
 

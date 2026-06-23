@@ -86,6 +86,63 @@ def test_run_loader_marks_shop_purchases_as_partial_evidence(tmp_path):
     assert all("missing full shop offer" in sample.limitations for sample in shop_samples)
 
 
+def test_event_reference_does_not_invent_unavailable_single_option_choice():
+    sample = DecisionSample(
+        sample_id="trace-wing-statue-forced-leave",
+        category="event",
+        source="decision_trace",
+        floor=12,
+        act=1,
+        evidence_quality="complete",
+        our_choice={"kind": "choose", "index": 0, "label": "Leave"},
+        context={
+            "event_name": "Wing Statue",
+            "choices": ["Leave"],
+            "current_hp": 20,
+            "max_hp": 80,
+            "relics": [],
+        },
+    )
+
+    [row] = compare_samples([sample])
+
+    assert row.reference_choice == "choose 0: Leave"
+    assert row.confidence == "low"
+    assert row.match is True
+    assert "single available event option" in row.reason
+
+
+def test_event_trace_ignores_disabled_options_when_labeling_choices(tmp_path):
+    trace_path = tmp_path / "trace.jsonl"
+    row = {
+        "floor": 5,
+        "act": 1,
+        "screen_type": "ScreenType.EVENT",
+        "source": "combat_rl",
+        "action": {"type": "ChooseAction", "choice_index": 1},
+        "player": {"current_hp": 44, "max_hp": 80},
+        "relics": [{"name": "Burning Blood"}],
+        "screen": {
+            "type": "ScreenType.EVENT",
+            "event_name": "Wing Statue",
+            "options": [
+                {"label": "Pray", "text": "[Pray] Remove a card.", "disabled": False, "choice_index": 0},
+                {"label": "Locked", "text": "[Locked] Requires: Card with 10 or more damage.", "disabled": True},
+                {"label": "Leave", "text": "[Leave]", "disabled": False, "choice_index": 1},
+            ],
+        },
+    }
+    trace_path.write_text(json.dumps(row), encoding="utf-8")
+
+    [sample] = load_jsonl_samples(trace_path)
+    [comparison] = compare_samples([sample])
+
+    assert sample.context["choices"] == ["Pray", "Leave"]
+    assert sample.our_choice == {"kind": "choose", "index": 1, "label": "Leave"}
+    assert comparison.reference_choice == "choose 1: Leave"
+    assert comparison.match is True
+
+
 def test_fixture_only_differences_do_not_become_repair_candidates():
     rows = compare_samples(load_fixture_samples(FIXTURE_PATH))
     issues = rank_issues(rows)
