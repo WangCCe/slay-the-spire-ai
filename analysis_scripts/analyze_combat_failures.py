@@ -7,6 +7,7 @@ has partial action traces. Optional log parsing adds coarse action hints.
 """
 
 import argparse
+import bisect
 import csv
 import json
 import re
@@ -92,13 +93,56 @@ def as_int(value, default: int = 0) -> int:
 
 
 def potion_use_count(run: dict) -> int:
-    usage = run.get("potions_floor_usage") or []
+    usage = run.get("potions_floor_usage")
+    if usage is None:
+        usage = run.get("potion_use_per_floor")
+    usage = usage or []
     if isinstance(usage, list):
         return len(usage)
     return 0
 
 
-def summarize_run(path: Path, run: dict) -> RunFailure:
+def parse_trace_potion_usage(trace_path: Path, run_files: List[Path]) -> Dict[str, int]:
+    if not trace_path.exists() or not run_files:
+        return {}
+
+    starts = []
+    names = []
+    for run_file in sorted(run_files, key=lambda item: int(item.stem)):
+        try:
+            starts.append(int(run_file.stem))
+            names.append(run_file.name)
+        except ValueError:
+            continue
+    if not starts:
+        return {}
+
+    usage: Dict[str, int] = defaultdict(int)
+    with trace_path.open("r", encoding="utf-8", errors="ignore") as handle:
+        for line in handle:
+            if '"PotionAction"' not in line or '"unix_time"' not in line:
+                continue
+            try:
+                row = json.loads(line)
+            except Exception:
+                continue
+            action = row.get("action") or {}
+            if action.get("type") != "PotionAction":
+                continue
+            unix_time = row.get("unix_time")
+            try:
+                unix_time = float(unix_time)
+            except Exception:
+                continue
+            if unix_time < starts[0]:
+                continue
+            index = bisect.bisect_right(starts, unix_time) - 1
+            if index >= 0:
+                usage[names[index]] += 1
+    return dict(usage)
+
+
+def summarize_run(path: Path, run: dict, *, trace_potions_used: int = 0) -> RunFailure:
     damage_entries = run.get("damage_taken") or []
     total_damage = sum(as_int(entry.get("damage")) for entry in damage_entries)
     total_turns = sum(as_int(entry.get("turns")) for entry in damage_entries)
@@ -126,7 +170,7 @@ def summarize_run(path: Path, run: dict) -> RunFailure:
         nonstarter_cards=nonstarter_cards,
         relic_count=len(run.get("relics") or []),
         potions_obtained=len(run.get("potions_obtained") or []),
-        potions_used=potion_use_count(run),
+        potions_used=max(potion_use_count(run), trace_potions_used),
         items_purchased=len(run.get("items_purchased") or []),
         purges=len(run.get("items_purged") or []),
         act1_elites=sum(1 for symbol in path_taken[:16] if symbol == "E"),
@@ -371,6 +415,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--log-path", default=str(DEFAULT_LOG_PATH), help="Optional ai_debug.log path.")
     parser.add_argument("--tail-lines", type=int, default=200000, help="Log tail lines for action hints.")
     parser.add_argument("--no-log", action="store_true", help="Skip ai_debug.log parsing.")
+    parser.add_argument(
+        "--decision-trace",
+        help="Optional ai_decision_trace_clean.jsonl path used to backfill PotionAction counts.",
+    )
     parser.add_argument("--json", action="store_true", help="Print JSON report.")
     parser.add_argument("--csv-out", help="Write run and combat CSV files with this base path.")
     return parser.parse_args()
@@ -385,11 +433,22 @@ def main() -> int:
 
     run_failures: List[RunFailure] = []
     combats: List[CombatEntry] = []
+    trace_potion_usage = (
+        parse_trace_potion_usage(Path(args.decision_trace), run_files)
+        if args.decision_trace
+        else {}
+    )
     for run_file in run_files:
         data = load_run(run_file)
         if not data:
             continue
-        run_failures.append(summarize_run(run_file, data))
+        run_failures.append(
+            summarize_run(
+                run_file,
+                data,
+                trace_potions_used=trace_potion_usage.get(run_file.name, 0),
+            )
+        )
         combats.extend(iter_combats(run_file, data))
 
     log_hints = {"log_found": 0} if args.no_log else parse_log_action_hints(Path(args.log_path), args.tail_lines)

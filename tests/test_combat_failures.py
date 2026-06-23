@@ -6,6 +6,7 @@ from analysis_scripts.analyze_combat_failures import (
     iter_combats,
     make_report,
     parse_log_action_hints,
+    parse_trace_potion_usage,
     summarize_run,
 )
 
@@ -78,3 +79,66 @@ def test_parse_log_action_hints(tmp_path):
     assert hints["end_turn_actions"] == 1
     assert hints["turn_ends_with_energy"] == 1
     assert hints["invalid_commands"] == 1
+
+
+def test_summarize_run_counts_real_run_potion_use_field(tmp_path):
+    run_path = tmp_path / "1.run"
+    write_run(run_path)
+    data = json.loads(run_path.read_text(encoding="utf-8"))
+    data.pop("potions_floor_usage")
+    data["potion_use_per_floor"] = [16]
+
+    summary = summarize_run(run_path, data)
+
+    assert summary.potions_used == 1
+
+
+def test_trace_potion_usage_fills_missing_run_record_usage(tmp_path):
+    runs_dir = tmp_path / "runs" / "IRONCLAD"
+    runs_dir.mkdir(parents=True)
+    write_run(runs_dir / "100.run")
+    write_run(runs_dir / "200.run")
+    trace_path = tmp_path / "ai_decision_trace_clean.jsonl"
+    trace_path.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "unix_time": 100.5,
+                        "action": {
+                            "type": "PotionAction",
+                            "potion": {"name": "Fire Potion"},
+                        },
+                    }
+                ),
+                json.dumps(
+                    {
+                        "unix_time": 200.5,
+                        "action": {"type": "PlayCardAction"},
+                    }
+                ),
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    run_files = collect_run_files(tmp_path / "runs", "IRONCLAD", 2)
+    trace_usage = parse_trace_potion_usage(trace_path, run_files)
+    failures = []
+    combats = []
+    for run_file in run_files:
+        data = json.loads(run_file.read_text(encoding="utf-8"))
+        failures.append(
+            summarize_run(
+                run_file,
+                data,
+                trace_potions_used=trace_usage.get(run_file.name, 0),
+            )
+        )
+        combats.extend(iter_combats(run_file, data))
+
+    report = make_report(failures, combats, {"log_found": 0})
+
+    assert failures[0].potions_used == 1
+    assert failures[1].potions_used == 0
+    assert report["death_profile"]["potionless_deaths_after_obtaining_potions"] == 1
