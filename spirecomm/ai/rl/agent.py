@@ -1105,6 +1105,7 @@ class CombatRLAgent:
         self._reward_screen_key = None
         self._reward_screen_waited = False
         self._fallback_turn_key = None
+        self._empty_hand_refresh_wait_key = None
 
         # Import OptimizedAgent
         try:
@@ -1264,6 +1265,12 @@ class CombatRLAgent:
                         self._describe_combat_action(replacement, game),
                     )
                     return self._with_combat_action_context(replacement, game)
+                wait_action = self._maybe_wait_for_empty_hand_refresh(
+                    fallback_action,
+                    game,
+                )
+                if wait_action is not None:
+                    return wait_action
                 return self._with_combat_action_context(fallback_action, game)
 
             if isinstance(fallback_action, PotionAction):
@@ -1552,6 +1559,10 @@ class CombatRLAgent:
                         return self._with_combat_action_context(replacement, game)
                     logger.info("[ENERGY_GUARD] No safe replacement found; allowing EndTurnAction")
                     return self._with_combat_action_context(action, game)
+                elif (
+                    wait_action := self._maybe_wait_for_empty_hand_refresh(action, game)
+                ) is not None:
+                    return wait_action
                 elif self._should_override_awakened_one_power(action, game):
                     replacement = self._get_awakened_one_safe_replacement(game)
                     if replacement is not None:
@@ -1762,9 +1773,11 @@ class CombatRLAgent:
                 self.use_rl_for_combat = False
 
         # Fallback to OptimizedAgent
-        return self._with_combat_action_context(
-            self.fallback_agent.get_next_action_in_game(game), game
-        )
+        fallback_action = self.fallback_agent.get_next_action_in_game(game)
+        wait_action = self._maybe_wait_for_empty_hand_refresh(fallback_action, game)
+        if wait_action is not None:
+            return wait_action
+        return self._with_combat_action_context(fallback_action, game)
 
     @staticmethod
     def _with_combat_action_context(action: Optional[Action], game: Game) -> Optional[Action]:
@@ -2061,6 +2074,44 @@ class CombatRLAgent:
             getattr(game, "turn", None),
         )
         return True
+
+    def _maybe_wait_for_empty_hand_refresh(
+        self,
+        action: Action,
+        game: Game,
+    ) -> Optional[Action]:
+        from spirecomm.communication.action import EndTurnAction, WaitAction
+        from spirecomm.spire.screen import ScreenType
+
+        if not isinstance(action, EndTurnAction):
+            return None
+        if not getattr(game, "in_combat", False):
+            self._empty_hand_refresh_wait_key = None
+            return None
+        if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
+            self._empty_hand_refresh_wait_key = None
+            return None
+        if not self._alive_monsters(game):
+            self._empty_hand_refresh_wait_key = None
+            return None
+        energy = self._player_energy(game)
+        hand = getattr(game, "hand", []) or []
+        if energy <= 0 or hand:
+            self._empty_hand_refresh_wait_key = None
+            return None
+
+        key = (getattr(game, "floor", None), getattr(game, "turn", None))
+        if getattr(self, "_empty_hand_refresh_wait_key", None) == key:
+            return None
+
+        self._empty_hand_refresh_wait_key = key
+        logger.info(
+            "[EMPTY_HAND_REFRESH_GUARD] EndTurnAction with energy=%s empty hand on floor=%s turn=%s; waiting for refreshed state",
+            energy,
+            getattr(game, "floor", None),
+            getattr(game, "turn", None),
+        )
+        return WaitAction(timeout=1)
 
     def _combat_turn_key(self, game: Game):
         from spirecomm.spire.screen import ScreenType

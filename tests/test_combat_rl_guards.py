@@ -4377,6 +4377,51 @@ def test_wasteful_end_turn_uses_available_commands_when_play_flag_missing():
     assert calls == {"rl": 1, "fallback": 1}
 
 
+def test_empty_hand_energy_end_turn_waits_for_state_refresh():
+    game = _game(
+        hand=[],
+        monsters=[_monster(hp=21, damage=6, index=0, name="Cultist")],
+        current_hp=44,
+        max_hp=80,
+        floor=1,
+        turn=3,
+        player=SimpleNamespace(energy=3),
+        available_commands=["play", "end", "wait", "state"],
+    )
+    del game.play_available
+    calls = {"rl": 0, "fallback": 0}
+
+    def rl_decide(_game):
+        calls["rl"] += 1
+        return EndTurnAction()
+
+    def fallback_decide(_game):
+        calls["fallback"] += 1
+        return EndTurnAction()
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=rl_decide)
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=fallback_decide,
+        _track_game_state=lambda game: None,
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+    second_action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, WaitAction)
+    assert action.timeout == 1
+    assert isinstance(second_action, EndTurnAction)
+    assert calls == {"rl": 2, "fallback": 0}
+
+
 def test_rl_end_turn_action_is_stamped_with_combat_turn_context():
     game = _game(
         floor=20,
