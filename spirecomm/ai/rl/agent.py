@@ -1257,6 +1257,13 @@ class CombatRLAgent:
             fallback_action = self.fallback_agent.get_next_action_in_game(game)
             from spirecomm.communication.action import EndTurnAction, PotionAction
 
+            wait_action = self._maybe_wait_for_empty_hand_refresh(
+                fallback_action,
+                game,
+            )
+            if wait_action is not None:
+                return wait_action
+
             if isinstance(fallback_action, EndTurnAction):
                 replacement = self._get_non_end_turn_fallback(game)
                 if replacement is not None:
@@ -1445,6 +1452,10 @@ class CombatRLAgent:
                 if action is None:
                     logger.warning("RL agent returned None, falling back to OptimizedAgent")
                     self.rl_failure_count += 1
+                elif (
+                    wait_action := self._maybe_wait_for_empty_hand_refresh(action, game)
+                ) is not None:
+                    return wait_action
                 elif (replacement := self._get_slime_split_aoe_survival_replacement(game)) is not None:
                     self.rl_failure_count = 0
                     self._fallback_turn_key = self._combat_turn_key(game)
@@ -2080,10 +2091,10 @@ class CombatRLAgent:
         action: Action,
         game: Game,
     ) -> Optional[Action]:
-        from spirecomm.communication.action import EndTurnAction, WaitAction
+        from spirecomm.communication.action import WaitAction
         from spirecomm.spire.screen import ScreenType
 
-        if not isinstance(action, EndTurnAction):
+        if action is None or isinstance(action, WaitAction):
             return None
         if not getattr(game, "in_combat", False):
             self._empty_hand_refresh_wait_key = None
@@ -2106,7 +2117,8 @@ class CombatRLAgent:
 
         self._empty_hand_refresh_wait_key = key
         logger.info(
-            "[EMPTY_HAND_REFRESH_GUARD] EndTurnAction with energy=%s empty hand on floor=%s turn=%s; waiting for refreshed state",
+            "[EMPTY_HAND_REFRESH_GUARD] %s with energy=%s empty hand on floor=%s turn=%s; waiting for refreshed state",
+            type(action).__name__,
             energy,
             getattr(game, "floor", None),
             getattr(game, "turn", None),
