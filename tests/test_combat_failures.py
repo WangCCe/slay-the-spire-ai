@@ -81,6 +81,53 @@ def test_parse_log_action_hints(tmp_path):
     assert hints["invalid_commands"] == 1
 
 
+def test_parse_log_action_hints_includes_rotated_logs(tmp_path):
+    log_path = tmp_path / "ai_debug.log"
+    (tmp_path / "ai_debug.log.2").write_text(
+        "[CALLBACK] Got action: EndTurnAction\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "ai_debug.log.1").write_text(
+        "[CALLBACK] Got action: PotionAction\n",
+        encoding="utf-8",
+    )
+    log_path.write_text(
+        "[CALLBACK] Got action: PlayCardAction\n",
+        encoding="utf-8",
+    )
+
+    hints = parse_log_action_hints(log_path, tail_lines=100)
+
+    assert hints["log_found"] == 1
+    assert hints["lines_analyzed"] == 3
+    assert hints["play_card_actions"] == 1
+    assert hints["end_turn_actions"] == 1
+    assert hints["potion_actions"] == 1
+
+
+def test_parse_log_action_hints_tails_across_rotated_logs(tmp_path):
+    log_path = tmp_path / "ai_debug.log"
+    (tmp_path / "ai_debug.log.2").write_text(
+        "[CALLBACK] Got action: EndTurnAction\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "ai_debug.log.1").write_text(
+        "[CALLBACK] Got action: PotionAction\n",
+        encoding="utf-8",
+    )
+    log_path.write_text(
+        "[CALLBACK] Got action: PlayCardAction\n",
+        encoding="utf-8",
+    )
+
+    hints = parse_log_action_hints(log_path, tail_lines=2)
+
+    assert hints["lines_analyzed"] == 2
+    assert hints["play_card_actions"] == 1
+    assert hints["potion_actions"] == 1
+    assert hints["end_turn_actions"] == 0
+
+
 def test_summarize_run_counts_real_run_potion_use_field(tmp_path):
     run_path = tmp_path / "1.run"
     write_run(run_path)

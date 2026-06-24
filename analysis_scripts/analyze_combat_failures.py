@@ -222,12 +222,35 @@ def avg(values: Iterable[int]) -> float:
     return sum(values) / len(values) if values else 0.0
 
 
+def log_paths_with_rotations(log_path: Path) -> List[Path]:
+    if not log_path.name:
+        return [log_path] if log_path.exists() else []
+
+    paths = []
+    prefix = f"{log_path.name}."
+    for candidate in log_path.parent.glob(f"{log_path.name}.*"):
+        suffix = candidate.name[len(prefix) :]
+        if suffix.isdigit():
+            paths.append(candidate)
+
+    paths.sort(key=lambda path: int(path.name[len(prefix) :]), reverse=True)
+    if log_path.exists():
+        paths.append(log_path)
+    return paths
+
+
 def parse_log_action_hints(log_path: Path, tail_lines: int) -> Dict[str, int]:
-    if tail_lines <= 0 or not log_path.exists():
+    if tail_lines <= 0:
+        return {"log_found": 0}
+
+    log_paths = log_paths_with_rotations(log_path)
+    if not log_paths:
         return {"log_found": 0}
 
     try:
-        lines = log_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+        lines = []
+        for path in log_paths:
+            lines.extend(path.read_text(encoding="utf-8", errors="ignore").splitlines())
     except Exception:
         return {"log_found": 0}
 
