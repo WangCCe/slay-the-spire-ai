@@ -107,6 +107,39 @@ class SimpleAgent:
     SHOP_PRE_PURGE_RELIC_KEYS = {
         "membershipcard",
     }
+    SHOP_BLOOD_FOR_BLOOD_SUPPORT_KEYS = {
+        "offering",
+        "bloodletting",
+        "hemokinesis",
+        "combust",
+        "brutality",
+    }
+    SHOP_BURNING_PACT_PAYOFF_KEYS = {
+        "corruption",
+        "darkembrace",
+        "feelnopain",
+    }
+    SHOP_BURNING_PACT_TRASH_KEYS = {
+        "ascendersbane",
+        "curseofthebell",
+        "writhe",
+        "injury",
+        "clumsy",
+        "doubt",
+        "shame",
+        "regret",
+        "pain",
+        "parasite",
+        "normality",
+        "decay",
+        "necronomicurse",
+        "pride",
+        "wound",
+        "burn",
+        "dazed",
+        "slimed",
+        "void",
+    }
 
     def __init__(self, chosen_class=PlayerClass.THE_SILENT, elite_mode=None):
         self.game = Game()
@@ -355,6 +388,12 @@ class SimpleAgent:
     def _shop_relic_is_pre_purge_priority(self, relic):
         return bool(self._shop_relic_keys(relic) & self.SHOP_PRE_PURGE_RELIC_KEYS)
 
+    def _shop_deck_card_keys(self):
+        return [
+            self._compact_card_key(self._normalize_card_name(deck_card))
+            for deck_card in list(getattr(self.game, "deck", []) or [])
+        ]
+
     def _validate_shop_cards(self, screen):
         """Validate that shop cards have required attributes."""
         if not hasattr(screen, "cards") or not screen.cards:
@@ -452,6 +491,31 @@ class SimpleAgent:
                 card_name,
             )
             return False
+
+        card_keys = self._shop_card_keys(card)
+        deck_keys = self._shop_deck_card_keys()
+        if "bloodforblood" in card_keys and not any(
+            deck_key in self.SHOP_BLOOD_FOR_BLOOD_SUPPORT_KEYS
+            for deck_key in deck_keys
+        ):
+            logging.info(
+                "[SHOP_SCREEN] Skipping unsupported paid Blood for Blood",
+            )
+            return False
+        if "burningpact" in card_keys:
+            has_exhaust_payoff = any(
+                deck_key in self.SHOP_BURNING_PACT_PAYOFF_KEYS
+                for deck_key in deck_keys
+            )
+            has_trash_to_exhaust = any(
+                deck_key in self.SHOP_BURNING_PACT_TRASH_KEYS
+                for deck_key in deck_keys
+            )
+            if not (has_exhaust_payoff or has_trash_to_exhaust):
+                logging.info(
+                    "[SHOP_SCREEN] Skipping unsupported paid Burning Pact",
+                )
+                return False
 
         deck_strategy = getattr(self, "deck_strategy", None)
         if require_strategy_approval and (
