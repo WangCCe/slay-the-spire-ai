@@ -74,7 +74,8 @@ def test_hand_select_card_select_waits_between_keys_and_confirm():
         KeyAction,
         OptionalCardSelectConfirmAction,
     ]
-    assert all(action.requires_game_ready for action in queued_actions)
+    assert all(action.requires_game_ready for action in queued_actions[:2])
+    assert queued_actions[-1].requires_game_ready is False
     assert all(action.wait_for_response for action in queued_actions[:2])
 
 

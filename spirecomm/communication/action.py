@@ -707,7 +707,6 @@ class CardSelectAction(Action):
         coordinator.add_action_to_queue(
             OptionalCardSelectConfirmAction(
                 allow_stale_selection=True,
-                requires_game_ready=(screen_type == ScreenType.HAND_SELECT),
             )
         )
 
