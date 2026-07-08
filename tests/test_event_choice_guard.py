@@ -181,7 +181,7 @@ def test_forgotten_altar_sacrifices_when_act2_hp_margin_stays_safe():
     assert action.choice_index == 0
 
 
-def test_shining_light_leaves_when_upgrade_damage_breaks_act1_hp_margin():
+def test_shining_light_leaves_when_hp_is_below_requested_strike_threshold():
     agent = _agent_for_event(
         "Shining Light",
         [
@@ -191,7 +191,7 @@ def test_shining_light_leaves_when_upgrade_damage_breaks_act1_hp_margin():
         ["Enter", "Leave"],
         floor=10,
         act=1,
-        hp=55,
+        hp=35,
         max_hp=75,
     )
 
@@ -199,6 +199,26 @@ def test_shining_light_leaves_when_upgrade_damage_breaks_act1_hp_margin():
 
     assert isinstance(action, ChooseAction)
     assert action.choice_index == 1
+
+
+def test_shining_light_enters_when_hp_matches_bottled_threshold():
+    agent = _agent_for_event(
+        "Shining Light",
+        [
+            EventOption("Enter", "Enter"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Enter", "Leave"],
+        floor=5,
+        act=1,
+        hp=54,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
 
 
 def test_shining_light_enters_when_hp_margin_stays_safe():
