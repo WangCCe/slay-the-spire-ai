@@ -400,6 +400,25 @@ class _BottledStateShim:
     def get_choice_list(self) -> List[str]:
         return list(self.game_state()["choice_list"])
 
+    def screen_state(self) -> Dict[str, Any]:
+        return dict(self.game_state()["screen_state"])
+
+    def get_falling_event_options(self) -> List[str]:
+        options = []
+        for option in self.screen_state().get("options", []):
+            if not isinstance(option, dict):
+                continue
+            disabled = option.get("disabled")
+            if disabled is True or str(disabled).lower() == "true":
+                continue
+            text = str(option.get("text") or option.get("label") or "")
+            match = re.search(r"\blose\b\s*(.*)", text, flags=re.IGNORECASE)
+            card_text = match.group(1).strip() if match else text.strip()
+            normalized = _normalize_name(card_text)
+            if normalized:
+                options.append(normalized)
+        return options
+
     def floor(self) -> int:
         return self.game_state()["floor"]
 

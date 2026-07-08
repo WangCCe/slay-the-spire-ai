@@ -755,7 +755,72 @@ class SimpleAgent:
         labels_for_selection = choice_labels[:option_count] or screen_labels[:option_count]
 
         choice_index = 0
-        if event_id in {"Mushrooms", "The Mushroom Lair"}:
+        if event_id in {"Big Fish", "BigFish"}:
+            raw_current_hp = getattr(self.game, "current_hp", None)
+            raw_max_hp = getattr(self.game, "max_hp", None)
+            current_hp = self._safe_float(raw_current_hp, 0.0)
+            max_hp = max(self._safe_float(raw_max_hp, 0.0), 1.0)
+            hp_known = raw_current_hp is not None and raw_max_hp is not None
+            hp_pct = current_hp / max_hp if hp_known else 1.0
+            relics = getattr(self.game, "relics", []) or []
+            has_omamori = any(
+                "omamori"
+                in str(
+                    getattr(relic, "name", None)
+                    or getattr(relic, "relic_id", None)
+                    or getattr(relic, "id", None)
+                    or relic
+                ).lower()
+                for relic in relics
+            )
+            preferred_keywords = (
+                ("banana", "heal")
+                if hp_known and hp_pct <= 0.30
+                else ("box", "relic")
+                if has_omamori
+                else ("donut", "max hp")
+            )
+            fallback_keywords = ("banana", "heal", "donut", "box", "relic")
+            for idx, label in enumerate(labels_for_selection):
+                normalized_label = label.lower()
+                if any(keyword in normalized_label for keyword in preferred_keywords):
+                    choice_index = idx
+                    break
+            else:
+                for idx, label in enumerate(labels_for_selection):
+                    normalized_label = label.lower()
+                    if any(keyword in normalized_label for keyword in fallback_keywords):
+                        choice_index = idx
+                        break
+        elif event_id in {"The Cleric", "Cleric"}:
+            raw_current_hp = getattr(self.game, "current_hp", None)
+            raw_max_hp = getattr(self.game, "max_hp", None)
+            current_hp = self._safe_float(raw_current_hp, 0.0)
+            max_hp = max(self._safe_float(raw_max_hp, 0.0), 1.0)
+            hp_known = raw_current_hp is not None and raw_max_hp is not None
+            should_heal = hp_known and current_hp / max_hp <= 0.65
+            preferred_keywords = (
+                ("heal",)
+                if should_heal
+                else ("purify", "remove", "purge")
+            )
+            fallback_keywords = (
+                ("purify", "remove", "purge", "leave")
+                if should_heal
+                else ("heal", "leave")
+            )
+            for idx, label in enumerate(labels_for_selection):
+                normalized_label = label.lower()
+                if any(keyword in normalized_label for keyword in preferred_keywords):
+                    choice_index = idx
+                    break
+            else:
+                for idx, label in enumerate(labels_for_selection):
+                    normalized_label = label.lower()
+                    if any(keyword in normalized_label for keyword in fallback_keywords):
+                        choice_index = idx
+                        break
+        elif event_id in {"Mushrooms", "The Mushroom Lair"}:
             safe_keywords = ("leave", "ignore", "refuse", "decline", "move on", "skip")
             for idx, label in enumerate(labels_for_selection):
                 normalized_label = label.lower()

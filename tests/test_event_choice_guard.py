@@ -462,3 +462,87 @@ def test_note_for_yourself_leaves_instead_of_taking_starter_card():
 
     assert isinstance(action, ChooseAction)
     assert action.choice_index == 1
+
+
+def test_cleric_purifies_instead_of_healing_when_hp_margin_is_healthy():
+    agent = _agent_for_event(
+        "The Cleric",
+        [
+            EventOption("Heal", "Heal"),
+            EventOption("Purify", "Purify"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Heal", "Purify", "Leave"],
+        floor=8,
+        act=1,
+        hp=63,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_cleric_heals_when_hp_margin_is_low():
+    agent = _agent_for_event(
+        "The Cleric",
+        [
+            EventOption("Heal", "Heal"),
+            EventOption("Purify", "Purify"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Heal", "Purify", "Leave"],
+        floor=14,
+        act=1,
+        hp=52,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+
+def test_big_fish_takes_max_hp_when_not_low_hp():
+    agent = _agent_for_event(
+        "Big Fish",
+        [
+            EventOption("Banana", "Banana"),
+            EventOption("Donut", "Donut"),
+            EventOption("Box", "Box"),
+        ],
+        ["Banana", "Donut", "Box"],
+        floor=3,
+        act=1,
+        hp=46,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_big_fish_takes_heal_when_hp_is_critical():
+    agent = _agent_for_event(
+        "Big Fish",
+        [
+            EventOption("Banana", "Banana"),
+            EventOption("Donut", "Donut"),
+            EventOption("Box", "Box"),
+        ],
+        ["Banana", "Donut", "Box"],
+        floor=3,
+        act=1,
+        hp=20,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0

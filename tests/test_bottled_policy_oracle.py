@@ -51,6 +51,10 @@ def _write_fake_bottled_checkout(root: Path) -> Path:
                 "    def find_event_choice(self, state):",
                 "        if state.get_event() == Event.FAKE_FORK:",
                 "            return 'choose 1'",
+                "        if state.get_event() == Event.FALLING:",
+                "            options = state.get_falling_event_options()",
+                "            if 'strike' in options:",
+                "                return 'choose ' + str(options.index('strike'))",
                 "        return None",
             ]
         ),
@@ -62,6 +66,7 @@ def _write_fake_bottled_checkout(root: Path) -> Path:
                 "from enum import Enum",
                 "class Event(Enum):",
                 "    FAKE_FORK = 'Fake Fork'",
+                "    FALLING = 'Falling'",
             ]
         ),
         encoding="utf-8",
@@ -226,6 +231,34 @@ def test_adapter_uses_checkout_event_handler_command(tmp_path):
 
     assert result.status == "ok"
     assert result.label == "choose 1: Leave"
+    assert result.raw["command"] == "choose 1"
+
+
+def test_adapter_exposes_falling_event_options_to_checkout_handler(tmp_path):
+    from analysis_scripts.bottled_policy_oracle import BottledPolicyOracle
+
+    checkout = _write_fake_bottled_checkout(tmp_path / "bottled_ai")
+    sample = DecisionSample(
+        sample_id="falling",
+        category="event",
+        source="fixture",
+        floor=42,
+        act=3,
+        evidence_quality="complete",
+        our_choice={"kind": "choose", "index": 0, "label": "Lose Bash"},
+        context={
+            "event_name": "Falling",
+            "current_hp": 70,
+            "max_hp": 80,
+            "choices": ["Lose Bash", "Lose Strike+", "Lose Anger"],
+            "relics": [],
+        },
+    )
+
+    result = BottledPolicyOracle(checkout).evaluate(sample)
+
+    assert result.status == "ok"
+    assert result.label == "choose 1: Lose Strike+"
     assert result.raw["command"] == "choose 1"
 
 
