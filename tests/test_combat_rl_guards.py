@@ -2144,6 +2144,54 @@ def test_energy_guard_takeover_suppresses_unpayable_cached_card():
     assert agent._fallback_turn_key is None
 
 
+def test_energy_guard_takeover_ends_zero_energy_turn_when_block_already_safe():
+    shrug = SimpleNamespace(
+        name="Shrug It Off",
+        card_id="Shrug It Off",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=0,
+        has_target=False,
+    )
+    game = _game(
+        hand=[shrug],
+        monsters=[
+            _monster(
+                hp=206,
+                damage=20,
+                index=0,
+                name="The Guardian",
+                monster_id="TheGuardian",
+            )
+        ],
+        current_hp=35,
+        max_hp=90,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=6,
+        player=SimpleNamespace(energy=0, block=999),
+    )
+    game.monsters[0].intent = Intent.ATTACK
+
+    agent = _agent()
+    agent._fallback_turn_key = (16, 6)
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, EndTurnAction)
+    assert agent._fallback_turn_key is None
+
+
 def test_energy_guard_takeover_repairs_targetless_cached_attack():
     strike = SimpleNamespace(
         name="Strike",

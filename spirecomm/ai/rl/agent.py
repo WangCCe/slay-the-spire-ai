@@ -1254,8 +1254,17 @@ class CombatRLAgent:
                 )
                 return self._with_combat_action_context(replacement, game)
 
+            from spirecomm.communication.action import EndTurnAction
+
+            if self._should_end_zero_energy_safe_takeover(game):
+                self._fallback_turn_key = None
+                logger.info(
+                    "[ENERGY_GUARD] Ending zero-energy takeover turn; current block covers end-turn damage"
+                )
+                return self._with_combat_action_context(EndTurnAction(), game)
+
             fallback_action = self.fallback_agent.get_next_action_in_game(game)
-            from spirecomm.communication.action import EndTurnAction, PotionAction
+            from spirecomm.communication.action import PotionAction
 
             wait_action = self._maybe_wait_for_empty_hand_refresh(
                 fallback_action,
@@ -2145,6 +2154,23 @@ class CombatRLAgent:
             return False
 
         return True
+
+    def _should_end_zero_energy_safe_takeover(self, game: Game) -> bool:
+        if self._player_energy(game) > 0:
+            return False
+        if not self._command_available(game, "end", "end_available"):
+            return False
+
+        incoming = self._incoming_damage(game)
+        status_blockable_damage, status_hp_loss = self._end_turn_status_damage(game)
+        current_block = self._player_block(game)
+        damage_after_block = self._end_turn_damage_after_block(
+            incoming + status_blockable_damage,
+            status_hp_loss,
+            self._end_turn_block_for_game(game, current_block),
+            game,
+        )
+        return damage_after_block <= 0
 
     def _get_non_end_turn_fallback(self, game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction, PlayCardAction, PotionAction
