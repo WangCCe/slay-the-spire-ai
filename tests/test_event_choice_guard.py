@@ -355,7 +355,7 @@ def test_mushrooms_event_fights_instead_of_taking_parasite_heal_when_no_leave():
     assert action.choice_index == 0
 
 
-def test_mushrooms_event_takes_parasite_heal_when_mid_hp_after_act1_route_damage():
+def test_mushrooms_event_fights_when_hp_is_above_bottled_threshold():
     agent = _agent_for_event(
         "Mushrooms",
         [
@@ -372,7 +372,7 @@ def test_mushrooms_event_takes_parasite_heal_when_mid_hp_after_act1_route_damage
     action = agent.handle_screen()
 
     assert isinstance(action, ChooseAction)
-    assert action.choice_index == 1
+    assert action.choice_index == 0
 
 
 def test_mushrooms_event_still_fights_when_full_hp_after_act1_route_setup():
