@@ -13,6 +13,7 @@ def _agent_for_event(
     act=1,
     hp=80,
     max_hp=80,
+    relics=None,
 ):
     agent = SimpleAgent.__new__(SimpleAgent)
     agent.game = SimpleNamespace(
@@ -24,6 +25,7 @@ def _agent_for_event(
         act=act,
         current_hp=hp,
         max_hp=max_hp,
+        relics=relics or [],
         screen=SimpleNamespace(
             event_id=event_id,
             event_name=event_id,
@@ -49,7 +51,7 @@ def test_event_choice_uses_available_choice_count_before_screen_options():
     assert action.choice_index == 0
 
 
-def test_event_choice_can_still_take_last_available_safe_option():
+def test_golden_idol_takes_relic_when_take_is_available():
     agent = _agent_for_event(
         "Golden Idol",
         [
@@ -62,7 +64,80 @@ def test_event_choice_can_still_take_last_available_safe_option():
     action = agent.handle_screen()
 
     assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+
+def test_golden_idol_leaves_when_ectoplasm_blocks_gold_value():
+    agent = _agent_for_event(
+        "Golden Idol",
+        [
+            EventOption("Take", "Take"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Take", "Leave"],
+        relics=["Ectoplasm"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
     assert action.choice_index == 1
+
+
+def test_golden_idol_uses_omamori_for_curse_penalty():
+    agent = _agent_for_event(
+        "Golden Idol",
+        [
+            EventOption("Curse", "Curse"),
+            EventOption("Damage", "Damage"),
+            EventOption("Max HP", "Max HP"),
+        ],
+        ["Curse", "Damage", "Max HP"],
+        relics=["Omamori"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+
+def test_golden_idol_takes_damage_penalty_when_hp_is_healthy():
+    agent = _agent_for_event(
+        "Golden Idol",
+        [
+            EventOption("Curse", "Curse"),
+            EventOption("Damage", "Damage"),
+            EventOption("Max HP", "Max HP"),
+        ],
+        ["Curse", "Damage", "Max HP"],
+        hp=48,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_golden_idol_takes_max_hp_penalty_when_hp_is_low():
+    agent = _agent_for_event(
+        "Golden Idol",
+        [
+            EventOption("Curse", "Curse"),
+            EventOption("Damage", "Damage"),
+            EventOption("Max HP", "Max HP"),
+        ],
+        ["Curse", "Damage", "Max HP"],
+        hp=35,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 2
 
 
 def test_golden_shrine_avoids_result_page_that_stops_callbacks():

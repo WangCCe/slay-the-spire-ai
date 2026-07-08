@@ -755,7 +755,55 @@ class SimpleAgent:
         labels_for_selection = choice_labels[:option_count] or screen_labels[:option_count]
 
         choice_index = 0
-        if event_id in {"Big Fish", "BigFish"}:
+        if event_id in {"Golden Idol", "GoldenIdol"}:
+            relics = getattr(self.game, "relics", []) or []
+
+            def _has_relic(keyword):
+                return any(
+                    keyword
+                    in str(
+                        getattr(relic, "name", None)
+                        or getattr(relic, "relic_id", None)
+                        or getattr(relic, "id", None)
+                        or relic
+                    ).lower()
+                    for relic in relics
+                )
+
+            has_ectoplasm = _has_relic("ectoplasm")
+            has_omamori = _has_relic("omamori")
+            if has_ectoplasm:
+                for idx, label in enumerate(labels_for_selection):
+                    if "leave" in label.lower():
+                        choice_index = idx
+                        break
+                else:
+                    choice_index = min(option_count - 1, 1)
+            elif option_count == 2:
+                for idx, label in enumerate(labels_for_selection):
+                    if "take" in label.lower():
+                        choice_index = idx
+                        break
+                else:
+                    choice_index = 0
+            elif option_count >= 3:
+                raw_current_hp = getattr(self.game, "current_hp", None)
+                raw_max_hp = getattr(self.game, "max_hp", None)
+                current_hp = self._safe_float(raw_current_hp, 0.0)
+                max_hp = max(self._safe_float(raw_max_hp, 0.0), 1.0)
+                hp_known = raw_current_hp is not None and raw_max_hp is not None
+                if has_omamori:
+                    choice_index = 0
+                elif hp_known and current_hp / max_hp >= 0.50:
+                    choice_index = 1
+                else:
+                    choice_index = 2
+            else:
+                for idx, label in enumerate(labels_for_selection):
+                    if "leave" in label.lower():
+                        choice_index = idx
+                        break
+        elif event_id in {"Big Fish", "BigFish"}:
             raw_current_hp = getattr(self.game, "current_hp", None)
             raw_max_hp = getattr(self.game, "max_hp", None)
             current_hp = self._safe_float(raw_current_hp, 0.0)
