@@ -175,6 +175,44 @@ def test_adapter_uses_checkout_requested_strike_card_reward_config(tmp_path):
     assert result.source["mode"] == "native_bottled"
 
 
+def test_adapter_caches_source_metadata_git_lookups(tmp_path, monkeypatch):
+    from analysis_scripts import bottled_policy_oracle as oracle_module
+
+    checkout = _write_fake_bottled_checkout(tmp_path / "bottled_ai")
+    calls = []
+
+    def fake_git_output(path, args):
+        calls.append(tuple(args))
+        if args == ["rev-parse", "--short", "HEAD"]:
+            return "abc123"
+        if args == ["status", "--short"]:
+            return ""
+        return None
+
+    monkeypatch.setattr(oracle_module, "_git_output", fake_git_output)
+    oracle = oracle_module.BottledPolicyOracle(checkout)
+    sample = DecisionSample(
+        sample_id="card",
+        category="card_reward",
+        source="fixture",
+        floor=1,
+        act=1,
+        evidence_quality="complete",
+        our_choice={"kind": "skip", "name": "skip"},
+        context={"offered": ["Sentinel"], "deck": [], "can_skip": True},
+    )
+
+    first = oracle.evaluate(sample)
+    second = oracle.evaluate(sample)
+
+    assert first.source["commit"] == "abc123"
+    assert second.source["commit"] == "abc123"
+    assert calls == [
+        ("rev-parse", "--short", "HEAD"),
+        ("status", "--short"),
+    ]
+
+
 def test_adapter_uses_checkout_shop_handler_priorities(tmp_path):
     from analysis_scripts.bottled_policy_oracle import BottledPolicyOracle
 

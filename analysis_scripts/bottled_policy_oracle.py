@@ -45,6 +45,7 @@ def resolve_bottled_repo_path(explicit: Optional[Path | str] = None) -> Path:
 class BottledPolicyOracle:
     def __init__(self, bottled_repo_path: Optional[Path | str] = None):
         self.repo_path = resolve_bottled_repo_path(bottled_repo_path)
+        self._source_metadata_cache: Optional[Dict[str, Any]] = None
 
     def evaluate(self, sample: Any) -> BottledOracleResult:
         source = self.source_metadata()
@@ -95,13 +96,15 @@ class BottledPolicyOracle:
         )
 
     def source_metadata(self) -> Dict[str, Any]:
-        return {
-            "mode": "native_bottled",
-            "strategy": "REQUESTED_STRIKE",
-            "path": str(self.repo_path),
-            "commit": _git_output(self.repo_path, ["rev-parse", "--short", "HEAD"]),
-            "dirty": bool(_git_output(self.repo_path, ["status", "--short"])),
-        }
+        if self._source_metadata_cache is None:
+            self._source_metadata_cache = {
+                "mode": "native_bottled",
+                "strategy": "REQUESTED_STRIKE",
+                "path": str(self.repo_path),
+                "commit": _git_output(self.repo_path, ["rev-parse", "--short", "HEAD"]),
+                "dirty": bool(_git_output(self.repo_path, ["status", "--short"])),
+            }
+        return dict(self._source_metadata_cache)
 
     def _evaluate_card_reward(self, sample: Any, source: Dict[str, Any]) -> BottledOracleResult:
         ctx = _context(sample)
