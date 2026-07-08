@@ -371,6 +371,65 @@ def test_report_names_gate_reward_and_training_guard():
     assert "Formal non-combat RL training: blocked" in report
 
 
+def test_report_lists_current_vs_bottled_disagreements():
+    from analysis_scripts.noncombat_rl_decision_loop import (
+        default_reward_contract,
+        evaluate_promotion,
+        render_readiness_report,
+    )
+
+    sample = _complete_sample("shop")
+    sample["selected_action_id"] = "shop:leave"
+    sample["current_policy_label"] = {"label": "leave", "action_id": "shop:leave"}
+    sample["bottled_label"] = {
+        "label": "Perfected Strike",
+        "action_id": "shop:buy_card:perfected_strike",
+        "confidence": "high",
+        "reason": "native Bottled shop priority",
+    }
+    gate = evaluate_promotion([sample], reward_contract=default_reward_contract())
+
+    report = render_readiness_report([sample], gate)
+
+    assert "## Current-vs-Bottled Disagreements" in report
+    assert "Action-id disagreements: 1/1" in report
+    assert "shop: shop:leave -> shop:buy_card:perfected_strike" in report
+
+
+def test_export_samples_can_use_native_bottled_oracle_metadata(tmp_path):
+    from analysis_scripts.noncombat_rl_decision_loop import export_samples_from_trace
+    from tests.test_bottled_policy_oracle import _write_fake_bottled_checkout
+
+    checkout = _write_fake_bottled_checkout(tmp_path / "bottled_ai")
+    trace_path = tmp_path / "trace.jsonl"
+    _write_trace(
+        trace_path,
+        [
+            _base_trace_row(
+                "CARD_REWARD",
+                {"type": "ChooseAction", "name": "skip"},
+                {
+                    "type": "CARD_REWARD",
+                    "cards": [{"name": "Sentinel"}],
+                    "can_skip": True,
+                    "can_bowl": False,
+                },
+            )
+        ],
+    )
+
+    [sample] = export_samples_from_trace(
+        trace_path,
+        reference_mode="native_bottled",
+        bottled_repo_path=checkout,
+    )
+
+    assert sample["bottled_label"]["label"] == "Sentinel"
+    assert sample["bottled_label"]["oracle_mode"] == "native_bottled"
+    assert sample["bottled_label"]["source"]["strategy"] == "REQUESTED_STRIKE"
+    assert sample["bottled_label"]["action_id"] == "card_reward:take:sentinel"
+
+
 def test_combat_rl_smoke_command_is_bounded_and_not_noncombat_training():
     from analysis_scripts.noncombat_rl_decision_loop import combat_rl_smoke_command
 

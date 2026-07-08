@@ -6,10 +6,15 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from collections import deque
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 
 REQUESTED_STRIKE_DESIRED_CARDS = {
@@ -102,6 +107,10 @@ class ReferenceDecision:
     choice: str
     reason: str
     confidence: str
+    oracle_mode: str = "bottled_style"
+    raw: Dict[str, Any] = field(default_factory=dict)
+    source: Dict[str, Any] = field(default_factory=dict)
+    limitations: List[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -117,6 +126,9 @@ class ComparisonRow:
     match: bool
     confidence: str
     reason: str
+    oracle_mode: str = "bottled_style"
+    oracle_source: Dict[str, Any] = field(default_factory=dict)
+    raw_reference: Dict[str, Any] = field(default_factory=dict)
     limitations: List[str] = field(default_factory=list)
 
 
@@ -261,10 +273,24 @@ def load_jsonl_samples(
     return samples
 
 
-def compare_samples(samples: Iterable[DecisionSample]) -> List[ComparisonRow]:
+def compare_samples(
+    samples: Iterable[DecisionSample],
+    reference_mode: str = "bottled_style",
+    bottled_repo_path: Optional[Path | str] = None,
+) -> List[ComparisonRow]:
     rows: List[ComparisonRow] = []
+    normalized_mode = _normalize_reference_mode(reference_mode)
+    oracle = None
+    if normalized_mode == "native_bottled":
+        from analysis_scripts.bottled_policy_oracle import BottledPolicyOracle
+
+        oracle = BottledPolicyOracle(bottled_repo_path)
     for sample in samples:
-        reference = _reference_for_sample(sample)
+        reference = (
+            _native_bottled_reference_for_sample(sample, oracle)
+            if oracle is not None
+            else _reference_for_sample(sample)
+        )
         current = _current_choice_text(sample)
         match = _choices_match(current, reference.choice)
         confidence = _combined_confidence(sample.evidence_quality, reference.confidence, match)
@@ -281,7 +307,10 @@ def compare_samples(samples: Iterable[DecisionSample]) -> List[ComparisonRow]:
                 match=match,
                 confidence=confidence,
                 reason=reference.reason,
-                limitations=sample.limitations,
+                oracle_mode=reference.oracle_mode,
+                oracle_source=dict(reference.source),
+                raw_reference=dict(reference.raw),
+                limitations=list(sample.limitations) + list(reference.limitations),
             )
         )
     return rows
@@ -335,7 +364,7 @@ def render_markdown_report(
     lines = [
         "# Offline Decision Comparator POC",
         "",
-        "Reference: Bottled-style Ironclad `REQUESTED_STRIKE` handlers encoded locally for analysis only.",
+        _reference_summary(rows),
         "No gameplay-code fix is applied by this report.",
         "",
         "## Summary",
@@ -343,10 +372,12 @@ def render_markdown_report(
     ]
     by_category: Dict[str, int] = {}
     by_evidence: Dict[str, int] = {}
+    by_oracle_mode: Dict[str, int] = {}
     mismatches = 0
     for row in rows:
         by_category[row.category] = by_category.get(row.category, 0) + 1
         by_evidence[row.evidence_quality] = by_evidence.get(row.evidence_quality, 0) + 1
+        by_oracle_mode[row.oracle_mode] = by_oracle_mode.get(row.oracle_mode, 0) + 1
         if not row.match:
             mismatches += 1
     lines.extend(
@@ -355,20 +386,22 @@ def render_markdown_report(
             f"- Differences: {mismatches}",
             f"- Categories: {_format_counts(by_category)}",
             f"- Evidence quality: {_format_counts(by_evidence)}",
+            f"- Oracle modes: {_format_counts(by_oracle_mode)}",
             "",
             "## Comparison Rows",
             "",
-            "| Category | Source | Floor | Evidence | Current Choice | Bottled Reference | Confidence | Reason |",
-            "|---|---|---:|---|---|---|---|---|",
+            "| Category | Source | Floor | Evidence | Oracle Mode | Current Choice | Bottled Reference | Confidence | Reason |",
+            "|---|---|---:|---|---|---|---|---|---|",
         ]
     )
     for row in rows:
         lines.append(
-            "| {category} | {source} | {floor} | {evidence} | {current} | {reference} | {confidence} | {reason} |".format(
+            "| {category} | {source} | {floor} | {evidence} | {oracle_mode} | {current} | {reference} | {confidence} | {reason} |".format(
                 category=_md(row.category),
                 source=_md(row.source),
                 floor="" if row.floor is None else row.floor,
                 evidence=_md(row.evidence_quality),
+                oracle_mode=_md(row.oracle_mode),
                 current=_md(row.current_choice),
                 reference=_md(row.reference_choice),
                 confidence=_md(row.confidence),
@@ -409,6 +442,8 @@ def build_report(
     trace_paths: Sequence[Path],
     trace_tail: int = 2000,
     since_unix: Optional[float] = None,
+    reference_mode: str = "bottled_style",
+    bottled_repo_path: Optional[Path | str] = None,
 ) -> str:
     samples: List[DecisionSample] = []
     for path in fixture_paths:
@@ -417,7 +452,7 @@ def build_report(
         samples.extend(load_run_samples(path))
     for path in trace_paths:
         samples.extend(load_jsonl_samples(path, tail=trace_tail, since_unix=since_unix))
-    rows = compare_samples(samples)
+    rows = compare_samples(samples, reference_mode=reference_mode, bottled_repo_path=bottled_repo_path)
     return render_markdown_report(rows, rank_issues(rows))
 
 
@@ -428,6 +463,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--trace", action="append", type=Path, default=[])
     parser.add_argument("--trace-tail", type=int, default=2000)
     parser.add_argument("--since-unix", type=float)
+    parser.add_argument(
+        "--reference-mode",
+        choices=["bottled-style", "bottled_style", "native-bottled", "native_bottled"],
+        default="bottled-style",
+    )
+    parser.add_argument("--bottled-repo", type=Path, default=None)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
 
@@ -437,6 +478,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         args.trace,
         trace_tail=args.trace_tail,
         since_unix=args.since_unix,
+        reference_mode=args.reference_mode,
+        bottled_repo_path=args.bottled_repo,
     )
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -790,6 +833,19 @@ def _reference_for_sample(sample: DecisionSample) -> ReferenceDecision:
     return ReferenceDecision("unknown", "Unsupported category.", "low")
 
 
+def _native_bottled_reference_for_sample(sample: DecisionSample, oracle: Any) -> ReferenceDecision:
+    result = oracle.evaluate(sample)
+    return ReferenceDecision(
+        choice=result.label,
+        reason=result.reason,
+        confidence=result.confidence,
+        oracle_mode=(result.source or {}).get("mode") or "native_bottled",
+        raw=dict(result.raw or {}),
+        source=dict(result.source or {}),
+        limitations=list(result.limitations or []),
+    )
+
+
 def _reference_shop(sample: DecisionSample) -> ReferenceDecision:
     ctx = sample.context
     if sample.evidence_quality != "complete":
@@ -1014,6 +1070,13 @@ def _choices_match(current: str, reference: str) -> bool:
     return _normalize_name(current) == _normalize_name(reference)
 
 
+def _normalize_reference_mode(value: str) -> str:
+    normalized = str(value or "bottled_style").replace("-", "_").lower()
+    if normalized in {"native_bottled", "bottled_style"}:
+        return normalized
+    raise ValueError(f"Unsupported reference mode: {value}")
+
+
 def _combined_confidence(evidence_quality: str, reference_confidence: str, match: bool) -> str:
     if evidence_quality != "complete":
         return "low" if not match else "low"
@@ -1137,6 +1200,24 @@ def _format_counts(counts: Dict[str, int]) -> str:
     if not counts:
         return "-"
     return ", ".join(f"{key}={counts[key]}" for key in sorted(counts))
+
+
+def _reference_summary(rows: Sequence[ComparisonRow]) -> str:
+    modes = {row.oracle_mode for row in rows}
+    if "native_bottled" in modes:
+        paths = sorted(
+            {
+                str(row.oracle_source.get("path"))
+                for row in rows
+                if row.oracle_source.get("path")
+            }
+        )
+        path_text = f" from `{paths[0]}`" if len(paths) == 1 else ""
+        return (
+            "Reference: native Bottled Ironclad `REQUESTED_STRIKE` oracle"
+            f"{path_text}; unsupported rows are explicit and not treated as high-confidence labels."
+        )
+    return "Reference: Bottled-style Ironclad `REQUESTED_STRIKE` handlers encoded locally for analysis only."
 
 
 def _is_fixture_source(source: str) -> bool:

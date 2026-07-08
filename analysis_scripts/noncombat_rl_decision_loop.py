@@ -25,7 +25,29 @@ SCHEMA_VERSION = "noncombat-rl-decision-v1"
 SUPPORTED_CATEGORIES = ("shop", "event", "route", "card_reward")
 
 
-def export_samples_from_trace(path, tail: int = 2000, since_unix: Optional[float] = None):
+def export_samples_from_trace(
+    path,
+    tail: int = 2000,
+    since_unix: Optional[float] = None,
+    reference_mode: str = "bottled_style",
+    bottled_repo_path=None,
+):
+    return export_samples_from_trace_with_reference(
+        path,
+        tail=tail,
+        since_unix=since_unix,
+        reference_mode=reference_mode,
+        bottled_repo_path=bottled_repo_path,
+    )
+
+
+def export_samples_from_trace_with_reference(
+    path,
+    tail: int = 2000,
+    since_unix: Optional[float] = None,
+    reference_mode: str = "bottled_style",
+    bottled_repo_path=None,
+):
     rows: deque[str] = deque(maxlen=max(1, tail))
     with Path(path).open("r", encoding="utf-8", errors="replace") as handle:
         for line in handle:
@@ -43,7 +65,11 @@ def export_samples_from_trace(path, tail: int = 2000, since_unix: Optional[float
         decision_sample = sample_from_trace_event(event, index)
         if decision_sample is None:
             continue
-        comparison_row = compare_samples([decision_sample])[0]
+        comparison_row = compare_samples(
+            [decision_sample],
+            reference_mode=reference_mode,
+            bottled_repo_path=bottled_repo_path,
+        )[0]
         exported.append(
             build_trainable_sample(
                 decision_sample,
@@ -80,6 +106,10 @@ def build_trainable_sample(decision_sample, comparison_row, trace_event=None):
             "action_id": bottled_id,
             "confidence": comparison_row.confidence,
             "reason": comparison_row.reason,
+            "oracle_mode": getattr(comparison_row, "oracle_mode", "bottled_style"),
+            "source": dict(getattr(comparison_row, "oracle_source", {}) or {}),
+            "raw": dict(getattr(comparison_row, "raw_reference", {}) or {}),
+            "limitations": list(getattr(comparison_row, "limitations", []) or []),
         },
         "evidence_quality": decision_sample.evidence_quality,
         "limitations": list(decision_sample.limitations),
@@ -363,6 +393,18 @@ def evaluate_promotion(
 def render_readiness_report(samples, gate_result):
     category_counts = Counter(sample.get("category") for sample in samples)
     evidence_counts = Counter(sample.get("evidence_quality") for sample in samples)
+    oracle_mode_counts = Counter(
+        sample.get("bottled_label", {}).get("oracle_mode", "bottled_style")
+        for sample in samples
+    )
+    disagreements = _current_vs_bottled_disagreements(samples)
+    disagreement_counts = Counter(sample.get("category") for sample in disagreements)
+    high_confidence_disagreements = [
+        sample
+        for sample in disagreements
+        if sample.get("evidence_quality") == "complete"
+        and sample.get("bottled_label", {}).get("confidence") == "high"
+    ]
     matched = [
         sample
         for sample in samples
@@ -397,6 +439,17 @@ def render_readiness_report(samples, gate_result):
         "## Bottled Agreement",
         "",
         f"- Current/Bottled action-id matches: {bottled_matches}/{len(samples)}",
+        f"- Oracle modes: {_format_counts(oracle_mode_counts)}",
+        "",
+        "## Current-vs-Bottled Disagreements",
+        "",
+        f"- Action-id disagreements: {len(disagreements)}/{len(samples)}",
+        f"- Complete high-confidence disagreements: {len(high_confidence_disagreements)}",
+        f"- By category: {_format_counts(disagreement_counts)}",
+        "",
+        "### Top Disagreement Pairs",
+        "",
+        *_render_disagreement_pairs(disagreements),
         "",
         "## Live Outcomes",
         "",
@@ -424,6 +477,64 @@ def render_readiness_report(samples, gate_result):
     return "\n".join(lines)
 
 
+def _current_vs_bottled_disagreements(samples):
+    disagreements = []
+    for sample in samples:
+        current_id = (
+            sample.get("current_policy_label", {}).get("action_id")
+            or sample.get("selected_action_id")
+        )
+        bottled_id = sample.get("bottled_label", {}).get("action_id")
+        if current_id and bottled_id and current_id != bottled_id:
+            disagreements.append(sample)
+    return disagreements
+
+
+def _render_disagreement_pairs(samples, limit: int = 12):
+    if not samples:
+        return ["No current-vs-bottled action-id disagreement is present."]
+
+    groups = {}
+    for sample in samples:
+        category = str(sample.get("category") or "unknown")
+        current_id = str(
+            sample.get("current_policy_label", {}).get("action_id")
+            or sample.get("selected_action_id")
+            or "unknown"
+        )
+        bottled_id = str(sample.get("bottled_label", {}).get("action_id") or "unknown")
+        key = (category, current_id, bottled_id)
+        group = groups.setdefault(
+            key,
+            {
+                "count": 0,
+                "high": 0,
+                "complete": 0,
+                "examples": [],
+            },
+        )
+        group["count"] += 1
+        if sample.get("bottled_label", {}).get("confidence") == "high":
+            group["high"] += 1
+        if sample.get("evidence_quality") == "complete":
+            group["complete"] += 1
+        if len(group["examples"]) < 3:
+            group["examples"].append(str(sample.get("sample_id") or "unknown"))
+
+    ranked = sorted(
+        groups.items(),
+        key=lambda item: (-item[1]["count"], item[0][0], item[0][1], item[0][2]),
+    )
+    lines = []
+    for (category, current_id, bottled_id), group in ranked[:limit]:
+        lines.append(
+            f"- {category}: {current_id} -> {bottled_id} "
+            f"({group['count']}x, high={group['high']}, complete={group['complete']}, "
+            f"examples={_format_list(group['examples'])})"
+        )
+    return lines
+
+
 def combat_rl_smoke_command(python, game_dir, max_games: int = 1):
     return (
         f'"{python}" scripts\\run_training_batch.py '
@@ -442,6 +553,12 @@ def main(argv=None) -> int:
     parser.add_argument("--since-unix", type=float, default=None)
     parser.add_argument("--runs-dir", type=Path, default=None)
     parser.add_argument("--character", default="IRONCLAD")
+    parser.add_argument(
+        "--reference-mode",
+        choices=["bottled-style", "bottled_style", "native-bottled", "native_bottled"],
+        default="bottled-style",
+    )
+    parser.add_argument("--bottled-repo", type=Path, default=None)
     parser.add_argument("--output", type=Path, default=None)
     parser.add_argument("--json-output", type=Path, default=None)
     args = parser.parse_args(argv)
@@ -450,6 +567,8 @@ def main(argv=None) -> int:
         args.trace,
         tail=args.trace_tail,
         since_unix=args.since_unix,
+        reference_mode=args.reference_mode,
+        bottled_repo_path=args.bottled_repo,
     )
     if args.runs_dir:
         outcomes = load_run_outcomes(args.runs_dir, character=args.character)

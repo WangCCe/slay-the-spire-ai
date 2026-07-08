@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 from analysis_scripts.offline_decision_comparator import (
@@ -293,6 +295,88 @@ def test_event_reference_matches_bottled_golden_shrine_and_mausoleum():
     assert by_id["golden-shrine-no-omamori"].reference_choice == "choose 0: Pray"
     assert by_id["golden-shrine-omamori"].reference_choice == "choose 1: Desecrate"
     assert by_id["mausoleum-omamori"].reference_choice == "choose 0: Open Coffin"
+
+
+def test_compare_samples_native_bottled_mode_includes_oracle_metadata(tmp_path):
+    from analysis_scripts.offline_decision_comparator import compare_samples
+    from tests.test_bottled_policy_oracle import _write_fake_bottled_checkout
+
+    checkout = _write_fake_bottled_checkout(tmp_path / "bottled_ai")
+    sample = DecisionSample(
+        sample_id="native-card",
+        category="card_reward",
+        source="fixture:card_reward",
+        floor=3,
+        act=1,
+        evidence_quality="complete",
+        our_choice={"kind": "skip", "name": "skip"},
+        context={"deck": [], "offered": ["Sentinel"], "can_skip": True},
+    )
+
+    [row] = compare_samples(
+        [sample],
+        reference_mode="native_bottled",
+        bottled_repo_path=checkout,
+    )
+
+    assert row.reference_choice == "Sentinel"
+    assert row.oracle_mode == "native_bottled"
+    assert row.oracle_source["strategy"] == "REQUESTED_STRIKE"
+    assert row.match is False
+
+
+def test_direct_script_native_bottled_mode_writes_report(tmp_path):
+    from tests.test_bottled_policy_oracle import _write_fake_bottled_checkout
+
+    checkout = _write_fake_bottled_checkout(tmp_path / "bottled_ai")
+    fixture_path = tmp_path / "fixture.json"
+    fixture_path.write_text(
+        json.dumps(
+            {
+                "samples": [
+                    {
+                        "id": "native-card",
+                        "category": "card_reward",
+                        "source": "fixture:card_reward",
+                        "floor": 3,
+                        "act": 1,
+                        "evidence_quality": "complete",
+                        "our_choice": {"kind": "skip", "name": "skip"},
+                        "context": {"deck": [], "offered": ["Sentinel"], "can_skip": True},
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    report_path = tmp_path / "report.md"
+    script_path = (
+        Path(__file__).resolve().parents[1]
+        / "analysis_scripts"
+        / "offline_decision_comparator.py"
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(script_path),
+            "--fixture",
+            str(fixture_path),
+            "--reference-mode",
+            "native-bottled",
+            "--bottled-repo",
+            str(checkout),
+            "--output",
+            str(report_path),
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "native Bottled" in report_path.read_text(encoding="utf-8")
 
 
 def test_enriched_trace_rows_become_complete_operating_samples(tmp_path):
