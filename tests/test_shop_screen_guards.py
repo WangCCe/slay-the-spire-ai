@@ -827,6 +827,151 @@ def test_shop_screen_buys_discounted_supported_perfected_strike_after_act2_purge
     assert "Perfected Strike" in action.name
 
 
+def test_shop_screen_buys_deep_discount_perfected_strike_over_carnage_trace():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[
+                _shop_card("Carnage", price=78),
+                _shop_card("Perfected Strike", price=23),
+                _shop_card("Havoc", price=54),
+                _shop_card("Flex", price=45),
+                _shop_card("Feel No Pain", price=77),
+                _shop_card("Finesse", price=94),
+                _shop_card("Secret Weapon", price=162),
+            ],
+            relics=[
+                SimpleNamespace(name="Ornamental Fan", price=238),
+                SimpleNamespace(name="Lizard Tail", price=312),
+                SimpleNamespace(name="Lee's Waffle", price=155),
+            ],
+            potions=[
+                SimpleNamespace(name="Duplication Potion", price=78),
+                SimpleNamespace(name="Duplication Potion", price=77),
+                SimpleNamespace(name="Explosive Potion", price=52),
+            ],
+            purge_available=False,
+            purge_cost=125,
+        ),
+        gold=259,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Twin Strike", price=0),
+            _upgraded_shop_card("Pommel Strike", price=0),
+            _shop_card("Berserk", price=0),
+            _shop_card("Heavy Blade", price=0),
+            _shop_card("Pommel Strike", price=0),
+            _shop_card("Anger", price=0),
+            _shop_card("Offering", price=0),
+            _shop_card("Combust", price=0),
+            _shop_card("Cleave", price=0),
+            _shop_card("True Grit", price=0),
+            _shop_card("Clothesline", price=0),
+            _shop_card("Impervious", price=0),
+            _upgraded_shop_card("Headbutt", price=0),
+            _shop_card("Clothesline", price=0),
+            _upgraded_shop_card("Thunderclap", price=0),
+            _shop_card("Uppercut", price=0),
+            _shop_card("Normality", price=0),
+        ],
+        act=2,
+        floor=28,
+        in_combat=False,
+        current_hp=43,
+        max_hp=80,
+        relics=[
+            "Burning Blood",
+            "Tiny Chest",
+            "Neow's Lament",
+            "Sundial",
+            "Toxic Egg",
+            "Thread and Needle",
+            "The Courier",
+            "Red Skull",
+            "Lizard Tail",
+        ],
+        player=SimpleNamespace(energy=3, powers=[]),
+        are_potions_full=lambda: False,
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, BuyCardAction)
+    assert action.name == "Perfected Strike"
+
+
+def test_shop_screen_skips_low_gold_block_potion_without_priority_purchase_trace():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[
+                _shop_card("Body Slam", price=50),
+                _shop_card("Sword Boomerang", price=25),
+                _shop_card("Armaments", price=46),
+                _shop_card("Limit Break", price=142),
+                _shop_card("Inflame", price=79),
+                _shop_card("Mind Blast", price=82),
+                _shop_card("Transmutation", price=183),
+            ],
+            relics=[
+                SimpleNamespace(name="The Boot", price=143),
+                SimpleNamespace(name="Art of War", price=155),
+                SimpleNamespace(name="Membership Card", price=147),
+            ],
+            potions=[
+                SimpleNamespace(name="Block Potion", price=48),
+                SimpleNamespace(name="Attack Potion", price=48),
+                SimpleNamespace(name="Swift Potion", price=51),
+            ],
+            purge_available=False,
+            purge_cost=100,
+        ),
+        gold=57,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _upgraded_shop_card("Bash", price=0),
+            _shop_card("Heavy Blade", price=0),
+            _shop_card("Headbutt", price=0),
+        ],
+        act=1,
+        floor=5,
+        in_combat=False,
+        current_hp=62,
+        max_hp=80,
+        relics=["Burning Blood", "Orichalcum"],
+        player=SimpleNamespace(energy=3, powers=[]),
+        are_potions_full=lambda: False,
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CancelAction)
+
+
 def test_shop_screen_does_not_buy_second_card_after_card_purchase_updates():
     agent = _agent_for_shop(
         screen_type=ScreenType.SHOP_SCREEN,

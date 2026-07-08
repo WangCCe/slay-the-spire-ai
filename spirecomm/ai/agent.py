@@ -100,7 +100,26 @@ class SimpleAgent:
         "perfectedstrike",
     }
     SHOP_SUPPORTED_PERFECTED_STRIKE_MAX_PRICE = 55
+    SHOP_DEEP_DISCOUNT_PERFECTED_STRIKE_MAX_PRICE = 30
     SHOP_ACT2_DISCOUNTED_PERFECTED_STRIKE_MAX_PRICE = 40
+    SHOP_LOW_GOLD_CUTOFF = 75
+    SHOP_LOW_GOLD_MAX_SPEND_FRACTION = 0.70
+    SHOP_LOW_GOLD_FRONTLOAD_EXEMPT_KEYS = {
+        "anger",
+        "carnage",
+        "cleave",
+        "headbutt",
+        "heavyblade",
+        "hemokinesis",
+        "immolate",
+        "pommelstrike",
+        "reaper",
+        "spotweakness",
+        "thunderclap",
+        "twinstrike",
+        "uppercut",
+        "whirlwind",
+    }
     SHOP_LOW_RELIABILITY_RELIC_KEYS = {
         "prismaticshard",
     }
@@ -388,6 +407,20 @@ class SimpleAgent:
     def _shop_relic_is_pre_purge_priority(self, relic):
         return bool(self._shop_relic_keys(relic) & self.SHOP_PRE_PURGE_RELIC_KEYS)
 
+    def _shop_purchase_preserves_low_gold(self, price, gold):
+        gold = self._safe_int(gold, 0)
+        price = self._safe_int(price, None)
+        if price is None:
+            return False
+        if gold >= self.SHOP_LOW_GOLD_CUTOFF:
+            return True
+        return price <= gold * self.SHOP_LOW_GOLD_MAX_SPEND_FRACTION
+
+    def _shop_card_can_spend_low_gold(self, card, price, gold):
+        if self._shop_purchase_preserves_low_gold(price, gold):
+            return True
+        return bool(self._shop_card_keys(card) & self.SHOP_LOW_GOLD_FRONTLOAD_EXEMPT_KEYS)
+
     def _shop_deck_card_keys(self):
         return [
             self._compact_card_key(self._normalize_card_name(deck_card))
@@ -452,6 +485,11 @@ class SimpleAgent:
                 if not self._shop_card_is_cash_worthy(
                     card,
                     require_strategy_approval=require_strategy_approval,
+                ):
+                    return False
+                if (
+                    not self._shop_card_is_pre_purge_priority(card)
+                    and not self._shop_card_can_spend_low_gold(card, price, gold)
                 ):
                     return False
                 if (
@@ -565,6 +603,12 @@ class SimpleAgent:
             return False
 
         strike_sources = sum(1 for deck_key in deck_keys if "strike" in deck_key)
+        if (
+            price <= self.SHOP_DEEP_DISCOUNT_PERFECTED_STRIKE_MAX_PRICE
+            and strike_sources >= 3
+        ):
+            return True
+
         if (
             act == 1
             and floor <= 11
@@ -1382,6 +1426,19 @@ class SimpleAgent:
                         "[SHOP_SCREEN] Skipping additional card purchases after buying a card in this shop"
                     )
                 elif hasattr(self.priorities, "get_sorted_cards"):
+                    for card in valid_cards:
+                        if not self._shop_card_is_pre_purge_priority(card):
+                            continue
+                        if self._should_buy_card(
+                            card,
+                            gold,
+                            purge_cost,
+                            screen,
+                            preserve_purge_budget=False,
+                            allow_priority_skip=True,
+                        ):
+                            self._mark_shop_purchase(gold, screen, bought_card=True)
+                            return BuyCardAction(card)
                     for card in sorted_cards:
                         if (
                             getattr(self, "_shop_purged_this_shop", False)
@@ -1435,7 +1492,10 @@ class SimpleAgent:
                                     "Block Potion",
                                     "Strawberry",
                                 ]
-                                if potion.name in useful_potions:
+                                if (
+                                    potion.name in useful_potions
+                                    and self._shop_purchase_preserves_low_gold(price, gold)
+                                ):
                                     self._mark_shop_purchase(gold, screen)
                                     return BuyPotionAction(potion)
                         except Exception as e:
