@@ -820,6 +820,20 @@ class SimpleAgent:
                     if any(keyword in normalized_label for keyword in fallback_keywords):
                         choice_index = idx
                         break
+        elif event_id in {"Living Wall", "LivingWall"}:
+            preferred_keywords = ("grow", "upgrade")
+            fallback_keywords = ("change", "transform", "forget", "remove")
+            for idx, label in enumerate(labels_for_selection):
+                normalized_label = label.lower()
+                if any(keyword in normalized_label for keyword in preferred_keywords):
+                    choice_index = idx
+                    break
+            else:
+                for idx, label in enumerate(labels_for_selection):
+                    normalized_label = label.lower()
+                    if any(keyword in normalized_label for keyword in fallback_keywords):
+                        choice_index = idx
+                        break
         elif event_id in {"Mushrooms", "The Mushroom Lair"}:
             safe_keywords = ("leave", "ignore", "refuse", "decline", "move on", "skip")
             for idx, label in enumerate(labels_for_selection):

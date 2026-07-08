@@ -464,6 +464,25 @@ def test_note_for_yourself_leaves_instead_of_taking_starter_card():
     assert action.choice_index == 1
 
 
+def test_living_wall_grows_to_upgrade_a_card():
+    agent = _agent_for_event(
+        "Living Wall",
+        [
+            EventOption("Forget", "Forget"),
+            EventOption("Change", "Change"),
+            EventOption("Grow", "Grow"),
+        ],
+        ["Forget", "Change", "Grow"],
+        floor=6,
+        act=1,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 2
+
+
 def test_cleric_purifies_instead_of_healing_when_hp_margin_is_healthy():
     agent = _agent_for_event(
         "The Cleric",
