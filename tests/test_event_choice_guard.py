@@ -511,7 +511,7 @@ def test_mushrooms_event_takes_parasite_heal_when_low_hp_before_act1_boss():
     assert action.choice_index == 1
 
 
-def test_masked_bandits_pays_instead_of_taking_fight():
+def test_masked_bandits_fights_when_hp_margin_is_healthy():
     agent = _agent_for_event(
         "Masked Bandits",
         [
@@ -519,6 +519,30 @@ def test_masked_bandits_pays_instead_of_taking_fight():
             EventOption("Fight", "Fight"),
         ],
         ["Pay", "Fight"],
+        floor=21,
+        act=2,
+        hp=63,
+        max_hp=85,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_masked_bandits_pays_when_hp_margin_is_low():
+    agent = _agent_for_event(
+        "Masked Bandits",
+        [
+            EventOption("Pay", "Pay"),
+            EventOption("Fight", "Fight"),
+        ],
+        ["Pay", "Fight"],
+        floor=21,
+        act=2,
+        hp=30,
+        max_hp=85,
     )
 
     action = agent.handle_screen()
