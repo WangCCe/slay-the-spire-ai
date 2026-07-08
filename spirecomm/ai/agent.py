@@ -1048,6 +1048,20 @@ class SimpleAgent:
                     if any(keyword in normalized_label for keyword in fallback_keywords):
                         choice_index = idx
                         break
+        elif event_id in {"Back to Basics", "BackToBasics"}:
+            preferred_keywords = ("simplicity",)
+            fallback_keywords = ("elegance",)
+            for idx, label in enumerate(labels_for_selection):
+                normalized_label = label.lower()
+                if any(keyword in normalized_label for keyword in preferred_keywords):
+                    choice_index = idx
+                    break
+            else:
+                for idx, label in enumerate(labels_for_selection):
+                    normalized_label = label.lower()
+                    if any(keyword in normalized_label for keyword in fallback_keywords):
+                        choice_index = idx
+                        break
         elif event_id in {"MindBloom", "Mind Bloom"}:
             raw_current_hp = getattr(self.game, "current_hp", None)
             raw_max_hp = getattr(self.game, "max_hp", None)

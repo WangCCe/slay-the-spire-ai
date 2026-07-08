@@ -356,6 +356,27 @@ def test_cursed_tome_reads_when_hp_margin_stays_safe():
     assert action.choice_index == 0
 
 
+def test_back_to_basics_takes_simplicity_instead_of_removal_grid():
+    agent = _agent_for_event(
+        "Back to Basics",
+        [
+            EventOption("Elegance", "Elegance"),
+            EventOption("Simplicity", "Simplicity"),
+        ],
+        ["Elegance", "Simplicity"],
+        floor=19,
+        act=2,
+        hp=55,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+    assert getattr(agent, "_next_grid_selection_mode", None) is None
+
+
 def test_mind_bloom_avoids_boss_fight_when_low_hp():
     agent = _agent_for_event(
         "MindBloom",

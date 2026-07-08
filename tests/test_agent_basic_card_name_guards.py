@@ -277,7 +277,7 @@ def test_grid_neutral_selection_copies_good_card_instead_of_removing_strike():
     assert action.cards == [feed]
 
 
-def test_back_to_basics_elegance_marks_next_grid_as_removal():
+def test_back_to_basics_simplicity_does_not_mark_next_grid_as_removal():
     agent = _agent(
         screen_type=ScreenType.EVENT,
         choice_available=True,
@@ -296,8 +296,8 @@ def test_back_to_basics_elegance_marks_next_grid_as_removal():
     action = agent.handle_screen()
 
     assert isinstance(action, ChooseAction)
-    assert action.choice_index == 0
-    assert agent._next_grid_selection_mode == "remove"
+    assert action.choice_index == 1
+    assert agent._next_grid_selection_mode is None
 
 
 def test_back_to_basics_elegance_grid_removes_starter_instead_of_good_card():
