@@ -247,6 +247,36 @@ def test_attach_live_outcomes_excludes_missing_and_ambiguous_matches():
     assert joined["outcome"]["included_in_gate"] is False
 
 
+def test_attach_live_outcomes_rejects_floor_inconsistent_match():
+    from analysis_scripts.noncombat_rl_decision_loop import attach_live_outcomes
+
+    samples = [
+        {
+            "sample_id": "trace:floor-too-high",
+            "unix_time": 1780000100.0,
+            "floor": 28,
+            "outcome": {"join_status": "missing"},
+        }
+    ]
+    outcomes = [
+        {
+            "run_file": "1780000000.run",
+            "start_unix": 1780000000,
+            "end_unix": 1780000200,
+            "victory": False,
+            "floor_reached": 21,
+            "killed_by": "Centurion and Healer",
+            "playtime": 200,
+            "ai_marked": True,
+        }
+    ]
+
+    [joined] = attach_live_outcomes(samples, outcomes)
+
+    assert joined["outcome"]["join_status"] == "floor_inconsistent"
+    assert joined["outcome"]["included_in_gate"] is False
+
+
 def test_load_run_outcomes_reads_ai_marked_run_windows(tmp_path):
     from analysis_scripts.noncombat_rl_decision_loop import load_run_outcomes
 

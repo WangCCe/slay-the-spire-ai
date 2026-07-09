@@ -222,7 +222,7 @@ def attach_live_outcomes(samples, outcomes, tolerance_seconds: int = 30):
     for sample in samples:
         sample_copy = dict(sample)
         sample_time = _to_float(sample_copy.get("unix_time"))
-        matches = [
+        time_matches = [
             outcome
             for outcome in outcomes
             if outcome.get("ai_marked", True)
@@ -232,6 +232,11 @@ def attach_live_outcomes(samples, outcomes, tolerance_seconds: int = 30):
             and outcome["start_unix"] - tolerance_seconds
             <= sample_time
             <= outcome["end_unix"] + tolerance_seconds
+        ]
+        matches = [
+            outcome
+            for outcome in time_matches
+            if _sample_floor_is_compatible(sample_copy, outcome)
         ]
         if len(matches) == 1:
             outcome = dict(matches[0])
@@ -249,6 +254,11 @@ def attach_live_outcomes(samples, outcomes, tolerance_seconds: int = 30):
                 "join_status": "ambiguous",
                 "included_in_gate": False,
             }
+        elif time_matches:
+            sample_copy["outcome"] = {
+                "join_status": "floor_inconsistent",
+                "included_in_gate": False,
+            }
         else:
             sample_copy["outcome"] = {
                 "join_status": "missing",
@@ -256,6 +266,14 @@ def attach_live_outcomes(samples, outcomes, tolerance_seconds: int = 30):
             }
         joined.append(sample_copy)
     return joined
+
+
+def _sample_floor_is_compatible(sample, outcome) -> bool:
+    sample_floor = _to_int(sample.get("floor"), default=None)
+    outcome_floor = _to_int(outcome.get("floor_reached"), default=None)
+    if sample_floor is None or outcome_floor is None:
+        return True
+    return sample_floor <= outcome_floor
 
 
 def load_run_outcomes(
