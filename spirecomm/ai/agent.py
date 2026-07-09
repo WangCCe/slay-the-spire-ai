@@ -721,8 +721,6 @@ class SimpleAgent:
             "Ghosts",
             "Liars Game",
             "Golden Idol",
-            "Golden Shrine",
-            "GoldenShrine",
             "Drug Dealer",
             "The Library",
             "NoteForYourself",
@@ -802,6 +800,46 @@ class SimpleAgent:
             else:
                 for idx, label in enumerate(labels_for_selection):
                     if "leave" in label.lower():
+                        choice_index = idx
+                        break
+        elif event_id in {"Golden Shrine", "GoldenShrine"}:
+            relics = getattr(self.game, "relics", []) or []
+
+            def _has_relic(keyword):
+                return any(
+                    keyword
+                    in str(
+                        getattr(relic, "name", None)
+                        or getattr(relic, "relic_id", None)
+                        or getattr(relic, "id", None)
+                        or relic
+                    ).lower()
+                    for relic in relics
+                )
+
+            has_ectoplasm = _has_relic("ectoplasm")
+            has_omamori = _has_relic("omamori")
+            preferred_keywords = (
+                ("leave",)
+                if has_ectoplasm
+                else ("desecrate",)
+                if has_omamori
+                else ("pray",)
+            )
+            fallback_keywords = (
+                ("leave",)
+                if has_ectoplasm
+                else ("pray", "leave")
+            )
+            for idx, label in enumerate(labels_for_selection):
+                normalized_label = label.lower()
+                if any(keyword in normalized_label for keyword in preferred_keywords):
+                    choice_index = idx
+                    break
+            else:
+                for idx, label in enumerate(labels_for_selection):
+                    normalized_label = label.lower()
+                    if any(keyword in normalized_label for keyword in fallback_keywords):
                         choice_index = idx
                         break
         elif event_id in {"Big Fish", "BigFish"}:

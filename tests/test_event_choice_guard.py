@@ -142,7 +142,7 @@ def test_golden_idol_takes_max_hp_penalty_when_hp_is_low():
     assert action.choice_index == 2
 
 
-def test_golden_shrine_avoids_result_page_that_stops_callbacks():
+def test_golden_shrine_takes_safe_gold_then_leaves_result_page():
     agent = _agent_for_event(
         "Golden Shrine",
         [
@@ -151,6 +151,53 @@ def test_golden_shrine_avoids_result_page_that_stops_callbacks():
             EventOption("Leave", "Leave"),
         ],
         ["Pray", "Desecrate", "Leave"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+    result_agent = _agent_for_event(
+        "Golden Shrine",
+        [EventOption("Leave", "Leave")],
+        ["Leave"],
+    )
+
+    result_action = result_agent.handle_screen()
+
+    assert isinstance(result_action, ChooseAction)
+    assert result_action.choice_index == 0
+
+
+def test_golden_shrine_uses_omamori_for_desecrate_gold():
+    agent = _agent_for_event(
+        "Golden Shrine",
+        [
+            EventOption("Pray", "Pray"),
+            EventOption("Desecrate", "Desecrate"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Pray", "Desecrate", "Leave"],
+        relics=["Omamori"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_golden_shrine_leaves_when_ectoplasm_blocks_gold():
+    agent = _agent_for_event(
+        "Golden Shrine",
+        [
+            EventOption("Pray", "Pray"),
+            EventOption("Desecrate", "Desecrate"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Pray", "Desecrate", "Leave"],
+        relics=["Ectoplasm", "Omamori"],
     )
 
     action = agent.handle_screen()
