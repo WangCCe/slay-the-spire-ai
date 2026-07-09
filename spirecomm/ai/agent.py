@@ -1277,12 +1277,12 @@ class SimpleAgent:
             hp_known = raw_current_hp is not None and raw_max_hp is not None
             should_avoid_boss_fight = hp_known and current_hp / max_hp < 0.60
             preferred_keywords = (
-                ("awake",)
+                ("rich",)
                 if should_avoid_boss_fight
                 else ("war", "fight")
             )
             fallback_keywords = (
-                ("rich", "war", "fight")
+                ("awake", "war", "fight")
                 if should_avoid_boss_fight
                 else ("awake", "rich")
             )

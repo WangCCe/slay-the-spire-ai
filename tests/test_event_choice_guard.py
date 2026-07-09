@@ -602,7 +602,7 @@ def test_back_to_basics_takes_simplicity_instead_of_removal_grid():
     assert getattr(agent, "_next_grid_selection_mode", None) is None
 
 
-def test_mind_bloom_avoids_boss_fight_when_low_hp():
+def test_mind_bloom_takes_gold_instead_of_no_heal_relic_when_low_hp():
     agent = _agent_for_event(
         "MindBloom",
         [
@@ -620,7 +620,30 @@ def test_mind_bloom_avoids_boss_fight_when_low_hp():
     action = agent.handle_screen()
 
     assert isinstance(action, ChooseAction)
-    assert action.choice_index == 1
+    assert action.choice_index == 2
+
+
+def test_mind_bloom_avoids_mark_of_bloom_after_council_of_ghosts_hp_loss():
+    agent = _agent_for_event(
+        "MindBloom",
+        [
+            EventOption("I am War", "I am War"),
+            EventOption("I am Awake", "I am Awake"),
+            EventOption("I am Rich", "I am Rich"),
+        ],
+        ["I am War", "I am Awake", "I am Rich"],
+        floor=38,
+        act=3,
+        hp=21,
+        max_hp=42,
+        relics=["Smiling Mask", "Blood Vial"],
+        deck=["Corruption+", "Reaper+", "Apparition+", "Apparition+", "Apparition+"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 2
 
 
 def test_mind_bloom_takes_boss_fight_when_hp_margin_is_healthy():
