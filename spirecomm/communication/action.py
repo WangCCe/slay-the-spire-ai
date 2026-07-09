@@ -610,6 +610,7 @@ class OptionalCardSelectConfirmAction(Action):
             and (
                 (
                     screen_type == ScreenType.GRID
+                    and "confirm" in available
                     and any(command in available for command in ["choose", "key", "click"])
                 )
                 or (
@@ -726,6 +727,9 @@ class ChooseMapNodeAction(ChooseAction):
             raise Exception("Node {} is not available to choose.".format(self.node))
         self.choice_index = next_nodes.index(self.node)
         super().execute(coordinator)
+        mark_map_choice = getattr(coordinator, "mark_map_choice_in_flight", None)
+        if callable(mark_map_choice):
+            mark_map_choice()
 
 
 class ChooseMapBossAction(ChooseAction):
@@ -741,6 +745,9 @@ class ChooseMapBossAction(ChooseAction):
             raise Exception("The boss is not available to choose.")
         self.name = "boss"
         super().execute(coordinator)
+        mark_map_choice = getattr(coordinator, "mark_map_choice_in_flight", None)
+        if callable(mark_map_choice):
+            mark_map_choice()
 
 
 class StartGameAction(Action):

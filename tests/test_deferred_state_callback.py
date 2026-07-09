@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 from spirecomm.communication.action import (
     ChooseAction,
+    ChooseMapNodeAction,
     OptionalCardSelectConfirmAction,
     PlayCardAction,
     PotionAction,
@@ -228,6 +229,37 @@ def test_event_choose_can_execute_when_choice_command_is_available_but_ready_fal
 
     assert coordinator.output_queue.get_nowait() == "choose 0"
     assert len(coordinator.action_queue) == 0
+
+
+def test_duplicate_map_frame_after_map_choice_does_not_call_route_callback_again():
+    coordinator = _coordinator_without_threads()
+    node = SimpleNamespace(x=3, y=1, symbol="?")
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.MAP,
+        available_commands=["choose", "key", "click", "wait", "state"],
+        screen=SimpleNamespace(
+            current_node=SimpleNamespace(x=0, y=0, symbol="M"),
+            next_nodes=[node],
+            boss_available=False,
+        ),
+    )
+    calls = []
+
+    def callback(game):
+        calls.append(game.screen_type)
+        return ChooseMapNodeAction(node)
+
+    coordinator.state_change_callback = callback
+    coordinator._queue_state_change_callback_action()
+    coordinator.execute_next_action_if_ready()
+
+    assert coordinator.output_queue.get_nowait() == "choose 0"
+
+    coordinator._queue_state_change_callback_action()
+
+    assert calls == [ScreenType.MAP]
+    assert len(coordinator.action_queue) == 1
+    assert isinstance(coordinator.action_queue[0], WaitAction)
 
 
 def test_stale_none_combat_frame_after_play_waits_instead_of_calling_agent():

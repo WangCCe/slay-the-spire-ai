@@ -129,6 +129,7 @@ class Coordinator:
         self._combat_room_transition_settle_max_waits = 30
         self._last_command_error = None
         self.pending_seed = None
+        self._map_choice_in_flight_fingerprint = None
 
     def _maybe_queue_stability_wait(self):
         screen_type = getattr(self.last_game_state, "screen_type", None)
@@ -411,6 +412,17 @@ class Coordinator:
     def _queue_state_change_callback_action(self, deferred=False):
         import logging
 
+        if self._should_suppress_in_flight_map_choice_callback():
+            logging.info(
+                "[MAP_CHOICE_SETTLE] Suppressing duplicate map callback while "
+                "a map choice is in flight. screen=%s",
+                getattr(self.last_game_state, "screen_type", "Unknown")
+                if self.last_game_state
+                else "None",
+            )
+            self.add_action_to_queue(WaitAction(timeout=1))
+            return
+
         logging.info(
             "[CALLBACK] in_game=True, queue empty, calling state_change_callback%s. Screen: %s",
             " (deferred)" if deferred else "",
@@ -425,6 +437,51 @@ class Coordinator:
                 logging.info("[CALLBACK] Got action: %s", type(new_action).__name__)
         else:
             logging.warning("state_change_callback returned None - ignoring")
+
+    @staticmethod
+    def _map_node_fingerprint(node):
+        if node is None:
+            return None
+        return (
+            getattr(node, "x", None),
+            getattr(node, "y", None),
+            getattr(node, "symbol", None),
+        )
+
+    def _current_map_choice_fingerprint(self):
+        game = getattr(self, "last_game_state", None)
+        if getattr(game, "screen_type", None) != ScreenType.MAP:
+            return None
+
+        screen = getattr(game, "screen", None)
+        next_nodes = tuple(
+            self._map_node_fingerprint(node)
+            for node in (getattr(screen, "next_nodes", None) or [])
+        )
+        return (
+            self._map_node_fingerprint(getattr(screen, "current_node", None)),
+            next_nodes,
+            bool(getattr(screen, "boss_available", False)),
+        )
+
+    def mark_map_choice_in_flight(self):
+        fingerprint = self._current_map_choice_fingerprint()
+        if fingerprint is not None:
+            self._map_choice_in_flight_fingerprint = fingerprint
+
+    def _should_suppress_in_flight_map_choice_callback(self):
+        in_flight = getattr(self, "_map_choice_in_flight_fingerprint", None)
+        if in_flight is None:
+            return False
+
+        fingerprint = self._current_map_choice_fingerprint()
+        if fingerprint is None:
+            self._map_choice_in_flight_fingerprint = None
+            return False
+        if fingerprint != in_flight:
+            self._map_choice_in_flight_fingerprint = None
+            return False
+        return True
 
     def _run_deferred_state_callback_if_idle(self):
         if not getattr(self, "_deferred_state_callback_pending", False):

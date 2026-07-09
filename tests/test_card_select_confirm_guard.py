@@ -26,7 +26,7 @@ class FakeCoordinator:
             self.game_is_ready = False
 
 
-def test_card_select_confirms_grid_selection_even_without_confirm_state_update():
+def test_card_select_does_not_confirm_grid_selection_before_confirm_is_available():
     card = SimpleNamespace(name="Defend_R")
     coordinator = FakeCoordinator(
         SimpleNamespace(
@@ -47,7 +47,7 @@ def test_card_select_confirms_grid_selection_even_without_confirm_state_update()
     while coordinator.action_queue:
         coordinator.action_queue.popleft().execute(coordinator)
 
-    assert coordinator.sent_messages == ["choose 0", "confirm"]
+    assert coordinator.sent_messages == ["choose 0"]
 
 
 def test_hand_select_card_select_waits_between_keys_and_confirm():
