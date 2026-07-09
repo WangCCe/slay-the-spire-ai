@@ -678,6 +678,46 @@ def test_masked_bandits_pays_when_hp_margin_is_low():
     assert action.choice_index == 0
 
 
+def test_mysterious_sphere_leaves_when_hp_is_below_fight_threshold():
+    agent = _agent_for_event(
+        "Mysterious Sphere",
+        [
+            EventOption("Open Sphere", "Open Sphere"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Open Sphere", "Leave"],
+        floor=47,
+        act=3,
+        hp=32,
+        max_hp=50,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_mysterious_sphere_fights_when_hp_is_healthy():
+    agent = _agent_for_event(
+        "Mysterious Sphere",
+        [
+            EventOption("Open Sphere", "Open Sphere"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Open Sphere", "Leave"],
+        floor=47,
+        act=3,
+        hp=70,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+
 def test_nloth_offers_non_core_relic_instead_of_burning_blood():
     agent = _agent_for_event(
         "N'loth",
