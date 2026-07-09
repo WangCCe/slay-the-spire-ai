@@ -1014,6 +1014,47 @@ class SimpleAgent:
                     if any(keyword in normalized_label for keyword in fallback_keywords):
                         choice_index = idx
                         break
+        elif event_id in {"World of Goop", "WorldOfGoop"}:
+            raw_current_hp = getattr(self.game, "current_hp", None)
+            raw_max_hp = getattr(self.game, "max_hp", None)
+            current_hp = self._safe_float(raw_current_hp, 0.0)
+            max_hp = max(self._safe_float(raw_max_hp, 0.0), 1.0)
+            hp_known = raw_current_hp is not None and raw_max_hp is not None
+            relics = getattr(self.game, "relics", []) or []
+            has_ectoplasm = any(
+                "ectoplasm"
+                in str(
+                    getattr(relic, "name", None)
+                    or getattr(relic, "relic_id", None)
+                    or getattr(relic, "id", None)
+                    or relic
+                ).lower()
+                for relic in relics
+            )
+            should_take_gold = (
+                hp_known and current_hp / max_hp >= 0.70 and not has_ectoplasm
+            )
+            preferred_keywords = (
+                ("gather", "gold")
+                if should_take_gold
+                else ("leave", "ignore", "decline", "skip")
+            )
+            fallback_keywords = (
+                ("leave", "ignore", "decline", "skip")
+                if should_take_gold
+                else ("gather", "gold")
+            )
+            for idx, label in enumerate(labels_for_selection):
+                normalized_label = label.lower()
+                if any(keyword in normalized_label for keyword in preferred_keywords):
+                    choice_index = idx
+                    break
+            else:
+                for idx, label in enumerate(labels_for_selection):
+                    normalized_label = label.lower()
+                    if any(keyword in normalized_label for keyword in fallback_keywords):
+                        choice_index = idx
+                        break
         elif event_id in {"Cursed Tome", "CursedTome"}:
             raw_current_hp = getattr(self.game, "current_hp", None)
             raw_max_hp = getattr(self.game, "max_hp", None)

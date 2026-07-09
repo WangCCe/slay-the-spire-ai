@@ -316,6 +316,67 @@ def test_shining_light_enters_when_hp_margin_stays_safe():
     assert action.choice_index == 0
 
 
+def test_world_of_goop_leaves_when_hp_is_below_requested_strike_threshold():
+    agent = _agent_for_event(
+        "World of Goop",
+        [
+            EventOption("Gather Gold", "Gather Gold"),
+            EventOption("Leave It", "Leave It"),
+        ],
+        ["Gather Gold", "Leave It"],
+        floor=8,
+        act=1,
+        hp=53,
+        max_hp=85,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_world_of_goop_takes_gold_when_hp_matches_requested_strike_threshold():
+    agent = _agent_for_event(
+        "World of Goop",
+        [
+            EventOption("Gather Gold", "Gather Gold"),
+            EventOption("Leave It", "Leave It"),
+        ],
+        ["Gather Gold", "Leave It"],
+        floor=3,
+        act=1,
+        hp=56,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+
+def test_world_of_goop_leaves_when_ectoplasm_blocks_gold_value():
+    agent = _agent_for_event(
+        "World of Goop",
+        [
+            EventOption("Gather Gold", "Gather Gold"),
+            EventOption("Leave It", "Leave It"),
+        ],
+        ["Gather Gold", "Leave It"],
+        floor=3,
+        act=1,
+        hp=80,
+        max_hp=80,
+        relics=["Ectoplasm"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
 def test_cursed_tome_leaves_when_reading_breaks_act2_hp_margin():
     agent = _agent_for_event(
         "Cursed Tome",
