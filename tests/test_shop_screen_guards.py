@@ -1328,6 +1328,75 @@ def test_shop_screen_buy_card_accepts_string_gold_without_sorted_priority():
     assert action.name == "Offering"
 
 
+def test_shop_screen_buys_offering_over_blood_vial_trace():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[
+                _shop_card("Feed", price=72),
+                _shop_card("Pummel", price=71),
+                _shop_card("Offering", price=136),
+                _shop_card("Warcry", price=50),
+                _shop_card("Evolve", price=76),
+                _shop_card("Impatience", price=97),
+                _shop_card("Panache", price=163),
+            ],
+            relics=[
+                SimpleNamespace(name="Toxic Egg", price=259),
+                SimpleNamespace(name="Blood Vial", price=152),
+                SimpleNamespace(name="Frozen Eye", price=151),
+            ],
+            potions=[
+                SimpleNamespace(name="Fear Potion", price=51),
+                SimpleNamespace(name="Heart of Iron", price=101),
+                SimpleNamespace(name="Explosive Potion", price=51),
+            ],
+            purge_available=False,
+            purge_cost=125,
+        ),
+        gold=236,
+        deck=[
+            _upgraded_shop_card("Defend", price=0),
+            _upgraded_shop_card("Defend", price=0),
+            _upgraded_shop_card("Defend", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Rage", price=0),
+            _shop_card("Combust", price=0),
+            _shop_card("Thunderclap", price=0),
+            _upgraded_shop_card("Pommel Strike", price=0),
+            _upgraded_shop_card("Anger", price=0),
+            _shop_card("True Grit", price=0),
+            _shop_card("Anger", price=0),
+            _upgraded_shop_card("Shrug It Off", price=0),
+            _upgraded_shop_card("Impervious", price=0),
+            _shop_card("Shrug It Off", price=0),
+            _shop_card("True Grit", price=0),
+            _shop_card("Immolate", price=0),
+            _upgraded_shop_card("Armaments", price=0),
+            _shop_card("Shrug It Off", price=0),
+            _shop_card("Pommel Strike", price=0),
+        ],
+        act=2,
+        floor=29,
+        in_combat=False,
+        current_hp=17,
+        max_hp=80,
+        relics=[],
+        player=SimpleNamespace(energy=3, powers=[]),
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+    agent._shop_purged_this_shop = True
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, BuyCardAction)
+    assert action.name == "Offering"
+
+
 def test_shop_screen_buy_potion_accepts_string_gold_and_price():
     agent = _agent_for_shop(
         screen_type=ScreenType.SHOP_SCREEN,

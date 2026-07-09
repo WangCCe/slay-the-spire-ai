@@ -533,6 +533,9 @@ class SimpleAgent:
 
         card_keys = self._shop_card_keys(card)
         deck_keys = self._shop_deck_card_keys()
+        if "offering" in card_keys and getattr(self, "_shop_purged_this_shop", False):
+            logging.info("[SHOP_SCREEN] Buying post-purge Offering over lower-impact shop purchases")
+            return True
         if "bloodforblood" in card_keys and not any(
             deck_key in self.SHOP_BLOOD_FOR_BLOOD_SUPPORT_KEYS
             for deck_key in deck_keys
