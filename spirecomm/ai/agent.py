@@ -1089,6 +1089,45 @@ class SimpleAgent:
                     if any(keyword in normalized_label for keyword in fallback_keywords):
                         choice_index = idx
                         break
+        elif event_id in {"Ghosts", "Council of Ghosts", "CouncilOfGhosts"}:
+            relics = getattr(self.game, "relics", []) or []
+            deck = list(getattr(self.game, "deck", []) or [])
+            has_snecko_eye = any(
+                self._compact_card_key(
+                    getattr(relic, "name", None)
+                    or getattr(relic, "relic_id", None)
+                    or getattr(relic, "id", None)
+                    or relic
+                )
+                == "sneckoeye"
+                for relic in relics
+            )
+            has_bite = any(
+                self._compact_card_key(self._normalize_card_name(card)) == "bite"
+                for card in deck
+            )
+            should_accept = not (has_snecko_eye or has_bite)
+            preferred_keywords = (
+                ("accept", "apparition")
+                if should_accept
+                else ("refuse", "leave", "decline")
+            )
+            fallback_keywords = (
+                ("refuse", "leave", "decline")
+                if should_accept
+                else ("accept", "apparition")
+            )
+            for idx, label in enumerate(labels_for_selection):
+                normalized_label = label.lower()
+                if any(keyword in normalized_label for keyword in preferred_keywords):
+                    choice_index = idx
+                    break
+            else:
+                for idx, label in enumerate(labels_for_selection):
+                    normalized_label = label.lower()
+                    if any(keyword in normalized_label for keyword in fallback_keywords):
+                        choice_index = idx
+                        break
         elif event_id in {"Masked Bandits", "MaskedBandits"}:
             raw_current_hp = getattr(self.game, "current_hp", None)
             raw_max_hp = getattr(self.game, "max_hp", None)

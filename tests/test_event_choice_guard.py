@@ -14,6 +14,7 @@ def _agent_for_event(
     hp=80,
     max_hp=80,
     relics=None,
+    deck=None,
 ):
     agent = SimpleAgent.__new__(SimpleAgent)
     agent.game = SimpleNamespace(
@@ -26,6 +27,7 @@ def _agent_for_event(
         current_hp=hp,
         max_hp=max_hp,
         relics=relics or [],
+        deck=deck or [],
         screen=SimpleNamespace(
             event_id=event_id,
             event_name=event_id,
@@ -415,6 +417,70 @@ def test_cursed_tome_reads_when_hp_margin_stays_safe():
 
     assert isinstance(action, ChooseAction)
     assert action.choice_index == 0
+
+
+def test_council_of_ghosts_accepts_apparitions_without_bad_synergy():
+    agent = _agent_for_event(
+        "Ghosts",
+        [
+            EventOption("Accept", "Accept"),
+            EventOption("Refuse", "Refuse"),
+        ],
+        ["Accept", "Refuse"],
+        floor=22,
+        act=2,
+        hp=55,
+        max_hp=80,
+        deck=["Bash+", "Sentinel+", "Carnage", "Shockwave"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+
+def test_council_of_ghosts_refuses_with_snecko_eye():
+    agent = _agent_for_event(
+        "Ghosts",
+        [
+            EventOption("Accept", "Accept"),
+            EventOption("Refuse", "Refuse"),
+        ],
+        ["Accept", "Refuse"],
+        floor=22,
+        act=2,
+        hp=55,
+        max_hp=80,
+        relics=["Snecko Eye"],
+        deck=["Bash+", "Carnage", "Shockwave"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_council_of_ghosts_refuses_with_bites():
+    agent = _agent_for_event(
+        "Ghosts",
+        [
+            EventOption("Accept", "Accept"),
+            EventOption("Refuse", "Refuse"),
+        ],
+        ["Accept", "Refuse"],
+        floor=22,
+        act=2,
+        hp=55,
+        max_hp=80,
+        deck=["Bash+", "Bite", "Carnage", "Shockwave"],
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
 
 
 def test_back_to_basics_takes_simplicity_instead_of_removal_grid():
