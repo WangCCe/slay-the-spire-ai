@@ -3832,6 +3832,55 @@ def test_guardian_takeover_prefers_remaining_block_over_attack_when_low_hp_press
     assert agent._fallback_turn_key == (16, 7)
 
 
+def test_guardian_takeover_ends_when_fallback_attack_only_reduces_sharp_hide_margin():
+    anger = SimpleNamespace(
+        name="Anger",
+        card_id="Anger",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=0,
+        has_target=True,
+    )
+    guardian = _monster(
+        hp=72,
+        damage=8,
+        index=0,
+        name="The Guardian",
+        monster_id="TheGuardian",
+    )
+    guardian.intent = Intent.ATTACK_BUFF
+    guardian.move_hits = 2
+    guardian.powers = [SimpleNamespace(power_id="SharpHide", amount=3)]
+    game = _game(
+        hand=[anger, anger, anger],
+        monsters=[guardian],
+        current_hp=12,
+        max_hp=80,
+        room_type="MonsterRoomBoss",
+        floor=16,
+        act=1,
+        turn=8,
+        player=SimpleNamespace(energy=1, block=10),
+    )
+
+    agent = _agent()
+    agent._fallback_turn_key = (16, 8)
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0, target_index=0)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, EndTurnAction)
+    assert agent._fallback_turn_key == (16, 8)
+
+
 def test_guardian_pressure_guard_counts_havoc_feel_no_pain_block():
     strike = SimpleNamespace(
         name="Strike",

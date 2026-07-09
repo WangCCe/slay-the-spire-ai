@@ -1315,6 +1315,22 @@ class CombatRLAgent:
                     act1_boss_pressure_replacement,
                     game,
                 )
+            guardian_sharp_hide_replacement = self._get_guardian_sharp_hide_action_replacement(
+                fallback_action,
+                game,
+            )
+            if guardian_sharp_hide_replacement is not None:
+                logger.info(
+                    "[GUARDIAN_SHARP_HIDE_GUARD] Replacing takeover action with %s",
+                    self._describe_combat_action(
+                        guardian_sharp_hide_replacement,
+                        game,
+                    ),
+                )
+                return self._with_combat_action_context(
+                    guardian_sharp_hide_replacement,
+                    game,
+                )
             guardian_pressure_replacement = self._get_guardian_pressure_action_replacement(
                 fallback_action,
                 game,
