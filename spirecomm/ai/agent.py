@@ -517,6 +517,7 @@ class SimpleAgent:
             return True
 
         low_reliability_cards = {
+            "Bandage Up",
             "Havoc",
             "Deep Breath",
             "Impatience",

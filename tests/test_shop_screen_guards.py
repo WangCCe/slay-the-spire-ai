@@ -500,6 +500,101 @@ def test_shop_screen_buys_act1_frontload_after_purge_before_block_potion():
     assert action.name in {"Carnage", "Twin Strike"}
 
 
+def test_shop_screen_skips_paid_bandage_up_when_no_priority_purchase_is_available():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[_shop_card("Bandage Up", price=85)],
+            relics=[],
+            potions=[],
+            purge_available=False,
+            purge_cost=100,
+        ),
+        gold=98,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Reckless Charge", price=0),
+            _shop_card("Shrug It Off+", price=0),
+            _shop_card("True Grit", price=0),
+            _shop_card("Clothesline", price=0),
+        ],
+        act=1,
+        floor=12,
+        in_combat=False,
+        current_hp=57,
+        max_hp=85,
+        relics=[],
+        player=SimpleNamespace(energy=3, powers=[]),
+        are_potions_full=lambda: False,
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+
+    action = agent.handle_screen()
+
+    assert not isinstance(action, BuyCardAction)
+    assert isinstance(action, (CancelAction, LeaveAction))
+
+
+def test_shop_screen_buys_supported_perfected_strike_over_bandage_up():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[
+                _shop_card("Bandage Up", price=85),
+                _shop_card("Perfected Strike", price=51),
+            ],
+            relics=[],
+            potions=[],
+            purge_available=True,
+            purge_cost=100,
+        ),
+        gold=151,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Cleave", price=0),
+            _shop_card("Headbutt+", price=0),
+            _shop_card("Anger+", price=0),
+        ],
+        act=1,
+        floor=11,
+        in_combat=False,
+        current_hp=56,
+        max_hp=80,
+        relics=[],
+        player=SimpleNamespace(energy=3, powers=[]),
+        are_potions_full=lambda: False,
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, BuyCardAction)
+    assert action.name == "Perfected Strike"
+
+
 def test_shop_screen_skips_paid_blood_for_blood_without_self_damage_support():
     agent = _agent_for_shop(
         screen_type=ScreenType.SHOP_SCREEN,
