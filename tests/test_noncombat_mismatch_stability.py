@@ -9,8 +9,9 @@ def _sample(
     confidence="high",
     evidence_quality="complete",
     sample_id=None,
+    matched_outcome=True,
 ):
-    return {
+    sample = {
         "sample_id": sample_id or f"{category}:{selected}:{bottled}",
         "category": category,
         "evidence_quality": evidence_quality,
@@ -22,6 +23,12 @@ def _sample(
             "confidence": confidence,
         },
     }
+    if matched_outcome is not None:
+        sample["outcome"] = {
+            "included_in_gate": bool(matched_outcome),
+            "join_status": "matched" if matched_outcome else "missing",
+        }
+    return sample
 
 
 def test_stability_summary_requires_high_confidence_complete_mismatch_in_both_batches():
@@ -61,9 +68,52 @@ def test_stability_summary_requires_high_confidence_complete_mismatch_in_both_ba
             "current_action_id": "shop:leave",
             "bottled_action_id": "shop:buy_card:offering",
             "batch_counts": {"baseline": 1, "fresh": 2},
+            "matched_outcome_counts": {"baseline": 1, "fresh": 2},
             "total_count": 3,
             "policy_candidate": True,
             "example_sample_ids": ["old-shop", "new-shop-1", "new-shop-2"],
+        }
+    ]
+
+
+def test_policy_candidate_requires_matched_outcome_in_each_batch():
+    from analysis_scripts.noncombat_mismatch_stability import summarize_stability
+
+    baseline = [
+        _sample(
+            "card_reward",
+            "card_reward:skip",
+            "card_reward:take:twin_strike",
+            sample_id="old-missing",
+            matched_outcome=False,
+        )
+    ]
+    fresh = [
+        _sample(
+            "card_reward",
+            "card_reward:skip",
+            "card_reward:take:twin_strike",
+            sample_id="new-missing",
+            matched_outcome=None,
+        )
+    ]
+
+    summary = summarize_stability(
+        [("baseline", baseline), ("fresh", fresh)],
+        policy_categories={"shop", "card_reward", "event"},
+    )
+
+    assert summary["policy_candidate_count"] == 0
+    assert summary["stable_mismatches"] == [
+        {
+            "category": "card_reward",
+            "current_action_id": "card_reward:skip",
+            "bottled_action_id": "card_reward:take:twin_strike",
+            "batch_counts": {"baseline": 1, "fresh": 1},
+            "matched_outcome_counts": {"baseline": 0, "fresh": 0},
+            "total_count": 2,
+            "policy_candidate": False,
+            "example_sample_ids": ["old-missing", "new-missing"],
         }
     ]
 

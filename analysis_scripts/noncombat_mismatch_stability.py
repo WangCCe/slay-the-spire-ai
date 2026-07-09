@@ -33,7 +33,9 @@ def summarize_stability(
 ) -> Dict[str, object]:
     policy_categories = set(policy_categories or DEFAULT_POLICY_CATEGORIES)
     batch_names = [name for name, _samples in batches]
-    by_key = defaultdict(lambda: {"counts": Counter(), "sample_ids": []})
+    by_key = defaultdict(
+        lambda: {"counts": Counter(), "matched_outcomes": Counter(), "sample_ids": []}
+    )
 
     for batch_name, samples in batches:
         for sample in samples:
@@ -42,6 +44,8 @@ def summarize_stability(
                 continue
             entry = by_key[key]
             entry["counts"][batch_name] += 1
+            if _has_matched_outcome(sample):
+                entry["matched_outcomes"][batch_name] += 1
             sample_id = sample.get("sample_id")
             if sample_id:
                 entry["sample_ids"].append(str(sample_id))
@@ -51,6 +55,12 @@ def summarize_stability(
         counts = {name: int(entry["counts"].get(name, 0)) for name in batch_names}
         if any(count == 0 for count in counts.values()):
             continue
+        matched_outcome_counts = {
+            name: int(entry["matched_outcomes"].get(name, 0)) for name in batch_names
+        }
+        policy_candidate = category in policy_categories and all(
+            count > 0 for count in matched_outcome_counts.values()
+        )
         total = sum(counts.values())
         stable.append(
             {
@@ -58,8 +68,9 @@ def summarize_stability(
                 "current_action_id": current_id,
                 "bottled_action_id": bottled_id,
                 "batch_counts": counts,
+                "matched_outcome_counts": matched_outcome_counts,
                 "total_count": total,
-                "policy_candidate": category in policy_categories,
+                "policy_candidate": policy_candidate,
                 "example_sample_ids": entry["sample_ids"][:8],
             }
         )
@@ -94,12 +105,17 @@ def render_report(summary: Dict[str, object]) -> str:
         counts = ", ".join(
             f"{name}={count}" for name, count in item["batch_counts"].items()
         )
+        matched = ", ".join(
+            f"{name}={count}"
+            for name, count in item["matched_outcome_counts"].items()
+        )
         policy = "policy-candidate" if item["policy_candidate"] else "diagnostic"
         lines.append(
             "- "
             f"{item['category']}: {item['current_action_id']} -> "
             f"{item['bottled_action_id']} "
-            f"({counts}, total={item['total_count']}, {policy})"
+            f"({counts}, matched_outcomes={matched}, "
+            f"total={item['total_count']}, {policy})"
         )
     lines.append("")
     return "\n".join(lines)
@@ -141,6 +157,11 @@ def _high_confidence_mismatch_key(sample: dict):
     if sample.get("bottled_label", {}).get("confidence") != "high":
         return None
     return (sample.get("category"), selected, bottled)
+
+
+def _has_matched_outcome(sample: dict) -> bool:
+    outcome = sample.get("outcome") or {}
+    return bool(outcome.get("included_in_gate")) and outcome.get("join_status") == "matched"
 
 
 def _stable_sort_key(item: dict):
