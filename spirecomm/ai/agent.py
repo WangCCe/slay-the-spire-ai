@@ -126,6 +126,9 @@ class SimpleAgent:
     SHOP_PRE_PURGE_RELIC_KEYS = {
         "membershipcard",
     }
+    SHOP_PREMIUM_BUDGET_EXEMPT_RELIC_KEYS = {
+        "preservedinsect",
+    }
     SHOP_BLOOD_FOR_BLOOD_SUPPORT_KEYS = {
         "offering",
         "bloodletting",
@@ -652,6 +655,11 @@ class SimpleAgent:
 
                 if relic_keys & self.SHOP_PRE_PURGE_RELIC_KEYS:
                     return True
+
+                if relic_keys & self.SHOP_PREMIUM_BUDGET_EXEMPT_RELIC_KEYS:
+                    act = self._safe_int(getattr(self.game, "act", None), None)
+                    if act in {1, 2}:
+                        return True
 
                 if price > gold * 0.7:
                     return False

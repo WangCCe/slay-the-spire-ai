@@ -267,6 +267,54 @@ def test_shop_screen_buys_membership_card_before_paid_purge():
     assert action.name == "Membership Card"
 
 
+def test_shop_screen_buys_act1_preserved_insect_despite_tight_gold():
+    agent = _agent_for_shop(
+        screen_type=ScreenType.SHOP_SCREEN,
+        screen=SimpleNamespace(
+            cards=[_shop_card("Limit Break", price=999)],
+            relics=[
+                SimpleNamespace(name="Preserved Insect", price=149),
+                SimpleNamespace(name="Meal Ticket", price=155),
+                SimpleNamespace(name="Frozen Eye", price=146),
+            ],
+            potions=[],
+            purge_available=False,
+            purge_cost=100,
+        ),
+        gold=153,
+        deck=[
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Strike_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Defend_R", price=0),
+            _shop_card("Bash", price=0),
+            _shop_card("Clash", price=0),
+            _shop_card("Wild Strike", price=0),
+        ],
+        act=1,
+        floor=7,
+        in_combat=False,
+        current_hp=49,
+        max_hp=80,
+        relics=["Burning Blood"],
+        player=SimpleNamespace(energy=3, powers=[]),
+        cancel_available=True,
+        proceed_available=False,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+    )
+    agent.priorities = IroncladPriority()
+    agent.deck_strategy = IroncladDeckStrategy()
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, BuyRelicAction)
+    assert action.name == "Preserved Insect"
+
+
 def test_shop_screen_leaves_after_purge_when_only_non_priority_card_remains():
     screen = SimpleNamespace(
         cards=[_shop_card("Shrug It Off", price=56)],
