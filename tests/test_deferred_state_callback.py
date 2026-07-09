@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from spirecomm.communication.action import (
     ChooseAction,
     ChooseMapNodeAction,
+    CancelAction,
     OptionalCardSelectConfirmAction,
     PlayCardAction,
     PotionAction,
@@ -258,6 +259,36 @@ def test_duplicate_map_frame_after_map_choice_does_not_call_route_callback_again
     coordinator._queue_state_change_callback_action()
 
     assert calls == [ScreenType.MAP]
+    assert len(coordinator.action_queue) == 1
+    assert isinstance(coordinator.action_queue[0], WaitAction)
+
+
+def test_duplicate_shop_screen_after_exit_command_does_not_call_shop_callback_again():
+    coordinator = _coordinator_without_threads()
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.SHOP_SCREEN,
+        available_commands=["leave", "choose", "key", "click", "wait", "state"],
+        screen=SimpleNamespace(),
+    )
+    calls = []
+
+    def callback(game):
+        calls.append(game.screen_type)
+        return CancelAction()
+
+    coordinator.state_change_callback = callback
+    coordinator._queue_state_change_callback_action()
+    coordinator.execute_next_action_if_ready()
+
+    assert coordinator.output_queue.get_nowait() == "leave"
+
+    coordinator.game_is_ready = True
+    coordinator.execute_next_action_if_ready()
+    assert coordinator.output_queue.get_nowait() == "wait 1"
+
+    coordinator._queue_state_change_callback_action()
+
+    assert calls == [ScreenType.SHOP_SCREEN]
     assert len(coordinator.action_queue) == 1
     assert isinstance(coordinator.action_queue[0], WaitAction)
 

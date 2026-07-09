@@ -295,6 +295,9 @@ class LeaveAction(Action):
             return
 
         super().execute(coordinator)
+        mark_shop_exit = getattr(coordinator, "mark_shop_exit_in_flight", None)
+        if callable(mark_shop_exit):
+            mark_shop_exit()
         _queue_ready_wait(coordinator)
 
 
@@ -318,6 +321,11 @@ class CancelAction(Action):
             for command in ("cancel", "leave", "return", "skip"):
                 if command in available_commands:
                     coordinator.send_message(command)
+                    mark_shop_exit = getattr(
+                        coordinator, "mark_shop_exit_in_flight", None
+                    )
+                    if callable(mark_shop_exit):
+                        mark_shop_exit()
                     _queue_ready_wait(coordinator)
                     return
             logging.warning(

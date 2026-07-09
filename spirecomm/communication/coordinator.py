@@ -130,6 +130,7 @@ class Coordinator:
         self._last_command_error = None
         self.pending_seed = None
         self._map_choice_in_flight_fingerprint = None
+        self._shop_exit_in_flight = False
 
     def _maybe_queue_stability_wait(self):
         screen_type = getattr(self.last_game_state, "screen_type", None)
@@ -423,6 +424,14 @@ class Coordinator:
             self.add_action_to_queue(WaitAction(timeout=1))
             return
 
+        if self._should_suppress_in_flight_shop_exit_callback():
+            logging.info(
+                "[SHOP_EXIT_SETTLE] Suppressing duplicate shop callback while "
+                "an exit command is in flight."
+            )
+            self.add_action_to_queue(WaitAction(timeout=1))
+            return
+
         logging.info(
             "[CALLBACK] in_game=True, queue empty, calling state_change_callback%s. Screen: %s",
             " (deferred)" if deferred else "",
@@ -480,6 +489,21 @@ class Coordinator:
             return False
         if fingerprint != in_flight:
             self._map_choice_in_flight_fingerprint = None
+            return False
+        return True
+
+    def mark_shop_exit_in_flight(self):
+        game = getattr(self, "last_game_state", None)
+        if getattr(game, "screen_type", None) == ScreenType.SHOP_SCREEN:
+            self._shop_exit_in_flight = True
+
+    def _should_suppress_in_flight_shop_exit_callback(self):
+        if not getattr(self, "_shop_exit_in_flight", False):
+            return False
+
+        game = getattr(self, "last_game_state", None)
+        if getattr(game, "screen_type", None) != ScreenType.SHOP_SCREEN:
+            self._shop_exit_in_flight = False
             return False
         return True
 
