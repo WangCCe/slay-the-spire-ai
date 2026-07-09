@@ -842,6 +842,27 @@ class SimpleAgent:
                     if any(keyword in normalized_label for keyword in fallback_keywords):
                         choice_index = idx
                         break
+        elif event_id in {"Face Trader", "FaceTrader"}:
+            raw_current_hp = getattr(self.game, "current_hp", None)
+            raw_max_hp = getattr(self.game, "max_hp", None)
+            current_hp = self._safe_float(raw_current_hp, 0.0)
+            max_hp = max(self._safe_float(raw_max_hp, 0.0), 1.0)
+            hp_known = raw_current_hp is not None and raw_max_hp is not None
+            touch_hp_loss = max(1.0, float(int(max_hp * 0.10)))
+            can_touch = hp_known and (current_hp - touch_hp_loss) / max_hp >= 0.50
+            preferred_keywords = ("touch",) if can_touch else ("leave",)
+            fallback_keywords = ("leave",) if not can_touch else ("touch", "leave")
+            for idx, label in enumerate(labels_for_selection):
+                normalized_label = label.lower()
+                if any(keyword in normalized_label for keyword in preferred_keywords):
+                    choice_index = idx
+                    break
+            else:
+                for idx, label in enumerate(labels_for_selection):
+                    normalized_label = label.lower()
+                    if any(keyword in normalized_label for keyword in fallback_keywords):
+                        choice_index = idx
+                        break
         elif event_id in {"Big Fish", "BigFish"}:
             raw_current_hp = getattr(self.game, "current_hp", None)
             raw_max_hp = getattr(self.game, "max_hp", None)

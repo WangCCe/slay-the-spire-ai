@@ -206,6 +206,57 @@ def test_golden_shrine_leaves_when_ectoplasm_blocks_gold():
     assert action.choice_index == 2
 
 
+def test_face_trader_leaves_when_touch_would_drop_below_half_hp():
+    agent = _agent_for_event(
+        "FaceTrader",
+        [
+            EventOption("Touch", "Touch"),
+            EventOption("Trade", "Trade"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Touch", "Trade", "Leave"],
+        hp=35,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 2
+
+
+def test_face_trader_touches_when_hp_margin_is_safe_then_leaves_result_page():
+    agent = _agent_for_event(
+        "FaceTrader",
+        [
+            EventOption("Touch", "Touch"),
+            EventOption("Trade", "Trade"),
+            EventOption("Leave", "Leave"),
+        ],
+        ["Touch", "Trade", "Leave"],
+        hp=53,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+    result_agent = _agent_for_event(
+        "FaceTrader",
+        [EventOption("Leave", "Leave")],
+        ["Leave"],
+        hp=45,
+        max_hp=80,
+    )
+
+    result_action = result_agent.handle_screen()
+
+    assert isinstance(result_action, ChooseAction)
+    assert result_action.choice_index == 0
+
+
 def test_dead_adventurer_leaves_instead_of_searching_for_elite_fight():
     agent = _agent_for_event(
         "Dead Adventurer",
