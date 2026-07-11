@@ -110,6 +110,13 @@ def build_trainable_sample(
     behavior_action_probability=None,
     behavior_probability_status: str = "unknown",
 ):
+    if (
+        behavior_action_probability is not None
+        and behavior_probability_status == "unknown"
+    ):
+        raise ValueError(
+            "behavior_action_probability requires a non-unknown probability status"
+        )
     candidates = normalize_candidates(decision_sample)
     selected_id = _selected_action_id(decision_sample, candidates)
     bottled_id = _label_to_candidate_id(comparison_row.reference_choice, candidates)
@@ -309,9 +316,13 @@ def attach_live_outcomes(samples, outcomes, tolerance_seconds: int = 30):
 def _sample_floor_is_compatible(sample, outcome) -> bool:
     sample_floor = _to_int(sample.get("floor"), default=None)
     outcome_floor = _to_int(outcome.get("floor_reached"), default=None)
-    if sample_floor is None or outcome_floor is None:
-        return True
-    return sample_floor <= outcome_floor
+    return (
+        sample_floor is not None
+        and outcome_floor is not None
+        and sample_floor > 0
+        and outcome_floor > 0
+        and sample_floor <= outcome_floor
+    )
 
 
 def load_run_outcomes(

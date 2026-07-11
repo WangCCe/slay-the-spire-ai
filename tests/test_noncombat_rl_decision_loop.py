@@ -237,7 +237,7 @@ def test_stable_sample_id_uses_absolute_line_number(tmp_path):
     assert tailed_sample["sample_id"] == full_trace_sample["sample_id"]
 
 
-def test_v2_exporter_stays_offline_only():
+def test_exporter_source_does_not_reference_live_runtime_paths():
     source_path = (
         Path(__file__).resolve().parents[1]
         / "analysis_scripts"
@@ -311,6 +311,7 @@ def test_attach_live_outcomes_matches_exactly_one_run():
         {
             "sample_id": "trace:0",
             "unix_time": 1780000010.0,
+            "floor": 3,
             "outcome": {"join_status": "missing"},
         }
     ]
@@ -335,6 +336,75 @@ def test_attach_live_outcomes_matches_exactly_one_run():
     assert joined["trajectory_group_id"] == "run:1780000000"
 
 
+@pytest.mark.parametrize(
+    ("sample_floor", "outcome_floor"),
+    [
+        (None, 12),
+        ("not-a-floor", 12),
+        (0, 12),
+        (3, None),
+        (3, "not-a-floor"),
+        (3, 0),
+    ],
+)
+def test_trajectory_group_requires_valid_floor_evidence(sample_floor, outcome_floor):
+    from analysis_scripts.noncombat_rl_decision_loop import attach_live_outcomes
+
+    [joined] = attach_live_outcomes(
+        [
+            {
+                "sample_id": "trace:floor-evidence",
+                "unix_time": 1780000010.0,
+                "floor": sample_floor,
+                "outcome": {"join_status": "missing"},
+            }
+        ],
+        [
+            {
+                "run_file": "1780000000.run",
+                "start_unix": 1780000000,
+                "end_unix": 1780000200,
+                "victory": False,
+                "floor_reached": outcome_floor,
+                "killed_by": "Gremlin Nob",
+                "playtime": 200,
+                "ai_marked": True,
+            }
+        ],
+    )
+
+    assert joined["outcome"]["join_status"] == "floor_inconsistent"
+    assert joined["trajectory_group_id"] is None
+
+
+def test_behavior_probability_requires_non_unknown_status(tmp_path):
+    from analysis_scripts.noncombat_rl_decision_loop import export_samples_from_trace
+
+    trace_path = tmp_path / "trace.jsonl"
+    _write_trace(
+        trace_path,
+        [
+            _base_trace_row(
+                "CARD_REWARD",
+                {"type": "ChooseAction", "name": "Clothesline", "choice_index": 0},
+                {
+                    "type": "CARD_REWARD",
+                    "cards": [{"name": "Clothesline"}],
+                    "can_skip": True,
+                    "can_bowl": False,
+                },
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="non-unknown probability status"):
+        export_samples_from_trace(
+            trace_path,
+            behavior_action_probability=0.5,
+            behavior_probability_status="unknown",
+        )
+
+
 def test_attach_live_outcomes_excludes_missing_and_ambiguous_matches():
     from analysis_scripts.noncombat_rl_decision_loop import attach_live_outcomes
 
@@ -349,6 +419,7 @@ def test_attach_live_outcomes_excludes_missing_and_ambiguous_matches():
         {
             "sample_id": "trace:ambiguous",
             "unix_time": 1780000010.0,
+            "floor": 3,
             "outcome": {"join_status": "missing"},
         }
     ]
