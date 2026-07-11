@@ -298,7 +298,9 @@ Sort rows by id, require one non-empty label mode across train and validation ro
 
 Run all policy-learning tests. Expected: all pass and no CUDA initialization.
 
-- [ ] **Step 8: Mark OpenSpec tasks 4.1-4.5 complete, review, and commit**
+- [ ] **Step 8: Mark OpenSpec tasks 4.1-4.3 and 4.5 complete, review, and commit**
+
+Leave task 4.4 pending until Task 4 adds and tests the explicit offline output-directory contract.
 
 ```powershell
 git add analysis_scripts/noncombat_policy_model.py tests/test_noncombat_policy_learning.py openspec/changes/add-noncombat-policy-learning-pilot/tasks.md
@@ -364,7 +366,7 @@ Write JSON/text to a sibling temporary path then `replace()` it. Save the small 
 
 Run all policy-learning and exporter tests, then invoke the script through `D:\anaconda\envs\stsai\python.exe analysis_scripts\noncombat_policy_learning.py --help`. Expected: exit 0 and both subcommands listed.
 
-- [ ] **Step 8: Mark OpenSpec tasks 5.1-5.5 complete, review, and commit**
+- [ ] **Step 8: Mark OpenSpec tasks 4.4 and 5.1-5.5 complete, review, and commit**
 
 ```powershell
 git add analysis_scripts/noncombat_policy_learning.py analysis_scripts/noncombat_policy_dataset.py analysis_scripts/noncombat_policy_model.py tests/test_noncombat_policy_learning.py openspec/changes/add-noncombat-policy-learning-pilot/tasks.md
