@@ -1982,7 +1982,7 @@ def test_restore_failure_preserves_backup_and_restores_unrelated_artifacts(tmp_p
         return result
 
     monkeypatch.setattr(Path, "replace", fail_install_then_support_restore)
-    with pytest.raises(RuntimeError, match="recovery incomplete.*current_support.json.backup"):
+    with pytest.raises(RuntimeError) as error:
         write_pilot_artifacts(
             output_dir,
             mode="current",
@@ -1991,14 +1991,62 @@ def test_restore_failure_preserves_backup_and_restores_unrelated_artifacts(tmp_p
             support=support,
         )
 
+    assert ".current_support.json.backup" in str(error.value)
+    assert ".current_artifact_manifest.json.backup" in str(error.value)
     expected_restored = {
         name: payload
         for name, payload in before.items()
-        if name != "current_support.json"
+        if name not in {"current_support.json", "current_artifact_manifest.json"}
     }
     assert _managed_bytes(output_dir, "current") == expected_restored
-    assert (output_dir / ".current_support.json.backup").exists()
+    support_backup = output_dir / ".current_support.json.backup"
+    manifest_backup = output_dir / ".current_artifact_manifest.json.backup"
+    assert support_backup.read_bytes() == before["current_support.json"]
+    assert manifest_backup.read_bytes() == before["current_artifact_manifest.json"]
+    assert not (output_dir / "current_artifact_manifest.json").exists()
     assert not list(output_dir.glob(".*.tmp"))
+
+
+def test_successful_rollback_restores_manifest_after_non_manifest_artifacts(tmp_path, monkeypatch):
+    from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
+
+    dataset, splits, support = _artifact_fixture()
+    changed_dataset = _changed_artifact_dataset(dataset)
+    output_dir = tmp_path / "artifacts"
+    _write_complete_artifact_set(output_dir, dataset, splits, support)
+    before = _managed_bytes(output_dir, "current")
+    original_replace = Path.replace
+    restore_order = []
+    install_failed = False
+
+    def record_restore_then_fail_report_install(self, target):
+        nonlocal install_failed
+        if self.name.endswith(".backup") and Path(target).name.startswith("current_"):
+            restore_order.append(Path(target).name)
+        result = original_replace(self, target)
+        if (
+            not install_failed
+            and self.name == ".current_report.md.tmp"
+            and Path(target).name == "current_report.md"
+        ):
+            install_failed = True
+            raise OSError("injected report install failure")
+        return result
+
+    monkeypatch.setattr(Path, "replace", record_restore_then_fail_report_install)
+    with pytest.raises(OSError, match="report install failure"):
+        write_pilot_artifacts(
+            output_dir,
+            mode="current",
+            dataset=changed_dataset,
+            splits=splits,
+            support=support,
+        )
+
+    assert _managed_bytes(output_dir, "current") == before
+    assert restore_order[-1] == "current_artifact_manifest.json"
+    assert set(restore_order[:-1]) == set(before) - {"current_artifact_manifest.json"}
+    _assert_no_transaction_debris(output_dir)
 
 
 def test_artifact_writer_rejects_inconsistent_inputs_before_writing(tmp_path):

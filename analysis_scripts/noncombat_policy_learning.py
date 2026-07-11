@@ -595,7 +595,12 @@ def _commit_artifact_transaction(
             installed.append(final_path)
             staged_paths[name].replace(final_path)
     except Exception as error:
-        rollback_errors = _rollback_artifact_transaction(artifact_dir, installed, backups)
+        rollback_errors = _rollback_artifact_transaction(
+            artifact_dir,
+            installed,
+            backups,
+            manifest_name,
+        )
         if rollback_errors:
             raise _recovery_error("artifact transaction failed", error, rollback_errors) from error
         raise
@@ -605,17 +610,45 @@ def _commit_artifact_transaction(
         raise _recovery_error("artifact transaction committed", None, cleanup_errors)
 
 
-def _rollback_artifact_transaction(artifact_dir: Path, installed, backups):
+def _rollback_artifact_transaction(
+    artifact_dir: Path,
+    installed,
+    backups,
+    manifest_name,
+):
     errors = []
     for final_path in reversed(installed):
         errors.extend(_cleanup_paths((final_path,)))
-    for name, backup_path in reversed(tuple(backups.items())):
+    non_manifest_restore_errors = []
+    for name, backup_path in backups.items():
+        if name == manifest_name:
+            continue
         if not backup_path.exists():
             continue
         try:
             backup_path.replace(_artifact_path(artifact_dir, name))
         except Exception as error:
-            errors.append((backup_path, error))
+            non_manifest_restore_errors.append((backup_path, error))
+    errors.extend(non_manifest_restore_errors)
+
+    manifest_path = _artifact_path(artifact_dir, manifest_name)
+    manifest_backup = backups.get(manifest_name)
+    if non_manifest_restore_errors:
+        errors.extend(_cleanup_paths((manifest_path,)))
+        if manifest_backup is not None and manifest_backup.exists():
+            errors.append(
+                (
+                    manifest_backup,
+                    RuntimeError("withheld until non-manifest recovery succeeds"),
+                )
+            )
+        return errors
+
+    if manifest_backup is not None and manifest_backup.exists():
+        try:
+            manifest_backup.replace(manifest_path)
+        except Exception as error:
+            errors.append((manifest_backup, error))
     return errors
 
 
