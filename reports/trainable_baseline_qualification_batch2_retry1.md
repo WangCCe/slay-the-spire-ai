@@ -88,4 +88,4 @@ Independent raw-evidence review approved the corrected evidence snapshot with SH
 
 Eligible Batch 1 retry 2 and this Batch 2 retry 1 form **two consecutive clean 25-game batches**. The trainable behavior baseline is promoted and frozen at candidate `f321cb05a40c808d3abfba8b977dfe8988b8ee47`. No training has been started, and the first-Ironclad-victory objective remains unmet at 0/25 for this batch.
 
-The separate lethal-investigation task 5.5 and GRID-fix tasks 4.5-4.6 are complete. GRID-fix task 4.7 remains pending until the reviewed evidence and task-state changes are committed. Neither change is archived as part of this retry.
+The separate lethal-investigation task 5.5 and GRID-fix tasks 4.5-4.7 are complete. The reviewed evidence and promotion task-state changes were committed as `cbc0853e`. Neither change is archived as part of this retry.
