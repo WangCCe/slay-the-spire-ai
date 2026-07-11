@@ -1,0 +1,10 @@
+{
+  "samples_path": "reports/noncombat_rl_decision_samples_20260710_post_exec_command_fixes_25_bottled.jsonl",
+  "sha256": "77DA5265ACF7A447C2C76321BED66F0D65C7A5C6614188C42505381D32C7E186",
+  "sample_count": 373,
+  "matched_sample_count": 216,
+  "matched_trajectory_count": 6,
+  "victory_trajectory_count": 0,
+  "category_counts": {"card_reward": 70, "event": 61, "route": 224, "shop": 18},
+  "matched_trajectory_counts": {"card_reward": 6, "event": 4, "route": 5, "shop": 3}
+}

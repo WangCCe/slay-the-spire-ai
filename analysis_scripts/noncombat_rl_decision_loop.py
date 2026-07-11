@@ -9,7 +9,7 @@ import re
 import sys
 from collections import Counter, deque
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -21,7 +21,7 @@ from analysis_scripts.offline_decision_comparator import (
 )
 
 
-SCHEMA_VERSION = "noncombat-rl-decision-v1"
+SCHEMA_VERSION = "noncombat-rl-decision-v2"
 SUPPORTED_CATEGORIES = ("shop", "event", "route", "card_reward")
 
 
@@ -31,11 +31,21 @@ def export_samples_from_trace(
     since_unix: Optional[float] = None,
     reference_mode: str = "bottled_style",
     bottled_repo_path=None,
+    until_unix: Optional[float] = None,
+    behavior_policy_id=None,
+    behavior_policy_commit=None,
+    behavior_action_probability=None,
+    behavior_probability_status: str = "unknown",
 ):
     return export_samples_from_trace_with_reference(
         path,
         tail=tail,
         since_unix=since_unix,
+        until_unix=until_unix,
+        behavior_policy_id=behavior_policy_id,
+        behavior_policy_commit=behavior_policy_commit,
+        behavior_action_probability=behavior_action_probability,
+        behavior_probability_status=behavior_probability_status,
         reference_mode=reference_mode,
         bottled_repo_path=bottled_repo_path,
     )
@@ -47,14 +57,19 @@ def export_samples_from_trace_with_reference(
     since_unix: Optional[float] = None,
     reference_mode: str = "bottled_style",
     bottled_repo_path=None,
+    until_unix: Optional[float] = None,
+    behavior_policy_id=None,
+    behavior_policy_commit=None,
+    behavior_action_probability=None,
+    behavior_probability_status: str = "unknown",
 ):
-    rows: deque[str] = deque(maxlen=max(1, tail))
+    rows = deque(maxlen=max(1, tail))
     with Path(path).open("r", encoding="utf-8", errors="replace") as handle:
-        for line in handle:
-            rows.append(line)
+        for absolute_line_number, line in enumerate(handle):
+            rows.append((absolute_line_number, line))
 
     exported = []
-    for index, line in enumerate(rows):
+    for absolute_line_number, line in rows:
         try:
             event = json.loads(line)
         except json.JSONDecodeError:
@@ -62,7 +77,9 @@ def export_samples_from_trace_with_reference(
         event_time = _to_float(event.get("unix_time"))
         if since_unix is not None and (event_time is None or event_time < since_unix):
             continue
-        decision_sample = sample_from_trace_event(event, index)
+        if until_unix is not None and (event_time is None or event_time > until_unix):
+            continue
+        decision_sample = sample_from_trace_event(event, absolute_line_number)
         if decision_sample is None:
             continue
         comparison_row = compare_samples(
@@ -75,12 +92,24 @@ def export_samples_from_trace_with_reference(
                 decision_sample,
                 comparison_row,
                 trace_event=event,
+                behavior_policy_id=behavior_policy_id,
+                behavior_policy_commit=behavior_policy_commit,
+                behavior_action_probability=behavior_action_probability,
+                behavior_probability_status=behavior_probability_status,
             )
         )
     return exported
 
 
-def build_trainable_sample(decision_sample, comparison_row, trace_event=None):
+def build_trainable_sample(
+    decision_sample,
+    comparison_row,
+    trace_event=None,
+    behavior_policy_id=None,
+    behavior_policy_commit=None,
+    behavior_action_probability=None,
+    behavior_probability_status: str = "unknown",
+):
     candidates = normalize_candidates(decision_sample)
     selected_id = _selected_action_id(decision_sample, candidates)
     bottled_id = _label_to_candidate_id(comparison_row.reference_choice, candidates)
@@ -94,6 +123,11 @@ def build_trainable_sample(decision_sample, comparison_row, trace_event=None):
         "floor": decision_sample.floor,
         "act": decision_sample.act,
         "unix_time": _to_float((trace_event or {}).get("unix_time")),
+        "trajectory_group_id": None,
+        "behavior_policy_id": behavior_policy_id,
+        "behavior_policy_commit": behavior_policy_commit,
+        "behavior_action_probability": behavior_action_probability,
+        "behavior_probability_status": behavior_probability_status,
         "state": _state_snapshot(decision_sample, trace_event or {}),
         "candidate_actions": candidates,
         "selected_action_id": selected_id,
@@ -221,6 +255,7 @@ def attach_live_outcomes(samples, outcomes, tolerance_seconds: int = 30):
     joined = []
     for sample in samples:
         sample_copy = dict(sample)
+        sample_copy["trajectory_group_id"] = None
         sample_time = _to_float(sample_copy.get("unix_time"))
         time_matches = [
             outcome
@@ -240,10 +275,13 @@ def attach_live_outcomes(samples, outcomes, tolerance_seconds: int = 30):
         ]
         if len(matches) == 1:
             outcome = dict(matches[0])
+            run_file = str(outcome.get("run_file") or "")
+            if run_file:
+                sample_copy["trajectory_group_id"] = f"run:{Path(run_file).stem}"
             sample_copy["outcome"] = {
                 "join_status": "matched",
                 "included_in_gate": True,
-                "run_file": outcome.get("run_file"),
+                "run_file": run_file or None,
                 "victory": bool(outcome.get("victory")),
                 "floor_reached": outcome.get("floor_reached"),
                 "killed_by": outcome.get("killed_by") or "",
@@ -281,20 +319,29 @@ def load_run_outcomes(
     character: str = "IRONCLAD",
     limit: int = 20,
     ai_markers_path=None,
+    run_files: Optional[Sequence[str]] = None,
 ):
     runs_root = Path(runs_dir)
     character_dir = runs_root / character
     marker_path = Path(ai_markers_path) if ai_markers_path else runs_root / "ai_games.txt"
     ai_markers = _load_ai_markers(marker_path)
-    run_files = sorted(
-        character_dir.glob("*.run"),
-        key=lambda path: path.stat().st_mtime,
-    )
-    if limit > 0:
-        run_files = run_files[-limit:]
+    if run_files is not None:
+        selected_run_files = []
+        for requested_name in run_files:
+            run_file = character_dir / requested_name
+            if not run_file.is_file():
+                raise FileNotFoundError(f"Run file not found: {run_file}")
+            selected_run_files.append(run_file)
+    else:
+        selected_run_files = sorted(
+            character_dir.glob("*.run"),
+            key=lambda path: path.stat().st_mtime,
+        )
+        if limit > 0:
+            selected_run_files = selected_run_files[-limit:]
 
     outcomes = []
-    for run_file in run_files:
+    for run_file in selected_run_files:
         start_unix = _to_int(run_file.stem, default=None)
         if start_unix is None:
             continue
@@ -569,8 +616,13 @@ def main(argv=None) -> int:
     parser.add_argument("--trace", type=Path, required=True)
     parser.add_argument("--trace-tail", type=int, default=2000)
     parser.add_argument("--since-unix", type=float, default=None)
+    parser.add_argument("--until-unix", type=float, default=None)
     parser.add_argument("--runs-dir", type=Path, default=None)
     parser.add_argument("--character", default="IRONCLAD")
+    parser.add_argument("--run-limit", type=int, default=20)
+    parser.add_argument("--run-file", action="append", default=None)
+    parser.add_argument("--behavior-policy-id", default=None)
+    parser.add_argument("--behavior-policy-commit", default=None)
     parser.add_argument(
         "--reference-mode",
         choices=["bottled-style", "bottled_style", "native-bottled", "native_bottled"],
@@ -585,11 +637,19 @@ def main(argv=None) -> int:
         args.trace,
         tail=args.trace_tail,
         since_unix=args.since_unix,
+        until_unix=args.until_unix,
+        behavior_policy_id=args.behavior_policy_id,
+        behavior_policy_commit=args.behavior_policy_commit,
         reference_mode=args.reference_mode,
         bottled_repo_path=args.bottled_repo,
     )
     if args.runs_dir:
-        outcomes = load_run_outcomes(args.runs_dir, character=args.character)
+        outcomes = load_run_outcomes(
+            args.runs_dir,
+            character=args.character,
+            limit=args.run_limit,
+            run_files=args.run_file,
+        )
         samples = attach_live_outcomes(samples, outcomes)
 
     gate_result = evaluate_promotion(samples, reward_contract=default_reward_contract())

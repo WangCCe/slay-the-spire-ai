@@ -1,14 +1,14 @@
 ## 1. Preserve The Current Boundary As Regressions
 
-- [ ] 1.1 Add fixture coverage for `noncombat_rl_decision_samples_20260710_post_exec_command_fixes_25_bottled.jsonl` (SHA-256 `77DA5265ACF7A447C2C76321BED66F0D65C7A5C6614188C42505381D32C7E186`), including 373 samples, 216 matched rows, 6 unique matched trajectories, 0 victory trajectories, and category-specific support counts.
-- [ ] 1.2 Add schema regressions proving legacy v1 samples remain readable but are excluded from pilot train/evaluation when trajectory or behavior provenance cannot be resolved.
-- [ ] 1.3 Add guard tests proving the pilot cannot modify CommunicationMod configuration, launcher defaults, live policy imports, production checkpoints, or existing checkpoint discovery.
-- [ ] 1.4 Record the frozen behavior candidate, source report hashes, current git commit, and explicit no-formal-RL/no-live-promotion boundary in the pilot manifest fixtures.
+- [x] 1.1 Add fixture coverage for `noncombat_rl_decision_samples_20260710_post_exec_command_fixes_25_bottled.jsonl` (SHA-256 `77DA5265ACF7A447C2C76321BED66F0D65C7A5C6614188C42505381D32C7E186`), including 373 samples, 216 matched rows, 6 unique matched trajectories, 0 victory trajectories, and category-specific support counts.
+- [x] 1.2 Add schema regressions proving legacy v1 samples remain readable but are excluded from pilot train/evaluation when trajectory or behavior provenance cannot be resolved.
+- [x] 1.3 Add guard tests proving the pilot cannot modify CommunicationMod configuration, launcher defaults, live policy imports, production checkpoints, or existing checkpoint discovery.
+- [x] 1.4 Record the frozen behavior candidate, source report hashes, current git commit, and explicit no-formal-RL/no-live-promotion boundary in the pilot manifest fixtures.
 
 ## 2. Add Policy-Learning Provenance And Dataset Manifests
 
-- [ ] 2.1 Extend canonical sample export with additive trajectory-group, behavior-policy, behavior-commit, action-probability, and probability-status fields.
-- [ ] 2.2 Populate trajectory groups only from unique reliable run joins and leave unknown behavior probabilities null with an explicit `unknown` status.
+- [x] 2.1 Extend canonical sample export with additive trajectory-group, behavior-policy, behavior-commit, action-probability, and probability-status fields.
+- [x] 2.2 Populate trajectory groups only from unique reliable run joins and leave unknown behavior probabilities null with an explicit `unknown` status.
 - [ ] 2.3 Build a versioned dataset manifest that records input hashes, schema versions, eligible rows, exclusions by reason, label-mode coverage, trajectory counts, outcomes, and action support.
 - [ ] 2.4 Add focused tests for unique joins, ambiguous or missing joins, known deterministic provenance, unknown probability handling, and idempotent manifest generation.
 

@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def _write_trace(path, rows):
     path.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
@@ -117,6 +119,137 @@ def test_exports_complete_noncombat_samples_from_trace(tmp_path):
     assert shop["outcome"]["join_status"] == "missing"
 
 
+def test_v2_frozen_source_summary_matches_contract():
+    fixture_path = (
+        Path(__file__).resolve().parent
+        / "fixtures"
+        / "noncombat_policy_learning"
+        / "frozen_20260710_summary.json"
+    )
+
+    summary = json.loads(fixture_path.read_text(encoding="utf-8"))
+
+    assert summary == {
+        "samples_path": "reports/noncombat_rl_decision_samples_20260710_post_exec_command_fixes_25_bottled.jsonl",
+        "sha256": "77DA5265ACF7A447C2C76321BED66F0D65C7A5C6614188C42505381D32C7E186",
+        "sample_count": 373,
+        "matched_sample_count": 216,
+        "matched_trajectory_count": 6,
+        "victory_trajectory_count": 0,
+        "category_counts": {
+            "card_reward": 70,
+            "event": 61,
+            "route": 224,
+            "shop": 18,
+        },
+        "matched_trajectory_counts": {
+            "card_reward": 6,
+            "event": 4,
+            "route": 5,
+            "shop": 3,
+        },
+    }
+
+
+def test_v2_export_includes_explicit_behavior_provenance(tmp_path):
+    from analysis_scripts.noncombat_rl_decision_loop import export_samples_from_trace
+
+    trace_path = tmp_path / "trace.jsonl"
+    _write_trace(
+        trace_path,
+        [
+            _base_trace_row(
+                "CARD_REWARD",
+                {"type": "ChooseAction", "name": "Clothesline", "choice_index": 0},
+                {
+                    "type": "CARD_REWARD",
+                    "cards": [{"name": "Clothesline"}],
+                    "can_skip": True,
+                    "can_bowl": False,
+                },
+            )
+        ],
+    )
+
+    [sample] = export_samples_from_trace(
+        trace_path,
+        behavior_policy_id="current_heuristic",
+        behavior_policy_commit="f321cb05",
+    )
+
+    assert sample["schema_version"] == "noncombat-rl-decision-v2"
+    assert sample["trajectory_group_id"] is None
+    assert sample["behavior_policy_id"] == "current_heuristic"
+    assert sample["behavior_policy_commit"] == "f321cb05"
+    assert sample["behavior_action_probability"] is None
+    assert sample["behavior_probability_status"] == "unknown"
+
+
+def test_v2_export_respects_until_unix(tmp_path):
+    from analysis_scripts.noncombat_rl_decision_loop import export_samples_from_trace
+
+    first = _base_trace_row(
+        "CARD_REWARD",
+        {"type": "ChooseAction", "name": "Clothesline", "choice_index": 0},
+        {
+            "type": "CARD_REWARD",
+            "cards": [{"name": "Clothesline"}],
+            "can_skip": True,
+            "can_bowl": False,
+        },
+    )
+    second = dict(first)
+    first["unix_time"] = 1780000010.0
+    second["unix_time"] = 1780000011.0
+    trace_path = tmp_path / "trace.jsonl"
+    _write_trace(trace_path, [first, second])
+
+    samples = export_samples_from_trace(trace_path, until_unix=1780000010.0)
+
+    assert [sample["sample_id"] for sample in samples] == ["trace:0"]
+
+
+def test_stable_sample_id_uses_absolute_line_number(tmp_path):
+    from analysis_scripts.noncombat_rl_decision_loop import export_samples_from_trace
+
+    trace_path = tmp_path / "trace.jsonl"
+    _write_trace(
+        trace_path,
+        [
+            {"unix_time": 1780000000.0},
+            _base_trace_row(
+                "CARD_REWARD",
+                {"type": "ChooseAction", "name": "Clothesline", "choice_index": 0},
+                {
+                    "type": "CARD_REWARD",
+                    "cards": [{"name": "Clothesline"}],
+                    "can_skip": True,
+                    "can_bowl": False,
+                },
+            ),
+        ],
+    )
+
+    [full_trace_sample] = export_samples_from_trace(trace_path, tail=2)
+    [tailed_sample] = export_samples_from_trace(trace_path, tail=1)
+
+    assert full_trace_sample["sample_id"] == "trace:1"
+    assert tailed_sample["sample_id"] == full_trace_sample["sample_id"]
+
+
+def test_v2_exporter_stays_offline_only():
+    source_path = (
+        Path(__file__).resolve().parents[1]
+        / "analysis_scripts"
+        / "noncombat_rl_decision_loop.py"
+    )
+    source = source_path.read_text(encoding="utf-8")
+
+    assert "CommunicationMod" not in source
+    assert "config.properties" not in source
+    assert "checkpoints" not in source
+
+
 def test_partial_trace_sample_preserves_limitations(tmp_path):
     from analysis_scripts.noncombat_rl_decision_loop import export_samples_from_trace
 
@@ -199,6 +332,7 @@ def test_attach_live_outcomes_matches_exactly_one_run():
     assert joined["outcome"]["join_status"] == "matched"
     assert joined["outcome"]["included_in_gate"] is True
     assert joined["outcome"]["floor_reached"] == 12
+    assert joined["trajectory_group_id"] == "run:1780000000"
 
 
 def test_attach_live_outcomes_excludes_missing_and_ambiguous_matches():
@@ -242,9 +376,11 @@ def test_attach_live_outcomes_excludes_missing_and_ambiguous_matches():
     ]
 
     assert attach_live_outcomes(missing, outcomes)[0]["outcome"]["join_status"] == "missing"
+    assert attach_live_outcomes(missing, outcomes)[0]["trajectory_group_id"] is None
     joined = attach_live_outcomes(ambiguous, outcomes)[0]
     assert joined["outcome"]["join_status"] == "ambiguous"
     assert joined["outcome"]["included_in_gate"] is False
+    assert joined["trajectory_group_id"] is None
 
 
 def test_attach_live_outcomes_rejects_floor_inconsistent_match():
@@ -275,6 +411,7 @@ def test_attach_live_outcomes_rejects_floor_inconsistent_match():
 
     assert joined["outcome"]["join_status"] == "floor_inconsistent"
     assert joined["outcome"]["included_in_gate"] is False
+    assert joined["trajectory_group_id"] is None
 
 
 def test_load_run_outcomes_reads_ai_marked_run_windows(tmp_path):
@@ -310,6 +447,34 @@ def test_load_run_outcomes_reads_ai_marked_run_windows(tmp_path):
             "ai_marked": True,
         }
     ]
+
+
+def test_explicit_run_files_override_limit_and_missing_names_raise(tmp_path):
+    from analysis_scripts.noncombat_rl_decision_loop import load_run_outcomes
+
+    runs_dir = tmp_path / "runs"
+    ironclad_dir = runs_dir / "IRONCLAD"
+    ironclad_dir.mkdir(parents=True)
+    (runs_dir / "ai_games.txt").write_text("1780000000\n", encoding="utf-8")
+    for start_unix in (1780000000, 1780000100, 1780000200):
+        (ironclad_dir / f"{start_unix}.run").write_text(
+            json.dumps({"victory": False, "floor_reached": 18, "playtime": 240}),
+            encoding="utf-8",
+        )
+
+    outcomes = load_run_outcomes(
+        runs_dir,
+        character="IRONCLAD",
+        limit=1,
+        run_files=["1780000000.run", "1780000200.run"],
+    )
+
+    assert [outcome["run_file"] for outcome in outcomes] == [
+        "1780000000.run",
+        "1780000200.run",
+    ]
+    with pytest.raises(FileNotFoundError, match="missing.run"):
+        load_run_outcomes(runs_dir, character="IRONCLAD", run_files=["missing.run"])
 
 
 def _complete_sample(category, matched=True):
@@ -518,6 +683,16 @@ def test_cli_writes_report_and_jsonl_samples(tmp_path, capsys):
             str(runs_dir),
             "--character",
             "IRONCLAD",
+            "--until-unix",
+            "1780000000",
+            "--run-limit",
+            "1",
+            "--run-file",
+            "1780000000.run",
+            "--behavior-policy-id",
+            "current_heuristic",
+            "--behavior-policy-commit",
+            "f321cb05",
             "--output",
             str(report_path),
             "--json-output",
@@ -531,7 +706,13 @@ def test_cli_writes_report_and_jsonl_samples(tmp_path, capsys):
         encoding="utf-8"
     )
     [sample_line] = jsonl_path.read_text(encoding="utf-8").splitlines()
-    assert json.loads(sample_line)["schema_version"] == "noncombat-rl-decision-v1"
+    sample = json.loads(sample_line)
+    assert sample["schema_version"] == "noncombat-rl-decision-v2"
+    assert sample["trajectory_group_id"] == "run:1780000000"
+    assert sample["behavior_policy_id"] == "current_heuristic"
+    assert sample["behavior_policy_commit"] == "f321cb05"
+    assert sample["behavior_action_probability"] is None
+    assert sample["behavior_probability_status"] == "unknown"
 
 
 def test_direct_script_cli_writes_outputs(tmp_path):
@@ -599,4 +780,4 @@ def test_direct_script_cli_writes_outputs(tmp_path):
     assert report_path.exists()
     assert json.loads(jsonl_path.read_text(encoding="utf-8").splitlines()[0])[
         "schema_version"
-    ] == "noncombat-rl-decision-v1"
+    ] == "noncombat-rl-decision-v2"
