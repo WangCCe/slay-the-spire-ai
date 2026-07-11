@@ -334,6 +334,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int: ...
 
 The frequency baseline counts target actions by category on train rows and chooses the highest-count available candidate with action-id tie breaking. Require top-1 agreement, mean cross-entropy, ten-bin top-confidence calibration error, candidate legality, and per-category counts on held-out rows only.
 
+Build frequency counts only from train rows. Evaluate validation and test rows as separate blocks. Ten-bin expected calibration error uses top confidence with bins `[0.0,0.1)`, ..., `[0.9,1.0]`, weighted by bin sample count. Keep `model_reference_top1_agreement` and `frequency_reference_top1_agreement` as separate fields; agreement is a label-reference metric, not policy quality or outcome uplift.
+
 - [ ] **Step 2: Write failing OPE/support report snapshots**
 
 Blocked reports must name missing trajectories, mappings, unknown propensities, and missing action overlap. Allowed supervised reports must still contain:
@@ -346,9 +348,13 @@ Off-policy evaluation: unsupported
 
 Never render causal uplift or reward-improvement language.
 
+Every report, including an allowed supervised pilot, must state that contextual alternative-action overlap is not demonstrated by aggregate candidate counts. Off-policy evaluation remains unsupported whenever any propensity is unknown or contextual overlap is absent. Show dataset exclusions, all category support blocks, and row/trajectory outcome counts as diagnostics only.
+
 - [ ] **Step 3: Write failing CLI and artifact-isolation tests**
 
 Test `support` and `train` subcommands with required `--samples`, `--output-dir`, `--split-seed`, `--source-commit`, and `--label-mode`. Require mode-specific dataset/split/support/metrics/report/model names, atomic writes, and no files under `checkpoints/`.
+
+Use exact names `{mode}_dataset_manifest.json`, `{mode}_split_manifest.json`, `{mode}_support.json`, `{mode}_report.md`, and `{mode}_artifact_manifest.json`; successful train additionally writes `{mode}_metrics.json` and `{mode}_model.pt`. `support` exits zero even when blocked and never writes model/metrics. `train` writes the support artifacts first, returns exit code 2 when overall support is blocked, and must not leave model/metrics files in that case.
 
 - [ ] **Step 4: Run RED tests**
 
@@ -358,9 +364,13 @@ Run CLI/report selected tests and confirm missing functions/subcommands fail.
 
 Compute metrics only from validation/test groups in the split manifest. Keep outcomes in a diagnostic section. Report label-reference agreement separately from the frequency predictor.
 
+The metrics JSON contains separate `validation` and `test` blocks with sample count, model reference top-1 agreement, mean cross-entropy, ten-bin calibration error, candidate legality, frequency reference top-1 agreement, and per-category counts. Train rows are used only for fitting and frequency counts, never in held-out metric blocks.
+
 - [ ] **Step 6: Implement atomic artifact writers and CLI**
 
 Write JSON/text to a sibling temporary path then `replace()` it. Save the small model to a temporary `.pt` path and replace the final path. Keep model imports inside the `train` command path so `support` never imports or initializes Torch training; `train` refuses to run when the mode's support gate is blocked.
+
+Treat the `model` argument to `write_pilot_artifacts` as a `TrainingResult`, not a live checkpoint. Save a CPU state-dict payload plus its in-memory artifact manifest. The artifact manifest records hashes for every other written file, the explicit output directory, source/config provenance, and both readiness flags false; it does not hash itself. Remove sibling temporary files on failure.
 
 - [ ] **Step 7: Run focused GREEN and direct-script smoke tests**
 
