@@ -669,6 +669,12 @@ class OptionalCardSelectConfirmAction(Action):
                     confirm_up,
                     available,
                 )
+            settle_queue = getattr(coordinator, "action_queue", None)
+            settle_queue_start = (
+                len(settle_queue)
+                if self.settle_after_confirm and settle_queue is not None
+                else None
+            )
             marked_confirm_in_flight = False
             try:
                 if self.settle_after_confirm:
@@ -678,8 +684,8 @@ class OptionalCardSelectConfirmAction(Action):
                         None,
                     )
                     if callable(mark_confirm_in_flight):
-                        mark_confirm_in_flight()
                         marked_confirm_in_flight = True
+                        mark_confirm_in_flight()
                 coordinator.send_message(
                     self.command,
                     wait_for_response=self.wait_for_response,
@@ -690,6 +696,9 @@ class OptionalCardSelectConfirmAction(Action):
                         CardSelectConfirmSettledAction()
                     )
             except Exception:
+                if settle_queue_start is not None:
+                    while len(settle_queue) > settle_queue_start:
+                        settle_queue.pop()
                 if marked_confirm_in_flight:
                     complete_confirm_settle = getattr(
                         coordinator,

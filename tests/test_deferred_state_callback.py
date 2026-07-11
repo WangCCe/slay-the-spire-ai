@@ -398,6 +398,29 @@ def test_serialized_confirm_send_exception_rolls_back_marker():
     assert coordinator.action_queue == collections.deque()
 
 
+def test_serialized_confirm_marker_setup_exception_rolls_back_marker():
+    coordinator = _coordinator_without_threads()
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.GRID,
+        available_commands=["confirm", "wait", "state"],
+        screen=SimpleNamespace(confirm_up=True),
+    )
+    action = OptionalCardSelectConfirmAction(settle_after_confirm=True)
+
+    def raise_after_marking():
+        coordinator._card_select_confirm_in_flight = True
+        raise RuntimeError("marker setup failed")
+
+    coordinator.mark_card_select_confirm_in_flight = raise_after_marking
+
+    with pytest.raises(RuntimeError, match="marker setup failed"):
+        action.execute(coordinator)
+
+    assert coordinator._card_select_confirm_in_flight is False
+    assert coordinator.action_queue == collections.deque()
+    assert coordinator.output_queue.empty()
+
+
 def test_serialized_confirm_barrier_exception_rolls_back_marker():
     coordinator = _coordinator_without_threads()
     coordinator.last_game_state = SimpleNamespace(
@@ -418,6 +441,40 @@ def test_serialized_confirm_barrier_exception_rolls_back_marker():
     assert coordinator.output_queue.get_nowait() == "confirm"
     assert coordinator._card_select_confirm_in_flight is False
     assert coordinator.action_queue == collections.deque()
+
+
+def test_serialized_confirm_second_append_failure_restores_prior_queue_tail():
+    coordinator = _coordinator_without_threads()
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.GRID,
+        available_commands=["confirm", "wait", "state"],
+        screen=SimpleNamespace(confirm_up=True),
+    )
+    prior_actions = [ChooseAction(0), WaitAction(timeout=9)]
+    coordinator.action_queue.extend(prior_actions)
+    action = OptionalCardSelectConfirmAction(settle_after_confirm=True)
+    original_add = coordinator.add_action_to_queue
+    append_count = 0
+
+    def fail_second_append(action_to_queue):
+        nonlocal append_count
+        append_count += 1
+        if append_count == 2:
+            raise RuntimeError("second append failed")
+        original_add(action_to_queue)
+
+    coordinator.add_action_to_queue = fail_second_append
+
+    with pytest.raises(RuntimeError, match="second append failed"):
+        action.execute(coordinator)
+
+    assert coordinator.output_queue.get_nowait() == "confirm"
+    assert list(coordinator.action_queue) == prior_actions
+    assert all(
+        queued is prior for queued, prior in zip(coordinator.action_queue, prior_actions)
+    )
+    assert coordinator._card_select_confirm_in_flight is False
+    assert append_count == 2
 
 
 def test_grid_timeout_exact_over_selection_does_not_confirm():
