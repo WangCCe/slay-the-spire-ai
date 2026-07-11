@@ -518,13 +518,20 @@ def _schema_bucket(value) -> str:
 
 
 def _normalize_behavior_probability(probability, status):
-    normalized_status = str(status).strip() if status is not None else ""
-    normalized_status = normalized_status or "unknown"
+    if status is None:
+        normalized_status = "unknown"
+    elif not isinstance(status, str):
+        return False, None, "unknown"
+    else:
+        normalized_status = status.strip().casefold() or "unknown"
     if normalized_status == "unknown":
         return probability is None, None, normalized_status
     if isinstance(probability, bool) or not isinstance(probability, Real):
         return False, None, normalized_status
-    normalized_probability = float(probability)
+    try:
+        normalized_probability = float(probability)
+    except (OverflowError, ValueError, TypeError):
+        return False, None, normalized_status
     if not math.isfinite(normalized_probability) or not 0.0 <= normalized_probability <= 1.0:
         return False, None, normalized_status
     return True, normalized_probability, normalized_status

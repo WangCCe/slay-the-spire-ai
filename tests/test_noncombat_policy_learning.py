@@ -657,3 +657,76 @@ def test_invalid_mutable_behavior_propensity_never_reaches_rows_or_manifest(tmp_
     assert [row.sample_id for row in dataset.rows] == ["valid"]
     assert to_json_value(dataset.manifest) == manifest_before
     assert dataset.manifest["exclusions"] == {"invalid_behavior_probability": 1}
+
+
+@pytest.mark.parametrize("status", [7, True, ["deterministic"], {"status": "deterministic"}])
+def test_non_string_behavior_propensity_status_is_excluded(tmp_path, status):
+    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset
+
+    source = tmp_path / "samples.jsonl"
+    source.write_text("source\n", encoding="utf-8")
+    dataset = build_policy_dataset(
+        [
+            _sample(
+                "invalid-status",
+                behavior_action_probability=0.5,
+                behavior_probability_status=status,
+            )
+        ],
+        label_mode="current",
+        source_paths=[source],
+        source_commit="ccc5c480",
+    )
+
+    assert dataset.rows == ()
+    assert dataset.manifest["exclusions"] == {"invalid_behavior_probability": 1}
+    assert dataset.manifest["input_sample_count"] == (
+        dataset.manifest["eligible_row_count"] + sum(dataset.manifest["exclusions"].values())
+    )
+
+
+def test_oversized_behavior_propensity_is_excluded_without_overflow(tmp_path):
+    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset
+
+    source = tmp_path / "samples.jsonl"
+    source.write_text("source\n", encoding="utf-8")
+    dataset = build_policy_dataset(
+        [
+            _sample(
+                "oversized-propensity",
+                behavior_action_probability=10**400,
+                behavior_probability_status="deterministic",
+            )
+        ],
+        label_mode="current",
+        source_paths=[source],
+        source_commit="ccc5c480",
+    )
+
+    assert dataset.rows == ()
+    assert dataset.manifest["exclusions"] == {"invalid_behavior_probability": 1}
+    assert dataset.manifest["input_sample_count"] == (
+        dataset.manifest["eligible_row_count"] + sum(dataset.manifest["exclusions"].values())
+    )
+
+
+def test_behavior_propensity_status_casefolds_unknown(tmp_path):
+    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset
+
+    source = tmp_path / "samples.jsonl"
+    source.write_text("source\n", encoding="utf-8")
+    [row] = build_policy_dataset(
+        [
+            _sample(
+                "casefolded-unknown",
+                behavior_action_probability=None,
+                behavior_probability_status=" UNKNOWN ",
+            )
+        ],
+        label_mode="current",
+        source_paths=[source],
+        source_commit="ccc5c480",
+    ).rows
+
+    assert row.behavior_probability_status == "unknown"
+    assert row.behavior_action_probability is None
