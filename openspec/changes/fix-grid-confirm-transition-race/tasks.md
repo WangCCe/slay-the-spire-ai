@@ -17,9 +17,9 @@
 
 - [x] 3.1 Run the full pytest suite with cache disabled and a writable repository-local basetemp.
 - [x] 3.2 Run `openspec validate fix-grid-confirm-transition-race --strict` and `git diff --check`.
-- [ ] 3.3 Obtain independent spec-compliance and code-quality review of the behavior diff.
-- [ ] 3.4 Resolve every accepted review finding and rerun focused tests, full pytest, strict OpenSpec validation, and diff checks.
-- [ ] 3.5 Commit the reviewed GRID ordering fix as one cohesive behavior commit without staging unrelated historical reports.
+- [x] 3.3 Obtain independent spec-compliance and code-quality review of the behavior diff.
+- [x] 3.4 Resolve every accepted review finding and rerun focused tests, full pytest, strict OpenSpec validation, and diff checks.
+- [x] 3.5 Commit the reviewed GRID ordering fix as one cohesive behavior commit without staging unrelated historical reports.
 
 ## 4. Run The Fresh No-Training Qualification Retry
 
