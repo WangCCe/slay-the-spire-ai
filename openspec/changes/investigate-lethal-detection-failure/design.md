@@ -1,316 +1,95 @@
-# Design: Lethal Detection Fix
+## Context
 
-## Architecture Overview
+`IroncladCombatPlanner.plan_turn()` calls `CombatEndingDetector` before normal planning and returns a non-empty lethal sequence when one is proven. `OptimizedAgent` caches and emits that sequence, but caches no plan kind. `CombatRLAgent` receives only the next fallback action.
 
-The current combat decision flow for Ironclad is:
+The HP-loss pressure guard introduced in commit `139ddb4b` asks whether playing an HP-loss card would leave the player unable to survive current end-turn incoming damage. That check is correct for ordinary filler actions. It is incorrect for the first action of a validated lethal sequence because the incoming damage will not occur when the sequence completes.
 
-```
-1. IroncladCombatPlanner.plan_turn()
-   ↓
-2. CombatEndingDetector.can_kill_all()  # ← LETHAL CHECK
-   ↓ (if true)
-3. CombatEndingDetector.find_lethal_sequence()  # ← SEQUENCE CONSTRUCTION
-   ↓ (if sequence found)
-4. Return lethal sequence (skip beam search)
-   ↓ (if no lethal)
-5. Beam search planning (HeuristicCombatPlanner)
-```
+The later single-card lethal guard cannot handle this case because the fresh failure involved two living monsters and a two-card sequence.
 
-**Problem**: This flow has three potential failure points:
-1. **Detection failure**: `can_kill_all()` returns false when lethal is actually possible
-2. **Construction failure**: `find_lethal_sequence()` returns empty/invalid sequence
-3. **Scoring failure**: Beam search doesn't prioritize kill sequences enough
+## Goals
 
-## Component Analysis
+- Preserve lethal intent across the planner, fallback agent, and takeover guard boundary.
+- Bypass end-turn pressure heuristics only for an active validated lethal prefix.
+- Preserve immediate self-death and action-legality vetoes.
+- Keep the change small enough to validate with the exact live state.
 
-### 1. CombatEndingDetector.can_kill_all()
+## Non-Goals
 
-**Current Implementation** (combat_ending.py:30-51):
-```python
-def can_kill_all(self, context: DecisionContext) -> bool:
-    total_possible_damage = self._calculate_max_damage(context)
-    total_monster_hp = sum(m.current_hp + m.block for m in context.monsters_alive)
-    return total_possible_damage >= total_monster_hp * 1.2  # 20% margin
-```
+- Recompute lethal independently inside `CombatRLAgent`.
+- Treat aggregate damage estimates as validated plans.
+- Reorder unrelated non-combat or reward policy.
+- Refactor all combat guards into a new framework.
 
-**Issues**:
-1. **20% margin is too conservative**: If monsters have 100 HP and we can deal 110 damage, lethal is possible but detection returns False (110 < 120)
-2. **No energy validation**: Doesn't check if we can actually afford to play all damage cards
-3. **No targeting validation**: Assumes all damage can be focused optimally (fails for single-target attacks vs multiple monsters)
+## Root Cause
 
-**Proposed Fix**:
-```python
-def can_kill_all(self, context: DecisionContext) -> bool:
-    # Step 1: Calculate max damage (respecting energy constraints)
-    affordable_damage = self._calculate_affordable_damage(context)
+The failing path is:
 
-    # Step 2: Calculate total monster HP
-    total_monster_hp = sum(m.current_hp + m.block for m in context.monsters_alive)
-
-    # Step 3: Check with reduced margin (10% instead of 20%)
-    has_damage_potential = affordable_damage >= total_monster_hp * 1.1
-
-    # Step 4: Validate targeting (single-target vs AOE constraints)
-    targeting_feasible = self._can_target_all_monsters(context, affordable_damage)
-
-    # Step 5: HP safety check (only go for lethal if not too risky)
-    hp_safe = context.player_hp_pct > 0.3 or context.player_hp > 30
-
-    return has_damage_potential and targeting_feasible and hp_safe
+```text
+CombatEndingDetector proves lethal
+  -> IroncladCombatPlanner returns [Hemokinesis, Headbutt]
+  -> OptimizedAgent caches the sequence and returns Hemokinesis
+  -> plan provenance is lost at the fallback-agent boundary
+  -> CombatRLAgent evaluates Hemokinesis as generic HP-loss filler
+  -> end-turn pressure check returns unsafe
+  -> EndTurnAction replaces the lethal prefix
+  -> player dies
 ```
 
-### 2. CombatEndingDetector.find_lethal_sequence()
+The root cause is missing semantic provenance, not insufficient damage scoring or an inaccurate low-HP threshold.
 
-**Current Implementation** (combat_ending.py:53-104):
-```python
-def find_lethal_sequence(self, context: DecisionContext) -> List[PlayCardAction]:
-    # Greedy approach:
-    # 1. Sort monsters by HP (lowest first)
-    # 2. Sort attack cards by damage (highest first)
-    # 3. Match highest-damage card to each monster
-    # 4. Check if damage >= monster HP
-```
+## Decisions
 
-**Issues**:
-1. **No energy tracking**: May suggest playing more cards than affordable
-2. **No AOE optimization**: Doesn't consider that AOE (Cleave, Whirlwind) might be better than single-target
-3. **No card synergy**: Doesn't account for Strength, Vulnerable, Weak
-4. **Premature exit**: Stops after first card that "can kill" without verifying total damage
+### Carry plan kind with the cached sequence
 
-**Proposed Fix**:
-```python
-def find_lethal_sequence(self, context: DecisionContext) -> List[PlayCardAction]:
-    # Use beam search instead of greedy!
-    # Reuse HeuristicCombatPlanner with lethal-focused weights
+`IroncladCombatPlanner` SHALL expose whether its most recent non-empty plan came from the validated lethal branch. `OptimizedAgent` SHALL cache that plan kind with `current_action_sequence` and clear it whenever the sequence is cleared, invalidated, replanned, or reset for a new turn.
 
-    lethal_planner = HeuristicCombatPlanner(
-        combat_mode=CombatMode.AGGRESSIVE,  # Maximize damage
-        beam_width=10,  # Small beam for speed
-        max_depth=5
-    )
+The fallback agent SHALL expose a narrow query that tells `CombatRLAgent` whether the action just returned is part of the active validated lethal plan. `CombatRLAgent` SHALL not inspect planner internals directly or run a second approximate lethal calculation.
 
-    # Add incentive to kill all monsters
-    sequence = lethal_planner.plan_turn(context)
+### Apply hard vetoes before lethal preservation
 
-    # Verify sequence actually kills all monsters
-    if self._verify_lethal(sequence, context):
-        return sequence
-    else:
-        return []  # Failed to construct valid lethal sequence
-```
+Before a lethal prefix is passed through, the current action must be normalized and executable. It remains blocked when its immediate HP cost or known reactive damage kills the player before the action resolves safely.
 
-### 3. Beam Search Scoring
+Low HP and projected end-turn incoming damage are not hard vetoes. They are pressure heuristics and SHALL yield to a safe lethal prefix.
 
-**Current Scoring** (simulation.py:660-732):
-```python
-# Monsters killed bonus
-score += kills * KILL_BONUS  # KILL_BONUS = 100
+### Re-evaluate after each action
 
-# Damage dealt
-score += total_damage * DAMAGE_WEIGHT  # DAMAGE_WEIGHT = 2.0
+Only the current action receives the bypass. After the game emits the next state, cached-plan validity and immediate safety are checked again. This avoids assuming that random effects, target changes, or card movement left the rest of the sequence valid.
 
-# Block gained
-score += block_gained * BLOCK_WEIGHT  # BLOCK_WEIGHT = 1.5
-```
+### Emit arbitration evidence
 
-**Issues**:
-1. **KILL_BONUS too low**: Killing a 10 HP monster with a 12 damage card gives score = 100 + (12 × 2.0) = 124
-2. **Block overvalued**: Playing Defend (5 block) gives score = 5 × 1.5 = 7.5, which is competitive with low-damage attacks
-3. **No all-or-nothing bonus**: Killing 2/3 monsters gets 2×100 = 200, but killing 3/3 should be worth much more
+Logs SHALL distinguish:
 
-**Proposed Fix**:
-```python
-# ALL_MONSTERS_KILLED bonus (exponential)
-all_killed = (final_alive == 0)
-if all_killed:
-    score += ALL_LETHAL_BONUS  # 500 points (huge incentive)
+- validated lethal prefix passed through;
+- lethal prefix rejected by action legality;
+- lethal prefix rejected by immediate self-death;
+- ordinary HP-loss action rejected by end-turn pressure.
 
-# Regular kill bonus (per monster)
-score += kills * KILL_BONUS  # 100
+## Guard Order
 
-# Reduce block priority when lethal is possible
-if lethal_is_possible(context):
-    score += block_gained * (BLOCK_WEIGHT * 0.3)  # Penalize defense by 70%
-```
+For takeover fallback actions:
 
-### 4. SimpleAgent (Silent/Defect)
+1. normalize and validate the current action;
+2. reject immediate self-death;
+3. pass through an active safe lethal prefix;
+4. apply encounter-specific survival guards;
+5. apply HP-loss pressure, setup, and filler guards;
+6. execute a legal fallback or end the turn.
 
-**Current Implementation**: No lethal detection at all
+## Error Handling
 
-**Proposed Addition**:
-```python
-def get_play_card_action(self):
-    # NEW: Check for lethal before card selection
-    if self._has_lethal_damage():
-        lethal_action = self._get_lethal_action()
-        if lethal_action:
-            return lethal_action
+- Missing or stale plan metadata defaults to normal guard behavior.
+- A mismatch between the returned action and the cached lethal sequence disables the bypass and logs a diagnostic.
+- Exceptions in provenance checks do not send an unvalidated action; they fall back to existing guard behavior.
 
-    # Existing logic...
-    playable_cards = [card for card in self.game.hand if card.is_playable]
-    # ... rest of current implementation
-```
+## Testing
 
-## Data Flow
+- Reproduce the fresh Large Slime state with 3 HP, 2 energy, two monsters, and a lethal Hemokinesis-plus-Headbutt sequence. Expected first action: Hemokinesis with a valid target, not `EndTurnAction`.
+- Prove an HP-cost action that immediately kills the player remains blocked.
+- Prove a Guardian Sharp Hide action that kills the player before safe resolution remains blocked.
+- Prove a non-lethal HP-loss filler that exposes lethal end-turn damage remains blocked.
+- Prove plan kind clears on replan, stale sequence, combat end, and turn reset.
+- Run focused tests, full pytest, and a fresh 25-game no-training evaluation.
 
-### Current Flow (Buggy)
-```
-Game State → CombatEndingDetector
-            ↓
-            can_kill_all() returns False (bug!)
-            ↓
-            Falls through to beam search
-            ↓
-            Beam search explores defensive sequences
-            ↓
-            Defensive sequence scores higher than kill sequence
-            ↓
-            AI plays Defend instead of Strike
-            ↓
-            Monsters survive, AI takes damage next turn
-```
+## Rollout
 
-### Proposed Flow (Fixed)
-```
-Game State → CombatEndingDetector
-            ↓
-            can_kill_all() returns True (fixed!)
-            ↓
-            find_lethal_sequence() uses beam search with AGGRESSIVE mode
-            ↓
-            Returns lethal sequence [Strike, Strike, Bash]
-            ↓
-            Verification: Simulate sequence, confirm all monsters die
-            ↓
-            Return lethal sequence (skip beam search)
-            ↓
-            Monsters killed, combat ends, no damage taken
-```
-
-## Key Design Decisions
-
-### Decision 1: Reduce Margin from 20% to 10%
-**Rationale**:
-- 20% margin was conservative to avoid over-aggression
-- In practice, this causes false negatives (missing lethal lines)
-- 10% is still safe enough to account for targeting suboptimalities
-
-**Trade-off**: Slightly increased risk of failed lethal attempts, but significantly more lethal opportunities detected
-
-### Decision 2: Use Beam Search for Sequence Construction
-**Rationale**:
-- Greedy approach is too simple for complex card interactions
-- Beam search already exists and is optimized
-- Reusing code reduces maintenance burden
-
-**Trade-off**: Slightly slower than greedy, but still fast enough (<50ms for small beam)
-
-### Decision 3: Add HP Safety Threshold
-**Rationale**:
-- Going for lethal at 5 HP is risky (Thorns, retaliation damage, etc.)
-- Only go for lethal when player has safe HP buffer
-
-**Trade-off**: Will skip some lethal opportunities at low HP, but prevents deaths from miscalculations
-
-### Decision 4: Exponential Bonus for All-Kill
-**Rationale**:
-- Killing all monsters should be worth much more than killing some
-- Linear bonus (100 per kill) doesn't differentiate between 2/3 and 3/3 kills
-- Exponential bonus (500 for all) creates strong incentive to close out games
-
-**Trade-off**: May cause AI to overcommit to failed lethal, but HP safety check mitigates this
-
-## Implementation Strategy
-
-### Phase 1: Add Instrumentation (Low Risk)
-1. Add detailed logging to `CombatEndingDetector`
-2. Log lethal detection results (true/false with reasons)
-3. Log sequence construction attempts
-4. Run test games to collect data
-
-### Phase 2: Fix Detection Logic (Medium Risk)
-1. Implement `can_kill_all()` improvements (reduce margin, add energy check)
-2. Implement `_can_target_all_monsters()` helper
-3. Add HP safety threshold check
-4. Test with logged failure cases
-
-### Phase 3: Fix Sequence Construction (Medium Risk)
-1. Rewrite `find_lethal_sequence()` to use beam search
-2. Implement `_verify_lethal()` simulation helper
-3. Add fallback to greedy if beam search fails
-4. Test constructed sequences for validity
-
-### Phase 4: Beam Search Scoring (Low Risk)
-1. Add ALL_LETHAL_BONUS constant
-2. Implement `lethal_is_possible()` helper for beam search
-3. Reduce block weight when lethal available
-4. Test with variety of combat scenarios
-
-### Phase 5: SimpleAgent Extension (Low Risk)
-1. Implement `_has_lethal_damage()` for SimpleAgent
-2. Implement `_get_lethal_action()` for SimpleAgent
-3. Test with Silent and Defect
-
-## Validation Plan
-
-### Unit Tests (Manual)
-1. **Lethal detection test cases**:
-   - Single monster, exact lethal damage
-   - Single monster, overkill damage
-   - Two monsters, need AOE
-   - Two monsters, single-target sufficient
-   - Low HP, should skip risky lethal
-
-2. **Sequence construction test cases**:
-   - Simple: [Strike, Strike] kills 10 HP monster
-   - Complex: [Bash, Strike] with Vulnerable kills 20 HP monster
-   - AOE: [Cleave] kills two 8 HP monsters
-   - Energy-constrained: [Strike, Strike, Strike] with only 2 energy
-
-3. **Scoring test cases**:
-   - Lethal sequence vs defensive sequence (lethal should win)
-   - Near-lethal vs full defense (lethal should still win)
-   - High damage vs high block (damage should win when lethal possible)
-
-### Integration Tests
-1. Run 20 games with Ironclad, monitor ai_debug.log for:
-   - "[COMBAT] Lethal detected!" frequency
-   - Lethal sequence execution success rate
-   - No crashes or infinite loops
-
-2. Run 10 games each with Silent and Defect, verify:
-   - Lethal detection works for all classes
-   - No regression in win rate
-
-### Success Metrics
-1. **Detection accuracy**: 95%+ of true lethal situations detected
-2. **Execution success**: 100% of detected lethal sequences successfully execute
-3. **Win rate**: No regression in overall win rate (target: maintain current win rate)
-4. **Performance**: Lethal detection + construction completes in <50ms
-
-## Rollback Plan
-
-If issues are detected after deployment:
-
-1. **Immediate rollback**: Revert changes to `combat_ending.py` and `ironclad_combat.py`
-2. **Parameter tuning**: Adjust margin from 1.1 to 1.15 or 1.2 if too aggressive
-3. **Disable lethal detection**: Add feature flag to skip lethal check entirely if bugs are critical
-
-## Open Questions
-
-1. **What is the actual failure rate?**
-   - Need to analyze logs to determine if detection fails 10% or 50% of the time
-   - Will affect parameter tuning (margin, HP threshold)
-
-2. **Should we add card-specific logic?**
-   - E.g., prioritize Reaper for lethal at low HP (heals to safe range)
-   - E.g., prefer Limit Break + Strength buildup over immediate lethal
-   - **Decision**: No, keep it simple for now. Add later if needed.
-
-3. **How to handle multi-turn lethal?**
-   - E.g., "Play Demon Form this turn, kill all next turn"
-   - **Decision**: Out of scope. Only fix single-turn lethal for now.
-
-4. **Should lethal detection be a separate module?**
-   - Currently embedded in `CombatEndingDetector`
-   - **Decision**: Keep existing structure, only refactor if it grows too complex.
+Commit the regression-backed fix as one behavior class. If the fresh batch contains another A-class guard-arbitration failure, address it separately and restart baseline qualification. Do not broaden this change based only on B/C-class policy noise.
