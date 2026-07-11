@@ -1,6 +1,6 @@
 ## 1. Preserve The Current Boundary As Regressions
 
-- [ ] 1.1 Add fixture coverage for the current 373-sample dataset summary, including 216 matched rows, 6 unique matched trajectories, 0 victory trajectories, and category-specific support counts.
+- [ ] 1.1 Add fixture coverage for `noncombat_rl_decision_samples_20260710_post_exec_command_fixes_25_bottled.jsonl` (SHA-256 `77DA5265ACF7A447C2C76321BED66F0D65C7A5C6614188C42505381D32C7E186`), including 373 samples, 216 matched rows, 6 unique matched trajectories, 0 victory trajectories, and category-specific support counts.
 - [ ] 1.2 Add schema regressions proving legacy v1 samples remain readable but are excluded from pilot train/evaluation when trajectory or behavior provenance cannot be resolved.
 - [ ] 1.3 Add guard tests proving the pilot cannot modify CommunicationMod configuration, launcher defaults, live policy imports, production checkpoints, or existing checkpoint discovery.
 - [ ] 1.4 Record the frozen behavior candidate, source report hashes, current git commit, and explicit no-formal-RL/no-live-promotion boundary in the pilot manifest fixtures.
@@ -37,7 +37,7 @@
 
 ## 6. Run The Frozen-Baseline Pilot
 
-- [ ] 6.1 Re-export a separately named v2 sample set from the frozen candidate's preserved clean qualification evidence without launching gameplay.
+- [ ] 6.1 Re-export a separately named v2 sample set only from candidate `f321cb05` Batch 2 Retry 1, bounded to `1783787478..1783790134` and the report's 25 explicit run files, without launching gameplay.
 - [ ] 6.2 Run the support-only command first and preserve source cutoffs, run joins, input hashes, and all blocked categories in a durable report.
 - [ ] 6.3 If the structural gate passes, run bounded Current-imitation and Bottled-auxiliary CPU pilots; otherwise preserve the blocked report and do not lower thresholds or fabricate groups.
 - [ ] 6.4 Independently review the dataset/split manifests and evaluation report for leakage, overstated support, label mixing, or outcome-uplift claims, then correct every accepted finding.

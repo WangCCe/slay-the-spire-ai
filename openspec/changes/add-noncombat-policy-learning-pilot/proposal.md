@@ -1,6 +1,6 @@
 ## Why
 
-The frozen `f321cb05` behavior baseline now has two clean 25-game qualification batches and the non-combat exporter can produce normalized Current and native Bottled labels. However, the latest policy dataset has 373 samples but only 6 uniquely matched runs, 0 victory runs, and only 3 matched runs containing shop samples; this is enough to test a supervised learning pipeline, but not enough to justify formal offline RL or live policy promotion.
+The qualified behavior lineage now has two clean 25-game mechanics batches and the non-combat exporter can produce normalized Current and native Bottled labels. However, the identified July 10 frozen policy dataset has 373 samples but only 6 uniquely matched runs, 0 victory runs, and only 3 matched runs containing shop samples; this is enough to test a supervised learning pipeline, but not enough to justify formal offline RL or live policy promotion. Policy-learning evidence for this change will be regenerated only from the `f321cb05` Batch 2 Retry 1 interval so every trajectory has one explicit behavior commit.
 
 We need a bounded policy-learning pilot that proves dataset grouping, action masking, label separation, reproducible training, and held-out evaluation before collecting exploration data or starting formal non-combat RL.
 
