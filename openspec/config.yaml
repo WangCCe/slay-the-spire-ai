@@ -1,0 +1,22 @@
+schema: spec-driven
+
+context: |
+  spirecomm is a Python AI agent for Slay the Spire through Communication Mod.
+  Production gameplay runs on Windows with D:\anaconda\envs\stsai\python.exe;
+  never use the WSL Python path in CommunicationMod configuration.
+  Validate gameplay changes with fresh .run records, ai_debug.log,
+  communication_mod_errors.log, and decision or sim-divergence traces.
+  Keep changes narrow and evidence-backed: add a regression first, make the
+  minimal fix, run focused tests plus the full pytest suite, and commit one
+  coherent behavior or risk class.
+  New capabilities, architecture changes, or formal training work require an
+  OpenSpec proposal before implementation. Direct bug fixes may proceed without
+  a new proposal.
+
+rules:
+  proposal:
+    - State the live evidence, success metric, non-goals, and rollback boundary.
+  design:
+    - Preserve CommunicationMod compatibility and separate production gameplay from development-only tooling.
+  tasks:
+    - Include regression coverage, focused verification, full pytest, and fresh gameplay validation when behavior can affect a live run.
