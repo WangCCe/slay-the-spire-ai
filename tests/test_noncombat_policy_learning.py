@@ -2049,6 +2049,71 @@ def test_successful_rollback_restores_manifest_after_non_manifest_artifacts(tmp_
     _assert_no_transaction_debris(output_dir)
 
 
+def test_rollback_withholds_manifest_when_unbacked_model_survives_cleanup(
+    tmp_path, monkeypatch
+):
+    from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
+
+    dataset, splits, support = _artifact_fixture()
+    changed_dataset = _changed_artifact_dataset(dataset)
+    output_dir = tmp_path / "artifacts"
+    write_pilot_artifacts(
+        output_dir,
+        mode="current",
+        dataset=dataset,
+        splits=splits,
+        support=support,
+    )
+    before = _managed_bytes(output_dir, "current")
+    result = _training_result_for_artifact()
+    original_replace = Path.replace
+    original_unlink = Path.unlink
+    install_failed = False
+
+    def fail_late_install(self, target):
+        nonlocal install_failed
+        result_path = original_replace(self, target)
+        if (
+            not install_failed
+            and self.name == ".current_report.md.tmp"
+            and Path(target).name == "current_report.md"
+        ):
+            install_failed = True
+            raise OSError("injected report install failure")
+        return result_path
+
+    def leave_unbacked_model(self, *args, **kwargs):
+        if self.name == "current_model.pt":
+            raise OSError("injected model cleanup failure")
+        return original_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "replace", fail_late_install)
+    monkeypatch.setattr(Path, "unlink", leave_unbacked_model)
+    with pytest.raises(RuntimeError) as error:
+        write_pilot_artifacts(
+            output_dir,
+            mode="current",
+            dataset=changed_dataset,
+            splits=splits,
+            support=support,
+            model=result,
+            metrics=_valid_metrics(),
+        )
+
+    assert "current_model.pt" in str(error.value)
+    assert ".current_artifact_manifest.json.backup" in str(error.value)
+    for name, payload in before.items():
+        if name != "current_artifact_manifest.json":
+            assert (output_dir / name).read_bytes() == payload
+    assert (output_dir / "current_model.pt").exists()
+    assert not (output_dir / "current_metrics.json").exists()
+    assert not (output_dir / "current_artifact_manifest.json").exists()
+    assert (
+        output_dir / ".current_artifact_manifest.json.backup"
+    ).read_bytes() == before["current_artifact_manifest.json"]
+    assert not list(output_dir.glob(".*.tmp"))
+
+
 def test_artifact_writer_rejects_inconsistent_inputs_before_writing(tmp_path):
     from analysis_scripts.noncombat_policy_dataset import DatasetBuild, to_json_value
     from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts

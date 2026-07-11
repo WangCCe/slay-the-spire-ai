@@ -597,6 +597,7 @@ def _commit_artifact_transaction(
     except Exception as error:
         rollback_errors = _rollback_artifact_transaction(
             artifact_dir,
+            mode,
             installed,
             backups,
             manifest_name,
@@ -612,6 +613,7 @@ def _commit_artifact_transaction(
 
 def _rollback_artifact_transaction(
     artifact_dir: Path,
+    mode,
     installed,
     backups,
     manifest_name,
@@ -633,13 +635,20 @@ def _rollback_artifact_transaction(
 
     manifest_path = _artifact_path(artifact_dir, manifest_name)
     manifest_backup = backups.get(manifest_name)
-    if non_manifest_restore_errors:
+    managed_state_errors = _recovered_managed_state_errors(
+        artifact_dir,
+        mode,
+        backups,
+        manifest_name,
+    )
+    if managed_state_errors:
+        errors.extend(managed_state_errors)
         errors.extend(_cleanup_paths((manifest_path,)))
         if manifest_backup is not None and manifest_backup.exists():
             errors.append(
                 (
                     manifest_backup,
-                    RuntimeError("withheld until non-manifest recovery succeeds"),
+                    RuntimeError("withheld until recovered managed set is complete"),
                 )
             )
         return errors
@@ -649,6 +658,53 @@ def _rollback_artifact_transaction(
             manifest_backup.replace(manifest_path)
         except Exception as error:
             errors.append((manifest_backup, error))
+    return errors
+
+
+def _recovered_managed_state_errors(
+    artifact_dir: Path,
+    mode,
+    backups,
+    manifest_name,
+):
+    errors = []
+    for name in _managed_artifact_names(mode):
+        if name == manifest_name:
+            continue
+        final_path = _artifact_path(artifact_dir, name)
+        backup_path = backups.get(name)
+        if backup_path is None:
+            if final_path.exists():
+                errors.append(
+                    (
+                        final_path,
+                        RuntimeError("unbacked managed artifact remains after rollback"),
+                    )
+                )
+            continue
+        if not final_path.is_file():
+            errors.append(
+                (
+                    final_path,
+                    RuntimeError("managed artifact final was not recovered as a file"),
+                )
+            )
+        if backup_path.exists():
+            errors.append(
+                (
+                    backup_path,
+                    RuntimeError("managed artifact backup remains after rollback"),
+                )
+            )
+
+    manifest_path = _artifact_path(artifact_dir, manifest_name)
+    if manifest_path.exists():
+        errors.append(
+            (
+                manifest_path,
+                RuntimeError("artifact manifest final remains before recovery restore"),
+            )
+        )
     return errors
 
 
