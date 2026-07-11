@@ -10,6 +10,7 @@ from spirecomm.communication.action import (
     CancelAction,
     PlayCardAction,
     PotionAction,
+    StateAction,
 )
 from spirecomm.spire.card import CardType
 from spirecomm.spire.screen import ScreenType
@@ -275,6 +276,109 @@ def test_grid_neutral_selection_copies_good_card_instead_of_removing_strike():
 
     assert isinstance(action, CardSelectAction)
     assert action.cards == [feed]
+
+
+def test_grid_partial_selection_only_selects_remaining_unselected_card():
+    shockwave = _card("Shockwave")
+    shockwave.uuid = "shockwave"
+    fiend_fire = _card("Fiend Fire")
+    fiend_fire.uuid = "fiend-fire"
+    shrug = _card("Shrug It Off")
+    shrug.uuid = "shrug"
+
+    selected_shockwave = _card("Shockwave")
+    selected_shockwave.uuid = "shockwave"
+    selected_fiend_fire = _card("Fiend Fire")
+    selected_fiend_fire.uuid = "fiend-fire"
+
+    agent = _agent(
+        screen_type=ScreenType.GRID,
+        choice_available=True,
+        available_commands=["choose", "key", "click", "wait", "state"],
+        screen=SimpleNamespace(
+            cards=[shockwave, fiend_fire, shrug],
+            selected_cards=[selected_shockwave, selected_fiend_fire],
+            num_cards=3,
+            any_number=False,
+            confirm_up=False,
+            for_upgrade=False,
+            for_purge=False,
+            for_transform=False,
+        ),
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CardSelectAction)
+    assert action.cards == [shrug]
+
+
+def test_grid_unselected_cards_consumes_duplicate_by_multiplicity():
+    first_defend = _card("Defend_R")
+    second_defend = _card("Defend_R")
+    strike = _card("Strike_R")
+    selected_defend = _card("Defend_R")
+    agent = _agent()
+
+    remaining = agent._grid_unselected_cards(
+        [first_defend, second_defend, strike],
+        [selected_defend],
+    )
+
+    assert remaining == [second_defend, strike]
+
+
+def test_grid_inconsistent_remaining_count_requests_state_refresh():
+    strike = _card("Strike_R")
+    selected_strike = _card("Strike_R")
+    agent = _agent(
+        screen_type=ScreenType.GRID,
+        choice_available=True,
+        available_commands=["choose", "key", "click", "wait", "state"],
+        screen=SimpleNamespace(
+            cards=[strike],
+            selected_cards=[selected_strike],
+            num_cards=2,
+            any_number=False,
+            confirm_up=False,
+            for_upgrade=False,
+            for_purge=False,
+            for_transform=False,
+        ),
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, StateAction)
+
+
+def test_grid_optional_partial_selection_returns_available_unselected_cards():
+    shockwave = _card("Shockwave")
+    shockwave.uuid = "shockwave"
+    shrug = _card("Shrug It Off")
+    shrug.uuid = "shrug"
+    selected_shockwave = _card("Shockwave")
+    selected_shockwave.uuid = "shockwave"
+    agent = _agent(
+        screen_type=ScreenType.GRID,
+        choice_available=True,
+        available_commands=["choose", "key", "click", "wait", "state"],
+        screen=SimpleNamespace(
+            cards=[shockwave, shrug],
+            selected_cards=[selected_shockwave],
+            num_cards=3,
+            any_number=True,
+            confirm_up=False,
+            for_upgrade=False,
+            for_purge=False,
+            for_transform=False,
+        ),
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, CardSelectAction)
+    assert action.cards == [shrug]
 
 
 def test_back_to_basics_simplicity_does_not_mark_next_grid_as_removal():

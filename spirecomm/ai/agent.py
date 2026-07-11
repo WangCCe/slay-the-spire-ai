@@ -228,6 +228,34 @@ class SimpleAgent:
         return [self._card_id_for_tracking(card) for card in cards]
 
     @staticmethod
+    def _grid_card_multiset_key(card):
+        card_uuid = getattr(card, "uuid", None)
+        if card_uuid:
+            return ("uuid", str(card_uuid))
+        return (
+            "card",
+            canonical_card_name(card),
+            card_upgrade_count(card),
+        )
+
+    @classmethod
+    def _grid_unselected_cards(cls, cards, selected_cards):
+        selected_keys = [
+            cls._grid_card_multiset_key(card)
+            for card in selected_cards or []
+        ]
+        unselected = []
+        for card in cards or []:
+            card_key = cls._grid_card_multiset_key(card)
+            try:
+                selected_index = selected_keys.index(card_key)
+            except ValueError:
+                unselected.append(card)
+            else:
+                selected_keys.pop(selected_index)
+        return unselected
+
+    @staticmethod
     def _safe_float(value, default=0.0):
         if value is None:
             return default
@@ -1873,9 +1901,30 @@ class SimpleAgent:
         elif self.game.screen_type == ScreenType.GRID:
             # Check if we've already selected enough cards and should confirm
             screen = self.game.screen
+            num_required = max(
+                0,
+                self._safe_int(getattr(screen, "num_cards", 0), 0),
+            )
+            already_selected = list(getattr(screen, "selected_cards", []) or [])
+            num_remaining = max(0, num_required - len(already_selected))
+            grid_candidates = self._grid_unselected_cards(
+                getattr(screen, "cards", []) or [],
+                already_selected,
+            )
+            if (
+                not bool(getattr(screen, "any_number", False))
+                and num_remaining > len(grid_candidates)
+            ):
+                logger.warning(
+                    "[GRID_SCREEN] inconsistent remaining selection: required=%s selected=%s remaining=%s available=%s",
+                    num_required,
+                    len(already_selected),
+                    num_remaining,
+                    len(grid_candidates),
+                )
+                return StateAction()
             if hasattr(screen, 'selected_cards') and hasattr(screen, 'num_cards'):
                 num_selected = len(screen.selected_cards)
-                num_required = screen.num_cards
                 confirm_up = screen.confirm_up if hasattr(screen, 'confirm_up') else False
                 available = getattr(self.game, 'available_commands', [])
 
@@ -1913,7 +1962,7 @@ class SimpleAgent:
             if for_upgrade:
                 # For upgrade: pick best cards
                 logging.debug(
-                    f"[GRID_SCREEN] Calling get_sorted_cards for {len(self.game.screen.cards)} cards"
+                    f"[GRID_SCREEN] Calling get_sorted_cards for {len(grid_candidates)} cards"
                 )
                 context = None
                 if DecisionContext is not None:
@@ -1922,7 +1971,7 @@ class SimpleAgent:
                     except Exception:
                         context = None
                 available_cards = sorted(
-                    self.game.screen.cards,
+                    grid_candidates,
                     key=lambda c: self._score_upgrade_candidate(c, context),
                     reverse=True,
                 )
@@ -1932,16 +1981,16 @@ class SimpleAgent:
             elif for_purge or for_transform or grid_selection_mode == "remove":
                 # For purge/remove/transform: prioritize Strike_R, then Defend_R, then others by reverse priority
                 strikes = [
-                    c for c in self.game.screen.cards
+                    c for c in grid_candidates
                     if self._normalize_card_name(c) == "Strike"
                 ]
                 defends = [
-                    c for c in self.game.screen.cards
+                    c for c in grid_candidates
                     if self._normalize_card_name(c) == "Defend"
                 ]
                 others = [
                     c
-                    for c in self.game.screen.cards
+                    for c in grid_candidates
                     if self._normalize_card_name(c) not in ["Strike", "Defend"]
                 ]
 
@@ -1956,17 +2005,19 @@ class SimpleAgent:
             else:
                 # Neutral grids such as Duplicator copy/obtain a card; pick the best card, not the worst removal target.
                 available_cards = self.priorities.get_sorted_cards(
-                    self.game.screen.cards,
+                    grid_candidates,
                     reverse=False,
                 )
                 logging.debug(
                     f"[GRID_SCREEN] Neutral good-card grid sorted cards: {self._card_ids_for_tracking(available_cards)}"
                 )
 
-            num_cards = self.game.screen.num_cards
-            selected_cards = available_cards[:num_cards]
+            selected_cards = available_cards[:num_remaining]
             logging.debug(
-                f"[GRID_SCREEN] Returning CardSelectAction with {len(selected_cards)} cards: {self._card_ids_for_tracking(selected_cards)}"
+                "[GRID_SCREEN] Returning CardSelectAction with %s/%s remaining cards: %s",
+                len(selected_cards),
+                num_remaining,
+                self._card_ids_for_tracking(selected_cards),
             )
             return CardSelectAction(selected_cards)
         elif self.game.screen_type == ScreenType.HAND_SELECT:
