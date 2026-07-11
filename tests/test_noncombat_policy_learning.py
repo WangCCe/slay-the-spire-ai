@@ -1,6 +1,7 @@
 import hashlib
 import json
 import math
+from collections.abc import Mapping
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -972,24 +973,58 @@ def test_training_is_bounded_deterministic_and_keeps_promotion_flags_false():
         training_config=training_config,
     )
     second = train_ranker(
-        train_rows,
-        validation_rows,
+        tuple(reversed(train_rows)),
+        tuple(reversed(validation_rows)),
         feature_config=feature_config,
         training_config=training_config,
     )
 
     assert first.epochs_run <= 50
+    assert first.epochs_run == second.epochs_run
     assert first.epochs_run == len(first.history)
-    assert first.best_validation_loss == pytest.approx(second.best_validation_loss, abs=1e-7)
+    assert first.epochs_run == len(second.history)
+    for first_epoch, second_epoch in zip(first.history, second.history):
+        assert first_epoch["epoch"] == second_epoch["epoch"]
+        assert first_epoch["train_loss"] == pytest.approx(
+            second_epoch["train_loss"], rel=0, abs=1e-7
+        )
+        assert first_epoch["validation_loss"] == pytest.approx(
+            second_epoch["validation_loss"], rel=0, abs=1e-7
+        )
+    assert first.best_validation_loss == pytest.approx(
+        second.best_validation_loss, rel=0, abs=1e-7
+    )
     assert next(first.model.parameters()).device.type == "cpu"
     assert first.artifact_manifest["artifact_stem"] == "noncombat_policy_current"
     assert first.artifact_manifest["formal_noncombat_rl_training_ready"] is False
     assert first.artifact_manifest["live_policy_promotion_ready"] is False
-    assert predict_ranker(first.model, validation_rows, feature_config=feature_config) == predict_ranker(
+    _assert_deterministic_manifest(
+        first.artifact_manifest,
+        second.artifact_manifest,
+    )
+
+    first_predictions = predict_ranker(first.model, validation_rows, feature_config=feature_config)
+    second_predictions = predict_ranker(
         second.model,
-        validation_rows,
+        tuple(reversed(validation_rows)),
         feature_config=feature_config,
     )
+    assert len(first_predictions) == len(second_predictions)
+    for first_prediction, second_prediction in zip(first_predictions, second_predictions):
+        assert first_prediction.sample_id == second_prediction.sample_id
+        assert first_prediction.predicted_action_id == second_prediction.predicted_action_id
+        assert first_prediction.target_action_id == second_prediction.target_action_id
+        assert first_prediction.confidence == pytest.approx(
+            second_prediction.confidence, rel=0, abs=1e-7
+        )
+        assert len(first_prediction.probabilities) == len(second_prediction.probabilities)
+        for first_probability, second_probability in zip(
+            first_prediction.probabilities,
+            second_prediction.probabilities,
+        ):
+            assert first_probability == pytest.approx(
+                second_probability, rel=0, abs=1e-7
+            )
 
     single_candidate = _learning_row(
         "single",
@@ -1011,3 +1046,17 @@ def test_training_is_bounded_deterministic_and_keeps_promotion_flags_false():
         training_config=TrainingConfig(seed=17, max_epochs=50, patience=5),
     )
     assert early_stopped.epochs_run == 6
+
+
+def _assert_deterministic_manifest(first_manifest, second_manifest):
+    assert tuple(first_manifest) == tuple(second_manifest)
+    for key in first_manifest:
+        first_value = first_manifest[key]
+        second_value = second_manifest[key]
+        if isinstance(first_value, Mapping):
+            assert isinstance(second_value, Mapping)
+            _assert_deterministic_manifest(first_value, second_value)
+        elif isinstance(first_value, float):
+            assert first_value == pytest.approx(second_value, rel=0, abs=1e-7)
+        else:
+            assert first_value == second_value
