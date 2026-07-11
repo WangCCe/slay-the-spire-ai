@@ -36,8 +36,8 @@
 
 ## 5. Live Validation
 
-- [ ] 5.1 Run a fresh conservative 25-game evaluation without training.
-- [ ] 5.2 Confirm zero invalid commands and no new uncaught gameplay exceptions.
+- [x] 5.1 Run a fresh conservative 25-game evaluation without training.
+- [x] 5.2 Confirm zero invalid commands and no new uncaught gameplay exceptions.
 - [x] 5.3 Inspect fresh lethal, death-cluster, and sim-divergence evidence for A-class failures.
 - [x] 5.4 Record the batch in a committed summary report.
 - [ ] 5.5 If the batch is clean, run and report the second consecutive fresh 25-game qualification batch.

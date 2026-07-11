@@ -28,7 +28,7 @@
 
 ## 5. Live Validation
 
-- [ ] 5.1 Run a fresh conservative 25-game Batch 1 retry without training.
-- [ ] 5.2 Confirm zero HAND_SELECT duplicate confirmations, invalid commands, GRID cardinality exceptions, and new uncaught gameplay exceptions.
-- [ ] 5.3 Inspect fresh decision and sim-divergence evidence for A-class failures.
-- [ ] 5.4 Commit a separate retry report while preserving both earlier failed reports.
+- [x] 5.1 Run a fresh conservative 25-game Batch 1 retry without training.
+- [x] 5.2 Confirm zero HAND_SELECT duplicate confirmations, invalid commands, GRID cardinality exceptions, and new uncaught gameplay exceptions.
+- [x] 5.3 Inspect fresh decision and sim-divergence evidence for A-class failures.
+- [x] 5.4 Commit a separate retry report while preserving both earlier failed reports.
