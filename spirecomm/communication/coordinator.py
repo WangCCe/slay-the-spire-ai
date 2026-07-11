@@ -359,6 +359,7 @@ class Coordinator:
         :return: None
         """
         self.action_queue.clear()
+        self._card_select_confirm_in_flight = False
 
     def _request_state_during_startup_wait(self, consecutive_timeouts, phase):
         if consecutive_timeouts == 1 or consecutive_timeouts % 5 == 0:
@@ -430,10 +431,18 @@ class Coordinator:
             return False
 
         screen = self.last_game_state.screen
+        selected_count = len(getattr(screen, "selected_cards", []) or [])
+        required_count = getattr(screen, "num_cards", None)
+        any_number = bool(getattr(screen, "any_number", False))
+        selection_complete = (
+            selected_count >= required_count
+            if any_number and required_count is not None
+            else selected_count == required_count
+        )
         if (
             hasattr(screen, "selected_cards")
             and hasattr(screen, "num_cards")
-            and len(screen.selected_cards) >= screen.num_cards
+            and selection_complete
             and screen.confirm_up
         ):
             logging.warning(
@@ -755,7 +764,7 @@ class Coordinator:
             if perform_callbacks:
                 if self.last_error is not None:
                     self._deferred_state_callback_pending = False
-                    self.action_queue.clear()
+                    self.clear_actions()
                     current_error = self.last_error
                     repeated_error = current_error == self._last_command_error
                     transition_late_error = self._is_transition_late_command_error(

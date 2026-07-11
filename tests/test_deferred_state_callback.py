@@ -3,6 +3,8 @@ import json
 import queue
 from types import SimpleNamespace
 
+import pytest
+
 from spirecomm.communication.action import (
     CardSelectAction,
     ChooseAction,
@@ -285,6 +287,7 @@ def _serialized_grid_confirm_coordinator():
     )
     coordinator.execute_next_action_if_ready()
     assert coordinator.output_queue.get_nowait() == "confirm"
+    assert coordinator._card_select_confirm_in_flight is True
     return coordinator, card, callbacks
 
 
@@ -313,6 +316,7 @@ def test_grid_timeout_does_not_repeat_confirm_while_settle_barrier_waits():
     assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
     coordinator.execute_next_action_if_ready()
     assert coordinator.output_queue.get_nowait() == "wait 1"
+    assert coordinator._card_select_confirm_in_flight is True
     assert callbacks == []
 
     coordinator._request_state_during_action_wait(1)
@@ -344,6 +348,106 @@ def test_grid_confirm_settle_response_clears_timeout_suppression():
     assert coordinator._run_deferred_state_callback_if_idle()
 
     assert callbacks == [ScreenType.GRID]
+    assert coordinator._handle_legacy_screen_timeout_recovery(1) is True
+    assert coordinator.output_queue.get_nowait() == "confirm"
+    assert coordinator.output_queue.empty()
+
+
+def test_clear_actions_abandons_serialized_confirm_marker():
+    coordinator = _coordinator_without_threads()
+    coordinator._card_select_confirm_in_flight = True
+    coordinator.action_queue.append(WaitAction(timeout=1))
+
+    coordinator.clear_actions()
+
+    assert coordinator.action_queue == collections.deque()
+    assert coordinator._card_select_confirm_in_flight is False
+
+
+def test_command_error_discard_abandons_serialized_confirm_marker():
+    coordinator = _coordinator_without_threads()
+    coordinator._card_select_confirm_in_flight = True
+    coordinator.action_queue.append(WaitAction(timeout=1))
+    coordinator.input_queue.put(_command_error_message())
+
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+
+    assert coordinator._card_select_confirm_in_flight is False
+    assert coordinator.action_queue == collections.deque()
+    assert coordinator.output_queue.get_nowait() == "state"
+
+
+def test_serialized_confirm_send_exception_rolls_back_marker():
+    coordinator = _coordinator_without_threads()
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.GRID,
+        available_commands=["confirm", "wait", "state"],
+        screen=SimpleNamespace(confirm_up=True),
+    )
+    action = OptionalCardSelectConfirmAction(settle_after_confirm=True)
+
+    def raise_send(*args, **kwargs):
+        raise RuntimeError("send failed")
+
+    coordinator.send_message = raise_send
+
+    with pytest.raises(RuntimeError, match="send failed"):
+        action.execute(coordinator)
+
+    assert coordinator._card_select_confirm_in_flight is False
+    assert coordinator.action_queue == collections.deque()
+
+
+def test_serialized_confirm_barrier_exception_rolls_back_marker():
+    coordinator = _coordinator_without_threads()
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.GRID,
+        available_commands=["confirm", "wait", "state"],
+        screen=SimpleNamespace(confirm_up=True),
+    )
+    action = OptionalCardSelectConfirmAction(settle_after_confirm=True)
+
+    def raise_queue(action_to_queue):
+        raise RuntimeError("queue failed")
+
+    coordinator.add_action_to_queue = raise_queue
+
+    with pytest.raises(RuntimeError, match="queue failed"):
+        action.execute(coordinator)
+
+    assert coordinator.output_queue.get_nowait() == "confirm"
+    assert coordinator._card_select_confirm_in_flight is False
+    assert coordinator.action_queue == collections.deque()
+
+
+def test_grid_timeout_exact_over_selection_does_not_confirm():
+    coordinator = _coordinator_without_threads()
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.GRID,
+        screen=SimpleNamespace(
+            selected_cards=[SimpleNamespace(), SimpleNamespace()],
+            num_cards=1,
+            any_number=False,
+            confirm_up=True,
+        ),
+    )
+
+    assert coordinator._handle_legacy_screen_timeout_recovery(1) is False
+    assert coordinator.output_queue.empty()
+
+
+def test_grid_timeout_any_number_over_selection_still_confirms():
+    coordinator = _coordinator_without_threads()
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.GRID,
+        screen=SimpleNamespace(
+            selected_cards=[SimpleNamespace(), SimpleNamespace()],
+            num_cards=1,
+            any_number=True,
+            confirm_up=True,
+        ),
+    )
+
     assert coordinator._handle_legacy_screen_timeout_recovery(1) is True
     assert coordinator.output_queue.get_nowait() == "confirm"
     assert coordinator.output_queue.empty()
@@ -594,6 +698,7 @@ def test_late_play_error_on_combat_reward_resyncs_without_error_callback():
 
 def test_out_of_game_update_clears_stale_ready_wait_before_start_action():
     coordinator = _coordinator_without_threads()
+    coordinator._card_select_confirm_in_flight = True
     coordinator.action_queue.append(WaitAction(timeout=1))
     coordinator.out_of_game_callback = lambda: StartGameAction(PlayerClass.IRONCLAD)
     coordinator.input_queue.put(_out_of_game_start_ready_message())
@@ -602,6 +707,7 @@ def test_out_of_game_update_clears_stale_ready_wait_before_start_action():
 
     assert len(coordinator.action_queue) == 1
     assert isinstance(coordinator.action_queue[0], StartGameAction)
+    assert coordinator._card_select_confirm_in_flight is False
 
 
 def test_deferred_callback_runs_after_noop_optional_confirm_drains_queue():

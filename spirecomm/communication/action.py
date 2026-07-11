@@ -669,21 +669,36 @@ class OptionalCardSelectConfirmAction(Action):
                     confirm_up,
                     available,
                 )
-            if self.settle_after_confirm:
-                mark_confirm_in_flight = getattr(
-                    coordinator,
-                    "mark_card_select_confirm_in_flight",
-                    None,
+            marked_confirm_in_flight = False
+            try:
+                if self.settle_after_confirm:
+                    mark_confirm_in_flight = getattr(
+                        coordinator,
+                        "mark_card_select_confirm_in_flight",
+                        None,
+                    )
+                    if callable(mark_confirm_in_flight):
+                        mark_confirm_in_flight()
+                        marked_confirm_in_flight = True
+                coordinator.send_message(
+                    self.command,
+                    wait_for_response=self.wait_for_response,
                 )
-                if callable(mark_confirm_in_flight):
-                    mark_confirm_in_flight()
-            coordinator.send_message(
-                self.command,
-                wait_for_response=self.wait_for_response,
-            )
-            if self.settle_after_confirm:
-                _queue_ready_wait(coordinator, wait_for_response=True)
-                coordinator.add_action_to_queue(CardSelectConfirmSettledAction())
+                if self.settle_after_confirm:
+                    _queue_ready_wait(coordinator, wait_for_response=True)
+                    coordinator.add_action_to_queue(
+                        CardSelectConfirmSettledAction()
+                    )
+            except Exception:
+                if marked_confirm_in_flight:
+                    complete_confirm_settle = getattr(
+                        coordinator,
+                        "complete_card_select_confirm_settle",
+                        None,
+                    )
+                    if callable(complete_confirm_settle):
+                        complete_confirm_settle()
+                raise
             return
         logging.debug(
             "Skipping optional card-select confirm: screen=%s confirm_up=%s available=%s",
