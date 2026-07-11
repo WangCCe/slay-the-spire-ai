@@ -8,9 +8,9 @@
 
 ## GRID Regression
 - Partial GRID callbacks: 0 observed
-- GRID callbacks: 51 successful selections (50 selected 1/1 remaining card; one selected 2/2 remaining cards)
+- GRID callbacks: 91 successful selections across the active and rotated fresh logs (90 selected 1/1 remaining card; one selected 2/2 remaining cards)
 - GRID cardinality exceptions: 0
-- Evidence: no selected/required/remaining partial-GRID state occurred in this retry, so the exact two-selected/one-remaining Astrolabe case did not replay. Every observed callback selected exactly its logged remaining count.
+- Evidence: one transient state reported `selected=1, num_cards=2`, but its callback was correctly deferred while the second queued selection executed. No partial-GRID callback occurred, and the exact two-selected/one-remaining Astrolabe case did not replay. Every observed callback selected exactly its logged remaining count.
 
 ## Run Outcomes
 - Victories: 0 of 10 completed fresh runs
@@ -38,7 +38,7 @@ Runs 11 through 25 and their AI markers do not exist because the retry stopped a
 ## Execution Correctness
 - Invalid commands: 1 command rejection (3 log occurrences for callback, agent error, and game error)
 - New uncaught gameplay exceptions: 0
-- Lethal pass-throughs: 22
+- Lethal pass-throughs: 56 across the active and rotated fresh logs
 - Plan rejections: 0
 - Lethal quarantines: 0
 - `[PLAN_ACK]` rows: 0
