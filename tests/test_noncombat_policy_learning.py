@@ -1723,6 +1723,284 @@ def test_artifact_transaction_leaves_no_finals_after_first_install_failure(tmp_p
     _assert_no_transaction_debris(output_dir)
 
 
+def _changed_artifact_dataset(dataset):
+    from analysis_scripts.noncombat_policy_dataset import DatasetBuild
+
+    return DatasetBuild(
+        rows=dataset.rows,
+        manifest={**dataset.manifest, "source_commit": "changed-recovery-commit"},
+    )
+
+
+def _write_complete_artifact_set(output_dir, dataset, splits, support):
+    from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
+
+    result = _training_result_for_artifact()
+    write_pilot_artifacts(
+        output_dir,
+        mode="current",
+        dataset=dataset,
+        splits=splits,
+        support=support,
+        model=result,
+        metrics=_valid_metrics(),
+    )
+
+
+def _assert_artifact_manifest_hashes(output_dir, mode="current"):
+    manifest = json.loads(
+        (output_dir / f"{mode}_artifact_manifest.json").read_text(encoding="utf-8")
+    )
+    for name, digest in manifest["artifact_hashes"].items():
+        assert digest == hashlib.sha256((output_dir / name).read_bytes()).hexdigest()
+
+
+def test_post_write_byte_staging_failure_cleans_registered_temporary_file(tmp_path, monkeypatch):
+    import analysis_scripts.noncombat_policy_learning as learning
+
+    dataset, splits, support = _artifact_fixture()
+    output_dir = tmp_path / "artifacts"
+    original_stage = learning._stage_bytes
+    failed = False
+
+    def write_then_fail(path, payload):
+        nonlocal failed
+        original_stage(path, payload)
+        if not failed:
+            failed = True
+            raise OSError("injected byte staging post-write failure")
+
+    monkeypatch.setattr(learning, "_stage_bytes", write_then_fail)
+    with pytest.raises(OSError, match="byte staging post-write"):
+        learning.write_pilot_artifacts(
+            output_dir,
+            mode="current",
+            dataset=dataset,
+            splits=splits,
+            support=support,
+        )
+
+    assert _managed_bytes(output_dir, "current") == {}
+    _assert_no_transaction_debris(output_dir)
+
+
+def test_post_save_model_staging_failure_cleans_registered_temporary_file(tmp_path, monkeypatch):
+    import analysis_scripts.noncombat_policy_learning as learning
+
+    dataset, splits, support = _artifact_fixture()
+    output_dir = tmp_path / "artifacts"
+    result = _training_result_for_artifact()
+    original_stage = learning._stage_model_artifact
+
+    def save_then_fail(path, training_result):
+        original_stage(path, training_result)
+        raise OSError("injected model staging post-save failure")
+
+    monkeypatch.setattr(learning, "_stage_model_artifact", save_then_fail)
+    with pytest.raises(OSError, match="model staging post-save"):
+        learning.write_pilot_artifacts(
+            output_dir,
+            mode="current",
+            dataset=dataset,
+            splits=splits,
+            support=support,
+            model=result,
+            metrics=_valid_metrics(),
+        )
+
+    assert _managed_bytes(output_dir, "current") == {}
+    _assert_no_transaction_debris(output_dir)
+
+
+def test_post_backup_move_failure_restores_registered_backup(tmp_path, monkeypatch):
+    from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
+
+    dataset, splits, support = _artifact_fixture()
+    changed_dataset = _changed_artifact_dataset(dataset)
+    output_dir = tmp_path / "artifacts"
+    _write_complete_artifact_set(output_dir, dataset, splits, support)
+    before = _managed_bytes(output_dir, "current")
+    original_replace = Path.replace
+    failed = False
+
+    def move_then_fail(self, target):
+        nonlocal failed
+        result = original_replace(self, target)
+        if (
+            not failed
+            and self.name == "current_dataset_manifest.json"
+            and Path(target).name == ".current_dataset_manifest.json.backup"
+        ):
+            failed = True
+            raise OSError("injected backup post-move failure")
+        return result
+
+    monkeypatch.setattr(Path, "replace", move_then_fail)
+    with pytest.raises(OSError, match="backup post-move"):
+        write_pilot_artifacts(
+            output_dir,
+            mode="current",
+            dataset=changed_dataset,
+            splits=splits,
+            support=support,
+        )
+
+    assert _managed_bytes(output_dir, "current") == before
+    _assert_no_transaction_debris(output_dir)
+
+
+def test_post_install_move_failure_removes_registered_new_final(tmp_path, monkeypatch):
+    from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
+
+    dataset, splits, support = _artifact_fixture()
+    output_dir = tmp_path / "artifacts"
+    original_replace = Path.replace
+    failed = False
+
+    def install_then_fail(self, target):
+        nonlocal failed
+        result = original_replace(self, target)
+        if (
+            not failed
+            and self.name == ".current_dataset_manifest.json.tmp"
+            and Path(target).name == "current_dataset_manifest.json"
+        ):
+            failed = True
+            raise OSError("injected install post-move failure")
+        return result
+
+    monkeypatch.setattr(Path, "replace", install_then_fail)
+    with pytest.raises(OSError, match="install post-move"):
+        write_pilot_artifacts(
+            output_dir,
+            mode="current",
+            dataset=dataset,
+            splits=splits,
+            support=support,
+        )
+
+    assert _managed_bytes(output_dir, "current") == {}
+    _assert_no_transaction_debris(output_dir)
+
+
+def test_stale_backup_refuses_before_any_final_is_moved(tmp_path, monkeypatch):
+    from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
+
+    dataset, splits, support = _artifact_fixture()
+    changed_dataset = _changed_artifact_dataset(dataset)
+    output_dir = tmp_path / "artifacts"
+    _write_complete_artifact_set(output_dir, dataset, splits, support)
+    stale_backup = output_dir / ".current_support.json.backup"
+    stale_backup.write_bytes(b"existing recovery copy")
+    before = _managed_bytes(output_dir, "current")
+    original_replace = Path.replace
+    backup_moves = []
+
+    def record_backup_move(self, target):
+        if self.name.startswith("current_") and Path(target).name.endswith(".backup"):
+            backup_moves.append((self.name, Path(target).name))
+        return original_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", record_backup_move)
+
+    with pytest.raises(RuntimeError, match="stale transaction backup"):
+        write_pilot_artifacts(
+            output_dir,
+            mode="current",
+            dataset=changed_dataset,
+            splits=splits,
+            support=support,
+        )
+
+    assert _managed_bytes(output_dir, "current") == before
+    assert stale_backup.read_bytes() == b"existing recovery copy"
+    assert backup_moves == []
+    assert not list(output_dir.glob(".*.tmp"))
+
+
+def test_backup_cleanup_failure_keeps_accepted_new_artifacts_and_recovery_copy(tmp_path, monkeypatch):
+    from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
+
+    dataset, splits, support = _artifact_fixture()
+    changed_dataset = _changed_artifact_dataset(dataset)
+    output_dir = tmp_path / "artifacts"
+    _write_complete_artifact_set(output_dir, dataset, splits, support)
+    original_unlink = Path.unlink
+
+    def fail_model_backup_cleanup(self, *args, **kwargs):
+        if self.name == ".current_model.pt.backup":
+            raise OSError("injected backup cleanup failure")
+        return original_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", fail_model_backup_cleanup)
+    with pytest.raises(RuntimeError, match="committed.*cleanup"):
+        write_pilot_artifacts(
+            output_dir,
+            mode="current",
+            dataset=changed_dataset,
+            splits=splits,
+            support=support,
+        )
+
+    assert _managed_bytes(output_dir, "current").keys() == {
+        "current_dataset_manifest.json",
+        "current_split_manifest.json",
+        "current_support.json",
+        "current_report.md",
+        "current_artifact_manifest.json",
+    }
+    _assert_artifact_manifest_hashes(output_dir)
+    assert (output_dir / ".current_model.pt.backup").exists()
+
+
+def test_restore_failure_preserves_backup_and_restores_unrelated_artifacts(tmp_path, monkeypatch):
+    from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
+
+    dataset, splits, support = _artifact_fixture()
+    changed_dataset = _changed_artifact_dataset(dataset)
+    output_dir = tmp_path / "artifacts"
+    _write_complete_artifact_set(output_dir, dataset, splits, support)
+    before = _managed_bytes(output_dir, "current")
+    original_replace = Path.replace
+    install_failed = False
+
+    def fail_install_then_support_restore(self, target):
+        nonlocal install_failed
+        if (
+            self.name == ".current_support.json.backup"
+            and Path(target).name == "current_support.json"
+        ):
+            raise OSError("injected support restore failure")
+        result = original_replace(self, target)
+        if (
+            not install_failed
+            and self.name == ".current_report.md.tmp"
+            and Path(target).name == "current_report.md"
+        ):
+            install_failed = True
+            raise OSError("injected report install failure")
+        return result
+
+    monkeypatch.setattr(Path, "replace", fail_install_then_support_restore)
+    with pytest.raises(RuntimeError, match="recovery incomplete.*current_support.json.backup"):
+        write_pilot_artifacts(
+            output_dir,
+            mode="current",
+            dataset=changed_dataset,
+            splits=splits,
+            support=support,
+        )
+
+    expected_restored = {
+        name: payload
+        for name, payload in before.items()
+        if name != "current_support.json"
+    }
+    assert _managed_bytes(output_dir, "current") == expected_restored
+    assert (output_dir / ".current_support.json.backup").exists()
+    assert not list(output_dir.glob(".*.tmp"))
+
+
 def test_artifact_writer_rejects_inconsistent_inputs_before_writing(tmp_path):
     from analysis_scripts.noncombat_policy_dataset import DatasetBuild, to_json_value
     from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts

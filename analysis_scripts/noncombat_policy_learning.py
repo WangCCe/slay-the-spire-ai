@@ -49,6 +49,10 @@ METRIC_NAMES = (
 )
 
 
+class ArtifactRecoveryError(RuntimeError):
+    """Signals incomplete artifact cleanup while preserving recovery paths."""
+
+
 def build_frequency_counts(rows) -> Mapping[str, Mapping[str, int]]:
     """Count only train-row target actions, grouped by decision category."""
     counts = defaultdict(Counter)
@@ -221,16 +225,17 @@ def write_pilot_artifacts(
 
     staged_paths = {}
     try:
+        backups = _preflight_backup_paths(artifact_dir, mode)
         for name, payload in sorted(artifact_payloads.items()):
             staged_path = _temporary_path(_artifact_path(artifact_dir, name))
-            _stage_bytes(staged_path, payload)
             staged_paths[name] = staged_path
+            _stage_bytes(staged_path, payload)
 
         if training_result is not None:
             model_name = _artifact_name(mode, "model.pt")
             staged_path = _temporary_path(_artifact_path(artifact_dir, model_name))
-            _stage_model_artifact(staged_path, training_result)
             staged_paths[model_name] = staged_path
+            _stage_model_artifact(staged_path, training_result)
             desired_names.add(model_name)
 
         artifact_hashes = {
@@ -246,12 +251,20 @@ def write_pilot_artifacts(
             artifact_hashes=artifact_hashes,
         )
         manifest_stage = _temporary_path(_artifact_path(artifact_dir, manifest_name))
-        _stage_bytes(manifest_stage, _json_bytes(artifact_manifest))
         staged_paths[manifest_name] = manifest_stage
+        _stage_bytes(manifest_stage, _json_bytes(artifact_manifest))
         _validate_staged_artifacts(staged_paths, manifest_name, artifact_manifest)
-        _commit_artifact_transaction(artifact_dir, mode, staged_paths, manifest_name)
-    except Exception:
-        _cleanup_paths(staged_paths.values())
+        _commit_artifact_transaction(
+            artifact_dir,
+            mode,
+            staged_paths,
+            manifest_name,
+            backups,
+        )
+    except Exception as error:
+        cleanup_errors = _cleanup_paths(staged_paths.values())
+        if cleanup_errors:
+            raise _recovery_error("artifact staging failed", error, cleanup_errors) from error
         raise
 
     return {
@@ -547,45 +560,83 @@ def _validate_staged_artifacts(staged_paths, manifest_name, artifact_manifest) -
         raise AssertionError("staged artifact manifest does not match its payload")
 
 
-def _commit_artifact_transaction(artifact_dir: Path, mode, staged_paths, manifest_name) -> None:
+def _preflight_backup_paths(artifact_dir: Path, mode) -> dict[str, Path]:
     backups = {}
+    for name in sorted(_managed_artifact_names(mode)):
+        final_path = _artifact_path(artifact_dir, name)
+        backup_path = _backup_path(final_path)
+        if backup_path.exists():
+            raise ArtifactRecoveryError(f"stale transaction backup exists: {backup_path}")
+        if not final_path.exists():
+            continue
+        if not final_path.is_file():
+            raise ValueError(f"managed artifact path is not a file: {final_path}")
+        backups[name] = backup_path
+    return backups
+
+
+def _commit_artifact_transaction(
+    artifact_dir: Path,
+    mode,
+    staged_paths,
+    manifest_name,
+    backups,
+) -> None:
     installed = []
     try:
-        for name in sorted(_managed_artifact_names(mode)):
+        for name, backup_path in backups.items():
             final_path = _artifact_path(artifact_dir, name)
-            if not final_path.exists():
-                continue
-            if not final_path.is_file():
-                raise ValueError(f"managed artifact path is not a file: {final_path}")
-            backup_path = _backup_path(final_path)
-            if backup_path.exists():
-                raise RuntimeError(f"stale transaction backup exists: {backup_path}")
             final_path.replace(backup_path)
-            backups[name] = backup_path
 
         install_order = sorted(name for name in staged_paths if name != manifest_name)
         install_order.append(manifest_name)
         for name in install_order:
             final_path = _artifact_path(artifact_dir, name)
-            staged_paths[name].replace(final_path)
             installed.append(final_path)
-
-        _cleanup_paths(backups.values())
-    except Exception:
-        _cleanup_paths(reversed(installed))
-        for name, backup_path in reversed(tuple(backups.items())):
-            if backup_path.exists():
-                backup_path.replace(_artifact_path(artifact_dir, name))
+            staged_paths[name].replace(final_path)
+    except Exception as error:
+        rollback_errors = _rollback_artifact_transaction(artifact_dir, installed, backups)
+        if rollback_errors:
+            raise _recovery_error("artifact transaction failed", error, rollback_errors) from error
         raise
-    finally:
-        _cleanup_paths(staged_paths.values())
-        _cleanup_paths(backups.values())
+
+    cleanup_errors = _cleanup_paths(backups.values())
+    if cleanup_errors:
+        raise _recovery_error("artifact transaction committed", None, cleanup_errors)
 
 
-def _cleanup_paths(paths) -> None:
+def _rollback_artifact_transaction(artifact_dir: Path, installed, backups):
+    errors = []
+    for final_path in reversed(installed):
+        errors.extend(_cleanup_paths((final_path,)))
+    for name, backup_path in reversed(tuple(backups.items())):
+        if not backup_path.exists():
+            continue
+        try:
+            backup_path.replace(_artifact_path(artifact_dir, name))
+        except Exception as error:
+            errors.append((backup_path, error))
+    return errors
+
+
+def _cleanup_paths(paths):
+    errors = []
     for path in paths:
-        if path.exists():
-            path.unlink()
+        try:
+            if path.exists():
+                path.unlink()
+        except Exception as error:
+            errors.append((path, error))
+    return errors
+
+
+def _recovery_error(prefix, primary_error, errors) -> ArtifactRecoveryError:
+    details = ", ".join(f"{path}: {error}" for path, error in errors)
+    if primary_error is None:
+        return ArtifactRecoveryError(f"{prefix}; cleanup incomplete: {details}")
+    return ArtifactRecoveryError(
+        f"{prefix}: {primary_error}; recovery incomplete: {details}"
+    )
 
 
 def _artifact_key(name: str, mode: str) -> str:
