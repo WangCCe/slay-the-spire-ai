@@ -23,10 +23,10 @@
 
 ## 4. Run The Fresh No-Training Qualification Retry
 
-- [ ] 4.1 Re-read the live CommunicationMod command, confirm Windows Python and no `--train`, record a new cutoff, marker/completion baselines, log sizes, trace sizes, and eligible Batch 1 report hashes.
-- [ ] 4.2 Launch exactly one fresh 25-game conservative eval batch and monitor markers, debug/error logs, decision trace, and sim-divergence trace at bounded intervals.
-- [ ] 4.3 Stop immediately on an A-class invalid command, uncaught gameplay exception, GRID/HAND_SELECT cardinality failure, or repeated demonstrated mechanics cluster; otherwise allow exactly 25 completed games.
-- [ ] 4.4 Produce a durable Batch 2 retry report with marker/run pairing, outcomes, command legality, HAND_SELECT/GRID ordering, lethal acknowledgement, sim-divergence classes, and promotion decision.
-- [ ] 4.5 Obtain independent raw-evidence review of the complete retry and correct any report inaccuracies.
-- [ ] 4.6 If and only if the complete retry is eligible, mark lethal-investigation task 5.5 complete and record two consecutive clean batches; otherwise preserve the failure and leave promotion blocked.
+- [x] 4.1 Re-read the live CommunicationMod command, confirm Windows Python and no `--train`, record a new cutoff, marker/completion baselines, log sizes, trace sizes, and eligible Batch 1 report hashes.
+- [x] 4.2 Launch exactly one fresh 25-game conservative eval batch and monitor markers, debug/error logs, decision trace, and sim-divergence trace at bounded intervals.
+- [x] 4.3 Stop immediately on an A-class invalid command, uncaught gameplay exception, GRID/HAND_SELECT cardinality failure, or repeated demonstrated mechanics cluster; otherwise allow exactly 25 completed games.
+- [x] 4.4 Produce a durable Batch 2 retry report with marker/run pairing, outcomes, command legality, HAND_SELECT/GRID ordering, lethal acknowledgement, sim-divergence classes, and promotion decision.
+- [x] 4.5 Obtain independent raw-evidence review of the complete retry and correct any report inaccuracies.
+- [x] 4.6 If and only if the complete retry is eligible, mark lethal-investigation task 5.5 complete and record two consecutive clean batches; otherwise preserve the failure and leave promotion blocked.
 - [ ] 4.7 Commit only the reviewed qualification evidence and task-state changes; do not train, tune, create checkpoints, or archive either change during the retry.
