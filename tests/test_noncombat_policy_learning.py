@@ -1,6 +1,8 @@
 import hashlib
 import json
 
+import pytest
+
 
 V2 = "noncombat-rl-decision-v2"
 
@@ -10,6 +12,7 @@ def _sample(sample_id, group_id="run:1", **overrides):
     sample = {
         "schema_version": V2,
         "sample_id": sample_id,
+        "source": {"trace": "fixture.jsonl", "line": sample_id},
         "trajectory_group_id": group_id,
         "category": category,
         "state": {"floor": 1, "gold": 99},
@@ -30,10 +33,16 @@ def _sample(sample_id, group_id="run:1", **overrides):
             },
         ],
         "selected_action_id": f"{category}:choice:0",
+        "current_policy_label": {
+            "action_id": f"{category}:choice:0",
+            "label": "selected current action",
+            "source": "current_heuristic",
+        },
         "bottled_label": {
             "action_id": f"{category}:choice:0",
             "oracle_mode": "native_bottled",
             "confidence": "high",
+            "source": {"strategy": "REQUESTED_STRIKE"},
         },
         "behavior_policy_id": "current_heuristic",
         "behavior_policy_commit": "f321cb05",
@@ -159,7 +168,7 @@ def test_bottled_dataset_requires_native_high_confidence_mapped_labels(tmp_path)
 
 
 def test_manifest_is_canonical_and_counts_unknown_probability_without_fabrication(tmp_path):
-    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset
+    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset, to_json_value
 
     source_a = tmp_path / "a.jsonl"
     source_b = tmp_path / "b.jsonl"
@@ -197,14 +206,31 @@ def test_manifest_is_canonical_and_counts_unknown_probability_without_fabricatio
     assert first.manifest["schema_versions"] == {V2: 2}
     assert first.manifest["category_counts"] == {"event": 1, "shop": 1}
     assert first.manifest["trajectory_counts"] == {"event": 1, "overall": 2, "shop": 1}
-    assert first.manifest["outcome_counts"] == {"matched": 2, "victory": 1}
+    assert first.manifest["outcome_counts"] == {
+        "rows": {
+            "join_status": {"matched": 2},
+            "victory": {"false": 1, "true": 1, "unknown": 0},
+        },
+        "trajectories": {
+            "join_status": {"matched": 2},
+            "victory": {"false": 1, "true": 1, "unknown": 0},
+        },
+    }
     assert first.manifest["action_support"] == {
-        "event:choice:0": 1,
-        "shop:choice:0": 1,
+        "available_candidate_action_counts": {
+            "event:choice:0": 1,
+            "shop:choice:0": 1,
+        },
+        "target_action_counts": {
+            "event:choice:0": 1,
+            "shop:choice:0": 1,
+        },
     }
     assert first.manifest["behavior_probability_counts"] == {"known": 1, "unknown": 1}
     assert first.manifest["label_mode_counts"] == {"bottled": 0, "current": 2}
-    canonical = json.dumps(first.manifest, sort_keys=True, separators=(",", ":"))
+    canonical = json.dumps(
+        to_json_value(first.manifest), sort_keys=True, separators=(",", ":")
+    )
     assert first.manifest["manifest_hash"] == hashlib.sha256(
         canonical.replace(
             f'"manifest_hash":"{first.manifest["manifest_hash"]}"',
@@ -239,6 +265,7 @@ def test_support_gate_blocks_insufficient_overall_or_category_coverage():
         DatasetBuild,
         assign_trajectory_splits,
         evaluate_support,
+        to_json_value,
     )
 
     rows = [_row(f"route-{index}", f"run:{index:02d}") for index in range(10)]
@@ -252,7 +279,7 @@ def test_support_gate_blocks_insufficient_overall_or_category_coverage():
 
     assert support["overall"]["blocked"] is False
     assert support["categories"]["route"]["evaluable"] is True
-    assert support["categories"]["shop"] == {
+    assert to_json_value(support["categories"]["shop"]) == {
         "blocking_reasons": ["insufficient_train_trajectories", "missing_held_out_trajectory"],
         "evaluable": False,
         "held_out_trajectory_count": 0,
@@ -269,3 +296,258 @@ def test_support_gate_blocks_insufficient_overall_or_category_coverage():
 
     assert undersized_support["overall"]["blocked"] is True
     assert "insufficient_trajectory_groups" in undersized_support["overall"]["blocking_reasons"]
+
+
+def test_bottled_confidence_configuration_cannot_lower_the_high_gate(tmp_path):
+    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset
+
+    source = tmp_path / "samples.jsonl"
+    source.write_text("source\n", encoding="utf-8")
+    low_confidence = _sample(
+        "low-confidence",
+        bottled_label={
+            "action_id": "route:choice:0",
+            "oracle_mode": "native_bottled",
+            "confidence": "low",
+            "source": {"strategy": "REQUESTED_STRIKE"},
+        },
+    )
+
+    with pytest.raises(ValueError, match="literal 'high'"):
+        build_policy_dataset(
+            [low_confidence],
+            label_mode="bottled",
+            source_paths=[source],
+            source_commit="ccc5c480",
+            bottled_confidence="low",
+        )
+
+
+def test_policy_rows_retain_current_and_bottled_provenance_immutably(tmp_path):
+    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset, to_json_value
+
+    source = tmp_path / "samples.jsonl"
+    source.write_text("source\n", encoding="utf-8")
+    sample = _sample("provenance")
+
+    current = build_policy_dataset(
+        [sample],
+        label_mode="current",
+        source_paths=[source],
+        source_commit="ccc5c480",
+    ).rows[0]
+    bottled = build_policy_dataset(
+        [sample],
+        label_mode="bottled",
+        source_paths=[source],
+        source_commit="ccc5c480",
+    ).rows[0]
+
+    assert current.source == sample["source"]
+    assert current.label_mode == "current"
+    assert current.behavior_policy_id == "current_heuristic"
+    assert current.behavior_policy_commit == "f321cb05"
+    assert current.behavior_action_probability is None
+    assert current.behavior_probability_status == "unknown"
+    assert current.label_provenance == {
+        "mode": "current",
+        "selected_label": sample["current_policy_label"],
+    }
+    assert bottled.label_provenance == {
+        "mode": "bottled",
+        "selected_label": sample["bottled_label"],
+    }
+    with pytest.raises(TypeError):
+        current.state["floor"] = 9
+    with pytest.raises(TypeError):
+        current.label_provenance["mode"] = "bottled"
+    assert to_json_value(current.label_provenance) == {
+        "mode": "current",
+        "selected_label": sample["current_policy_label"],
+    }
+
+
+def test_manifest_and_split_values_are_deeply_immutable(tmp_path):
+    from analysis_scripts.noncombat_policy_dataset import (
+        assign_trajectory_splits,
+        build_policy_dataset,
+        to_json_value,
+    )
+
+    source = tmp_path / "samples.jsonl"
+    source.write_text("source\n", encoding="utf-8")
+    dataset = build_policy_dataset(
+        [_sample("immutable")],
+        label_mode="current",
+        source_paths=[source],
+        source_commit="ccc5c480",
+    )
+    splits = assign_trajectory_splits(dataset.rows, split_seed="pilot-seed")
+
+    with pytest.raises(TypeError):
+        dataset.manifest["source_hashes"][str(source)] = "changed"
+    with pytest.raises(TypeError):
+        splits.assignments["run:1"] = "test"
+    with pytest.raises((AttributeError, TypeError)):
+        splits.manifest["groups"]["train"].append("run:new")
+    assert json.loads(json.dumps(to_json_value(dataset.manifest), sort_keys=True))[
+        "source_commit"
+    ] == "ccc5c480"
+
+
+def test_jsonl_input_is_auditable_and_malformed_lines_fail_with_context(tmp_path):
+    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset, iter_jsonl
+
+    readable = tmp_path / "readable.jsonl"
+    readable.write_text('{"schema_version":"noncombat-rl-decision-v1"}\n["not", "a", "mapping"]\n', encoding="utf-8")
+    assert list(iter_jsonl(readable)) == [
+        {"schema_version": "noncombat-rl-decision-v1"},
+        ["not", "a", "mapping"],
+    ]
+
+    source = tmp_path / "samples.jsonl"
+    source.write_text("source\n", encoding="utf-8")
+    dataset = build_policy_dataset(
+        [_sample("eligible"), ["not", "a", "mapping"]],
+        label_mode="current",
+        source_paths=[source],
+        source_commit="ccc5c480",
+    )
+    assert dataset.manifest["input_sample_count"] == 2
+    assert dataset.manifest["input_sample_count"] == (
+        dataset.manifest["eligible_row_count"] + sum(dataset.manifest["exclusions"].values())
+    )
+    assert dataset.manifest["schema_versions"]["<non-mapping>"] == 1
+
+    malformed = tmp_path / "malformed.jsonl"
+    malformed.write_text('{"ok": true}\n{"bad":\n', encoding="utf-8")
+    with pytest.raises(ValueError, match=r"malformed\.jsonl:2: malformed JSON"):
+        list(iter_jsonl(malformed))
+
+
+def test_malformed_candidates_are_excluded_from_policy_rows(tmp_path):
+    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset
+
+    source = tmp_path / "samples.jsonl"
+    source.write_text("source\n", encoding="utf-8")
+    valid = _sample("valid")
+    valid["candidate_actions"].append(
+        {
+            "action_id": "route:choice:bad",
+            "kind": 7,
+            "label": "bad",
+            "available": True,
+            "raw": "not-a-mapping",
+        }
+    )
+    malformed_only = _sample(
+        "malformed-only",
+        candidate_actions=[
+            {
+                "action_id": "route:choice:0",
+                "kind": 7,
+                "label": "bad",
+                "available": True,
+                "raw": {},
+            }
+        ],
+    )
+
+    dataset = build_policy_dataset(
+        [valid, malformed_only],
+        label_mode="current",
+        source_paths=[source],
+        source_commit="ccc5c480",
+    )
+
+    assert [candidate["action_id"] for candidate in dataset.rows[0].candidates] == [
+        "route:choice:0"
+    ]
+    assert dataset.manifest["exclusions"] == {"missing_candidates": 1}
+
+
+def test_support_reports_empty_splits_all_categories_and_overall_blocking():
+    from analysis_scripts.noncombat_policy_dataset import (
+        DatasetBuild,
+        assign_trajectory_splits,
+        evaluate_support,
+        to_json_value,
+    )
+
+    tiny = DatasetBuild(rows=(_row("one", "run:one"),), manifest={})
+    tiny_support = evaluate_support(
+        tiny,
+        assign_trajectory_splits(tiny.rows, split_seed="pilot-seed"),
+    )
+
+    assert to_json_value(tiny_support["overall"]["blocking_reasons"]) == [
+        "insufficient_trajectory_groups",
+        "empty_train_split",
+        "empty_validation_split",
+    ]
+    assert set(tiny_support["categories"]) == {
+        "shop",
+        "event",
+        "route",
+        "card_reward",
+    }
+    assert tiny_support["categories"]["event"]["evaluable"] is False
+
+    rows = [_row(f"route-{index}", f"run:{index}") for index in range(5)]
+    dataset = DatasetBuild(rows=tuple(rows), manifest={})
+    support = evaluate_support(
+        dataset,
+        assign_trajectory_splits(dataset.rows, split_seed="pilot-seed"),
+    )
+
+    assert support["categories"]["route"]["evaluable"] is False
+    assert "overall_support_blocked" in support["categories"]["route"][
+        "blocking_reasons"
+    ]
+
+
+def test_action_and_outcome_support_keep_target_candidate_and_trajectory_counts(tmp_path):
+    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset
+
+    source = tmp_path / "samples.jsonl"
+    source.write_text("source\n", encoding="utf-8")
+    samples = [
+        _sample("true-a", group_id="run:true", outcome={"join_status": "matched", "victory": True}),
+        _sample("true-b", group_id="run:true", outcome={"join_status": "matched", "victory": True}),
+        _sample("false", group_id="run:false", outcome={"join_status": "matched", "victory": False}),
+        _sample("unknown", group_id="run:unknown", outcome={"join_status": "missing"}),
+    ]
+    samples[0]["candidate_actions"].append(
+        {
+            "action_id": "route:choice:extra",
+            "kind": "map_node",
+            "label": "extra",
+            "available": True,
+            "raw": {"choice": 2},
+        }
+    )
+
+    manifest = build_policy_dataset(
+        samples,
+        label_mode="current",
+        source_paths=[source],
+        source_commit="ccc5c480",
+    ).manifest
+
+    assert manifest["action_support"] == {
+        "available_candidate_action_counts": {
+            "route:choice:0": 4,
+            "route:choice:extra": 1,
+        },
+        "target_action_counts": {"route:choice:0": 4},
+    }
+    assert manifest["outcome_counts"] == {
+        "rows": {
+            "join_status": {"matched": 3, "missing": 1},
+            "victory": {"false": 1, "true": 2, "unknown": 1},
+        },
+        "trajectories": {
+            "join_status": {"matched": 2, "missing": 1},
+            "victory": {"false": 1, "true": 1, "unknown": 1},
+        },
+    }
