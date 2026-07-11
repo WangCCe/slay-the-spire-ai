@@ -263,7 +263,7 @@ def test_takeover_finalizer_accepts_or_rejects_once(
     fallback = _CachedPlanFallback([emitted])
     fallback.last_emitted = emitted if active_plan else None
     fallback.index = 1 if active_plan else 0
-    game = _game(hand=[_attack_card("Strike", damage=6)])
+    game = _game()
     agent = _agent()
     agent.fallback_agent = fallback
 
