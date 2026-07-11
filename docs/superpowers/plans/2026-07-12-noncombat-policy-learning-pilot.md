@@ -182,7 +182,7 @@ Run:
 D:\anaconda\envs\stsai\python.exe -m pytest -p no:cacheprovider --basetemp .pytest_tmp\policy-task2-red tests\test_noncombat_policy_learning.py -q
 ```
 
-Expected: import failure because `analysis_scripts.noncombat_policy_learning` does not exist.
+Expected: import failure because `analysis_scripts.noncombat_policy_dataset` does not exist.
 
 - [ ] **Step 5: Implement immutable rows and deterministic manifests**
 
