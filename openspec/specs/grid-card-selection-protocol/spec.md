@@ -1,4 +1,9 @@
-## ADDED Requirements
+# grid-card-selection-protocol Specification
+
+## Purpose
+Define serialized CommunicationMod sequencing for GRID selectors and terminal confirmation.
+
+## Requirements
 
 ### Requirement: GRID selectors execute across ordered state boundaries
 
@@ -33,6 +38,27 @@ new agent callback.
 #### Scenario: Confirmation is no longer legal
 - **WHEN** the ordered post-selector state has changed screens or does not expose a legal confirm
 - **THEN** the optional confirm sends no command and normal callback processing resumes
+
+#### Scenario: Confirm response is delayed or absent
+- **WHEN** a serialized GRID confirm has been sent and its response has not arrived
+- **THEN** timeout recovery MAY request refreshed state
+- **AND** it SHALL NOT emit a second `confirm` or invoke a new agent callback while the serialized settle sequence remains in flight
+
+#### Scenario: Post-confirm settle response is delayed or absent
+- **WHEN** the post-confirm wait boundary has been sent and its ordered response has not arrived
+- **THEN** timeout recovery MAY request refreshed state
+- **AND** it SHALL NOT emit a second `confirm` or invoke a new agent callback
+
+#### Scenario: Serialized settle sequence is abandoned
+- **WHEN** a command error, out-of-game transition, new game, or explicit queue reset discards the settle sequence
+- **THEN** the in-flight confirmation state SHALL be cleared with the discarded actions
+- **AND** unrelated later GRID recovery SHALL remain available
+
+#### Scenario: Settle queue construction fails
+- **WHEN** construction of the serialized settle sequence raises after appending only part of its actions
+- **THEN** actions appended by that construction SHALL be removed
+- **AND** pre-existing queued actions SHALL remain unchanged
+- **AND** in-flight confirmation state SHALL be rolled back before the error propagates
 
 ### Requirement: Shared action defaults remain compatible
 

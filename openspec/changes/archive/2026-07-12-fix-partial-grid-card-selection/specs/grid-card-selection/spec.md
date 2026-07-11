@@ -43,3 +43,14 @@ inconsistent.
 - **GIVEN** the exact remaining count exceeds the number of unselected candidates
 - **WHEN** the agent handles the GRID state
 - **THEN** it SHALL request refreshed state instead of emitting an invalid card selection
+
+#### Scenario: Exact GRID is already over-selected
+- **GIVEN** an exact-count GRID reports more selected cards than its required count
+- **WHEN** the agent handles the GRID state
+- **THEN** it SHALL request refreshed state instead of confirming or constructing an empty selection
+
+#### Scenario: Timeout recovery preserves exact cardinality
+- **GIVEN** an exact-count GRID reports more selected cards than its required count
+- **WHEN** refreshed state times out and legacy GRID recovery evaluates the screen
+- **THEN** it SHALL NOT emit `confirm`
+- **AND** any-number GRID recovery SHALL retain its existing at-least-count behavior

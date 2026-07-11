@@ -30,3 +30,10 @@
 - [x] 4.5 Obtain independent raw-evidence review of the complete retry and correct any report inaccuracies.
 - [x] 4.6 If and only if the complete retry is eligible, mark lethal-investigation task 5.5 complete and record two consecutive clean batches; otherwise preserve the failure and leave promotion blocked.
 - [x] 4.7 Commit only the reviewed qualification evidence and task-state changes; do not train, tune, create checkpoints, or archive either change during the retry.
+
+## 5. Close Whole-Branch Review Findings
+
+- [x] 5.1 Add no-response timeout regressions for both the serialized confirm and post-confirm settle phases, and suppress legacy duplicate confirmation while either phase remains in flight.
+- [x] 5.2 Clear in-flight state on every queue-abandonment path and roll back marker or partial settle construction on action exceptions.
+- [x] 5.3 Add exact-versus-any-number timeout cardinality controls without changing selection policy.
+- [x] 5.4 Run focused and full pytest after each accepted fix wave and obtain a final clean independent re-review.

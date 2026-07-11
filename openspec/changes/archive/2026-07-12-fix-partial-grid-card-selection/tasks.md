@@ -32,3 +32,8 @@
 - [x] 5.2 Confirm zero GRID cardinality exceptions, invalid commands, and new uncaught gameplay exceptions.
 - [x] 5.3 Inspect fresh decision and sim-divergence evidence for A-class failures.
 - [x] 5.4 Commit a separate Batch 1 retry report while preserving the failed-attempt report.
+
+## 6. Final Review Boundaries
+
+- [x] 6.1 Add exact over-selection controls for the screen handler and legacy timeout recovery while preserving any-number behavior.
+- [x] 6.2 Run focused and full pytest after the review fix and obtain clean independent re-review.
