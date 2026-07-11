@@ -1355,7 +1355,10 @@ def test_artifact_writer_hashes_final_files_and_removes_temps_on_failure(tmp_pat
     from analysis_scripts.noncombat_policy_dataset import DatasetBuild, assign_trajectory_splits, evaluate_support
     from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
 
-    rows = tuple(_row(f"route-{index}", f"run:{index}") for index in range(10))
+    rows = tuple(
+        replace(_row(f"route-{index}", f"run:{index}"), label_mode="current")
+        for index in range(10)
+    )
     dataset = DatasetBuild(
         rows=rows,
         manifest={"label_mode": "current", "source_commit": "f321cb05", "exclusions": {}},
@@ -1413,6 +1416,623 @@ def test_artifact_writer_hashes_final_files_and_removes_temps_on_failure(tmp_pat
             support=support,
         )
     assert not list(failed_output.glob(".*.tmp"))
+
+
+def _artifact_fixture(*, group_count=10):
+    from analysis_scripts.noncombat_policy_dataset import (
+        DatasetBuild,
+        assign_trajectory_splits,
+        evaluate_support,
+    )
+
+    rows = tuple(
+        _two_candidate_row(
+            f"route-{index}",
+            f"run:{index:02d}",
+            "route",
+            "route:choice:0",
+        )
+        for index in range(group_count)
+    )
+    dataset = DatasetBuild(
+        rows=rows,
+        manifest={
+            "label_mode": "current",
+            "source_commit": "f321cb05",
+            "exclusions": {},
+            "outcome_counts": {},
+        },
+    )
+    splits = assign_trajectory_splits(rows, split_seed="artifact-transaction-seed")
+    return dataset, splits, evaluate_support(dataset, splits)
+
+
+def _valid_metrics():
+    metric_block = {
+        "sample_count": 1,
+        "model_reference_top1_agreement": 1.0,
+        "mean_target_cross_entropy": 0.0,
+        "top_confidence_ece": 0.0,
+        "candidate_legality": 1.0,
+        "frequency_reference_top1_agreement": 1.0,
+        "per_category_counts": {"route": 1},
+    }
+    return {"validation": dict(metric_block), "test": dict(metric_block)}
+
+
+def _training_result_for_artifact(mode="current"):
+    from analysis_scripts.noncombat_policy_model import CandidateRanker, TrainingResult
+
+    return TrainingResult(
+        model=CandidateRanker(input_dim=8),
+        epochs_run=1,
+        best_validation_loss=0.0,
+        history=(),
+        artifact_manifest={
+            "label_mode": mode,
+            "artifact_stem": f"noncombat_policy_{mode}",
+            "training_config": {"device": "cpu", "max_epochs": 1},
+        },
+    )
+
+
+def _managed_names(mode):
+    return {
+        f"{mode}_dataset_manifest.json",
+        f"{mode}_split_manifest.json",
+        f"{mode}_support.json",
+        f"{mode}_report.md",
+        f"{mode}_artifact_manifest.json",
+        f"{mode}_metrics.json",
+        f"{mode}_model.pt",
+    }
+
+
+def _managed_bytes(output_dir, mode):
+    return {
+        path.name: path.read_bytes()
+        for path in output_dir.iterdir()
+        if path.name in _managed_names(mode)
+    }
+
+
+def _assert_no_transaction_debris(output_dir):
+    assert not list(output_dir.glob(".*.tmp"))
+    assert not list(output_dir.glob(".*.backup"))
+
+
+def _main_arguments(command, samples_path, output_dir, mode="current"):
+    arguments = [
+        command,
+        "--samples",
+        str(samples_path),
+        "--output-dir",
+        str(output_dir),
+        "--split-seed",
+        "artifact-transition-seed",
+        "--source-commit",
+        "f321cb05",
+        "--label-mode",
+        mode,
+    ]
+    if command == "train":
+        arguments.extend(("--max-epochs", "1", "--patience", "1"))
+    return arguments
+
+
+def test_support_split_sample_counts_follow_split_assignments_deterministically():
+    from analysis_scripts.noncombat_policy_dataset import (
+        DatasetBuild,
+        assign_trajectory_splits,
+        evaluate_support,
+    )
+
+    base_rows = [
+        _two_candidate_row(f"base-{index}", f"run:{index:02d}", "route", "route:choice:0")
+        for index in range(10)
+    ]
+    initial_splits = assign_trajectory_splits(base_rows, split_seed="sample-count-seed")
+    rows = list(base_rows)
+    for split_name in ("train", "validation", "test"):
+        group_id = initial_splits.groups[split_name][0]
+        rows.append(
+            _two_candidate_row(
+                f"extra-{split_name}", group_id, "route", "route:choice:0"
+            )
+        )
+    dataset = DatasetBuild(rows=tuple(rows), manifest={})
+    splits = assign_trajectory_splits(dataset.rows, split_seed="sample-count-seed")
+
+    support = evaluate_support(dataset, splits)
+
+    assert support["overall"]["split_trajectory_counts"] == {
+        "test": 2,
+        "train": 6,
+        "validation": 2,
+    }
+    assert support["overall"]["split_sample_counts"] == {
+        "test": 3,
+        "train": 7,
+        "validation": 3,
+    }
+
+
+def test_artifact_transaction_removes_stale_current_model_and_preserves_other_mode(tmp_path):
+    from analysis_scripts.noncombat_policy_learning import main
+
+    samples_path = tmp_path / "samples.jsonl"
+    _write_trainable_samples(samples_path, group_count=10)
+    output_dir = tmp_path / "artifacts"
+
+    assert main(_main_arguments("train", samples_path, output_dir, "current")) == 0
+    assert main(_main_arguments("support", samples_path, output_dir, "bottled")) == 0
+    bottled_before = _managed_bytes(output_dir, "bottled")
+    unrelated = output_dir / "unrelated.txt"
+    unrelated.write_bytes(b"preserve me")
+
+    assert main(_main_arguments("support", samples_path, output_dir, "current")) == 0
+
+    assert _managed_bytes(output_dir, "current").keys() == {
+        "current_dataset_manifest.json",
+        "current_split_manifest.json",
+        "current_support.json",
+        "current_report.md",
+        "current_artifact_manifest.json",
+    }
+    assert _managed_bytes(output_dir, "bottled") == bottled_before
+    assert unrelated.read_bytes() == b"preserve me"
+    _assert_no_transaction_debris(output_dir)
+
+
+def test_blocked_train_transaction_removes_stale_current_model(tmp_path):
+    from analysis_scripts.noncombat_policy_learning import main
+
+    trainable_samples = tmp_path / "trainable.jsonl"
+    blocked_samples = tmp_path / "blocked.jsonl"
+    _write_trainable_samples(trainable_samples, group_count=10)
+    _write_trainable_samples(blocked_samples, group_count=9)
+    output_dir = tmp_path / "artifacts"
+
+    assert main(_main_arguments("train", trainable_samples, output_dir)) == 0
+    assert main(_main_arguments("train", blocked_samples, output_dir)) == 2
+
+    assert _managed_bytes(output_dir, "current").keys() == {
+        "current_dataset_manifest.json",
+        "current_split_manifest.json",
+        "current_support.json",
+        "current_report.md",
+        "current_artifact_manifest.json",
+    }
+    _assert_no_transaction_debris(output_dir)
+
+
+@pytest.mark.parametrize("failure_name", ["current_report.md", "current_artifact_manifest.json"])
+def test_artifact_transaction_restores_existing_set_after_replace_failure(
+    tmp_path, monkeypatch, failure_name
+):
+    from analysis_scripts.noncombat_policy_dataset import DatasetBuild
+    from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
+
+    dataset, splits, support = _artifact_fixture()
+    changed_dataset = DatasetBuild(
+        rows=dataset.rows,
+        manifest={**dataset.manifest, "source_commit": "changed-commit"},
+    )
+    output_dir = tmp_path / "artifacts"
+    result = _training_result_for_artifact()
+    write_pilot_artifacts(
+        output_dir,
+        mode="current",
+        dataset=dataset,
+        splits=splits,
+        support=support,
+        model=result,
+        metrics=_valid_metrics(),
+    )
+    before = _managed_bytes(output_dir, "current")
+    original_replace = Path.replace
+    failed = False
+
+    def fail_once(self, target):
+        nonlocal failed
+        if not failed and self.name.endswith(".tmp") and Path(target).name == failure_name:
+            failed = True
+            raise OSError(f"injected {failure_name} replacement failure")
+        return original_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", fail_once)
+    with pytest.raises(OSError, match="injected"):
+        write_pilot_artifacts(
+            output_dir,
+            mode="current",
+            dataset=changed_dataset,
+            splits=splits,
+            support=support,
+        )
+
+    assert _managed_bytes(output_dir, "current") == before
+    _assert_no_transaction_debris(output_dir)
+
+
+def test_artifact_transaction_restores_existing_set_after_model_staging_failure(tmp_path, monkeypatch):
+    import torch
+
+    from analysis_scripts.noncombat_policy_dataset import DatasetBuild
+    from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
+
+    dataset, splits, support = _artifact_fixture()
+    changed_dataset = DatasetBuild(
+        rows=dataset.rows,
+        manifest={**dataset.manifest, "source_commit": "changed-commit"},
+    )
+    output_dir = tmp_path / "artifacts"
+    result = _training_result_for_artifact()
+    write_pilot_artifacts(
+        output_dir,
+        mode="current",
+        dataset=dataset,
+        splits=splits,
+        support=support,
+        model=result,
+        metrics=_valid_metrics(),
+    )
+    before = _managed_bytes(output_dir, "current")
+
+    def fail_model_stage(*args, **kwargs):
+        raise OSError("injected model staging failure")
+
+    monkeypatch.setattr(torch, "save", fail_model_stage)
+    with pytest.raises(OSError, match="injected model staging failure"):
+        write_pilot_artifacts(
+            output_dir,
+            mode="current",
+            dataset=changed_dataset,
+            splits=splits,
+            support=support,
+            model=result,
+            metrics=_valid_metrics(),
+        )
+
+    assert _managed_bytes(output_dir, "current") == before
+    _assert_no_transaction_debris(output_dir)
+
+
+def test_artifact_transaction_leaves_no_finals_after_first_install_failure(tmp_path, monkeypatch):
+    from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
+
+    dataset, splits, support = _artifact_fixture()
+    output_dir = tmp_path / "artifacts"
+    original_replace = Path.replace
+
+    def fail_report_install(self, target):
+        if self.name.endswith(".tmp") and Path(target).name == "current_report.md":
+            raise OSError("injected first-install failure")
+        return original_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", fail_report_install)
+    with pytest.raises(OSError, match="injected first-install failure"):
+        write_pilot_artifacts(
+            output_dir,
+            mode="current",
+            dataset=dataset,
+            splits=splits,
+            support=support,
+        )
+
+    assert _managed_bytes(output_dir, "current") == {}
+    _assert_no_transaction_debris(output_dir)
+
+
+def test_artifact_writer_rejects_inconsistent_inputs_before_writing(tmp_path):
+    from analysis_scripts.noncombat_policy_dataset import DatasetBuild, to_json_value
+    from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
+
+    dataset, splits, support = _artifact_fixture()
+    row_mode_mismatch = DatasetBuild(
+        rows=(replace(dataset.rows[0], label_mode="bottled"), *dataset.rows[1:]),
+        manifest=dataset.manifest,
+    )
+    manifest_mode_mismatch = DatasetBuild(
+        rows=dataset.rows,
+        manifest={**dataset.manifest, "label_mode": "bottled"},
+    )
+    blocked_support = to_json_value(support)
+    blocked_support["overall"]["blocked"] = True
+
+    cases = (
+        ("manifest-mode", manifest_mode_mismatch, support, None, None),
+        ("row-mode", row_mode_mismatch, support, None, None),
+        ("metrics-only", dataset, support, None, _valid_metrics()),
+        ("model-only", dataset, support, _training_result_for_artifact(), None),
+        (
+            "blocked-model",
+            dataset,
+            blocked_support,
+            _training_result_for_artifact(),
+            _valid_metrics(),
+        ),
+        (
+            "invalid-metrics",
+            dataset,
+            support,
+            _training_result_for_artifact(),
+            {"validation": {}, "test": {}},
+        ),
+        (
+            "model-mode",
+            dataset,
+            support,
+            _training_result_for_artifact("bottled"),
+            _valid_metrics(),
+        ),
+    )
+    for name, case_dataset, case_support, model, metrics in cases:
+        output_dir = tmp_path / name
+        with pytest.raises(ValueError):
+            write_pilot_artifacts(
+                output_dir,
+                mode="current",
+                dataset=case_dataset,
+                splits=splits,
+                support=case_support,
+                model=model,
+                metrics=metrics,
+            )
+        if output_dir.exists():
+            assert _managed_bytes(output_dir, "current") == {}
+            _assert_no_transaction_debris(output_dir)
+
+
+def _snapshot_fixture(*, blocked):
+    from analysis_scripts.noncombat_policy_dataset import DatasetBuild, SplitManifest, evaluate_support
+
+    groups = tuple(f"run:{index}" for index in range(10))
+    if blocked:
+        rows = (_two_candidate_row("route-0", "run:0", "route", "route:choice:0"),)
+        assignments = {"run:0": "test"}
+        split_groups = {"train": (), "validation": (), "test": ("run:0",)}
+        exclusions = {"missing_target": 1}
+        metrics = None
+    else:
+        rows = tuple(
+            _two_candidate_row(
+                f"{category}-{index}", group, category, f"{category}:choice:0"
+            )
+            for index, group in enumerate(groups)
+            for category in ("shop", "event", "route", "card_reward")
+        )
+        assignments = {
+            group: "train" if index < 6 else "validation" if index < 8 else "test"
+            for index, group in enumerate(groups)
+        }
+        split_groups = {
+            "train": groups[:6],
+            "validation": groups[6:8],
+            "test": groups[8:],
+        }
+        exclusions = {}
+        metrics = {
+            split: {
+                "sample_count": 8,
+                "model_reference_top1_agreement": 1.0,
+                "mean_target_cross_entropy": 0.0,
+                "top_confidence_ece": 0.0,
+                "candidate_legality": 1.0,
+                "frequency_reference_top1_agreement": 1.0,
+                "per_category_counts": {
+                    "card_reward": 2,
+                    "event": 2,
+                    "route": 2,
+                    "shop": 2,
+                },
+            }
+            for split in ("validation", "test")
+        }
+    dataset = DatasetBuild(
+        rows=rows,
+        manifest={
+            "label_mode": "current",
+            "source_commit": "snapshot",
+            "exclusions": exclusions,
+            "outcome_counts": {},
+        },
+    )
+    splits = SplitManifest(
+        assignments=assignments,
+        groups=split_groups,
+        manifest={"split_seed": "snapshot", "groups": {key: list(value) for key, value in split_groups.items()}},
+    )
+    return dataset, splits, evaluate_support(dataset, splits), metrics
+
+
+def _expected_snapshot(*, blocked):
+    if blocked:
+        categories = {
+            "shop": {
+                "blocking_reasons": [
+                    "insufficient_train_trajectories",
+                    "missing_held_out_trajectory",
+                    "overall_support_blocked",
+                ],
+                "evaluable": False,
+                "held_out_trajectory_count": 0,
+                "train_trajectory_count": 0,
+            },
+            "event": {
+                "blocking_reasons": [
+                    "insufficient_train_trajectories",
+                    "missing_held_out_trajectory",
+                    "overall_support_blocked",
+                ],
+                "evaluable": False,
+                "held_out_trajectory_count": 0,
+                "train_trajectory_count": 0,
+            },
+            "route": {
+                "blocking_reasons": [
+                    "insufficient_train_trajectories",
+                    "overall_support_blocked",
+                ],
+                "evaluable": False,
+                "held_out_trajectory_count": 1,
+                "train_trajectory_count": 0,
+            },
+            "card_reward": {
+                "blocking_reasons": [
+                    "insufficient_train_trajectories",
+                    "missing_held_out_trajectory",
+                    "overall_support_blocked",
+                ],
+                "evaluable": False,
+                "held_out_trajectory_count": 0,
+                "train_trajectory_count": 0,
+            },
+        }
+        exclusions = {"missing_target": 1}
+        groups = {"train": [], "validation": [], "test": ["run:0"]}
+        overall = {
+            "blocked": True,
+            "blocking_reasons": [
+                "insufficient_trajectory_groups",
+                "empty_train_split",
+                "empty_validation_split",
+            ],
+            "minimum_trajectory_count": 10,
+            "split_trajectory_counts": {"test": 1, "train": 0, "validation": 0},
+            "split_sample_counts": {"test": 1, "train": 0, "validation": 0},
+            "trajectory_count": 1,
+        }
+        outcomes = {
+            "rows": {
+                "join_status": {"matched": 1},
+                "victory": {"false": 1, "true": 0, "unknown": 0},
+            },
+            "trajectories": {
+                "join_status": {"matched": 1},
+                "victory": {"false": 1, "true": 0, "unknown": 0},
+            },
+        }
+        metrics = None
+    else:
+        categories = {
+            category: {
+                "blocking_reasons": [],
+                "evaluable": True,
+                "held_out_trajectory_count": 4,
+                "train_trajectory_count": 6,
+            }
+            for category in ("shop", "event", "route", "card_reward")
+        }
+        exclusions = {}
+        groups = {
+            "train": [f"run:{index}" for index in range(6)],
+            "validation": ["run:6", "run:7"],
+            "test": ["run:8", "run:9"],
+        }
+        overall = {
+            "blocked": False,
+            "blocking_reasons": [],
+            "minimum_trajectory_count": 10,
+            "split_trajectory_counts": {"test": 2, "train": 6, "validation": 2},
+            "split_sample_counts": {"test": 8, "train": 24, "validation": 8},
+            "trajectory_count": 10,
+        }
+        outcomes = {
+            "rows": {
+                "join_status": {"matched": 40},
+                "victory": {"false": 40, "true": 0, "unknown": 0},
+            },
+            "trajectories": {
+                "join_status": {"matched": 10},
+                "victory": {"false": 10, "true": 0, "unknown": 0},
+            },
+        }
+        metrics = {
+            split: {
+                "sample_count": 8,
+                "model_reference_top1_agreement": 1.0,
+                "mean_target_cross_entropy": 0.0,
+                "top_confidence_ece": 0.0,
+                "candidate_legality": 1.0,
+                "frequency_reference_top1_agreement": 1.0,
+                "per_category_counts": {
+                    "card_reward": 2,
+                    "event": 2,
+                    "route": 2,
+                    "shop": 2,
+                },
+            }
+            for split in ("validation", "test")
+        }
+
+    lines = [
+        "# Non-combat policy-learning pilot",
+        "",
+        "Label mode: current",
+        "Source commit: snapshot",
+        "",
+        "Formal non-combat RL: blocked",
+        "Live policy promotion: blocked",
+        "Off-policy evaluation: unsupported",
+        "",
+        "## Limitations",
+        "Missing trajectories, target mappings, unknown behavior propensities, and contextual alternative-action overlap block off-policy evaluation.",
+        "Aggregate candidate counts do not establish contextual alternative-action overlap.",
+        "Outcomes are diagnostics only and are not supervised targets.",
+        "",
+        "## Dataset exclusions",
+        json.dumps(exclusions, indent=2, sort_keys=True),
+        "",
+        "## Category support",
+    ]
+    for category in ("shop", "event", "route", "card_reward"):
+        lines.extend((f"### {category}", json.dumps(categories[category], indent=2, sort_keys=True), ""))
+    lines.extend(
+        (
+            "## Split counts",
+            json.dumps(
+                {
+                    "groups": groups,
+                    "split_sample_counts": overall["split_sample_counts"],
+                    "support": overall,
+                },
+                indent=2,
+                sort_keys=True,
+            ),
+            "",
+            "## Outcome diagnostics",
+            json.dumps({"dataset": {}, "support": outcomes}, indent=2, sort_keys=True),
+        )
+    )
+    if metrics is not None:
+        lines.extend(("", "## Held-out metrics"))
+        for split in ("validation", "test"):
+            lines.extend(("", f"### {split.title()}", json.dumps(metrics[split], indent=2, sort_keys=True)))
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def test_blocked_policy_report_matches_exact_snapshot():
+    from analysis_scripts.noncombat_policy_learning import render_policy_report
+
+    dataset, splits, support, metrics = _snapshot_fixture(blocked=True)
+
+    assert metrics is None
+    assert support["overall"]["blocked"] is True
+    assert render_policy_report(dataset.manifest, splits.manifest, support) == _expected_snapshot(
+        blocked=True
+    )
+
+
+def test_overall_allowed_policy_report_matches_exact_snapshot_with_metrics():
+    from analysis_scripts.noncombat_policy_learning import render_policy_report
+
+    dataset, splits, support, metrics = _snapshot_fixture(blocked=False)
+
+    assert support["overall"]["blocked"] is False
+    assert set(metrics) == {"validation", "test"}
+    assert render_policy_report(dataset.manifest, splits.manifest, support, metrics=metrics) == _expected_snapshot(
+        blocked=False
+    )
 
 
 def _assert_deterministic_manifest(first_manifest, second_manifest):

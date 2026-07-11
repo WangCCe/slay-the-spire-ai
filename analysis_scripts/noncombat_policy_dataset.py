@@ -255,6 +255,14 @@ def evaluate_support(dataset, splits, *, min_trajectories=10) -> Mapping[str, An
     split_group_counts = {
         split: len(splits.groups.get(split, ())) for split in SPLIT_NAMES
     }
+    split_sample_counts = {
+        split: sum(
+            1
+            for row in rows
+            if splits.assignments.get(row.trajectory_group_id) == split
+        )
+        for split in SPLIT_NAMES
+    }
     overall_reasons = []
     if len(group_ids) < required_trajectories:
         overall_reasons.append("insufficient_trajectory_groups")
@@ -296,6 +304,7 @@ def evaluate_support(dataset, splits, *, min_trajectories=10) -> Mapping[str, An
                 "trajectory_count": len(group_ids),
                 "minimum_trajectory_count": required_trajectories,
                 "split_trajectory_counts": split_group_counts,
+                "split_sample_counts": split_sample_counts,
                 "blocked": bool(overall_reasons),
                 "blocking_reasons": overall_reasons,
             },

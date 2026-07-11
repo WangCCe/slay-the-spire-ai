@@ -30,6 +30,14 @@ from analysis_scripts.noncombat_policy_dataset import (  # noqa: E402
 
 
 ARTIFACT_MANIFEST_VERSION = "noncombat-policy-pilot-artifacts-v1"
+BASE_ARTIFACT_SUFFIXES = (
+    "dataset_manifest.json",
+    "split_manifest.json",
+    "support.json",
+    "report.md",
+    "artifact_manifest.json",
+)
+OPTIONAL_ARTIFACT_SUFFIXES = ("metrics.json", "model.pt")
 METRIC_NAMES = (
     "sample_count",
     "model_reference_top1_agreement",
@@ -151,6 +159,9 @@ def render_policy_report(dataset_manifest, split_manifest, support, metrics=None
                         split: list(groups.get(split, ()))
                         for split in SPLIT_NAMES
                     },
+                    "split_sample_counts": support.get("overall", {}).get(
+                        "split_sample_counts", {}
+                    ),
                     "support": support.get("overall", {}),
                 }
             ),
@@ -177,10 +188,21 @@ def write_pilot_artifacts(
     model=None,
     metrics=None,
 ) -> Mapping[str, str]:
-    """Atomically write offline-only artifacts within one explicit output directory."""
-    if mode not in LABEL_MODES:
-        raise ValueError(f"unsupported label mode: {mode}")
+    """Transactionally replace the complete managed artifact set for one mode."""
     artifact_dir = _prepare_output_dir(output_dir)
+    training_result = _validate_artifact_inputs(
+        mode,
+        dataset=dataset,
+        support=support,
+        model=model,
+        metrics=metrics,
+    )
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    if not artifact_dir.is_dir():
+        raise ValueError("output_dir must be a directory")
+
+    manifest_name = _artifact_name(mode, "artifact_manifest.json")
+    desired_names = set(_base_artifact_names(mode))
     artifact_payloads = {
         f"{mode}_dataset_manifest.json": _json_bytes(dataset.manifest),
         f"{mode}_split_manifest.json": _json_bytes(splits.manifest),
@@ -193,44 +215,49 @@ def write_pilot_artifacts(
         ).encode("utf-8"),
     }
     if metrics is not None:
-        artifact_payloads[f"{mode}_metrics.json"] = _json_bytes(metrics)
+        metrics_name = _artifact_name(mode, "metrics.json")
+        artifact_payloads[metrics_name] = _json_bytes(metrics)
+        desired_names.add(metrics_name)
 
-    paths = {}
-    for name, payload in artifact_payloads.items():
-        path = _artifact_path(artifact_dir, name)
-        _write_atomic_bytes(path, payload)
-        paths[_artifact_key(name, mode)] = str(path)
+    staged_paths = {}
+    try:
+        for name, payload in sorted(artifact_payloads.items()):
+            staged_path = _temporary_path(_artifact_path(artifact_dir, name))
+            _stage_bytes(staged_path, payload)
+            staged_paths[name] = staged_path
 
-    if model is not None:
-        model_path = _artifact_path(artifact_dir, f"{mode}_model.pt")
-        _write_model_artifact(model_path, model)
-        paths["model"] = str(model_path)
+        if training_result is not None:
+            model_name = _artifact_name(mode, "model.pt")
+            staged_path = _temporary_path(_artifact_path(artifact_dir, model_name))
+            _stage_model_artifact(staged_path, training_result)
+            staged_paths[model_name] = staged_path
+            desired_names.add(model_name)
 
-    final_paths = [Path(path) for path in paths.values()]
-    artifact_manifest = {
-        "schema_version": ARTIFACT_MANIFEST_VERSION,
-        "mode": mode,
-        "output_dir": str(artifact_dir),
-        "source_commit": str(dataset.manifest.get("source_commit", "")),
-        "dataset_manifest_hash": dataset.manifest.get("manifest_hash"),
-        "split_manifest_hash": splits.manifest.get("manifest_hash"),
-        "configuration": {
-            "label_mode": mode,
-            "split_seed": splits.manifest.get("split_seed"),
-        },
-        "training_artifact_manifest": (
-            to_json_value(model.artifact_manifest) if model is not None else None
-        ),
-        "artifact_hashes": {
-            path.name: _sha256_file(path) for path in sorted(final_paths, key=lambda value: value.name)
-        },
-        "formal_noncombat_rl_training_ready": False,
-        "live_policy_promotion_ready": False,
+        artifact_hashes = {
+            name: _sha256_file(staged_paths[name])
+            for name in sorted(staged_paths)
+        }
+        artifact_manifest = _artifact_manifest(
+            artifact_dir,
+            mode=mode,
+            dataset=dataset,
+            splits=splits,
+            training_result=training_result,
+            artifact_hashes=artifact_hashes,
+        )
+        manifest_stage = _temporary_path(_artifact_path(artifact_dir, manifest_name))
+        _stage_bytes(manifest_stage, _json_bytes(artifact_manifest))
+        staged_paths[manifest_name] = manifest_stage
+        _validate_staged_artifacts(staged_paths, manifest_name, artifact_manifest)
+        _commit_artifact_transaction(artifact_dir, mode, staged_paths, manifest_name)
+    except Exception:
+        _cleanup_paths(staged_paths.values())
+        raise
+
+    return {
+        _artifact_key(name, mode): str(_artifact_path(artifact_dir, name))
+        for name in sorted(desired_names)
     }
-    manifest_path = _artifact_path(artifact_dir, f"{mode}_artifact_manifest.json")
-    _write_atomic_bytes(manifest_path, _json_bytes(artifact_manifest))
-    paths["artifact_manifest"] = str(manifest_path)
-    return dict(sorted(paths.items()))
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -380,9 +407,6 @@ def _prepare_output_dir(output_dir) -> Path:
     artifact_dir = Path(output_dir).resolve()
     if any(part.casefold() == "checkpoints" for part in artifact_dir.parts):
         raise ValueError("pilot artifacts cannot be written under checkpoints")
-    artifact_dir.mkdir(parents=True, exist_ok=True)
-    if not artifact_dir.is_dir():
-        raise ValueError("output_dir must be a directory")
     return artifact_dir
 
 
@@ -393,22 +417,81 @@ def _artifact_path(output_dir: Path, name: str) -> Path:
     return path
 
 
-def _write_atomic_bytes(path: Path, payload: bytes) -> None:
-    temporary_path = path.with_name(f".{path.name}.tmp")
-    try:
-        temporary_path.write_bytes(payload)
-        temporary_path.replace(path)
-    finally:
-        if temporary_path.exists():
-            temporary_path.unlink()
+def _validate_artifact_inputs(mode, *, dataset, support, model, metrics):
+    if mode not in LABEL_MODES:
+        raise ValueError(f"unsupported label mode: {mode}")
+    if not isinstance(getattr(dataset, "manifest", None), Mapping):
+        raise ValueError("dataset requires a manifest mapping")
+    if dataset.manifest.get("label_mode") != mode:
+        raise ValueError("dataset manifest label_mode must match mode")
+    for row in getattr(dataset, "rows", ()):
+        if getattr(row, "label_mode", None) != mode:
+            raise ValueError("every dataset row label_mode must match mode")
+    if not isinstance(support, Mapping) or not isinstance(support.get("overall"), Mapping):
+        raise ValueError("support requires an overall mapping")
+    blocked = support["overall"].get("blocked")
+    if not isinstance(blocked, bool):
+        raise ValueError("support overall blocked flag must be boolean")
+    if (model is None) != (metrics is None):
+        raise ValueError("model and metrics must be both present or both absent")
+    if blocked and (model is not None or metrics is not None):
+        raise ValueError("blocked support cannot write model or metrics")
+    if metrics is not None:
+        _validate_metrics(metrics)
+    if model is None:
+        return None
+
+    from analysis_scripts.noncombat_policy_model import ARTIFACT_STEMS, TrainingResult
+
+    if not isinstance(model, TrainingResult):
+        raise ValueError("model must be a TrainingResult")
+    model_manifest = model.artifact_manifest
+    if model_manifest.get("label_mode") != mode:
+        raise ValueError("TrainingResult label_mode must match mode")
+    if model_manifest.get("artifact_stem") != ARTIFACT_STEMS[mode]:
+        raise ValueError("TrainingResult artifact_stem must match mode")
+    return model
 
 
-def _write_model_artifact(path: Path, training_result) -> None:
-    from analysis_scripts.noncombat_policy_model import TrainingResult
+def _validate_metrics(metrics) -> None:
+    if not isinstance(metrics, Mapping) or set(metrics) != {"validation", "test"}:
+        raise ValueError("metrics require exactly validation and test blocks")
+    for split in ("validation", "test"):
+        block = metrics[split]
+        if not isinstance(block, Mapping) or not set(METRIC_NAMES).issubset(block):
+            raise ValueError(f"metrics {split} block is incomplete")
+
+
+def _artifact_name(mode: str, suffix: str) -> str:
+    return f"{mode}_{suffix}"
+
+
+def _base_artifact_names(mode: str) -> tuple[str, ...]:
+    return tuple(_artifact_name(mode, suffix) for suffix in BASE_ARTIFACT_SUFFIXES)
+
+
+def _managed_artifact_names(mode: str) -> tuple[str, ...]:
+    return tuple(
+        _artifact_name(mode, suffix)
+        for suffix in (*BASE_ARTIFACT_SUFFIXES, *OPTIONAL_ARTIFACT_SUFFIXES)
+    )
+
+
+def _temporary_path(path: Path) -> Path:
+    return path.with_name(f".{path.name}.tmp")
+
+
+def _backup_path(path: Path) -> Path:
+    return path.with_name(f".{path.name}.backup")
+
+
+def _stage_bytes(path: Path, payload: bytes) -> None:
+    path.write_bytes(payload)
+
+
+def _stage_model_artifact(path: Path, training_result) -> None:
     import torch
 
-    if not isinstance(training_result, TrainingResult):
-        raise TypeError("model must be a TrainingResult")
     state_dict = {
         name: tensor.detach().cpu().clone()
         for name, tensor in training_result.model.state_dict().items()
@@ -417,13 +500,92 @@ def _write_model_artifact(path: Path, training_result) -> None:
         "state_dict": state_dict,
         "artifact_manifest": to_json_value(training_result.artifact_manifest),
     }
-    temporary_path = path.with_name(f".{path.name}.tmp")
+    torch.save(payload, path)
+
+
+def _artifact_manifest(
+    artifact_dir: Path,
+    *,
+    mode,
+    dataset,
+    splits,
+    training_result,
+    artifact_hashes,
+):
+    return {
+        "schema_version": ARTIFACT_MANIFEST_VERSION,
+        "mode": mode,
+        "output_dir": str(artifact_dir),
+        "source_commit": str(dataset.manifest.get("source_commit", "")),
+        "dataset_manifest_hash": dataset.manifest.get("manifest_hash"),
+        "split_manifest_hash": splits.manifest.get("manifest_hash"),
+        "configuration": {
+            "label_mode": mode,
+            "split_seed": splits.manifest.get("split_seed"),
+        },
+        "training_artifact_manifest": (
+            to_json_value(training_result.artifact_manifest)
+            if training_result is not None
+            else None
+        ),
+        "artifact_hashes": dict(sorted(artifact_hashes.items())),
+        "formal_noncombat_rl_training_ready": False,
+        "live_policy_promotion_ready": False,
+    }
+
+
+def _validate_staged_artifacts(staged_paths, manifest_name, artifact_manifest) -> None:
+    expected_hashes = {
+        name: _sha256_file(path)
+        for name, path in sorted(staged_paths.items())
+        if name != manifest_name
+    }
+    if expected_hashes != artifact_manifest["artifact_hashes"]:
+        raise AssertionError("staged artifact hashes do not match the manifest")
+    serialized_manifest = json.loads(staged_paths[manifest_name].read_text(encoding="utf-8"))
+    if serialized_manifest != to_json_value(artifact_manifest):
+        raise AssertionError("staged artifact manifest does not match its payload")
+
+
+def _commit_artifact_transaction(artifact_dir: Path, mode, staged_paths, manifest_name) -> None:
+    backups = {}
+    installed = []
     try:
-        torch.save(payload, temporary_path)
-        temporary_path.replace(path)
+        for name in sorted(_managed_artifact_names(mode)):
+            final_path = _artifact_path(artifact_dir, name)
+            if not final_path.exists():
+                continue
+            if not final_path.is_file():
+                raise ValueError(f"managed artifact path is not a file: {final_path}")
+            backup_path = _backup_path(final_path)
+            if backup_path.exists():
+                raise RuntimeError(f"stale transaction backup exists: {backup_path}")
+            final_path.replace(backup_path)
+            backups[name] = backup_path
+
+        install_order = sorted(name for name in staged_paths if name != manifest_name)
+        install_order.append(manifest_name)
+        for name in install_order:
+            final_path = _artifact_path(artifact_dir, name)
+            staged_paths[name].replace(final_path)
+            installed.append(final_path)
+
+        _cleanup_paths(backups.values())
+    except Exception:
+        _cleanup_paths(reversed(installed))
+        for name, backup_path in reversed(tuple(backups.items())):
+            if backup_path.exists():
+                backup_path.replace(_artifact_path(artifact_dir, name))
+        raise
     finally:
-        if temporary_path.exists():
-            temporary_path.unlink()
+        _cleanup_paths(staged_paths.values())
+        _cleanup_paths(backups.values())
+
+
+def _cleanup_paths(paths) -> None:
+    for path in paths:
+        if path.exists():
+            path.unlink()
 
 
 def _artifact_key(name: str, mode: str) -> str:
