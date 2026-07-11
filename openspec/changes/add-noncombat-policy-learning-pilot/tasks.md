@@ -21,11 +21,11 @@
 
 ## 4. Implement The Offline Candidate Ranker
 
-- [ ] 4.1 Add deterministic numeric and hashed categorical feature extraction for normalized state/candidate pairs with a versioned feature configuration.
-- [ ] 4.2 Implement a small CPU PyTorch candidate scorer that computes loss and predictions only over each sample's available candidates.
-- [ ] 4.3 Implement separate Current-imitation and Bottled-auxiliary dataset modes; require mapped native high-confidence Bottled labels and never blend label sources.
+- [x] 4.1 Add deterministic numeric and hashed categorical feature extraction for normalized state/candidate pairs with a versioned feature configuration.
+- [x] 4.2 Implement a small CPU PyTorch candidate scorer that computes loss and predictions only over each sample's available candidates.
+- [x] 4.3 Implement separate Current-imitation and Bottled-auxiliary dataset modes; require mapped native high-confidence Bottled labels and never blend label sources.
 - [ ] 4.4 Add finite epoch, seed, output-directory, and deterministic-order controls plus artifact manifests that mark formal RL and live promotion false.
-- [ ] 4.5 Add regressions for 100 percent candidate-legal prediction, target-mapping exclusions, label isolation, bounded execution, and repeatable predictions/metrics within tolerance.
+- [x] 4.5 Add regressions for 100 percent candidate-legal prediction, target-mapping exclusions, label isolation, bounded execution, and repeatable predictions/metrics within tolerance.
 
 ## 5. Add Evaluation, Baselines, And Reporting
 

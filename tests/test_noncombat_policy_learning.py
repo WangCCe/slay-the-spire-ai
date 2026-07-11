@@ -1,5 +1,8 @@
 import hashlib
 import json
+import math
+from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 
@@ -730,3 +733,281 @@ def test_behavior_propensity_status_casefolds_unknown(tmp_path):
 
     assert row.behavior_probability_status == "unknown"
     assert row.behavior_action_probability is None
+
+
+def _learning_row(
+    sample_id,
+    *,
+    label_mode="current",
+    state=None,
+    candidates=None,
+    target_action_id=None,
+):
+    from analysis_scripts.noncombat_policy_dataset import PolicyRow
+
+    candidates = candidates or (
+        {
+            "action_id": "route:take",
+            "kind": "choice",
+            "label": "take",
+            "available": True,
+            "raw": {"signal": "target"},
+        },
+        {
+            "action_id": "route:skip",
+            "kind": "choice",
+            "label": "skip",
+            "available": True,
+            "raw": {"signal": "other"},
+        },
+    )
+    return PolicyRow(
+        sample_id=sample_id,
+        trajectory_group_id=f"run:{sample_id}",
+        category="route",
+        state=state or {"floor": 1},
+        candidates=tuple(candidates),
+        target_action_id=target_action_id or candidates[0]["action_id"],
+        outcome={"join_status": "matched", "victory": False},
+        label_mode=label_mode,
+    )
+
+
+def test_candidate_features_use_stable_signed_hashes_and_numeric_values():
+    from analysis_scripts.noncombat_policy_model import (
+        FeatureConfig,
+        candidate_feature_vector,
+    )
+
+    config = FeatureConfig(hash_dim=1024)
+    row = SimpleNamespace(
+        state={"nested": {"z": None, "a": True}, "sequence": [3, "alpha"]}
+    )
+    reordered_row = SimpleNamespace(
+        state={"sequence": [3, "alpha"], "nested": {"a": True, "z": None}}
+    )
+    candidate = {"action_id": "route:take", "raw": {"choice": "left"}}
+    reordered_candidate = {"raw": {"choice": "left"}, "action_id": "route:take"}
+
+    first = candidate_feature_vector(row, candidate, config)
+    assert first.shape == (1024,)
+    assert str(first.dtype) == "torch.float32"
+    assert first.device.type == "cpu"
+    assert first.equal(candidate_feature_vector(row, candidate, config))
+    assert first.equal(candidate_feature_vector(reordered_row, reordered_candidate, config))
+    assert not first.equal(
+        candidate_feature_vector(
+            SimpleNamespace(state={"nested": {"z": None, "a": False}, "sequence": [3, "alpha"]}),
+            candidate,
+            config,
+        )
+    )
+    assert not first.equal(candidate_feature_vector(row, {"action_id": "route:skip", "raw": {"choice": "left"}}, config))
+
+    categorical = candidate_feature_vector(SimpleNamespace(state={}), {"value": "yes"}, config)
+    categorical_digest = hashlib.sha256(b"candidate.value=yes").digest()
+    categorical_bin = int.from_bytes(categorical_digest[:8], "big") % config.hash_dim
+    categorical_sign = -1.0 if categorical_digest[8] & 1 else 1.0
+    assert categorical[categorical_bin].item() == categorical_sign
+
+    numeric = candidate_feature_vector(SimpleNamespace(state={"amount": -math.e}), {}, config)
+    numeric_digest = hashlib.sha256(b"state.amount").digest()
+    numeric_bin = int.from_bytes(numeric_digest[:8], "big") % config.hash_dim
+    assert numeric[numeric_bin].item() == pytest.approx(-math.log1p(math.e) / 10.0)
+
+    clipped = candidate_feature_vector(SimpleNamespace(state={"amount": 10**400}), {}, config)
+    assert clipped[numeric_bin].item() == 1.0
+
+    with pytest.raises(ValueError, match="hash_dim"):
+        candidate_feature_vector(row, candidate, FeatureConfig(hash_dim=0))
+
+
+def test_predictions_mask_to_each_rows_available_candidates_in_order():
+    from analysis_scripts.noncombat_policy_model import (
+        CandidateRanker,
+        FeatureConfig,
+        predict_ranker,
+    )
+
+    short_row = _learning_row("short")
+    long_row = _learning_row(
+        "long",
+        candidates=(
+            {
+                "action_id": "route:third",
+                "kind": "choice",
+                "label": "third",
+                "available": True,
+                "raw": {"signal": "third"},
+            },
+            {
+                "action_id": "route:first",
+                "kind": "choice",
+                "label": "first",
+                "available": True,
+                "raw": {"signal": "first"},
+            },
+            {
+                "action_id": "route:second",
+                "kind": "choice",
+                "label": "second",
+                "available": True,
+                "raw": {"signal": "second"},
+            },
+        ),
+        target_action_id="route:second",
+    )
+
+    predictions = predict_ranker(
+        CandidateRanker(input_dim=64),
+        (long_row, short_row),
+        feature_config=FeatureConfig(hash_dim=64),
+    )
+
+    assert [prediction.sample_id for prediction in predictions] == ["long", "short"]
+    for row, prediction in zip((long_row, short_row), predictions):
+        candidate_ids = [candidate["action_id"] for candidate in row.candidates]
+        assert prediction.predicted_action_id in candidate_ids
+        assert len(prediction.probabilities) == len(candidate_ids)
+        assert prediction.confidence == max(prediction.probabilities)
+
+
+def test_training_rejects_mixed_label_modes_and_illegal_targets():
+    from analysis_scripts.noncombat_policy_model import (
+        FeatureConfig,
+        TrainingConfig,
+        train_ranker,
+    )
+
+    current = _learning_row("current")
+    bottled = replace(_learning_row("bottled"), label_mode="bottled")
+    with pytest.raises(ValueError, match="label mode"):
+        train_ranker(
+            (current,),
+            (bottled,),
+            feature_config=FeatureConfig(),
+            training_config=TrainingConfig(),
+        )
+
+    illegal_target = replace(current, target_action_id="route:not-a-candidate")
+    with pytest.raises(ValueError, match="target_action_id"):
+        train_ranker(
+            (illegal_target,),
+            (current,),
+            feature_config=FeatureConfig(),
+            training_config=TrainingConfig(),
+        )
+
+    with pytest.raises(ValueError, match="train rows"):
+        train_ranker(
+            (),
+            (current,),
+            feature_config=FeatureConfig(),
+            training_config=TrainingConfig(),
+        )
+    with pytest.raises(ValueError, match="validation rows"):
+        train_ranker(
+            (current,),
+            (),
+            feature_config=FeatureConfig(),
+            training_config=TrainingConfig(),
+        )
+
+    bottled_result = train_ranker(
+        (bottled,),
+        (bottled,),
+        feature_config=FeatureConfig(),
+        training_config=TrainingConfig(max_epochs=1),
+    )
+    assert bottled_result.artifact_manifest["artifact_stem"] == "noncombat_policy_bottled"
+
+
+@pytest.mark.parametrize(
+    "config",
+    (
+        ("device", "cuda"),
+        ("max_epochs", 0),
+        ("max_epochs", 51),
+        ("patience", 0),
+        ("patience", 6),
+        ("learning_rate", 0.0),
+        ("learning_rate", float("nan")),
+        ("learning_rate", float("inf")),
+    ),
+)
+def test_training_rejects_invalid_cpu_configurations(config):
+    from analysis_scripts.noncombat_policy_model import (
+        FeatureConfig,
+        TrainingConfig,
+        train_ranker,
+    )
+
+    field, value = config
+    with pytest.raises(ValueError):
+        train_ranker(
+            (_learning_row("train"),),
+            (_learning_row("validation"),),
+            feature_config=FeatureConfig(),
+            training_config=replace(TrainingConfig(), **{field: value}),
+        )
+
+
+def test_training_is_bounded_deterministic_and_keeps_promotion_flags_false():
+    from analysis_scripts.noncombat_policy_model import (
+        FeatureConfig,
+        TrainingConfig,
+        predict_ranker,
+        train_ranker,
+    )
+
+    train_rows = tuple(_learning_row(f"train-{index}") for index in range(3))
+    validation_rows = tuple(_learning_row(f"validation-{index}") for index in range(2))
+    feature_config = FeatureConfig(hash_dim=128)
+    training_config = TrainingConfig(seed=17, max_epochs=50, patience=5)
+
+    first = train_ranker(
+        train_rows,
+        validation_rows,
+        feature_config=feature_config,
+        training_config=training_config,
+    )
+    second = train_ranker(
+        train_rows,
+        validation_rows,
+        feature_config=feature_config,
+        training_config=training_config,
+    )
+
+    assert first.epochs_run <= 50
+    assert first.epochs_run == len(first.history)
+    assert first.best_validation_loss == pytest.approx(second.best_validation_loss, abs=1e-7)
+    assert next(first.model.parameters()).device.type == "cpu"
+    assert first.artifact_manifest["artifact_stem"] == "noncombat_policy_current"
+    assert first.artifact_manifest["formal_noncombat_rl_training_ready"] is False
+    assert first.artifact_manifest["live_policy_promotion_ready"] is False
+    assert predict_ranker(first.model, validation_rows, feature_config=feature_config) == predict_ranker(
+        second.model,
+        validation_rows,
+        feature_config=feature_config,
+    )
+
+    single_candidate = _learning_row(
+        "single",
+        candidates=(
+            {
+                "action_id": "route:only",
+                "kind": "choice",
+                "label": "only",
+                "available": True,
+                "raw": {},
+            },
+        ),
+        target_action_id="route:only",
+    )
+    early_stopped = train_ranker(
+        (single_candidate,),
+        (single_candidate,),
+        feature_config=feature_config,
+        training_config=TrainingConfig(seed=17, max_epochs=50, patience=5),
+    )
+    assert early_stopped.epochs_run == 6
