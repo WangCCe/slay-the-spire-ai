@@ -3,9 +3,11 @@ from types import SimpleNamespace
 
 from spirecomm.communication.action import (
     CardSelectAction,
+    ClickAction,
     ChooseAction,
     KeyAction,
     OptionalCardSelectConfirmAction,
+    WaitAction,
 )
 from spirecomm.spire.screen import ScreenType
 
@@ -26,7 +28,7 @@ class FakeCoordinator:
             self.game_is_ready = False
 
 
-def test_card_select_does_not_confirm_grid_selection_before_confirm_is_available():
+def test_grid_choose_selection_queues_response_barriers_before_confirm():
     card = SimpleNamespace(name="Defend_R")
     coordinator = FakeCoordinator(
         SimpleNamespace(
@@ -44,13 +46,84 @@ def test_card_select_does_not_confirm_grid_selection_before_confirm_is_available
     )
 
     CardSelectAction([card]).execute(coordinator)
-    queued_actions = list(coordinator.action_queue)
-    assert isinstance(queued_actions[-1], OptionalCardSelectConfirmAction)
-    assert queued_actions[-1].requires_game_ready is False
-    while coordinator.action_queue:
-        coordinator.action_queue.popleft().execute(coordinator)
+    selector, settle, confirm = list(coordinator.action_queue)
 
-    assert coordinator.sent_messages == ["choose 0"]
+    assert isinstance(selector, ChooseAction)
+    assert selector.requires_game_ready is True
+    assert selector.wait_for_response is True
+    assert isinstance(settle, WaitAction)
+    assert settle.requires_game_ready is True
+    assert settle.wait_for_response is True
+    assert settle.timeout == 1
+    assert isinstance(confirm, OptionalCardSelectConfirmAction)
+    assert confirm.requires_game_ready is True
+    assert confirm.wait_for_response is True
+    assert confirm.settle_after_confirm is True
+
+
+def test_grid_click_and_key_selectors_use_response_barriers():
+    card = SimpleNamespace(name="Defend_R")
+
+    click_coordinator = FakeCoordinator(
+        SimpleNamespace(
+            screen_type=ScreenType.GRID,
+            available_commands=["click", "key", "wait", "state"],
+            screen=SimpleNamespace(
+                cards=[card],
+                selected_cards=[],
+                num_cards=1,
+                any_number=False,
+                confirm_up=False,
+                card_positions=[{"x": 100, "y": 200}],
+            ),
+        )
+    )
+    CardSelectAction([card]).execute(click_coordinator)
+    click_selector, click_settle, _ = list(click_coordinator.action_queue)
+    assert isinstance(click_selector, ClickAction)
+    assert click_selector.requires_game_ready is True
+    assert click_selector.wait_for_response is True
+    assert isinstance(click_settle, WaitAction)
+    assert click_settle.wait_for_response is True
+
+    key_coordinator = FakeCoordinator(
+        SimpleNamespace(
+            screen_type=ScreenType.GRID,
+            available_commands=["key", "wait", "state"],
+            screen=SimpleNamespace(
+                cards=[card],
+                selected_cards=[],
+                num_cards=1,
+                any_number=False,
+                confirm_up=False,
+                card_positions=[],
+            ),
+        )
+    )
+    CardSelectAction([card]).execute(key_coordinator)
+    key_selector, key_settle, _ = list(key_coordinator.action_queue)
+    assert isinstance(key_selector, KeyAction)
+    assert key_selector.requires_game_ready is True
+    assert key_selector.wait_for_response is True
+    assert isinstance(key_settle, WaitAction)
+    assert key_settle.wait_for_response is True
+
+
+def test_shared_action_serialization_defaults_remain_unchanged():
+    click = ClickAction("proceed")
+    choose = ChooseAction(0)
+    wait = WaitAction(timeout=1)
+    confirm = OptionalCardSelectConfirmAction()
+
+    assert click.requires_game_ready is False
+    assert click.wait_for_response is False
+    assert choose.requires_game_ready is True
+    assert choose.wait_for_response is False
+    assert wait.requires_game_ready is False
+    assert wait.wait_for_response is False
+    assert confirm.requires_game_ready is False
+    assert confirm.wait_for_response is False
+    assert confirm.settle_after_confirm is False
 
 
 def test_hand_select_card_select_waits_between_keys_and_confirm():

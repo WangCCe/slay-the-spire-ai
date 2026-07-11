@@ -1,22 +1,22 @@
 ## 1. Preserve The Live Failure As Red Regressions
 
-- [ ] 1.1 Add GRID queue-contract tests for `choose`, positioned `click`, and `key` fallback transports, including response-wait and one-frame settle requirements.
-- [ ] 1.2 Add default-contract tests proving shared choose, click, wait, and HAND_SELECT actions retain their pre-change behavior.
-- [ ] 1.3 Add a parsed-state coordinator regression that reproduces the stale pre-selection frame, stale post-confirm frame, duplicate callback, and rejected-confirm command sequence.
-- [ ] 1.4 Run the focused regression set before implementation and record failures that demonstrate the missing GRID ordering boundaries.
+- [x] 1.1 Add GRID queue-contract tests for `choose`, positioned `click`, and `key` fallback transports, including response-wait and one-frame settle requirements.
+- [x] 1.2 Add default-contract tests proving shared choose, click, wait, and HAND_SELECT actions retain their pre-change behavior.
+- [x] 1.3 Add a parsed-state coordinator regression that reproduces the stale pre-selection frame, stale post-confirm frame, duplicate callback, and rejected-confirm command sequence.
+- [x] 1.4 Run the focused regression set before implementation and record failures that demonstrate the missing GRID ordering boundaries.
 
 ## 2. Implement GRID Protocol Serialization
 
-- [ ] 2.1 Add backward-compatible readiness and response-wait options to `WaitAction`, `ClickAction`, and `ChooseAction`.
-- [ ] 2.2 Add backward-compatible response-wait and post-confirm-settle options to `OptionalCardSelectConfirmAction`.
-- [ ] 2.3 Queue a serialized selector and waiting one-frame settle action for every GRID card selected by `CardSelectAction`.
-- [ ] 2.4 Serialize the terminal GRID optional confirm and queue a waiting one-frame transition settle action after a sent confirm.
-- [ ] 2.5 Run the focused GRID/action/coordinator tests and confirm the regression emits exactly one selector, one low-level confirm, and no callback from either stale frame.
+- [x] 2.1 Add backward-compatible readiness and response-wait options to `WaitAction`, `ClickAction`, and `ChooseAction`.
+- [x] 2.2 Add backward-compatible response-wait and post-confirm-settle options to `OptionalCardSelectConfirmAction`.
+- [x] 2.3 Queue a serialized selector and waiting one-frame settle action for every GRID card selected by `CardSelectAction`.
+- [x] 2.4 Serialize the terminal GRID optional confirm and queue a waiting one-frame transition settle action after a sent confirm.
+- [x] 2.5 Run the focused GRID/action/coordinator tests and confirm the regression emits exactly one selector, one low-level confirm, and no callback from either stale frame.
 
 ## 3. Verify And Review The Fix
 
-- [ ] 3.1 Run the full pytest suite with cache disabled and a writable repository-local basetemp.
-- [ ] 3.2 Run `openspec validate fix-grid-confirm-transition-race --strict` and `git diff --check`.
+- [x] 3.1 Run the full pytest suite with cache disabled and a writable repository-local basetemp.
+- [x] 3.2 Run `openspec validate fix-grid-confirm-transition-race --strict` and `git diff --check`.
 - [ ] 3.3 Obtain independent spec-compliance and code-quality review of the behavior diff.
 - [ ] 3.4 Resolve every accepted review finding and rerun focused tests, full pytest, strict OpenSpec validation, and diff checks.
 - [ ] 3.5 Commit the reviewed GRID ordering fix as one cohesive behavior commit without staging unrelated historical reports.

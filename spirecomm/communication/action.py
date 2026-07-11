@@ -20,12 +20,16 @@ def _has_potion_space(game_state):
     return True
 
 
-def _queue_ready_wait(coordinator, timeout=1):
+def _queue_ready_wait(coordinator, timeout=1, wait_for_response=False):
     add_action_to_queue = getattr(coordinator, "add_action_to_queue", None)
     if callable(add_action_to_queue):
-        wait_action = WaitAction(timeout=timeout)
-        wait_action.requires_game_ready = True
-        add_action_to_queue(wait_action)
+        add_action_to_queue(
+            WaitAction(
+                timeout=timeout,
+                requires_game_ready=True,
+                wait_for_response=wait_for_response,
+            )
+        )
 
 
 def _compact_identifier(value):
@@ -341,24 +345,42 @@ class CancelAction(Action):
 class WaitAction(Action):
     """An action to use the CommunicationMod 'Wait' command to trigger a state update"""
 
-    def __init__(self, timeout=1):
-        super().__init__("wait", requires_game_ready=False)
+    def __init__(
+        self,
+        timeout=1,
+        requires_game_ready=False,
+        wait_for_response=False,
+    ):
+        super().__init__("wait", requires_game_ready=requires_game_ready)
         self.timeout = timeout
+        self.wait_for_response = wait_for_response
 
     def execute(self, coordinator):
-        coordinator.send_message(f"{self.command} {self.timeout}", wait_for_response=False)
+        coordinator.send_message(
+            f"{self.command} {self.timeout}",
+            wait_for_response=self.wait_for_response,
+        )
 
 
 class ClickAction(Action):
     """An action to use the CommunicationMod 'Click' command"""
 
-    def __init__(self, target):
-        super().__init__("click", requires_game_ready=False)
+    def __init__(
+        self,
+        target,
+        requires_game_ready=False,
+        wait_for_response=False,
+    ):
+        super().__init__("click", requires_game_ready=requires_game_ready)
         self.target = target
+        self.wait_for_response = wait_for_response
 
     def execute(self, coordinator):
         payload = self._resolve_payload(coordinator)
-        coordinator.send_message(f"{self.command} {payload}", wait_for_response=False)
+        coordinator.send_message(
+            f"{self.command} {payload}",
+            wait_for_response=self.wait_for_response,
+        )
 
     def _resolve_payload(self, coordinator):
         if isinstance(self.target, (list, tuple)):
@@ -424,10 +446,11 @@ class KeyAction(Action):
 class ChooseAction(Action):
     """An action to use the CommunicationMod 'Choose' command"""
 
-    def __init__(self, choice_index=0, name=None):
+    def __init__(self, choice_index=0, name=None, wait_for_response=False):
         super().__init__("choose", requires_game_ready=True)
         self.choice_index = choice_index
         self.name = name
+        self.wait_for_response = wait_for_response
 
     def can_be_executed(self, coordinator):
         if super().can_be_executed(coordinator):
@@ -456,11 +479,13 @@ class ChooseAction(Action):
 
         if self.name is not None:
             coordinator.send_message(
-                "{} {}".format(self.command, self.name), wait_for_response=False
+                "{} {}".format(self.command, self.name),
+                wait_for_response=self.wait_for_response,
             )
         else:
             coordinator.send_message(
-                "{} {}".format(self.command, self.choice_index), wait_for_response=False
+                "{} {}".format(self.command, self.choice_index),
+                wait_for_response=self.wait_for_response,
             )
 
 
@@ -601,9 +626,17 @@ class BossRewardAction(ChooseAction):
 class OptionalCardSelectConfirmAction(Action):
     """An action to click confirm on a hand or grid select screen, only if available"""
 
-    def __init__(self, allow_stale_selection=False, requires_game_ready=False):
+    def __init__(
+        self,
+        allow_stale_selection=False,
+        requires_game_ready=False,
+        wait_for_response=False,
+        settle_after_confirm=False,
+    ):
         super().__init__("confirm", requires_game_ready=requires_game_ready)
         self.allow_stale_selection = allow_stale_selection
+        self.wait_for_response = wait_for_response
+        self.settle_after_confirm = settle_after_confirm
 
     def execute(self, coordinator):
         import logging
@@ -636,7 +669,12 @@ class OptionalCardSelectConfirmAction(Action):
                     confirm_up,
                     available,
                 )
-            coordinator.send_message(self.command, wait_for_response=False)
+            coordinator.send_message(
+                self.command,
+                wait_for_response=self.wait_for_response,
+            )
+            if self.settle_after_confirm:
+                _queue_ready_wait(coordinator, wait_for_response=True)
             return
         logging.debug(
             "Skipping optional card-select confirm: screen=%s confirm_up=%s available=%s",
@@ -698,13 +736,30 @@ class CardSelectAction(Action):
                 )
                 positions = getattr(screen, "card_positions", [])
                 if "click" in available and positions:
-                    coordinator.add_action_to_queue(ClickAction(("card", index, 0)))
+                    selector = ClickAction(
+                        ("card", index, 0),
+                        requires_game_ready=True,
+                        wait_for_response=True,
+                    )
                 elif "choose" in available:
-                    coordinator.add_action_to_queue(ChooseAction(choice_index=index))
-                elif "key" in available:
-                    coordinator.add_action_to_queue(KeyAction(f"CARD_{index + 1}"))
+                    selector = ChooseAction(
+                        choice_index=index,
+                        wait_for_response=True,
+                    )
                 else:
-                    coordinator.add_action_to_queue(KeyAction(f"CARD_{index + 1}"))
+                    selector = KeyAction(
+                        f"CARD_{index + 1}",
+                        requires_game_ready=True,
+                        wait_for_response=True,
+                    )
+                coordinator.add_action_to_queue(selector)
+                coordinator.add_action_to_queue(
+                    WaitAction(
+                        timeout=1,
+                        requires_game_ready=True,
+                        wait_for_response=True,
+                    )
+                )
             else:
                 coordinator.add_action_to_queue(
                     KeyAction(
@@ -713,10 +768,15 @@ class CardSelectAction(Action):
                         wait_for_response=True,
                     )
                 )
+        is_grid = screen_type == ScreenType.GRID
         coordinator.add_action_to_queue(
             OptionalCardSelectConfirmAction(
                 allow_stale_selection=True,
-                requires_game_ready=(screen_type == ScreenType.HAND_SELECT),
+                requires_game_ready=(
+                    screen_type in [ScreenType.HAND_SELECT, ScreenType.GRID]
+                ),
+                wait_for_response=is_grid,
+                settle_after_confirm=is_grid,
             )
         )
 
