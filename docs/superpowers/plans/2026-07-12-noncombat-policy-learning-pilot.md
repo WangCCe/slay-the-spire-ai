@@ -389,18 +389,24 @@ git commit -m "feat: add noncombat policy pilot evaluation"
 
 **Files:**
 - Create: `reports/noncombat_policy_learning_source_20260712.json`
+- Create: `reports/noncombat_policy_learning_samples_v2_batch2_retry1_20260712.jsonl`
+- Create: `reports/noncombat_policy_learning_export_v2_batch2_retry1_20260712.md`
 - Create: `reports/noncombat_policy_learning_support_20260712.md`
 - Create when allowed: `reports/noncombat_policy_learning_current_20260712.md`
 - Create when allowed: `reports/noncombat_policy_learning_bottled_20260712.md`
+- Create artifacts under: `reports/noncombat_policy_learning_pilot_20260712/`
 - Modify: `openspec/changes/add-noncombat-policy-learning-pilot/tasks.md`
 - Modify: `.superpowers/sdd/progress.md` (ignored recovery ledger)
 
 **Interfaces:**
 - The source manifest names candidate `f321cb05a40c808d3abfba8b977dfe8988b8ee47`, cutoff `1783787478`, upper bound `1783790134`, the exact 25 run filenames from `trainable_baseline_qualification_batch2_retry1.md`, source report SHA-256 `B526552829D3B844F141C48A081C461E7CDE9F97F1948B6F24473702CF628148`, and hashes of generated v2 inputs.
+- Export uses behavior policy id `current_heuristic`, the full candidate commit above, split seed `0`, trace tail `10000`, and native Bottled repo `C:\Users\20571\Documents\bottled_ai`. Dataset/CLI `--source-commit` is the frozen behavior commit; the source manifest separately records the pilot implementation HEAD.
 
 - [ ] **Step 1: Record pre-run isolation evidence**
 
 Read and hash the live CommunicationMod config plus enumerate active production checkpoint path, size, and mtime. Store this only in the evidence report/manifest; do not modify either source.
+
+Record SHA-256 for the config and every active `rl_combat_model_ep*.pth` checkpoint, in addition to size and UTC mtime. Recompute the same inventory after all evidence and tests.
 
 - [ ] **Step 2: Export the bounded v2 sample set**
 
@@ -409,6 +415,8 @@ Run the exporter with `--since-unix 1783787478`, `--until-unix 1783790134`, `--t
 - [ ] **Step 3: Run support-only evaluation first**
 
 Run both Current and Bottled support modes. Preserve the exact commands, input hashes, trajectory counts, category blocks, and result. If either mode is blocked, do not lower thresholds.
+
+Write both modes into `reports/noncombat_policy_learning_pilot_20260712/` with `--split-seed 0`; repeated support/train writes intentionally exercise the reviewed transactional writer.
 
 - [ ] **Step 4: Run bounded supervised modes only when allowed**
 
@@ -436,6 +444,8 @@ Expected: both pytest commands pass, both OpenSpec validations pass, and diff ch
 
 Rehash live config and compare checkpoint inventory with Step 1. Mark tasks 6.1-6.4 and 7.1-7.4 complete only when unchanged. Task 7.5 is complete after the reviewed evidence commit.
 
+Also mark 1.3 complete only after the pre/post isolation evidence matches, and mark 1.4 complete only when the source manifest records the frozen candidate, source hashes, implementation commit, and false formal-RL/live-promotion flags.
+
 - [ ] **Step 8: Commit reviewed evidence**
 
 Stage only the reviewed reports, source manifest, task state, and any final test correction:
@@ -446,3 +456,7 @@ git commit -m "docs: record noncombat policy learning pilot"
 ```
 
 Do not archive the change until a final whole-branch review confirms every task and report claim.
+
+- [ ] **Step 9: Complete the cohesive-commit task after evidence exists**
+
+After Step 8 succeeds, mark OpenSpec 7.5 complete, rerun strict change validation and `git diff --check`, and commit that task-state correction separately. Do not mark 7.5 in advance or amend the reviewed evidence commit.
