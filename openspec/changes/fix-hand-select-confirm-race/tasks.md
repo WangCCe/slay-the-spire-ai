@@ -7,23 +7,23 @@
 
 ## 2. Regression Tests
 
-- [ ] 2.1 Update the HAND_SELECT queue-contract test to require readiness on the terminal optional confirm.
-- [ ] 2.2 Add a failing coordinator regression for the final-key response arriving before terminal confirmation.
-- [ ] 2.3 Assert the regression emits no early confirm, invokes no stale agent callback, and emits exactly one confirm after the final-key response.
-- [ ] 2.4 Preserve a focused assertion that GRID optional confirmation remains non-blocking.
+- [x] 2.1 Update the HAND_SELECT queue-contract test to require readiness on the terminal optional confirm.
+- [x] 2.2 Add a failing coordinator regression for the final-key response arriving before terminal confirmation.
+- [x] 2.3 Assert the regression emits no early confirm, invokes no stale agent callback, and emits exactly one confirm after the final-key response.
+- [x] 2.4 Preserve a focused assertion that GRID optional confirmation remains non-blocking.
 
 ## 3. Minimal Fix
 
-- [ ] 3.1 Restore `requires_game_ready=True` for the terminal optional confirm on HAND_SELECT only.
-- [ ] 3.2 Keep GRID confirmation timing and all agent selection policies unchanged.
-- [ ] 3.3 Run the red regressions to green without coordinator state-machine changes.
+- [x] 3.1 Restore `requires_game_ready=True` for the terminal optional confirm on HAND_SELECT only.
+- [x] 3.2 Keep GRID confirmation timing and all agent selection policies unchanged.
+- [x] 3.3 Run the red regressions to green without coordinator state-machine changes.
 
 ## 4. Verification And Review
 
-- [ ] 4.1 Run focused card-select, deferred-callback, and HAND_SELECT agent tests with an isolated writable basetemp.
-- [ ] 4.2 Run full pytest with cache disabled and an isolated writable basetemp.
-- [ ] 4.3 Run strict OPSX validation after updating completed task state.
-- [ ] 4.4 Commit the regression-backed behavior fix as one cohesive commit.
+- [x] 4.1 Run focused card-select, deferred-callback, and HAND_SELECT agent tests with an isolated writable basetemp.
+- [x] 4.2 Run full pytest with cache disabled and an isolated writable basetemp.
+- [x] 4.3 Run strict OPSX validation after updating completed task state.
+- [x] 4.4 Commit the regression-backed behavior fix as one cohesive commit.
 - [ ] 4.5 Obtain independent review of the implementation, tests, scope, and verification evidence.
 
 ## 5. Live Validation

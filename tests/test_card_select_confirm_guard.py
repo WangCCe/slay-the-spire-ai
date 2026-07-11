@@ -44,6 +44,9 @@ def test_card_select_does_not_confirm_grid_selection_before_confirm_is_available
     )
 
     CardSelectAction([card]).execute(coordinator)
+    queued_actions = list(coordinator.action_queue)
+    assert isinstance(queued_actions[-1], OptionalCardSelectConfirmAction)
+    assert queued_actions[-1].requires_game_ready is False
     while coordinator.action_queue:
         coordinator.action_queue.popleft().execute(coordinator)
 
@@ -74,8 +77,7 @@ def test_hand_select_card_select_waits_between_keys_and_confirm():
         KeyAction,
         OptionalCardSelectConfirmAction,
     ]
-    assert all(action.requires_game_ready for action in queued_actions[:2])
-    assert queued_actions[-1].requires_game_ready is False
+    assert all(action.requires_game_ready for action in queued_actions)
     assert all(action.wait_for_response for action in queued_actions[:2])
 
 

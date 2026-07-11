@@ -4,6 +4,7 @@ import queue
 from types import SimpleNamespace
 
 from spirecomm.communication.action import (
+    CardSelectAction,
     ChooseAction,
     ChooseMapNodeAction,
     CancelAction,
@@ -104,6 +105,107 @@ def _stale_none_combat_message():
             },
         }
     )
+
+
+def _card_json(name, uuid):
+    return {
+        "id": name,
+        "name": name,
+        "type": "SKILL",
+        "rarity": "COMMON",
+        "upgrades": 0,
+        "has_target": False,
+        "cost": 1,
+        "uuid": uuid,
+    }
+
+
+def _hand_select_state_message(hand, selected, available_commands):
+    return json.dumps(
+        {
+            "ready_for_command": True,
+            "in_game": True,
+            "available_commands": available_commands,
+            "game_state": {
+                "screen_type": "HAND_SELECT",
+                "room_phase": "COMBAT",
+                "class": "IRONCLAD",
+                "current_action": "discard",
+                "screen_state": {
+                    "hand": hand,
+                    "selected": selected,
+                    "max_cards": 2,
+                    "can_pick_zero": False,
+                },
+            },
+        }
+    )
+
+
+def test_hand_select_confirm_waits_for_final_key_response_without_stale_callback():
+    coordinator = _coordinator_without_threads()
+    cards = [
+        SimpleNamespace(name="Card 1"),
+        SimpleNamespace(name="Card 2"),
+    ]
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.HAND_SELECT,
+        available_commands=["choose", "confirm", "key", "click", "wait", "state"],
+        screen=SimpleNamespace(
+            cards=cards,
+            selected_cards=[],
+            num_cards=2,
+            can_pick_zero=False,
+        ),
+    )
+    callbacks = []
+    coordinator.state_change_callback = (
+        lambda game: callbacks.append(game.screen_type) or ChooseAction(0)
+    )
+
+    coordinator.action_queue.append(CardSelectAction(cards))
+    coordinator.execute_next_action_if_ready()
+    coordinator.execute_next_action_if_ready()
+    assert coordinator.output_queue.get_nowait() == "key CARD_2"
+
+    first = _card_json("Card 1", "card-1")
+    second = _card_json("Card 2", "card-2")
+    coordinator.input_queue.put(
+        _hand_select_state_message(
+            [first, second],
+            [second],
+            ["choose", "confirm", "key", "click", "wait", "state"],
+        )
+    )
+    assert coordinator.receive_game_state_update(
+        block=False,
+        perform_callbacks=True,
+    )
+    assert callbacks == []
+
+    coordinator.execute_next_action_if_ready()
+    assert coordinator.output_queue.get_nowait() == "key CARD_1"
+    coordinator.execute_next_action_if_ready()
+    assert coordinator.output_queue.empty()
+
+    coordinator.input_queue.put(
+        _hand_select_state_message(
+            [first, second],
+            [first, second],
+            ["confirm", "key", "click", "wait", "state"],
+        )
+    )
+    assert coordinator.receive_game_state_update(
+        block=False,
+        perform_callbacks=True,
+    )
+    assert callbacks == []
+
+    coordinator.execute_next_action_if_ready()
+    assert coordinator.output_queue.get_nowait() == "confirm"
+    assert coordinator.output_queue.empty()
+    assert not coordinator._run_deferred_state_callback_if_idle()
+    assert callbacks == []
 
 
 def test_repeated_command_error_is_handled_once_and_resyncs_state():
