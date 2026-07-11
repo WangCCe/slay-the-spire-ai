@@ -2826,6 +2826,7 @@ class OptimizedAgent(SimpleAgent):
 
             # === 新增：存储当前计划的签名用于缓存失效检测 ===
             self.current_plan_signature = None
+            self.current_plan_kind = None
 
             # 统计重新规划次数（用于调优）
             self.replan_count_this_turn = 0
@@ -2840,6 +2841,7 @@ class OptimizedAgent(SimpleAgent):
             self.current_action_sequence = []
             self.current_action_index = 0
             self.current_plan_signature = None
+            self.current_plan_kind = None
             self.replan_count_this_turn = 0
 
     def get_play_card_action(self):
@@ -2914,6 +2916,27 @@ class OptimizedAgent(SimpleAgent):
             )
             return super().get_play_card_action()
 
+    def _clear_current_combat_plan(self) -> None:
+        self.current_action_sequence = []
+        self.current_action_index = 0
+        self.current_plan_signature = None
+        self.current_plan_kind = None
+
+    def is_active_lethal_plan_action(self, action: Action) -> bool:
+        if self.current_plan_kind != "lethal":
+            return False
+        emitted_index = self.current_action_index - 1
+        return (
+            0 <= emitted_index < len(self.current_action_sequence)
+            and self.current_action_sequence[emitted_index] is action
+        )
+
+    def invalidate_active_lethal_plan_action(self, action: Action) -> bool:
+        if not self.is_active_lethal_plan_action(action):
+            return False
+        self._clear_current_combat_plan()
+        return True
+
     def _get_optimized_play_card_action(self):
         """
         Use optimized combat planning with proper sequence execution.
@@ -2948,12 +2971,10 @@ class OptimizedAgent(SimpleAgent):
                 if self.should_replan(current_signature):
                     # 缓存失效 - 需要重新规划
                     self.replan_count_this_turn += 1
-                    self.current_action_sequence = []
-                    self.current_action_index = 0
+                    self._clear_current_combat_plan()
                 else:
                     # 动作不再可执行，重置序列
-                    self.current_action_sequence = []
-                    self.current_action_index = 0
+                    self._clear_current_combat_plan()
 
             # 规划新序列（首次规划或缓存失效后）
             context = DecisionContext(self.game)
@@ -3013,6 +3034,11 @@ class OptimizedAgent(SimpleAgent):
 
                 # === 新增：保存当前计划签名 ===
                 self.current_plan_signature = current_signature
+                self.current_plan_kind = getattr(
+                    self.combat_planner,
+                    "last_plan_kind",
+                    None,
+                )
 
                 # 计算置信度
                 confidence = 0.5  # 默认值
@@ -3058,7 +3084,7 @@ class OptimizedAgent(SimpleAgent):
                 return action_sequence[0]
 
             # 没有规划的动作 - 结束回合
-            self.current_action_sequence = []
+            self._clear_current_combat_plan()
             return EndTurnAction()
 
         except Exception as e:
@@ -3072,7 +3098,7 @@ class OptimizedAgent(SimpleAgent):
                 "[OPTIMIZED_AI] game_id=%s Exception in _get_optimized_play_card_action",
                 game_id,
             )
-            self.current_action_sequence = []
+            self._clear_current_combat_plan()
             return super().get_play_card_action()
 
     def _cached_sequence_action_available(self, action):
@@ -3085,16 +3111,22 @@ class OptimizedAgent(SimpleAgent):
                     if getattr(hand_card, "uuid", None) == card_uuid:
                         action.card = hand_card
                         action.card_index = idx
-                        return True
+                        return self._cached_sequence_target_available(
+                            action,
+                            hand_card,
+                        )
                 return False
 
             if 0 <= getattr(action, "card_index", -1) < len(hand):
-                return True
+                return self._cached_sequence_target_available(
+                    action,
+                    hand[action.card_index],
+                )
 
             if card is not None:
                 try:
                     action.card_index = hand.index(card)
-                    return True
+                    return self._cached_sequence_target_available(action, card)
                 except (ValueError, AttributeError):
                     return False
 
@@ -3110,6 +3142,47 @@ class OptimizedAgent(SimpleAgent):
                 potions = get_real_potions() if callable(get_real_potions) else []
             return potion in (potions or [])
 
+        return True
+
+    def _cached_sequence_target_available(self, action, card) -> bool:
+        if not card_requires_target(card):
+            return True
+
+        target_monster = getattr(action, "target_monster", None)
+        target_index = getattr(action, "target_index", None)
+        if target_index is None and target_monster is not None:
+            target_index = getattr(target_monster, "monster_index", None)
+        try:
+            target_index = int(target_index)
+        except (TypeError, ValueError):
+            return False
+
+        monsters = getattr(self.game, "monsters", []) or []
+        if target_index < 0 or target_index >= len(monsters):
+            return False
+        live_target = monsters[target_index]
+        if (
+            coerce_int(getattr(live_target, "current_hp", 0) or 0, 0) <= 0
+            or getattr(live_target, "is_gone", False)
+            or getattr(live_target, "half_dead", False)
+        ):
+            return False
+
+        if target_monster is not None and live_target is not target_monster:
+            planned_id = getattr(target_monster, "monster_id", None)
+            live_id = getattr(live_target, "monster_id", None)
+            if planned_id is not None or live_id is not None:
+                if planned_id != live_id:
+                    return False
+            elif getattr(target_monster, "name", None) != getattr(
+                live_target,
+                "name",
+                None,
+            ):
+                return False
+
+        action.target_monster = live_target
+        action.target_index = target_index
         return True
 
     def should_replan(self, current_signature):
@@ -3158,14 +3231,18 @@ class OptimizedAgent(SimpleAgent):
             except Exception:
                 pass
 
-        # 检测回合变化
-        if hasattr(game_state, "turn") and hasattr(self.game, "turn"):
-            if game_state.turn != self.game.turn:
-                # 新回合 - 重置动作序列和签名
-                self.current_action_sequence = []
-                self.current_action_index = 0
-                self.current_plan_signature = None
-                self.replan_count_this_turn = 0
+        turn_changed = (
+            hasattr(game_state, "turn")
+            and hasattr(self.game, "turn")
+            and game_state.turn != self.game.turn
+        )
+        combat_ended = (
+            bool(getattr(self.game, "in_combat", False))
+            and not bool(getattr(game_state, "in_combat", False))
+        )
+        if turn_changed or combat_ended:
+            self._clear_current_combat_plan()
+            self.replan_count_this_turn = 0
 
         # Track game statistics if available
         if self.game_tracker and hasattr(game_state, "in_combat"):

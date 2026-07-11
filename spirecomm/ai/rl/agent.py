@@ -1173,6 +1173,8 @@ class CombatRLAgent:
         except Exception as exc:
             logger.debug("sim divergence observation failed: %s", exc)
 
+        self._refresh_lethal_plan_quarantine(game)
+
         # Run tracking logic from fallback_agent before any decision
         # This ensures statistics are collected even when RL is used
         if hasattr(self.fallback_agent, '_track_game_state'):
@@ -1222,6 +1224,59 @@ class CombatRLAgent:
                 getattr(game, "floor", None),
                 getattr(game, "turn", None),
             )
+            from spirecomm.communication.action import EndTurnAction
+
+            fallback_action = self.fallback_agent.get_next_action_in_game(game)
+            from spirecomm.communication.action import PotionAction
+
+            wait_action = self._maybe_wait_for_empty_hand_refresh(
+                fallback_action,
+                game,
+            )
+            if wait_action is not None:
+                self._invalidate_active_lethal_plan_action(fallback_action, game)
+                return wait_action
+
+            if isinstance(fallback_action, EndTurnAction):
+                replacement = self._get_non_end_turn_fallback(
+                    game,
+                    fallback_action=fallback_action,
+                )
+                if replacement is not None:
+                    self._invalidate_active_lethal_plan_action(fallback_action, game)
+                    logger.info(
+                        "[ENERGY_GUARD] Replacing takeover EndTurnAction with %s",
+                        self._describe_combat_action(replacement, game),
+                    )
+                    return self._with_combat_action_context(replacement, game)
+                wait_action = self._maybe_wait_for_empty_hand_refresh(
+                    fallback_action,
+                    game,
+                )
+                if wait_action is not None:
+                    self._invalidate_active_lethal_plan_action(fallback_action, game)
+                    return wait_action
+                return self._with_combat_action_context(fallback_action, game)
+
+            if isinstance(fallback_action, PotionAction):
+                replacement = self._get_energy_guard_takeover_potion_replacement(game)
+                if replacement is not None:
+                    self._invalidate_active_lethal_plan_action(fallback_action, game)
+                    logger.info(
+                        "[ENERGY_GUARD] Replacing takeover PotionAction with %s",
+                        self._describe_combat_action(replacement, game),
+                    )
+                    return self._with_combat_action_context(replacement, game)
+                self._invalidate_active_lethal_plan_action(fallback_action, game)
+                logger.info("[ENERGY_GUARD] Suppressing takeover PotionAction; ending turn")
+                return self._with_combat_action_context(EndTurnAction(), game)
+            lethal_prefix_action = self._active_validated_lethal_prefix_action(
+                fallback_action,
+                game,
+            )
+            if lethal_prefix_action is not None:
+                return self._with_combat_action_context(lethal_prefix_action, game)
+
             replacement = self._get_slime_split_aoe_survival_replacement(game)
             if replacement is not None:
                 logger.info(
@@ -1254,8 +1309,6 @@ class CombatRLAgent:
                 )
                 return self._with_combat_action_context(replacement, game)
 
-            from spirecomm.communication.action import EndTurnAction
-
             if self._should_end_zero_energy_safe_takeover(game):
                 self._fallback_turn_key = None
                 logger.info(
@@ -1263,42 +1316,6 @@ class CombatRLAgent:
                 )
                 return self._with_combat_action_context(EndTurnAction(), game)
 
-            fallback_action = self.fallback_agent.get_next_action_in_game(game)
-            from spirecomm.communication.action import PotionAction
-
-            wait_action = self._maybe_wait_for_empty_hand_refresh(
-                fallback_action,
-                game,
-            )
-            if wait_action is not None:
-                return wait_action
-
-            if isinstance(fallback_action, EndTurnAction):
-                replacement = self._get_non_end_turn_fallback(game)
-                if replacement is not None:
-                    logger.info(
-                        "[ENERGY_GUARD] Replacing takeover EndTurnAction with %s",
-                        self._describe_combat_action(replacement, game),
-                    )
-                    return self._with_combat_action_context(replacement, game)
-                wait_action = self._maybe_wait_for_empty_hand_refresh(
-                    fallback_action,
-                    game,
-                )
-                if wait_action is not None:
-                    return wait_action
-                return self._with_combat_action_context(fallback_action, game)
-
-            if isinstance(fallback_action, PotionAction):
-                replacement = self._get_energy_guard_takeover_potion_replacement(game)
-                if replacement is not None:
-                    logger.info(
-                        "[ENERGY_GUARD] Replacing takeover PotionAction with %s",
-                        self._describe_combat_action(replacement, game),
-                    )
-                    return self._with_combat_action_context(replacement, game)
-                logger.info("[ENERGY_GUARD] Suppressing takeover PotionAction; ending turn")
-                return self._with_combat_action_context(EndTurnAction(), game)
             act1_boss_pressure_replacement = self._get_act1_boss_pressure_action_replacement(
                 fallback_action,
                 game,
@@ -2188,7 +2205,11 @@ class CombatRLAgent:
         )
         return damage_after_block <= 0
 
-    def _get_non_end_turn_fallback(self, game: Game) -> Optional[Action]:
+    def _get_non_end_turn_fallback(
+        self,
+        game: Game,
+        fallback_action: Optional[Action] = None,
+    ) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction, PlayCardAction, PotionAction
 
         replacement = self._get_slime_split_aoe_survival_replacement(game)
@@ -2215,7 +2236,8 @@ class CombatRLAgent:
                 return replacement
 
         try:
-            fallback_action = self.fallback_agent.get_next_action_in_game(game)
+            if fallback_action is None:
+                fallback_action = self.fallback_agent.get_next_action_in_game(game)
             if (
                 fallback_action is not None
                 and not isinstance(fallback_action, (EndTurnAction, PotionAction))
@@ -2376,6 +2398,186 @@ class CombatRLAgent:
             if monster is target_monster and cls._valid_monster_target_index(game, index):
                 return index
 
+        return None
+
+    def _active_validated_lethal_prefix_action(
+        self,
+        action: Action,
+        game: Game,
+    ) -> Optional[Action]:
+        if self._lethal_plan_precedence_is_quarantined(game):
+            return None
+        if not self._is_active_lethal_plan_action(action):
+            return None
+
+        candidate = self._normalize_active_lethal_play_card_action(action, game)
+        if candidate is None or not self._is_current_combat_action_playable(candidate, game):
+            self._invalidate_confirmed_active_lethal_plan_action(action, game)
+            logger.info(
+                "[LETHAL_PLAN] plan_kind=lethal veto=stale_or_unplayable action=%s",
+                self._describe_combat_action(action, game),
+            )
+            return None
+
+        card = self._card_for_action(candidate, game)
+        immediate_self_lethal = self._would_play_self_lethal_card(card, game)
+        if is_attack_card(card):
+            immediate_self_lethal = (
+                immediate_self_lethal
+                or self._would_single_card_lethal_attack_self_kill(card, game)
+            )
+        if immediate_self_lethal:
+            self._invalidate_confirmed_active_lethal_plan_action(action, game)
+            logger.info(
+                "[LETHAL_PLAN] plan_kind=lethal veto=immediate_self_lethal action=%s",
+                self._describe_combat_action(candidate, game),
+            )
+            return None
+
+        logger.info(
+            "[LETHAL_PLAN] plan_kind=lethal decision=pass_through action=%s",
+            self._describe_combat_action(candidate, game),
+        )
+        return candidate
+
+    def _is_active_lethal_plan_action(self, action: Action) -> bool:
+        checker = getattr(
+            self.fallback_agent,
+            "is_active_lethal_plan_action",
+            None,
+        )
+        if not callable(checker):
+            return False
+        try:
+            return bool(checker(action))
+        except Exception as exc:
+            logger.debug("[LETHAL_PLAN] provenance query failed: %s", exc)
+            return False
+
+    def _invalidate_active_lethal_plan_action(
+        self,
+        action: Action,
+        game: Game,
+    ) -> bool:
+        if not self._is_active_lethal_plan_action(action):
+            return False
+        return self._invalidate_confirmed_active_lethal_plan_action(action, game)
+
+    def _invalidate_confirmed_active_lethal_plan_action(
+        self,
+        action: Action,
+        game: Game,
+    ) -> bool:
+        invalidator = getattr(
+            self.fallback_agent,
+            "invalidate_active_lethal_plan_action",
+            None,
+        )
+        invalidated = False
+        if callable(invalidator):
+            try:
+                invalidated = bool(invalidator(action))
+            except Exception as exc:
+                logger.debug("[LETHAL_PLAN] provenance invalidation failed: %s", exc)
+        if invalidated:
+            return True
+
+        quarantine_key = self._combat_turn_key(game)
+        if quarantine_key is not None:
+            self._lethal_plan_quarantine_turn_key = quarantine_key
+            logger.info(
+                "[LETHAL_PLAN] precedence=quarantined floor=%s turn=%s",
+                quarantine_key[0],
+                quarantine_key[1],
+            )
+        return False
+
+    def _refresh_lethal_plan_quarantine(self, game: Game) -> None:
+        quarantine_key = getattr(self, "_lethal_plan_quarantine_turn_key", None)
+        if quarantine_key is None:
+            return
+        if self._combat_turn_key(game) != quarantine_key:
+            self._lethal_plan_quarantine_turn_key = None
+
+    def _lethal_plan_precedence_is_quarantined(self, game: Game) -> bool:
+        self._refresh_lethal_plan_quarantine(game)
+        return getattr(self, "_lethal_plan_quarantine_turn_key", None) is not None
+
+    def _normalize_active_lethal_play_card_action(
+        self,
+        action: Action,
+        game: Game,
+    ) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+
+        if not isinstance(action, PlayCardAction):
+            return (
+                action
+                if self._is_current_combat_action_playable(action, game)
+                else None
+            )
+
+        hand = getattr(game, "hand", []) or []
+        card_index = self._safe_int(
+            getattr(action, "card_index", -1),
+            default=-1,
+        )
+        if card_index < 0:
+            card_index = self._matching_hand_card_index(
+                getattr(action, "card", None),
+                hand,
+            )
+        if card_index < 0 or card_index >= len(hand):
+            return None
+
+        card = hand[card_index]
+        if not card_requires_target(card):
+            candidate = PlayCardAction(card_index=card_index)
+            return (
+                candidate
+                if self._is_current_combat_action_playable(candidate, game)
+                else None
+            )
+
+        target_index = self._active_lethal_target_index(action, game)
+        if target_index is None:
+            return None
+        candidate = PlayCardAction(
+            card_index=card_index,
+            target_index=target_index,
+        )
+        return (
+            candidate
+            if self._is_current_combat_action_playable(candidate, game)
+            else None
+        )
+
+    @classmethod
+    def _active_lethal_target_index(
+        cls,
+        action: Action,
+        game: Game,
+    ) -> Optional[int]:
+        target_monster = getattr(action, "target_monster", None)
+        target_index = getattr(action, "target_index", None)
+        if target_index is None and target_monster is not None:
+            target_index = getattr(target_monster, "monster_index", None)
+        target_index = cls._safe_int(target_index, default=-1)
+        if not cls._valid_monster_target_index(game, target_index):
+            return None
+
+        if target_monster is None:
+            return target_index
+        live_target = (getattr(game, "monsters", []) or [])[target_index]
+        if live_target is target_monster:
+            return target_index
+
+        planned_id = getattr(target_monster, "monster_id", None)
+        live_id = getattr(live_target, "monster_id", None)
+        if planned_id is not None or live_id is not None:
+            return target_index if planned_id == live_id else None
+        if getattr(target_monster, "name", None) == getattr(live_target, "name", None):
+            return target_index
         return None
 
     def _repair_current_play_card_target(self, action: Action, game: Game) -> Optional[Action]:

@@ -17845,3 +17845,22 @@ def test_fast_score_dramatic_entrance_uses_aoe_multiplier():
     )
 
     assert score == 54
+
+
+def test_ironclad_planner_marks_only_nonempty_validated_lethal_plan():
+    strike = _card("Strike_R", "Strike", cost=1)
+    monster = _louse(current_hp=6)
+    context = _combat_context([strike], energy=1, monsters=[monster])
+    lethal_action = PlayCardAction(card=strike, target_monster=monster)
+    planner = IroncladCombatPlanner()
+    planner.combat_ending_detector = SimpleNamespace(
+        can_kill_all=lambda _context: True,
+        find_lethal_sequence=lambda _context: [lethal_action],
+    )
+
+    assert planner.plan_turn(context) == [lethal_action]
+    assert planner.last_plan_kind == "lethal"
+
+    empty_context = _combat_context([], energy=0, monsters=[monster])
+    assert planner.plan_turn(empty_context) == []
+    assert planner.last_plan_kind is None

@@ -138,6 +138,7 @@ class IroncladCombatPlanner(CombatPlanner):
         self.max_depth = max_depth
         self.combat_ending_detector = CombatEndingDetector()
         self.combat_mode = combat_mode  # Store combat mode for reference
+        self.last_plan_kind: Optional[str] = None
 
         # === TIMING AWARENESS INITIALIZATION ===
         self.timing_classifier = TurnTimingClassifier()
@@ -224,6 +225,8 @@ class IroncladCombatPlanner(CombatPlanner):
         Returns:
             List of actions to execute in order
         """
+        self.last_plan_kind = None
+
         # Track decision start time for timeout protection
         self.decision_start = time.time()
 
@@ -256,6 +259,7 @@ class IroncladCombatPlanner(CombatPlanner):
             logger.info("[COMBAT] Lethal detected!")
             lethal_sequence = self.combat_ending_detector.find_lethal_sequence(context)
             if lethal_sequence:
+                self.last_plan_kind = "lethal"
                 logger.info(f"[COMBAT] Lethal sequence: {len(lethal_sequence)} cards")
                 return lethal_sequence
             logger.warning(f"[COMBAT] game_id={context.game_id} Lethal detected but sequence empty; falling back to beam search")

@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-from spirecomm.ai.agent import OptimizedAgent, TurnPlanSignature
-from spirecomm.communication.action import PlayCardAction
+from spirecomm.ai.agent import OptimizedAgent, SimpleAgent, TurnPlanSignature
+from spirecomm.communication.action import EndTurnAction, PlayCardAction
 from spirecomm.spire.character import Intent
 
 
@@ -319,6 +319,8 @@ def test_optimized_agent_continues_cached_sequence_after_played_card_leaves_hand
     planned_context = SimpleNamespace(act=1, threat_category=None, turn=3, floor=14)
 
     class FixedPlanner:
+        last_plan_kind = "lethal"
+
         def __init__(self):
             self.calls = 0
 
@@ -338,6 +340,7 @@ def test_optimized_agent_continues_cached_sequence_after_played_card_leaves_hand
     agent.current_action_sequence = []
     agent.current_action_index = 0
     agent.current_plan_signature = None
+    agent.current_plan_kind = None
     agent.replan_count_this_turn = 0
     agent._current_combat_mode = "test-mode"
     agent.combat_planner = FixedPlanner()
@@ -347,10 +350,200 @@ def test_optimized_agent_continues_cached_sequence_after_played_card_leaves_hand
 
     first = agent._get_optimized_play_card_action()
     assert first is first_action
+    assert agent.current_plan_kind == "lethal"
+    assert agent.is_active_lethal_plan_action(first) is True
 
     agent.game = _game([second_card])
     agent.game.play_available = True
     second = agent._get_optimized_play_card_action()
 
     assert second is second_action
+    assert agent.is_active_lethal_plan_action(second) is True
     assert agent.combat_planner.calls == 1
+
+
+def test_optimized_agent_clear_current_combat_plan_clears_provenance():
+    action = PlayCardAction(card=_card("Strike_R", "Strike", uuid="strike"))
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.current_action_sequence = [action]
+    agent.current_action_index = 1
+    agent.current_plan_signature = SimpleNamespace()
+    agent.current_plan_kind = "lethal"
+
+    agent._clear_current_combat_plan()
+
+    assert agent.current_action_sequence == []
+    assert agent.current_action_index == 0
+    assert agent.current_plan_signature is None
+    assert agent.current_plan_kind is None
+    assert agent.is_active_lethal_plan_action(action) is False
+
+
+def test_optimized_agent_invalidates_only_emitted_active_lethal_action():
+    emitted = PlayCardAction(card=_card("Strike_R", "Strike", uuid="emitted"))
+    other = PlayCardAction(card=_card("Defend_R", "Defend", uuid="other"))
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.current_action_sequence = [emitted, other]
+    agent.current_action_index = 1
+    agent.current_plan_signature = SimpleNamespace()
+    agent.current_plan_kind = "lethal"
+
+    assert agent.invalidate_active_lethal_plan_action(other) is False
+    assert agent.current_plan_kind == "lethal"
+    assert agent.current_action_sequence == [emitted, other]
+
+    assert agent.invalidate_active_lethal_plan_action(emitted) is True
+    assert agent.current_action_sequence == []
+    assert agent.current_action_index == 0
+    assert agent.current_plan_signature is None
+    assert agent.current_plan_kind is None
+
+
+def test_optimized_agent_clears_lethal_provenance_before_stale_replan(monkeypatch):
+    stale_card = _card("Strike_R", "Strike", uuid="stale-strike")
+    live_card = _card("Defend_R", "Defend", uuid="live-defend")
+    stale_action = PlayCardAction(card=stale_card)
+    live_action = PlayCardAction(card=live_card)
+    planned_context = SimpleNamespace(act=1, threat_category=None, turn=3, floor=14)
+
+    class FixedPlanner:
+        last_plan_kind = None
+
+        def plan_turn(self, _context):
+            return [live_action]
+
+    monkeypatch.setattr("spirecomm.ai.agent.DecisionContext", lambda _game: planned_context)
+    monkeypatch.setattr(
+        "spirecomm.ai.heuristics.simulation.select_combat_mode_with_monster_data",
+        lambda _context: "test-mode",
+    )
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.game = _game([live_card])
+    agent.game.play_available = True
+    agent.current_action_sequence = [stale_action]
+    agent.current_action_index = 0
+    agent.current_plan_signature = None
+    agent.current_plan_kind = "lethal"
+    agent.replan_count_this_turn = 0
+    agent._current_combat_mode = "test-mode"
+    agent.combat_planner = FixedPlanner()
+    agent.game_tracker = None
+    agent.decision_history = []
+    agent.player_class = "IRONCLAD"
+
+    action = agent._get_optimized_play_card_action()
+
+    assert action is live_action
+    assert agent.current_plan_kind is None
+    assert agent.is_active_lethal_plan_action(stale_action) is False
+
+
+def test_optimized_agent_replans_when_cached_lethal_target_is_gone(monkeypatch):
+    first_card = _card("Defend_R", "Defend", uuid="first-defend")
+    strike = _card("Strike_R", "Strike", uuid="stale-strike")
+    strike.has_target = True
+    live_card = _card("Defend_R", "Defend", uuid="live-defend")
+    planned_target = _monster(name="Spike Slime", monster_id="SpikeSlime_M")
+    planned_target.monster_index = 0
+    other_target = _monster(name="Acid Slime", monster_id="AcidSlime_M")
+    other_target.monster_index = 1
+    first_action = PlayCardAction(card=first_card)
+    stale_action = PlayCardAction(card=strike, target_monster=planned_target)
+    live_action = PlayCardAction(card=live_card)
+    planned_context = SimpleNamespace(act=1, threat_category=None, turn=3, floor=14)
+
+    class FixedPlanner:
+        last_plan_kind = "lethal"
+
+        def __init__(self):
+            self.calls = 0
+
+        def plan_turn(self, _context):
+            self.calls += 1
+            if self.calls == 1:
+                return [first_action, stale_action]
+            self.last_plan_kind = None
+            return [live_action]
+
+    monkeypatch.setattr("spirecomm.ai.agent.DecisionContext", lambda _game: planned_context)
+    monkeypatch.setattr(
+        "spirecomm.ai.heuristics.simulation.select_combat_mode_with_monster_data",
+        lambda _context: "test-mode",
+    )
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.game = _game([first_card, strike])
+    agent.game.monsters = [planned_target, other_target]
+    agent.game.play_available = True
+    agent.current_action_sequence = []
+    agent.current_action_index = 0
+    agent.current_plan_signature = None
+    agent.current_plan_kind = None
+    agent.replan_count_this_turn = 0
+    agent._current_combat_mode = "test-mode"
+    agent.combat_planner = FixedPlanner()
+    agent.game_tracker = None
+    agent.decision_history = []
+    agent.player_class = "IRONCLAD"
+
+    assert agent._get_optimized_play_card_action() is first_action
+    assert agent.current_plan_kind == "lethal"
+
+    gone_target = _monster(name="Spike Slime", monster_id="SpikeSlime_M")
+    gone_target.monster_index = 0
+    gone_target.current_hp = 0
+    gone_target.is_gone = True
+    live_other = _monster(name="Acid Slime", monster_id="AcidSlime_M")
+    live_other.monster_index = 1
+    agent.game = _game([strike, live_card])
+    agent.game.monsters = [gone_target, live_other]
+    agent.game.play_available = True
+
+    action = agent._get_optimized_play_card_action()
+
+    assert action is live_action
+    assert action is not stale_action
+    assert agent.current_plan_kind is None
+    assert agent.is_active_lethal_plan_action(stale_action) is False
+    assert agent.combat_planner.calls == 2
+
+
+def test_optimized_agent_clears_lethal_plan_on_turn_change(monkeypatch):
+    monkeypatch.setattr(
+        SimpleAgent,
+        "get_next_action_in_game",
+        lambda _self, _game: EndTurnAction(),
+    )
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.game = SimpleNamespace(turn=3, in_combat=True)
+    agent.game_tracker = None
+    agent.current_action_sequence = [PlayCardAction(card_index=0, target_index=0)]
+    agent.current_action_index = 1
+    agent.current_plan_signature = SimpleNamespace()
+    agent.current_plan_kind = "lethal"
+    agent.replan_count_this_turn = 0
+
+    agent.get_next_action_in_game(SimpleNamespace(turn=4, in_combat=True))
+
+    assert agent.current_plan_kind is None
+    assert agent.current_action_sequence == []
+
+
+def test_optimized_agent_clears_lethal_plan_on_combat_exit(monkeypatch):
+    monkeypatch.setattr(
+        SimpleAgent,
+        "get_next_action_in_game",
+        lambda _self, _game: EndTurnAction(),
+    )
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.game = SimpleNamespace(turn=3, in_combat=True)
+    agent.game_tracker = None
+    agent.current_action_sequence = [PlayCardAction(card_index=0, target_index=0)]
+    agent.current_action_index = 1
+    agent.current_plan_signature = SimpleNamespace()
+    agent.current_plan_kind = "lethal"
+    agent.replan_count_this_turn = 0
+
+    agent.get_next_action_in_game(SimpleNamespace(turn=3, in_combat=False))
+
+    assert agent.current_plan_kind is None
+    assert agent.current_action_sequence == []
