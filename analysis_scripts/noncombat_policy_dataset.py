@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field, fields, is_dataclass
 from pathlib import Path
+from numbers import Real
 from types import MappingProxyType
 from typing import Any
 
@@ -40,6 +42,14 @@ class PolicyRow:
     label_provenance: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
+        probability_valid, probability, status = _normalize_behavior_probability(
+            self.behavior_action_probability,
+            self.behavior_probability_status,
+        )
+        if not probability_valid:
+            raise ValueError("invalid behavior probability evidence")
+        object.__setattr__(self, "behavior_action_probability", probability)
+        object.__setattr__(self, "behavior_probability_status", status)
         object.__setattr__(self, "state", freeze_value(self.state))
         object.__setattr__(self, "candidates", tuple(freeze_value(candidate) for candidate in self.candidates))
         object.__setattr__(self, "outcome", freeze_value(self.outcome))
@@ -146,9 +156,14 @@ def build_policy_dataset(
             exclusions[exclusion] += 1
             continue
 
-        behavior_probability = sample.get("behavior_action_probability")
-        behavior_status = str(sample.get("behavior_probability_status") or "unknown")
-        if behavior_probability is None or behavior_status == "unknown":
+        probability_valid, behavior_probability, behavior_status = _normalize_behavior_probability(
+            sample.get("behavior_action_probability"),
+            sample.get("behavior_probability_status"),
+        )
+        if not probability_valid:
+            exclusions["invalid_behavior_probability"] += 1
+            continue
+        if behavior_status == "unknown":
             behavior_probability_counts["unknown"] += 1
         else:
             behavior_probability_counts["known"] += 1
@@ -500,3 +515,16 @@ def _source_mapping(value):
 
 def _schema_bucket(value) -> str:
     return str(value) if value is not None else "<missing>"
+
+
+def _normalize_behavior_probability(probability, status):
+    normalized_status = str(status).strip() if status is not None else ""
+    normalized_status = normalized_status or "unknown"
+    if normalized_status == "unknown":
+        return probability is None, None, normalized_status
+    if isinstance(probability, bool) or not isinstance(probability, Real):
+        return False, None, normalized_status
+    normalized_probability = float(probability)
+    if not math.isfinite(normalized_probability) or not 0.0 <= normalized_probability <= 1.0:
+        return False, None, normalized_status
+    return True, normalized_probability, normalized_status

@@ -551,3 +551,109 @@ def test_action_and_outcome_support_keep_target_candidate_and_trajectory_counts(
             "victory": {"false": 1, "true": 1, "unknown": 1},
         },
     }
+
+
+@pytest.mark.parametrize(
+    ("status", "probability"),
+    [
+        ("unknown", 0.5),
+        ("deterministic", None),
+        ("deterministic", True),
+        ("deterministic", {"probability": 0.5}),
+        ("deterministic", [0.5]),
+        ("deterministic", -0.01),
+        ("deterministic", 1.01),
+        ("deterministic", float("nan")),
+        ("deterministic", float("inf")),
+        ("deterministic", float("-inf")),
+    ],
+)
+def test_invalid_behavior_propensity_pairs_are_excluded(tmp_path, status, probability):
+    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset
+
+    source = tmp_path / "samples.jsonl"
+    source.write_text("source\n", encoding="utf-8")
+    dataset = build_policy_dataset(
+        [
+            _sample(
+                "invalid-propensity",
+                behavior_action_probability=probability,
+                behavior_probability_status=status,
+            )
+        ],
+        label_mode="current",
+        source_paths=[source],
+        source_commit="ccc5c480",
+    )
+
+    assert dataset.rows == ()
+    assert dataset.manifest["exclusions"] == {"invalid_behavior_probability": 1}
+    assert dataset.manifest["input_sample_count"] == (
+        dataset.manifest["eligible_row_count"] + sum(dataset.manifest["exclusions"].values())
+    )
+
+
+def test_behavior_propensity_normalizes_unknown_and_preserves_known_boundaries(tmp_path):
+    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset
+
+    source = tmp_path / "samples.jsonl"
+    source.write_text("source\n", encoding="utf-8")
+    absent_status = _sample("absent-status")
+    absent_status.pop("behavior_probability_status")
+    dataset = build_policy_dataset(
+        [
+            _sample(
+                "known-zero",
+                behavior_action_probability=0,
+                behavior_probability_status="deterministic",
+            ),
+            _sample(
+                "known-one",
+                behavior_action_probability=1,
+                behavior_probability_status="deterministic",
+            ),
+            _sample("blank-status", behavior_probability_status="   "),
+            absent_status,
+        ],
+        label_mode="current",
+        source_paths=[source],
+        source_commit="ccc5c480",
+    )
+
+    by_id = {row.sample_id: row for row in dataset.rows}
+    assert by_id["known-zero"].behavior_action_probability == 0.0
+    assert isinstance(by_id["known-zero"].behavior_action_probability, float)
+    assert by_id["known-one"].behavior_action_probability == 1.0
+    assert by_id["blank-status"].behavior_action_probability is None
+    assert by_id["blank-status"].behavior_probability_status == "unknown"
+    assert by_id["absent-status"].behavior_action_probability is None
+    assert by_id["absent-status"].behavior_probability_status == "unknown"
+    assert dataset.manifest["behavior_probability_counts"] == {"known": 2, "unknown": 2}
+
+
+def test_invalid_mutable_behavior_propensity_never_reaches_rows_or_manifest(tmp_path):
+    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset, to_json_value
+
+    source = tmp_path / "samples.jsonl"
+    source.write_text("source\n", encoding="utf-8")
+    invalid_probability = [0.5]
+    dataset = build_policy_dataset(
+        [
+            _sample("valid"),
+            _sample(
+                "invalid-mutable",
+                behavior_action_probability=invalid_probability,
+                behavior_probability_status="deterministic",
+            ),
+        ],
+        label_mode="current",
+        source_paths=[source],
+        source_commit="ccc5c480",
+    )
+    manifest_before = to_json_value(dataset.manifest)
+
+    invalid_probability.append(0.25)
+
+    assert [row.sample_id for row in dataset.rows] == ["valid"]
+    assert to_json_value(dataset.manifest) == manifest_before
+    assert dataset.manifest["exclusions"] == {"invalid_behavior_probability": 1}
