@@ -143,3 +143,4 @@ dmypy.json
 /codex_pytest_*/
 /.pytest_tmp/
 /-WindowTitlePattern/
+/.worktrees/
