@@ -341,7 +341,6 @@ def test_attach_live_outcomes_matches_exactly_one_run():
     [
         (None, 12),
         ("not-a-floor", 12),
-        (0, 12),
         (3, None),
         (3, "not-a-floor"),
         (3, 0),
@@ -375,6 +374,36 @@ def test_trajectory_group_requires_valid_floor_evidence(sample_floor, outcome_fl
 
     assert joined["outcome"]["join_status"] == "floor_inconsistent"
     assert joined["trajectory_group_id"] is None
+
+
+def test_floor_zero_sample_preserves_unique_trajectory_group():
+    from analysis_scripts.noncombat_rl_decision_loop import attach_live_outcomes
+
+    [joined] = attach_live_outcomes(
+        [
+            {
+                "sample_id": "trace:initial-route",
+                "unix_time": 1780000010.0,
+                "floor": 0,
+                "outcome": {"join_status": "missing"},
+            }
+        ],
+        [
+            {
+                "run_file": "1780000000.run",
+                "start_unix": 1780000000,
+                "end_unix": 1780000200,
+                "victory": False,
+                "floor_reached": 12,
+                "killed_by": "Gremlin Nob",
+                "playtime": 200,
+                "ai_marked": True,
+            }
+        ],
+    )
+
+    assert joined["outcome"]["join_status"] == "matched"
+    assert joined["trajectory_group_id"] == "run:1780000000"
 
 
 def test_behavior_probability_requires_non_unknown_status(tmp_path):

@@ -319,7 +319,7 @@ def _sample_floor_is_compatible(sample, outcome) -> bool:
     return (
         sample_floor is not None
         and outcome_floor is not None
-        and sample_floor > 0
+        and sample_floor >= 0
         and outcome_floor > 0
         and sample_floor <= outcome_floor
     )
