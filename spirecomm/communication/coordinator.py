@@ -131,6 +131,7 @@ class Coordinator:
         self.pending_seed = None
         self._map_choice_in_flight_fingerprint = None
         self._shop_exit_in_flight = False
+        self._card_select_confirm_in_flight = False
 
     def _maybe_queue_stability_wait(self):
         screen_type = getattr(self.last_game_state, "screen_type", None)
@@ -400,6 +401,55 @@ class Coordinator:
                 consecutive_timeouts,
             )
             self._request_state_during_idle_wait(consecutive_timeouts)
+
+    def _handle_legacy_screen_timeout_recovery(self, consecutive_timeouts):
+        if not self.last_game_state or not hasattr(
+            self.last_game_state, "screen_type"
+        ):
+            return False
+
+        import logging
+
+        screen_type = self.last_game_state.screen_type
+        if screen_type == ScreenType.COMBAT_REWARD:
+            logging.warning(
+                "[COMBAT_REWARD] No state update after %s seconds, "
+                "sending proceed to continue",
+                consecutive_timeouts * 2,
+            )
+            self.send_message("proceed", wait_for_response=False)
+            return True
+
+        if screen_type != ScreenType.GRID:
+            return False
+        if getattr(self, "_card_select_confirm_in_flight", False):
+            logging.info(
+                "[GRID] Suppressing timeout confirm while serialized confirm "
+                "settle is in flight"
+            )
+            return False
+
+        screen = self.last_game_state.screen
+        if (
+            hasattr(screen, "selected_cards")
+            and hasattr(screen, "num_cards")
+            and len(screen.selected_cards) >= screen.num_cards
+            and screen.confirm_up
+        ):
+            logging.warning(
+                "[GRID] No state update after %s seconds, sending confirm to "
+                "complete selection",
+                consecutive_timeouts * 2,
+            )
+            self.send_message("confirm", wait_for_response=False)
+            return True
+        return False
+
+    def mark_card_select_confirm_in_flight(self):
+        self._card_select_confirm_in_flight = True
+
+    def complete_card_select_confirm_settle(self):
+        self._card_select_confirm_in_flight = False
 
     def _current_game_over_state(self):
         for game_state in (
@@ -1000,34 +1050,14 @@ class Coordinator:
                 # Special handling for screens that may not send state updates after selections
                 # COMBAT_REWARD: especially in chest rooms with mutually exclusive rewards
                 # GRID: event screens for card removal/battle circle where selection doesn't trigger update
-                if consecutive_timeouts >= 1:
-                    if self.last_game_state and hasattr(self.last_game_state, 'screen_type'):
-                        screen_type = self.last_game_state.screen_type
-
-                        # Handle COMBAT_REWARD screen
-                        if screen_type == ScreenType.COMBAT_REWARD:
-                            logging.warning(
-                                f"[COMBAT_REWARD] No state update after {consecutive_timeouts * 2} seconds, "
-                                f"sending proceed to continue"
-                            )
-                            self.send_message("proceed", wait_for_response=False)
-                            consecutive_timeouts = 0
-                            continue
-
-                        # Handle GRID screen (card removal/upgrade events) - check if cards are selected
-                        elif screen_type == ScreenType.GRID:
-                            screen = self.last_game_state.screen
-                            if (hasattr(screen, 'selected_cards') and hasattr(screen, 'num_cards')
-                                and len(screen.selected_cards) >= screen.num_cards
-                                and screen.confirm_up):
-                                # Cards have been selected but no state update - send confirm
-                                logging.warning(
-                                    f"[GRID] No state update after {consecutive_timeouts * 2} seconds, "
-                                    f"sending confirm to complete selection"
-                                )
-                                self.send_message("confirm", wait_for_response=False)
-                                consecutive_timeouts = 0
-                                continue
+                if (
+                    consecutive_timeouts >= 1
+                    and self._handle_legacy_screen_timeout_recovery(
+                        consecutive_timeouts
+                    )
+                ):
+                    consecutive_timeouts = 0
+                    continue
 
                 if consecutive_timeouts >= max_consecutive_timeouts:
                     stuck_details = self._describe_stuck_state(

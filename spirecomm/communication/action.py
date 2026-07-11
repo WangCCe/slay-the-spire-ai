@@ -669,12 +669,21 @@ class OptionalCardSelectConfirmAction(Action):
                     confirm_up,
                     available,
                 )
+            if self.settle_after_confirm:
+                mark_confirm_in_flight = getattr(
+                    coordinator,
+                    "mark_card_select_confirm_in_flight",
+                    None,
+                )
+                if callable(mark_confirm_in_flight):
+                    mark_confirm_in_flight()
             coordinator.send_message(
                 self.command,
                 wait_for_response=self.wait_for_response,
             )
             if self.settle_after_confirm:
                 _queue_ready_wait(coordinator, wait_for_response=True)
+                coordinator.add_action_to_queue(CardSelectConfirmSettledAction())
             return
         logging.debug(
             "Skipping optional card-select confirm: screen=%s confirm_up=%s available=%s",
@@ -683,6 +692,21 @@ class OptionalCardSelectConfirmAction(Action):
             available,
         )
 
+
+class CardSelectConfirmSettledAction(Action):
+    """Clear serialized card-select confirmation state after its settle response."""
+
+    def __init__(self):
+        super().__init__(requires_game_ready=True)
+
+    def execute(self, coordinator):
+        complete_confirm_settle = getattr(
+            coordinator,
+            "complete_card_select_confirm_settle",
+            None,
+        )
+        if callable(complete_confirm_settle):
+            complete_confirm_settle()
 
 
 class CardSelectAction(Action):

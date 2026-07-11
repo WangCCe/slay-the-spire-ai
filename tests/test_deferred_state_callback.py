@@ -251,7 +251,101 @@ def test_grid_selection_and_confirm_ignore_stale_frames_until_fifo_barriers():
 
     coordinator.input_queue.put(_event_state_message())
     assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+    coordinator.execute_next_action_if_ready()
+    assert coordinator._run_deferred_state_callback_if_idle()
     assert callbacks == [ScreenType.EVENT]
+    assert coordinator.output_queue.empty()
+
+
+def _serialized_grid_confirm_coordinator():
+    coordinator = _coordinator_without_threads()
+    card = _card_json("Strike_R", "strike-1")
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.GRID,
+        available_commands=["confirm", "wait", "state"],
+        screen=SimpleNamespace(
+            cards=[SimpleNamespace(name="Strike_R")],
+            selected_cards=[SimpleNamespace(name="Strike_R")],
+            num_cards=1,
+            any_number=False,
+            confirm_up=True,
+            card_positions=[],
+        ),
+    )
+    callbacks = []
+    coordinator.state_change_callback = (
+        lambda game: callbacks.append(game.screen_type) or None
+    )
+    coordinator.action_queue.append(
+        OptionalCardSelectConfirmAction(
+            requires_game_ready=True,
+            wait_for_response=True,
+            settle_after_confirm=True,
+        )
+    )
+    coordinator.execute_next_action_if_ready()
+    assert coordinator.output_queue.get_nowait() == "confirm"
+    return coordinator, card, callbacks
+
+
+def test_grid_timeout_does_not_repeat_serialized_confirm_before_first_response():
+    coordinator, _, callbacks = _serialized_grid_confirm_coordinator()
+
+    coordinator._request_state_during_action_wait(1)
+    recovered = coordinator._handle_legacy_screen_timeout_recovery(1)
+
+    assert coordinator.output_queue.get_nowait() == "state"
+    assert coordinator.output_queue.empty()
+    assert recovered is False
+    assert callbacks == []
+
+
+def test_grid_timeout_does_not_repeat_confirm_while_settle_barrier_waits():
+    coordinator, card, callbacks = _serialized_grid_confirm_coordinator()
+    coordinator.input_queue.put(
+        _grid_state_message(
+            [card],
+            [card],
+            True,
+            ["confirm", "wait", "state"],
+        )
+    )
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+    coordinator.execute_next_action_if_ready()
+    assert coordinator.output_queue.get_nowait() == "wait 1"
+    assert callbacks == []
+
+    coordinator._request_state_during_action_wait(1)
+    recovered = coordinator._handle_legacy_screen_timeout_recovery(1)
+
+    assert coordinator.output_queue.get_nowait() == "state"
+    assert coordinator.output_queue.empty()
+    assert recovered is False
+    assert callbacks == []
+
+
+def test_grid_confirm_settle_response_clears_timeout_suppression():
+    coordinator, card, callbacks = _serialized_grid_confirm_coordinator()
+    stale_grid = _grid_state_message(
+        [card],
+        [card],
+        True,
+        ["confirm", "wait", "state"],
+    )
+    coordinator.input_queue.put(stale_grid)
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+    coordinator.execute_next_action_if_ready()
+    assert coordinator.output_queue.get_nowait() == "wait 1"
+    assert callbacks == []
+
+    coordinator.input_queue.put(stale_grid)
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+    coordinator.execute_next_action_if_ready()
+    assert coordinator._run_deferred_state_callback_if_idle()
+
+    assert callbacks == [ScreenType.GRID]
+    assert coordinator._handle_legacy_screen_timeout_recovery(1) is True
+    assert coordinator.output_queue.get_nowait() == "confirm"
     assert coordinator.output_queue.empty()
 
 
@@ -387,6 +481,8 @@ def test_two_card_grid_selection_serializes_each_selector_and_confirm():
 
     coordinator.input_queue.put(_event_state_message())
     assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+    coordinator.execute_next_action_if_ready()
+    assert coordinator._run_deferred_state_callback_if_idle()
     assert callbacks == [ScreenType.EVENT]
     assert coordinator.output_queue.empty()
 

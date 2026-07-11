@@ -7,6 +7,7 @@ from spirecomm.communication.action import (
     CardSelectAction,
     ChooseAction,
     CombatRewardAction,
+    ConfirmAction,
     CancelAction,
     PlayCardAction,
     PotionAction,
@@ -350,6 +351,75 @@ def test_grid_inconsistent_remaining_count_requests_state_refresh():
     action = agent.handle_screen()
 
     assert isinstance(action, StateAction)
+
+
+def test_grid_exact_selection_over_required_count_requests_state_refresh():
+    selected_cards = [_card("Strike_R"), _card("Defend_R")]
+    agent = _agent(
+        screen_type=ScreenType.GRID,
+        choice_available=True,
+        available_commands=["confirm", "choose", "key", "click", "wait", "state"],
+        screen=SimpleNamespace(
+            cards=selected_cards,
+            selected_cards=selected_cards,
+            num_cards=1,
+            any_number=False,
+            confirm_up=True,
+            for_upgrade=False,
+            for_purge=True,
+            for_transform=False,
+        ),
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, StateAction)
+
+
+def test_grid_exact_selection_over_required_count_without_confirm_requests_state():
+    selected_cards = [_card("Strike_R"), _card("Defend_R")]
+    agent = _agent(
+        screen_type=ScreenType.GRID,
+        choice_available=True,
+        available_commands=["choose", "key", "click", "wait", "state"],
+        screen=SimpleNamespace(
+            cards=selected_cards,
+            selected_cards=selected_cards,
+            num_cards=1,
+            any_number=False,
+            confirm_up=False,
+            for_upgrade=False,
+            for_purge=True,
+            for_transform=False,
+        ),
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, StateAction)
+
+
+def test_grid_any_number_selection_over_required_count_can_still_confirm():
+    selected_cards = [_card("Strike_R"), _card("Defend_R")]
+    agent = _agent(
+        screen_type=ScreenType.GRID,
+        choice_available=True,
+        available_commands=["confirm", "choose", "key", "click", "wait", "state"],
+        screen=SimpleNamespace(
+            cards=selected_cards,
+            selected_cards=selected_cards,
+            num_cards=1,
+            any_number=True,
+            confirm_up=True,
+            for_upgrade=False,
+            for_purge=True,
+            for_transform=False,
+        ),
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ConfirmAction)
 
 
 def test_grid_optional_partial_selection_returns_available_unselected_cards():

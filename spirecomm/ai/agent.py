@@ -1906,15 +1906,20 @@ class SimpleAgent:
                 self._safe_int(getattr(screen, "num_cards", 0), 0),
             )
             already_selected = list(getattr(screen, "selected_cards", []) or [])
+            any_number = bool(getattr(screen, "any_number", False))
+            if not any_number and len(already_selected) > num_required:
+                logger.warning(
+                    "[GRID_SCREEN] exact selection exceeds required count: required=%s selected=%s",
+                    num_required,
+                    len(already_selected),
+                )
+                return StateAction()
             num_remaining = max(0, num_required - len(already_selected))
             grid_candidates = self._grid_unselected_cards(
                 getattr(screen, "cards", []) or [],
                 already_selected,
             )
-            if (
-                not bool(getattr(screen, "any_number", False))
-                and num_remaining > len(grid_candidates)
-            ):
+            if not any_number and num_remaining > len(grid_candidates):
                 logger.warning(
                     "[GRID_SCREEN] inconsistent remaining selection: required=%s selected=%s remaining=%s available=%s",
                     num_required,
@@ -1929,7 +1934,12 @@ class SimpleAgent:
                 available = getattr(self.game, 'available_commands', [])
 
                 # If we've selected enough cards and confirm is available, confirm immediately
-                if num_selected >= num_required and confirm_up and "confirm" in available:
+                selection_complete = (
+                    num_selected >= num_required
+                    if any_number
+                    else num_selected == num_required
+                )
+                if selection_complete and confirm_up and "confirm" in available:
                     logging.info(
                         f"[GRID_SCREEN] Already selected {num_selected}/{num_required} cards, confirming"
                     )
