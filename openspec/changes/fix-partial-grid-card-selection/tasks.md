@@ -30,5 +30,5 @@
 
 - [ ] 5.1 Run a new conservative 25-game Batch 1 retry without training.
 - [ ] 5.2 Confirm zero GRID cardinality exceptions, invalid commands, and new uncaught gameplay exceptions.
-- [ ] 5.3 Inspect fresh decision and sim-divergence evidence for A-class failures.
-- [ ] 5.4 Commit a separate Batch 1 retry report while preserving the failed-attempt report.
+- [x] 5.3 Inspect fresh decision and sim-divergence evidence for A-class failures.
+- [x] 5.4 Commit a separate Batch 1 retry report while preserving the failed-attempt report.
