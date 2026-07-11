@@ -24,16 +24,16 @@
 - [x] 4.1 Add deterministic numeric and hashed categorical feature extraction for normalized state/candidate pairs with a versioned feature configuration.
 - [x] 4.2 Implement a small CPU PyTorch candidate scorer that computes loss and predictions only over each sample's available candidates.
 - [x] 4.3 Implement separate Current-imitation and Bottled-auxiliary dataset modes; require mapped native high-confidence Bottled labels and never blend label sources.
-- [ ] 4.4 Add finite epoch, seed, output-directory, and deterministic-order controls plus artifact manifests that mark formal RL and live promotion false.
+- [x] 4.4 Add finite epoch, seed, output-directory, and deterministic-order controls plus artifact manifests that mark formal RL and live promotion false.
 - [x] 4.5 Add regressions for 100 percent candidate-legal prediction, target-mapping exclusions, label isolation, bounded execution, and repeatable predictions/metrics within tolerance.
 
 ## 5. Add Evaluation, Baselines, And Reporting
 
-- [ ] 5.1 Add a category-frequency prediction baseline and separate Current/Bottled label-reference agreement metrics without treating either label source as outcome reward.
-- [ ] 5.2 Report split trajectory/sample counts, per-category coverage, exclusions, top-1 agreement, loss, calibration, candidate legality, and comparisons with trivial baselines.
-- [ ] 5.3 Report run outcomes as diagnostics only and mark off-policy evaluation unsupported when propensities or alternative-action support are missing.
-- [ ] 5.4 Add a CLI that can run support-only inspection or bounded training/evaluation and writes deterministic JSON, Markdown, split, and model artifacts to an explicit offline output directory.
-- [ ] 5.5 Add report snapshot tests for allowed and blocked pilot states, including a successful supervised pilot that still leaves formal non-combat RL and live promotion blocked.
+- [x] 5.1 Add a category-frequency prediction baseline and separate Current/Bottled label-reference agreement metrics without treating either label source as outcome reward.
+- [x] 5.2 Report split trajectory/sample counts, per-category coverage, exclusions, top-1 agreement, loss, calibration, candidate legality, and comparisons with trivial baselines.
+- [x] 5.3 Report run outcomes as diagnostics only and mark off-policy evaluation unsupported when propensities or alternative-action support are missing.
+- [x] 5.4 Add a CLI that can run support-only inspection or bounded training/evaluation and writes deterministic JSON, Markdown, split, and model artifacts to an explicit offline output directory.
+- [x] 5.5 Add report snapshot tests for allowed and blocked pilot states, including a successful supervised pilot that still leaves formal non-combat RL and live promotion blocked.
 
 ## 6. Run The Frozen-Baseline Pilot
 
