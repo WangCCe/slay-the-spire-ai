@@ -12,6 +12,8 @@
 - [x] 2.2 Add a control proving an immediately self-lethal HP-cost action remains blocked.
 - [x] 2.3 Add a control proving lethal reactive damage such as Sharp Hide remains blocked.
 - [x] 2.4 Add plan metadata lifecycle tests for replan, stale action, turn reset, and combat end.
+- [x] 2.5 Add an ordinary cached-plan replacement regression.
+- [x] 2.6 Add a same-turn transient-screen quarantine regression.
 
 ## 3. Minimal Implementation
 
@@ -21,6 +23,8 @@
 - [x] 3.4 Apply legality and immediate-death vetoes before allowing the lethal prefix through takeover arbitration.
 - [x] 3.5 Keep normal pressure guards for actions without validated lethal provenance.
 - [x] 3.6 Add concise arbitration logs for pass-through and veto cases.
+- [x] 3.7 Replace lethal-only invalidation with generic plan acknowledgement.
+- [x] 3.8 Route takeover results through one accept/reject finalizer.
 
 ## 4. Verification
 
@@ -28,6 +32,7 @@
 - [x] 4.2 Run full pytest with cache disabled and a writable repository-local base temp.
 - [x] 4.3 Review the implementation diff for unrelated policy or tuning changes.
 - [x] 4.4 Commit the regression-backed behavior fix.
+- [x] 4.5 Re-run independent task review against the acknowledgement contract.
 
 ## 5. Live Validation
 

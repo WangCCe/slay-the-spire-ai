@@ -399,6 +399,42 @@ def test_optimized_agent_invalidates_only_emitted_active_lethal_action():
     assert agent.current_plan_kind is None
 
 
+def test_optimized_agent_generic_active_plan_action_rejection():
+    emitted = PlayCardAction(card=_card("Strike_R", "Strike", uuid="emitted"))
+    followup = PlayCardAction(card=_card("Defend_R", "Defend", uuid="followup"))
+    unrelated = PlayCardAction(card=_card("Bash", "Bash", uuid="unrelated"))
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.current_action_sequence = [emitted, followup]
+    agent.current_action_index = 1
+    agent.current_plan_signature = SimpleNamespace()
+    agent.current_plan_kind = None
+
+    assert agent.is_active_plan_action(emitted) is True
+    assert agent.active_plan_kind_for_action(emitted) is None
+    assert agent.reject_active_plan_action(unrelated) is False
+    assert agent.current_action_sequence == [emitted, followup]
+
+    assert agent.reject_active_plan_action(emitted) is True
+    assert agent.current_action_sequence == []
+    assert agent.current_action_index == 0
+    assert agent.current_plan_signature is None
+    assert agent.current_plan_kind is None
+
+
+def test_optimized_agent_lethal_compatibility_wraps_generic_plan_contract():
+    emitted = PlayCardAction(card=_card("Strike_R", "Strike", uuid="lethal"))
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.current_action_sequence = [emitted]
+    agent.current_action_index = 1
+    agent.current_plan_signature = SimpleNamespace()
+    agent.current_plan_kind = "lethal"
+
+    assert agent.active_plan_kind_for_action(emitted) == "lethal"
+    assert agent.is_active_lethal_plan_action(emitted) is True
+    assert agent.invalidate_active_lethal_plan_action(emitted) is True
+    assert agent.current_action_sequence == []
+
+
 def test_optimized_agent_clears_lethal_provenance_before_stale_replan(monkeypatch):
     stale_card = _card("Strike_R", "Strike", uuid="stale-strike")
     live_card = _card("Defend_R", "Defend", uuid="live-defend")

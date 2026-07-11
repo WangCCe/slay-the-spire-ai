@@ -51,9 +51,19 @@ Before a lethal prefix is passed through, the current action must be normalized 
 
 Low HP and projected end-turn incoming damage are not hard vetoes. They are pressure heuristics and SHALL yield to a safe lethal prefix.
 
-### Re-evaluate after each action
+### Acknowledge every consumed cached-plan action
 
-Only the current action receives the bypass. After the game emits the next state, cached-plan validity and immediate safety are checked again. This avoids assuming that random effects, target changes, or card movement left the rest of the sequence valid.
+`OptimizedAgent` SHALL expose identity-based membership, plan-kind, and
+rejection for the action most recently emitted from its cached sequence.
+`CombatRLAgent` SHALL acquire fallback once and finalize the emitted action
+exactly once. Returning the same validated planned action accepts it; returning
+any wait, end turn, potion suppression, repaired target, survival action,
+pressure action, or other replacement rejects and clears the entire cached
+continuation.
+
+Plan kind affects lethal guard precedence only. Plan rejection applies to both
+ordinary and lethal cached sequences. A normalized lethal action counts as the
+same action only when it preserves the planned card and still-live target.
 
 ### Emit arbitration evidence
 

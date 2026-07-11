@@ -2134,7 +2134,7 @@ def test_energy_guard_takeover_end_turn_queries_fallback_once():
 
 
 @pytest.mark.parametrize("ordinary_branch", ["wait", "end_turn", "potion"])
-def test_ordinary_takeover_replacement_does_not_call_lethal_invalidator(
+def test_ordinary_non_plan_takeover_replacement_does_not_call_plan_rejector(
     monkeypatch,
     ordinary_branch,
 ):
@@ -2173,12 +2173,13 @@ def test_ordinary_takeover_replacement_does_not_call_lethal_invalidator(
     else:
         fallback_action = PotionAction(True)
 
-    invalidated_actions = []
+    rejected_actions = []
     fallback = SimpleNamespace(
         get_next_action_in_game=lambda _game: fallback_action,
-        is_active_lethal_plan_action=lambda _action: False,
-        invalidate_active_lethal_plan_action=lambda action: (
-            invalidated_actions.append(action) or True
+        is_active_plan_action=lambda _action: False,
+        active_plan_kind_for_action=lambda _action: None,
+        reject_active_plan_action=lambda action: (
+            rejected_actions.append(action) or True
         ),
     )
     agent = _agent()
@@ -2207,8 +2208,8 @@ def test_ordinary_takeover_replacement_does_not_call_lethal_invalidator(
 
     agent.get_next_action_in_game(game)
 
-    assert invalidated_actions == []
-    assert getattr(agent, "_lethal_plan_quarantine_turn_key", None) is None
+    assert rejected_actions == []
+    assert getattr(agent, "_lethal_plan_quarantine_epoch", None) is None
 
 
 def test_energy_guard_takeover_suppresses_unpayable_cached_card():
@@ -2724,6 +2725,346 @@ def _configure_takeover_agent(agent, fallback_agent, floor=14, turn=4):
     agent.reward_screen_wait = 0
 
 
+class _CachedPlanFallback:
+    def __init__(self, actions, plan_kind=None):
+        self.actions = list(actions)
+        self.index = 0
+        self.plan_kind = plan_kind
+        self.last_emitted = None
+        self.reject_calls = []
+        self.calls = 0
+
+    def get_next_action_in_game(self, _game):
+        self.calls += 1
+        if self.index >= len(self.actions):
+            self.last_emitted = EndTurnAction()
+            return self.last_emitted
+        self.last_emitted = self.actions[self.index]
+        self.index += 1
+        return self.last_emitted
+
+    def is_active_plan_action(self, action):
+        return action is self.last_emitted and self.index > 0
+
+    def active_plan_kind_for_action(self, action):
+        return self.plan_kind if self.is_active_plan_action(action) else None
+
+    def reject_active_plan_action(self, action):
+        if not self.is_active_plan_action(action):
+            return False
+        self.reject_calls.append(action)
+        self.actions = []
+        self.index = 0
+        self.last_emitted = None
+        self.plan_kind = None
+        return True
+
+
+def test_takeover_replacement_rejects_ordinary_cached_continuation(monkeypatch):
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        cost_for_turn=1,
+        has_target=True,
+        damage=6,
+    )
+    bash = SimpleNamespace(
+        name="Bash",
+        card_id="Bash",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        cost_for_turn=2,
+        has_target=True,
+        damage=8,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        cost_for_turn=1,
+        has_target=False,
+        block=5,
+    )
+    first = PlayCardAction(card_index=0, target_index=0)
+    stale_followup = PlayCardAction(card_index=1, target_index=0)
+    replacement = PlayCardAction(card_index=2)
+    fallback = _CachedPlanFallback([first, stale_followup])
+    game = _game(
+        hand=[strike, bash, defend],
+        monsters=[_monster(hp=30, damage=8, index=0)],
+        floor=14,
+        turn=4,
+        player=SimpleNamespace(energy=3, block=0),
+    )
+    agent = _agent()
+    _configure_takeover_agent(agent, fallback)
+    replacements = iter([replacement, None])
+    monkeypatch.setattr(
+        agent,
+        "_get_slime_split_aoe_survival_replacement",
+        lambda _game: next(replacements),
+    )
+
+    selected = agent.get_next_action_in_game(game)
+
+    assert selected.card_index == 2
+    assert fallback.reject_calls == [first]
+    assert fallback.actions == []
+
+    second = agent.get_next_action_in_game(game)
+    assert second is not stale_followup
+    assert fallback.calls == 2
+
+
+@pytest.mark.parametrize(
+    ("active_plan", "accepted", "expect_reject"),
+    [(False, False, False), (True, True, False), (True, False, True)],
+)
+def test_takeover_finalizer_accepts_or_rejects_once(
+    active_plan,
+    accepted,
+    expect_reject,
+):
+    emitted = PlayCardAction(card_index=0, target_index=0)
+    selected = emitted if accepted else EndTurnAction()
+    fallback = _CachedPlanFallback([emitted])
+    fallback.last_emitted = emitted if active_plan else None
+    fallback.index = 1 if active_plan else 0
+    game = _game()
+    agent = _agent()
+    agent.fallback_agent = fallback
+
+    result = agent._finalize_takeover_action(
+        emitted,
+        selected,
+        game,
+        active_plan=active_plan,
+        plan_kind=None,
+        accepted_plan_action=accepted,
+    )
+
+    assert result is selected
+    assert len(fallback.reject_calls) == int(expect_reject)
+
+
+def test_failed_lethal_rejection_quarantine_survives_transient_screen():
+    action = PlayCardAction(card_index=0, target_index=0)
+    fallback = SimpleNamespace(
+        is_active_plan_action=lambda candidate: candidate is action,
+        active_plan_kind_for_action=lambda candidate: (
+            "lethal" if candidate is action else None
+        ),
+        reject_active_plan_action=lambda _candidate: False,
+    )
+    agent = _agent()
+    agent.fallback_agent = fallback
+    none_screen = _game(floor=14, turn=4, in_combat=True)
+    hand_select = _game(floor=14, turn=4, in_combat=True)
+    hand_select.screen_type = ScreenType.HAND_SELECT
+    next_turn = _game(floor=14, turn=5, in_combat=True)
+
+    assert agent._reject_confirmed_active_plan_action(
+        action,
+        none_screen,
+        plan_kind="lethal",
+    ) is False
+    assert agent._lethal_plan_precedence_is_quarantined(none_screen) is True
+    assert agent._lethal_plan_precedence_is_quarantined(hand_select) is True
+    assert agent._lethal_plan_precedence_is_quarantined(none_screen) is True
+    assert agent._lethal_plan_precedence_is_quarantined(next_turn) is False
+
+
+def test_lethal_prefix_normalization_resolves_stale_index_from_planned_card():
+    planned_hemokinesis = SimpleNamespace(
+        name="Hemokinesis",
+        card_id="Hemokinesis",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        cost_for_turn=1,
+        has_target=True,
+        damage=15,
+    )
+    live_hemokinesis = SimpleNamespace(
+        name="Hemokinesis",
+        card_id="Hemokinesis",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        cost_for_turn=1,
+        has_target=True,
+        damage=15,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        cost_for_turn=1,
+        has_target=False,
+        block=5,
+    )
+    target = _monster(hp=20, damage=0, index=0)
+    action = PlayCardAction(card=planned_hemokinesis, target_monster=target)
+    action.card_index = 0
+    game = _game(
+        hand=[defend, live_hemokinesis],
+        monsters=[target],
+        player=SimpleNamespace(energy=1, block=0),
+    )
+
+    normalized = _agent()._active_validated_lethal_prefix_action(
+        action,
+        game,
+        active_plan=True,
+        plan_kind="lethal",
+    )
+
+    assert isinstance(normalized, PlayCardAction)
+    assert normalized.card_index == 1
+    assert game.hand[normalized.card_index] is live_hemokinesis
+    assert normalized.target_index == 0
+
+
+def test_takeover_accepts_relocated_lethal_card_and_keeps_continuation():
+    planned_hemokinesis = SimpleNamespace(
+        name="Hemokinesis",
+        card_id="Hemokinesis",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        cost_for_turn=1,
+        has_target=True,
+        damage=15,
+    )
+    live_hemokinesis = SimpleNamespace(
+        name="Hemokinesis",
+        card_id="Hemokinesis",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        cost_for_turn=1,
+        has_target=True,
+        damage=15,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        cost_for_turn=1,
+        has_target=False,
+        block=5,
+    )
+    target = _monster(hp=20, damage=0, index=0)
+    planned_action = PlayCardAction(
+        card=planned_hemokinesis,
+        target_monster=target,
+    )
+    planned_action.card_index = 0
+    cached_followup = EndTurnAction()
+    fallback = _CachedPlanFallback(
+        [planned_action, cached_followup],
+        plan_kind="lethal",
+    )
+    game = _game(
+        hand=[defend, live_hemokinesis],
+        monsters=[target],
+        player=SimpleNamespace(energy=1, block=0),
+        floor=14,
+        turn=4,
+    )
+    agent = _agent()
+    _configure_takeover_agent(agent, fallback)
+
+    selected = agent.get_next_action_in_game(game)
+
+    assert isinstance(selected, PlayCardAction)
+    assert selected.card_index == 1
+    assert game.hand[selected.card_index] is live_hemokinesis
+    assert selected.target_index == 0
+    assert game.monsters[selected.target_index] is target
+    assert fallback.calls == 1
+    assert fallback.reject_calls == []
+    assert fallback.actions == [planned_action, cached_followup]
+    assert fallback.index == 1
+    assert fallback.plan_kind == "lethal"
+
+
+def test_unresolved_lethal_card_rejects_plan_before_normal_replacement(monkeypatch):
+    unresolved_card = SimpleNamespace(
+        name="Missing Lethal Card",
+        card_id="MissingLethalCard",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        cost_for_turn=1,
+        has_target=True,
+        damage=99,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        cost_for_turn=1,
+        has_target=False,
+        block=5,
+    )
+    target = _monster(hp=20, damage=8, index=0)
+    planned_action = PlayCardAction(card=unresolved_card, target_monster=target)
+    planned_action.card_index = 0
+    stale_followup = EndTurnAction()
+    replacement = PlayCardAction(card_index=0)
+    fallback = _CachedPlanFallback(
+        [planned_action, stale_followup],
+        plan_kind="lethal",
+    )
+    game = _game(
+        hand=[defend],
+        monsters=[target],
+        player=SimpleNamespace(energy=1, block=0),
+        floor=14,
+        turn=4,
+    )
+    agent = _agent()
+    _configure_takeover_agent(agent, fallback)
+    normalization_results = []
+    normalize = agent._active_validated_lethal_prefix_action
+
+    def record_normalization(*args, **kwargs):
+        result = normalize(*args, **kwargs)
+        normalization_results.append(result)
+        return result
+
+    monkeypatch.setattr(
+        agent,
+        "_active_validated_lethal_prefix_action",
+        record_normalization,
+    )
+    monkeypatch.setattr(
+        agent,
+        "_get_slime_split_aoe_survival_replacement",
+        lambda _game: replacement,
+    )
+
+    selected = agent.get_next_action_in_game(game)
+
+    assert normalization_results == [None]
+    assert selected is replacement
+    assert fallback.reject_calls == [planned_action]
+    assert fallback.actions == []
+
+
 def test_energy_guard_takeover_preserves_safe_hemokinesis_lethal_prefix(caplog):
     caplog.set_level("INFO")
     hemokinesis = SimpleNamespace(
@@ -2766,12 +3107,15 @@ def test_energy_guard_takeover_preserves_safe_hemokinesis_lethal_prefix(caplog):
         card=hemokinesis,
         target_monster=debuffing_slime,
     )
-    invalidated_actions = []
+    rejected_actions = []
     fallback = SimpleNamespace(
         get_next_action_in_game=lambda _game: lethal_action,
-        is_active_lethal_plan_action=lambda action: action is lethal_action,
-        invalidate_active_lethal_plan_action=lambda action: (
-            invalidated_actions.append(action) or True
+        is_active_plan_action=lambda action: action is lethal_action,
+        active_plan_kind_for_action=lambda action: (
+            "lethal" if action is lethal_action else None
+        ),
+        reject_active_plan_action=lambda action: (
+            rejected_actions.append(action) or True
         ),
     )
     game = _game(
@@ -2793,8 +3137,8 @@ def test_energy_guard_takeover_preserves_safe_hemokinesis_lethal_prefix(caplog):
     assert action.card_index == 0
     assert action.target_index == 1
     assert "plan_kind=lethal decision=pass_through" in caplog.text
-    assert invalidated_actions == []
-    assert getattr(agent, "_lethal_plan_quarantine_turn_key", None) is None
+    assert rejected_actions == []
+    assert getattr(agent, "_lethal_plan_quarantine_epoch", None) is None
 
 
 @pytest.mark.parametrize(
@@ -2846,7 +3190,10 @@ def test_energy_guard_takeover_lethal_prefix_precedes_early_survival_replacement
         get_next_action_in_game=lambda _game: (
             fallback_calls.append(_game) or lethal_action
         ),
-        is_active_lethal_plan_action=lambda action: action is lethal_action,
+        is_active_plan_action=lambda action: action is lethal_action,
+        active_plan_kind_for_action=lambda action: (
+            "lethal" if action is lethal_action else None
+        ),
     )
     game = _game(
         hand=[strike, defend],
@@ -2904,13 +3251,16 @@ def test_energy_guard_takeover_rejects_self_lethal_lethal_prefix(caplog):
     second.intent = Intent.DEBUFF
     lethal_action = PlayCardAction(card=hemokinesis, target_monster=second)
 
-    def fail_invalidation(_action):
-        raise RuntimeError("invalidation unavailable")
+    def fail_rejection(_action):
+        raise RuntimeError("rejection unavailable")
 
     fallback = SimpleNamespace(
         get_next_action_in_game=lambda _game: lethal_action,
-        is_active_lethal_plan_action=lambda action: action is lethal_action,
-        invalidate_active_lethal_plan_action=fail_invalidation,
+        is_active_plan_action=lambda action: action is lethal_action,
+        active_plan_kind_for_action=lambda action: (
+            "lethal" if action is lethal_action else None
+        ),
+        reject_active_plan_action=fail_rejection,
     )
     game = _game(
         hand=[hemokinesis],
@@ -3021,10 +3371,10 @@ def test_rejected_lethal_prefix_invalidates_cached_plan_across_takeover_calls(
     assert "plan_kind=lethal decision=pass_through" not in caplog.text
 
 
-@pytest.mark.parametrize("invalidation_mode", ["missing", "throwing"])
-def test_failed_lethal_invalidation_quarantines_precedence_until_next_turn(
+@pytest.mark.parametrize("rejection_mode", ["missing", "throwing"])
+def test_failed_lethal_rejection_quarantines_precedence_until_next_turn(
     caplog,
-    invalidation_mode,
+    rejection_mode,
 ):
     caplog.set_level("INFO")
     hemokinesis = SimpleNamespace(
@@ -3081,16 +3431,20 @@ def test_failed_lethal_invalidation_quarantines_precedence_until_next_turn(
         return action
 
     fallback.get_next_action_in_game = emit_action
-    fallback.is_active_lethal_plan_action = (
+    fallback.is_active_plan_action = (
+        lambda action: action is fallback.last_emitted_action
+    )
+    fallback.active_plan_kind_for_action = (
         lambda action: (
-            fallback.current_plan_kind == "lethal"
-            and action is fallback.last_emitted_action
+            fallback.current_plan_kind
+            if fallback.is_active_plan_action(action)
+            else None
         )
     )
-    if invalidation_mode == "throwing":
-        fallback.invalidate_active_lethal_plan_action = (
+    if rejection_mode == "throwing":
+        fallback.reject_active_plan_action = (
             lambda _action: (_ for _ in ()).throw(
-                RuntimeError("invalidation unavailable")
+                RuntimeError("rejection unavailable")
             )
         )
 
@@ -3123,12 +3477,12 @@ def test_failed_lethal_invalidation_quarantines_precedence_until_next_turn(
     assert third_action.card_index == 0
     assert third_action.target_index == 0
     assert caplog.text.count("plan_kind=lethal decision=pass_through") == 1
-    assert getattr(agent, "_lethal_plan_quarantine_turn_key", None) is None
+    assert getattr(agent, "_lethal_plan_quarantine_epoch", None) is None
 
 
 def test_lethal_plan_quarantine_clears_on_combat_exit():
     agent = _agent()
-    agent._lethal_plan_quarantine_turn_key = (14, 4)
+    agent._lethal_plan_quarantine_epoch = (True, 14, 4)
     game = _game(
         in_combat=False,
         floor=14,
@@ -3137,7 +3491,7 @@ def test_lethal_plan_quarantine_clears_on_combat_exit():
 
     agent._refresh_lethal_plan_quarantine(game)
 
-    assert agent._lethal_plan_quarantine_turn_key is None
+    assert agent._lethal_plan_quarantine_epoch is None
 
 
 def test_energy_guard_takeover_rejects_sharp_hide_lethal_prefix(caplog):
@@ -3164,7 +3518,10 @@ def test_energy_guard_takeover_rejects_sharp_hide_lethal_prefix(caplog):
     lethal_action = PlayCardAction(card=carnage, target_monster=guardian)
     fallback = SimpleNamespace(
         get_next_action_in_game=lambda _game: lethal_action,
-        is_active_lethal_plan_action=lambda action: action is lethal_action,
+        is_active_plan_action=lambda action: action is lethal_action,
+        active_plan_kind_for_action=lambda action: (
+            "lethal" if action is lethal_action else None
+        ),
     )
     game = _game(
         hand=[carnage],
@@ -3215,12 +3572,15 @@ def test_energy_guard_takeover_stale_lethal_target_uses_normal_guard_repair(capl
     )
     live_target.intent = Intent.DEBUFF
     lethal_action = PlayCardAction(card=hemokinesis, target_monster=gone_target)
-    invalidated_actions = []
+    rejected_actions = []
     fallback = SimpleNamespace(
         get_next_action_in_game=lambda _game: lethal_action,
-        is_active_lethal_plan_action=lambda action: action is lethal_action,
-        invalidate_active_lethal_plan_action=lambda action: (
-            invalidated_actions.append(action) or True
+        is_active_plan_action=lambda action: action is lethal_action,
+        active_plan_kind_for_action=lambda action: (
+            "lethal" if action is lethal_action else None
+        ),
+        reject_active_plan_action=lambda action: (
+            rejected_actions.append(action) or True
         ),
     )
     game = _game(
@@ -3244,7 +3604,7 @@ def test_energy_guard_takeover_stale_lethal_target_uses_normal_guard_repair(capl
     assert "plan_kind=lethal veto=stale_or_unplayable" in caplog.text
     assert "plan_kind=lethal decision=pass_through" not in caplog.text
     assert "Replacing takeover unplayable action" in caplog.text
-    assert invalidated_actions == [lethal_action]
+    assert rejected_actions == [lethal_action]
 
 
 def test_rl_berserk_is_replaced_when_self_vulnerable_would_amplify_boss_hit():

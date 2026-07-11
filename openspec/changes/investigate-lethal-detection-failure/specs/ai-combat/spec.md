@@ -35,6 +35,13 @@ The system SHALL clear lethal-plan provenance whenever the cached plan is cleare
 - **WHEN** the fallback agent returns an action from the new state
 - **THEN** the old lethal provenance SHALL be cleared and SHALL NOT bypass normal guards
 
+#### Scenario: Takeover replacement rejects cached continuation
+- **GIVEN** the fallback agent emits the first action of a cached two-action plan
+- **AND** takeover arbitration selects a different action
+- **WHEN** the next game state is evaluated
+- **THEN** the previous cached continuation SHALL have been cleared
+- **AND** its second action SHALL NOT be emitted as though the first action executed
+
 #### Scenario: Arbitration is observable
 - **GIVEN** takeover arbitration passes through or rejects an action associated with lethal provenance
 - **WHEN** the decision is logged

@@ -3,6 +3,7 @@ import random
 import logging
 import sys
 from datetime import datetime
+from typing import Optional
 
 from spirecomm.spire.game import Game
 from spirecomm.spire.identifiers import potion_id
@@ -2922,20 +2923,31 @@ class OptimizedAgent(SimpleAgent):
         self.current_plan_signature = None
         self.current_plan_kind = None
 
-    def is_active_lethal_plan_action(self, action: Action) -> bool:
-        if self.current_plan_kind != "lethal":
-            return False
+    def is_active_plan_action(self, action: Action) -> bool:
         emitted_index = self.current_action_index - 1
         return (
             0 <= emitted_index < len(self.current_action_sequence)
             and self.current_action_sequence[emitted_index] is action
         )
 
-    def invalidate_active_lethal_plan_action(self, action: Action) -> bool:
-        if not self.is_active_lethal_plan_action(action):
+    def active_plan_kind_for_action(self, action: Action) -> Optional[str]:
+        if not self.is_active_plan_action(action):
+            return None
+        return self.current_plan_kind
+
+    def reject_active_plan_action(self, action: Action) -> bool:
+        if not self.is_active_plan_action(action):
             return False
         self._clear_current_combat_plan()
         return True
+
+    def is_active_lethal_plan_action(self, action: Action) -> bool:
+        return self.active_plan_kind_for_action(action) == "lethal"
+
+    def invalidate_active_lethal_plan_action(self, action: Action) -> bool:
+        if not self.is_active_lethal_plan_action(action):
+            return False
+        return self.reject_active_plan_action(action)
 
     def _get_optimized_play_card_action(self):
         """
