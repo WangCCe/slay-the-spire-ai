@@ -142,7 +142,14 @@ def _hand_select_state_message(hand, selected, available_commands):
     )
 
 
-def _grid_state_message(cards, selected, confirm_up, available_commands, choice_list=False):
+def _grid_state_message(
+    cards,
+    selected,
+    confirm_up,
+    available_commands,
+    choice_list=False,
+    num_cards=1,
+):
     game_state = {
         "screen_type": "GRID",
         "room_phase": "COMPLETE",
@@ -150,7 +157,7 @@ def _grid_state_message(cards, selected, confirm_up, available_commands, choice_
         "screen_state": {
             "cards": cards,
             "selected_cards": selected,
-            "num_cards": 1,
+            "num_cards": num_cards,
             "any_number": False,
             "confirm_up": confirm_up,
             "for_upgrade": False,
@@ -241,6 +248,142 @@ def test_grid_selection_and_confirm_ignore_stale_frames_until_fifo_barriers():
     assert coordinator.game_is_ready is False
     assert not coordinator._run_deferred_state_callback_if_idle()
     assert callbacks == []
+
+    coordinator.input_queue.put(_event_state_message())
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+    assert callbacks == [ScreenType.EVENT]
+    assert coordinator.output_queue.empty()
+
+
+def test_two_card_grid_selection_serializes_each_selector_and_confirm():
+    coordinator = _coordinator_without_threads()
+    cards = [
+        SimpleNamespace(name="Strike_R"),
+        SimpleNamespace(name="Defend_R"),
+    ]
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.GRID,
+        available_commands=["choose", "potion", "cancel", "key", "click", "wait", "state"],
+        screen=SimpleNamespace(
+            cards=cards,
+            selected_cards=[],
+            num_cards=2,
+            any_number=False,
+            confirm_up=False,
+            card_positions=[],
+        ),
+    )
+    callbacks = []
+    coordinator.state_change_callback = (
+        lambda game: callbacks.append(game.screen_type) or None
+    )
+    commands = []
+
+    coordinator.action_queue.append(CardSelectAction(cards))
+    coordinator.execute_next_action_if_ready()
+    coordinator.execute_next_action_if_ready()
+    commands.append(coordinator.output_queue.get_nowait())
+    assert commands[-1] == "choose 1"
+    assert coordinator.game_is_ready is False
+
+    strike = _card_json("Strike_R", "strike-1")
+    defend = _card_json("Defend_R", "defend-1")
+    selector_commands = ["choose", "potion", "cancel", "key", "click", "wait", "state"]
+    confirm_commands = ["potion", "confirm", "cancel", "key", "click", "wait", "state"]
+
+    coordinator.input_queue.put(
+        _grid_state_message(
+            [strike, defend],
+            [],
+            False,
+            selector_commands,
+            choice_list=True,
+            num_cards=2,
+        )
+    )
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+    coordinator.execute_next_action_if_ready()
+    commands.append(coordinator.output_queue.get_nowait())
+    assert commands[-1] == "wait 1"
+    assert coordinator.game_is_ready is False
+    assert callbacks == []
+
+    coordinator.input_queue.put(
+        _grid_state_message(
+            [strike, defend],
+            [defend],
+            False,
+            selector_commands,
+            num_cards=2,
+        )
+    )
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+    coordinator.execute_next_action_if_ready()
+    commands.append(coordinator.output_queue.get_nowait())
+    assert commands[-1] == "choose 0"
+    assert coordinator.game_is_ready is False
+    assert callbacks == []
+
+    coordinator.input_queue.put(
+        _grid_state_message(
+            [strike, defend],
+            [defend],
+            False,
+            selector_commands,
+            num_cards=2,
+        )
+    )
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+    coordinator.execute_next_action_if_ready()
+    commands.append(coordinator.output_queue.get_nowait())
+    assert commands[-1] == "wait 1"
+    assert coordinator.game_is_ready is False
+    assert callbacks == []
+
+    coordinator.input_queue.put(
+        _grid_state_message(
+            [strike, defend],
+            [strike, defend],
+            True,
+            confirm_commands,
+            num_cards=2,
+        )
+    )
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+    coordinator.execute_next_action_if_ready()
+    commands.append(coordinator.output_queue.get_nowait())
+    assert commands[-1] == "confirm"
+    assert coordinator.game_is_ready is False
+    assert callbacks == []
+
+    coordinator.input_queue.put(
+        _grid_state_message(
+            [strike, defend],
+            [strike, defend],
+            True,
+            confirm_commands,
+            num_cards=2,
+        )
+    )
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+    coordinator.execute_next_action_if_ready()
+    commands.append(coordinator.output_queue.get_nowait())
+    assert commands[-1] == "wait 1"
+    assert coordinator.game_is_ready is False
+    assert not coordinator._run_deferred_state_callback_if_idle()
+    assert callbacks == []
+
+    assert commands == [
+        "choose 1",
+        "wait 1",
+        "choose 0",
+        "wait 1",
+        "confirm",
+        "wait 1",
+    ]
+    assert commands.count("choose 1") == 1
+    assert commands.count("choose 0") == 1
+    assert commands.count("confirm") == 1
 
     coordinator.input_queue.put(_event_state_message())
     assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)

@@ -85,6 +85,9 @@ def test_grid_click_and_key_selectors_use_response_barriers():
     assert click_selector.wait_for_response is True
     assert isinstance(click_settle, WaitAction)
     assert click_settle.wait_for_response is True
+    click_selector.execute(click_coordinator)
+    assert click_coordinator.sent_messages == ["click 100 200"]
+    assert click_coordinator.game_is_ready is False
 
     key_coordinator = FakeCoordinator(
         SimpleNamespace(
@@ -107,6 +110,9 @@ def test_grid_click_and_key_selectors_use_response_barriers():
     assert key_selector.wait_for_response is True
     assert isinstance(key_settle, WaitAction)
     assert key_settle.wait_for_response is True
+    key_selector.execute(key_coordinator)
+    assert key_coordinator.sent_messages == ["key CARD_1"]
+    assert key_coordinator.game_is_ready is False
 
 
 def test_shared_action_serialization_defaults_remain_unchanged():
