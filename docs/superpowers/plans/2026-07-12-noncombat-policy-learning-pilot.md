@@ -262,15 +262,15 @@ def predict_ranker(model, rows, *, feature_config) -> tuple[Prediction, ...]: ..
 
 - [ ] **Step 1: Write failing signed-hash and feature-stability tests**
 
-Require a 1024-element float32 tensor; repeated input is bit-identical; dictionary order does not change features; state and candidate changes alter the vector. Hash categorical tokens with SHA-256 and use one digest bit for sign. Encode numeric values as signed `log1p(abs(value))`, clipped and normalized before adding them to the path's hashed bin.
+Require a 1024-element float32 tensor; repeated input is bit-identical; dictionary order does not change features; state and candidate changes alter the vector. Hash categorical tokens with SHA-256, use the first eight digest bytes modulo `hash_dim` for the bin, and use bit 0 of digest byte 8 for sign. Encode non-bool numeric values as signed `log1p(abs(value))`, clip at `10.0`, divide by `10.0`, and add the result to the SHA-256 bin for the prefixed numeric path without an additional hash sign.
 
 - [ ] **Step 2: Write failing candidate-mask and label-isolation tests**
 
-Construct samples with different candidate counts. Assert logits length equals candidate count, predicted ids always belong to that row, and Current/Bottled rows produce separate training inputs and artifact names.
+Construct samples with different candidate counts. Assert logits length equals candidate count, predicted ids always belong to that row, and Current/Bottled rows cannot be mixed in one training call. The training artifact manifest records a mode-specific artifact stem; actual artifact file names and writes remain Task 4's responsibility.
 
 - [ ] **Step 3: Write failing bounded deterministic training tests**
 
-Train a separable synthetic dataset twice with the same seed. Assert identical predictions and metrics within `1e-7`, `epochs_run <= 50`, early stopping honors patience 5, device is CPU, and the artifact manifest keeps both promotion flags false.
+Train a separable synthetic dataset twice with the same seed. Assert identical predictions and metrics within `1e-7`, `epochs_run <= 50`, early stopping honors patience 5, device is CPU, and the artifact manifest keeps both promotion flags false. Reject non-CPU devices, `max_epochs` outside `1..50`, `patience` outside `1..5`, and non-positive or non-finite learning rates.
 
 - [ ] **Step 4: Run RED tests**
 
@@ -292,7 +292,7 @@ class CandidateRanker(torch.nn.Module):
 
 - [ ] **Step 6: Implement per-sample cross-entropy training**
 
-Sort rows by id, set Python and Torch CPU seeds, zero gradients per sample, score only available candidates, and target the index whose action id equals `target_action_id`. Keep the best validation state by deep-copying tensors; stop after five non-improving epochs.
+Sort rows by id, require one non-empty label mode across train and validation rows, set Python and Torch CPU seeds, zero gradients per sample, score only available candidates, and target the index whose action id equals `target_action_id`. Keep the best validation state by deep-copying tensors; stop after the configured number of non-improving epochs.
 
 - [ ] **Step 7: Run focused GREEN tests**
 
