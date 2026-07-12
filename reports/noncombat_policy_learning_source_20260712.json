@@ -1,14 +1,43 @@
 {
   "schema_version": "noncombat-policy-learning-source-v1",
-  "generated_at_utc": "2026-07-11T23:31:16.1933445Z",
-  "phase": "phase_b",
-  "review_status": "approved_for_phase_b",
+  "generated_at_utc": "2026-07-12T01:24:58.9373944Z",
+  "phase": "duplicate_candidate_correction",
+  "review_status": "approved_duplicate_candidate_evidence",
   "raw_evidence_review": {
-    "verdict": "APPROVED_FOR_PHASE_B",
+    "verdict": "APPROVED_DUPLICATE_CANDIDATE_EVIDENCE",
     "critical_findings": 0,
     "important_findings": 0,
-    "report_semantic_correction_accepted": true
+    "minor_findings": 0,
+    "reviewed_evidence": {
+      "artifact_hash_closures": true,
+      "dataset_rows": {"current": 470, "bottled": 387},
+      "focused_tests": 101,
+      "metrics_tolerance": 1e-12,
+      "split_trajectories": {"train": 8, "validation": 2, "test": 4},
+      "zero_duplicate_candidate_ids": true
+    }
   },
+  "review_history": [
+    {
+      "status": "superseded",
+      "verdict": "APPROVED_FOR_PHASE_B",
+      "critical_findings": 0,
+      "important_findings": 0,
+      "report_semantic_correction_accepted": true,
+      "superseded_by": "accepted duplicate-candidate and report-status findings"
+    },
+    {
+      "status": "superseded",
+      "verdict": "PENDING_DUPLICATE_CANDIDATE_RE_REVIEW",
+      "critical_findings": 0,
+      "important_findings": 2,
+      "accepted_findings": [
+        "duplicate_shop_candidate_action_ids",
+        "contradictory_final_evidence_status"
+      ],
+      "superseded_by": "APPROVED_DUPLICATE_CANDIDATE_EVIDENCE"
+    }
+  ],
   "behavior_candidate": "f321cb05a40c808d3abfba8b977dfe8988b8ee47",
   "behavior_policy_id": "current_heuristic",
   "source_window": {
@@ -75,8 +104,8 @@
   "generated_inputs": {
     "samples": {
       "path": "reports/noncombat_policy_learning_samples_v2_batch2_retry1_20260712.jsonl",
-      "sha256": "47ADC1F040675410E4AC40FBE53D4B3719E63884D0B53DB53DF19A7E542AF477",
-      "size": 8457714,
+      "sha256": "134A0CD03E8108C19AA1FB27E9BBF8802D48C86A93D9B606E830058C928FE09E",
+      "size": 8502766,
       "line_count": 1453
     },
     "export_report": {
@@ -86,6 +115,57 @@
     }
   },
   "artifact_directory": "reports/noncombat_policy_learning_pilot_20260712",
+  "duplicate_candidate_correction": {
+    "export_runtime_seconds": 356.2,
+    "support_runtime_seconds": {
+      "current": 2.5,
+      "bottled": 2.7
+    },
+    "training_runtime_seconds": {
+      "current": 383.5,
+      "bottled": 246.0
+    },
+    "sample_audit": {
+      "rows": 1453,
+      "duplicate_candidate_id_rows": 0,
+      "slot_disambiguated_candidates": 20,
+      "unique_matched_trajectories": 14,
+      "victory_trajectories": 0
+    },
+    "pilot_artifact_inventory_sha256": "0A222C212052712712621E046CE6AA3A0393E3BEA83B038D9D9017BC72489BFB",
+    "artifact_hashes": {
+      "bottled_artifact_manifest.json": "AA1910AB914112E850872AF297EEC73DEAAB16972048C4DFAFCC529773CDB1DF",
+      "bottled_dataset_manifest.json": "93CD357C6BD420871658FD51F313DB3CB0B4AF80C37069AF43B775AA67528FB2",
+      "bottled_metrics.json": "123F4FF16664815E12F5CA021E5B64BC1D2FCC02D9068E1EDEEBAB3C07C1A638",
+      "bottled_model.pt": "29AF1FA00CC952934A22C298E3E7E2A40F3EB3B80C79C15E3E3CA60D64EE4FFB",
+      "bottled_report.md": "02771F1C0D922EED2362C3A7C44319093F402761CE05B83054EC1F76FABB6056",
+      "bottled_split_manifest.json": "31A6D1FDD892616F6B0529300A12B323E94616513D689B3C20890D3879DF7A61",
+      "bottled_support.json": "882E1870F63F1B28237B9D48B0641CE3C2F2592E9A4757B3BC951A53402A976B",
+      "current_artifact_manifest.json": "A42F3BFA7F602804329C36051AC95CE4D340995CDFB8F8C0B1517BAF86E4AC23",
+      "current_dataset_manifest.json": "043189951A1CED45410CF21DF04C27086E41346831001D4DF826E64CB6DC3ADD",
+      "current_metrics.json": "AF316B9B7723301BF611206019F451537B7EE26BB75759B4EBE27CA04423C6BB",
+      "current_model.pt": "2E99CB9BC0F152364A6179C09ECC41265BFA4A90F059FB13373BB7F202938509",
+      "current_report.md": "09BA9D12351C29E2B6B48B1781428550B1E6CD7C81A5F2EA0BF2C2EFE6512550",
+      "current_split_manifest.json": "31A6D1FDD892616F6B0529300A12B323E94616513D689B3C20890D3879DF7A61",
+      "current_support.json": "D49074785D1336E551CCDBAEF13C57689D0422870A156A1200796D2DFCEF379F"
+    }
+  },
+  "duplicate_candidate_correction_pre_isolation": {
+    "captured_at_utc": "2026-07-12T00:51:25.4015486Z",
+    "communication_mod_config": {
+      "path": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
+      "size": 505,
+      "mtime_utc": "2026-07-11T16:33:58.6105382Z",
+      "sha256": "A90598500660DC99C85A59319BDA4B6A3485B4927CEC539520B6567002D3F148"
+    },
+    "active_combat_checkpoints": [
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep1_steps11436.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:39:42.4621213Z", "sha256": "3C073DD1B305FC9D2056DE634371F9527886CF8B9255CE6BBC60E48E14F3B4B3"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep3_steps11542.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:41:03.7813720Z", "sha256": "DE9A763840118F20493C71EB3D60866B16766E9149C7F233D02AD678B8DB94EE"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep5_steps11635.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:42:13.2074118Z", "sha256": "98770642990361181C63A661847761A1FDCCED9163C557EBC162F8F6675BAA79"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep7_steps11732.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:43:24.8122396Z", "sha256": "D254ECC949DDD29C66C6433DF7FD104DA8435AD74635A8ECEE6927E5FC513E38"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep9_steps11848.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:44:50.0352542Z", "sha256": "780F6A94754B741E8E68D278D44DC68A80CF2B137C2D6FD8A39C7F042C936558"}
+    ]
+  },
   "pre_isolation": {
     "captured_at_utc": "2026-07-11T23:05:59.3553790Z",
     "communication_mod_config": {
@@ -102,8 +182,8 @@
       {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep9_steps11848.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:44:50.0352542Z", "sha256": "780F6A94754B741E8E68D278D44DC68A80CF2B137C2D6FD8A39C7F042C936558"}
     ]
   },
-  "post_isolation": {
-    "status": "unchanged",
+  "prior_phase_b_post_isolation": {
+    "status": "superseded",
     "captured": true,
     "captured_at_utc": "2026-07-12T00:15:29.5266754Z",
     "communication_mod_config": {
@@ -125,7 +205,32 @@
     },
     "comparison_fields": ["path", "size", "mtime_utc", "sha256"]
   },
-  "phase_b_verification": {
+  "post_isolation": {
+    "status": "unchanged",
+    "captured": true,
+    "captured_at_utc": "2026-07-12T01:24:58.9373944Z",
+    "compared_to": "duplicate_candidate_correction_pre_isolation",
+    "communication_mod_config": {
+      "path": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
+      "size": 505,
+      "mtime_utc": "2026-07-11T16:33:58.6105382Z",
+      "sha256": "A90598500660DC99C85A59319BDA4B6A3485B4927CEC539520B6567002D3F148"
+    },
+    "active_combat_checkpoints": [
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep1_steps11436.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:39:42.4621213Z", "sha256": "3C073DD1B305FC9D2056DE634371F9527886CF8B9255CE6BBC60E48E14F3B4B3"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep3_steps11542.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:41:03.7813720Z", "sha256": "DE9A763840118F20493C71EB3D60866B16766E9149C7F233D02AD678B8DB94EE"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep5_steps11635.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:42:13.2074118Z", "sha256": "98770642990361181C63A661847761A1FDCCED9163C557EBC162F8F6675BAA79"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep7_steps11732.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:43:24.8122396Z", "sha256": "D254ECC949DDD29C66C6433DF7FD104DA8435AD74635A8ECEE6927E5FC513E38"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep9_steps11848.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:44:50.0352542Z", "sha256": "780F6A94754B741E8E68D278D44DC68A80CF2B137C2D6FD8A39C7F042C936558"}
+    ],
+    "comparison": {
+      "communication_mod_config": "unchanged",
+      "active_combat_checkpoint_inventory": "unchanged"
+    },
+    "comparison_fields": ["path", "size", "mtime_utc", "sha256"]
+  },
+  "prior_phase_b_verification": {
+    "status": "superseded_by_duplicate_candidate_correction",
     "focused_pytest": {
       "command": "D:/anaconda/envs/stsai/python.exe -m pytest -p no:cacheprovider --basetemp .pytest_tmp/policy-final-focused tests/test_noncombat_rl_decision_loop.py tests/test_noncombat_policy_learning.py -q",
       "exit_code": 0,
@@ -148,6 +253,39 @@
       "failed": 0
     },
     "git_diff_check": {
+      "exit_code": 0,
+      "whitespace_errors": 0,
+      "line_ending_warnings_only": true
+    }
+  },
+  "correction_final_verification": {
+    "focused_pytest": {
+      "command": "D:/anaconda/envs/stsai/python.exe -m pytest -p no:cacheprovider --basetemp .pytest_tmp/policy-correction-final-focused tests/test_noncombat_rl_decision_loop.py tests/test_noncombat_policy_learning.py -q",
+      "exit_code": 0,
+      "passed": 101,
+      "pytest_duration_seconds": 15.09,
+      "wall_duration_seconds": 18.9
+    },
+    "full_pytest": {
+      "command": "D:/anaconda/envs/stsai/python.exe -m pytest -p no:cacheprovider --basetemp .pytest_tmp/policy-correction-final-full",
+      "exit_code": 0,
+      "passed": 2379,
+      "pytest_duration_seconds": 68.0,
+      "wall_duration_seconds": 72.8
+    },
+    "openspec_change_strict": {
+      "command": "openspec validate add-noncombat-policy-learning-pilot --strict",
+      "exit_code": 0,
+      "result": "valid"
+    },
+    "openspec_all_strict": {
+      "command": "openspec validate --all --strict",
+      "exit_code": 0,
+      "passed": 32,
+      "failed": 0
+    },
+    "git_diff_check": {
+      "command": "git diff --check",
       "exit_code": 0,
       "whitespace_errors": 0,
       "line_ending_warnings_only": true

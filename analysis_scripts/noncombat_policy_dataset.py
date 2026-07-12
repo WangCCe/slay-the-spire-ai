@@ -327,6 +327,9 @@ def _eligibility(sample, *, label_mode):
     candidates = _available_candidates(sample.get("candidate_actions"))
     if not candidates:
         return "missing_candidates", None, (), {}
+    candidate_ids = [str(candidate["action_id"]) for candidate in candidates]
+    if len(candidate_ids) != len(set(candidate_ids)):
+        return "duplicate_candidate_id", None, (), {}
 
     if label_mode == "current":
         target_action_id = sample.get("selected_action_id")
@@ -343,7 +346,7 @@ def _eligibility(sample, *, label_mode):
     if not _identifier(target_action_id):
         return "missing_target", None, (), {}
     target_action_id = str(target_action_id)
-    if target_action_id not in {str(candidate["action_id"]) for candidate in candidates}:
+    if target_action_id not in set(candidate_ids):
         return "target_not_candidate", None, (), {}
     if not selected_label:
         selected_label = {"action_id": target_action_id}

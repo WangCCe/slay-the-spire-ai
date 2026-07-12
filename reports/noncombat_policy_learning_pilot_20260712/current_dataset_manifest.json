@@ -143,7 +143,8 @@
       "shop:buy_card:warcry": 4,
       "shop:buy_card:whirlwind": 1,
       "shop:buy_potion:attack_potion": 3,
-      "shop:buy_potion:blessing_of_the_forge": 4,
+      "shop:buy_potion:blessing_of_the_forge:slot:0": 2,
+      "shop:buy_potion:blessing_of_the_forge:slot:1": 2,
       "shop:buy_potion:block_potion": 2,
       "shop:buy_potion:blood_potion": 2,
       "shop:buy_potion:colorless_potion": 3,
@@ -269,7 +270,7 @@
     "bottled": 0,
     "current": 470
   },
-  "manifest_hash": "7fb8f4ead4f5b747a00ebf454e5fc7328e46bafb45a85010a96d9be2868f783d",
+  "manifest_hash": "005623a72e299b1adfe711d1cadd9956c4bdb1ce595e191f4026c7334c99c422",
   "outcome_counts": {
     "rows": {
       "join_status": {
@@ -298,7 +299,7 @@
   },
   "source_commit": "f321cb05a40c808d3abfba8b977dfe8988b8ee47",
   "source_hashes": {
-    "reports\\noncombat_policy_learning_samples_v2_batch2_retry1_20260712.jsonl": "47adc1f040675410e4ac40fbe53d4b3719e63884d0b53db53df19a7e542af477"
+    "reports\\noncombat_policy_learning_samples_v2_batch2_retry1_20260712.jsonl": "134a0cd03e8108c19aa1fb27e9bbf8802d48c86a93d9b606e830058c928fe09e"
   },
   "trajectory_counts": {
     "card_reward": 14,

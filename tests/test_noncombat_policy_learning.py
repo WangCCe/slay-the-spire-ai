@@ -50,7 +50,7 @@ def test_offline_pilot_preserves_live_import_launcher_and_checkpoint_boundaries(
     assert "CommunicationMod" not in offline_sources
 
 
-def test_frozen_phase_b_source_manifest_records_required_boundaries():
+def test_frozen_correction_source_manifest_records_required_boundaries():
     manifest_path = (
         Path(__file__).resolve().parents[1]
         / "reports"
@@ -58,7 +58,21 @@ def test_frozen_phase_b_source_manifest_records_required_boundaries():
     )
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
-    assert manifest["review_status"] == "approved_for_phase_b"
+    assert manifest["review_status"] == "approved_duplicate_candidate_evidence"
+    assert manifest["raw_evidence_review"] == {
+        "verdict": "APPROVED_DUPLICATE_CANDIDATE_EVIDENCE",
+        "critical_findings": 0,
+        "important_findings": 0,
+        "minor_findings": 0,
+        "reviewed_evidence": {
+            "artifact_hash_closures": True,
+            "dataset_rows": {"current": 470, "bottled": 387},
+            "focused_tests": 101,
+            "metrics_tolerance": 1e-12,
+            "split_trajectories": {"train": 8, "validation": 2, "test": 4},
+            "zero_duplicate_candidate_ids": True,
+        },
+    }
     assert manifest["behavior_candidate"] == (
         "f321cb05a40c808d3abfba8b977dfe8988b8ee47"
     )
@@ -73,10 +87,24 @@ def test_frozen_phase_b_source_manifest_records_required_boundaries():
     }
     assert manifest["post_isolation"]["status"] == "unchanged"
     assert manifest["post_isolation"]["captured"] is True
+    assert manifest["post_isolation"]["compared_to"] == (
+        "duplicate_candidate_correction_pre_isolation"
+    )
+    assert manifest["post_isolation"]["captured_at_utc"] == (
+        "2026-07-12T01:24:58.9373944Z"
+    )
     assert manifest["post_isolation"]["comparison"] == {
         "communication_mod_config": "unchanged",
         "active_combat_checkpoint_inventory": "unchanged",
     }
+    assert manifest["prior_phase_b_post_isolation"]["status"] == "superseded"
+    assert manifest["prior_phase_b_post_isolation"]["captured_at_utc"] == (
+        "2026-07-12T00:15:29.5266754Z"
+    )
+    assert [entry["verdict"] for entry in manifest["review_history"]] == [
+        "APPROVED_FOR_PHASE_B",
+        "PENDING_DUPLICATE_CANDIDATE_RE_REVIEW",
+    ]
     assert manifest["boundaries"]["formal_noncombat_rl_performed"] is False
     assert manifest["boundaries"]["formal_noncombat_rl_training_ready"] is False
     assert manifest["boundaries"]["live_policy_promotion_performed"] is False
@@ -185,6 +213,28 @@ def test_current_dataset_excludes_legacy_and_unresolved_rows(tmp_path):
         "missing_trajectory_group": 2,
         "target_not_candidate": 1,
     }
+
+
+def test_policy_dataset_excludes_duplicate_candidate_ids(tmp_path):
+    from analysis_scripts.noncombat_policy_dataset import build_policy_dataset
+
+    source = tmp_path / "samples.jsonl"
+    source.write_text("source\n", encoding="utf-8")
+    sample = _sample("duplicate-candidate")
+    sample["candidate_actions"][1]["action_id"] = sample["candidate_actions"][0][
+        "action_id"
+    ]
+    sample["candidate_actions"][1]["available"] = True
+
+    dataset = build_policy_dataset(
+        [sample],
+        label_mode="current",
+        source_paths=[source],
+        source_commit="ccc5c480",
+    )
+
+    assert dataset.rows == ()
+    assert dataset.manifest["exclusions"] == {"duplicate_candidate_id": 1}
 
 
 def test_bottled_dataset_requires_native_high_confidence_mapped_labels(tmp_path):
@@ -966,6 +1016,18 @@ def test_training_rejects_mixed_label_modes_and_illegal_targets():
     with pytest.raises(ValueError, match="target_action_id"):
         train_ranker(
             (illegal_target,),
+            (current,),
+            feature_config=FeatureConfig(),
+            training_config=TrainingConfig(),
+        )
+
+    duplicate_candidates = replace(
+        current,
+        candidates=(current.candidates[0], current.candidates[0]),
+    )
+    with pytest.raises(ValueError, match="candidate action_ids must be unique"):
+        train_ranker(
+            (duplicate_candidates,),
             (current,),
             feature_config=FeatureConfig(),
             training_config=TrainingConfig(),
@@ -2493,6 +2555,45 @@ def test_overall_allowed_policy_report_matches_exact_snapshot_with_metrics():
     assert render_policy_report(dataset.manifest, splits.manifest, support, metrics=metrics) == _expected_snapshot(
         blocked=False
     )
+
+
+def test_review_status_matches_open_completion_tasks_and_evidence_reports():
+    root = Path(__file__).resolve().parents[1]
+    tasks = (
+        root
+        / "openspec"
+        / "changes"
+        / "add-noncombat-policy-learning-pilot"
+        / "tasks.md"
+    ).read_text(encoding="utf-8")
+    gated_tasks = ("6.4", "7.1", "7.2", "7.3", "7.4", "7.5")
+    gated_complete = all(f"- [x] {task_id} " in tasks for task_id in gated_tasks)
+    pending_status = "pending_duplicate_candidate_re_review"
+    approved_status = "approved_duplicate_candidate_evidence"
+    source = json.loads(
+        (
+            root / "reports" / "noncombat_policy_learning_source_20260712.json"
+        ).read_text(encoding="utf-8")
+    )
+    reports = [
+        (root / "reports" / name).read_text(encoding="utf-8")
+        for name in (
+            "noncombat_policy_learning_support_20260712.md",
+            "noncombat_policy_learning_current_20260712.md",
+            "noncombat_policy_learning_bottled_20260712.md",
+        )
+    ]
+
+    if source["review_status"] == approved_status:
+        assert source["review_status"] == approved_status
+        assert all(f"Review status: `{approved_status}`." in report for report in reports)
+        assert all("pending" not in report.lower() for report in reports)
+    else:
+        assert source["review_status"] == pending_status
+        assert gated_complete is False
+        assert all(f"Review status: `{pending_status}`." in report for report in reports)
+    if gated_complete:
+        assert source["review_status"] == approved_status
 
 
 def _assert_deterministic_manifest(first_manifest, second_manifest):

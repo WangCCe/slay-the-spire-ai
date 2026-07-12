@@ -152,7 +152,7 @@ Outcomes are diagnostics only and are not supervised targets.
 {
   "candidate_legality": 1.0,
   "frequency_reference_top1_agreement": 0.6547619047619048,
-  "mean_target_cross_entropy": 0.42391512652512314,
+  "mean_target_cross_entropy": 0.421083463877257,
   "model_reference_top1_agreement": 0.7857142857142857,
   "per_category_counts": {
     "card_reward": 14,
@@ -161,15 +161,15 @@ Outcomes are diagnostics only and are not supervised targets.
     "shop": 5
   },
   "sample_count": 84,
-  "top_confidence_ece": 0.05927940883806773
+  "top_confidence_ece": 0.07993974855967934
 }
 
 ### Test
 {
   "candidate_legality": 1.0,
   "frequency_reference_top1_agreement": 0.6942675159235668,
-  "mean_target_cross_entropy": 0.5068756737822403,
-  "model_reference_top1_agreement": 0.7707006369426752,
+  "mean_target_cross_entropy": 0.49801491200308806,
+  "model_reference_top1_agreement": 0.7770700636942676,
   "per_category_counts": {
     "card_reward": 24,
     "event": 31,
@@ -177,5 +177,5 @@ Outcomes are diagnostics only and are not supervised targets.
     "shop": 10
   },
   "sample_count": 157,
-  "top_confidence_ece": 0.07899013769095112
+  "top_confidence_ece": 0.08389262883526506
 }

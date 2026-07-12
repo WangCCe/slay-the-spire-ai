@@ -278,6 +278,8 @@ def _candidate_ids(row) -> tuple[str, ...]:
         if not isinstance(action_id, str) or not action_id:
             raise ValueError("candidates require nonempty action_id values")
         candidate_ids.append(action_id)
+    if len(candidate_ids) != len(set(candidate_ids)):
+        raise ValueError("candidate action_ids must be unique")
     return tuple(candidate_ids)
 
 

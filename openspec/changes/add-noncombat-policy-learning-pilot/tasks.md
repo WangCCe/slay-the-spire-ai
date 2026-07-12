@@ -48,4 +48,4 @@
 - [x] 7.2 Run the full pytest suite and confirm existing live gameplay, combat RL, and non-combat readiness guards remain green.
 - [x] 7.3 Run `openspec validate add-noncombat-policy-learning-pilot --strict`, `openspec validate --all --strict`, and `git diff --check`.
 - [x] 7.4 Recheck live configuration and production checkpoint hashes or metadata to prove the offline pilot changed neither.
-- [x] 7.5 Commit cohesive units for provenance/dataset support, model/evaluation behavior, and reviewed pilot evidence without staging unrelated historical reports.
+- [ ] 7.5 Commit cohesive units for provenance/dataset support, model/evaluation behavior, and reviewed pilot evidence without staging unrelated historical reports.

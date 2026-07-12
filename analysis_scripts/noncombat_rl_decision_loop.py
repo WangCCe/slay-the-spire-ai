@@ -180,36 +180,43 @@ def normalize_candidates(decision_sample):
 
     if category == "shop":
         candidates = []
-        for card in ctx.get("cards", []):
+        for slot, card in enumerate(ctx.get("cards", [])):
+            raw = dict(card)
+            raw.update({"shop_inventory": "card", "shop_slot": slot})
             candidates.append(
                 _candidate(
                     f"shop:buy_card:{_slug(card.get('name'))}",
                     "buy_card",
                     card.get("name", ""),
                     True,
-                    dict(card),
+                    raw,
                 )
             )
-        for relic in ctx.get("relics", []):
+        for slot, relic in enumerate(ctx.get("relics", [])):
+            raw = dict(relic)
+            raw.update({"shop_inventory": "relic", "shop_slot": slot})
             candidates.append(
                 _candidate(
                     f"shop:buy_relic:{_slug(relic.get('name'))}",
                     "buy_relic",
                     relic.get("name", ""),
                     True,
-                    dict(relic),
+                    raw,
                 )
             )
-        for potion in ctx.get("potions", []):
+        for slot, potion in enumerate(ctx.get("potions", [])):
+            raw = dict(potion)
+            raw.update({"shop_inventory": "potion", "shop_slot": slot})
             candidates.append(
                 _candidate(
                     f"shop:buy_potion:{_slug(potion.get('name'))}",
                     "buy_potion",
                     potion.get("name", ""),
                     True,
-                    dict(potion),
+                    raw,
                 )
             )
+        _disambiguate_shop_action_ids(candidates)
         if ctx.get("purge_available"):
             purge_target = _first_removable_card(ctx.get("deck", []))
             candidates.append(
@@ -723,6 +730,16 @@ def _candidate(action_id: str, kind: str, label: str, available: bool, raw: Dict
     }
 
 
+def _disambiguate_shop_action_ids(candidates: List[Dict[str, Any]]) -> None:
+    counts = Counter(str(candidate.get("action_id")) for candidate in candidates)
+    for candidate in candidates:
+        base_id = str(candidate.get("action_id"))
+        if counts[base_id] <= 1:
+            continue
+        slot = candidate["raw"]["shop_slot"]
+        candidate["action_id"] = f"{base_id}:slot:{slot}"
+
+
 def _selected_action_id(decision_sample, candidates: List[Dict[str, Any]]) -> Optional[str]:
     choice = decision_sample.our_choice
     category = decision_sample.category
@@ -754,13 +771,15 @@ def _selected_action_id(decision_sample, candidates: List[Dict[str, Any]]) -> Op
 
 def _label_to_candidate_id(label: str, candidates: List[Dict[str, Any]]) -> Optional[str]:
     normalized = _normalize_text(label)
-    for candidate in candidates:
-        if _normalize_text(candidate.get("label")) == normalized:
-            return str(candidate.get("action_id"))
-    for candidate in candidates:
-        raw = candidate.get("raw") or {}
-        if _normalize_text(raw.get("name")) == normalized:
-            return str(candidate.get("action_id"))
+    matched = _unique_candidate_id(
+        candidates,
+        lambda candidate: (
+            _normalize_text(candidate.get("label")) == normalized
+            or _normalize_text((candidate.get("raw") or {}).get("name")) == normalized
+        ),
+    )
+    if matched is not None:
+        return matched
     if normalized.startswith("choose "):
         match = re.match(r"choose\s+(\d+)", normalized)
         if match:
@@ -801,10 +820,10 @@ def _candidate_label(action_id: Optional[str], candidates: List[Dict[str, Any]])
 
 
 def _candidate_by_kind(candidates: List[Dict[str, Any]], kind: str) -> Optional[str]:
-    for candidate in candidates:
-        if candidate.get("kind") == kind:
-            return str(candidate.get("action_id"))
-    return None
+    return _unique_candidate_id(
+        candidates,
+        lambda candidate: candidate.get("kind") == kind,
+    )
 
 
 def _candidate_by_kind_and_slug(
@@ -813,24 +832,33 @@ def _candidate_by_kind_and_slug(
     value: Any,
 ) -> Optional[str]:
     target = _slug(value)
-    for candidate in candidates:
-        if candidate.get("kind") != kind:
-            continue
-        raw = candidate.get("raw") or {}
-        if _slug(raw.get("name") or candidate.get("label")) == target:
-            return str(candidate.get("action_id"))
-        if _slug(str(candidate.get("label")).replace("purge ", "")) == target:
-            return str(candidate.get("action_id"))
-    return None
+    return _unique_candidate_id(
+        candidates,
+        lambda candidate: candidate.get("kind") == kind
+        and (
+            _slug((candidate.get("raw") or {}).get("name") or candidate.get("label"))
+            == target
+            or _slug(str(candidate.get("label")).replace("purge ", "")) == target
+        ),
+    )
 
 
 def _candidate_by_slug(candidates: List[Dict[str, Any]], value: Any) -> Optional[str]:
     target = _slug(value)
-    for candidate in candidates:
-        raw = candidate.get("raw") or {}
-        if _slug(raw.get("name") or candidate.get("label")) == target:
-            return str(candidate.get("action_id"))
-    return None
+    return _unique_candidate_id(
+        candidates,
+        lambda candidate: _slug(
+            (candidate.get("raw") or {}).get("name") or candidate.get("label")
+        )
+        == target,
+    )
+
+
+def _unique_candidate_id(candidates, predicate) -> Optional[str]:
+    matches = [candidate for candidate in candidates if predicate(candidate)]
+    if len(matches) != 1:
+        return None
+    return str(matches[0].get("action_id"))
 
 
 def _first_removable_card(deck: List[Any]) -> str:

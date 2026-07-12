@@ -2,6 +2,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -302,6 +303,81 @@ def test_generic_shop_purge_action_maps_to_purge_candidate(tmp_path):
 
     assert sample["selected_action_id"] == "shop:purge:strike"
     assert sample["current_policy_label"]["label"] == "purge Strike"
+
+
+def test_duplicate_shop_names_get_slot_unique_ids_without_changing_unique_ids():
+    from analysis_scripts.noncombat_rl_decision_loop import normalize_candidates
+
+    decision = SimpleNamespace(
+        category="shop",
+        context={
+            "cards": [{"name": "Anger", "price": 55}],
+            "relics": [],
+            "potions": [
+                {"name": "Swift Potion", "price": 49},
+                {"name": "Swift Potion", "price": 48},
+                {"name": "Fear Potion", "price": 50},
+            ],
+            "purge_available": False,
+        },
+    )
+
+    candidates = normalize_candidates(decision)
+    by_label = {}
+    for candidate in candidates:
+        by_label.setdefault(candidate["label"], []).append(candidate)
+
+    assert [candidate["action_id"] for candidate in by_label["Swift Potion"]] == [
+        "shop:buy_potion:swift_potion:slot:0",
+        "shop:buy_potion:swift_potion:slot:1",
+    ]
+    assert [candidate["raw"]["shop_slot"] for candidate in by_label["Swift Potion"]] == [
+        0,
+        1,
+    ]
+    assert all(
+        candidate["raw"]["shop_inventory"] == "potion"
+        for candidate in by_label["Swift Potion"]
+    )
+    assert by_label["Fear Potion"][0]["action_id"] == "shop:buy_potion:fear_potion"
+    assert by_label["Anger"][0]["action_id"] == "shop:buy_card:anger"
+    assert by_label["leave"][0]["action_id"] == "shop:leave"
+
+
+def test_name_only_duplicate_shop_labels_remain_ambiguous():
+    from analysis_scripts.noncombat_rl_decision_loop import build_trainable_sample
+
+    decision = SimpleNamespace(
+        sample_id="duplicate-shop",
+        category="shop",
+        source="fixture",
+        floor=3,
+        act=1,
+        evidence_quality="complete",
+        limitations=[],
+        our_choice={"kind": "purchase", "name": "Swift Potion"},
+        context={
+            "cards": [],
+            "relics": [],
+            "potions": [
+                {"name": "Swift Potion", "price": 49},
+                {"name": "Swift Potion", "price": 48},
+            ],
+            "purge_available": False,
+        },
+    )
+    comparison = SimpleNamespace(
+        current_choice="Swift Potion",
+        reference_choice="Swift Potion",
+        confidence="high",
+        reason="fixture",
+    )
+
+    sample = build_trainable_sample(decision, comparison)
+
+    assert sample["selected_action_id"] is None
+    assert sample["current_policy_label"]["action_id"] is None
+    assert sample["bottled_label"]["action_id"] is None
 
 
 def test_attach_live_outcomes_matches_exactly_one_run():

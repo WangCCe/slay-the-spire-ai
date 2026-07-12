@@ -2,8 +2,8 @@
   "test": {
     "candidate_legality": 1.0,
     "frequency_reference_top1_agreement": 0.7441860465116279,
-    "mean_target_cross_entropy": 0.5006753024593416,
-    "model_reference_top1_agreement": 0.7364341085271318,
+    "mean_target_cross_entropy": 0.4835711033478451,
+    "model_reference_top1_agreement": 0.7441860465116279,
     "per_category_counts": {
       "card_reward": 14,
       "event": 13,
@@ -11,13 +11,13 @@
       "shop": 10
     },
     "sample_count": 129,
-    "top_confidence_ece": 0.10957868570505186
+    "top_confidence_ece": 0.06433988148851912
   },
   "validation": {
     "candidate_legality": 1.0,
     "frequency_reference_top1_agreement": 0.6857142857142857,
-    "mean_target_cross_entropy": 0.5425845995443509,
-    "model_reference_top1_agreement": 0.7142857142857143,
+    "mean_target_cross_entropy": 0.5323149784024125,
+    "model_reference_top1_agreement": 0.7285714285714285,
     "per_category_counts": {
       "card_reward": 7,
       "event": 6,
@@ -25,6 +25,6 @@
       "shop": 5
     },
     "sample_count": 70,
-    "top_confidence_ece": 0.10266624987125393
+    "top_confidence_ece": 0.0627974603857313
   }
 }
