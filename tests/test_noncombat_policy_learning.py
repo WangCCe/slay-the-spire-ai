@@ -2605,13 +2605,26 @@ def test_overall_allowed_policy_report_matches_exact_snapshot_with_metrics():
 
 def test_review_status_matches_open_completion_tasks_and_evidence_reports():
     root = Path(__file__).resolve().parents[1]
-    tasks = (
+    active_tasks_path = (
         root
         / "openspec"
         / "changes"
         / "add-noncombat-policy-learning-pilot"
         / "tasks.md"
-    ).read_text(encoding="utf-8")
+    )
+    archived_tasks_paths = (root / "openspec" / "changes" / "archive").glob(
+        "*-add-noncombat-policy-learning-pilot/tasks.md"
+    )
+    task_paths = [
+        path
+        for path in (active_tasks_path, *archived_tasks_paths)
+        if path.is_file()
+    ]
+    assert len(task_paths) == 1, (
+        "Expected exactly one active or archived noncombat policy tasks file; "
+        f"found {len(task_paths)}: {task_paths}"
+    )
+    tasks = task_paths[0].read_text(encoding="utf-8")
     gated_tasks = ("6.4", "7.1", "7.2", "7.3", "7.4", "7.5")
     gated_complete = all(f"- [x] {task_id} " in tasks for task_id in gated_tasks)
     pending_status = "pending_duplicate_candidate_re_review"
