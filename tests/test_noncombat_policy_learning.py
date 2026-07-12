@@ -78,7 +78,7 @@ def test_frozen_correction_source_manifest_records_required_boundaries():
     )
     assert manifest["commits"] == {
         "current_evidence_base": "1f39503e5ee31fb937c765ce4af49c28c2fc0618",
-        "policy_implementation": "7c24b23dd6ca365a2ac7db66a3c5a447cec254c9",
+        "policy_implementation": "7b372cfdf0af7fb31acf42d119352926d1b92e7f",
         "behavior_candidate": "f321cb05a40c808d3abfba8b977dfe8988b8ee47",
     }
     assert manifest["source_report"] == {
@@ -91,7 +91,7 @@ def test_frozen_correction_source_manifest_records_required_boundaries():
         "duplicate_candidate_correction_pre_isolation"
     )
     assert manifest["post_isolation"]["captured_at_utc"] == (
-        "2026-07-12T01:24:58.9373944Z"
+        "2026-07-12T02:01:54.9780934Z"
     )
     assert manifest["post_isolation"]["comparison"] == {
         "communication_mod_config": "unchanged",
@@ -105,6 +105,14 @@ def test_frozen_correction_source_manifest_records_required_boundaries():
         "APPROVED_FOR_PHASE_B",
         "PENDING_DUPLICATE_CANDIDATE_RE_REVIEW",
     ]
+    assert manifest["final_whole_change_review"]["artifact_transaction_fix_commit"] == (
+        "1fbbc01c7b2ea04a9dd2d58288a0cfb50f8e3d26"
+    )
+    assert manifest["final_whole_change_review"]["artifact_hash_recheck"] == {
+        "count": 14,
+        "all_unchanged": True,
+        "transaction_debris_count": 0,
+    }
     assert manifest["boundaries"]["formal_noncombat_rl_performed"] is False
     assert manifest["boundaries"]["formal_noncombat_rl_training_ready"] is False
     assert manifest["boundaries"]["live_policy_promotion_performed"] is False

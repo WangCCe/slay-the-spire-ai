@@ -1,6 +1,6 @@
 {
   "schema_version": "noncombat-policy-learning-source-v1",
-  "generated_at_utc": "2026-07-12T01:24:58.9373944Z",
+  "generated_at_utc": "2026-07-12T02:05:26.8974198Z",
   "phase": "duplicate_candidate_correction",
   "review_status": "approved_duplicate_candidate_evidence",
   "raw_evidence_review": {
@@ -48,7 +48,7 @@
   },
   "commits": {
     "current_evidence_base": "1f39503e5ee31fb937c765ce4af49c28c2fc0618",
-    "policy_implementation": "7c24b23dd6ca365a2ac7db66a3c5a447cec254c9",
+    "policy_implementation": "7b372cfdf0af7fb31acf42d119352926d1b92e7f",
     "behavior_candidate": "f321cb05a40c808d3abfba8b977dfe8988b8ee47"
   },
   "source_report": {
@@ -208,7 +208,7 @@
   "post_isolation": {
     "status": "unchanged",
     "captured": true,
-    "captured_at_utc": "2026-07-12T01:24:58.9373944Z",
+    "captured_at_utc": "2026-07-12T02:01:54.9780934Z",
     "compared_to": "duplicate_candidate_correction_pre_isolation",
     "communication_mod_config": {
       "path": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
@@ -228,6 +228,35 @@
       "active_combat_checkpoint_inventory": "unchanged"
     },
     "comparison_fields": ["path", "size", "mtime_utc", "sha256"]
+  },
+  "final_whole_change_review": {
+    "captured_at_utc": "2026-07-12T02:05:26.8974198Z",
+    "artifact_transaction_fix_commit": "1fbbc01c7b2ea04a9dd2d58288a0cfb50f8e3d26",
+    "transaction_regression": {
+      "pre_move_red": {
+        "failed": 1,
+        "observed_exception": "ArtifactRecoveryError",
+        "original_exception": "OSError: injected manifest backup pre-move failure"
+      },
+      "pre_move_green": {"passed": 1, "pytest_duration_seconds": 5.11},
+      "focused_transaction_green": {
+        "passed": 16,
+        "deselected": 54,
+        "pytest_duration_seconds": 9.08
+      }
+    },
+    "provenance_regression": {
+      "red": {
+        "failed": 1,
+        "stale_policy_implementation": "7c24b23dd6ca365a2ac7db66a3c5a447cec254c9"
+      },
+      "green": {"passed": 1, "pytest_duration_seconds": 0.30}
+    },
+    "artifact_hash_recheck": {
+      "count": 14,
+      "all_unchanged": true,
+      "transaction_debris_count": 0
+    }
   },
   "prior_phase_b_verification": {
     "status": "superseded_by_duplicate_candidate_correction",
@@ -260,18 +289,18 @@
   },
   "correction_final_verification": {
     "focused_pytest": {
-      "command": "D:/anaconda/envs/stsai/python.exe -m pytest -p no:cacheprovider --basetemp .pytest_tmp/policy-correction-final-focused tests/test_noncombat_rl_decision_loop.py tests/test_noncombat_policy_learning.py -q",
+      "command": "D:/anaconda/envs/stsai/python.exe -m pytest -p no:cacheprovider --basetemp .pytest_tmp/review-final-focused-20260712 tests/test_noncombat_rl_decision_loop.py tests/test_noncombat_policy_learning.py -q",
       "exit_code": 0,
-      "passed": 101,
-      "pytest_duration_seconds": 15.09,
-      "wall_duration_seconds": 18.9
+      "passed": 102,
+      "pytest_duration_seconds": 14.18,
+      "wall_duration_seconds": 18.2
     },
     "full_pytest": {
-      "command": "D:/anaconda/envs/stsai/python.exe -m pytest -p no:cacheprovider --basetemp .pytest_tmp/policy-correction-final-full",
+      "command": "D:/anaconda/envs/stsai/python.exe -m pytest -p no:cacheprovider --basetemp .pytest_tmp/review-final-full-20260712 -q",
       "exit_code": 0,
-      "passed": 2379,
-      "pytest_duration_seconds": 68.0,
-      "wall_duration_seconds": 72.8
+      "passed": 2380,
+      "pytest_duration_seconds": 67.92,
+      "wall_duration_seconds": 72.1
     },
     "openspec_change_strict": {
       "command": "openspec validate add-noncombat-policy-learning-pilot --strict",

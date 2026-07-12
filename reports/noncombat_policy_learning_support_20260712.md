@@ -8,7 +8,7 @@ Independent read-only re-review verdict: `APPROVED_DUPLICATE_CANDIDATE_EVIDENCE`
 
 - Behavior candidate and dataset source commit: `f321cb05a40c808d3abfba8b977dfe8988b8ee47`.
 - Evidence base: `1f39503e5ee31fb937c765ce4af49c28c2fc0618`.
-- Policy implementation: `7c24b23dd6ca365a2ac7db66a3c5a447cec254c9`.
+- Policy implementation: `7b372cfdf0af7fb31acf42d119352926d1b92e7f`.
 - Qualification report SHA-256: `B526552829D3B844F141C48A081C461E7CDE9F97F1948B6F24473702CF628148`.
 - Window: `1783787478..1783790134`; trace tail: `10000`; exact export allowlist: 25 report rows.
 - Samples SHA-256: `134A0CD03E8108C19AA1FB27E9BBF8802D48C86A93D9B606E830058C928FE09E`.
@@ -67,10 +67,13 @@ These are supervised pipeline and representation results only. Unknown behavior 
 
 - Current verdict: `APPROVED_DUPLICATE_CANDIDATE_EVIDENCE`; Critical 0, Important 0, Minor 0.
 - The reviewer independently recomputed raw counts, zero duplicate IDs, 470/387 dataset rows, 8/2/4 splits, all metrics within `1e-12`, both artifact hash closures, and 101 focused tests.
-- Current post-correction isolation comparison: CommunicationMod config and all five active combat checkpoints are unchanged from `duplicate_candidate_correction_pre_isolation` across path, size, UTC mtime, and SHA-256.
+- Final whole-change isolation snapshot at `2026-07-12T02:01:54.9780934Z`: CommunicationMod config and all five active combat checkpoints are unchanged from `duplicate_candidate_correction_pre_isolation` across path, size, UTC mtime, and SHA-256.
+- Artifact transaction fix: `1fbbc01c7b2ea04a9dd2d58288a0cfb50f8e3d26`; a pre-move manifest-backup failure now propagates the original `OSError`, preserves the complete prior managed set byte-for-byte with a valid manifest, and leaves no transaction debris. The focused transaction cluster passed 16 tests with 54 deselected.
+- Provenance RED observed stale `7c24b23dd6ca365a2ac7db66a3c5a447cec254c9`; GREEN records exact corrected exporter/dataset/model implementation `7b372cfdf0af7fb31acf42d119352926d1b92e7f` without rerunning export or training.
+- A fresh read-only rehash matched all 14 recorded pilot artifact SHA-256 values and found zero `.tmp` or `.backup` files.
 - Superseded history: the earlier `APPROVED_FOR_PHASE_B` verdict was invalidated by the two accepted duplicate-candidate/report-status findings; that correction gate is now superseded by the current approval.
-- Final correction-focused pytest: 101 passed in 15.09 seconds.
-- Final full pytest: 2,379 passed in 68.00 seconds.
+- Final correction-focused pytest: 102 passed in 14.18 seconds.
+- Final full pytest: 2,380 passed in 67.92 seconds.
 - Strict OpenSpec change validation: valid.
 - Strict OpenSpec all validation: 32 passed, 0 failed.
 - `git diff --check`: exit 0; no whitespace errors; line-ending warnings only.
