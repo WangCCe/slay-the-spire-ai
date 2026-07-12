@@ -33,6 +33,11 @@ The system SHALL train and evaluate a bounded offline model that scores only the
 - **THEN** the predicted action id SHALL belong to that sample's available candidate set
 - **AND** the evaluation report SHALL show 100 percent candidate legality
 
+#### Scenario: Candidate identities remain unique
+- **WHEN** normalized candidates contain duplicate action ids
+- **THEN** the exporter SHALL disambiguate candidates using reliable source identity when possible
+- **AND** the dataset builder and trainer SHALL exclude or reject any remaining duplicate identities rather than train ambiguous logits
+
 #### Scenario: Unmapped target is not trained
 - **WHEN** a Current or Bottled target does not map to an available candidate
 - **THEN** the trainer SHALL exclude that row rather than create a global fallback class

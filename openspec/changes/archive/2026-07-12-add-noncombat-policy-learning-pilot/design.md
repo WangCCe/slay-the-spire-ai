@@ -80,6 +80,7 @@ Running the same command against identical inputs and seed must reproduce split 
 - **Bottled imitation crowds out RL exploration** -> Isolate Bottled artifacts and metrics and prohibit using Bottled labels as reward or mandatory promotion targets.
 - **Unknown behavior propensities are mistaken for zero or one** -> Store null plus an explicit status and block OPE.
 - **A model predicts an unavailable action** -> Score only the sample's normalized available candidates and assert 100% candidate legality.
+- **Duplicate offer identities collapse distinct actions** -> Preserve reliable inventory/slot identity, leave ambiguous name-only labels unmapped, and reject duplicate candidate ids at dataset and model boundaries.
 - **Training outputs are accidentally loaded live** -> Keep the module under `analysis_scripts`, require explicit output paths, and add guards proving live config and checkpoint discovery are unchanged.
 
 ## Migration Plan
