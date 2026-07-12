@@ -1943,6 +1943,44 @@ def test_post_save_model_staging_failure_cleans_registered_temporary_file(tmp_pa
     _assert_no_transaction_debris(output_dir)
 
 
+def test_pre_backup_move_failure_preserves_complete_prior_artifact_set(
+    tmp_path, monkeypatch
+):
+    from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
+
+    dataset, splits, support = _artifact_fixture()
+    changed_dataset = _changed_artifact_dataset(dataset)
+    output_dir = tmp_path / "artifacts"
+    _write_complete_artifact_set(output_dir, dataset, splits, support)
+    before = _managed_bytes(output_dir, "current")
+    manifest_path = output_dir / "current_artifact_manifest.json"
+    original_replace = Path.replace
+
+    def fail_before_manifest_backup_move(self, target):
+        if (
+            self == manifest_path
+            and Path(target).name == ".current_artifact_manifest.json.backup"
+        ):
+            raise OSError("injected manifest backup pre-move failure")
+        return original_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", fail_before_manifest_backup_move)
+    with pytest.raises(OSError, match="manifest backup pre-move failure"):
+        write_pilot_artifacts(
+            output_dir,
+            mode="current",
+            dataset=changed_dataset,
+            splits=splits,
+            support=support,
+        )
+
+    assert _managed_bytes(output_dir, "current") == before
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["schema_version"] == "noncombat-policy-pilot-artifacts-v1"
+    _assert_artifact_manifest_hashes(output_dir)
+    _assert_no_transaction_debris(output_dir)
+
+
 def test_post_backup_move_failure_restores_registered_backup(tmp_path, monkeypatch):
     from analysis_scripts.noncombat_policy_learning import write_pilot_artifacts
 

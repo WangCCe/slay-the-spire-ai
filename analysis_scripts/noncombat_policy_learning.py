@@ -583,10 +583,17 @@ def _commit_artifact_transaction(
     backups,
 ) -> None:
     installed = []
+    moved_backups = {}
     try:
         for name, backup_path in backups.items():
             final_path = _artifact_path(artifact_dir, name)
-            final_path.replace(backup_path)
+            try:
+                final_path.replace(backup_path)
+            except Exception:
+                if backup_path.exists():
+                    moved_backups[name] = backup_path
+                raise
+            moved_backups[name] = backup_path
 
         install_order = sorted(name for name in staged_paths if name != manifest_name)
         install_order.append(manifest_name)
@@ -600,6 +607,7 @@ def _commit_artifact_transaction(
             mode,
             installed,
             backups,
+            moved_backups,
             manifest_name,
         )
         if rollback_errors:
@@ -616,13 +624,14 @@ def _rollback_artifact_transaction(
     mode,
     installed,
     backups,
+    moved_backups,
     manifest_name,
 ):
     errors = []
     for final_path in reversed(installed):
         errors.extend(_cleanup_paths((final_path,)))
     non_manifest_restore_errors = []
-    for name, backup_path in backups.items():
+    for name, backup_path in moved_backups.items():
         if name == manifest_name:
             continue
         if not backup_path.exists():
@@ -634,11 +643,12 @@ def _rollback_artifact_transaction(
     errors.extend(non_manifest_restore_errors)
 
     manifest_path = _artifact_path(artifact_dir, manifest_name)
-    manifest_backup = backups.get(manifest_name)
+    manifest_backup = moved_backups.get(manifest_name)
     managed_state_errors = _recovered_managed_state_errors(
         artifact_dir,
         mode,
         backups,
+        moved_backups,
         manifest_name,
     )
     if managed_state_errors:
@@ -665,6 +675,7 @@ def _recovered_managed_state_errors(
     artifact_dir: Path,
     mode,
     backups,
+    moved_backups,
     manifest_name,
 ):
     errors = []
@@ -672,7 +683,17 @@ def _recovered_managed_state_errors(
         if name == manifest_name:
             continue
         final_path = _artifact_path(artifact_dir, name)
-        backup_path = backups.get(name)
+        planned_backup_path = backups.get(name)
+        backup_path = moved_backups.get(name)
+        if backup_path is None and planned_backup_path is not None:
+            if not final_path.is_file():
+                errors.append(
+                    (
+                        final_path,
+                        RuntimeError("untouched managed artifact is not a file"),
+                    )
+                )
+            continue
         if backup_path is None:
             if final_path.exists():
                 errors.append(
@@ -698,7 +719,17 @@ def _recovered_managed_state_errors(
             )
 
     manifest_path = _artifact_path(artifact_dir, manifest_name)
-    if manifest_path.exists():
+    manifest_was_planned = manifest_name in backups
+    manifest_was_moved = manifest_name in moved_backups
+    if manifest_was_planned and not manifest_was_moved:
+        if not manifest_path.is_file():
+            errors.append(
+                (
+                    manifest_path,
+                    RuntimeError("untouched artifact manifest is not a file"),
+                )
+            )
+    elif manifest_path.exists():
         errors.append(
             (
                 manifest_path,
