@@ -14,6 +14,75 @@ import pytest
 V2 = "noncombat-rl-decision-v2"
 
 
+def test_offline_pilot_preserves_live_import_launcher_and_checkpoint_boundaries():
+    root = Path(__file__).resolve().parents[1]
+    live_sources = {
+        "main": (root / "main.py").read_text(encoding="utf-8"),
+        "batch_launcher": (root / "scripts" / "run_training_batch.py").read_text(
+            encoding="utf-8"
+        ),
+        "game_launcher": (root / "scripts" / "restart_sts_modded.ps1").read_text(
+            encoding="utf-8"
+        ),
+    }
+    offline_sources = "\n".join(
+        (root / "analysis_scripts" / name).read_text(encoding="utf-8")
+        for name in (
+            "noncombat_policy_dataset.py",
+            "noncombat_policy_learning.py",
+            "noncombat_policy_model.py",
+        )
+    )
+
+    for live_source in live_sources.values():
+        assert "noncombat_policy_learning" not in live_source
+        assert "noncombat_policy_dataset" not in live_source
+        assert "noncombat_policy_model" not in live_source
+    assert 'pattern = os.path.join(checkpoint_dir, "rl_combat_model_ep*.pth")' in live_sources["main"]
+    assert 'parser.add_argument("--checkpoint-dir", default="checkpoints")' in live_sources[
+        "batch_launcher"
+    ]
+    assert (
+        '[string]$ModIds = "basemod,CommunicationMod,superfastmode,StSExporter"'
+        in live_sources["game_launcher"]
+    )
+    assert "config.properties" not in offline_sources
+    assert "CommunicationMod" not in offline_sources
+
+
+def test_frozen_phase_b_source_manifest_records_required_boundaries():
+    manifest_path = (
+        Path(__file__).resolve().parents[1]
+        / "reports"
+        / "noncombat_policy_learning_source_20260712.json"
+    )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert manifest["review_status"] == "approved_for_phase_b"
+    assert manifest["behavior_candidate"] == (
+        "f321cb05a40c808d3abfba8b977dfe8988b8ee47"
+    )
+    assert manifest["commits"] == {
+        "current_evidence_base": "1f39503e5ee31fb937c765ce4af49c28c2fc0618",
+        "policy_implementation": "7c24b23dd6ca365a2ac7db66a3c5a447cec254c9",
+        "behavior_candidate": "f321cb05a40c808d3abfba8b977dfe8988b8ee47",
+    }
+    assert manifest["source_report"] == {
+        "path": "reports/trainable_baseline_qualification_batch2_retry1.md",
+        "sha256": "B526552829D3B844F141C48A081C461E7CDE9F97F1948B6F24473702CF628148",
+    }
+    assert manifest["post_isolation"]["status"] == "unchanged"
+    assert manifest["post_isolation"]["captured"] is True
+    assert manifest["post_isolation"]["comparison"] == {
+        "communication_mod_config": "unchanged",
+        "active_combat_checkpoint_inventory": "unchanged",
+    }
+    assert manifest["boundaries"]["formal_noncombat_rl_performed"] is False
+    assert manifest["boundaries"]["formal_noncombat_rl_training_ready"] is False
+    assert manifest["boundaries"]["live_policy_promotion_performed"] is False
+    assert manifest["boundaries"]["live_policy_promotion_ready"] is False
+
+
 def _sample(sample_id, group_id="run:1", **overrides):
     category = overrides.get("category", "route")
     sample = {

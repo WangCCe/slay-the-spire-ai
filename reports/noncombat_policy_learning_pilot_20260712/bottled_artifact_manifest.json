@@ -1,0 +1,41 @@
+{
+  "artifact_hashes": {
+    "bottled_dataset_manifest.json": "00655b236d17f9648ed5767daadd38551885d7f83cef675487242025c34b4602",
+    "bottled_metrics.json": "181b4091e01460ce40b11ebd3a5de1a6cf511ba67662118fd9882dcf06010cc5",
+    "bottled_model.pt": "5d5a97a9b064cf54242007a952d39baa62dfa77511302d05823491c6a748c36b",
+    "bottled_report.md": "9fda8df402813906b797bee254aed736056f71f634c0463ac8f866cb67289385",
+    "bottled_split_manifest.json": "31a6d1fdd892616f6b0529300a12b323e94616513d689b3c20890d3879df7a61",
+    "bottled_support.json": "882e1870f63f1b28237b9d48b0641ce3c2f2592e9a4757b3bc951a53402a976b"
+  },
+  "configuration": {
+    "label_mode": "bottled",
+    "split_seed": "0"
+  },
+  "dataset_manifest_hash": "ecd90981fe70e77433a5ac8efbd0b7554429b7d7e817dc548289caa311372e94",
+  "formal_noncombat_rl_training_ready": false,
+  "live_policy_promotion_ready": false,
+  "mode": "bottled",
+  "output_dir": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\noncombat_policy_learning_pilot_20260712",
+  "schema_version": "noncombat-policy-pilot-artifacts-v1",
+  "source_commit": "f321cb05a40c808d3abfba8b977dfe8988b8ee47",
+  "split_manifest_hash": "de9cc1d0798056a2fae00557033cfe29632ccf7e5e16cd7354c3b14f213e346f",
+  "training_artifact_manifest": {
+    "artifact_stem": "noncombat_policy_bottled",
+    "best_validation_loss": 0.5425845952970642,
+    "epochs_run": 28,
+    "feature_config": {
+      "hash_dim": 1024,
+      "version": "noncombat-policy-features-v1"
+    },
+    "formal_noncombat_rl_training_ready": false,
+    "label_mode": "bottled",
+    "live_policy_promotion_ready": false,
+    "training_config": {
+      "device": "cpu",
+      "learning_rate": 0.001,
+      "max_epochs": 50,
+      "patience": 5,
+      "seed": 0
+    }
+  }
+}

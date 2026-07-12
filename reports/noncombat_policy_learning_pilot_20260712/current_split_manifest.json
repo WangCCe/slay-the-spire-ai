@@ -1,0 +1,45 @@
+{
+  "assignments": {
+    "run:1783787727": "train",
+    "run:1783787808": "validation",
+    "run:1783788034": "validation",
+    "run:1783788319": "train",
+    "run:1783788512": "train",
+    "run:1783788747": "test",
+    "run:1783788934": "test",
+    "run:1783789058": "train",
+    "run:1783789186": "train",
+    "run:1783789260": "train",
+    "run:1783789391": "test",
+    "run:1783789651": "train",
+    "run:1783789975": "test",
+    "run:1783790044": "train"
+  },
+  "groups": {
+    "test": [
+      "run:1783789975",
+      "run:1783789391",
+      "run:1783788934",
+      "run:1783788747"
+    ],
+    "train": [
+      "run:1783788512",
+      "run:1783789260",
+      "run:1783789186",
+      "run:1783788319",
+      "run:1783789058",
+      "run:1783787727",
+      "run:1783789651",
+      "run:1783790044"
+    ],
+    "validation": [
+      "run:1783787808",
+      "run:1783788034"
+    ]
+  },
+  "manifest_hash": "de9cc1d0798056a2fae00557033cfe29632ccf7e5e16cd7354c3b14f213e346f",
+  "schema_version": "noncombat-policy-split-v1",
+  "split_seed": "0",
+  "train_fraction": 0.6,
+  "validation_fraction": 0.2
+}

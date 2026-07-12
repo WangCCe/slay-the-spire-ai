@@ -1,0 +1,164 @@
+{
+  "schema_version": "noncombat-policy-learning-source-v1",
+  "generated_at_utc": "2026-07-11T23:31:16.1933445Z",
+  "phase": "phase_b",
+  "review_status": "approved_for_phase_b",
+  "raw_evidence_review": {
+    "verdict": "APPROVED_FOR_PHASE_B",
+    "critical_findings": 0,
+    "important_findings": 0,
+    "report_semantic_correction_accepted": true
+  },
+  "behavior_candidate": "f321cb05a40c808d3abfba8b977dfe8988b8ee47",
+  "behavior_policy_id": "current_heuristic",
+  "source_window": {
+    "since_unix": 1783787478,
+    "until_unix": 1783790134,
+    "trace_tail": 10000,
+    "character": "IRONCLAD"
+  },
+  "commits": {
+    "current_evidence_base": "1f39503e5ee31fb937c765ce4af49c28c2fc0618",
+    "policy_implementation": "7c24b23dd6ca365a2ac7db66a3c5a447cec254c9",
+    "behavior_candidate": "f321cb05a40c808d3abfba8b977dfe8988b8ee47"
+  },
+  "source_report": {
+    "path": "reports/trainable_baseline_qualification_batch2_retry1.md",
+    "sha256": "B526552829D3B844F141C48A081C461E7CDE9F97F1948B6F24473702CF628148"
+  },
+  "decision_trace": {
+    "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/ai_decision_trace_clean.jsonl",
+    "size": 2048908436,
+    "mtime_utc": "2026-07-11T17:15:31.2019697Z",
+    "modified_by_phase_a": false
+  },
+  "run_file_allowlist": {
+    "source_table_count": 25,
+    "export_argument_count": 25,
+    "exact_table_equality": true,
+    "all_source_files_exist": true,
+    "unique_joined_run_count": 14,
+    "unique_joined_run_set_equals_allowlist": false,
+    "run_files": [
+      {"name": "1783787727.run", "sha256": "81F3D33AD2D8BBC6E7033FC20E722E63BCEDCB028064CA4CEAB2F8EB282B9898"},
+      {"name": "1783787808.run", "sha256": "ED245D164AC1B990B4CB61B79404224C3FD55A64E061A6F7F70AD246DBBD22A4"},
+      {"name": "1783788034.run", "sha256": "E6ED1701DD148CC02840DFCC957C8955EB85CC5A2880559ED51514A241518AD3"},
+      {"name": "1783788107.run", "sha256": "44E1ECEB72D3875FFC76224E440957328C2A4704BC15A367EB17BF3B6F1E1B7D"},
+      {"name": "1783788221.run", "sha256": "F7091B326E5AB3A44FB0255F29FBCA42CCE1800D181F26283FE05C31EAA6C20A"},
+      {"name": "1783788319.run", "sha256": "2CC327B8807E69D0AD6170AB9011D1BB169A086D0426EC54A9D0963A6BA3D1E8"},
+      {"name": "1783788512.run", "sha256": "4FFCA5C0EC431D7EA0A57C6E11244D02059C5E526B22531578F50BEDE518AD2A"},
+      {"name": "1783788567.run", "sha256": "B290BDED7FD91F9CE883CA551F3FC925D9443B1ACF144F0B2DCE1AC4FAE719F3"},
+      {"name": "1783788653.run", "sha256": "4E97B329F1ABA97D6045B58DE5A3241399E6A8E457EF7994B4D729E329AD9CA2"},
+      {"name": "1783788747.run", "sha256": "958889863D36F2E2C12466F6024885519E3F78937FD3DF42D0C231560C202A49"},
+      {"name": "1783788808.run", "sha256": "7D75CAC7E1E6D8AEE5CF0BB05A7CF112BCADF98D5B7959E04E6ED9728AA36944"},
+      {"name": "1783788934.run", "sha256": "1963F16432AE2F550C1664DD3441273188C3BE242DCB28FEB0C993B229B4EE6F"},
+      {"name": "1783789058.run", "sha256": "D6557A75189354FDB836F616D9B68205342D759D744B1DA38BD8B56BBC9D0202"},
+      {"name": "1783789108.run", "sha256": "7CFDBD98FF2E70B08CE2B9B42D9B61DD3C48DCE58163D7D0CCA8D8152ACD033B"},
+      {"name": "1783789186.run", "sha256": "405685D01FCF2AB4B8C0959AB36C105405D3A30ABB9AD9275635794649FE864B"},
+      {"name": "1783789260.run", "sha256": "9406CF2FFB3095910B255CA7E4E0EAB82CBCC5144DE5EA205F80514325BF4F03"},
+      {"name": "1783789391.run", "sha256": "4B64C06E7B459E0CCDD5C2D2CBD6ADFA5389D505B3316CCA0F711A8F45DDB4FB"},
+      {"name": "1783789447.run", "sha256": "0098DF727D143AF7CD832D58821E9434C6016BD27A1EF7B553477D55D3070D2D"},
+      {"name": "1783789651.run", "sha256": "7DC9293370153C7257B2C475BCA78DC10B8617A457C14824A70150292348506D"},
+      {"name": "1783789790.run", "sha256": "56B65358E651B7514F082F8E714E2F07E997DBD6EE1BCBE92DCCB62CA5CEC7C6"},
+      {"name": "1783789842.run", "sha256": "B8A3F05DBA3166FC67C7ABF7833C26CD270DC07A61918ED4721A21459696B349"},
+      {"name": "1783789909.run", "sha256": "2CB4B22451953E08107AECC3B4DE333934C1EACF2653854CAABCAE2692AC2628"},
+      {"name": "1783789975.run", "sha256": "B7DA180AA6AC13FCD9E5F23F03B3998F95E6E14FB80AB41DB7BFDC7839FBC9F7"},
+      {"name": "1783790044.run", "sha256": "06160AC29BD75AF50099352809DBBA3B3BBAE71E22133B6E532F796EDB8D12DE"},
+      {"name": "1783790131.run", "sha256": "3B3B334DCF52D48571A9DF2205CE150FCC71488F8E3315669AA115A9D8D93BF2"}
+    ]
+  },
+  "bottled_reference": {
+    "mode": "native-bottled",
+    "repo": "C:/Users/20571/Documents/bottled_ai",
+    "repo_head": "7b47a877d626cdb4fbeeb423c46472b15dd2ac00"
+  },
+  "generated_inputs": {
+    "samples": {
+      "path": "reports/noncombat_policy_learning_samples_v2_batch2_retry1_20260712.jsonl",
+      "sha256": "47ADC1F040675410E4AC40FBE53D4B3719E63884D0B53DB53DF19A7E542AF477",
+      "size": 8457714,
+      "line_count": 1453
+    },
+    "export_report": {
+      "path": "reports/noncombat_policy_learning_export_v2_batch2_retry1_20260712.md",
+      "sha256": "F1B1AB0926A183678217B65A0474BFF4871AF9E32E6F513572BF4FDA295A85ED",
+      "size": 3423
+    }
+  },
+  "artifact_directory": "reports/noncombat_policy_learning_pilot_20260712",
+  "pre_isolation": {
+    "captured_at_utc": "2026-07-11T23:05:59.3553790Z",
+    "communication_mod_config": {
+      "path": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
+      "size": 505,
+      "mtime_utc": "2026-07-11T16:33:58.6105382Z",
+      "sha256": "A90598500660DC99C85A59319BDA4B6A3485B4927CEC539520B6567002D3F148"
+    },
+    "active_combat_checkpoints": [
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep1_steps11436.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:39:42.4621213Z", "sha256": "3C073DD1B305FC9D2056DE634371F9527886CF8B9255CE6BBC60E48E14F3B4B3"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep3_steps11542.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:41:03.7813720Z", "sha256": "DE9A763840118F20493C71EB3D60866B16766E9149C7F233D02AD678B8DB94EE"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep5_steps11635.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:42:13.2074118Z", "sha256": "98770642990361181C63A661847761A1FDCCED9163C557EBC162F8F6675BAA79"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep7_steps11732.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:43:24.8122396Z", "sha256": "D254ECC949DDD29C66C6433DF7FD104DA8435AD74635A8ECEE6927E5FC513E38"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep9_steps11848.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:44:50.0352542Z", "sha256": "780F6A94754B741E8E68D278D44DC68A80CF2B137C2D6FD8A39C7F042C936558"}
+    ]
+  },
+  "post_isolation": {
+    "status": "unchanged",
+    "captured": true,
+    "captured_at_utc": "2026-07-12T00:15:29.5266754Z",
+    "communication_mod_config": {
+      "path": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
+      "size": 505,
+      "mtime_utc": "2026-07-11T16:33:58.6105382Z",
+      "sha256": "A90598500660DC99C85A59319BDA4B6A3485B4927CEC539520B6567002D3F148"
+    },
+    "active_combat_checkpoints": [
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep1_steps11436.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:39:42.4621213Z", "sha256": "3C073DD1B305FC9D2056DE634371F9527886CF8B9255CE6BBC60E48E14F3B4B3"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep3_steps11542.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:41:03.7813720Z", "sha256": "DE9A763840118F20493C71EB3D60866B16766E9149C7F233D02AD678B8DB94EE"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep5_steps11635.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:42:13.2074118Z", "sha256": "98770642990361181C63A661847761A1FDCCED9163C557EBC162F8F6675BAA79"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep7_steps11732.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:43:24.8122396Z", "sha256": "D254ECC949DDD29C66C6433DF7FD104DA8435AD74635A8ECEE6927E5FC513E38"},
+      {"path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep9_steps11848.pth", "size": 6541162, "mtime_utc": "2026-06-03T18:44:50.0352542Z", "sha256": "780F6A94754B741E8E68D278D44DC68A80CF2B137C2D6FD8A39C7F042C936558"}
+    ],
+    "comparison": {
+      "communication_mod_config": "unchanged",
+      "active_combat_checkpoint_inventory": "unchanged"
+    },
+    "comparison_fields": ["path", "size", "mtime_utc", "sha256"]
+  },
+  "phase_b_verification": {
+    "focused_pytest": {
+      "command": "D:/anaconda/envs/stsai/python.exe -m pytest -p no:cacheprovider --basetemp .pytest_tmp/policy-final-focused tests/test_noncombat_rl_decision_loop.py tests/test_noncombat_policy_learning.py -q",
+      "exit_code": 0,
+      "passed": 97,
+      "duration_seconds": 17.82
+    },
+    "full_pytest": {
+      "command": "D:/anaconda/envs/stsai/python.exe -m pytest -p no:cacheprovider --basetemp .pytest_tmp/policy-final-full",
+      "exit_code": 0,
+      "passed": 2375,
+      "duration_seconds": 74.87
+    },
+    "openspec_change_strict": {
+      "exit_code": 0,
+      "result": "valid"
+    },
+    "openspec_all_strict": {
+      "exit_code": 0,
+      "passed": 32,
+      "failed": 0
+    },
+    "git_diff_check": {
+      "exit_code": 0,
+      "whitespace_errors": 0,
+      "line_ending_warnings_only": true
+    }
+  },
+  "boundaries": {
+    "formal_noncombat_rl_performed": false,
+    "formal_noncombat_rl_training_ready": false,
+    "live_policy_promotion_performed": false,
+    "live_policy_promotion_ready": false,
+    "communication_mod_config_modified": false,
+    "production_checkpoints_modified": false
+  }
+}

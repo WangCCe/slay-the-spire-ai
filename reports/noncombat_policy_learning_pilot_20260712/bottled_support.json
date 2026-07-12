@@ -1,0 +1,66 @@
+{
+  "categories": {
+    "card_reward": {
+      "blocking_reasons": [],
+      "evaluable": true,
+      "held_out_trajectory_count": 6,
+      "train_trajectory_count": 7
+    },
+    "event": {
+      "blocking_reasons": [],
+      "evaluable": true,
+      "held_out_trajectory_count": 5,
+      "train_trajectory_count": 5
+    },
+    "route": {
+      "blocking_reasons": [],
+      "evaluable": true,
+      "held_out_trajectory_count": 6,
+      "train_trajectory_count": 8
+    },
+    "shop": {
+      "blocking_reasons": [],
+      "evaluable": true,
+      "held_out_trajectory_count": 5,
+      "train_trajectory_count": 4
+    }
+  },
+  "outcome_counts": {
+    "rows": {
+      "join_status": {
+        "matched": 387
+      },
+      "victory": {
+        "false": 387,
+        "true": 0,
+        "unknown": 0
+      }
+    },
+    "trajectories": {
+      "join_status": {
+        "matched": 14
+      },
+      "victory": {
+        "false": 14,
+        "true": 0,
+        "unknown": 0
+      }
+    }
+  },
+  "overall": {
+    "blocked": false,
+    "blocking_reasons": [],
+    "minimum_trajectory_count": 10,
+    "split_sample_counts": {
+      "test": 129,
+      "train": 188,
+      "validation": 70
+    },
+    "split_trajectory_counts": {
+      "test": 4,
+      "train": 8,
+      "validation": 2
+    },
+    "trajectory_count": 14
+  }
+}

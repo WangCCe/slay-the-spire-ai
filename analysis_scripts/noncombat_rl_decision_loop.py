@@ -486,6 +486,20 @@ def render_readiness_report(samples, gate_result):
         for sample in samples
         if sample.get("outcome", {}).get("included_in_gate")
     ]
+    matched_trajectory_groups = {
+        sample.get("trajectory_group_id")
+        for sample in matched
+        if sample.get("trajectory_group_id")
+    }
+    victory_trajectory_groups = {
+        sample.get("trajectory_group_id")
+        for sample in matched
+        if sample.get("trajectory_group_id")
+        and sample.get("outcome", {}).get("victory") is True
+    }
+    evidence_gate_status = (
+        "passed" if gate_result.get("status") == "allowed" else "blocked"
+    )
     bottled_matches = sum(
         1
         for sample in samples
@@ -501,11 +515,15 @@ def render_readiness_report(samples, gate_result):
     lines = [
         "# Non-Combat RL Decision Loop Readiness",
         "",
+        "This export evidence-presence gate does not authorize formal non-combat "
+        "RL training or live-policy promotion.",
+        "",
         "## Summary",
         "",
-        f"- Promotion status: {gate_result.get('status', 'blocked')}",
+        f"- Export evidence-presence gate: {evidence_gate_status}",
         f"- Samples: {len(samples)}",
-        f"- Blocking reasons: {_format_list(gate_result.get('blocking_reasons', []))}",
+        "- Evidence-presence blocking reasons: "
+        f"{_format_list(gate_result.get('blocking_reasons', []))}",
         "",
         "## Sample Coverage",
         "",
@@ -529,20 +547,23 @@ def render_readiness_report(samples, gate_result):
         "",
         "## Live Outcomes",
         "",
-        f"- Matched outcomes included in gate: {len(matched)}",
+        f"- Matched decision rows: {len(matched)}",
+        f"- Unique non-null trajectory groups: {len(matched_trajectory_groups)}",
+        f"- Unique trajectory victories: {len(victory_trajectory_groups)}",
         "",
-        "## Reward readiness",
+        "## Export Evidence-Presence Gate",
         "",
-        f"- Status: {gate_result.get('readiness', {}).get('reward', 'missing')}",
+        f"- Audit-field presence: {gate_result.get('readiness', {})}",
+        f"- Audit metrics: {gate_result.get('metrics', {})}",
+        "- Scope: Audit-field presence does not establish reward validity, "
+        "off-policy evaluation (OPE) support, formal non-combat RL readiness, "
+        "or live policy promotion.",
         "",
-        "## Promotion Gate",
-        "",
-        f"- Readiness: {gate_result.get('readiness', {})}",
-        f"- Metrics: {gate_result.get('metrics', {})}",
-        "",
-        "## Training Guard",
+        "## Readiness Boundaries",
         "",
         "- Formal non-combat RL training: blocked",
+        "- Live policy promotion: blocked",
+        "- Off-policy evaluation: unsupported",
         f"- Guard: {gate_result.get('formal_noncombat_rl_training_guard', 'not_started_by_this_change')}",
         "",
         "## Combat RL Smoke",
@@ -677,9 +698,18 @@ def main(argv=None) -> int:
             encoding="utf-8",
         )
 
-    print(f"Promotion status: {gate_result['status']}")
+    evidence_gate_status = (
+        "passed" if gate_result.get("status") == "allowed" else "blocked"
+    )
+    print(f"Export evidence-presence gate: {evidence_gate_status}")
     if gate_result["blocking_reasons"]:
-        print(f"Blocking reasons: {', '.join(gate_result['blocking_reasons'])}")
+        print(
+            "Evidence-presence blocking reasons: "
+            f"{', '.join(gate_result['blocking_reasons'])}"
+        )
+    print("Formal non-combat RL training: blocked")
+    print("Live policy promotion: blocked")
+    print("Off-policy evaluation: unsupported")
     return 0
 
 

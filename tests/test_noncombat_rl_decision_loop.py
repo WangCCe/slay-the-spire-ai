@@ -645,7 +645,7 @@ def test_gate_allows_data_loop_when_state_action_reward_eval_are_present():
     assert result["formal_noncombat_rl_training_ready"] is False
 
 
-def test_report_names_gate_reward_and_training_guard():
+def test_report_names_export_evidence_presence_gate_and_support_grain():
     from analysis_scripts.noncombat_rl_decision_loop import (
         default_reward_contract,
         evaluate_promotion,
@@ -656,14 +656,52 @@ def test_report_names_gate_reward_and_training_guard():
         _complete_sample(category)
         for category in ["shop", "event", "route", "card_reward"]
     ]
+    for index, sample in enumerate(samples):
+        sample["trajectory_group_id"] = f"run:{index // 2}"
+        sample["outcome"]["victory"] = index < 2
     gate = evaluate_promotion(samples, reward_contract=default_reward_contract())
 
     report = render_readiness_report(samples, gate)
 
     assert "# Non-Combat RL Decision Loop Readiness" in report
-    assert "Promotion status: allowed" in report
-    assert "Reward readiness" in report
+    assert report.splitlines()[2] == (
+        "This export evidence-presence gate does not authorize formal non-combat "
+        "RL training or live-policy promotion."
+    )
+    assert "Export evidence-presence gate: passed" in report
+    assert "Evidence-presence blocking reasons: none" in report
+    assert "## Export Evidence-Presence Gate" in report
+    assert "Audit-field presence:" in report
+    assert "Matched decision rows: 4" in report
+    assert "Unique non-null trajectory groups: 2" in report
+    assert "Unique trajectory victories: 1" in report
     assert "Formal non-combat RL training: blocked" in report
+    assert "Live policy promotion: blocked" in report
+    assert "Off-policy evaluation: unsupported" in report
+    assert "Promotion status" not in report
+    assert "## Promotion Gate" not in report
+    assert "## Reward readiness" not in report
+
+
+def test_report_renders_blocked_export_evidence_presence_gate():
+    from analysis_scripts.noncombat_rl_decision_loop import (
+        evaluate_promotion,
+        render_readiness_report,
+    )
+
+    samples = [
+        _complete_sample(category)
+        for category in ["shop", "event", "route", "card_reward"]
+    ]
+    gate = evaluate_promotion(samples, reward_contract=None)
+
+    report = render_readiness_report(samples, gate)
+
+    assert "Export evidence-presence gate: blocked" in report
+    assert "Evidence-presence blocking reasons: reward_contract_missing" in report
+    assert "Formal non-combat RL training: blocked" in report
+    assert "Live policy promotion: blocked" in report
+    assert "Off-policy evaluation: unsupported" in report
 
 
 def test_report_lists_current_vs_bottled_disagreements():
@@ -801,7 +839,7 @@ def test_cli_writes_report_and_jsonl_samples(tmp_path, capsys):
     )
 
     assert exit_code == 0
-    assert "Promotion status:" in capsys.readouterr().out
+    assert "Export evidence-presence gate: blocked" in capsys.readouterr().out
     assert "Formal non-combat RL training: blocked" in report_path.read_text(
         encoding="utf-8"
     )
@@ -813,6 +851,29 @@ def test_cli_writes_report_and_jsonl_samples(tmp_path, capsys):
     assert sample["behavior_policy_commit"] == "f321cb05"
     assert sample["behavior_action_probability"] is None
     assert sample["behavior_probability_status"] == "unknown"
+
+
+def test_cli_prints_passed_export_evidence_presence_gate(
+    tmp_path, capsys, monkeypatch
+):
+    import analysis_scripts.noncombat_rl_decision_loop as decision_loop
+
+    samples = [
+        _complete_sample(category)
+        for category in ["shop", "event", "route", "card_reward"]
+    ]
+    monkeypatch.setattr(
+        decision_loop,
+        "export_samples_from_trace",
+        lambda *args, **kwargs: samples,
+    )
+
+    exit_code = decision_loop.main(["--trace", str(tmp_path / "unused.jsonl")])
+
+    assert exit_code == 0
+    stdout = capsys.readouterr().out
+    assert "Export evidence-presence gate: passed" in stdout
+    assert "Promotion status" not in stdout
 
 
 def test_direct_script_cli_writes_outputs(tmp_path):
@@ -876,7 +937,7 @@ def test_direct_script_cli_writes_outputs(tmp_path):
     )
 
     assert result.returncode == 0, result.stderr
-    assert "Promotion status:" in result.stdout
+    assert "Export evidence-presence gate: blocked" in result.stdout
     assert report_path.exists()
     assert json.loads(jsonl_path.read_text(encoding="utf-8").splitlines()[0])[
         "schema_version"
