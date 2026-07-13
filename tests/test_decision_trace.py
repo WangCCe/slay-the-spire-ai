@@ -8,6 +8,7 @@ from spirecomm.ai.decision_trace import (
 from spirecomm.ai.rl.agent import CombatRLAgent
 from spirecomm.communication.action import (
     BuyCardAction,
+    CancelAction,
     CardRewardAction,
     ChooseAction,
     ChooseMapNodeAction,
@@ -144,6 +145,30 @@ def test_combat_action_context_writes_decision_trace_when_enabled(monkeypatch, t
     assert len(records) == 1
     assert records[0]["action"]["type"] == "EndTurnAction"
     assert records[0]["floor"] == 7
+
+
+def test_noncombat_preview_defers_trace_until_selected_action_commit(
+    monkeypatch,
+    tmp_path,
+):
+    trace_path = tmp_path / "trace.jsonl"
+    monkeypatch.setenv("STS_DECISION_TRACE_FILE", str(trace_path))
+    agent = CombatRLAgent.__new__(CombatRLAgent)
+    game = _game()
+    baseline = CardRewardAction(_card("Anger", card_id="Anger"))
+
+    agent._noncombat_exploration_preview = True
+    assert agent._finalize_fallback_action(baseline, game) is baseline
+    assert not trace_path.exists()
+
+    agent._noncombat_exploration_preview = False
+    selected = CancelAction()
+    assert agent._finalize_fallback_action(selected, game) is selected
+    records = [
+        json.loads(line)
+        for line in trace_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [record["action"]["type"] for record in records] == ["CancelAction"]
 
 
 def test_decision_trace_includes_card_reward_snapshot():

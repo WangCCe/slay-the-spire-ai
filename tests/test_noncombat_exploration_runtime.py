@@ -10,18 +10,23 @@ import pytest
 from spirecomm.ai.noncombat_exploration import (
     CONFIG_ENV,
     CONFIG_SCHEMA_VERSION,
+    ExplorationDecisionResult,
     ExplorationConfigurationError,
     ExplorationPersistenceError,
 )
+from spirecomm.ai.agent import SimpleAgent
 from spirecomm.ai import noncombat_exploration_runtime as runtime_module
 from spirecomm.ai.noncombat_exploration_runtime import (
     GitSourceState,
     initialize_noncombat_exploration_runtime,
 )
+from spirecomm.ai.tracker import GameTracker
 from spirecomm.communication.action import (
     BuyCardAction,
+    CancelAction,
     CardRewardAction,
     EventOptionAction,
+    LeaveAction,
 )
 from spirecomm.spire.screen import ScreenType
 
@@ -46,6 +51,42 @@ def test_properties_fingerprint_has_comment_and_order_stable_semantic_hash(
 
     assert before["sha256"] != after["sha256"]
     assert before["semantic_sha256"] == after["semantic_sha256"]
+
+
+def test_properties_semantic_hash_respects_last_duplicate_value(tmp_path):
+    config_path = tmp_path / "config.properties"
+    config_path.write_text(
+        "command=first\ncommand=second\nverbose=false\n",
+        encoding="iso-8859-1",
+    )
+    first = runtime_module._file_fingerprint(config_path)
+    config_path.write_text(
+        "command=second\ncommand=first\nverbose=false\n",
+        encoding="iso-8859-1",
+    )
+    second = runtime_module._file_fingerprint(config_path)
+
+    assert first["semantic_sha256"] != second["semantic_sha256"]
+
+
+def test_properties_semantic_hash_decodes_java_escapes_and_continuations(
+    tmp_path,
+):
+    config_path = tmp_path / "config.properties"
+    config_path.write_text(
+        "co\\u006dmand=python \\\n"
+        "  main.py\n"
+        "verbose:false\n",
+        encoding="iso-8859-1",
+    )
+    escaped = runtime_module._file_fingerprint(config_path)
+    config_path.write_text(
+        "verbose = false\ncommand = python main.py\n",
+        encoding="iso-8859-1",
+    )
+    plain = runtime_module._file_fingerprint(config_path)
+
+    assert escaped["semantic_sha256"] == plain["semantic_sha256"]
 
 
 def _write_config(tmp_path, *, rates=None, budget=2, source_commit=SOURCE_COMMIT):
@@ -125,6 +166,44 @@ def _shop_game(card):
     game.available_commands = ["choose", "leave", "state"]
     game.cancel_available = True
     return game
+
+
+def _stateful_policy_agent(game):
+    agent = SimpleAgent.__new__(SimpleAgent)
+    agent.game = game
+    agent.skipped_cards = False
+    agent.visited_shop = True
+    agent.shop_purchase_made = False
+    agent._shop_purchase_signature = None
+    agent._shop_bought_card_this_shop = False
+    agent._shop_purged_this_shop = False
+    agent._leaving_shop_room = False
+    agent._shop_exit_waits = 0
+    agent.decision_history = []
+    agent.game_tracker = GameTracker()
+    return agent
+
+
+def _force_selection(monkeypatch, runtime, *, alternative):
+    def consider(adapter, _game):
+        selected_action_id = (
+            adapter.proposal.alternative_action_id
+            if alternative
+            else adapter.proposal.baseline_action_id
+        )
+        action = adapter.materialize_or_current(selected_action_id)
+        return ExplorationDecisionResult(
+            action=action,
+            known_propensity=True,
+            decision_id="forced-decision",
+            selected_action_id=selected_action_id,
+            selection=SimpleNamespace(
+                selected_probability_numerator=1000 if alternative else 9000,
+                selected_probability_denominator=10000,
+            ),
+        )
+
+    monkeypatch.setattr(runtime.controller, "consider", consider)
 
 
 def test_absent_config_is_inert_and_does_not_inspect_git_or_create_artifacts(
@@ -346,6 +425,134 @@ def test_zero_rate_shop_wrapper_preserves_current_action_and_shop_state(
     assert action is current
     assert vars(policy_agent) == before
     assert not Path(payload["trace_path"]).exists()
+
+
+def test_alternative_card_skip_rolls_back_baseline_bookkeeping_and_commits_skip(
+    tmp_path,
+    monkeypatch,
+):
+    runtime, _payload = _initialize(
+        tmp_path,
+        monkeypatch,
+        rates={"card_reward": 1000, "shop": 1000},
+    )
+    card = SimpleNamespace(name="Anger", card_id="Anger", price=0, upgrades=0)
+    game = _reward_game(card)
+    current = CardRewardAction(card)
+    policy_agent = _stateful_policy_agent(game)
+    runtime.begin_game("run-1")
+    _force_selection(monkeypatch, runtime, alternative=True)
+
+    def current_policy(_game):
+        policy_agent.game_tracker.record_card_choice(
+            chosen="Anger",
+            skipped=0,
+            available=["Anger"],
+        )
+        policy_agent.game_tracker.record_decision(
+            decision_type="reward",
+            confidence=0.8,
+        )
+        policy_agent.decision_history.append(
+            {"type": "card_reward", "card": "Anger"}
+        )
+        return current
+
+    action = runtime.wrap_state_callback(
+        current_policy,
+        policy_agent=policy_agent,
+    )(game)
+
+    assert isinstance(action, CancelAction)
+    assert policy_agent.skipped_cards is True
+    assert policy_agent.game_tracker.cards_obtained == []
+    assert policy_agent.game_tracker.cards_skipped == 1
+    assert policy_agent.game_tracker.total_decisions == 0
+    assert policy_agent.decision_history == []
+
+
+def test_alternative_shop_leave_rolls_back_purchase_and_commits_exit_state(
+    tmp_path,
+    monkeypatch,
+):
+    runtime, _payload = _initialize(
+        tmp_path,
+        monkeypatch,
+        rates={"card_reward": 1000, "shop": 1000},
+    )
+    card = SimpleNamespace(
+        name="Perfected Strike",
+        card_id="Perfected Strike",
+        price=50,
+        upgrades=0,
+    )
+    game = _shop_game(card)
+    current = BuyCardAction(card)
+    policy_agent = _stateful_policy_agent(game)
+    runtime.begin_game("run-1")
+    _force_selection(monkeypatch, runtime, alternative=True)
+
+    def current_policy(_game):
+        policy_agent._mark_shop_purchase(99, game.screen, bought_card=True)
+        return current
+
+    action = runtime.wrap_state_callback(
+        current_policy,
+        policy_agent=policy_agent,
+    )(game)
+
+    assert isinstance(action, LeaveAction)
+    assert policy_agent.shop_purchase_made is False
+    assert policy_agent._shop_purchase_signature is None
+    assert policy_agent._shop_bought_card_this_shop is False
+    assert policy_agent._leaving_shop_room is True
+    assert policy_agent._shop_exit_waits == 0
+
+
+def test_baseline_arm_commits_original_policy_bookkeeping(
+    tmp_path,
+    monkeypatch,
+):
+    runtime, _payload = _initialize(
+        tmp_path,
+        monkeypatch,
+        rates={"card_reward": 1000, "shop": 1000},
+    )
+    card = SimpleNamespace(name="Anger", card_id="Anger", price=0, upgrades=0)
+    game = _reward_game(card)
+    current = CardRewardAction(card)
+    policy_agent = _stateful_policy_agent(game)
+    runtime.begin_game("run-1")
+    _force_selection(monkeypatch, runtime, alternative=False)
+
+    def current_policy(_game):
+        policy_agent.game_tracker.record_card_choice(
+            chosen="Anger",
+            skipped=0,
+            available=["Anger"],
+        )
+        policy_agent.game_tracker.record_decision(
+            decision_type="reward",
+            confidence=0.8,
+        )
+        policy_agent.decision_history.append(
+            {"type": "card_reward", "card": "Anger"}
+        )
+        return current
+
+    action = runtime.wrap_state_callback(
+        current_policy,
+        policy_agent=policy_agent,
+    )(game)
+
+    assert action is current
+    assert policy_agent.skipped_cards is False
+    assert policy_agent.game_tracker.cards_obtained == ["Anger"]
+    assert policy_agent.game_tracker.cards_skipped == 0
+    assert policy_agent.game_tracker.total_decisions == 1
+    assert policy_agent.decision_history == [
+        {"type": "card_reward", "card": "Anger"}
+    ]
 
 
 def test_event_shadow_observation_never_replaces_current_action(tmp_path, monkeypatch):

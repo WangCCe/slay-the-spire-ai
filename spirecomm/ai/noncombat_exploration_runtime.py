@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import subprocess
@@ -96,9 +97,92 @@ class NonCombatExplorationRuntime:
                         exc,
                     )
 
-            current_action = current_callback(game)
+            transaction_category = _active_transaction_category(
+                game,
+                self.controller.config,
+            )
+            transaction = None
+            if transaction_category is not None:
+                if not _supports_policy_transaction(policy_agent):
+                    logger.error(
+                        "[NONCOMBAT_EXPLORATION] policy has no side-effect "
+                        "transaction; failing closed to Current"
+                    )
+                    return current_callback(game)
+                try:
+                    transaction = policy_agent.begin_noncombat_exploration_preview(
+                        game,
+                        transaction_category,
+                    )
+                except Exception as exc:
+                    logger.error(
+                        "[NONCOMBAT_EXPLORATION] preview start failed closed: %s",
+                        exc,
+                    )
+                    return current_callback(game)
+
+            try:
+                current_action = current_callback(game)
+            except Exception:
+                if transaction is not None:
+                    try:
+                        policy_agent.abort_noncombat_exploration_preview(transaction)
+                    except Exception as exc:
+                        logger.error(
+                            "[NONCOMBAT_EXPLORATION] preview abort failed: %s",
+                            exc,
+                        )
+                raise
+
+            if transaction is not None:
+                try:
+                    transaction = policy_agent.finish_noncombat_exploration_preview(
+                        transaction
+                    )
+                except Exception as exc:
+                    logger.error(
+                        "[NONCOMBAT_EXPLORATION] preview rollback failed closed: %s",
+                        exc,
+                    )
+                    return current_action
+
+            def commit_action(action: Any, *, baseline_selected: bool) -> Any:
+                if transaction is None:
+                    return action
+                try:
+                    committed = policy_agent.commit_noncombat_exploration_action(
+                        transaction,
+                        game,
+                        transaction_category,
+                        action,
+                        baseline_selected=baseline_selected,
+                    )
+                    return action if committed is None else committed
+                except Exception as exc:
+                    logger.error(
+                        "[NONCOMBAT_EXPLORATION] selected-action commit failed "
+                        "closed to Current: %s",
+                        exc,
+                    )
+                    if not baseline_selected:
+                        try:
+                            policy_agent.commit_noncombat_exploration_action(
+                                transaction,
+                                game,
+                                transaction_category,
+                                current_action,
+                                baseline_selected=True,
+                            )
+                        except Exception as restore_exc:
+                            logger.error(
+                                "[NONCOMBAT_EXPLORATION] baseline-state restore "
+                                "failed: %s",
+                                restore_exc,
+                            )
+                    return current_action
+
             if current_action is None or resolution_failed:
-                return current_action
+                return commit_action(current_action, baseline_selected=True)
             try:
                 adapter = _build_adapter(
                     game,
@@ -106,7 +190,7 @@ class NonCombatExplorationRuntime:
                     policy_agent=policy_agent,
                 )
                 if adapter is None:
-                    return current_action
+                    return commit_action(current_action, baseline_selected=True)
                 if not adapter.execution_eligible:
                     if adapter.proposal is not None:
                         logger.debug(
@@ -115,14 +199,14 @@ class NonCombatExplorationRuntime:
                             adapter.proposal.state_hash,
                             adapter.proposal.candidate_ids,
                         )
-                    return current_action
+                    return commit_action(current_action, baseline_selected=True)
                 result = self.controller.consider(adapter, game)
             except Exception as exc:
                 logger.error(
                     "[NONCOMBAT_EXPLORATION] proposal failed closed to Current: %s",
                     exc,
                 )
-                return current_action
+                return commit_action(current_action, baseline_selected=True)
             if result.known_propensity:
                 logger.info(
                     "[NONCOMBAT_EXPLORATION] proposed decision=%s category=%s selected=%s probability=%s/%s",
@@ -138,7 +222,16 @@ class NonCombatExplorationRuntime:
                     adapter.category,
                     result.fallback_reason,
                 )
-            return result.action
+            alternative_selected = bool(
+                result.known_propensity
+                and adapter.proposal is not None
+                and result.selected_action_id
+                == adapter.proposal.alternative_action_id
+            )
+            return commit_action(
+                result.action,
+                baseline_selected=not alternative_selected,
+            )
 
         return wrapped
 
@@ -293,14 +386,110 @@ def _file_fingerprint(path: Path) -> dict[str, Any]:
 
 
 def _properties_semantic_sha256(path: Path) -> str:
-    lines = path.read_text(encoding="iso-8859-1").splitlines()
-    properties = sorted(
-        line.strip()
-        for line in lines
-        if line.strip() and not line.lstrip().startswith(("#", "!"))
-    )
-    payload = ("\n".join(properties) + "\n").encode("utf-8")
+    properties: dict[str, str] = {}
+    natural_lines = path.read_text(encoding="iso-8859-1").splitlines()
+    for logical_line in _java_properties_logical_lines(natural_lines):
+        parsed = _parse_java_property(logical_line)
+        if parsed is None:
+            continue
+        key, value = parsed
+        properties[key] = value
+    payload = (
+        json.dumps(
+            properties,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def _java_properties_logical_lines(lines: list[str]):
+    pending = ""
+    continuing = False
+    for natural_line in lines:
+        if not continuing and natural_line.lstrip(" \t\f").startswith(("#", "!")):
+            yield natural_line
+            continue
+        piece = natural_line.lstrip(" \t\f") if continuing else natural_line
+        pending += piece
+        trailing_backslashes = len(pending) - len(pending.rstrip("\\"))
+        if trailing_backslashes % 2 == 1:
+            pending = pending[:-1]
+            continuing = True
+            continue
+        yield pending
+        pending = ""
+        continuing = False
+    if pending or continuing:
+        yield pending
+
+
+def _parse_java_property(line: str) -> Optional[tuple[str, str]]:
+    content = line.lstrip(" \t\f")
+    if not content or content.startswith(("#", "!")):
+        return None
+
+    key_end = len(content)
+    value_start = len(content)
+    escaped = False
+    for index, character in enumerate(content):
+        if escaped:
+            escaped = False
+            continue
+        if character == "\\":
+            escaped = True
+            continue
+        if character in "=: \t\f":
+            key_end = index
+            value_start = index
+            break
+
+    while value_start < len(content) and content[value_start] in " \t\f":
+        value_start += 1
+    if value_start < len(content) and content[value_start] in "=:":
+        value_start += 1
+    while value_start < len(content) and content[value_start] in " \t\f":
+        value_start += 1
+
+    return (
+        _decode_java_property_escapes(content[:key_end]),
+        _decode_java_property_escapes(content[value_start:]),
+    )
+
+
+def _decode_java_property_escapes(value: str) -> str:
+    decoded: list[str] = []
+    index = 0
+    escapes = {"t": "\t", "n": "\n", "r": "\r", "f": "\f"}
+    while index < len(value):
+        character = value[index]
+        if character != "\\":
+            decoded.append(character)
+            index += 1
+            continue
+        index += 1
+        if index >= len(value):
+            raise ExplorationPersistenceError(
+                "invalid trailing escape in Java properties file"
+            )
+        escaped = value[index]
+        if escaped == "u":
+            digits = value[index + 1 : index + 5]
+            if len(digits) != 4 or any(
+                digit not in "0123456789abcdefABCDEF" for digit in digits
+            ):
+                raise ExplorationPersistenceError(
+                    "invalid Unicode escape in Java properties file"
+                )
+            decoded.append(chr(int(digits, 16)))
+            index += 5
+            continue
+        decoded.append(escapes.get(escaped, escaped))
+        index += 1
+    return "".join(decoded)
 
 
 def _build_adapter(
@@ -328,3 +517,30 @@ def _build_adapter(
 def _shop_policy_agent(agent: Any) -> Any:
     fallback = getattr(agent, "fallback_agent", None)
     return fallback if fallback is not None else agent
+
+
+def _active_transaction_category(game: Any, config: Any) -> Optional[str]:
+    screen_type = getattr(game, "screen_type", None)
+    if screen_type == ScreenType.CARD_REWARD:
+        category = "card_reward"
+    elif screen_type == ScreenType.SHOP_SCREEN:
+        category = "shop"
+    else:
+        return None
+    if category not in config.enabled_categories or config.rate_bps(category) == 0:
+        return None
+    return category
+
+
+def _supports_policy_transaction(agent: Any) -> bool:
+    if agent is None:
+        return False
+    return all(
+        callable(getattr(agent, name, None))
+        for name in (
+            "begin_noncombat_exploration_preview",
+            "finish_noncombat_exploration_preview",
+            "abort_noncombat_exploration_preview",
+            "commit_noncombat_exploration_action",
+        )
+    )

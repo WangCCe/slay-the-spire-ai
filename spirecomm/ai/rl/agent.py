@@ -1104,6 +1104,7 @@ class CombatRLAgent:
         self.reward_screen_wait = 0.2
         self._reward_screen_key = None
         self._reward_screen_waited = False
+        self._noncombat_exploration_preview = False
         self._fallback_turn_key = None
         self._empty_hand_refresh_wait_key = None
 
@@ -1819,7 +1820,60 @@ class CombatRLAgent:
         wait_action = self._maybe_wait_for_empty_hand_refresh(fallback_action, game)
         if wait_action is not None:
             return wait_action
-        return self._with_combat_action_context(fallback_action, game)
+        return self._finalize_fallback_action(fallback_action, game)
+
+    def _finalize_fallback_action(self, action, game):
+        if getattr(self, "_noncombat_exploration_preview", False):
+            return action
+        return self._with_combat_action_context(action, game)
+
+    def begin_noncombat_exploration_preview(self, game, category):
+        if getattr(self, "_noncombat_exploration_preview", False):
+            raise RuntimeError("non-combat exploration preview is already active")
+        begin = getattr(
+            self.fallback_agent,
+            "begin_noncombat_exploration_preview",
+            None,
+        )
+        if not callable(begin):
+            raise RuntimeError("fallback policy does not support exploration preview")
+        self._noncombat_exploration_preview = True
+        try:
+            return begin(game, category)
+        except Exception:
+            self._noncombat_exploration_preview = False
+            raise
+
+    def finish_noncombat_exploration_preview(self, token):
+        finish = self.fallback_agent.finish_noncombat_exploration_preview
+        try:
+            return finish(token)
+        finally:
+            self._noncombat_exploration_preview = False
+
+    def abort_noncombat_exploration_preview(self, token):
+        try:
+            self.fallback_agent.abort_noncombat_exploration_preview(token)
+        finally:
+            self._noncombat_exploration_preview = False
+
+    def commit_noncombat_exploration_action(
+        self,
+        token,
+        game,
+        category,
+        action,
+        *,
+        baseline_selected,
+    ):
+        committed = self.fallback_agent.commit_noncombat_exploration_action(
+            token,
+            game,
+            category,
+            action,
+            baseline_selected=baseline_selected,
+        )
+        return self._with_combat_action_context(committed, game)
 
     @staticmethod
     def _with_combat_action_context(action: Optional[Action], game: Game) -> Optional[Action]:

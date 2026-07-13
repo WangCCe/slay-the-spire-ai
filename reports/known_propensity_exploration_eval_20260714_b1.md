@@ -32,8 +32,8 @@ At startup, a stale `start` command was rejected after the game was already in
 an event screen. This produced two adjacent ERROR rows at `01:56:42`. The agent
 recovered immediately, no later strict ERROR/CRITICAL/traceback rows occurred,
 and all 25 configured games completed. The exact context is frozen in the log
-diagnostics artifact; this is a batch limitation, not evidence of a propensity
-or outcome-join failure.
+diagnostics artifact and complete bounded raw log slices; this is a batch
+limitation, not evidence of a propensity or outcome-join failure.
 
 ## Evidence Validation
 
@@ -71,6 +71,22 @@ outcome, provenance, and isolation requirements all pass. OPE, causal uplift,
 formal non-combat RL training, and live policy promotion remain explicitly
 blocked; this report makes no policy-quality or causal-effect claim.
 
+## Post-Review Limitation
+
+Independent code review found that this batch's source commit evaluated the
+Current callback before selecting the mixture arm without rolling back its
+agent-side bookkeeping. On the 20 card-reward and 4 shop alternative records,
+the executed game action was the recorded alternative, but baseline tracker,
+decision-history, or shop-purchase state could remain visible to later policy
+calls in the same trajectory.
+
+The machine-readable qualification output predates this finding and checks
+structural evidence only. B1 therefore remains useful for replay, confirmation,
+join, support, and log-pipeline diagnostics, but it is not admissible as
+training, OPE, causal-uplift, or promotion evidence even if the shop support
+minimum is later met. A post-fix live run is required before collecting a new
+qualifying batch.
+
 ## Frozen Artifacts
 
 - Config SHA-256: `35e2cbaf91e6633019a7f8975cc42df3519c60a39701b48e805bca569e07a99f`
@@ -85,7 +101,10 @@ blocked; this report makes no policy-quality or causal-effect claim.
 - Export summary SHA-256: `2e9c3c6a48cafb403183d9ab7f0f66b9ef03c168ce3cb117381c3341a17ac910`
 - Qualification JSON SHA-256: `8819d06069f53ba397812871dba0b52329d6e9d22e2f8a09abf6ac60de27f12a`
 - Qualification Markdown SHA-256: `5cbbbdda7724ae0c28879ce506d0a045148248b26ca0560f94532943e809c997`
-- Log diagnostics SHA-256: `425b7c6c5295c94817d64d30ec39dbbd8a2e0826798454d9a82caeb72945eb20`
+- AI debug slice gzip SHA-256: `465221314ac26c11be81939ccf2d31b80cdba555d15cf5606de9978e90043657`
+- AI debug slice payload SHA-256: `2dd5cff63b7f7f3d5b887de0a6baf884ec9b94442e3ccd154f5664ed0367bc0e`
+- CommunicationMod slice SHA-256: `e264ee8d81c948e150dc26c1bf194a05e2d21fee9edf75ebfe3f79c08fd8cbb5`
+- Log diagnostics SHA-256: `f2cb13c9240820bafb5eca5a704bdce70c47b72e9115a6dd5f26af9dc29a5493`
 
 These hashes cover the repository-preserved LF bytes. The scoped
 `.gitattributes` rules prevent Windows checkout conversion from changing the
@@ -93,5 +112,5 @@ frozen evidence after commit.
 
 The run allowlist records the SHA-256, AI marker, and parsed outcome for every
 input run. The frozen trace, manifest, run copies, isolation snapshots, samples,
-export summary, qualification outputs, and log diagnostics are stored beside
-this report.
+export summary, qualification outputs, complete bounded log slices, and log
+diagnostics are stored beside this report.

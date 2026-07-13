@@ -2,6 +2,7 @@ import time
 import random
 import logging
 import sys
+from copy import deepcopy
 from datetime import datetime
 from typing import Optional
 
@@ -66,6 +67,26 @@ except ImportError:
 
 
 class SimpleAgent:
+    _NONCOMBAT_EXPLORATION_AGENT_FIELDS = (
+        "skipped_cards",
+        "shop_purchase_made",
+        "_shop_purchase_signature",
+        "_shop_bought_card_this_shop",
+        "_shop_purged_this_shop",
+        "_leaving_shop_room",
+        "_shop_exit_waits",
+        "decision_history",
+    )
+    _NONCOMBAT_EXPLORATION_TRACKER_FIELDS = (
+        "cards_obtained",
+        "cards_skipped",
+        "_last_card_choice_signature",
+        "total_decisions",
+        "combat_decisions",
+        "decision_confidences",
+        "fallback_count",
+    )
+
     LOW_VALUE_UPGRADE_PENALTIES = {
         "Finesse": 80.0,
     }
@@ -176,6 +197,7 @@ class SimpleAgent:
         self._shop_purged_this_shop = False
         self._leaving_shop_room = False
         self._shop_exit_waits = 0
+        self._noncombat_exploration_preview = False
         self._next_grid_selection_mode = None
         self.map_route = []
         self._last_route_hp_pct = None
@@ -226,6 +248,119 @@ class SimpleAgent:
 
     def _card_ids_for_tracking(self, cards):
         return [self._card_id_for_tracking(card) for card in cards]
+
+    def _capture_noncombat_exploration_state(self):
+        agent_fields = {}
+        for name in self._NONCOMBAT_EXPLORATION_AGENT_FIELDS:
+            exists = hasattr(self, name)
+            agent_fields[name] = {
+                "exists": exists,
+                "value": deepcopy(getattr(self, name)) if exists else None,
+            }
+
+        tracker_exists = hasattr(self, "game_tracker")
+        tracker = getattr(self, "game_tracker", None)
+        tracker_fields = {}
+        if tracker is not None:
+            for name in self._NONCOMBAT_EXPLORATION_TRACKER_FIELDS:
+                exists = hasattr(tracker, name)
+                tracker_fields[name] = {
+                    "exists": exists,
+                    "value": deepcopy(getattr(tracker, name)) if exists else None,
+                }
+        return {
+            "agent_fields": agent_fields,
+            "tracker_attribute_exists": tracker_exists,
+            "tracker": tracker,
+            "tracker_fields": tracker_fields,
+        }
+
+    def _restore_noncombat_exploration_state(self, snapshot):
+        for name, record in snapshot["agent_fields"].items():
+            if record["exists"]:
+                setattr(self, name, deepcopy(record["value"]))
+            elif hasattr(self, name):
+                delattr(self, name)
+
+        if not snapshot["tracker_attribute_exists"]:
+            if hasattr(self, "game_tracker"):
+                delattr(self, "game_tracker")
+            return
+        tracker = snapshot["tracker"]
+        self.game_tracker = tracker
+        if tracker is None:
+            return
+        for name, record in snapshot["tracker_fields"].items():
+            if record["exists"]:
+                setattr(tracker, name, deepcopy(record["value"]))
+            elif hasattr(tracker, name):
+                delattr(tracker, name)
+
+    def begin_noncombat_exploration_preview(self, game, category):
+        if category not in {"card_reward", "shop"}:
+            raise ValueError(f"unsupported non-combat preview category: {category}")
+        if getattr(self, "_noncombat_exploration_preview", False):
+            raise RuntimeError("non-combat exploration preview is already active")
+        token = {
+            "category": category,
+            "before": self._capture_noncombat_exploration_state(),
+            "after": None,
+        }
+        self._noncombat_exploration_preview = True
+        return token
+
+    def finish_noncombat_exploration_preview(self, token):
+        if not getattr(self, "_noncombat_exploration_preview", False):
+            raise RuntimeError("non-combat exploration preview is not active")
+        try:
+            token["after"] = self._capture_noncombat_exploration_state()
+        finally:
+            self._restore_noncombat_exploration_state(token["before"])
+            self._noncombat_exploration_preview = False
+        return token
+
+    def abort_noncombat_exploration_preview(self, token):
+        self._restore_noncombat_exploration_state(token["before"])
+        self._noncombat_exploration_preview = False
+
+    def commit_noncombat_exploration_action(
+        self,
+        token,
+        game,
+        category,
+        action,
+        *,
+        baseline_selected,
+    ):
+        if token.get("category") != category:
+            raise ValueError("non-combat preview category changed before commit")
+        if baseline_selected:
+            if token.get("after") is None:
+                raise RuntimeError("non-combat baseline state was not captured")
+            self._restore_noncombat_exploration_state(token["after"])
+            return action
+
+        self._restore_noncombat_exploration_state(token["before"])
+        if category == "card_reward":
+            if not isinstance(action, CancelAction):
+                raise ValueError("card reward exploration alternative must skip")
+            self.skipped_cards = True
+            screen = getattr(game, "screen", None)
+            reward_cards = list(getattr(screen, "cards", []) or [])
+            tracker = getattr(self, "game_tracker", None)
+            if tracker is not None and reward_cards:
+                tracker.record_card_choice(
+                    chosen=None,
+                    skipped=len(reward_cards),
+                    available=self._card_ids_for_tracking(reward_cards),
+                )
+            return action
+
+        if not isinstance(action, (LeaveAction, ProceedAction, CancelAction)):
+            raise ValueError("shop exploration alternative must exit immediately")
+        self._leaving_shop_room = True
+        self._shop_exit_waits = 0
+        return action
 
     @staticmethod
     def _grid_card_multiset_key(card):

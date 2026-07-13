@@ -468,6 +468,46 @@ def test_probability_float_near_miss_is_not_exact_replay_evidence(tmp_path):
     assert [row["reason"] for row in result.exclusions] == ["replay_mismatch"]
 
 
+@pytest.mark.parametrize(
+    ("field_path", "mutate"),
+    [
+        (("selection", "draw_bucket"), lambda value: str(value)),
+        (("selection", "draw_counter"), lambda value: float(value) + 0.9),
+        (
+            ("selection", "selected_probability_numerator"),
+            lambda value: str(value),
+        ),
+        (
+            ("selection", "distribution", 0, "numerator"),
+            lambda value: str(value),
+        ),
+    ],
+)
+def test_replay_rejects_coercible_noninteger_json_values(
+    tmp_path,
+    field_path,
+    mutate,
+):
+    config, _manifest, _selected = _build_session(tmp_path)
+
+    def corrupt_type(rows):
+        target = rows[0]
+        for key in field_path[:-1]:
+            target = target[key]
+        key = field_path[-1]
+        target[key] = mutate(target[key])
+
+    _rewrite_trace(config.trace_path, corrupt_type)
+
+    result = export_confirmed_exploration_samples(
+        config.trace_path,
+        config.manifest_path,
+    )
+
+    assert result.samples == ()
+    assert [row["reason"] for row in result.exclusions] == ["replay_mismatch"]
+
+
 def test_non_monotonic_record_timestamps_are_excluded(tmp_path):
     config, _manifest, _selected = _build_session(tmp_path)
 

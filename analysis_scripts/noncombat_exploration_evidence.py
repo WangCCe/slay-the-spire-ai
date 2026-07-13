@@ -857,8 +857,14 @@ def _selection_from_record(record: Mapping[str, Any]) -> ExplorationSelection:
     distribution = tuple(
         _probability_from_record(entry) for entry in record["distribution"]
     )
-    selected_numerator = int(record["selected_probability_numerator"])
-    selected_denominator = int(record["selected_probability_denominator"])
+    selected_numerator = _strict_record_int(
+        record,
+        "selected_probability_numerator",
+    )
+    selected_denominator = _strict_record_int(
+        record,
+        "selected_probability_denominator",
+    )
     _validate_probability_value(
         record.get("selected_action_probability"),
         selected_numerator,
@@ -868,15 +874,15 @@ def _selection_from_record(record: Mapping[str, Any]) -> ExplorationSelection:
         schema_version=str(record["schema_version"]),
         session_id=str(record["session_id"]),
         trajectory_session_id=str(record["trajectory_session_id"]),
-        decision_index=int(record["decision_index"]),
+        decision_index=_strict_record_int(record, "decision_index"),
         category=str(record["category"]),
         state_hash=str(record["state_hash"]),
         distribution=distribution,
         distribution_hash=str(record["distribution_hash"]),
         draw_input_hash=str(record["draw_input_hash"]),
-        draw_counter=int(record["draw_counter"]),
-        draw_u64=int(record["draw_u64"]),
-        draw_bucket=int(record["draw_bucket"]),
+        draw_counter=_strict_record_int(record, "draw_counter"),
+        draw_u64=_strict_record_int(record, "draw_u64"),
+        draw_bucket=_strict_record_int(record, "draw_bucket"),
         selected_action_id=str(record["selected_action_id"]),
         selected_probability_numerator=selected_numerator,
         selected_probability_denominator=selected_denominator,
@@ -884,14 +890,21 @@ def _selection_from_record(record: Mapping[str, Any]) -> ExplorationSelection:
 
 
 def _probability_from_record(record: Mapping[str, Any]) -> ActionProbability:
-    numerator = int(record["numerator"])
-    denominator = int(record["denominator"])
+    numerator = _strict_record_int(record, "numerator")
+    denominator = _strict_record_int(record, "denominator")
     _validate_probability_value(record.get("value"), numerator, denominator)
     return ActionProbability(
         action_id=str(record["action_id"]),
         numerator=numerator,
         denominator=denominator,
     )
+
+
+def _strict_record_int(record: Mapping[str, Any], field: str) -> int:
+    value = record[field]
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ExplorationEvidenceError(f"{field} must be an exact JSON integer")
+    return value
 
 
 def _validate_probability_value(value: Any, numerator: int, denominator: int) -> None:
