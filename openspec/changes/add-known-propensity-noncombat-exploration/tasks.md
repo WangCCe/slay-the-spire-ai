@@ -7,11 +7,11 @@
 
 ## 2. Shadow Proposal Adapters
 
-- [ ] 2.1 Add card-reward regression fixtures proving the Current action is unchanged and `card_reward:skip` is proposed only when the selected card maps uniquely and skip is immediately legal.
-- [ ] 2.2 Implement the side-effect-free card-reward proposal adapter and keep all non-abstention alternatives shadow-only.
-- [ ] 2.3 Add shop regression fixtures covering purchase, purge, leave, duplicate offers, post-purchase waits, and immediate exit commands; assert proposal construction does not mutate shop state.
-- [ ] 2.4 Implement the shop proposal adapter with `shop:leave` as the only executable alternative and explicit ineligibility reasons for transitional or ambiguous states.
-- [ ] 2.5 Add event and route shadow records and tests proving they never replace the Current action under this change.
+- [x] 2.1 Add card-reward regression fixtures proving the Current action is unchanged and `card_reward:skip` is proposed only when the selected card maps uniquely and skip is immediately legal.
+- [x] 2.2 Implement the side-effect-free card-reward proposal adapter and keep all non-abstention alternatives shadow-only.
+- [x] 2.3 Add shop regression fixtures covering purchase, purge, leave, duplicate offers, post-purchase waits, and immediate exit commands; assert proposal construction does not mutate shop state.
+- [x] 2.4 Implement the shop proposal adapter with `shop:leave` as the only executable alternative and explicit ineligibility reasons for transitional or ambiguous states.
+- [x] 2.5 Add event and route shadow records and tests proving they never replace the Current action under this change.
 
 ## 3. Persistence And Action Confirmation
 
