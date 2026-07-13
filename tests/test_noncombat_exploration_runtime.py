@@ -89,6 +89,26 @@ def test_properties_semantic_hash_decodes_java_escapes_and_continuations(
     assert escaped["semantic_sha256"] == plain["semantic_sha256"]
 
 
+@pytest.mark.parametrize("embedded", ["\f", "\v", "\x85"])
+def test_properties_semantic_hash_preserves_non_crlf_control_characters(
+    tmp_path,
+    embedded,
+):
+    config_path = tmp_path / "config.properties"
+    config_path.write_text(
+        f"command=foo{embedded}bar=baz\n",
+        encoding="iso-8859-1",
+    )
+    one_property = runtime_module._file_fingerprint(config_path)
+    config_path.write_text(
+        "command=foo\nbar=baz\n",
+        encoding="iso-8859-1",
+    )
+    two_properties = runtime_module._file_fingerprint(config_path)
+
+    assert one_property["semantic_sha256"] != two_properties["semantic_sha256"]
+
+
 def _write_config(tmp_path, *, rates=None, budget=2, source_commit=SOURCE_COMMIT):
     config_path = tmp_path / "exploration.json"
     payload = {

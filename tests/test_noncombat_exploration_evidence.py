@@ -571,6 +571,37 @@ def test_proposal_history_identity_budget_and_policy_are_replayed(
     assert [row["reason"] for row in result.exclusions] == [expected_reason]
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("limit", 2.0),
+        ("used_before", 0.0),
+        ("used_before", False),
+    ],
+)
+def test_proposal_history_rejects_noninteger_budget_values(
+    tmp_path,
+    field,
+    value,
+):
+    config, _manifest, _selected = _build_session(tmp_path)
+
+    def mutate_budget_type(rows):
+        rows[0]["alternative_attempt_budget"][field] = value
+
+    _rewrite_trace(config.trace_path, mutate_budget_type)
+
+    result = export_confirmed_exploration_samples(
+        config.trace_path,
+        config.manifest_path,
+    )
+
+    assert result.samples == ()
+    assert [row["reason"] for row in result.exclusions] == [
+        "alternative_budget_history_mismatch"
+    ]
+
+
 def test_duplicate_trajectory_decision_index_cannot_inflate_support(tmp_path):
     config, _manifest, _selected = _build_session(tmp_path)
 

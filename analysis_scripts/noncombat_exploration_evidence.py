@@ -836,8 +836,14 @@ def _validate_proposal_history(
         budget = record.get("alternative_attempt_budget", {})
         budget_valid = (
             isinstance(budget, Mapping)
-            and budget.get("limit") == config.per_run_alternative_budget
-            and budget.get("used_before") == state["alternative_attempts"]
+            and _exact_int_matches(
+                budget.get("limit"),
+                config.per_run_alternative_budget,
+            )
+            and _exact_int_matches(
+                budget.get("used_before"),
+                state["alternative_attempts"],
+            )
             and budget.get("selected_alternative") is selected_alternative
             and state["alternative_attempts"] < config.per_run_alternative_budget
         )
@@ -851,6 +857,10 @@ def _validate_proposal_history(
         elif selected_alternative:
             state["alternative_attempts"] += 1
     return errors
+
+
+def _exact_int_matches(value: Any, expected: int) -> bool:
+    return not isinstance(value, bool) and isinstance(value, int) and value == expected
 
 
 def _selection_from_record(record: Mapping[str, Any]) -> ExplorationSelection:

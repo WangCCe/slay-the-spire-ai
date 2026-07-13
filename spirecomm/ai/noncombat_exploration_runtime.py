@@ -387,7 +387,10 @@ def _file_fingerprint(path: Path) -> dict[str, Any]:
 
 def _properties_semantic_sha256(path: Path) -> str:
     properties: dict[str, str] = {}
-    natural_lines = path.read_text(encoding="iso-8859-1").splitlines()
+    content = path.read_text(encoding="iso-8859-1")
+    natural_lines = (
+        content.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    )
     for logical_line in _java_properties_logical_lines(natural_lines):
         parsed = _parse_java_property(logical_line)
         if parsed is None:
