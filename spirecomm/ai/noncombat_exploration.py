@@ -11,6 +11,8 @@ import hashlib
 import math
 import os
 import re
+import tempfile
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass, field, fields, is_dataclass
 from pathlib import Path
@@ -39,8 +41,13 @@ EXECUTABLE_CATEGORIES = frozenset({"card_reward", "shop"})
 MAX_CATEGORY_RATE_BPS = 1_000
 MAX_ALTERNATIVE_ATTEMPTS_PER_RUN = 2
 SELECTION_SCHEMA_VERSION = "noncombat-exploration-selection-v1"
+RECORD_SCHEMA_VERSION = "noncombat-exploration-record-v1"
+MANIFEST_SCHEMA_VERSION = "noncombat-exploration-manifest-v1"
 PROPOSAL_ROLLOUT_MODES = frozenset({"executable", "shadow", "ineligible"})
 DRAW_BUCKET_COUNT = 10_000
+RESOLUTION_STATUSES = frozenset(
+    {"confirmed", "rejected", "superseded", "terminal_unresolved"}
+)
 
 _SESSION_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _COMMIT_RE = re.compile(r"^[0-9a-fA-F]{40}$")
@@ -56,6 +63,14 @@ class ExplorationProposalError(ValueError):
 
 class ExplorationSamplingError(ValueError):
     """Raised when an action distribution cannot be sampled safely."""
+
+
+class ExplorationPersistenceError(RuntimeError):
+    """Raised when append-only exploration evidence cannot be trusted."""
+
+
+class ExplorationStateError(RuntimeError):
+    """Raised when controller lifecycle calls are inconsistent."""
 
 
 @dataclass(frozen=True)
@@ -86,6 +101,20 @@ class ExplorationConfig:
 
     def rate_bps(self, category: str) -> int:
         return self.category_rates_bps[category]
+
+    def to_record(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "session_id": self.session_id,
+            "seed": self.seed,
+            "enabled_categories": list(self.enabled_categories),
+            "category_rates_bps": dict(self.category_rates_bps),
+            "per_run_alternative_budget": self.per_run_alternative_budget,
+            "trace_path": str(self.trace_path),
+            "manifest_path": str(self.manifest_path),
+            "source_commit": self.source_commit,
+            "source_path": str(self.source_path) if self.source_path is not None else None,
+        }
 
 
 @dataclass(frozen=True)
@@ -209,6 +238,19 @@ class NonCombatProposal:
     @property
     def candidate_ids(self) -> tuple[str, ...]:
         return tuple(candidate.action_id for candidate in self.candidates)
+
+    def to_record(self) -> dict[str, Any]:
+        return {
+            "category": self.category,
+            "baseline_action_id": self.baseline_action_id,
+            "alternative_action_id": self.alternative_action_id,
+            "candidates": [candidate.to_record() for candidate in self.candidates],
+            "state": _plain_json(self.state),
+            "state_hash": self.state_hash,
+            "execution_eligible": self.execution_eligible,
+            "rollout_mode": self.rollout_mode,
+            "ineligibility_reason": self.ineligibility_reason,
+        }
 
 
 @dataclass(frozen=True)
@@ -805,6 +847,11 @@ def _proposal_state(
     )
     for volatile_key in ("timestamp", "unix_time", "source", "decision_path"):
         event.pop(volatile_key, None)
+    screen = getattr(game, "screen", None)
+    event["transition_fields"] = {
+        "for_purge": bool(getattr(screen, "for_purge", False)),
+        "purge_available": bool(getattr(screen, "purge_available", False)),
+    }
     if adapter_context:
         event["adapter_context"] = dict(adapter_context)
     return event
@@ -899,6 +946,831 @@ def _map_node_label(node: Any) -> str:
         getattr(node, "x", "?"),
         getattr(node, "y", "?"),
     )
+
+
+class ExplorationRecordStore:
+    """Strict append-only JSONL storage with duplicate and partial-line guards."""
+
+    def __init__(self, path: Path):
+        self.path = Path(path)
+        self._records: list[dict[str, Any]] = []
+        self._proposed_ids: set[str] = set()
+        self._resolved_ids: set[str] = set()
+        self._load_existing()
+
+    def _load_existing(self) -> None:
+        if not self.path.exists():
+            return
+        if not self.path.is_file():
+            raise ExplorationPersistenceError(
+                f"exploration trace is not a file: {self.path}"
+            )
+        try:
+            payload = self.path.read_bytes()
+        except OSError as exc:
+            raise ExplorationPersistenceError(
+                f"unable to read exploration trace: {exc}"
+            ) from exc
+        if payload and not payload.endswith(b"\n"):
+            raise ExplorationPersistenceError(
+                f"partial JSONL record at end of exploration trace: {self.path}"
+            )
+        for line_number, raw_line in enumerate(payload.splitlines(), start=1):
+            if not raw_line.strip():
+                raise ExplorationPersistenceError(
+                    f"blank JSONL record at line {line_number}"
+                )
+            try:
+                record = json.loads(raw_line.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise ExplorationPersistenceError(
+                    f"invalid JSONL record at line {line_number}: {exc}"
+                ) from exc
+            self._validate_record(record)
+            self._index_record(record)
+
+    def append_proposed(self, record: Mapping[str, Any]) -> None:
+        self._append(record, expected_type="proposed")
+
+    def append_resolution(self, record: Mapping[str, Any]) -> None:
+        self._append(record, expected_type="resolution")
+
+    def _append(self, record: Mapping[str, Any], *, expected_type: str) -> None:
+        try:
+            plain_record = _plain_json(_freeze_json(record))
+        except (ExplorationProposalError, TypeError) as exc:
+            raise ExplorationPersistenceError(
+                f"record is not canonical JSON data: {exc}"
+            ) from exc
+        if plain_record.get("record_type") != expected_type:
+            raise ExplorationPersistenceError(
+                f"expected {expected_type} record, got {plain_record.get('record_type')}"
+            )
+        self._validate_record(plain_record)
+        encoded = (_canonical_json(plain_record) + "\n").encode("utf-8")
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY | getattr(os, "O_BINARY", 0)
+            descriptor = os.open(str(self.path), flags, 0o600)
+            try:
+                written = os.write(descriptor, encoded)
+                if written != len(encoded):
+                    raise ExplorationPersistenceError(
+                        f"partial exploration record write: {written}/{len(encoded)} bytes"
+                    )
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+        except ExplorationPersistenceError:
+            raise
+        except OSError as exc:
+            raise ExplorationPersistenceError(
+                f"unable to append exploration record: {exc}"
+            ) from exc
+        self._index_record(plain_record)
+
+    def _validate_record(self, record: Any) -> None:
+        if not isinstance(record, Mapping):
+            raise ExplorationPersistenceError("exploration record must be an object")
+        if record.get("schema_version") != RECORD_SCHEMA_VERSION:
+            raise ExplorationPersistenceError("unsupported exploration record schema")
+        record_type = record.get("record_type")
+        if record_type not in {"proposed", "resolution"}:
+            raise ExplorationPersistenceError("unsupported exploration record type")
+        decision_id = record.get("decision_id")
+        if not isinstance(decision_id, str) or not decision_id:
+            raise ExplorationPersistenceError("record decision_id must be non-empty")
+        if record_type == "proposed":
+            if decision_id in self._proposed_ids:
+                raise ExplorationPersistenceError(
+                    f"duplicate decision_id: {decision_id}"
+                )
+            required = (
+                "session_id",
+                "trajectory_session_id",
+                "decision_index",
+                "category",
+                "proposal",
+                "selection",
+            )
+            missing = [key for key in required if key not in record]
+            if missing:
+                raise ExplorationPersistenceError(
+                    f"proposed record missing fields: {', '.join(missing)}"
+                )
+            return
+        if decision_id not in self._proposed_ids:
+            raise ExplorationPersistenceError(
+                f"resolution references unknown decision_id: {decision_id}"
+            )
+        if decision_id in self._resolved_ids:
+            raise ExplorationPersistenceError(
+                f"duplicate resolution for decision_id: {decision_id}"
+            )
+        if record.get("status") not in RESOLUTION_STATUSES:
+            raise ExplorationPersistenceError("unsupported resolution status")
+
+    def _index_record(self, record: Mapping[str, Any]) -> None:
+        plain_record = _plain_json(record)
+        self._records.append(plain_record)
+        decision_id = str(record["decision_id"])
+        if record["record_type"] == "proposed":
+            self._proposed_ids.add(decision_id)
+        else:
+            self._resolved_ids.add(decision_id)
+
+    def read_records(self) -> tuple[dict[str, Any], ...]:
+        return tuple(_plain_json(record) for record in self._records)
+
+
+@dataclass(frozen=True)
+class ExplorationDecisionResult:
+    action: Any = field(repr=False, compare=False)
+    known_propensity: bool
+    decision_id: str = ""
+    selected_action_id: str = ""
+    selection: Optional[ExplorationSelection] = None
+    fallback_reason: str = ""
+
+
+@dataclass(frozen=True)
+class _PendingExplorationDecision:
+    decision_id: str
+    proposal: NonCombatProposal
+    selection: ExplorationSelection
+    selected_candidate: ExplorationCandidate
+
+
+@dataclass(frozen=True)
+class _TransitionAssessment:
+    status: str
+    reason: str
+    evidence: Mapping[str, Any] = field(default_factory=dict)
+
+
+class NonCombatExplorationController:
+    """Persist, return, and later confirm one bounded exploration decision."""
+
+    def __init__(
+        self,
+        config: ExplorationConfig,
+        *,
+        record_store: Optional[ExplorationRecordStore] = None,
+    ):
+        self.config = config
+        self.record_store = record_store or ExplorationRecordStore(config.trace_path)
+        self._trajectory_session_id: Optional[str] = None
+        self._decision_index = 0
+        self._alternative_attempts = 0
+        self._pending: Optional[_PendingExplorationDecision] = None
+
+    @property
+    def trajectory_session_id(self) -> Optional[str]:
+        return self._trajectory_session_id
+
+    @property
+    def pending_decision_id(self) -> Optional[str]:
+        return self._pending.decision_id if self._pending is not None else None
+
+    @property
+    def alternative_attempts(self) -> int:
+        return self._alternative_attempts
+
+    def begin_trajectory(self, run_token: str) -> str:
+        if self._pending is not None:
+            raise ExplorationStateError(
+                "cannot begin a trajectory while a decision is unresolved"
+            )
+        self._trajectory_session_id = make_trajectory_session_id(
+            self.config.session_id,
+            run_token,
+        )
+        self._decision_index = 0
+        self._alternative_attempts = 0
+        return self._trajectory_session_id
+
+    def consider(
+        self,
+        adapter: ProposalAdapterResult,
+        game: Any,
+    ) -> ExplorationDecisionResult:
+        if self._trajectory_session_id is None:
+            raise ExplorationStateError("begin_trajectory must be called before consider")
+        if self._pending is not None:
+            try:
+                self.resolve_pending(game, superseded=True)
+            except ExplorationPersistenceError as exc:
+                return self._fallback(
+                    adapter,
+                    f"superseded_resolution_persistence_failed:{exc}",
+                )
+        proposal = adapter.proposal
+        if proposal is None or not proposal.execution_eligible:
+            return self._fallback(
+                adapter,
+                adapter.ineligibility_reason or "proposal_not_execution_eligible",
+            )
+        if proposal.category not in self.config.enabled_categories:
+            return self._fallback(adapter, "category_not_enabled")
+        if self.config.rate_bps(proposal.category) == 0:
+            return self._fallback(adapter, "category_rate_zero")
+        if self._alternative_attempts >= self.config.per_run_alternative_budget:
+            return self._fallback(adapter, "alternative_attempt_budget_exhausted")
+
+        decision_index = self._decision_index
+        self._decision_index += 1
+        try:
+            selection = sample_exploration(
+                self.config,
+                proposal,
+                trajectory_session_id=self._trajectory_session_id,
+                decision_index=decision_index,
+            )
+        except ExplorationSamplingError as exc:
+            return self._fallback(adapter, f"sampling_failed:{exc}")
+        replay = verify_exploration_selection(
+            self.config,
+            proposal,
+            selection,
+            trajectory_session_id=self._trajectory_session_id,
+            decision_index=decision_index,
+        )
+        if not replay.valid:
+            return self._fallback(
+                adapter,
+                f"selection_replay_failed:{','.join(replay.errors)}",
+            )
+
+        selected_candidate = _candidate_for_id(
+            proposal,
+            selection.selected_action_id,
+        )
+        if selected_candidate is None or not selected_candidate.available:
+            return self._fallback(adapter, "selected_candidate_not_available")
+        decision_id = make_decision_id(
+            self.config.session_id,
+            self._trajectory_session_id,
+            decision_index,
+            proposal.state_hash,
+        )
+        selected_alternative = (
+            selection.selected_action_id == proposal.alternative_action_id
+        )
+        record = {
+            "schema_version": RECORD_SCHEMA_VERSION,
+            "record_type": "proposed",
+            "session_id": self.config.session_id,
+            "trajectory_session_id": self._trajectory_session_id,
+            "decision_index": decision_index,
+            "decision_id": decision_id,
+            "category": proposal.category,
+            "behavior_policy_id": (
+                f"known-propensity-epsilon-v1:{self.config.session_id}"
+            ),
+            "proposal": proposal.to_record(),
+            "selection": selection.to_record(),
+            "selected_candidate": selected_candidate.to_record(),
+            "alternative_attempt_budget": {
+                "limit": self.config.per_run_alternative_budget,
+                "used_before": self._alternative_attempts,
+                "selected_alternative": selected_alternative,
+            },
+        }
+        try:
+            self.record_store.append_proposed(record)
+        except ExplorationPersistenceError as exc:
+            return self._fallback(
+                adapter,
+                f"proposal_persistence_failed:{exc}",
+            )
+
+        self._pending = _PendingExplorationDecision(
+            decision_id=decision_id,
+            proposal=proposal,
+            selection=selection,
+            selected_candidate=selected_candidate,
+        )
+        if selected_alternative:
+            self._alternative_attempts += 1
+        try:
+            action = adapter.materialize_or_current(selection.selected_action_id)
+            if selected_alternative and action is adapter.current_action:
+                raise ExplorationStateError("alternative action did not materialize")
+        except Exception as exc:
+            try:
+                self._resolve_with_status(
+                    status="rejected",
+                    reason=f"action_materialization_failed:{exc}",
+                    after_state={},
+                    evidence={},
+                )
+            except ExplorationPersistenceError:
+                pass
+            return ExplorationDecisionResult(
+                action=adapter.current_action,
+                known_propensity=False,
+                decision_id=decision_id,
+                selected_action_id=selection.selected_action_id,
+                selection=selection,
+                fallback_reason=f"action_materialization_failed:{exc}",
+            )
+        return ExplorationDecisionResult(
+            action=action,
+            known_propensity=True,
+            decision_id=decision_id,
+            selected_action_id=selection.selected_action_id,
+            selection=selection,
+        )
+
+    def resolve_pending(
+        self,
+        game: Any = None,
+        *,
+        terminal: bool = False,
+        superseded: bool = False,
+    ) -> Optional[dict[str, Any]]:
+        if self._pending is None:
+            return None
+        after_state = _proposal_state(game, None) if game is not None else {}
+        if terminal:
+            assessment = _TransitionAssessment(
+                "terminal_unresolved",
+                "trajectory_ended_before_unique_confirmation",
+            )
+        elif superseded:
+            assessment = _TransitionAssessment(
+                "superseded",
+                "new_decision_before_unique_confirmation",
+            )
+        elif game is None:
+            return None
+        else:
+            assessment = _assess_transition(self._pending, after_state)
+            if assessment.status == "pending":
+                return None
+        return self._resolve_with_status(
+            status=assessment.status,
+            reason=assessment.reason,
+            after_state=after_state,
+            evidence=assessment.evidence,
+        )
+
+    def _resolve_with_status(
+        self,
+        *,
+        status: str,
+        reason: str,
+        after_state: Mapping[str, Any],
+        evidence: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        if self._pending is None:
+            raise ExplorationStateError("no pending decision to resolve")
+        record = {
+            "schema_version": RECORD_SCHEMA_VERSION,
+            "record_type": "resolution",
+            "session_id": self.config.session_id,
+            "trajectory_session_id": self._trajectory_session_id,
+            "decision_id": self._pending.decision_id,
+            "category": self._pending.proposal.category,
+            "selected_action_id": self._pending.selection.selected_action_id,
+            "status": status,
+            "reason": reason,
+            "after_state_hash": _sha256_json(after_state),
+            "evidence": _plain_json(_freeze_json(evidence)),
+            "executed_known_propensity": status == "confirmed",
+        }
+        self.record_store.append_resolution(record)
+        self._pending = None
+        return record
+
+    def end_trajectory(self, game: Any = None) -> Optional[dict[str, Any]]:
+        resolution = self.resolve_pending(game, terminal=True)
+        self._trajectory_session_id = None
+        return resolution
+
+    @staticmethod
+    def _fallback(
+        adapter: ProposalAdapterResult,
+        reason: str,
+    ) -> ExplorationDecisionResult:
+        return ExplorationDecisionResult(
+            action=adapter.current_action,
+            known_propensity=False,
+            fallback_reason=reason,
+        )
+
+
+def make_trajectory_session_id(session_id: str, run_token: str) -> str:
+    if not isinstance(session_id, str) or not session_id:
+        raise ExplorationStateError("session_id must be non-empty")
+    if not isinstance(run_token, str) or not run_token:
+        raise ExplorationStateError("run_token must be non-empty")
+    digest = _sha256_json(
+        {
+            "namespace": "noncombat-exploration-trajectory-v1",
+            "session_id": session_id,
+            "run_token": run_token,
+        }
+    )
+    return f"trajectory-{digest[:32]}"
+
+
+def make_decision_id(
+    session_id: str,
+    trajectory_session_id: str,
+    decision_index: int,
+    state_hash: str,
+) -> str:
+    if not isinstance(decision_index, int) or isinstance(decision_index, bool):
+        raise ExplorationStateError("decision_index must be an integer")
+    if decision_index < 0:
+        raise ExplorationStateError("decision_index must be non-negative")
+    if not all(
+        isinstance(value, str) and value
+        for value in (session_id, trajectory_session_id, state_hash)
+    ):
+        raise ExplorationStateError("decision ID inputs must be non-empty strings")
+    digest = _sha256_json(
+        {
+            "namespace": "noncombat-exploration-decision-v1",
+            "session_id": session_id,
+            "trajectory_session_id": trajectory_session_id,
+            "decision_index": decision_index,
+            "state_hash": state_hash,
+        }
+    )
+    return f"decision-{digest[:32]}"
+
+
+def create_exploration_session_manifest(
+    config: ExplorationConfig,
+    *,
+    source_clean: bool,
+    python_executable: str,
+    command: list[str] | tuple[str, ...],
+    isolation_hashes: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Atomically publish one immutable session manifest without overwriting."""
+
+    if not source_clean:
+        raise ExplorationPersistenceError(
+            "tracked source must be clean before creating an exploration manifest"
+        )
+    target = Path(config.manifest_path)
+    if target.exists():
+        raise ExplorationPersistenceError(f"manifest already exists: {target}")
+    effective_config = config.to_record()
+    config_file_sha256 = None
+    if config.source_path is not None:
+        try:
+            config_file_sha256 = hashlib.sha256(
+                Path(config.source_path).read_bytes()
+            ).hexdigest()
+        except OSError as exc:
+            raise ExplorationPersistenceError(
+                f"unable to hash exploration config: {exc}"
+            ) from exc
+    manifest = {
+        "schema_version": MANIFEST_SCHEMA_VERSION,
+        "session_id": config.session_id,
+        "effective_config": effective_config,
+        "effective_config_hash": _sha256_json(effective_config),
+        "config_file_sha256": config_file_sha256,
+        "source": {
+            "commit": config.source_commit,
+            "tracked_clean": True,
+        },
+        "python_executable": str(python_executable),
+        "command": [str(part) for part in command],
+        "trace_path": str(config.trace_path),
+        "manifest_path": str(config.manifest_path),
+        "pre_session_isolation_hashes": _plain_json(
+            _freeze_json(isolation_hashes)
+        ),
+    }
+    manifest["manifest_hash"] = _sha256_json(manifest)
+    _atomic_publish_json(target, manifest)
+    return manifest
+
+
+def _atomic_publish_json(path: Path, payload: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = (_canonical_json(payload) + "\n").encode("utf-8")
+    descriptor, temp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=str(path.parent),
+    )
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(temp_name, path)
+        except FileExistsError as exc:
+            raise ExplorationPersistenceError(
+                f"manifest already exists: {path}"
+            ) from exc
+        except OSError as exc:
+            raise ExplorationPersistenceError(
+                f"unable to atomically publish manifest: {exc}"
+            ) from exc
+    finally:
+        try:
+            os.unlink(temp_name)
+        except FileNotFoundError:
+            pass
+
+
+def confirmed_exploration_decisions(path: Path) -> tuple[dict[str, Any], ...]:
+    store = ExplorationRecordStore(path)
+    proposals: dict[str, dict[str, Any]] = {}
+    confirmed: dict[str, dict[str, Any]] = {}
+    for record in store.read_records():
+        decision_id = record["decision_id"]
+        if record["record_type"] == "proposed":
+            proposals[decision_id] = record
+        elif record.get("status") == "confirmed":
+            confirmed[decision_id] = record
+    rows = []
+    for decision_id, proposal in proposals.items():
+        resolution = confirmed.get(decision_id)
+        if resolution is None:
+            continue
+        rows.append(
+            {
+                "decision_id": decision_id,
+                "executed_known_propensity": True,
+                "proposal": proposal,
+                "resolution": resolution,
+            }
+        )
+    return tuple(rows)
+
+
+def _candidate_for_id(
+    proposal: NonCombatProposal,
+    action_id: str,
+) -> Optional[ExplorationCandidate]:
+    return next(
+        (candidate for candidate in proposal.candidates if candidate.action_id == action_id),
+        None,
+    )
+
+
+def _assess_transition(
+    pending: _PendingExplorationDecision,
+    after_state: Mapping[str, Any],
+) -> _TransitionAssessment:
+    if pending.proposal.category == "card_reward":
+        return _assess_card_reward_transition(pending, after_state)
+    if pending.proposal.category == "shop":
+        return _assess_shop_transition(pending, after_state)
+    return _TransitionAssessment(
+        "rejected",
+        "unsupported_confirmation_category",
+    )
+
+
+def _assess_card_reward_transition(
+    pending: _PendingExplorationDecision,
+    after_state: Mapping[str, Any],
+) -> _TransitionAssessment:
+    before_state = pending.proposal.state
+    candidate = pending.selected_candidate
+    reward_still_open = _state_screen_is(after_state, ScreenType.CARD_REWARD)
+    before_signature = _deck_signature(before_state)
+    after_signature = _deck_signature(after_state)
+    evidence = {
+        "reward_still_open": reward_still_open,
+        "before_deck_size": sum(before_signature.values()),
+        "after_deck_size": sum(after_signature.values()),
+    }
+    if candidate.kind == "take":
+        before_count = _matching_item_count(
+            before_state.get("deck", ()),
+            candidate.raw,
+        )
+        after_count = _matching_item_count(
+            after_state.get("deck", ()),
+            candidate.raw,
+        )
+        evidence.update(
+            {
+                "selected_card_before_count": before_count,
+                "selected_card_after_count": after_count,
+            }
+        )
+        delta = after_count - before_count
+        if delta == 1:
+            return _TransitionAssessment(
+                "confirmed",
+                "selected_card_added_once",
+                evidence,
+            )
+        if delta not in {0, 1}:
+            return _TransitionAssessment(
+                "rejected",
+                "selected_card_count_transition_ambiguous",
+                evidence,
+            )
+        if reward_still_open:
+            return _TransitionAssessment("pending", "reward_transition_pending", evidence)
+        return _TransitionAssessment(
+            "rejected",
+            "reward_exited_without_selected_card",
+            evidence,
+        )
+    if candidate.kind == "skip":
+        if reward_still_open and before_signature == after_signature:
+            return _TransitionAssessment("pending", "reward_transition_pending", evidence)
+        if before_signature == after_signature and not reward_still_open:
+            return _TransitionAssessment(
+                "confirmed",
+                "reward_exited_without_deck_change",
+                evidence,
+            )
+        return _TransitionAssessment(
+            "rejected",
+            "skip_transition_changed_deck",
+            evidence,
+        )
+    return _TransitionAssessment(
+        "rejected",
+        "unsupported_card_reward_selection",
+        evidence,
+    )
+
+
+def _assess_shop_transition(
+    pending: _PendingExplorationDecision,
+    after_state: Mapping[str, Any],
+) -> _TransitionAssessment:
+    before_state = pending.proposal.state
+    candidate = pending.selected_candidate
+    shop_still_open = _state_screen_is(after_state, ScreenType.SHOP_SCREEN)
+    evidence: dict[str, Any] = {"shop_screen_still_open": shop_still_open}
+    if candidate.kind == "leave":
+        if shop_still_open:
+            return _TransitionAssessment("pending", "shop_exit_pending", evidence)
+        return _TransitionAssessment(
+            "confirmed",
+            "shop_screen_exited",
+            evidence,
+        )
+    if candidate.kind == "purge":
+        transition = after_state.get("transition_fields", {})
+        purge_grid_opened = (
+            _state_screen_is(after_state, ScreenType.GRID)
+            and bool(transition.get("for_purge", False))
+        )
+        before_gold = _optional_int(before_state.get("gold"))
+        after_gold = _optional_int(after_state.get("gold"))
+        purge_cost = _optional_int(candidate.raw.get("cost"))
+        gold_delta = _gold_delta(before_gold, after_gold)
+        deck_delta = sum(_deck_signature(after_state).values()) - sum(
+            _deck_signature(before_state).values()
+        )
+        evidence.update(
+            {
+                "purge_grid_opened": purge_grid_opened,
+                "gold_delta": gold_delta,
+                "purge_cost": purge_cost,
+                "deck_delta": deck_delta,
+            }
+        )
+        if purge_grid_opened:
+            return _TransitionAssessment("confirmed", "purge_grid_opened", evidence)
+        if purge_cost is not None and purge_cost > 0 and gold_delta == purge_cost:
+            return _TransitionAssessment(
+                "confirmed",
+                "purge_cost_uniquely_observed",
+                evidence,
+            )
+        if deck_delta == -1:
+            return _TransitionAssessment(
+                "confirmed",
+                "purged_card_uniquely_removed",
+                evidence,
+            )
+        if shop_still_open or _state_screen_is(after_state, ScreenType.GRID):
+            return _TransitionAssessment("pending", "purge_transition_pending", evidence)
+        return _TransitionAssessment(
+            "rejected",
+            "purge_transition_not_observed",
+            evidence,
+        )
+    if candidate.kind in {"buy_card", "buy_relic", "buy_potion"}:
+        inventory_key = {
+            "buy_card": "cards",
+            "buy_relic": "relics",
+            "buy_potion": "potions",
+        }[candidate.kind]
+        before_items = before_state.get("screen", {}).get(inventory_key, ())
+        after_items = after_state.get("screen", {}).get(inventory_key, ())
+        before_count = _matching_item_count(before_items, candidate.raw)
+        after_count = _matching_item_count(after_items, candidate.raw)
+        inventory_delta = before_count - after_count
+        before_gold = _optional_int(before_state.get("gold"))
+        after_gold = _optional_int(after_state.get("gold"))
+        expected_price = _optional_int(candidate.raw.get("price"))
+        gold_delta = _gold_delta(before_gold, after_gold)
+        inventory_matches = inventory_delta == 1
+        gold_matches = (
+            expected_price is not None
+            and expected_price > 0
+            and gold_delta == expected_price
+        )
+        evidence.update(
+            {
+                "before_offer_count": before_count,
+                "after_offer_count": after_count,
+                "inventory_delta": inventory_delta,
+                "gold_delta": gold_delta,
+                "expected_price": expected_price,
+                "inventory_matches": inventory_matches,
+                "gold_matches": gold_matches,
+            }
+        )
+        unexpected_gold = (
+            gold_delta is not None
+            and gold_delta != 0
+            and not gold_matches
+        )
+        if inventory_delta not in {0, 1} or unexpected_gold:
+            return _TransitionAssessment(
+                "rejected",
+                "shop_purchase_transition_ambiguous",
+                evidence,
+            )
+        if inventory_matches or gold_matches:
+            return _TransitionAssessment(
+                "confirmed",
+                "shop_purchase_uniquely_observed",
+                evidence,
+            )
+        if shop_still_open:
+            return _TransitionAssessment("pending", "shop_purchase_pending", evidence)
+        return _TransitionAssessment(
+            "rejected",
+            "shop_exited_without_purchase_evidence",
+            evidence,
+        )
+    return _TransitionAssessment(
+        "rejected",
+        "unsupported_shop_selection",
+        evidence,
+    )
+
+
+def _state_screen_is(state: Mapping[str, Any], expected: ScreenType) -> bool:
+    actual = str(state.get("screen_type", "")).upper()
+    return actual in {expected.name, f"SCREENTYPE.{expected.name}"}
+
+
+def _deck_signature(state: Mapping[str, Any]) -> Counter[tuple[str, str]]:
+    return Counter(
+        (
+            str(card.get("id", "")),
+            str(card.get("name", "")),
+        )
+        for card in state.get("deck", ())
+        if isinstance(card, Mapping)
+    )
+
+
+def _matching_item_count(items: Any, expected: Mapping[str, Any]) -> int:
+    expected_id = str(expected.get("id", ""))
+    expected_name = str(expected.get("name", ""))
+    count = 0
+    for item in items or ():
+        if not isinstance(item, Mapping):
+            continue
+        item_id = str(item.get("id", ""))
+        item_name = str(item.get("name", ""))
+        if expected_id and item_id:
+            matches = item_id == expected_id
+        else:
+            matches = item_name == expected_name
+        if matches:
+            count += 1
+    return count
+
+
+def _optional_int(value: Any) -> Optional[int]:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _gold_delta(before_gold: Optional[int], after_gold: Optional[int]) -> Optional[int]:
+    if before_gold is None or after_gold is None:
+        return None
+    return before_gold - after_gold
 
 
 def sample_exploration(

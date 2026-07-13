@@ -15,10 +15,10 @@
 
 ## 3. Persistence And Action Confirmation
 
-- [ ] 3.1 Add failing tests for Current-arm and alternative-arm proposal writes, write failure, partial records, duplicate decision IDs, per-run alternative-attempt budgets, unresolved terminal decisions, and rejected or superseded transitions.
-- [ ] 3.2 Implement append-only proposed/resolution records, stable session/trajectory/decision IDs, and atomic session-manifest creation with configuration and source hashes.
-- [ ] 3.3 Implement category-specific confirmation for card take/skip and shop purchase/purge/leave, exporting only uniquely confirmed transitions as executed evidence.
-- [ ] 3.4 Integrate persistence-before-return for both mixture arms and fail-closed fallback so an unwritable or ambiguous record always returns the unmodified Current action without a known-propensity claim.
+- [x] 3.1 Add failing tests for Current-arm and alternative-arm proposal writes, write failure, partial records, duplicate decision IDs, per-run alternative-attempt budgets, unresolved terminal decisions, and rejected or superseded transitions.
+- [x] 3.2 Implement append-only proposed/resolution records, stable session/trajectory/decision IDs, and atomic session-manifest creation with configuration and source hashes.
+- [x] 3.3 Implement category-specific confirmation for card take/skip and shop purchase/purge/leave, exporting only uniquely confirmed transitions as executed evidence.
+- [x] 3.4 Integrate persistence-before-return for both mixture arms and fail-closed fallback so an unwritable or ambiguous record always returns the unmodified Current action without a known-propensity claim.
 
 ## 4. Explicit Runtime Wiring
 
