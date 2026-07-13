@@ -1,9 +1,9 @@
 ## 1. Configuration And Exact Sampling Core
 
-- [ ] 1.1 Add failing tests for exploration-off behavior, configuration schema validation, hard rate/budget/category limits, path collisions, and invalid provenance.
-- [ ] 1.2 Implement immutable exploration configuration, proposal, candidate, distribution, and selection types in an isolated module with no Bottled, PyTorch, or checkpoint dependency.
-- [ ] 1.3 Add failing tests for unique candidate IDs, exact basis-point distributions, canonical state hashes, deterministic SHA-256 draws, selected-action probabilities, and byte-stable replay.
-- [ ] 1.4 Implement the exact fail-closed sampler and distribution replay validator, preserving integer numerator/denominator evidence alongside the compatible float field.
+- [x] 1.1 Add failing tests for exploration-off behavior, configuration schema validation, hard rate/budget/category limits, path collisions, and invalid provenance.
+- [x] 1.2 Implement immutable exploration configuration, proposal, candidate, distribution, and selection types in an isolated module with no Bottled, PyTorch, or checkpoint dependency.
+- [x] 1.3 Add failing tests for unique candidate IDs, exact basis-point distributions, canonical state hashes, deterministic SHA-256 draws, selected-action probabilities, and byte-stable replay.
+- [x] 1.4 Implement the exact fail-closed sampler and distribution replay validator, preserving integer numerator/denominator evidence alongside the compatible float field.
 
 ## 2. Shadow Proposal Adapters
 
