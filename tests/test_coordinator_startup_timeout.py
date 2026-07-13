@@ -1,6 +1,7 @@
 import pytest
 from types import SimpleNamespace
 
+import spirecomm.communication.coordinator as coordinator_module
 from spirecomm.communication.coordinator import Coordinator
 from spirecomm.communication.action import RestAction, WaitAction
 from spirecomm.spire.character import PlayerClass
@@ -15,6 +16,38 @@ def test_startup_state_wait_is_longer_than_in_game_stuck_guard():
         Coordinator.STARTUP_CONSECUTIVE_TIMEOUT_LIMIT
         > Coordinator.IN_GAME_CONSECUTIVE_TIMEOUT_LIMIT
     )
+
+
+def test_coordinator_can_defer_stdin_thread_until_rl_import_completes(monkeypatch):
+    started_targets = []
+
+    class FakeThread:
+        def __init__(self, *, target, args):
+            self.target = target
+            self.args = args
+            self.daemon = False
+            self.started = False
+
+        def start(self):
+            self.started = True
+            started_targets.append(self.target.__name__)
+
+        def is_alive(self):
+            return self.started
+
+    monkeypatch.setattr(coordinator_module.threading, "Thread", FakeThread)
+
+    coordinator = Coordinator(start_input_thread=False)
+
+    assert started_targets == ["write_stdout"]
+    assert not coordinator.input_thread.is_alive()
+    assert coordinator.output_thread.is_alive()
+
+    coordinator.start_input_thread()
+    coordinator.start_input_thread()
+
+    assert started_targets == ["write_stdout", "read_stdin"]
+    assert coordinator.input_thread.is_alive()
 
 
 def test_startup_wait_requests_state_when_main_menu_does_not_push_initial_state():

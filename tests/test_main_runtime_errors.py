@@ -5,6 +5,7 @@ from types import ModuleType
 
 import main
 from main import (
+    create_ready_coordinator,
     initialize_noncombat_exploration_if_configured,
     is_unrecoverable_run_error,
 )
@@ -27,6 +28,43 @@ def test_communication_timeout_error_is_unrecoverable():
 
 def test_generic_run_error_can_continue():
     assert not is_unrecoverable_run_error(Exception("temporary reward parsing issue"))
+
+
+def test_rl_ready_coordinator_defers_stdin_reader(monkeypatch):
+    calls = []
+
+    class FakeCoordinator:
+        def __init__(self, *, start_input_thread=True):
+            calls.append(("init", start_input_thread))
+
+        def signal_ready(self):
+            calls.append(("ready", None))
+
+    monkeypatch.setattr(main, "Coordinator", FakeCoordinator)
+
+    coordinator, input_thread_deferred = create_ready_coordinator("combat_rl")
+
+    assert isinstance(coordinator, FakeCoordinator)
+    assert input_thread_deferred is True
+    assert calls == [("init", False), ("ready", None)]
+
+
+def test_non_rl_ready_coordinator_starts_stdin_reader_immediately(monkeypatch):
+    calls = []
+
+    class FakeCoordinator:
+        def __init__(self, *, start_input_thread=True):
+            calls.append(("init", start_input_thread))
+
+        def signal_ready(self):
+            calls.append(("ready", None))
+
+    monkeypatch.setattr(main, "Coordinator", FakeCoordinator)
+
+    _coordinator, input_thread_deferred = create_ready_coordinator("optimized")
+
+    assert input_thread_deferred is False
+    assert calls == [("init", True), ("ready", None)]
 
 
 def test_absent_noncombat_config_skips_runtime_import(monkeypatch, tmp_path):

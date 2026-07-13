@@ -316,6 +316,20 @@ def load_seed_pool(seed_pool_path):
     return seeds
 
 
+def create_ready_coordinator(agent_type):
+    defer_input_thread = agent_type in {"rl", "combat_rl"}
+    logging.info("Creating CommunicationMod coordinator")
+    coordinator = Coordinator(start_input_thread=not defer_input_thread)
+    logging.info("CommunicationMod coordinator created; signaling ready")
+    coordinator.signal_ready()
+    logging.info(
+        "CommunicationMod ready signal queued; creating agent"
+        " (stdin reader deferred=%s)",
+        defer_input_thread,
+    )
+    return coordinator, defer_input_thread
+
+
 def create_agent(
     agent_type="auto",
     use_optimized=None,
@@ -862,29 +876,29 @@ if __name__ == "__main__":
     # Define player class before creating agent
     chosen_class = PlayerClass.IRONCLAD  # Fixed to Ironclad for testing
 
-    # CRITICAL: Setup coordinator and signal ready BEFORE creating agent
-    # Communication Mod has ~10 second timeout waiting for 'ready' signal
-    # RL agent creation (PyTorch import, model loading) can take 5-15 seconds
-    logging.info("Creating CommunicationMod coordinator")
-    coordinator = Coordinator()
-    logging.info("CommunicationMod coordinator created; signaling ready")
-    coordinator.signal_ready()
-    logging.info("CommunicationMod ready signal queued; creating agent")
+    # Signal ready before slow RL loading, but do not block on stdin while
+    # importing PyTorch on Windows.
+    coordinator, input_thread_deferred = create_ready_coordinator(agent_type)
 
     # Create agent with player class and RL-specific options
     # This may take several seconds for RL agents (PyTorch, model loading)
-    agent = create_agent(
-        agent_type=agent_type,
-        player_class=chosen_class,
-        training=training,
-        model_path=model_path,
-        epsilon=epsilon,
-        elite_mode=elite_route_mode,
-        rl_version=rl_version,
-        expert_mix_enabled=expert_mix_enabled,
-        expert_mix_prob=expert_mix_prob,
-        expert_warmup_steps=expert_warmup_steps,
-    )
+    try:
+        agent = create_agent(
+            agent_type=agent_type,
+            player_class=chosen_class,
+            training=training,
+            model_path=model_path,
+            epsilon=epsilon,
+            elite_mode=elite_route_mode,
+            rl_version=rl_version,
+            expert_mix_enabled=expert_mix_enabled,
+            expert_mix_prob=expert_mix_prob,
+            expert_warmup_steps=expert_warmup_steps,
+        )
+    finally:
+        if input_thread_deferred:
+            coordinator.start_input_thread()
+            logging.info("CommunicationMod stdin reader started after RL initialization")
 
     # Register callbacks after agent is created
     coordinator.register_command_error_callback(agent.handle_error)

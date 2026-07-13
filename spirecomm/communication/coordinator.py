@@ -89,7 +89,7 @@ class Coordinator:
     IN_GAME_CONSECUTIVE_TIMEOUT_LIMIT = 10
     TRANSIENT_OUT_OF_GAME_UPDATE_LIMIT = 5
 
-    def __init__(self):
+    def __init__(self, *, start_input_thread=True):
         self.input_queue = queue.Queue()
         self.output_queue = queue.Queue()
         self.input_thread = threading.Thread(
@@ -99,8 +99,10 @@ class Coordinator:
             target=write_stdout, args=(self.output_queue,)
         )
         self.input_thread.daemon = True
-        self.input_thread.start()
         self.output_thread.daemon = True
+        self._input_thread_started = False
+        if start_input_thread:
+            self.start_input_thread()
         self.output_thread.start()
         self.action_queue = collections.deque()
         self.state_change_callback = None
@@ -132,6 +134,12 @@ class Coordinator:
         self._map_choice_in_flight_fingerprint = None
         self._shop_exit_in_flight = False
         self._card_select_confirm_in_flight = False
+
+    def start_input_thread(self):
+        if self._input_thread_started:
+            return
+        self.input_thread.start()
+        self._input_thread_started = True
 
     def _maybe_queue_stability_wait(self):
         screen_type = getattr(self.last_game_state, "screen_type", None)
