@@ -1,0 +1,10 @@
+[training-batch] noncombat exploration config: D:\PycharmProjects\slay-the-spire-ai\reports\known_propensity_exploration_smoke_20260714_r6_config.json
+[training-batch] restart guidance:
+  If the game UI becomes sluggish, close Slay the Spire and ModTheSpire, then start the next bounded batch after the game returns to the main menu.
+  Keep batches small enough to inspect plateau diagnostics before raising route risk.
+[training-batch] checkpoint backup: checkpoints\rl_combat_model_ep9_steps11848.pth -> checkpoints_archive\training_batches\rl_combat_model_ep9_steps11848.pth.20260714-034606.bak
+[training-batch] checkpoint backup: checkpoints\rl_model_ep50.pth -> checkpoints_archive\training_batches\rl_model_ep50.pth.20260714-034606.bak
+[training-batch] log backup: D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug.log -> D:\SteamLibrary\steamapps\common\SlayTheSpire\logs_archive\ai_debug.log.20260714-034606.bak
+[training-batch] log rotation: truncated D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug.log
+Enhanced monster database loaded: 56 monsters
+Loaded wiki data for 364 cards

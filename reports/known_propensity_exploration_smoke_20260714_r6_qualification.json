@@ -1,0 +1,43 @@
+{
+  "blocking_conditions": [
+    "insufficient_unique_joined_trajectories",
+    "insufficient_card_reward_baseline_support",
+    "insufficient_card_reward_alternative_support",
+    "insufficient_shop_baseline_support",
+    "insufficient_shop_alternative_support"
+  ],
+  "causal_uplift_ready": false,
+  "formal_noncombat_rl_training_ready": false,
+  "isolation_verified": true,
+  "known_propensity_exploration_data_ready": false,
+  "live_policy_promotion_ready": false,
+  "metrics": {
+    "candidate_legal": 8,
+    "category_arm_support": {
+      "card_reward": {
+        "alternative": 1,
+        "baseline": 2
+      },
+      "shop": {
+        "alternative": 1,
+        "baseline": 0
+      }
+    },
+    "confirmed": 8,
+    "eligible_proposals": 8,
+    "exported_samples": 8,
+    "floor_distribution": {
+      "16": 1
+    },
+    "killed_by_distribution": {
+      "Hexaghost": 1
+    },
+    "outcome_matched_samples": 4,
+    "replay_valid": 8,
+    "unique_joined_trajectories": 1,
+    "verified_propensities": 8,
+    "victories": 0
+  },
+  "ope_ready": false,
+  "provenance_verified": true
+}

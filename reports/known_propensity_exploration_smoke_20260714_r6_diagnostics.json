@@ -1,0 +1,63 @@
+{
+  "ai_debug": {
+    "compressed_sha256": "c601a3d146437bd8d79cbfd56e6b877c7ea9b07203b3d8c581e6bd49b5d49bd5",
+    "compressed_size": 86313,
+    "line_count": 10924,
+    "path": "known_propensity_exploration_smoke_20260714_r6_ai_debug.log.gz",
+    "payload_sha256": "71a04a067fdfcc196637d6c5fa3bb5185eb269042fcbbfbd0b5376fe9140399d",
+    "payload_size": 1022541,
+    "strict_error_count": 2,
+    "strict_errors": [
+      "2026-07-14 03:46:26,686 - ERROR - CombatRLAgent error: Invalid command: start. Possible commands: [choose, key, click, wait, state]",
+      "2026-07-14 03:46:26,687 - ERROR - Game error: Invalid command: start. Possible commands: [choose, key, click, wait, state]"
+    ]
+  },
+  "ai_marker": 1783972055,
+  "communication_mod": {
+    "line_count": 10,
+    "path": "known_propensity_exploration_smoke_20260714_r6_communication_mod_errors_slice.log",
+    "sha256": "fbdcbe9b54a04989fed23e0e6e6b4aeb2953d0477480149297b8659d020d912c",
+    "size": 1102,
+    "source_first_line": 8847,
+    "source_last_line": 8856,
+    "suspicious_count": 0,
+    "suspicious_lines": []
+  },
+  "completed_run": "1783972051.run",
+  "schema_version": "known-propensity-post-fix-smoke-diagnostics-v1",
+  "selected_action_trace": {
+    "actions": [
+      {
+        "action": {
+          "command": "leave",
+          "type": "LeaveAction"
+        },
+        "floor": 2,
+        "screen_type": "ScreenType.SHOP_SCREEN",
+        "source": "combat_rl",
+        "unix_time": 1783971991.788
+      },
+      {
+        "action": {
+          "command": "cancel",
+          "type": "CancelAction"
+        },
+        "floor": 10,
+        "screen_type": "ScreenType.CARD_REWARD",
+        "source": "combat_rl",
+        "unix_time": 1783972010.205
+      }
+    ],
+    "compressed_sha256": "eb12b700e72a920937bd17b7b8eb1eb558a81d93e0c697beea9fc1dd6e3a6161",
+    "compressed_size": 1015,
+    "line_count": 2,
+    "path": "known_propensity_exploration_smoke_20260714_r6_selected_action_trace.jsonl.gz",
+    "payload_sha256": "c885cbcf021941ae73364791f7c0dc69b8bdf57ce8fac9d2bba2a1001a613b14",
+    "payload_size": 5715,
+    "scan_tail_bytes": 250000000,
+    "source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\ai_decision_trace_clean.jsonl",
+    "source_size": 2083084207
+  },
+  "session_id": "known-propensity-smoke-20260714-r6",
+  "source_commit": "830e376a1893cdd487f1b0e0e0af39ccdb766b70"
+}

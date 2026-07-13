@@ -1,0 +1,17 @@
+{
+  "runs": [
+    {
+      "ai_marked": true,
+      "ai_marker": 1783972055,
+      "floor_reached": 16,
+      "frozen_path": "known_propensity_exploration_smoke_20260714_r6_run_1783972051.run",
+      "killed_by": "Hexaghost",
+      "playtime": 64,
+      "run_file": "1783972051.run",
+      "sha256": "62d49e8783e67ded817314cfa209fe775dbfda482edd1a92daa32e94e8a87838",
+      "victory": false
+    }
+  ],
+  "schema_version": "known-propensity-run-allowlist-v1",
+  "session_id": "known-propensity-smoke-20260714-r6"
+}

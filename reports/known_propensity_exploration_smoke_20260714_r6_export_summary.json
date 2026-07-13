@@ -1,0 +1,52 @@
+{
+  "exclusions": [],
+  "isolation_comparison": {
+    "mismatches": [],
+    "verified": true
+  },
+  "isolation_verified": true,
+  "outcomes": [
+    {
+      "ai_marked": true,
+      "end_unix": 1783972051,
+      "floor_reached": 16,
+      "killed_by": "Hexaghost",
+      "playtime": 64,
+      "run_file": "1783972051.run",
+      "start_unix": 1783971987,
+      "victory": false
+    }
+  ],
+  "provenance_comparison": {
+    "expected_source_commit": "830e376a1893cdd487f1b0e0e0af39ccdb766b70",
+    "manifest_source_commit": "830e376a1893cdd487f1b0e0e0af39ccdb766b70",
+    "mismatches": [],
+    "verified": true
+  },
+  "provenance_verified": true,
+  "run_allowlist": [
+    "1783972051.run"
+  ],
+  "schema_version": "known-propensity-smoke-export-v1",
+  "session_id": "known-propensity-smoke-20260714-r6",
+  "source_commit": "830e376a1893cdd487f1b0e0e0af39ccdb766b70",
+  "validation_summary": {
+    "candidate_legal": 8,
+    "confirmed": 8,
+    "eligible_proposals": 8,
+    "enabled_categories": [
+      "card_reward",
+      "shop"
+    ],
+    "excluded": 0,
+    "exclusion_reasons": {},
+    "exported": 8,
+    "isolation_verified": true,
+    "outcome_matched": 4,
+    "proposed_records": 8,
+    "provenance_verified": true,
+    "replay_valid": 8,
+    "resolution_records": 8,
+    "shadow_only": 0
+  }
+}
