@@ -31,6 +31,11 @@ The system SHALL represent each considered decision as a uniquely identified Cur
 - **THEN** the controller SHALL return the unmodified Current action
 - **AND** it SHALL record a specific ineligibility reason without claiming alternative-action support
 
+#### Scenario: Selected arm owns action-specific side effects
+- **WHEN** an executable card-reward or shop decision evaluates a Current callback that updates tracker, decision-history, shop-transition, or decision-trace state
+- **THEN** the system SHALL evaluate those updates inside a reversible preview and restore the pre-callback state before sampling
+- **AND** it SHALL commit only the selected arm's action-specific bookkeeping and final decision trace exactly once
+
 ### Requirement: Category Rollout Boundary
 The system SHALL execute alternatives only for the explicitly supported first-stage categories and SHALL keep other categories shadow-only.
 
@@ -60,6 +65,11 @@ The system SHALL compute and persist an exact behavior distribution and determin
 - **WHEN** candidate IDs are duplicated, the distribution is incomplete, the selected action is unavailable, or canonical replay inputs are missing
 - **THEN** the system SHALL return the unmodified Current action
 - **AND** it SHALL NOT emit a known behavior probability
+
+#### Scenario: Coercible numeric values are not exact evidence
+- **WHEN** a replay-critical decision index, draw, probability numerator or denominator, or alternative-budget field is encoded as a boolean, float, or numeric string
+- **THEN** the validator SHALL reject the record instead of coercing the value to an integer
+- **AND** the record SHALL NOT contribute known-propensity support
 
 ### Requirement: Persisted And Confirmed Exploration Actions
 The system SHALL persist every eligible sampled mixture action before returning it and SHALL confirm its game transition before treating it as executed evidence.
@@ -106,6 +116,11 @@ The system SHALL freeze enough session and decision provenance to audit a bounde
 - **WHEN** the offline validator reads the session manifest and append-only records
 - **THEN** it SHALL verify configuration hashes, state hashes, candidate uniqueness, exact distributions, draws, selections, confirmations, and conservative run joins
 - **AND** it SHALL list every exclusion or mismatch by reason
+
+#### Scenario: CommunicationMod configuration is compared semantically
+- **WHEN** the launcher rewrites Java Properties comments, ordering, or timestamp text without changing effective values
+- **THEN** the isolation comparison SHALL preserve equivalence using Java continuation, escape, natural-line, and last-value-wins semantics
+- **AND** any effective command or setting change SHALL produce a different semantic hash
 
 ### Requirement: Known-Propensity Data Qualification Gate
 The system SHALL qualify only the structural and statistical support of the collected behavior data, separately from policy-quality or RL readiness.

@@ -26,7 +26,9 @@ This change introduces the first live-facing data collection experiment. It must
 
 ### Add a proposal envelope beside the existing Current decision
 
-`spirecomm/ai/noncombat_exploration.py` will own immutable proposal, candidate, configuration, distribution, and selection records. Existing decision surfaces continue to compute the Current action first. Category adapters then map that result and any permitted alternative into stable high-level candidate IDs without mutating agent state.
+`spirecomm/ai/noncombat_exploration.py` will own immutable proposal, candidate, configuration, distribution, and selection records. Existing decision surfaces continue to compute the Current action first. Because the legacy card-reward and shop callbacks also update tracker, decision-history, and shop-transition fields, an active executable category evaluates Current inside an action-scoped preview transaction. The wrapper captures the resulting Current state, restores the pre-callback state before sampling, and commits only the selected arm. CombatRL decision trace and expected-action recording are likewise deferred until that commit. A transaction failure fails closed to the Current action.
+
+Category adapters map the previewed Current result and any permitted alternative into stable high-level candidate IDs without mutating agent state.
 
 The first adapters cover `card_reward` and `shop`. Card rewards can propose `card_reward:skip` only when skipping is immediately legal. Shops can propose `shop:leave` only when an immediate leave, cancel, or proceed command can materialize the high-level action; post-purchase waits and transitional screens are ineligible. If the Current action is already the abstention action, cannot map uniquely, or has side effects during proposal construction, the controller records an ineligibility reason and returns it unchanged.
 
@@ -42,13 +44,15 @@ Exploration is off when `STS_NONCOMBAT_EXPLORATION_CONFIG` is absent. The refere
 
 `scripts/run_training_batch.py` may pass the configuration path through the child environment for an explicit bounded eval. It must not rewrite CommunicationMod `config.properties`. The effective configuration, source commit, tracked-clean state, command, Python executable, and hashes are frozen in a session manifest before the first run. A non-clean tracked worktree cannot start a qualification batch.
 
+CommunicationMod isolation also records a semantic hash of the effective Java Properties mapping. Parsing follows Java's CR, LF, and CRLF natural-line rules, continuation and escape handling, and last-value-wins duplicate-key behavior. Comment, order, or timestamp-only rewrites may therefore compare equal, while any effective command or setting change remains detectable.
+
 Alternative: add several independent command-line flags. Rejected because a single versioned configuration is easier to hash, review, replay, and associate with the resulting data.
 
 ### Use exact deterministic sampling
 
 For an eligible binary proposal, the alternative receives `epsilon_bps / 10000` probability and the Current action receives the remainder. The sampler derives a 64-bit draw from SHA-256 over canonical `(schema, session_id, seed, trajectory_session_id, decision_index, state_hash)` input. Distribution records store exact integer numerators and denominators, the draw, input hash, selected action ID, and selected-action probability; floats are derived only for compatibility with the existing v2 sample field.
 
-The state hash covers the normalized state and ordered candidate payload used to make the decision. Replaying the same proposal and configuration must reproduce the same distribution and selection. Duplicate candidate IDs, a distribution that does not sum exactly to one, or a selected action outside the candidate set makes the proposal ineligible.
+The state hash covers the normalized state and ordered candidate payload used to make the decision. Replaying the same proposal and configuration must reproduce the same distribution and selection. Replay-critical draw, probability, decision-index, and budget fields must be actual non-boolean JSON integers; numeric strings and floats are not coercible evidence. Duplicate candidate IDs, an invalid exact field, a distribution that does not sum exactly to one, or a selected action outside the candidate set makes the proposal ineligible.
 
 Alternative: use process-global `random`. Rejected because retries and unrelated calls would change the sequence and prevent independent replay.
 
@@ -64,7 +68,7 @@ Alternative: treat the returned Python action as executed. Rejected because Comm
 
 ### Keep exploration evidence and policy evidence separate
 
-The canonical exporter adds an additive v3 exploration block while retaining v1/v2 readers. Confirmed records provide `behavior_policy_id=known_propensity_abstention_mix`, exact candidate probabilities, selected probability, session/decision IDs, replay status, and source hashes. Shadow, rejected, unresolved, or unmatched rows remain diagnostic and cannot satisfy known-propensity support.
+The canonical exporter adds an additive v3 exploration block while retaining v1/v2 readers. Confirmed records provide a session-scoped `behavior_policy_id=known-propensity-epsilon-v1:<session_id>`, exact candidate probabilities, selected probability, session/decision IDs, replay status, and source hashes. Shadow, rejected, unresolved, or unmatched rows remain diagnostic and cannot satisfy known-propensity support.
 
 The offline validator recomputes state hashes, candidate uniqueness, distributions, draws, selections, confirmation joins, and `.run` joins. Its report includes unique trajectories, eligible and confirmed decisions, baseline/alternative support by category, propensity coverage, replay failures, outcome coverage, floor/killed-by distributions, and victories. Bottled and pilot predictions may be joined afterward as labels, but they do not alter behavior provenance.
 
@@ -79,7 +83,7 @@ Passing sets only `known_propensity_exploration_data_ready=true`. `ope_ready`, `
 - **Abstention-only support is narrow** -> Treat it as instrumentation evidence, not a generally improved policy; richer alternatives require a later gated change.
 - **Low epsilon may require many runs to reach five alternative selections** -> Use a bounded batch and report the shortfall rather than raising the hard 10 percent ceiling.
 - **Action confirmation can be ambiguous across transitional screens** -> Exclude ambiguous records and add category fixtures from fresh traces before broadening eligibility.
-- **Proposal construction could accidentally mutate shop state** -> Keep proposal adapters pure, regression-test baseline equivalence with exploration off, and materialize the leave action only after selection.
+- **Previewing Current can leak baseline bookkeeping into the alternative arm** -> Snapshot only action-scoped card/shop policy state, roll it back before sampling, commit the selected arm once, and regression-test both SimpleAgent and CombatRL trace behavior.
 - **Trace persistence can fail while gameplay continues** -> Fail closed to Current before any alternative is returned and expose persistence failures in logs and reports.
 - **A qualified batch could be mistaken for OPE readiness** -> Emit separate readiness fields with permanent false values for OPE, causal claims, formal RL, and promotion.
 
