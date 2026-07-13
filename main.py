@@ -493,6 +493,37 @@ def create_agent(
     return SimpleAgent(chosen_class=player_class, elite_mode=elite_mode) if player_class else SimpleAgent(elite_mode=elite_mode)
 
 
+def initialize_noncombat_exploration_if_configured(
+    *,
+    environ=None,
+    repo_root=None,
+    command=None,
+    python_executable=None,
+    training=False,
+    agent_type="optimized",
+    isolation_hashes=None,
+):
+    """Keep normal startup inert unless an explicit config path is present."""
+
+    environment = os.environ if environ is None else environ
+    raw_path = environment.get("STS_NONCOMBAT_EXPLORATION_CONFIG")
+    if raw_path is None or not str(raw_path).strip():
+        return None
+    from spirecomm.ai.noncombat_exploration_runtime import (
+        initialize_noncombat_exploration_runtime,
+    )
+
+    return initialize_noncombat_exploration_runtime(
+        environ=environment,
+        repo_root=Path(repo_root or Path(__file__).resolve().parent),
+        command=list(command or sys.argv),
+        python_executable=str(python_executable or sys.executable),
+        training=bool(training),
+        agent_type=str(agent_type),
+        isolation_hashes=isolation_hashes,
+    )
+
+
 if __name__ == "__main__":
     # Parse command line arguments
     agent_type = "auto"
@@ -627,6 +658,11 @@ if __name__ == "__main__":
         choices=["conservative", "aggressive"],
         default="aggressive",
         help="Map routing strategy for elites: conservative (avoid) or aggressive (seek) (default: aggressive)",
+    )
+    parser.add_argument(
+        "--noncombat-exploration-dry-run",
+        action="store_true",
+        help="Validate an explicit non-combat exploration session and exit before game startup.",
     )
     parser.add_argument(
         "mode",
@@ -797,6 +833,32 @@ if __name__ == "__main__":
     elite_route_mode = args.elite_route
     logging.info(f"Elite route mode: {elite_route_mode}")
 
+    try:
+        exploration_runtime = initialize_noncombat_exploration_if_configured(
+            environ=os.environ,
+            repo_root=Path(__file__).resolve().parent,
+            command=[sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]],
+            python_executable=sys.executable,
+            training=training,
+            agent_type=agent_type,
+        )
+    except Exception as exc:
+        logging.critical(
+            "Non-combat exploration startup rejected: %s: %s",
+            type(exc).__name__,
+            exc,
+        )
+        sys.exit(2)
+    if args.noncombat_exploration_dry_run:
+        if exploration_runtime is None:
+            logging.critical(
+                "--noncombat-exploration-dry-run requires "
+                "STS_NONCOMBAT_EXPLORATION_CONFIG"
+            )
+            sys.exit(2)
+        logging.info("Non-combat exploration dry-run completed successfully")
+        sys.exit(0)
+
     # Define player class before creating agent
     chosen_class = PlayerClass.IRONCLAD  # Fixed to Ironclad for testing
 
@@ -826,7 +888,13 @@ if __name__ == "__main__":
 
     # Register callbacks after agent is created
     coordinator.register_command_error_callback(agent.handle_error)
-    coordinator.register_state_change_callback(agent.get_next_action_in_game)
+    state_change_callback = agent.get_next_action_in_game
+    if exploration_runtime is not None:
+        state_change_callback = exploration_runtime.wrap_state_callback(
+            state_change_callback,
+            policy_agent=agent,
+        )
+    coordinator.register_state_change_callback(state_change_callback)
     coordinator.register_out_of_game_callback(agent.get_next_action_out_of_game)
 
     # Play games forever - IRONCLAD ONLY for testing
@@ -898,6 +966,18 @@ if __name__ == "__main__":
             # RL agent doesn't need change_class, just reset
             agent.reset()
 
+        if exploration_runtime is not None:
+            try:
+                exploration_runtime.begin_game(
+                    f"game-{game_count}:seed-{active_seed or 'random'}"
+                )
+            except Exception as exc:
+                logging.critical(
+                    "Could not begin non-combat exploration trajectory: %s",
+                    exc,
+                )
+                break
+
         # Play the game
         try:
             result = coordinator.play_one_game(
@@ -943,6 +1023,19 @@ if __name__ == "__main__":
 
             # Continue to next game instead of crashing
             continue
+        finally:
+            if exploration_runtime is not None:
+                terminal_state = (
+                    getattr(coordinator, "game_over_state", None)
+                    or getattr(coordinator, "last_game_state", None)
+                )
+                try:
+                    exploration_runtime.end_game(terminal_state)
+                except Exception as exc:
+                    logging.error(
+                        "Could not finalize non-combat exploration trajectory: %s",
+                        exc,
+                    )
 
         # Record game result if statistics available or RL agent in training
         if is_rl_agent and training:

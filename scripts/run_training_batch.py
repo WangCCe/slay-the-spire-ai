@@ -52,8 +52,6 @@ def build_main_command(args):
         str(main_path),
         "--agent",
         args.agent,
-        "--rl-version",
-        args.rl_version,
         "--elite-route",
         phase["elite_route"],
         "--max-games",
@@ -62,25 +60,28 @@ def build_main_command(args):
         str(args.ascension),
     ]
 
-    if eval_mode:
-        cmd.append("--eval")
-    else:
-        cmd.append("--train")
+    is_rl_agent = args.agent in {"rl", "combat_rl"}
+    if is_rl_agent:
+        cmd.extend(["--rl-version", args.rl_version])
+        if eval_mode:
+            cmd.append("--eval")
+        else:
+            cmd.append("--train")
 
-    epsilon = getattr(args, "epsilon", None)
-    if epsilon is not None:
-        cmd.extend(["--epsilon", str(epsilon)])
-    if args.model:
-        cmd.extend(["--model", args.model])
+        epsilon = getattr(args, "epsilon", None)
+        if epsilon is not None:
+            cmd.extend(["--epsilon", str(epsilon)])
+        if args.model:
+            cmd.extend(["--model", args.model])
     if args.seed:
         cmd.extend(["--seed", args.seed])
     if args.seed_pool:
         cmd.extend(["--seed-pool", args.seed_pool])
-    if args.expert_mix and not eval_mode:
+    if is_rl_agent and args.expert_mix and not eval_mode:
         cmd.append("--expert-mix")
-    if args.expert_mix_prob is not None and not eval_mode:
+    if is_rl_agent and args.expert_mix_prob is not None and not eval_mode:
         cmd.extend(["--expert-mix-prob", str(args.expert_mix_prob)])
-    if args.expert_mix_warmup is not None and not eval_mode:
+    if is_rl_agent and args.expert_mix_warmup is not None and not eval_mode:
         cmd.extend(["--expert-mix-warmup", str(args.expert_mix_warmup)])
 
     return cmd
@@ -103,6 +104,9 @@ def build_child_env(args):
         if not sim_trace_path:
             sim_trace_path = str(Path(args.game_dir) / "sim_divergence_trace.jsonl")
         env["STS_SIM_DIVERGENCE_TRACE_FILE"] = sim_trace_path
+    exploration_config = getattr(args, "noncombat_exploration_config", None)
+    if exploration_config:
+        env["STS_NONCOMBAT_EXPLORATION_CONFIG"] = str(exploration_config)
     return env
 
 
@@ -246,9 +250,9 @@ def parse_args():
     )
     parser.add_argument(
         "--agent",
-        choices=["rl", "combat_rl"],
+        choices=["optimized", "rl", "combat_rl"],
         default="combat_rl",
-        help="Training agent type.",
+        help="Agent type; optimized runs a bounded no-training evaluation.",
     )
     parser.add_argument(
         "--rl-version",
@@ -316,6 +320,11 @@ def parse_args():
         help="Do not enable STS_SIM_DIVERGENCE_TRACE_FILE for the child process.",
     )
     parser.add_argument(
+        "--noncombat-exploration-config",
+        default=None,
+        help="Explicit configuration passed as STS_NONCOMBAT_EXPLORATION_CONFIG.",
+    )
+    parser.add_argument(
         "--truncate-log-after-backup",
         action="store_true",
         help="Clear the active log after copying it. Use only between batches.",
@@ -351,6 +360,12 @@ def main():
     sim_trace_path = child_env.get("STS_SIM_DIVERGENCE_TRACE_FILE")
     if sim_trace_path:
         print(f"[training-batch] sim divergence trace: {sim_trace_path}", file=sys.stderr)
+    exploration_config = child_env.get("STS_NONCOMBAT_EXPLORATION_CONFIG")
+    if exploration_config:
+        print(
+            f"[training-batch] noncombat exploration config: {exploration_config}",
+            file=sys.stderr,
+        )
     print_restart_guidance(args)
 
     if args.dry_run:

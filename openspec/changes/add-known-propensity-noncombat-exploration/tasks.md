@@ -22,9 +22,9 @@
 
 ## 4. Explicit Runtime Wiring
 
-- [ ] 4.1 Add failing integration tests for absent, valid, invalid, and tracked-dirty `STS_NONCOMBAT_EXPLORATION_CONFIG` startup, including per-game controller reset and no session artifact on the default path.
-- [ ] 4.2 Wire the explicit configuration into `main.py` and the bounded batch runner without editing CommunicationMod configuration or changing normal `optimized`/`combat_rl` defaults.
-- [ ] 4.3 Add exploration-off and zero-rate equivalence tests over representative shop/card-reward fixtures, plus guards proving no pilot model or combat checkpoint is loaded or written.
+- [x] 4.1 Add failing integration tests for absent, valid, invalid, and tracked-dirty `STS_NONCOMBAT_EXPLORATION_CONFIG` startup, including per-game controller reset and no session artifact on the default path.
+- [x] 4.2 Wire the explicit configuration into `main.py` and the bounded batch runner without editing CommunicationMod configuration or changing normal `optimized`/`combat_rl` defaults.
+- [x] 4.3 Add exploration-off and zero-rate equivalence tests over representative shop/card-reward fixtures, plus guards proving no pilot model or combat checkpoint is loaded or written.
 - [ ] 4.4 Run a dry-run process smoke with the Windows production Python and verify startup, manifest provenance, default behavior, and clean shutdown before any nonzero exploration batch.
 
 ## 5. Canonical Export And Qualification Report

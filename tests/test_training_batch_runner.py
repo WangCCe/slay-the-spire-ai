@@ -24,6 +24,7 @@ class Args:
     skip_decision_trace = False
     sim_divergence_trace_path = None
     skip_sim_divergence_trace = False
+    noncombat_exploration_config = None
 
 
 def test_conservative_batch_command_defaults_to_safe_route():
@@ -63,6 +64,23 @@ def test_eval_batch_command_forwards_eval_without_train():
     assert "--train" not in cmd
     assert "--epsilon" in cmd
     assert cmd[cmd.index("--epsilon") + 1] == "0.05"
+
+
+def test_optimized_exploration_batch_never_enables_training_or_rl_loading_flags():
+    args = Args()
+    args.agent = "optimized"
+    args.eval = False
+    args.model = "checkpoints/should-not-load.pth"
+    args.epsilon = 0.5
+
+    cmd = build_main_command(args)
+
+    assert cmd[cmd.index("--agent") + 1] == "optimized"
+    assert "--train" not in cmd
+    assert "--eval" not in cmd
+    assert "--rl-version" not in cmd
+    assert "--model" not in cmd
+    assert "--epsilon" not in cmd
 
 
 def test_batch_child_env_enables_default_decision_trace(monkeypatch):
@@ -111,6 +129,21 @@ def test_batch_child_env_can_skip_sim_divergence_trace(monkeypatch):
     env = build_child_env(args)
 
     assert "STS_SIM_DIVERGENCE_TRACE_FILE" not in env
+
+
+def test_batch_child_env_forwards_explicit_noncombat_exploration_config(
+    monkeypatch,
+):
+    monkeypatch.delenv("STS_NONCOMBAT_EXPLORATION_CONFIG", raising=False)
+    args = Args()
+    args.noncombat_exploration_config = r"D:\tmp\noncombat-exploration.json"
+
+    env = build_child_env(args)
+
+    assert (
+        env["STS_NONCOMBAT_EXPLORATION_CONFIG"]
+        == r"D:\tmp\noncombat-exploration.json"
+    )
 
 
 def test_run_main_command_explicitly_inherits_stdio(monkeypatch):
