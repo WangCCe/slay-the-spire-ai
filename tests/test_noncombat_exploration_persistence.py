@@ -148,7 +148,7 @@ def test_current_arm_is_persisted_before_return_with_exact_probability(tmp_path)
     adapter = build_card_reward_proposal(game, current)
     config = _config_for_arm(tmp_path, adapter.proposal, adapter.proposal.baseline_action_id)
     controller = NonCombatExplorationController(config)
-    trajectory_id = controller.begin_trajectory("run-1")
+    trajectory_id = controller.begin_trajectory("run-1", started_unix=1780000000.25)
 
     result = controller.consider(adapter, game)
 
@@ -162,6 +162,8 @@ def test_current_arm_is_persisted_before_return_with_exact_probability(tmp_path)
     assert records[0]["record_type"] == "proposed"
     assert records[0]["decision_id"] == result.decision_id
     assert records[0]["trajectory_session_id"] == trajectory_id
+    assert records[0]["trajectory_started_unix"] == 1780000000.25
+    assert records[0]["proposed_unix"] >= records[0]["trajectory_started_unix"]
     assert records[0]["selection"]["selected_action_id"] == result.selected_action_id
     assert controller.pending_decision_id == result.decision_id
 

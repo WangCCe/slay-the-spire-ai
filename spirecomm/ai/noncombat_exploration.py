@@ -12,6 +12,7 @@ import math
 import os
 import re
 import tempfile
+import time
 from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass, field, fields, is_dataclass
@@ -1116,10 +1117,13 @@ class NonCombatExplorationController:
         config: ExplorationConfig,
         *,
         record_store: Optional[ExplorationRecordStore] = None,
+        clock: Callable[[], float] = time.time,
     ):
         self.config = config
         self.record_store = record_store or ExplorationRecordStore(config.trace_path)
+        self._clock = clock
         self._trajectory_session_id: Optional[str] = None
+        self._trajectory_started_unix: Optional[float] = None
         self._decision_index = 0
         self._alternative_attempts = 0
         self._pending: Optional[_PendingExplorationDecision] = None
@@ -1129,6 +1133,10 @@ class NonCombatExplorationController:
         return self._trajectory_session_id
 
     @property
+    def trajectory_started_unix(self) -> Optional[float]:
+        return self._trajectory_started_unix
+
+    @property
     def pending_decision_id(self) -> Optional[str]:
         return self._pending.decision_id if self._pending is not None else None
 
@@ -1136,15 +1144,33 @@ class NonCombatExplorationController:
     def alternative_attempts(self) -> int:
         return self._alternative_attempts
 
-    def begin_trajectory(self, run_token: str) -> str:
+    def begin_trajectory(
+        self,
+        run_token: str,
+        *,
+        started_unix: Optional[float] = None,
+    ) -> str:
         if self._pending is not None:
             raise ExplorationStateError(
                 "cannot begin a trajectory while a decision is unresolved"
             )
-        self._trajectory_session_id = make_trajectory_session_id(
+        trajectory_session_id = make_trajectory_session_id(
             self.config.session_id,
             run_token,
         )
+        if started_unix is None:
+            started_unix = self._clock()
+        if (
+            isinstance(started_unix, bool)
+            or not isinstance(started_unix, (int, float))
+            or not math.isfinite(float(started_unix))
+            or float(started_unix) < 0
+        ):
+            raise ExplorationStateError(
+                "trajectory started_unix must be a finite non-negative number"
+            )
+        self._trajectory_session_id = trajectory_session_id
+        self._trajectory_started_unix = float(started_unix)
         self._decision_index = 0
         self._alternative_attempts = 0
         return self._trajectory_session_id
@@ -1221,8 +1247,10 @@ class NonCombatExplorationController:
             "record_type": "proposed",
             "session_id": self.config.session_id,
             "trajectory_session_id": self._trajectory_session_id,
+            "trajectory_started_unix": self._trajectory_started_unix,
             "decision_index": decision_index,
             "decision_id": decision_id,
+            "proposed_unix": float(self._clock()),
             "category": proposal.category,
             "behavior_policy_id": (
                 f"known-propensity-epsilon-v1:{self.config.session_id}"
@@ -1333,6 +1361,7 @@ class NonCombatExplorationController:
             "decision_id": self._pending.decision_id,
             "category": self._pending.proposal.category,
             "selected_action_id": self._pending.selection.selected_action_id,
+            "resolved_unix": float(self._clock()),
             "status": status,
             "reason": reason,
             "after_state_hash": _sha256_json(after_state),
@@ -1346,6 +1375,7 @@ class NonCombatExplorationController:
     def end_trajectory(self, game: Any = None) -> Optional[dict[str, Any]]:
         resolution = self.resolve_pending(game, terminal=True)
         self._trajectory_session_id = None
+        self._trajectory_started_unix = None
         return resolution
 
     @staticmethod

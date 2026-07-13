@@ -29,14 +29,14 @@
 
 ## 5. Canonical Export And Qualification Report
 
-- [ ] 5.1 Add failing exporter tests for additive v3 exploration blocks, v1/v2 backward compatibility, exact probabilities, shadow/rejected/unresolved exclusions, and conservative run joins.
-- [ ] 5.2 Implement confirmed exploration export with behavior policy ID, exact candidate distribution, selected probability, decision/session provenance, replay status, and source hashes.
-- [ ] 5.3 Add failing validator/report tests for replay mismatches, candidate illegality, confirmation gaps, unique-trajectory counts, baseline/alternative support, outcome coverage, victories, and isolation failures.
-- [ ] 5.4 Implement the offline replay validator and qualification report with separate `known_propensity_exploration_data_ready`, `ope_ready`, `causal_uplift_ready`, `formal_noncombat_rl_training_ready`, and `live_policy_promotion_ready` fields.
+- [x] 5.1 Add failing exporter tests for additive v3 exploration blocks, v1/v2 backward compatibility, exact probabilities, shadow/rejected/unresolved exclusions, and conservative run joins.
+- [x] 5.2 Implement confirmed exploration export with behavior policy ID, exact candidate distribution, selected probability, decision/session provenance, replay status, and source hashes.
+- [x] 5.3 Add failing validator/report tests for replay mismatches, candidate illegality, confirmation gaps, unique-trajectory counts, baseline/alternative support, outcome coverage, victories, and isolation failures.
+- [x] 5.4 Implement the offline replay validator and qualification report with separate `known_propensity_exploration_data_ready`, `ope_ready`, `causal_uplift_ready`, `formal_noncombat_rl_training_ready`, and `live_policy_promotion_ready` fields.
 
 ## 6. Fresh Gameplay Evidence And Verification
 
-- [ ] 6.1 Run focused exploration/export tests, the full pytest suite with a writable basetemp, strict OpenSpec validation, and `git diff --check`; fix only failures attributable to this change, then commit the implementation so live evidence starts from a tracked-clean source commit.
+- [x] 6.1 Run focused exploration/export tests, the full pytest suite with a writable basetemp, strict OpenSpec validation, and `git diff --check`; fix only failures attributable to this change, then commit the implementation so live evidence starts from a tracked-clean source commit.
 - [ ] 6.2 Capture pre-session CommunicationMod and combat-checkpoint hashes, then run a small nonzero shop/card-reward smoke with Windows Python and no training; inspect fresh `.run` files, `ai_debug.log`, `communication_mod_errors.log`, proposal records, and confirmations before continuing.
 - [ ] 6.3 If the smoke is clean, run a bounded fresh eval until the configured limit or the qualification minimum is reached; do not exceed the 10 percent category ceiling or two-attempt per-run budget to force support.
 - [ ] 6.4 Freeze the exact input allowlist, at least 25 uniquely joined trajectories when available, replay/support/outcome report, artifact hashes, source commit, isolation comparison, and all blocking limitations.
