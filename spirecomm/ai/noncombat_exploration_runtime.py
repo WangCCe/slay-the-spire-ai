@@ -271,17 +271,36 @@ def _file_fingerprint(path: Path) -> dict[str, Any]:
         with resolved.open("rb") as handle:
             for chunk in iter(lambda: handle.read(1024 * 1024), b""):
                 digest.update(chunk)
+        semantic_sha256 = (
+            _properties_semantic_sha256(resolved)
+            if resolved.suffix.lower() == ".properties"
+            else None
+        )
     except OSError as exc:
         raise ExplorationPersistenceError(
             f"unable to fingerprint isolation path {resolved}: {exc}"
         ) from exc
-    return {
+    fingerprint = {
         "exists": True,
         "is_file": True,
         "size": stat.st_size,
         "mtime_ns": stat.st_mtime_ns,
         "sha256": digest.hexdigest(),
     }
+    if semantic_sha256 is not None:
+        fingerprint["semantic_sha256"] = semantic_sha256
+    return fingerprint
+
+
+def _properties_semantic_sha256(path: Path) -> str:
+    lines = path.read_text(encoding="iso-8859-1").splitlines()
+    properties = sorted(
+        line.strip()
+        for line in lines
+        if line.strip() and not line.lstrip().startswith(("#", "!"))
+    )
+    payload = ("\n".join(properties) + "\n").encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _build_adapter(

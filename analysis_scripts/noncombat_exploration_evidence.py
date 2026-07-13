@@ -469,7 +469,14 @@ def _compare_snapshot_contents(
         ):
             mismatches.append(f"{key}:metadata_not_mapping")
             continue
-        for field in ("exists", "is_file", "size", "sha256"):
+        normalized_path = key.replace("/", "\\").lower()
+        if normalized_path.endswith(
+            "\\modthespire\\communicationmod\\config.properties"
+        ):
+            compared_fields = ("exists", "is_file", "semantic_sha256")
+        else:
+            compared_fields = ("exists", "is_file", "size", "sha256")
+        for field in compared_fields:
             if field not in expected_metadata:
                 mismatches.append(f"{key}:{field}_missing_at_runtime_baseline")
             elif field not in observed_metadata:

@@ -120,6 +120,7 @@ def _build_session(
                 "size": 12,
                 "mtime_ns": 34,
                 "sha256": "f" * 64,
+                "semantic_sha256": "c" * 64,
             },
             r"D:\SteamLibrary\steamapps\common\SlayTheSpire\checkpoints\rl_combat_model_ep1.pth": {
                 "exists": True,
@@ -306,6 +307,7 @@ def test_independent_pre_allows_communication_mod_startup_mtime_rewrite(tmp_path
         path for path in independent_pre if path.endswith("config.properties")
     )
     independent_pre[config_path]["mtime_ns"] += 1
+    independent_pre[config_path]["sha256"] = "0" * 64
 
     result = export_confirmed_exploration_samples(
         config.trace_path,
@@ -327,7 +329,7 @@ def test_independent_pre_content_change_blocks_provenance_not_post_isolation(
     config_path = next(
         path for path in independent_pre if path.endswith("config.properties")
     )
-    independent_pre[config_path]["sha256"] = "0" * 64
+    independent_pre[config_path]["semantic_sha256"] = "0" * 64
 
     result = export_confirmed_exploration_samples(
         config.trace_path,

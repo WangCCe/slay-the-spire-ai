@@ -29,6 +29,25 @@ from spirecomm.spire.screen import ScreenType
 SOURCE_COMMIT = "c" * 40
 
 
+def test_properties_fingerprint_has_comment_and_order_stable_semantic_hash(
+    tmp_path,
+):
+    config_path = tmp_path / "config.properties"
+    config_path.write_text(
+        "#Tue Jul 14 01:00:00 CST 2026\nverbose=false\nrunAtGameStart=true\n",
+        encoding="utf-8",
+    )
+    before = runtime_module._file_fingerprint(config_path)
+    config_path.write_text(
+        "#Tue Jul 14 01:10:00 CST 2026\nrunAtGameStart=true\nverbose=false\n",
+        encoding="utf-8",
+    )
+    after = runtime_module._file_fingerprint(config_path)
+
+    assert before["sha256"] != after["sha256"]
+    assert before["semantic_sha256"] == after["semantic_sha256"]
+
+
 def _write_config(tmp_path, *, rates=None, budget=2, source_commit=SOURCE_COMMIT):
     config_path = tmp_path / "exploration.json"
     payload = {
