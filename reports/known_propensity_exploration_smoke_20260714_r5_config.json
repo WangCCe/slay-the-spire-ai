@@ -1,0 +1,17 @@
+{
+  "schema_version": "noncombat-exploration-config-v1",
+  "session_id": "known-propensity-smoke-20260714-r5",
+  "seed": 2026071405,
+  "enabled_categories": [
+    "card_reward",
+    "shop"
+  ],
+  "category_rates_bps": {
+    "card_reward": 1000,
+    "shop": 1000
+  },
+  "per_run_alternative_budget": 2,
+  "trace_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\known_propensity_exploration_smoke_20260714_r5.jsonl",
+  "manifest_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\known_propensity_exploration_smoke_20260714_r5_manifest.json",
+  "source_commit": "cdf5b2a1b3c24d09ccaa8404d2aa11d5e014c117"
+}

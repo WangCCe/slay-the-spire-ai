@@ -1,0 +1,52 @@
+{
+  "exclusions": [],
+  "isolation_comparison": {
+    "mismatches": [],
+    "verified": true
+  },
+  "isolation_verified": true,
+  "outcomes": [
+    {
+      "ai_marked": true,
+      "end_unix": 1783965043,
+      "floor_reached": 20,
+      "killed_by": "3 Byrds",
+      "playtime": 117,
+      "run_file": "1783965043.run",
+      "start_unix": 1783964926,
+      "victory": false
+    }
+  ],
+  "provenance_comparison": {
+    "expected_source_commit": "cdf5b2a1b3c24d09ccaa8404d2aa11d5e014c117",
+    "manifest_source_commit": "cdf5b2a1b3c24d09ccaa8404d2aa11d5e014c117",
+    "mismatches": [],
+    "verified": true
+  },
+  "provenance_verified": true,
+  "run_allowlist": [
+    "1783965043.run"
+  ],
+  "schema_version": "known-propensity-smoke-export-v1",
+  "session_id": "known-propensity-smoke-20260714-r5",
+  "source_commit": "cdf5b2a1b3c24d09ccaa8404d2aa11d5e014c117",
+  "validation_summary": {
+    "candidate_legal": 13,
+    "confirmed": 13,
+    "eligible_proposals": 13,
+    "enabled_categories": [
+      "card_reward",
+      "shop"
+    ],
+    "excluded": 0,
+    "exclusion_reasons": {},
+    "exported": 13,
+    "isolation_verified": true,
+    "outcome_matched": 10,
+    "proposed_records": 13,
+    "provenance_verified": true,
+    "replay_valid": 13,
+    "resolution_records": 13,
+    "shadow_only": 0
+  }
+}
