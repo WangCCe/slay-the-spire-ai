@@ -8,6 +8,7 @@ import math
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from fractions import Fraction
 from pathlib import Path
 from typing import Any, Optional
 
@@ -20,6 +21,7 @@ from spirecomm.ai.noncombat_exploration import (
     ExplorationRecordStore,
     ExplorationSelection,
     NonCombatProposal,
+    make_decision_id,
     parse_exploration_config,
     verify_exploration_selection,
 )
@@ -43,6 +45,8 @@ class ExplorationExportResult:
     samples: tuple[dict[str, Any], ...]
     exclusions: tuple[dict[str, Any], ...]
     validation_summary: dict[str, Any]
+    provenance_verified: bool
+    provenance_comparison: dict[str, Any]
     isolation_verified: bool
     isolation_comparison: dict[str, Any]
     manifest: dict[str, Any]
@@ -73,15 +77,135 @@ def behavior_evidence_status(sample: Mapping[str, Any]) -> dict[str, Any]:
             return {"verified": False, "reason": reason}
     if sample.get("behavior_probability_status") != "verified_known_propensity":
         return {"verified": False, "reason": "probability_not_verified"}
+    policy_id = sample.get("behavior_policy_id")
+    if not isinstance(policy_id, str) or not policy_id.startswith(
+        "known-propensity-epsilon-v1:"
+    ):
+        return {"verified": False, "reason": "behavior_policy_not_verified"}
+
+    decision_id = exploration.get("decision_id")
+    if not isinstance(decision_id, str) or decision_id != sample.get("sample_id"):
+        return {"verified": False, "reason": "decision_identity_mismatch"}
+
+    distribution_records = exploration.get("candidate_distribution")
+    if (
+        isinstance(distribution_records, (str, bytes))
+        or not isinstance(distribution_records, Sequence)
+        or not distribution_records
+    ):
+        return {"verified": False, "reason": "distribution_not_valid"}
+    distribution: dict[str, Fraction] = {}
+    for record in distribution_records:
+        if not isinstance(record, Mapping):
+            return {"verified": False, "reason": "distribution_not_valid"}
+        action_id = record.get("action_id")
+        exact_probability = _exact_probability_fraction(record)
+        if (
+            not isinstance(action_id, str)
+            or not action_id
+            or action_id in distribution
+            or exact_probability is None
+        ):
+            return {"verified": False, "reason": "distribution_not_valid"}
+        distribution[action_id] = exact_probability
+    if sum(distribution.values(), Fraction(0, 1)) != Fraction(1, 1):
+        return {"verified": False, "reason": "distribution_not_normalized"}
+
+    candidate_records = sample.get("candidate_actions")
+    if (
+        isinstance(candidate_records, (str, bytes))
+        or not isinstance(candidate_records, Sequence)
+        or not candidate_records
+    ):
+        return {"verified": False, "reason": "candidate_set_not_valid"}
+    candidate_ids: list[str] = []
+    executable_candidate_ids: set[str] = set()
+    for candidate in candidate_records:
+        if (
+            not isinstance(candidate, Mapping)
+            or not isinstance(candidate.get("action_id"), str)
+            or not candidate.get("action_id")
+            or not isinstance(candidate.get("available"), bool)
+            or not isinstance(candidate.get("executable"), bool)
+            or (
+                candidate.get("executable") is True
+                and candidate.get("available") is not True
+            )
+        ):
+            return {"verified": False, "reason": "candidate_set_not_valid"}
+        action_id = str(candidate["action_id"])
+        candidate_ids.append(action_id)
+        if candidate.get("available") is True and candidate.get("executable") is True:
+            executable_candidate_ids.add(action_id)
+    if (
+        len(set(candidate_ids)) != len(candidate_ids)
+        or executable_candidate_ids != set(distribution)
+    ):
+        return {"verified": False, "reason": "candidate_set_mismatch"}
+
+    baseline_action_id = exploration.get("baseline_action_id")
+    alternative_action_id = exploration.get("alternative_action_id")
+    if (
+        not isinstance(baseline_action_id, str)
+        or not baseline_action_id
+        or not isinstance(alternative_action_id, str)
+        or not alternative_action_id
+        or baseline_action_id == alternative_action_id
+        or {baseline_action_id, alternative_action_id} != set(distribution)
+    ):
+        return {"verified": False, "reason": "arm_identity_mismatch"}
+    selected_arm = exploration.get("selected_arm")
+    if selected_arm == "baseline":
+        expected_selected_action_id = baseline_action_id
+    elif selected_arm == "alternative":
+        expected_selected_action_id = alternative_action_id
+    else:
+        return {"verified": False, "reason": "selected_arm_not_valid"}
+    selected_action_id = sample.get("selected_action_id")
+    if selected_action_id != expected_selected_action_id:
+        return {"verified": False, "reason": "selected_action_mismatch"}
+
+    selected_probability = _exact_probability_fraction(
+        exploration.get("selected_probability")
+    )
+    if selected_probability is None or selected_probability != distribution.get(
+        str(selected_action_id)
+    ):
+        return {"verified": False, "reason": "selected_probability_mismatch"}
+
     probability = sample.get("behavior_action_probability")
     if (
         isinstance(probability, bool)
         or not isinstance(probability, (int, float))
         or not math.isfinite(float(probability))
         or not 0 < float(probability) <= 1
+        or float(probability) != float(selected_probability)
     ):
         return {"verified": False, "reason": "probability_not_valid"}
     return {"verified": True, "reason": "verified_known_propensity"}
+
+
+def _exact_probability_fraction(record: Any) -> Optional[Fraction]:
+    if not isinstance(record, Mapping):
+        return None
+    numerator = record.get("numerator")
+    denominator = record.get("denominator")
+    value = record.get("value")
+    if (
+        isinstance(numerator, bool)
+        or not isinstance(numerator, int)
+        or isinstance(denominator, bool)
+        or not isinstance(denominator, int)
+        or numerator < 0
+        or denominator <= 0
+        or numerator > denominator
+        or isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(float(value))
+        or float(value) != numerator / denominator
+    ):
+        return None
+    return Fraction(numerator, denominator)
 
 
 def export_confirmed_exploration_samples(
@@ -89,7 +213,9 @@ def export_confirmed_exploration_samples(
     manifest_path: Path | str,
     *,
     outcomes: Optional[Sequence[Mapping[str, Any]]] = None,
+    expected_pre_isolation_hashes: Optional[Mapping[str, Any]] = None,
     post_isolation_hashes: Optional[Mapping[str, Any]] = None,
+    expected_source_commit: Optional[str] = None,
 ) -> ExplorationExportResult:
     """Replay a session and export only uniquely confirmed executable actions."""
 
@@ -105,8 +231,10 @@ def export_confirmed_exploration_samples(
             proposals[decision_id] = record
         else:
             resolutions[decision_id] = record
+    history_errors = _validate_proposal_history(tuple(proposals.values()), config)
 
     summary = {
+        "enabled_categories": list(config.enabled_categories),
         "proposed_records": len(proposals),
         "resolution_records": len(resolutions),
         "eligible_proposals": 0,
@@ -128,6 +256,10 @@ def export_confirmed_exploration_samples(
             continue
 
         summary["eligible_proposals"] += 1
+        history_error = history_errors.get(decision_id)
+        if history_error is not None:
+            _exclude(exclusions, proposed_record, history_error)
+            continue
         resolution = resolutions.get(decision_id)
         if resolution is None:
             _exclude(exclusions, proposed_record, "confirmation_missing")
@@ -142,6 +274,10 @@ def export_confirmed_exploration_samples(
             _exclude(exclusions, proposed_record, "confirmation_link_mismatch")
             continue
         summary["confirmed"] += 1
+
+        if not _record_timestamps_are_monotonic(proposed_record, resolution):
+            _exclude(exclusions, proposed_record, "timestamp_order_invalid")
+            continue
 
         try:
             proposal = _proposal_from_record(proposal_record)
@@ -195,10 +331,37 @@ def export_confirmed_exploration_samples(
         )
 
     joined_samples = attach_live_outcomes(samples, list(outcomes or ()))
-    isolation = compare_isolation_snapshots(
-        manifest.get("pre_session_isolation_hashes", {}),
+    manifest_pre_isolation = manifest.get("pre_session_isolation_hashes", {})
+    independent_pre = _compare_snapshot_contents(
+        manifest_pre_isolation,
+        expected_pre_isolation_hashes,
+    )
+    post_isolation = compare_isolation_snapshots(
+        manifest_pre_isolation,
         post_isolation_hashes,
     )
+    allowlist_issues = _isolation_allowlist_issues(manifest_pre_isolation)
+    isolation_mismatches = [
+        *(f"post:{item}" for item in post_isolation["mismatches"]),
+        *allowlist_issues,
+    ]
+    isolation = {
+        "verified": not isolation_mismatches,
+        "mismatches": isolation_mismatches,
+    }
+    source_mismatches = []
+    if not isinstance(expected_source_commit, str) or (
+        expected_source_commit.lower() != config.source_commit.lower()
+    ):
+        source_mismatches.append("source_commit_mismatch")
+    if not independent_pre["verified"]:
+        source_mismatches.append("independent_pre_isolation_mismatch")
+    provenance = {
+        "verified": not source_mismatches,
+        "mismatches": source_mismatches,
+        "expected_source_commit": expected_source_commit,
+        "manifest_source_commit": config.source_commit,
+    }
     reason_counts = Counter(row["reason"] for row in exclusions)
     summary["excluded"] = len(exclusions)
     summary["exclusion_reasons"] = dict(sorted(reason_counts.items()))
@@ -208,10 +371,13 @@ def export_confirmed_exploration_samples(
         for sample in joined_samples
     )
     summary["isolation_verified"] = isolation["verified"]
+    summary["provenance_verified"] = provenance["verified"]
     return ExplorationExportResult(
         samples=tuple(joined_samples),
         exclusions=tuple(exclusions),
         validation_summary=summary,
+        provenance_verified=bool(provenance["verified"]),
+        provenance_comparison=provenance,
         isolation_verified=bool(isolation["verified"]),
         isolation_comparison=isolation,
         manifest=manifest,
@@ -275,12 +441,74 @@ def compare_isolation_snapshots(
     return {"verified": not mismatches, "mismatches": mismatches}
 
 
+def _compare_snapshot_contents(
+    expected: Mapping[str, Any],
+    observed: Optional[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Compare immutable file identity while allowing startup mtime rewrites."""
+
+    if observed is None:
+        return {"verified": False, "mismatches": ["snapshot_missing"]}
+    if not isinstance(expected, Mapping) or not isinstance(observed, Mapping):
+        return {"verified": False, "mismatches": ["snapshot_not_mapping"]}
+
+    mismatches: list[str] = []
+    if not expected:
+        mismatches.append("expected_snapshot_empty")
+    expected_keys = {str(key) for key in expected}
+    observed_keys = {str(key) for key in observed}
+    for key in sorted(expected_keys - observed_keys):
+        mismatches.append(f"{key}:missing")
+    for key in sorted(observed_keys - expected_keys):
+        mismatches.append(f"{key}:unexpected")
+    for key in sorted(expected_keys & observed_keys):
+        expected_metadata = expected[key]
+        observed_metadata = observed[key]
+        if not isinstance(expected_metadata, Mapping) or not isinstance(
+            observed_metadata, Mapping
+        ):
+            mismatches.append(f"{key}:metadata_not_mapping")
+            continue
+        for field in ("exists", "is_file", "size", "sha256"):
+            if field not in expected_metadata:
+                mismatches.append(f"{key}:{field}_missing_at_runtime_baseline")
+            elif field not in observed_metadata:
+                mismatches.append(f"{key}:{field}_missing_at_external_baseline")
+            elif expected_metadata[field] != observed_metadata[field]:
+                mismatches.append(f"{key}:{field}_mismatch")
+    return {"verified": not mismatches, "mismatches": mismatches}
+
+
+def _isolation_allowlist_issues(snapshot: Mapping[str, Any]) -> list[str]:
+    normalized_paths = [
+        str(path).replace("/", "\\").lower() for path in snapshot
+    ]
+    has_communication_config = any(
+        path.endswith(
+            "\\modthespire\\communicationmod\\config.properties"
+        )
+        for path in normalized_paths
+    )
+    has_combat_checkpoint = any(
+        "\\slaythespire\\checkpoints\\rl_combat_model_" in path
+        and path.endswith(".pth")
+        for path in normalized_paths
+    )
+    issues = []
+    if not has_communication_config:
+        issues.append("communication_mod_config_missing")
+    if not has_combat_checkpoint:
+        issues.append("combat_checkpoint_missing")
+    return issues
+
+
 def evaluate_known_propensity_qualification(
     samples: Sequence[Mapping[str, Any]],
     *,
     validation_summary: Mapping[str, Any],
     isolation_verified: bool,
-    required_categories: Sequence[str] = _REQUIRED_CATEGORIES,
+    provenance_verified: bool = False,
+    required_categories: Optional[Sequence[str]] = None,
 ) -> dict[str, Any]:
     """Evaluate the data-collection gate without making policy claims."""
 
@@ -288,12 +516,30 @@ def evaluate_known_propensity_qualification(
     confirmed = _nonnegative_count(validation_summary.get("confirmed"))
     replay_valid = _nonnegative_count(validation_summary.get("replay_valid"))
     candidate_legal = _nonnegative_count(validation_summary.get("candidate_legal"))
+    enabled_categories = validation_summary.get("enabled_categories")
+    if (
+        isinstance(enabled_categories, (str, bytes))
+        or not isinstance(enabled_categories, Sequence)
+        or not enabled_categories
+    ):
+        raise ValueError("enabled categories must be a non-empty sequence")
+    categories = tuple(str(category) for category in enabled_categories)
+    if len(set(categories)) != len(categories) or (
+        set(categories) - set(_REQUIRED_CATEGORIES)
+    ):
+        raise ValueError("enabled categories are duplicated or unsupported")
+    if required_categories is not None:
+        requested_categories = tuple(str(category) for category in required_categories)
+        if requested_categories != categories:
+            raise ValueError("required categories must exactly match enabled categories")
+
     joined = [
         sample
         for sample in samples
         if sample.get("trajectory_group_id")
         and sample.get("outcome", {}).get("included_in_gate") is True
         and sample.get("outcome", {}).get("join_status") == "matched"
+        and behavior_evidence_status(sample).get("verified") is True
     ]
     by_trajectory: dict[str, Mapping[str, Any]] = {}
     for sample in joined:
@@ -301,9 +547,9 @@ def evaluate_known_propensity_qualification(
 
     support: dict[str, dict[str, int]] = {
         str(category): {"baseline": 0, "alternative": 0}
-        for category in required_categories
+        for category in categories
     }
-    for sample in samples:
+    for sample in joined:
         category = str(sample.get("category") or "")
         arm = str(sample.get("exploration", {}).get("selected_arm") or "")
         if category in support and arm in support[category]:
@@ -339,12 +585,14 @@ def evaluate_known_propensity_qualification(
         blockers.append("candidate_legality_coverage_incomplete")
     if verified_probabilities != eligible:
         blockers.append("propensity_coverage_incomplete")
-    for category in required_categories:
+    for category in categories:
         for arm in ("baseline", "alternative"):
             if support[str(category)][arm] < _MIN_ARM_SUPPORT:
                 blockers.append(f"insufficient_{category}_{arm}_support")
     if not isolation_verified:
         blockers.append("isolation_not_verified")
+    if not provenance_verified:
+        blockers.append("source_provenance_not_verified")
 
     metrics = {
         "eligible_proposals": eligible,
@@ -365,6 +613,7 @@ def evaluate_known_propensity_qualification(
         "blocking_conditions": blockers,
         "metrics": metrics,
         "isolation_verified": bool(isolation_verified),
+        "provenance_verified": bool(provenance_verified),
         "ope_ready": False,
         "causal_uplift_ready": False,
         "formal_noncombat_rl_training_ready": False,
@@ -394,6 +643,8 @@ def render_known_propensity_qualification_report(
         f"Candidate-legal proposals: {metrics.get('candidate_legal', 0)}",
         f"Verified propensities: {metrics.get('verified_propensities', 0)}",
         f"Victories: {metrics.get('victories', 0)}",
+        "Source provenance verified: "
+        + _bool_text(result.get("provenance_verified")),
         "",
         "## Category Arm Support",
     ]
@@ -508,6 +759,93 @@ def _proposal_from_record(record: Mapping[str, Any]) -> NonCombatProposal:
     )
 
 
+def _validate_proposal_history(
+    proposals: Sequence[Mapping[str, Any]],
+    config: ExplorationConfig,
+) -> dict[str, str]:
+    errors: dict[str, str] = {}
+    trajectories: dict[str, dict[str, Any]] = {}
+    expected_policy_id = f"known-propensity-epsilon-v1:{config.session_id}"
+    for record in proposals:
+        decision_id = str(record.get("decision_id") or "")
+        trajectory_id = str(record.get("trajectory_session_id") or "")
+        state = trajectories.setdefault(
+            trajectory_id,
+            {
+                "next_index": 0,
+                "seen_indices": set(),
+                "alternative_attempts": 0,
+                "started_unix": record.get("trajectory_started_unix"),
+                "history_invalid": False,
+            },
+        )
+        if state["history_invalid"]:
+            errors[decision_id] = "trajectory_history_invalid"
+            continue
+        raw_index = record.get("decision_index")
+        if (
+            isinstance(raw_index, bool)
+            or not isinstance(raw_index, int)
+            or raw_index < 0
+        ):
+            errors[decision_id] = "trajectory_decision_index_mismatch"
+            state["history_invalid"] = True
+            continue
+        if raw_index in state["seen_indices"]:
+            errors[decision_id] = "duplicate_trajectory_decision_index"
+            state["history_invalid"] = True
+            continue
+        if raw_index != state["next_index"]:
+            errors[decision_id] = "trajectory_decision_index_mismatch"
+            state["history_invalid"] = True
+            continue
+        state["seen_indices"].add(raw_index)
+        state["next_index"] = raw_index + 1
+        if record.get("trajectory_started_unix") != state["started_unix"]:
+            errors[decision_id] = "trajectory_start_mismatch"
+            state["history_invalid"] = True
+            continue
+
+        proposal = record.get("proposal", {})
+        state_hash = str(proposal.get("state_hash") or "")
+        if not trajectory_id or not state_hash:
+            errors.setdefault(decision_id, "trajectory_identity_invalid")
+        else:
+            expected_decision_id = make_decision_id(
+                config.session_id,
+                trajectory_id,
+                raw_index,
+                state_hash,
+            )
+            if decision_id != expected_decision_id:
+                errors.setdefault(decision_id, "decision_id_mismatch")
+        if record.get("behavior_policy_id") != expected_policy_id:
+            errors.setdefault(decision_id, "behavior_policy_id_mismatch")
+
+        selection = record.get("selection", {})
+        selected_alternative = selection.get("selected_action_id") == proposal.get(
+            "alternative_action_id"
+        )
+        budget = record.get("alternative_attempt_budget", {})
+        budget_valid = (
+            isinstance(budget, Mapping)
+            and budget.get("limit") == config.per_run_alternative_budget
+            and budget.get("used_before") == state["alternative_attempts"]
+            and budget.get("selected_alternative") is selected_alternative
+            and state["alternative_attempts"] < config.per_run_alternative_budget
+        )
+        if not budget_valid:
+            errors.setdefault(
+                decision_id,
+                "alternative_budget_history_mismatch",
+            )
+        if decision_id in errors:
+            state["history_invalid"] = True
+        elif selected_alternative:
+            state["alternative_attempts"] += 1
+    return errors
+
+
 def _selection_from_record(record: Mapping[str, Any]) -> ExplorationSelection:
     distribution = tuple(
         _probability_from_record(entry) for entry in record["distribution"]
@@ -574,6 +912,27 @@ def _resolution_matches_proposal(
     ) and resolution.get("selected_action_id") == proposed.get("selection", {}).get(
         "selected_action_id"
     )
+
+
+def _record_timestamps_are_monotonic(
+    proposed: Mapping[str, Any],
+    resolution: Mapping[str, Any],
+) -> bool:
+    values = (
+        proposed.get("trajectory_started_unix"),
+        proposed.get("proposed_unix"),
+        resolution.get("resolved_unix"),
+    )
+    if any(
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(float(value))
+        or float(value) < 0
+        for value in values
+    ):
+        return False
+    started, proposed_unix, resolved = (float(value) for value in values)
+    return started <= proposed_unix <= resolved
 
 
 def _selected_candidate_is_legal(

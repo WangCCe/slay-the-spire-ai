@@ -1100,6 +1100,7 @@ class _PendingExplorationDecision:
     proposal: NonCombatProposal
     selection: ExplorationSelection
     selected_candidate: ExplorationCandidate
+    proposed_unix: float
 
 
 @dataclass(frozen=True)
@@ -1242,6 +1243,18 @@ class NonCombatExplorationController:
         selected_alternative = (
             selection.selected_action_id == proposal.alternative_action_id
         )
+        try:
+            proposed_unix = _validated_timestamp(
+                self._clock(),
+                "proposal timestamp",
+            )
+        except ExplorationStateError:
+            return self._fallback(adapter, "proposal_timestamp_invalid")
+        if proposed_unix < self._trajectory_started_unix:
+            return self._fallback(
+                adapter,
+                "proposal_timestamp_before_trajectory",
+            )
         record = {
             "schema_version": RECORD_SCHEMA_VERSION,
             "record_type": "proposed",
@@ -1250,7 +1263,7 @@ class NonCombatExplorationController:
             "trajectory_started_unix": self._trajectory_started_unix,
             "decision_index": decision_index,
             "decision_id": decision_id,
-            "proposed_unix": float(self._clock()),
+            "proposed_unix": proposed_unix,
             "category": proposal.category,
             "behavior_policy_id": (
                 f"known-propensity-epsilon-v1:{self.config.session_id}"
@@ -1277,6 +1290,7 @@ class NonCombatExplorationController:
             proposal=proposal,
             selection=selection,
             selected_candidate=selected_candidate,
+            proposed_unix=proposed_unix,
         )
         if selected_alternative:
             self._alternative_attempts += 1
@@ -1353,6 +1367,17 @@ class NonCombatExplorationController:
     ) -> dict[str, Any]:
         if self._pending is None:
             raise ExplorationStateError("no pending decision to resolve")
+        try:
+            resolved_unix = _validated_timestamp(
+                self._clock(),
+                "resolution timestamp",
+            )
+        except ExplorationStateError as exc:
+            raise ExplorationPersistenceError(str(exc)) from exc
+        if resolved_unix < self._pending.proposed_unix:
+            raise ExplorationPersistenceError(
+                "resolution timestamp precedes proposal"
+            )
         record = {
             "schema_version": RECORD_SCHEMA_VERSION,
             "record_type": "resolution",
@@ -1361,7 +1386,7 @@ class NonCombatExplorationController:
             "decision_id": self._pending.decision_id,
             "category": self._pending.proposal.category,
             "selected_action_id": self._pending.selection.selected_action_id,
-            "resolved_unix": float(self._clock()),
+            "resolved_unix": resolved_unix,
             "status": status,
             "reason": reason,
             "after_state_hash": _sha256_json(after_state),
@@ -1403,6 +1428,19 @@ def make_trajectory_session_id(session_id: str, run_token: str) -> str:
         }
     )
     return f"trajectory-{digest[:32]}"
+
+
+def _validated_timestamp(value: Any, label: str) -> float:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(float(value))
+        or float(value) < 0
+    ):
+        raise ExplorationStateError(
+            f"{label} must be a finite non-negative number"
+        )
+    return float(value)
 
 
 def make_decision_id(

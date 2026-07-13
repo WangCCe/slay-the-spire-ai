@@ -412,6 +412,40 @@ def test_attach_live_outcomes_matches_exactly_one_run():
     assert joined["trajectory_group_id"] == "run:1780000000"
 
 
+def test_attach_live_outcomes_requires_ai_marking_and_never_matches_after_end():
+    from analysis_scripts.noncombat_rl_decision_loop import attach_live_outcomes
+
+    sample = {
+        "sample_id": "trace:after-end",
+        "unix_time": 1780000201.0,
+        "floor": 3,
+        "outcome": {"join_status": "missing"},
+    }
+    outcome = {
+        "run_file": "1780000200.run",
+        "start_unix": 1780000000,
+        "end_unix": 1780000200,
+        "victory": False,
+        "floor_reached": 12,
+        "killed_by": "Gremlin Nob",
+        "playtime": 200,
+        "ai_marked": True,
+    }
+
+    [after_end] = attach_live_outcomes([sample], [outcome])
+    unmarked = dict(outcome)
+    unmarked.pop("ai_marked")
+    [without_marker] = attach_live_outcomes(
+        [{**sample, "unix_time": 1780000100.0}],
+        [unmarked],
+    )
+
+    assert after_end["outcome"]["join_status"] == "missing"
+    assert after_end["trajectory_group_id"] is None
+    assert without_marker["outcome"]["join_status"] == "missing"
+    assert without_marker["trajectory_group_id"] is None
+
+
 @pytest.mark.parametrize(
     ("sample_floor", "outcome_floor"),
     [
@@ -614,8 +648,8 @@ def test_load_run_outcomes_reads_ai_marked_run_windows(tmp_path):
     assert outcomes == [
         {
             "run_file": "1780000000.run",
-            "start_unix": 1780000000,
-            "end_unix": 1780000240,
+            "start_unix": 1779999760,
+            "end_unix": 1780000000,
             "victory": False,
             "floor_reached": 18,
             "killed_by": "Slime Boss",
@@ -623,6 +657,54 @@ def test_load_run_outcomes_reads_ai_marked_run_windows(tmp_path):
             "ai_marked": True,
         }
     ]
+
+
+@pytest.mark.parametrize(
+    ("marker", "expected"),
+    [(1779999999, False), (1780000001, True), (1780000031, False)],
+)
+def test_load_run_outcomes_uses_bounded_post_completion_marker(
+    tmp_path,
+    marker,
+    expected,
+):
+    from analysis_scripts.noncombat_rl_decision_loop import load_run_outcomes
+
+    runs_dir = tmp_path / "runs"
+    ironclad_dir = runs_dir / "IRONCLAD"
+    ironclad_dir.mkdir(parents=True)
+    (runs_dir / "ai_games.txt").write_text(f"{marker}\n", encoding="utf-8")
+    (ironclad_dir / "1780000000.run").write_text(
+        json.dumps({"victory": False, "floor_reached": 18, "playtime": 240}),
+        encoding="utf-8",
+    )
+
+    [outcome] = load_run_outcomes(runs_dir, character="IRONCLAD", limit=1)
+
+    assert outcome["ai_marked"] is expected
+
+
+def test_ai_marker_is_assigned_only_to_nearest_prior_run(tmp_path):
+    from analysis_scripts.noncombat_rl_decision_loop import load_run_outcomes
+
+    runs_dir = tmp_path / "runs"
+    ironclad_dir = runs_dir / "IRONCLAD"
+    ironclad_dir.mkdir(parents=True)
+    (runs_dir / "ai_games.txt").write_text("1780000003\n", encoding="utf-8")
+    for completed_unix in (1780000000, 1780000001):
+        (ironclad_dir / f"{completed_unix}.run").write_text(
+            json.dumps({"victory": False, "floor_reached": 18, "playtime": 240}),
+            encoding="utf-8",
+        )
+
+    outcomes = load_run_outcomes(runs_dir, character="IRONCLAD", limit=5)
+
+    assert {
+        outcome["run_file"]: outcome["ai_marked"] for outcome in outcomes
+    } == {
+        "1780000000.run": False,
+        "1780000001.run": True,
+    }
 
 
 def test_explicit_run_files_override_limit_and_missing_names_raise(tmp_path):

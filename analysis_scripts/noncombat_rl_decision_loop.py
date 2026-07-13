@@ -7,6 +7,7 @@ import json
 import argparse
 import re
 import sys
+from bisect import bisect_right
 from collections import Counter, deque
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
@@ -23,6 +24,8 @@ from analysis_scripts.offline_decision_comparator import (
 
 SCHEMA_VERSION = "noncombat-rl-decision-v2"
 SUPPORTED_CATEGORIES = ("shop", "event", "route", "card_reward")
+# main.py writes the marker after the game has already emitted its .run file.
+_AI_MARKER_POST_COMPLETION_TOLERANCE_SECONDS = 30
 
 
 def export_samples_from_trace(
@@ -274,13 +277,13 @@ def attach_live_outcomes(samples, outcomes, tolerance_seconds: int = 30):
         time_matches = [
             outcome
             for outcome in outcomes
-            if outcome.get("ai_marked", True)
+            if outcome.get("ai_marked") is True
             and sample_time is not None
             and outcome.get("start_unix") is not None
             and outcome.get("end_unix") is not None
             and outcome["start_unix"] - tolerance_seconds
             <= sample_time
-            <= outcome["end_unix"] + tolerance_seconds
+            <= outcome["end_unix"]
         ]
         matches = [
             outcome
@@ -357,11 +360,20 @@ def load_run_outcomes(
         )
         if limit > 0:
             selected_run_files = selected_run_files[-limit:]
+    all_run_timestamps = [
+        timestamp
+        for run_file in character_dir.glob("*.run")
+        if (timestamp := _to_int(run_file.stem, default=None)) is not None
+    ]
+    ai_run_timestamps = _match_ai_run_timestamps(
+        all_run_timestamps,
+        ai_markers,
+    )
 
     outcomes = []
     for run_file in selected_run_files:
-        start_unix = _to_int(run_file.stem, default=None)
-        if start_unix is None:
+        completed_unix = _to_int(run_file.stem, default=None)
+        if completed_unix is None:
             continue
         try:
             record = json.loads(run_file.read_text(encoding="utf-8"))
@@ -371,13 +383,13 @@ def load_run_outcomes(
         outcomes.append(
             {
                 "run_file": run_file.name,
-                "start_unix": start_unix,
-                "end_unix": start_unix + playtime,
+                "start_unix": max(0, completed_unix - playtime),
+                "end_unix": completed_unix,
                 "victory": bool(record.get("victory")),
                 "floor_reached": _to_int(record.get("floor_reached"), 0) or 0,
                 "killed_by": str(record.get("killed_by") or ""),
                 "playtime": playtime,
-                "ai_marked": _is_ai_marked(start_unix, ai_markers),
+                "ai_marked": completed_unix in ai_run_timestamps,
             }
         )
     return outcomes
@@ -897,8 +909,21 @@ def _load_ai_markers(path: Path) -> List[int]:
     return markers
 
 
-def _is_ai_marked(run_timestamp: int, markers: List[int], tolerance_seconds: int = 300) -> bool:
-    return any(abs(marker - run_timestamp) <= tolerance_seconds for marker in markers)
+def _match_ai_run_timestamps(
+    run_timestamps: Sequence[int],
+    markers: Sequence[int],
+    tolerance_seconds: int = _AI_MARKER_POST_COMPLETION_TOLERANCE_SECONDS,
+) -> set[int]:
+    ordered_runs = sorted(set(run_timestamps))
+    matched: set[int] = set()
+    for marker in markers:
+        index = bisect_right(ordered_runs, marker) - 1
+        if index < 0:
+            continue
+        completed_unix = ordered_runs[index]
+        if marker - completed_unix <= tolerance_seconds:
+            matched.add(completed_unix)
+    return matched
 
 
 def _name(item: Any) -> str:

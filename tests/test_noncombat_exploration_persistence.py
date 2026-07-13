@@ -168,6 +168,58 @@ def test_current_arm_is_persisted_before_return_with_exact_probability(tmp_path)
     assert controller.pending_decision_id == result.decision_id
 
 
+def test_proposal_clock_before_trajectory_fails_closed_without_record(tmp_path):
+    game = _reward_game()
+    current = CardRewardAction(game.screen.cards[0])
+    adapter = build_card_reward_proposal(game, current)
+    config = _config_for_arm(
+        tmp_path,
+        adapter.proposal,
+        adapter.proposal.baseline_action_id,
+    )
+    controller = NonCombatExplorationController(config, clock=lambda: 99.0)
+    controller.begin_trajectory("run-1", started_unix=100.0)
+
+    result = controller.consider(adapter, game)
+
+    assert result.action is current
+    assert result.known_propensity is False
+    assert result.fallback_reason == "proposal_timestamp_before_trajectory"
+    assert controller.pending_decision_id is None
+    assert not config.trace_path.exists()
+
+
+def test_resolution_clock_before_proposal_is_not_persisted(tmp_path):
+    game = _reward_game()
+    current = CardRewardAction(game.screen.cards[0])
+    adapter = build_card_reward_proposal(game, current)
+    config = _config_for_arm(
+        tmp_path,
+        adapter.proposal,
+        adapter.proposal.baseline_action_id,
+    )
+    clock_values = iter((101.0, 100.0))
+    controller = NonCombatExplorationController(
+        config,
+        clock=lambda: next(clock_values),
+    )
+    controller.begin_trajectory("run-1", started_unix=100.0)
+    result = controller.consider(adapter, game)
+    after = _leave_reward_screen(game)
+    after.deck.append(_item("Anger"))
+
+    with pytest.raises(
+        ExplorationPersistenceError,
+        match="resolution timestamp precedes proposal",
+    ):
+        controller.resolve_pending(after)
+
+    assert result.known_propensity is True
+    assert [record["record_type"] for record in _read_records(config.trace_path)] == [
+        "proposed"
+    ]
+
+
 def test_alternative_arm_is_persisted_and_reserves_budget_before_return(tmp_path):
     game = _reward_game()
     current = CardRewardAction(game.screen.cards[0])
