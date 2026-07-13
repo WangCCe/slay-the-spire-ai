@@ -1,0 +1,5 @@
+.gitattributes text eol=lf
+
+# Preserve byte-stable hashes for frozen known-propensity evidence.
+reports/known_propensity_exploration_* text eol=lf
+reports/known_propensity_exploration_*_runs/** text eol=lf

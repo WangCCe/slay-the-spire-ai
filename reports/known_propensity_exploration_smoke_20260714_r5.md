@@ -75,13 +75,18 @@ remain blocked.
 - Manifest file SHA-256: `3d24e92c62da142eb51e52a53b35e5f8b04828711d56e98c0481e68c4d5650e7`
 - Manifest logical hash: `782e92172a37d1f98cbe2890db9865ee23ed2449f20fcf1d191125f41a0a7933`
 - Effective config hash: `225abbd2e6170ba294bf4ad056d76fe80138b973abb89e2116dcb3925388f8ed`
-- Pre-isolation SHA-256: `4c196c3690b5b92bb48f08fb8241d684c97d01911530d3df0c851e4938e7cf2b`
-- Post-isolation SHA-256: `0e65c361d554962698e9f39d01d82f5bbe92ea2457f0e3d1c43f125cda772d61`
+- Pre-isolation SHA-256: `c3701408ca2511a79f05cc0f2bd0e5b59d1cafcac4e8886be6f74651d20250f4`
+- Post-isolation SHA-256: `33cce6ac1752d614f8c8d96adccdae0a7bd144390c5dfcb6b8d0745f944071c6`
 - Run SHA-256: `abeaf37ca760982aedc2b2aa5f83c32a4b8c58772f4e49ccb12882eb80f185b8`
-- Samples SHA-256: `d03423892cc7cd6fdb32ed3c09318d662929a39d425629884dad034f74697161`
-- Export summary SHA-256: `1998a30d2ff4ffca0408a769f48a01c8beff672330b330a7a7bbeae03fcf689a`
-- Qualification JSON SHA-256: `60e3b91e3c0df98506f467436397c0c72574fc11941bf69ff71cf2073cca368f`
-- Qualification Markdown SHA-256: `d49454092d46238c6140d7c20e46ce6983221b74a9c14840604d6a27d533d9a1`
+- Samples SHA-256: `0be0c7277722483aa66db7ef6a8b7d73c4e57aee53326143cd0d756beb2ae3a0`
+- Export summary SHA-256: `4eea21575e0468d0aa1a9f921f68c0cc0170b6a161e55fcb291c75016c815959`
+- Qualification JSON SHA-256: `e6c412163ac2d937d5a58059e493c92e41dba4828427c088d24bd7028e84041c`
+- Qualification Markdown SHA-256: `c30198e6f2f5778db9cdf74c6eeddb790e16b1a077cc5625840d802e403c9844`
+
+The B1 finalization audit found that the original R5 report recorded local
+Windows CRLF hashes for generated artifacts while Git stored their LF bytes.
+The values above are the corrected repository-preserved LF hashes; artifact
+content is otherwise unchanged.
 
 The frozen trace, manifest, run, isolation snapshots, exported samples, export
 summary, and qualification outputs are stored beside this report.

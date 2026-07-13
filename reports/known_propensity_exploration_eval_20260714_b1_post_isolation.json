@@ -1,0 +1,1466 @@
+{
+  "C:\\Users\\20571\\AppData\\Local\\ModTheSpire\\CommunicationMod\\config.properties": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1783965384319073900,
+    "semantic_sha256": "ebb5a4ed412fd6c49cec1f3aee3fce21cf135a85092e221de15e02744b2cf195",
+    "sha256": "7bee43c6a6919bdf8be73e1b6396185edaad912dfe040ba713ad764fa4be5b99",
+    "size": 505
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_combat_model_ep1_steps11436.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1780511982462121300,
+    "sha256": "3c073dd1b305fc9d2056de634371f9527886cf8b9255ce6bbc60e48e14f3b4b3",
+    "size": 6541162
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_combat_model_ep3_steps11542.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1780512063781372000,
+    "sha256": "de9a763840118f20493c71eb3d60866b16766e9149c7f233d02ad678b8db94ee",
+    "size": 6541162
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_combat_model_ep5_steps11635.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1780512133207411800,
+    "sha256": "98770642990361181c63a661847761a1fdcced9163c557ebc162f8f6675baa79",
+    "size": 6541162
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_combat_model_ep7_steps11732.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1780512204812239600,
+    "sha256": "d254ecc949ddd29c66c6433df7fd104da8435ad74635a8ecee6927e5fc513e38",
+    "size": 6541162
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_combat_model_ep9_steps11848.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1780512290035254200,
+    "sha256": "780f6a94754b741e8e68d278d44dc68a80cf2b137c2d6fd8a39c7f042c936558",
+    "size": 6541162
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep1.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772293943208113700,
+    "sha256": "6674543451acdd3a3c9963ce08fe43a72e53115c059e13f1312a7c40b75dd66e",
+    "size": 2271816
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep10.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294434424077200,
+    "sha256": "d1ae8ffdfbc32fa72a7608cbc77bf096d0711f87c7c37b1115626fb1b0d8dcc1",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep100.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535608711054600,
+    "sha256": "c4a80d0dea0b870ebb184930a9f88071b1a50dc1599197dc2863731ee646d198",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep101.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535642795498600,
+    "sha256": "96e91dc787993a8c649cf3f7d1339b6a8177c75fbb5ee4303f88dfa98acffd64",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep102.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535676051834800,
+    "sha256": "6feb360c6d26de64e5587b7b1bcd7a6c5f6a3dac057cd106166b2727890cb61e",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep103.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535720650048800,
+    "sha256": "1f96014eb1d1a1121e7dc10e9ecc8e93f751765f81649040dc7111cf30ae2f27",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep104.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535764699571100,
+    "sha256": "8d4cdfeea358761d75874d8141d359b12328cc6a5755c0d12923e733641431d4",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep105.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535795427017000,
+    "sha256": "b763e5e585f8b7fb63382d51dca51afbc520cd2adbbeb841e546e156f467498c",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep106.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535837443313100,
+    "sha256": "3b28dfffee3133bcd98abca4605f81505825dee2ba72b12ff5c38bceb081f607",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep107.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535880706248400,
+    "sha256": "76dcfb9fbe689955ffbed75b0d4c8a5055499ad70d9812aeaa67e73a9a71dc58",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep108.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535926628891400,
+    "sha256": "67d34bc6cb89686601cabba2ebfad82958897d0eec81a4bb53963ebf3b4713af",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep109.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535960462474600,
+    "sha256": "809ccc0296ebcac0989c7ee9cfe028954215e954f69d1e1483005f5d4701532d",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep11.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294472500866700,
+    "sha256": "3aaebb3923779e145ed62d9c13c5fabd33c286672982a2b5ee3f25a60f1eb751",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep110.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536002325242700,
+    "sha256": "872c72c174108d99ded94a916307aa18db75daebc311368269f6d5f359e291ca",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep111.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536034703554100,
+    "sha256": "56cbdd5d55ca4ffba8facb5fa91397c592bc5b2ce5c5247ac30640cd36db177a",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep112.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536074051228100,
+    "sha256": "7a4564615d414503420405f93abeeffa96625191116b7acaee087011bbba5342",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep113.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536120621507600,
+    "sha256": "4dd64eec9cb21374dcd0d71289e35fe9bf235153d09b6d45f253429fb4d437f7",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep114.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536197380838300,
+    "sha256": "47c64cd819f743dbe8a244502758ddb57dc43cbff4f324fbcfcc7f874999b521",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep115.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536240048884100,
+    "sha256": "bb95c9461f50ba7c13b5cdc394ac951d2a932dc6a10f4ba8ae760b34faa767e3",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep116.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536285607751400,
+    "sha256": "9d7320a9e7488ede7b15b8e6a71302260aea9a9a6250c26bf4da91af9716633d",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep117.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536322250419000,
+    "sha256": "1e5d9712cecefa397317c4b207d57c8e5966137bc980f813875866434ffc2799",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep118.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536370210514700,
+    "sha256": "7ca4a0f45b9b1b5c5e78bdaf402aa6db9da3f6025c67c73c83c73d93d7290c4c",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep119.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536410419387000,
+    "sha256": "680dcd68888f89566e101ec126ddfd5915c5aab9e906f5980fe4c5e86b3ca2d3",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep12.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294510729697300,
+    "sha256": "f7f3654076e89087f6beb2924115821966ce69b757efd528b3c8b970a72497cc",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep120.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536449428166200,
+    "sha256": "b856b9be6dea1acf72742eaa910ae9991fb5d7b8a46f5411bb997c8c2a9fe9aa",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep121.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536485631663000,
+    "sha256": "d95d0bb9308690ba4832e927614843503f080104ece59ef0ac175fb193ae6136",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep122.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536526751966500,
+    "sha256": "8a4ecfab88d7eb9d316adaedef0d51962aced23629a4af36877adffe5179d197",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep123.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536575170045900,
+    "sha256": "7ca591e316a7618e6d3d82ad3290aa62fffcf9275a0117f96d81926364eab391",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep124.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536609798434600,
+    "sha256": "6a4c831f7bac00ecdb08a39eb191c591c9c8891ed404607af3aa54fc637bc180",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep125.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536637637484200,
+    "sha256": "e9514e7f8ea85b70f070eea4b713d1603d6c9aab1d95599a5589e1b54cb59374",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep126.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536689380287100,
+    "sha256": "835afafc1e10f66daa875207d699fd6c738ec78ab31160c5bcbb57f21ff5a1dc",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep127.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536738806385000,
+    "sha256": "d5218ddefe19536b0bcc1998d96516ce47bc1a5848ac45484db5670ed11c0caf",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep128.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536771973765200,
+    "sha256": "4b5a11dd7c787e7f00df1a3ab942d5e28fcf10a116892703d7007aaa35eeb286",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep129.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536835716031300,
+    "sha256": "11cb0023c9a803bcfbb78d4504b6c367de008da0267a957b5c618079efb22227",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep13.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294552277065900,
+    "sha256": "af3c04cc7d21a318a909d3664b64aad2c5e615d9232f8cf1ad49c8c2db26570e",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep130.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536870326105700,
+    "sha256": "5cf1060ebb044eea1921a3a5b0c56fe2d1a5a35354954b311aac660eff8293f4",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep131.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536915378318700,
+    "sha256": "29b5925bd3ebd4433020528b118f124d0d4eb8f751964697ea5740970952a08a",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep132.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536949805690800,
+    "sha256": "4da7bbc6f854055103c48abce587ddf9c6acbe6e5fd54d942f9f88623acfedda",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep133.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770536994417547100,
+    "sha256": "d01c8442641f58dda8b7c13e03c728f88f8b3f3294f14c482191c8bf73154940",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep134.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537044197228900,
+    "sha256": "e5e6e8e5d6d57d13253921382d4d67c6e27395c57cb74e540c63e8afecdc8be6",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep135.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537075995390200,
+    "sha256": "f3b0fcdd341e8c265f29b3fbc48afd263959035d2040045c4220ab3d06d31c4b",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep136.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537111851975400,
+    "sha256": "cb9841d934235c64074f1811ad5ec2bbfcf5b9ae4eb4a70047172ab7de6e40d9",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep137.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537157571950000,
+    "sha256": "d2823ed097cc3267fb08c375c2e390cbabe8a4846317590cde85dfd4b61e7114",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep138.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537197330466700,
+    "sha256": "aac7319799bb7404e856ad07a844e3f740e0382e92f52f367990fbfc390652ef",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep139.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537236556322800,
+    "sha256": "7335850a73cc78d4e59eb47b73a77e571f8480a4e0ad2a6178641861f0dfd67a",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep14.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294582339359500,
+    "sha256": "7265a93a566f987ca399644ff51b6f0c82052866fe1a1ac368c532e4b50b9967",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep140.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537273879510500,
+    "sha256": "6e239f6c9247aa32e247026d9df5259caf97df1c6d8f8aa5d638152d4466c576",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep141.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537309697484600,
+    "sha256": "d1473f5cf53197ac9232a242a24cb4e23dd385600bcf0bc4f93793a0a54332cd",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep142.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537338747183500,
+    "sha256": "e92d3f95997681db992633027b3369d287c691882dc517969d3358d4726b32b0",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep143.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537366109693900,
+    "sha256": "9157c240dd10e8fb822ee6056892a3b545a9d841ccf8b39e7226bcdb66a00d99",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep144.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537397911823800,
+    "sha256": "4b198639278bcc345e81166933c4dbae05e0cf4d8a533cd04a0f7cb793a3e829",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep145.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537432635231700,
+    "sha256": "e46ad51819685eb838e906f6d5d8af5a055a5f07b2a2779f2252269690f1a474",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep146.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537478107689200,
+    "sha256": "930130624d9d7eec63624dcf98e758689ffba4b7339dbc107a5b301e445c1f07",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep147.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537529946924400,
+    "sha256": "dd0227428fe329e1d88860671a74d5ce0e6f193e100da55b63ad9e2695169635",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep148.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537574578881200,
+    "sha256": "caae8624d49fff0dc5cd851828af329f6e3d6947f4843c6b2f730203718885dc",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep149.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537612866098800,
+    "sha256": "423e7b3526bb96411522cf00abfec8356e3675a5b5e6bb4793307ab233c77f88",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep15.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294631613440100,
+    "sha256": "96a52b63442f5363b9c45f4071ef9e733c312665bf97c4a9b757533a7e8eb0f0",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep150.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537666670546900,
+    "sha256": "7a5c7f949eb45278949b5aa32441989bee9e17ffc5209bdffd1083d21c816ad2",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep151.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537702736681500,
+    "sha256": "5dd8522b73862f7b237f06eb89a839f7ca0d8b6572f650743a98f88e1d679627",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep152.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537756174754300,
+    "sha256": "4c1a3b88bf1166a3f4dfc573199c557bedc939a1f05ece91356483a039e849c7",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep153.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537796161931500,
+    "sha256": "dbe8364841ecddc2bd126a7843b27d19197893433afae356bd3e0837127155ee",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep154.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537833692874300,
+    "sha256": "726dbfebd454edab9a7f8bf351ddbdc37a3bae1ca3f097084d2b4b73d6f6bf33",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep155.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537863578742600,
+    "sha256": "9ba2c4038e233a174e1d35b232e07ddfc940cccfdd5a9c7a643d1cca1429c738",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep156.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537905320680800,
+    "sha256": "56a261a14fd1990f1b3d75e8d8d6a81ec3fd8c8faacd295597141d9e84ecdd34",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep157.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537929434881400,
+    "sha256": "689e704aa0e57460bccba147904637f994ab6d4149fe99121c4e71bb96b2c1ff",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep158.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537956173078300,
+    "sha256": "171aec62c2c8231039ad0c624383a76efdfcd315da1f56aa1ef1d81c840c7396",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep159.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770537983959241200,
+    "sha256": "1612a94c56c2797f8a3936f386666cdbd83adbdc1fcb4c6172c2bdf73788c925",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep16.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294673059210800,
+    "sha256": "037ba52eaa2aeb7c2b609b85dfe08a4afa832ddcc6d50ebfeb1526e8e0cbaaa7",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep160.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538035458112200,
+    "sha256": "8d1b4089e606ef56fcd3c5bb597d36dba4f1b55c52c9affaf79fa3bc5c8855ee",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep161.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538065519318700,
+    "sha256": "2f0fd078b98d36dbf2568ec4fa2a78aca5392a63f1fe7d303b183d5474c4bd48",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep162.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538105423325100,
+    "sha256": "cc57e7dc919a93e37be0ad4cb6a81ddbb7361914c63207e50f9a638fab8fb6e8",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep163.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538168641871300,
+    "sha256": "0625a6ddb6e0c5d01a84e5bbebc4eb689b9e487e657c4c0a4c2067d1a5408f4a",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep164.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538217029975100,
+    "sha256": "b07b422908997cca8de8c9f73ecf9b37aa2002796c917a036584305569fa657e",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep165.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538246883093000,
+    "sha256": "b71b8c76f4de87c3b3b59cd720e0b53cc473c4ca9916179ad997a26d26cb2d72",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep166.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538275709746600,
+    "sha256": "81e5202fe70ed33d715531eee57a8e8ced85878d3da885bdaacfef77aef63778",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep167.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538317564488700,
+    "sha256": "70238baaf60af20825c5218dbc67520a40b1faad0ecb0602d9acf0aaca716107",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep168.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538370313486500,
+    "sha256": "6021b93acf3edb5325341fbe418f9b7949a8006a40a6d178abb250d6d9d87619",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep169.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538398567799700,
+    "sha256": "82c8bd868f2ad60a05f63f7b796e6b4a75030eeabf2821e30cdea750eb1d1bc8",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep17.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294714154506800,
+    "sha256": "79fea44a377407860c01afd59b1ea4c1ebd52e9b3c4616be1b8ae62db4fd966c",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep170.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538428696087300,
+    "sha256": "979effb0bcbb9d7a4cbce64eaefde84b261abe68f98773986099aa3db5aa0db1",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep171.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538479431327000,
+    "sha256": "8538b1b900cf099706d4c820965715aa3e8754ea5a8bb2f7d4866cfe1ddd6611",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep172.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538513017497400,
+    "sha256": "11e02f2a77cff4335614dfdd2ee8e20d0fe83b08929931db24d1f4866fa4f09e",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep173.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538548340171900,
+    "sha256": "e7d6ed51741689f05f4a0d60afd972519b1391209d68a11a91e953852b2cc515",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep174.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538578231819700,
+    "sha256": "134fff7fa27cbc17af1e8ca81b2874e72c1b4a82c9a0c4f66728d8c76a57ab1d",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep175.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538622390729100,
+    "sha256": "e50cee25b6af2c754746c0f54c2ec513b56868f5ac0cabe3ffbf5a3be3d33ce9",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep176.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538652861972000,
+    "sha256": "64bd98681d7181c508490c1878967b2449033ce693b6d4bd262fe660b48fae4f",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep177.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538704680948800,
+    "sha256": "3054ce0b3c7c8625dff5bfecd46ff79d7487c699d356fdb487aa24d4372914d6",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep178.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538746126590000,
+    "sha256": "5761b0c6f72eec4b8ac46d8a2a80d5b93204e5e801283b520d7d1a34773a870b",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep179.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538782603687800,
+    "sha256": "6ef227c448081d861c25b3401322d46f4ec34c35b14827c42fdfdf2b5cec9f0f",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep18.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294751989578000,
+    "sha256": "554d1b571857ed811a9d57d7f88c947fbc1a2a8224616142bebb6636cf560df3",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep180.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538818061339200,
+    "sha256": "2c933ddb26a9b6d1f678a1c0d6dfae27379a809598d62b0d250f6a0e1456a8a9",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep181.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538863523716000,
+    "sha256": "e792f28a62f6758f551a9a3d1a88099ad5857f0b888070dfad50cfd69650736e",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep182.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538909697674800,
+    "sha256": "47f9fc816c2dd015c84f5b00cb30948c2cb1cff1df043c42cb7551e8375c1fbf",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep183.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538942182824300,
+    "sha256": "95c61f9f2a0ff7f24bb9e0f937970a6827b3a6100f4751181131235968a4b048",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep184.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770538980087114000,
+    "sha256": "6e9b27c2026b276d7cb940a5333513ab9ce11056e9a5aca620c29fe20f0ac9b0",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep185.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539007941103600,
+    "sha256": "a9113eaa1d954a137f2915ff1ce1b61a3f1a49f6cef74472887dfe98f7361f5a",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep186.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539043384440600,
+    "sha256": "e056c8d180f9bb76173e08fdddc50a1c5178645a89cb6ab7ac3d2cce5af6dde7",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep187.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539077417887800,
+    "sha256": "391c13d4a3bc67153c6118c5b001210df289ed6cb7fe41e6009bcff30e8676e1",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep188.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539111123703200,
+    "sha256": "d85b146b85b5e80a65f52da4e9d32ddf11183dac97c1f2192e33047b88b7f5fa",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep189.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539161664536600,
+    "sha256": "79eacc50b23f07a69334022f861eb6b824baec34f8bb678fa8b5665e793ee676",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep19.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294782360920100,
+    "sha256": "5a23c648cb7262a13d7c8d3b553487fdf1c8dc0b06363c111a0d3593eff8a2df",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep190.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539194518696800,
+    "sha256": "52bf3704b3f13fb0d40b6ce2ef29d0338c980a7f0ec0deca23940db54dc98206",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep191.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539231312814600,
+    "sha256": "21de26af11210274879e1e16d04a5fb30cbb3fb94249e4a9fffb229f0b84e564",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep192.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539272894391400,
+    "sha256": "4e8227654d1fab089472f7da15cbf921d4aeed2858c8df70c86d482b2ae02d6a",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep193.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539315673944300,
+    "sha256": "97b3a849194843568e84d963fd8ea7a5c16b3cb558fd40c4618a6b3f5c88d5b1",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep194.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539359759045800,
+    "sha256": "eca948318b06af286881ecdd65904066c2aeddd23b995f29a83518138bd7acba",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep195.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539390061842900,
+    "sha256": "4ccee248728a87af40f5b9ea6af6dececaf64c7972516351772384d61bc23c76",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep196.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539430963637800,
+    "sha256": "669ad08ace23d8447aef20e798b9ffdaa7b867bed0c63c33cd0820eff291f60f",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep197.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539468668373200,
+    "sha256": "a06ff1a24727be360cbe03c95ba2e6fdbe65fdf831c78dafec2dc8c8ee2396bc",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep198.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539494743142100,
+    "sha256": "df6d93471d3da3557cd92199d2702f2fbfeba0a22dbd12774a1181def0b718d4",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep199.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539528165638500,
+    "sha256": "39a620b92c02e273ce2a0b36ce867e5bf62a3677699d0a304075be3db1e0a813",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep2.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294023602823700,
+    "sha256": "20d7513b747a1f523b4301d80e95d19c4eaea084702d8862e45f18ce39abc100",
+    "size": 6539862
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep20.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294819399620300,
+    "sha256": "2bac64150757f27fa0d04e615d3d071fbda327cf6cb246a0b9a6909b14bd0707",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep200.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539559324644200,
+    "sha256": "3acb9430ceba9d60a674d96eb9f7ee44a522702ceb5ff219715aa30f1b05f935",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep201.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539611069957900,
+    "sha256": "2e3a56a2bd663644d2b870d8c601faa613ea7df58d4da93193398205bfd9d005",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep202.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539680306570200,
+    "sha256": "ef1864595c6d7bc0154ecc1cca101d5a552d98844e4e2e76fdb60511e929fbf5",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep203.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770539720571302000,
+    "sha256": "5a6de8d6d0cf1945e9daacf96b2c8017375c2294074da94387acd6fd07e18242",
+    "size": 6539978
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep21.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294862049276800,
+    "sha256": "d1586418bab559c79116dc62ba328104eeb03366abc93528e0831938589c80de",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep22.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294945112725100,
+    "sha256": "9426467b9aca8fba6ef853dc4a6058e207fe4d4c6b067249d6e02e87ffe96a77",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep23.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295000226404200,
+    "sha256": "632d1db9fe36371ce08ae640705d1ea230303b3e9babef1f54ef3e14e0a477a7",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep24.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295047193008100,
+    "sha256": "36c7dd04e1cba81a1da902812328b51ce361ddb3ed2672346024b5cd7bc2eb4f",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep25.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295095645236400,
+    "sha256": "21ff8e1706db05ea39ee8351c2938bd031fab01ba6ca7e36522f393ba86a3bb7",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep26.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295139154892800,
+    "sha256": "6c4c7bb305a0d471f163ee3338b42630580704bada37a173d54af03c8002aae2",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep27.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295193698423500,
+    "sha256": "3d4a90f61768994d8fea39f331134ae3048dbdbc878214370d17b9b8e4c7981d",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep28.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295269450649000,
+    "sha256": "fadac752cc5b05c9fb71eabe1c4cd3eafcd503f02206a40fd85eab53222ed0a3",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep29.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295298031492000,
+    "sha256": "7befe11466f3767e4bd777fcde229b89be6b989beb45b5ec1c18d4fd6850070b",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep3.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294073150396200,
+    "sha256": "b2de33194f03e5e82110c4829b0f9711634d95028d2f92d3374eb94469a14613",
+    "size": 6539862
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep30.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295359925887600,
+    "sha256": "5b6b4709e63b2d5827ffbcd5951a1deb9c4a84ac5d8ca691f806d37352027522",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep31.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295403717425500,
+    "sha256": "b057fa5c0b43b447714e9f0443a84e462bce9615f8b499e6bd90ea7c12914212",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep32.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295475490017700,
+    "sha256": "fb3f06c46846053077b9be08dc70e213c4ad567de9d0cf9ac66c7b0d174e5cf2",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep33.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295522887751300,
+    "sha256": "325ce248b4787a67f8480f336fbae730c2cc55d848bcf077647504d83952ccd4",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep34.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295549287052900,
+    "sha256": "ead30a733176370f11f5c0b0767ce817e766830e112a4a41f6134cdd726f13ba",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep35.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295588632355100,
+    "sha256": "215813bbd8b119e23b97474636107bd355d48ad4c23573ab28ed828d7c36cba4",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep36.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295615918322400,
+    "sha256": "691a26126613fc5461422d66b22a174b61f74ddb7f72414b13d70f89471432df",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep37.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295652720497700,
+    "sha256": "ff396ce8b6d351e827b7694b979df4806f8cd4f669e611d203d7fe3845c31544",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep38.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295677139134800,
+    "sha256": "cbbef55ff11b0abe4914ad22eb3f648d5ec59cb9c18541880403785e1c0cadf9",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep39.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295714672452700,
+    "sha256": "984e2c2fc8ca21d316aed87f9169c42b9ecbc8ef55833419133fe991746ef697",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep4.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294114222738400,
+    "sha256": "c61642e092a3eedb12293eac3626077415de1e8bfee757b814c568b9e9bedb23",
+    "size": 6539862
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep40.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295751830027000,
+    "sha256": "2fa2b887c5b684dde450f814d1f18f9c7c4cfee02c59b97836c0c87293f07ab8",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep41.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295781851328000,
+    "sha256": "2b032b76627240710971257da13198aac332f936d391c9be389b88f8f8836392",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep42.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295824354126700,
+    "sha256": "50a919c1fbf336016d42e0291a275ea4fc6c806fdf3cb2686b69f6d7f095f61e",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep43.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295854013605100,
+    "sha256": "c82802ee22c6ce1e3f9541f7c3ead13cbd6f4acddbe4b8aea60eeeb5687b4a30",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep44.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295891839968900,
+    "sha256": "cbcb0e5d4db170d0b84cc36cb14eed4aec17a2847c5695682d49b53ecfc58c66",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep45.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295935933236000,
+    "sha256": "081029ed0f5afb9c6a450e7fb29581544b23d00d4e491756252a5995e5581ea8",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep46.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772295965408269000,
+    "sha256": "754fe7c2ec5ff5d13a7cde63e426b58f849adbb5f71360431121573e08de8b73",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep47.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772296004805401100,
+    "sha256": "0ef81c4ae6663bb03d2e4f30adbf1758290515aba1380e6d839df5f8424ece2e",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep48.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772296055994838200,
+    "sha256": "c06198455d033b49d064a4138d630bb0509c3a2af754865b1b3b9ecbea988ff2",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep49.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772296097611665000,
+    "sha256": "f79841fd306541e6aac5b842abd703eb80c83a52c37cf508527675dd98580f18",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep5.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294173193546000,
+    "sha256": "6dc3a57c6aa7e26cf772260d095827f136c24c64759c0df54c9ab1860caccd32",
+    "size": 6539862
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep50.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772296129759890800,
+    "sha256": "13db1e04dce98c5234e5653e527d44f50462fb301631caf319fb28867445e27b",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep51.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770533768520648300,
+    "sha256": "134f6d311bd5badfb8b0e0362866d9b3d1120bd8c52b42e5fe3399745a5fd484",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep52.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770533806416488700,
+    "sha256": "8516e0497139ef111fafe50ccdc60d281aa9283f8a3b15e2d18e2eec905452d2",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep53.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770533830460107600,
+    "sha256": "8376cfd17bdbf74fee59a90ac83c108f038e862af13d1f9a4ccda6fdbc371e2a",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep54.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770533866242998900,
+    "sha256": "013fd373410715a96e68aaaed8f6364eb38f5bada581a33d815f34bfb3553e01",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep55.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770533922265640900,
+    "sha256": "26351ac2ab71d0bc1ec3d64b8ca4a0287eebf3a2abdf00ef65f7dc17f1f7e4f9",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep56.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770533951306942400,
+    "sha256": "e24a8cc012e83155af6c5f1753e7cf7dd9a69d404e01baa4f6922704a81dedf0",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep57.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770533986708731800,
+    "sha256": "2c2d168de51281b4a8efe03d118ab5226028f2d7f49e56f7a86ad59bfb4ccfbf",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep58.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534031254712400,
+    "sha256": "e4f7e0f26b8f7b4a8a5afc543d41a6e997254aabd87747a0d154dd9d7bb6e0ba",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep59.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534075535271800,
+    "sha256": "055d29d521aad7b91bcfe511d34dd0166a1195dca2ec6c410e61ef8ce26b04e7",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep6.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294217579390400,
+    "sha256": "eab6c633f1e2f5fabdf323c2a95c48054968c2bb707ed3eda00efe399a2cacfa",
+    "size": 6539862
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep60.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534113258952500,
+    "sha256": "6209d23e36c0052e1041f3ea4070ce0d429494f37714486a7c816f30c1624d7a",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep61.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534180307549000,
+    "sha256": "76886a4f54c49f3de93b3596ea10b772504e919257c5bb91f293eaf8e73b787c",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep62.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534219371307500,
+    "sha256": "c12b42bc4e515302fdb71d1761b33ec894063fa69e2fa39c4757b398cd5444e1",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep63.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534265506892500,
+    "sha256": "c69e25c95715b489fa72f3c9f6f3e3f1bcf5ae667df838cffa2735a94a39ed99",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep64.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534306446545400,
+    "sha256": "5855811719c0f9cf76bb25e5038b511af711a8aed5e15e26fb783d66b4389a1d",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep65.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534328592157800,
+    "sha256": "c35d1919568fbee318cbd12029ca96a12f03c35a0a636691f1dc1f6177e32f11",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep66.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534365112904300,
+    "sha256": "04269fd1f3697b30100396bb3c0e7f64698e61bb7eac83906516c21d51c05468",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep67.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534409716275300,
+    "sha256": "cb5a9daa6b4b2ef7bf52743c5c4a227564013f68ef4e0d11a83f173278fedf16",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep68.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534452430167800,
+    "sha256": "24b60005eeedc4c486b4eff14fc7a2014470d7efddc63f3675cfaad125dcbb39",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep69.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534499552939000,
+    "sha256": "ddc714fe4511150dfbe2bbfbacb3de1c277037acdf6c3694c0e0b2177010ef83",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep7.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294250140669800,
+    "sha256": "407c2c2f1bb5e14617e4ee539f46eb92f2ea8484c8615fd8bd93c07ed44b0094",
+    "size": 6539862
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep70.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534528745994400,
+    "sha256": "a4dce209e96f412ef5913b6ca3673a62cd0a6cf1e3e5b0438f8dd4b8625e0d35",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep71.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534573963544000,
+    "sha256": "4fe2c03001319e1caf82a607a95b3b8280146afa2bab7da0cc404c580fb2bf58",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep72.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534604964510400,
+    "sha256": "70670dec355966cb92bead2e0838b7573bb2bd49a71e72d608b2ca3614b9c2af",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep73.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534642546252500,
+    "sha256": "20b767d282f470582861a98045b4abd2ad411f7808177791e2bcdd68fdfe4357",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep74.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534673864938900,
+    "sha256": "338f9146a6a972e6f11c15dc01e782cbf4ab2f2a8b898867745b57017e6459eb",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep75.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534723462609200,
+    "sha256": "ece2e33fdaa314c116fb81ee7fab6703d5a0c16cf7a83e0bb23d103e50e9a4d3",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep76.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534756549826500,
+    "sha256": "9fcca61e49eaa51a9954acb7948d143f1c655998237bd6dccca3ccf75b8ec19a",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep77.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534784997211300,
+    "sha256": "aeff1b9d54e0ad4cd128b6b91567d346dc484125ce5bd9b843548cd3f4d9085d",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep78.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534821350281800,
+    "sha256": "43f8c9e92146391980639224268f82b37a76b67deb0256337d8e8e9346842de7",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep79.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534850829840400,
+    "sha256": "5cc12db01559d3c9690ac8e90508f394554b929617424737e06c0ba97116ff90",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep8.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294317832677400,
+    "sha256": "be4c14a2dc682a103111d9493e1fd670bc3111fc1ced4f687da9bd1979d49778",
+    "size": 6539862
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep80.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534887403065100,
+    "sha256": "79b633d76601155b627f8527e6056faa22461274a7489866018f21a6f15209e3",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep81.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534926925792500,
+    "sha256": "eb57318d6e1bf9c030a7ede0417ff2fe6e9e6e4d07b57df748869ee1c41a5549",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep82.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770534973486242900,
+    "sha256": "a81f1122a36bd2f426198dafaf372ac23956d2ed158cc09d6311fa25b354bc1d",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep83.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535011109379400,
+    "sha256": "c268f59c458167e8b022462d71a54a090c482077e009ba619b29b426ee22a55d",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep84.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770491245317597700,
+    "sha256": "627c5aeb358200da04e7efda859ddfbe20d9f2251a0c9e85d0b97886be25a66a",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep85.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770491286974013200,
+    "sha256": "ddc715282e18801baa6de9f0a51470322b876c4e065c02218a66b77a00d03df2",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep86.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770491330294308900,
+    "sha256": "76c075c86ab68d42cc71a8f8c3e02ff11a8f4f813a7467b6d305f55e2499fb80",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep87.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535054602471000,
+    "sha256": "846306ace128e30ef17251149fce679e4c8f5fc5d9e6e564981051628c7e399c",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep88.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535101569391300,
+    "sha256": "7df0d182ad962678ea796ca0421d6f508eded417b54f63a6b23d7ba4e1c92a51",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep89.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535140902920100,
+    "sha256": "58074577cec9db2804e58112d1a950832edcecbf0852fcb7fdf462494e4a8c1a",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep9.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1772294384074590300,
+    "sha256": "b4753ec87cac2518da4719209f54926564069d30d9db34b2dfaa1cfc2d3f82e6",
+    "size": 6539862
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep90.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535192447576400,
+    "sha256": "65b59dcb615218ecb8747316edf91d9991b3cc7ccf88b7815bcdc25bacc8985e",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep91.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535245372372600,
+    "sha256": "cecb919de68caebb57ee8cb86a2fc5608db5ed735bcec173e840e7800c62b751",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep92.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535274729763700,
+    "sha256": "409f45d851ea274b33bdac097d2234475888c74d84afa1f488914e48c07addc2",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep93.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535322733514500,
+    "sha256": "551210e88c3caae4d330390b524289303444aabe75161804fc95be121d6fab21",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep94.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535367643866100,
+    "sha256": "cf48f20a1f0c08f9d4fa6a159c9d5aed7066c90efd5580d328c410912eb7d7d6",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep95.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535405912587200,
+    "sha256": "203cd6f575b0c7d92b85e574314a1b319f0c974735d493f64a6f05b9776cd570",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep96.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535451853480000,
+    "sha256": "12c288b7e95093b536eae3f82d5bdbcd48cbc877229488a36eb766ab6b11b1e7",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep97.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535493643540000,
+    "sha256": "543ebd5719ddfd39d1c85a170ab1a2335a5feebb18fe071ef88780f30a5d619b",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep98.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535537075960100,
+    "sha256": "2b6a700c2eeeebdceb47cd9066ae5bc1b55de1859a9e173901b2d6143f16c58a",
+    "size": 6539920
+  },
+  "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\checkpoints\\rl_model_ep99.pth": {
+    "exists": true,
+    "is_file": true,
+    "mtime_ns": 1770535560450723700,
+    "sha256": "e0951f8c65f9dce3c60e47fe2e67b1e93a058e9f62de81eaf1f12541ed36b5ff",
+    "size": 6539920
+  }
+}

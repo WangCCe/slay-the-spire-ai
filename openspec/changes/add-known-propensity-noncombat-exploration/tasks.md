@@ -38,6 +38,6 @@
 
 - [x] 6.1 Run focused exploration/export tests, the full pytest suite with a writable basetemp, strict OpenSpec validation, and `git diff --check`; fix only failures attributable to this change, then commit the implementation so live evidence starts from a tracked-clean source commit.
 - [x] 6.2 Capture pre-session CommunicationMod and combat-checkpoint hashes, then run a small nonzero shop/card-reward smoke with Windows Python and no training; inspect fresh `.run` files, `ai_debug.log`, `communication_mod_errors.log`, proposal records, and confirmations before continuing.
-- [ ] 6.3 If the smoke is clean, run a bounded fresh eval until the configured limit or the qualification minimum is reached; do not exceed the 10 percent category ceiling or two-attempt per-run budget to force support.
-- [ ] 6.4 Freeze the exact input allowlist, at least 25 uniquely joined trajectories when available, replay/support/outcome report, artifact hashes, source commit, isolation comparison, and all blocking limitations.
+- [x] 6.3 If the smoke is clean, run a bounded fresh eval until the configured limit or the qualification minimum is reached; do not exceed the 10 percent category ceiling or two-attempt per-run budget to force support.
+- [x] 6.4 Freeze the exact input allowlist, at least 25 uniquely joined trajectories when available, replay/support/outcome report, artifact hashes, source commit, isolation comparison, and all blocking limitations.
 - [ ] 6.5 Obtain independent raw-evidence and code review, resolve accepted findings with regressions, rerun focused/full verification, and leave OPE, causal uplift, formal RL, and live promotion blocked.
