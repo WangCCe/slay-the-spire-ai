@@ -1,20 +1,20 @@
 ## 1. Trajectory And Outcome Contracts
 
-- [ ] 1.1 Add red tests for canonical sample loading, deterministic trajectory ordering, duplicate identities, complete terminal outcomes, and mixed or censored trajectory blockers.
-- [ ] 1.2 Implement versioned trajectory and terminal-outcome contract validation with one outcome record per exact run group.
-- [ ] 1.3 Verify trajectory counts remain independent from repeated decision-row counts and freeze focused regression coverage.
+- [x] 1.1 Add red tests for canonical sample loading, deterministic trajectory ordering, duplicate identities, complete terminal outcomes, and mixed or censored trajectory blockers.
+- [x] 1.2 Implement versioned trajectory and terminal-outcome contract validation with one outcome record per exact run group.
+- [x] 1.3 Verify trajectory counts remain independent from repeated decision-row counts and freeze focused regression coverage.
 
 ## 2. Target Policy Manifests
 
-- [ ] 2.1 Add red tests for source-hash binding, exact rational normalization, support equality, missing rows, duplicate actions, and unsupported probability mass.
-- [ ] 2.2 Implement the versioned target-policy manifest parser, validator, and deterministic behavior-identity builder.
-- [ ] 2.3 Implement the deterministic Current-policy builder with explicit label provenance and fail-closed unmapped rows.
+- [x] 2.1 Add red tests for source-hash binding, exact rational normalization, support equality, missing rows, duplicate actions, and unsupported probability mass.
+- [x] 2.2 Implement the versioned target-policy manifest parser, validator, and deterministic behavior-identity builder.
+- [x] 2.3 Implement the deterministic Current-policy builder with explicit label provenance and fail-closed unmapped rows.
 
 ## 3. Exact Weight And Overlap Diagnostics
 
-- [ ] 3.1 Add red tests for exact decision ratios, trajectory products, zero target support, finite rendering, ESS, ESS fraction, maximum normalized weight, and category-arm summaries.
-- [ ] 3.2 Implement exact `Fraction`-backed trajectory weighting and deterministic overlap diagnostics without clipping or row-level outcome replication.
-- [ ] 3.3 Add identity self-check and minimum-screen blocker tests for trajectory count, nonzero count, ESS, concentration, and primary-outcome variation.
+- [x] 3.1 Add red tests for exact decision ratios, trajectory products, zero target support, finite rendering, ESS, ESS fraction, maximum normalized weight, and category-arm summaries.
+- [x] 3.2 Implement exact `Fraction`-backed trajectory weighting and deterministic overlap diagnostics without clipping or row-level outcome replication.
+- [x] 3.3 Add identity self-check and minimum-screen blocker tests for trajectory count, nonzero count, ESS, concentration, and primary-outcome variation.
 
 ## 4. Deterministic Offline Artifacts
 
