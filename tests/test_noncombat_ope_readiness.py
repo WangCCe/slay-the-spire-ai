@@ -1,24 +1,36 @@
+import hashlib
 import json
+import math
+import subprocess
+import sys
 from copy import deepcopy
 from dataclasses import replace
 from fractions import Fraction
-import math
+from pathlib import Path
 
 import pytest
 
 from analysis_scripts.noncombat_ope_readiness import (
     OUTCOME_CONTRACT_VERSION,
     OpeReadinessError,
+    READINESS_ARTIFACT_SCHEMA_VERSION,
     TARGET_POLICY_SCHEMA_VERSION,
     audit_trajectories,
     build_behavior_identity_manifest,
     build_current_deterministic_manifest,
+    build_readiness_artifact,
     compute_weight_diagnostics,
     evaluate_identity_self_check,
     evaluate_overlap_screens,
     finite_fraction_value,
     load_canonical_samples,
+    main,
+    render_readiness_json,
+    render_readiness_markdown,
+    render_target_manifest_json,
     validate_target_policy_manifest,
+    write_readiness_artifacts,
+    write_target_manifest,
 )
 
 
@@ -583,3 +595,196 @@ def test_overlap_screens_accept_exact_threshold_boundaries_only_as_screening():
     assert screen.ready is True
     assert screen.blockers == ()
     assert screen.estimator_validation_ready is False
+
+
+def _all_mapping_keys(value):
+    if isinstance(value, dict):
+        for key, nested in value.items():
+            yield key
+            yield from _all_mapping_keys(nested)
+    elif isinstance(value, list):
+        for nested in value:
+            yield from _all_mapping_keys(nested)
+
+
+def test_readiness_artifact_is_stable_hash_bound_and_fail_closed(tmp_path):
+    source = tmp_path / "samples.jsonl"
+    _write_jsonl(source, [_sample()])
+    source_sha256 = hashlib.sha256(source.read_bytes()).hexdigest()
+    manifest = build_behavior_identity_manifest(
+        load_canonical_samples(source),
+        source_sample_sha256=source_sha256,
+    )
+
+    first = build_readiness_artifact(source, manifest)
+    second = build_readiness_artifact(source, manifest)
+
+    assert first == second
+    assert first["schema_version"] == READINESS_ARTIFACT_SCHEMA_VERSION
+    assert first["source"] == {
+        "sample_file": "samples.jsonl",
+        "sample_sha256": source_sha256,
+        "sample_size_bytes": source.stat().st_size,
+        "target_manifest_content_sha256": hashlib.sha256(
+            render_target_manifest_json(manifest).encode("utf-8")
+        ).hexdigest(),
+        "target_manifest_hash": manifest["manifest_hash"],
+    }
+    assert first["readiness"] == {
+        "causal_uplift_ready": False,
+        "estimator_validation_ready": False,
+        "formal_noncombat_rl_training_ready": False,
+        "identity_self_check_passed": True,
+        "input_valid": True,
+        "live_policy_promotion_ready": False,
+        "ope_ready": False,
+        "outcome_contract_ready": True,
+        "overlap_ready": False,
+        "target_policy_ready": True,
+    }
+    assert first["diagnostics"]["weight_sum"] == {
+        "denominator": 1,
+        "numerator": 1,
+        "value": 1.0,
+    }
+    forbidden = {"policy_value", "policy_value_estimate", "uplift", "uplift_estimate"}
+    assert forbidden.isdisjoint(set(_all_mapping_keys(first)))
+
+
+def test_readiness_json_and_markdown_render_deterministically(tmp_path):
+    source = tmp_path / "samples.jsonl"
+    _write_jsonl(source, [_sample()])
+    source_sha256 = hashlib.sha256(source.read_bytes()).hexdigest()
+    manifest = build_behavior_identity_manifest(
+        load_canonical_samples(source),
+        source_sample_sha256=source_sha256,
+    )
+    artifact = build_readiness_artifact(source, manifest)
+
+    json_text = render_readiness_json(artifact)
+    markdown = render_readiness_markdown(artifact)
+
+    assert json_text == render_readiness_json(artifact)
+    assert json_text.endswith("\n")
+    assert json.loads(json_text) == artifact
+    assert markdown == render_readiness_markdown(artifact)
+    assert markdown.endswith("\n")
+    assert markdown.startswith("# Non-combat OPE readiness\n")
+    assert "estimator_validation_ready | BLOCKED" in markdown
+    assert "Policy value" not in markdown
+    assert "Uplift estimate" not in markdown
+
+
+def test_offline_writers_generate_complete_target_and_readiness_pair(tmp_path):
+    source = tmp_path / "samples.jsonl"
+    _write_jsonl(source, [_sample()])
+    target_path = tmp_path / "identity-target.json"
+
+    manifest = write_target_manifest(
+        source,
+        mode="behavior_identity",
+        output_path=target_path,
+    )
+    json_path, markdown_path = write_readiness_artifacts(
+        source,
+        target_manifest_path=target_path,
+        output_prefix=tmp_path / "identity-readiness",
+    )
+
+    assert target_path.read_bytes() == render_target_manifest_json(manifest).encode(
+        "utf-8"
+    )
+    assert json_path == tmp_path / "identity-readiness.json"
+    assert markdown_path == tmp_path / "identity-readiness.md"
+    artifact = json.loads(json_path.read_text(encoding="utf-8"))
+    assert artifact["trajectory_audit"]["complete_trajectory_count"] == 1
+    assert markdown_path.read_text(encoding="utf-8") == render_readiness_markdown(
+        artifact
+    )
+    assert b"\r\n" not in target_path.read_bytes()
+    assert b"\r\n" not in json_path.read_bytes()
+    assert b"\r\n" not in markdown_path.read_bytes()
+
+
+def test_builtin_target_mode_and_cli_generate_the_same_artifact(tmp_path):
+    source = tmp_path / "samples.jsonl"
+    _write_jsonl(source, [_sample()])
+    direct_prefix = tmp_path / "direct"
+    cli_prefix = tmp_path / "cli"
+
+    write_readiness_artifacts(
+        source,
+        target_mode="current_deterministic",
+        output_prefix=direct_prefix,
+    )
+    exit_code = main(
+        [
+            "audit",
+            "--samples",
+            str(source),
+            "--target-mode",
+            "current_deterministic",
+            "--output-prefix",
+            str(cli_prefix),
+        ]
+    )
+
+    assert exit_code == 0
+    assert (tmp_path / "direct.json").read_bytes() == (
+        tmp_path / "cli.json"
+    ).read_bytes()
+    assert (tmp_path / "direct.md").read_bytes() == (
+        tmp_path / "cli.md"
+    ).read_bytes()
+
+
+@pytest.mark.parametrize("invalid_input", ["sample", "manifest"])
+def test_invalid_input_preserves_prior_complete_artifact_pair(tmp_path, invalid_input):
+    source = tmp_path / "samples.jsonl"
+    _write_jsonl(source, [_sample()])
+    target_path = tmp_path / "target.json"
+    write_target_manifest(
+        source,
+        mode="behavior_identity",
+        output_path=target_path,
+    )
+    prefix = tmp_path / "readiness"
+    json_path, markdown_path = write_readiness_artifacts(
+        source,
+        target_manifest_path=target_path,
+        output_prefix=prefix,
+    )
+    before = (json_path.read_bytes(), markdown_path.read_bytes())
+
+    if invalid_input == "sample":
+        source.write_text("{malformed\n", encoding="utf-8")
+    else:
+        target_path.write_text("{malformed\n", encoding="utf-8")
+
+    with pytest.raises(OpeReadinessError):
+        write_readiness_artifacts(
+            source,
+            target_manifest_path=target_path,
+            output_prefix=prefix,
+        )
+
+    assert (json_path.read_bytes(), markdown_path.read_bytes()) == before
+
+
+def test_module_cli_exposes_real_subcommands():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "analysis_scripts.noncombat_ope_readiness",
+            "--help",
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "build-target" in result.stdout
+    assert "audit" in result.stdout

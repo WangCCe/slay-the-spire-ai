@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import hashlib
-import re
 import math
+import os
+import re
 import sys
+import tempfile
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
@@ -23,6 +26,8 @@ from analysis_scripts.noncombat_exploration_evidence import (
 
 OUTCOME_CONTRACT_VERSION = "noncombat-ope-outcome-contract-v1"
 TARGET_POLICY_SCHEMA_VERSION = "noncombat-ope-target-policy-v1"
+READINESS_ARTIFACT_SCHEMA_VERSION = "noncombat-ope-readiness-v1"
+OVERLAP_SCREEN_POLICY_VERSION = "noncombat-ope-overlap-screen-v1"
 MIN_COMPLETE_TRAJECTORIES = 100
 MIN_NONZERO_WEIGHT_TRAJECTORIES = 50
 MIN_EFFECTIVE_SAMPLE_SIZE = Fraction(50, 1)
@@ -781,6 +786,528 @@ def evaluate_overlap_screens(diagnostics: WeightDiagnostics) -> OverlapScreen:
     )
 
 
+def build_readiness_artifact(
+    sample_path: Path | str,
+    target_manifest: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build a deterministic, estimate-free readiness artifact."""
+
+    source = Path(sample_path)
+    source_bytes = source.read_bytes()
+    source_sha256 = hashlib.sha256(source_bytes).hexdigest()
+    samples = load_canonical_samples(source)
+    validated_manifest = validate_target_policy_manifest(
+        target_manifest,
+        samples,
+        source_sample_sha256=source_sha256,
+    )
+    audit = audit_trajectories(samples)
+    diagnostics = compute_weight_diagnostics(audit, validated_manifest)
+    identity_check = evaluate_identity_self_check(
+        audit,
+        validated_manifest,
+        diagnostics,
+    )
+    overlap = evaluate_overlap_screens(diagnostics)
+    identity_applicable = (
+        validated_manifest["construction_mode"] == "behavior_identity"
+    )
+    identity_passed = identity_applicable and identity_check.passed
+    outcome_contract_ready = (
+        audit.input_decision_count > 0
+        and audit.complete_decision_count == audit.input_decision_count
+        and not audit.blocked_trajectories
+    )
+
+    readiness = {
+        "causal_uplift_ready": False,
+        "estimator_validation_ready": False,
+        "formal_noncombat_rl_training_ready": False,
+        "identity_self_check_passed": identity_passed,
+        "input_valid": True,
+        "live_policy_promotion_ready": False,
+        "ope_ready": False,
+        "outcome_contract_ready": outcome_contract_ready,
+        "overlap_ready": overlap.ready,
+        "target_policy_ready": True,
+    }
+    blocker_codes = [blocker.code for blocker in overlap.blockers]
+    if not outcome_contract_ready:
+        blocker_codes.append("outcome_contract_incomplete")
+    for blocked in audit.blocked_trajectories:
+        blocker_codes.extend(
+            f"trajectory:{blocked.group_id}:{reason}"
+            for reason in blocked.reasons
+        )
+    if identity_applicable:
+        blocker_codes.extend(
+            f"identity:{mismatch}" for mismatch in identity_check.mismatches
+        )
+    else:
+        blocker_codes.append("identity_self_check_not_applicable")
+    blocker_codes.append("estimator_validation_not_implemented")
+
+    target_text = render_target_manifest_json(validated_manifest)
+    artifact = {
+        "schema_version": READINESS_ARTIFACT_SCHEMA_VERSION,
+        "source": {
+            "sample_file": source.name,
+            "sample_sha256": source_sha256,
+            "sample_size_bytes": len(source_bytes),
+            "target_manifest_content_sha256": hashlib.sha256(
+                target_text.encode("utf-8")
+            ).hexdigest(),
+            "target_manifest_hash": validated_manifest["manifest_hash"],
+        },
+        "contracts": {
+            "canonical_sample_schema_version": CANONICAL_EXPLORATION_SCHEMA_VERSION,
+            "outcome_contract_version": OUTCOME_CONTRACT_VERSION,
+            "overlap_screen_policy_version": OVERLAP_SCREEN_POLICY_VERSION,
+            "primary_outcome": "victory",
+            "secondary_outcome": "floor_reached",
+            "target_policy_schema_version": TARGET_POLICY_SCHEMA_VERSION,
+            "terminal_horizon": "complete_run",
+        },
+        "target_policy": {
+            "construction_mode": validated_manifest["construction_mode"],
+            "diagnostic_only": validated_manifest["diagnostic_only"],
+            "target_policy_commit": validated_manifest["target_policy_commit"],
+            "target_policy_id": validated_manifest["target_policy_id"],
+        },
+        "trajectory_audit": {
+            "input_decision_count": audit.input_decision_count,
+            "complete_decision_count": audit.complete_decision_count,
+            "complete_trajectory_count": audit.complete_trajectory_count,
+            "complete_trajectories": [
+                {
+                    "decision_count": len(trajectory.decisions),
+                    "group_id": trajectory.group_id,
+                    "outcome": {
+                        "floor_reached": trajectory.outcome.floor_reached,
+                        "killed_by": trajectory.outcome.killed_by,
+                        "playtime": trajectory.outcome.playtime,
+                        "run_file": trajectory.outcome.run_file,
+                        "victory": trajectory.outcome.victory,
+                    },
+                    "trajectory_session_id": trajectory.trajectory_session_id,
+                }
+                for trajectory in audit.trajectories
+            ],
+            "blocked_trajectories": [
+                {
+                    "decision_count": blocked.decision_count,
+                    "group_id": blocked.group_id,
+                    "reasons": list(blocked.reasons),
+                }
+                for blocked in audit.blocked_trajectories
+            ],
+        },
+        "diagnostics": {
+            "trajectory_count": diagnostics.trajectory_count,
+            "decision_count": diagnostics.decision_count,
+            "nonzero_weight_count": diagnostics.nonzero_weight_count,
+            "zero_weight_count": diagnostics.zero_weight_count,
+            "zero_weight_fraction": _fraction_record(
+                Fraction(
+                    diagnostics.zero_weight_count,
+                    diagnostics.trajectory_count or 1,
+                )
+            ),
+            "weight_sum": _fraction_record(diagnostics.weight_sum),
+            "effective_sample_size": _fraction_record(
+                diagnostics.effective_sample_size
+            ),
+            "ess_fraction": _fraction_record(diagnostics.ess_fraction),
+            "max_normalized_weight": _fraction_record(
+                diagnostics.max_normalized_weight
+            ),
+            "category_arm_support": deepcopy(
+                dict(diagnostics.category_arm_support)
+            ),
+            "outcome_variation": deepcopy(dict(diagnostics.outcome_variation)),
+            "trajectory_weights": [
+                {
+                    "group_id": trajectory.group_id,
+                    "weight": _fraction_record(trajectory.weight),
+                    "decisions": [
+                        {
+                            "behavior_probability": _fraction_record(
+                                decision.behavior_probability
+                            ),
+                            "category": decision.category,
+                            "ratio": _fraction_record(decision.ratio),
+                            "sample_id": decision.sample_id,
+                            "selected_action_id": decision.selected_action_id,
+                            "selected_arm": decision.selected_arm,
+                            "target_probability": _fraction_record(
+                                decision.target_probability
+                            ),
+                        }
+                        for decision in trajectory.decision_weights
+                    ],
+                }
+                for trajectory in diagnostics.trajectory_weights
+            ],
+        },
+        "identity_self_check": {
+            "applicable": identity_applicable,
+            "passed": identity_passed,
+            "mismatches": list(identity_check.mismatches),
+            "unweighted_outcomes": {
+                key: _fraction_record(value)
+                for key, value in sorted(
+                    identity_check.unweighted_outcomes.items()
+                )
+            },
+            "weighted_outcomes": {
+                key: _fraction_record(value)
+                for key, value in sorted(identity_check.weighted_outcomes.items())
+            },
+        },
+        "overlap_screens": {
+            "policy": {
+                "maximum_normalized_weight": _fraction_record(
+                    MAX_NORMALIZED_WEIGHT
+                ),
+                "minimum_complete_trajectories": MIN_COMPLETE_TRAJECTORIES,
+                "minimum_effective_sample_size": _fraction_record(
+                    MIN_EFFECTIVE_SAMPLE_SIZE
+                ),
+                "minimum_ess_fraction": _fraction_record(MIN_ESS_FRACTION),
+                "minimum_nonzero_weight_trajectories": (
+                    MIN_NONZERO_WEIGHT_TRAJECTORIES
+                ),
+                "required_primary_outcome_unique_count": 2,
+            },
+            "ready": overlap.ready,
+            "blockers": [
+                {
+                    "code": blocker.code,
+                    "observed": _json_exact_value(blocker.observed),
+                    "required": _json_exact_value(blocker.required),
+                }
+                for blocker in overlap.blockers
+            ],
+        },
+        "readiness": readiness,
+        "blockers": sorted(set(blocker_codes)),
+        "limitations": [
+            "No OPE estimator, policy value, uplift, or confidence interval is computed.",
+            "Overlap screens reject weak support but do not validate an estimator.",
+            "Terminal outcomes remain separate diagnostics, not a formal RL reward.",
+        ],
+    }
+    return artifact
+
+
+def render_target_manifest_json(manifest: Mapping[str, Any]) -> str:
+    """Render a target manifest as stable LF-terminated JSON."""
+
+    return json.dumps(
+        manifest,
+        ensure_ascii=True,
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
+
+
+def render_readiness_json(artifact: Mapping[str, Any]) -> str:
+    """Render a readiness artifact as stable LF-terminated JSON."""
+
+    return json.dumps(
+        artifact,
+        ensure_ascii=True,
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
+
+
+def render_readiness_markdown(artifact: Mapping[str, Any]) -> str:
+    """Render the estimate-free readiness result for human review."""
+
+    source = artifact["source"]
+    audit = artifact["trajectory_audit"]
+    diagnostics = artifact["diagnostics"]
+    lines = [
+        "# Non-combat OPE readiness",
+        "",
+        "Status: BLOCKED",
+        "",
+        "## Source",
+        "",
+        "| Field | Value |",
+        "| --- | --- |",
+        f"| sample_file | {source['sample_file']} |",
+        f"| sample_sha256 | `{source['sample_sha256']}` |",
+        f"| target_manifest_hash | `{source['target_manifest_hash']}` |",
+        "",
+        "## Readiness gates",
+        "",
+        "| Gate | Status |",
+        "| --- | --- |",
+    ]
+    lines.extend(
+        f"| {gate} | {'PASS' if ready else 'BLOCKED'} |"
+        for gate, ready in sorted(artifact["readiness"].items())
+    )
+    lines.extend(
+        [
+            "",
+            "## Accounting",
+            "",
+            "| Metric | Value |",
+            "| --- | ---: |",
+            f"| input decisions | {audit['input_decision_count']} |",
+            f"| complete decisions | {audit['complete_decision_count']} |",
+            f"| complete trajectories | {audit['complete_trajectory_count']} |",
+            f"| blocked trajectories | {len(audit['blocked_trajectories'])} |",
+            f"| nonzero-weight trajectories | {diagnostics['nonzero_weight_count']} |",
+            f"| zero-weight trajectories | {diagnostics['zero_weight_count']} |",
+            f"| exact ESS | {_exact_text(diagnostics['effective_sample_size'])} |",
+            f"| exact ESS fraction | {_exact_text(diagnostics['ess_fraction'])} |",
+            f"| exact max normalized weight | {_exact_text(diagnostics['max_normalized_weight'])} |",
+            "",
+            "## Blockers",
+            "",
+        ]
+    )
+    lines.extend(f"- `{blocker}`" for blocker in artifact["blockers"])
+    lines.extend(["", "## Limitations", ""])
+    lines.extend(f"- {limitation}" for limitation in artifact["limitations"])
+    return "\n".join(lines) + "\n"
+
+
+def write_target_manifest(
+    sample_path: Path | str,
+    *,
+    mode: str,
+    output_path: Path | str,
+) -> dict[str, Any]:
+    """Generate and atomically replace one built-in target manifest."""
+
+    source = Path(sample_path)
+    source_sha256 = hashlib.sha256(source.read_bytes()).hexdigest()
+    samples = load_canonical_samples(source)
+    if mode == "behavior_identity":
+        manifest = build_behavior_identity_manifest(
+            samples,
+            source_sample_sha256=source_sha256,
+        )
+    elif mode == "current_deterministic":
+        manifest = build_current_deterministic_manifest(
+            samples,
+            source_sample_sha256=source_sha256,
+        )
+    else:
+        raise OpeReadinessError(f"unsupported target mode: {mode}")
+    destination = Path(output_path)
+    _replace_files_transactionally(
+        ((destination, render_target_manifest_json(manifest).encode("utf-8")),)
+    )
+    return manifest
+
+
+def write_readiness_artifacts(
+    sample_path: Path | str,
+    *,
+    output_prefix: Path | str,
+    target_manifest_path: Path | str | None = None,
+    target_mode: str | None = None,
+) -> tuple[Path, Path]:
+    """Build and transactionally replace a complete JSON/Markdown pair."""
+
+    if (target_manifest_path is None) == (target_mode is None):
+        raise OpeReadinessError(
+            "provide exactly one of target_manifest_path or target_mode"
+        )
+    source = Path(sample_path)
+    if target_manifest_path is not None:
+        manifest = _load_json_mapping(
+            Path(target_manifest_path),
+            description="target manifest",
+        )
+    else:
+        source_sha256 = hashlib.sha256(source.read_bytes()).hexdigest()
+        samples = load_canonical_samples(source)
+        if target_mode == "behavior_identity":
+            manifest = build_behavior_identity_manifest(
+                samples,
+                source_sample_sha256=source_sha256,
+            )
+        elif target_mode == "current_deterministic":
+            manifest = build_current_deterministic_manifest(
+                samples,
+                source_sample_sha256=source_sha256,
+            )
+        else:
+            raise OpeReadinessError(f"unsupported target mode: {target_mode}")
+
+    artifact = build_readiness_artifact(source, manifest)
+    prefix = Path(output_prefix)
+    json_path = Path(f"{prefix}.json")
+    markdown_path = Path(f"{prefix}.md")
+    _replace_files_transactionally(
+        (
+            (json_path, render_readiness_json(artifact).encode("utf-8")),
+            (markdown_path, render_readiness_markdown(artifact).encode("utf-8")),
+        )
+    )
+    return json_path, markdown_path
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run target generation or readiness auditing without gameplay imports."""
+
+    parser = argparse.ArgumentParser(
+        description="Audit trajectory-level non-combat OPE readiness."
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    target_parser = subparsers.add_parser(
+        "build-target",
+        help="materialize a built-in target-policy manifest",
+    )
+    target_parser.add_argument("--samples", required=True, type=Path)
+    target_parser.add_argument(
+        "--mode",
+        required=True,
+        choices=("behavior_identity", "current_deterministic"),
+    )
+    target_parser.add_argument("--output", required=True, type=Path)
+
+    audit_parser = subparsers.add_parser(
+        "audit",
+        help="write estimate-free readiness JSON and Markdown",
+    )
+    audit_parser.add_argument("--samples", required=True, type=Path)
+    target_group = audit_parser.add_mutually_exclusive_group(required=True)
+    target_group.add_argument("--target-manifest", type=Path)
+    target_group.add_argument(
+        "--target-mode",
+        choices=("behavior_identity", "current_deterministic"),
+    )
+    audit_parser.add_argument("--output-prefix", required=True, type=Path)
+
+    args = parser.parse_args(argv)
+    try:
+        if args.command == "build-target":
+            write_target_manifest(
+                args.samples,
+                mode=args.mode,
+                output_path=args.output,
+            )
+            print(args.output)
+        else:
+            json_path, markdown_path = write_readiness_artifacts(
+                args.samples,
+                target_manifest_path=args.target_manifest,
+                target_mode=args.target_mode,
+                output_prefix=args.output_prefix,
+            )
+            print(json_path)
+            print(markdown_path)
+    except (OpeReadinessError, OSError, UnicodeError, ValueError) as exc:
+        print(f"noncombat OPE readiness error: {exc}", file=sys.stderr)
+        return 2
+    return 0
+
+
+def _fraction_record(value: Fraction) -> dict[str, Any]:
+    return {
+        "denominator": value.denominator,
+        "numerator": value.numerator,
+        "value": finite_fraction_value(value),
+    }
+
+
+def _json_exact_value(value: Any) -> Any:
+    if isinstance(value, Fraction):
+        return _fraction_record(value)
+    return value
+
+
+def _exact_text(record: Mapping[str, Any]) -> str:
+    numerator = record["numerator"]
+    denominator = record["denominator"]
+    return str(numerator) if denominator == 1 else f"{numerator}/{denominator}"
+
+
+def _load_json_mapping(path: Path, *, description: str) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeError) as exc:
+        raise OpeReadinessError(f"{path}: malformed {description}") from exc
+    if not isinstance(value, dict):
+        raise OpeReadinessError(f"{path}: {description} must be a JSON object")
+    return value
+
+
+def _replace_files_transactionally(
+    payloads: Sequence[tuple[Path, bytes]],
+) -> None:
+    destinations = [Path(destination) for destination, _data in payloads]
+    if len(set(destinations)) != len(destinations):
+        raise OpeReadinessError("transaction destinations must be unique")
+    for destination in destinations:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+
+    temporary_files: dict[Path, Path] = {}
+    backups: dict[Path, Path] = {}
+    installed: list[Path] = []
+    try:
+        for destination, data in payloads:
+            temporary_files[destination] = _write_temporary_file(destination, data)
+        for destination in destinations:
+            if destination.exists():
+                backup = _reserve_backup_path(destination)
+                os.replace(destination, backup)
+                backups[destination] = backup
+        for destination in destinations:
+            os.replace(temporary_files[destination], destination)
+            installed.append(destination)
+    except Exception:
+        for destination in reversed(installed):
+            if destination.exists():
+                destination.unlink()
+        for destination, backup in backups.items():
+            if backup.exists():
+                os.replace(backup, destination)
+        raise
+    finally:
+        for temporary in temporary_files.values():
+            if temporary.exists():
+                temporary.unlink()
+        for backup in backups.values():
+            if backup.exists():
+                backup.unlink()
+
+
+def _write_temporary_file(destination: Path, data: bytes) -> Path:
+    with tempfile.NamedTemporaryFile(
+        mode="wb",
+        prefix=f".{destination.name}.",
+        suffix=".tmp",
+        dir=destination.parent,
+        delete=False,
+    ) as handle:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+        return Path(handle.name)
+
+
+def _reserve_backup_path(destination: Path) -> Path:
+    descriptor, raw_path = tempfile.mkstemp(
+        prefix=f".{destination.name}.",
+        suffix=".bak",
+        dir=destination.parent,
+    )
+    os.close(descriptor)
+    backup = Path(raw_path)
+    backup.unlink()
+    return backup
+
+
 def _validate_sample_identity(sample: Mapping[str, Any], *, source: str) -> None:
     if not isinstance(sample, Mapping):
         raise OpeReadinessError(f"{source}: sample must be a mapping")
@@ -976,3 +1503,7 @@ def _trajectory_outcome(
     if reasons or not valid_outcomes:
         return reasons or {"outcome_missing"}, None
     return reasons, valid_outcomes[0]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

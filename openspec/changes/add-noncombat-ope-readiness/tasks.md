@@ -18,9 +18,9 @@
 
 ## 4. Deterministic Offline Artifacts
 
-- [ ] 4.1 Add red tests for stable JSON/Markdown rendering, source hashes, separate readiness gates, and no policy-value or uplift output.
-- [ ] 4.2 Implement the offline CLI and transactional artifact replacement for target-manifest generation and readiness auditing.
-- [ ] 4.3 Add invalid-input recovery tests proving malformed or inconsistent inputs do not partially replace a prior complete artifact set.
+- [x] 4.1 Add red tests for stable JSON/Markdown rendering, source hashes, separate readiness gates, and no policy-value or uplift output.
+- [x] 4.2 Implement the offline CLI and transactional artifact replacement for target-manifest generation and readiness auditing.
+- [x] 4.3 Add invalid-input recovery tests proving malformed or inconsistent inputs do not partially replace a prior complete artifact set.
 
 ## 5. B2 Proof Of Concept
 
