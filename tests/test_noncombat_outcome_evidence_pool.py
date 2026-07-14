@@ -1,6 +1,7 @@
 import json
 from copy import deepcopy
 from dataclasses import replace
+from fractions import Fraction
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -15,8 +16,13 @@ from analysis_scripts.noncombat_outcome_evidence_expansion import (
     build_registration,
     collect_registered_session_evidence,
     conservative_marker_run_pairs,
+    derive_outcome_evidence_gate_metrics,
+    evaluate_outcome_evidence_expansion_gate,
     render_registered_pool_manifest,
     render_registered_pool_samples,
+)
+from analysis_scripts.noncombat_ope_readiness import (
+    build_current_deterministic_manifest,
 )
 
 
@@ -398,6 +404,37 @@ def test_registered_pool_renderers_reject_tampered_content(tmp_path):
     manifest_pool.manifest["accounting"]["included_trajectory_count"] = 0
     with pytest.raises(OutcomeEvidencePoolError, match="manifest hash"):
         render_registered_pool_manifest(manifest_pool)
+
+
+def test_gate_metrics_are_derived_from_pool_and_deterministic_current(tmp_path):
+    registration = _registration(tmp_path)
+    pool = _build(registration, _study_evidence(registration))
+    target = build_current_deterministic_manifest(
+        pool.samples,
+        source_sample_sha256=pool.manifest["sample_jsonl_sha256"],
+    )
+
+    metrics = derive_outcome_evidence_gate_metrics(
+        registration,
+        pool=pool,
+        target_manifest=target,
+        ledger_snapshot=_ledger_snapshot(registration),
+    )
+    gate = evaluate_outcome_evidence_expansion_gate(registration, metrics)
+
+    assert metrics.complete_trajectory_count == 200
+    assert metrics.nonzero_weight_trajectory_count == 100
+    assert metrics.category_arm_support == {
+        "card_reward": {"alternative": 50, "baseline": 50},
+        "shop": {"alternative": 50, "baseline": 50},
+    }
+    assert isinstance(metrics.ess_fraction, Fraction)
+    assert metrics.supported_victory_count == 0
+    assert gate["blockers"] == [
+        "minimum_complete_trajectories",
+        "minimum_ess_fraction",
+        "minimum_supported_victories",
+    ]
 
 
 def test_conservative_marker_run_pairs_require_mutual_uniqueness():

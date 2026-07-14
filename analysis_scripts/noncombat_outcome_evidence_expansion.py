@@ -14,6 +14,7 @@ from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, replace
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,8 @@ from typing import Any
 REGISTRATION_SCHEMA_VERSION = "noncombat-outcome-evidence-registration-v1"
 RUN_LOCK_SCHEMA_VERSION = "noncombat-outcome-evidence-run-lock-v1"
 POOL_SCHEMA_VERSION = "noncombat-outcome-evidence-pool-v1"
+EVIDENCE_GATE_SCHEMA_VERSION = "noncombat-outcome-evidence-gate-v1"
+CLOSEOUT_SCHEMA_VERSION = "noncombat-outcome-evidence-closeout-v1"
 SLOT_COUNT = 24
 GAMES_PER_SLOT = 25
 SCHEDULED_ATTEMPTS = SLOT_COUNT * GAMES_PER_SLOT
@@ -177,6 +180,410 @@ class RegisteredPool:
             "manifest",
             _pool_json_copy(self.manifest, "pool manifest"),
         )
+
+
+@dataclass(frozen=True)
+class OutcomeEvidenceGateMetrics:
+    all_registered_slots_accounted: bool
+    global_integrity_stop: bool
+    complete_trajectory_count: int
+    category_arm_support: Mapping[str, Mapping[str, int]]
+    nonzero_weight_trajectory_count: int
+    ess_fraction: Fraction
+    max_normalized_weight: Fraction
+    supported_victory_count: int
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "category_arm_support",
+            _pool_json_copy(self.category_arm_support, "category arm support"),
+        )
+
+
+def evaluate_outcome_evidence_expansion_gate(
+    registration: OutcomeEvidenceRegistration,
+    metrics: OutcomeEvidenceGateMetrics,
+) -> dict[str, Any]:
+    """Apply the pre-registered evidence thresholds with exact arithmetic."""
+
+    validated_registration = validate_registration(registration.to_record())
+    normalized = _validate_gate_metrics(metrics)
+    thresholds = validated_registration.to_record()["thresholds"]
+    minimum_trajectories = int(thresholds["minimum_complete_trajectories"])
+    minimum_arm_decisions = int(
+        thresholds["minimum_arm_decisions_per_category"]
+    )
+    minimum_nonzero_fraction = _registered_fraction(
+        thresholds["minimum_nonzero_weight_fraction"],
+        "minimum_nonzero_weight_fraction",
+    )
+    minimum_ess_fraction = _registered_fraction(
+        thresholds["minimum_ess_fraction"],
+        "minimum_ess_fraction",
+    )
+    maximum_normalized_weight = _registered_fraction(
+        thresholds["maximum_normalized_weight"],
+        "maximum_normalized_weight",
+    )
+    minimum_supported_victories = int(
+        thresholds["minimum_supported_victories"]
+    )
+
+    conditions: dict[str, dict[str, Any]] = {}
+
+    def add_condition(code: str, observed: Any, required: Any, passed: bool) -> None:
+        conditions[code] = {
+            "observed": _gate_json_value(observed),
+            "passed": passed is True,
+            "required": _gate_json_value(required),
+        }
+
+    add_condition(
+        "all_registered_slots_accounted",
+        normalized.all_registered_slots_accounted,
+        True,
+        normalized.all_registered_slots_accounted,
+    )
+    add_condition(
+        "no_global_integrity_stop",
+        normalized.global_integrity_stop,
+        False,
+        not normalized.global_integrity_stop,
+    )
+    add_condition(
+        "minimum_complete_trajectories",
+        normalized.complete_trajectory_count,
+        minimum_trajectories,
+        normalized.complete_trajectory_count >= minimum_trajectories,
+    )
+    for category in ("card_reward", "shop"):
+        for arm in ("baseline", "alternative"):
+            code = f"minimum_{category}_{arm}_decisions"
+            observed = normalized.category_arm_support[category][arm]
+            add_condition(
+                code,
+                observed,
+                minimum_arm_decisions,
+                observed >= minimum_arm_decisions,
+            )
+    required_nonzero_count = _minimum_fraction_count(
+        normalized.complete_trajectory_count,
+        minimum_nonzero_fraction,
+    )
+    observed_nonzero_fraction = Fraction(
+        normalized.nonzero_weight_trajectory_count,
+        normalized.complete_trajectory_count or 1,
+    )
+    add_condition(
+        "minimum_nonzero_weight_fraction",
+        {
+            "count": normalized.nonzero_weight_trajectory_count,
+            "fraction": _pool_fraction_record(observed_nonzero_fraction),
+        },
+        {
+            "minimum_count": required_nonzero_count,
+            "fraction": _pool_fraction_record(minimum_nonzero_fraction),
+        },
+        normalized.nonzero_weight_trajectory_count >= required_nonzero_count,
+    )
+    add_condition(
+        "minimum_ess_fraction",
+        normalized.ess_fraction,
+        minimum_ess_fraction,
+        normalized.ess_fraction >= minimum_ess_fraction,
+    )
+    add_condition(
+        "maximum_normalized_weight",
+        normalized.max_normalized_weight,
+        maximum_normalized_weight,
+        normalized.max_normalized_weight <= maximum_normalized_weight,
+    )
+    add_condition(
+        "minimum_supported_victories",
+        normalized.supported_victory_count,
+        minimum_supported_victories,
+        normalized.supported_victory_count >= minimum_supported_victories,
+    )
+    blockers = sorted(
+        code for code, condition in conditions.items() if not condition["passed"]
+    )
+    return {
+        "blockers": blockers,
+        "conditions": conditions,
+        "outcome_evidence_expansion_ready": not blockers,
+        "schema_version": EVIDENCE_GATE_SCHEMA_VERSION,
+        "study_id": validated_registration.study_id,
+    }
+
+
+def build_outcome_evidence_closeout(
+    registration: OutcomeEvidenceRegistration,
+    *,
+    run_lock_hash: str,
+    pool_manifest_hash: str,
+    target_manifest_hash: str,
+    slot_statuses: Sequence[Mapping[str, Any]],
+    metrics: OutcomeEvidenceGateMetrics,
+    readiness_artifact: Mapping[str, Any] | None = None,
+    estimate_artifact: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Compose one deterministic closeout without widening authority."""
+
+    validated_registration = validate_registration(registration.to_record())
+    resolved_run_lock_hash = _pool_sha256(run_lock_hash, "run_lock_hash")
+    resolved_pool_hash = _pool_sha256(
+        pool_manifest_hash, "pool_manifest_hash"
+    )
+    resolved_target_hash = _pool_sha256(
+        target_manifest_hash, "target_manifest_hash"
+    )
+    slots = _validate_closeout_slots(validated_registration, slot_statuses)
+    lifecycles = {str(slot["terminal_status"]) for slot in slots}
+    if metrics.all_registered_slots_accounted and not lifecycles <= {
+        "completed",
+        "interrupted",
+    }:
+        raise OutcomeEvidencePoolError(
+            "all-slots-accounted metrics contradict closeout lifecycles"
+        )
+    if not metrics.global_integrity_stop and lifecycles & {
+        "blocked",
+        "unlaunched",
+    }:
+        raise OutcomeEvidencePoolError(
+            "non-stopped metrics contradict blocked closeout lifecycles"
+        )
+    gate = evaluate_outcome_evidence_expansion_gate(
+        validated_registration,
+        metrics,
+    )
+    readiness = (
+        readiness_artifact.get("readiness", {})
+        if isinstance(readiness_artifact, Mapping)
+        else {}
+    )
+    dataset_ope_readiness_ready = (
+        isinstance(readiness, Mapping)
+        and readiness.get("outcome_contract_ready") is True
+        and readiness.get("overlap_ready") is True
+        and readiness.get("target_policy_ready") is True
+    )
+    estimate_gates = (
+        estimate_artifact.get("gates", {})
+        if isinstance(estimate_artifact, Mapping)
+        else {}
+    )
+    ope_estimate_ready = (
+        isinstance(estimate_gates, Mapping)
+        and estimate_gates.get("ope_estimate_ready") is True
+    )
+    policy_comparison_ready = (
+        isinstance(estimate_gates, Mapping)
+        and estimate_gates.get("policy_comparison_ready") is True
+    )
+    evidence_ready = gate["outcome_evidence_expansion_ready"] is True
+    status = (
+        "blocked"
+        if metrics.global_integrity_stop
+        else "ready"
+        if evidence_ready
+        else "inconclusive"
+    )
+    closeout = {
+        "blockers": list(gate["blockers"]),
+        "closeout_hash": None,
+        "evidence_gate": gate,
+        "gates": {
+            "causal_uplift_ready": False,
+            "dataset_ope_readiness_ready": dataset_ope_readiness_ready,
+            "formal_noncombat_rl_training_ready": False,
+            "live_policy_promotion_ready": False,
+            "ope_estimate_ready": ope_estimate_ready,
+            "outcome_evidence_expansion_ready": evidence_ready,
+            "policy_comparison_ready": policy_comparison_ready,
+            "reward_design_ready": False,
+        },
+        "limitations": [
+            "Evidence readiness is separate from policy comparison.",
+            (
+                "No closeout gate authorizes causal claims, training, reward design, "
+                "or live promotion."
+            ),
+        ],
+        "registration_hash": validated_registration.registration_hash,
+        "run_lock_hash": resolved_run_lock_hash,
+        "schema_version": CLOSEOUT_SCHEMA_VERSION,
+        "slots": slots,
+        "source": {
+            "pool_manifest_hash": resolved_pool_hash,
+            "target_manifest_hash": resolved_target_hash,
+        },
+        "status": status,
+        "study_id": validated_registration.study_id,
+    }
+    closeout["closeout_hash"] = _closeout_hash(closeout)
+    return closeout
+
+
+def render_outcome_evidence_closeout_json(closeout: Mapping[str, Any]) -> str:
+    _validate_closeout_hash(closeout)
+    return _canonical_json(closeout) + "\n"
+
+
+def render_outcome_evidence_closeout_markdown(
+    closeout: Mapping[str, Any],
+) -> str:
+    _validate_closeout_hash(closeout)
+    lines = [
+        "# Non-combat outcome-evidence closeout",
+        "",
+        f"- Study: `{closeout.get('study_id')}`",
+        f"- Status: `{closeout.get('status')}`",
+        "",
+        "## Evidence gate",
+        "",
+        "| Condition | Observed | Required | Passed |",
+        "|---|---|---|---|",
+    ]
+    conditions = closeout["evidence_gate"]["conditions"]
+    for code in sorted(conditions):
+        condition = conditions[code]
+        lines.append(
+            f"| `{code}` | `{_canonical_json(condition['observed'])}` | "
+            f"`{_canonical_json(condition['required'])}` | "
+            f"{'yes' if condition['passed'] else 'no'} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Blockers",
+            "",
+            *(f"- `{blocker}`" for blocker in closeout["blockers"]),
+        ]
+    )
+    if not closeout["blockers"]:
+        lines.append("- none")
+    lines.extend(
+        [
+            "",
+            "## Slot status",
+            "",
+            "| Slot | Session | Status |",
+            "|---:|---|---|",
+        ]
+    )
+    for slot in closeout["slots"]:
+        lines.append(
+            f"| {slot['slot_number']:02d} | `{slot['session_id']}` | "
+            f"{slot['terminal_status']} |"
+        )
+    lines.extend(["", "## Authority gates", ""])
+    for gate, ready in sorted(closeout["gates"].items()):
+        lines.append(f"- `{gate}`: `{'true' if ready else 'false'}`")
+    return "\n".join(lines) + "\n"
+
+
+def derive_outcome_evidence_gate_metrics(
+    registration: OutcomeEvidenceRegistration,
+    *,
+    pool: RegisteredPool,
+    target_manifest: Mapping[str, Any],
+    ledger_snapshot: Mapping[str, Any],
+) -> OutcomeEvidenceGateMetrics:
+    """Recompute study metrics from the canonical pool and Current target."""
+
+    validated_registration = validate_registration(registration.to_record())
+    if not isinstance(pool, RegisteredPool):
+        raise OutcomeEvidencePoolError("pool must be a RegisteredPool")
+    render_registered_pool_samples(pool)
+    render_registered_pool_manifest(pool)
+    if pool.manifest.get("registration_hash") != (
+        validated_registration.registration_hash
+    ):
+        raise OutcomeEvidencePoolError("pool registration hash mismatch")
+    terminal_by_slot = _pool_terminal_slots(
+        validated_registration,
+        ledger_snapshot,
+    )
+
+    from analysis_scripts.noncombat_ope_readiness import (
+        audit_trajectories,
+        compute_weight_diagnostics,
+        validate_target_policy_manifest,
+    )
+
+    source_sample_sha256 = pool.manifest.get("sample_jsonl_sha256")
+    _pool_sha256(source_sample_sha256, "sample_jsonl_sha256")
+    try:
+        validated_target = validate_target_policy_manifest(
+            target_manifest,
+            pool.samples,
+            source_sample_sha256=source_sample_sha256,
+        )
+        if (
+            validated_target.get("construction_mode") != "current_deterministic"
+            or validated_target.get("diagnostic_only") is not False
+        ):
+            raise OutcomeEvidencePoolError(
+                "outcome evidence gate requires deterministic Current target"
+            )
+        audit = audit_trajectories(pool.samples)
+        diagnostics = compute_weight_diagnostics(audit, validated_target)
+    except OutcomeEvidencePoolError:
+        raise
+    except Exception as exc:
+        raise OutcomeEvidencePoolError(
+            f"cannot derive deterministic Current metrics: {exc}"
+        ) from exc
+    if audit.blocked_trajectories or audit.complete_decision_count != len(
+        pool.samples
+    ):
+        raise OutcomeEvidencePoolError(
+            "canonical pool contains an incomplete trajectory"
+        )
+    if pool.manifest.get("accounting", {}).get(
+        "included_trajectory_count"
+    ) != audit.complete_trajectory_count:
+        raise OutcomeEvidencePoolError("pool trajectory accounting mismatch")
+
+    category_arm_support = {
+        category: {
+            arm: int(
+                diagnostics.category_arm_support.get(category, {})
+                .get(arm, {})
+                .get("decision_count", 0)
+            )
+            for arm in ("alternative", "baseline")
+        }
+        for category in ("card_reward", "shop")
+    }
+    if pool.manifest.get("aggregate_arm_support") != category_arm_support:
+        raise OutcomeEvidencePoolError("pool arm support accounting mismatch")
+    weights_by_group = {
+        row.group_id: row.weight for row in diagnostics.trajectory_weights
+    }
+    supported_victories = sum(
+        trajectory.outcome.victory
+        and weights_by_group.get(trajectory.group_id, Fraction(0, 1)) > 0
+        for trajectory in audit.trajectories
+    )
+    pool_slots = pool.manifest.get("slots")
+    all_slots_accounted = (
+        isinstance(pool_slots, Sequence)
+        and len(pool_slots) == len(validated_registration.slots)
+        and len(terminal_by_slot) == len(validated_registration.slots)
+    )
+    return OutcomeEvidenceGateMetrics(
+        all_registered_slots_accounted=all_slots_accounted,
+        global_integrity_stop=False,
+        complete_trajectory_count=audit.complete_trajectory_count,
+        category_arm_support=category_arm_support,
+        nonzero_weight_trajectory_count=diagnostics.nonzero_weight_count,
+        ess_fraction=diagnostics.ess_fraction,
+        max_normalized_weight=diagnostics.max_normalized_weight,
+        supported_victory_count=int(supported_victories),
+    )
 
 
 def build_registered_pool(
@@ -1497,6 +1904,163 @@ def _pool_timestamp(value: Any, field: str) -> int:
     return value
 
 
+def _validate_gate_metrics(
+    metrics: OutcomeEvidenceGateMetrics,
+) -> OutcomeEvidenceGateMetrics:
+    if not isinstance(metrics, OutcomeEvidenceGateMetrics):
+        raise OutcomeEvidencePoolError(
+            "metrics must be OutcomeEvidenceGateMetrics"
+        )
+    if type(metrics.all_registered_slots_accounted) is not bool or type(
+        metrics.global_integrity_stop
+    ) is not bool:
+        raise OutcomeEvidencePoolError("gate integrity metrics must be booleans")
+    for field in (
+        "complete_trajectory_count",
+        "nonzero_weight_trajectory_count",
+        "supported_victory_count",
+    ):
+        value = getattr(metrics, field)
+        if type(value) is not int or value < 0:
+            raise OutcomeEvidencePoolError(f"{field} must be nonnegative")
+    if metrics.complete_trajectory_count > SCHEDULED_ATTEMPTS:
+        raise OutcomeEvidencePoolError(
+            "complete_trajectory_count exceeds the registered schedule"
+        )
+    if metrics.nonzero_weight_trajectory_count > metrics.complete_trajectory_count:
+        raise OutcomeEvidencePoolError(
+            "nonzero weight trajectories exceed complete trajectories"
+        )
+    if metrics.supported_victory_count > metrics.nonzero_weight_trajectory_count:
+        raise OutcomeEvidencePoolError(
+            "supported victories exceed nonzero-weight trajectories"
+        )
+    support = metrics.category_arm_support
+    if not isinstance(support, Mapping) or set(support) != {
+        "card_reward",
+        "shop",
+    }:
+        raise OutcomeEvidencePoolError("category arm support categories mismatch")
+    for category in ("card_reward", "shop"):
+        arms = support[category]
+        if not isinstance(arms, Mapping) or set(arms) != {
+            "alternative",
+            "baseline",
+        }:
+            raise OutcomeEvidencePoolError(
+                f"{category} arm support fields mismatch"
+            )
+        if any(type(value) is not int or value < 0 for value in arms.values()):
+            raise OutcomeEvidencePoolError(
+                f"{category} arm support counts must be nonnegative integers"
+            )
+    for field in ("ess_fraction", "max_normalized_weight"):
+        value = getattr(metrics, field)
+        if not isinstance(value, Fraction) or not Fraction(0, 1) <= value <= 1:
+            raise OutcomeEvidencePoolError(
+                f"{field} must be an exact fraction in [0, 1]"
+            )
+    return metrics
+
+
+def _registered_fraction(value: Any, field: str) -> Fraction:
+    if not isinstance(value, Mapping) or set(value) != {
+        "denominator",
+        "numerator",
+    }:
+        raise OutcomeEvidencePoolError(f"registered {field} is invalid")
+    numerator = value.get("numerator")
+    denominator = value.get("denominator")
+    if (
+        type(numerator) is not int
+        or type(denominator) is not int
+        or numerator < 0
+        or denominator <= 0
+    ):
+        raise OutcomeEvidencePoolError(f"registered {field} is invalid")
+    return Fraction(numerator, denominator)
+
+
+def _pool_fraction_record(value: Fraction) -> dict[str, int | float]:
+    return {
+        "denominator": value.denominator,
+        "numerator": value.numerator,
+        "value": float(value),
+    }
+
+
+def _gate_json_value(value: Any) -> Any:
+    if isinstance(value, Fraction):
+        return _pool_fraction_record(value)
+    if isinstance(value, Mapping):
+        return {
+            str(key): _gate_json_value(item)
+            for key, item in sorted(value.items(), key=lambda item: str(item[0]))
+        }
+    if isinstance(value, tuple | list):
+        return [_gate_json_value(item) for item in value]
+    if value is None or type(value) in {bool, int, float, str}:
+        return value
+    raise OutcomeEvidencePoolError("gate value is not canonical JSON")
+
+
+def _minimum_fraction_count(total: int, fraction: Fraction) -> int:
+    numerator = total * fraction.numerator
+    return (numerator + fraction.denominator - 1) // fraction.denominator
+
+
+def _validate_closeout_slots(
+    registration: OutcomeEvidenceRegistration,
+    slot_statuses: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    if isinstance(slot_statuses, (str, bytes)) or not isinstance(
+        slot_statuses, Sequence
+    ):
+        raise OutcomeEvidencePoolError("slot_statuses must be a sequence")
+    by_slot: dict[int, dict[str, Any]] = {}
+    for raw_status in slot_statuses:
+        if not isinstance(raw_status, Mapping):
+            raise OutcomeEvidencePoolError("closeout slot status is invalid")
+        status = _pool_json_copy(raw_status, "closeout slot status")
+        slot_number = status.get("slot_number")
+        if type(slot_number) is not int or not 1 <= slot_number <= len(
+            registration.slots
+        ):
+            raise OutcomeEvidencePoolError("closeout slot number is invalid")
+        if slot_number in by_slot:
+            raise OutcomeEvidencePoolError("duplicate closeout slot status")
+        slot = registration.slots[slot_number - 1]
+        if status.get("session_id") != slot.session_id:
+            raise OutcomeEvidencePoolError("closeout slot session mismatch")
+        if status.get("terminal_status") not in {
+            "blocked",
+            "completed",
+            "interrupted",
+            "unlaunched",
+        }:
+            raise OutcomeEvidencePoolError("closeout slot lifecycle is invalid")
+        by_slot[slot_number] = status
+    expected = set(range(1, len(registration.slots) + 1))
+    if set(by_slot) != expected:
+        raise OutcomeEvidencePoolError("closeout slot set mismatch")
+    return [by_slot[number] for number in sorted(by_slot)]
+
+
+def _closeout_hash(closeout: Mapping[str, Any]) -> str:
+    record = dict(closeout)
+    record["closeout_hash"] = None
+    return hashlib.sha256(_canonical_json(record).encode("utf-8")).hexdigest()
+
+
+def _validate_closeout_hash(closeout: Mapping[str, Any]) -> None:
+    if not isinstance(closeout, Mapping):
+        raise OutcomeEvidencePoolError("closeout must be an object")
+    supplied_hash = closeout.get("closeout_hash")
+    _pool_sha256(supplied_hash, "closeout_hash")
+    if supplied_hash != _closeout_hash(closeout):
+        raise OutcomeEvidencePoolError("closeout hash mismatch")
+
+
 def _pool_run_lock_binding(
     registration: OutcomeEvidenceRegistration,
     run_lock: Mapping[str, Any],
@@ -1832,14 +2396,21 @@ def _registration_body(registration: OutcomeEvidenceRegistration) -> dict[str, A
         },
         "output_rules": {
             "canonical_json_line_ending": "LF",
+            "closeout_json_filename": "outcome-evidence-closeout.json",
+            "closeout_markdown_filename": "outcome-evidence-closeout.md",
             "config_suffix": "-config.json",
+            "estimate_json_filename": "ope-estimate.json",
+            "estimate_markdown_filename": "ope-estimate.md",
             "manifest_suffix": "-manifest.json",
             "monitor_json_filename": "blinded-monitor.json",
             "monitor_markdown_filename": "blinded-monitor.md",
             "pool_manifest_filename": "registered-pool-manifest.json",
             "pool_samples_filename": "registered-pool-samples.jsonl",
+            "readiness_json_filename": "ope-readiness.json",
+            "readiness_markdown_filename": "ope-readiness.md",
             "run_lock_filename": "run-lock.json",
             "study_ledger_filename": "study-ledger.jsonl",
+            "target_manifest_filename": "current-target.json",
             "trace_suffix": "-trace.jsonl",
         },
         "repo_root": registration.repo_root,

@@ -23,8 +23,8 @@
 
 - [x] 4.1 Add failing all-slot pool tests for deterministic registration enumeration, mixed exact session propensities, individual slots below aggregate arm support, missing or extra sessions, duplicate trajectories, selective omission, conflicting outcomes, run-lock mismatch, and input-order invariance.
 - [x] 4.2 Implement deterministic registered pooling in `analysis_scripts/noncombat_outcome_evidence_expansion.py` by reusing confirmed exploration export and conservative run joins, preserving every session and trajectory inclusion or exclusion reason.
-- [ ] 4.3 Add boundary regressions for 574 versus 575 complete trajectories, 49 versus 50 baseline/alternative decisions per category, deterministic-Current nonzero count just below and at one half, ESS fraction below and at 0.5, maximum normalized weight above and at 0.05, and two versus three distinct positive-weight victories.
-- [ ] 4.4 Implement `outcome_evidence_expansion_ready` and deterministic JSON/Markdown closeout rendering with every observed value, threshold, blocker, slot status, and authority-boundary boolean.
+- [x] 4.3 Add boundary regressions for 574 versus 575 complete trajectories, 49 versus 50 baseline/alternative decisions per category, deterministic-Current nonzero count just below and at one half, ESS fraction below and at 0.5, maximum normalized weight above and at 0.05, and two versus three distinct positive-weight victories.
+- [x] 4.4 Implement `outcome_evidence_expansion_ready` and deterministic JSON/Markdown closeout rendering with every observed value, threshold, blocker, slot status, and authority-boundary boolean.
 - [ ] 4.5 Integrate the existing deterministic-Current target, OPE readiness, validated estimator, 10,000-replicate bootstrap, influence, and policy-comparison pipeline without changing their implementation bytes or thresholds; add a regression that fails if the registered finalizer substitutes floor reached or authorizes training/promotion.
 
 ## 5. Independent Verification
