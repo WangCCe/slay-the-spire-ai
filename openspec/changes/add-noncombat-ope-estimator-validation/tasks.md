@@ -1,14 +1,14 @@
 ## 1. Verified Estimator Input Boundary
 
-- [ ] 1.1 Add red tests requiring canonical sample, target, readiness, calibration, and implementation hashes plus a successful independent readiness replay.
+- [x] 1.1 Add red tests requiring canonical sample, target, readiness, calibration, and implementation hashes plus a successful independent readiness replay.
 - [ ] 1.2 Implement the estimator bundle loader with complete-trajectory, overlap-ready, calibration-ready, duplicate-key, and transactional failure guards.
 - [ ] 1.3 Add regressions proving changed source bytes, stale calibration, blocked overlap, invalid outcomes, and zero required denominators fail closed without replacing prior artifacts.
 
 ## 2. Exact OIS And SNIS Accounting
 
-- [ ] 2.1 Add red tests for exact behavior, OIS, SNIS, and target-minus-behavior values on victory and floor channels, including zero and extreme trajectory weights.
-- [ ] 2.2 Implement `Fraction`-backed trajectory estimators with finite rendering, no clipping or smoothing, and one terminal observation per run.
-- [ ] 2.3 Add behavior-identity and OIS/SNIS direction diagnostics that remain separate from candidate-comparison readiness.
+- [x] 2.1 Add red tests for exact behavior, OIS, SNIS, and target-minus-behavior values on victory and floor channels, including zero and extreme trajectory weights.
+- [x] 2.2 Implement `Fraction`-backed trajectory estimators with finite rendering, no clipping or smoothing, and one terminal observation per run.
+- [x] 2.3 Add behavior-identity and OIS/SNIS direction diagnostics that remain separate from candidate-comparison readiness.
 
 ## 3. Deterministic Bootstrap And Influence
 
