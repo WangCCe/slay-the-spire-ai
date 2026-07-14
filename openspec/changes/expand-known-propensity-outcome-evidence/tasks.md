@@ -7,17 +7,17 @@
 
 ## 2. Fixed Runner And Append-Only Ledger
 
-- [ ] 2.1 Add failing runner tests in `tests/test_noncombat_outcome_evidence_runner.py` for ordered launch, `--max-games 25`, `--eval`, explicit exploration config forwarding, rejected `--train` or mutation flags, launch-at-most-once, out-of-order slots, unregistered IDs, and post-slot-24 extension.
-- [ ] 2.2 Implement `scripts/run_noncombat_outcome_evidence_expansion.py` with `start`, `dry-run`, `run-next`, `monitor`, and `finalize` subcommands, reusing the existing bounded batch command contract while leaving `scripts/run_training_batch.py` defaults unchanged.
-- [ ] 2.3 Add failing ledger tests for atomic append, duplicate lifecycle records, process start/exit accounting, normal completion, early interruption, crash recovery, source-lock mismatch, and refusal to restart or replace an interrupted slot.
-- [ ] 2.4 Implement the append-only study ledger and slot lifecycle state machine so only the next unlaunched registered slot can run and a global integrity stop prevents every later launch.
+- [x] 2.1 Add failing runner tests in `tests/test_noncombat_outcome_evidence_runner.py` for ordered launch, `--max-games 25`, `--eval`, explicit exploration config forwarding, rejected `--train` or mutation flags, launch-at-most-once, out-of-order slots, unregistered IDs, and post-slot-24 extension.
+- [x] 2.2 Implement `scripts/run_noncombat_outcome_evidence_expansion.py` with `start`, `dry-run`, `run-next`, `monitor`, and `finalize` subcommands, reusing the existing bounded batch command contract while leaving `scripts/run_training_batch.py` defaults unchanged.
+- [x] 2.3 Add failing ledger tests for atomic append, duplicate lifecycle records, process start/exit accounting, normal completion, early interruption, crash recovery, source-lock mismatch, and refusal to restart or replace an interrupted slot.
+- [x] 2.4 Implement the append-only study ledger and slot lifecycle state machine so only the next unlaunched registered slot can run and a global integrity stop prevents every later launch.
 
 ## 3. Blinded Structural Monitoring
 
-- [ ] 3.1 Add failing monitor tests using fixtures that contain victories, floors, killed-by values, target weights, ESS, estimates, bootstrap rows, influence rows, and comparison gates; assert that collection-phase JSON and Markdown contain none of those fields or values.
-- [ ] 3.2 Implement deterministic blinded monitor artifacts that report only registration/run-lock validity, slot lifecycle, process exit, artifact existence, manifest/config hashes, replay and confirmation counts, conservative run-join completeness, and isolation status.
-- [ ] 3.3 Add ordering, malformed-artifact, missing-launched-session, and global-stop tests; require identical monitor bytes under input reordering and fail closed without leaking outcome fields.
-- [ ] 3.4 Run the new runner in no-game `dry-run` mode and verify all 24 generated commands, configs, session IDs, seeds, paths, rates, budgets, and forbidden training flags without launching Slay the Spire.
+- [x] 3.1 Add failing monitor tests using fixtures that contain victories, floors, killed-by values, target weights, ESS, estimates, bootstrap rows, influence rows, and comparison gates; assert that collection-phase JSON and Markdown contain none of those fields or values.
+- [x] 3.2 Implement deterministic blinded monitor artifacts that report only registration/run-lock validity, slot lifecycle, process exit, artifact existence, manifest/config hashes, replay and confirmation counts, conservative run-join completeness, and isolation status.
+- [x] 3.3 Add ordering, malformed-artifact, missing-launched-session, and global-stop tests; require identical monitor bytes under input reordering and fail closed without leaking outcome fields.
+- [x] 3.4 Run the new runner in no-game `dry-run` mode and verify all 24 generated commands, configs, session IDs, seeds, paths, rates, budgets, and forbidden training flags without launching Slay the Spire.
 
 ## 4. Registered Pool And Evidence Gate
 

@@ -86,6 +86,10 @@ class ExplorationConfig:
     manifest_path: Path
     source_commit: str
     source_path: Optional[Path] = None
+    study_id: Optional[str] = None
+    study_slot_number: Optional[int] = None
+    study_registration_hash: Optional[str] = None
+    study_run_lock_hash: Optional[str] = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "enabled_categories", tuple(self.enabled_categories))
@@ -104,7 +108,7 @@ class ExplorationConfig:
         return self.category_rates_bps[category]
 
     def to_record(self) -> dict[str, Any]:
-        return {
+        record = {
             "schema_version": self.schema_version,
             "session_id": self.session_id,
             "seed": self.seed,
@@ -116,6 +120,16 @@ class ExplorationConfig:
             "source_commit": self.source_commit,
             "source_path": str(self.source_path) if self.source_path is not None else None,
         }
+        if self.study_id is not None:
+            record.update(
+                {
+                    "study_id": self.study_id,
+                    "study_slot_number": self.study_slot_number,
+                    "study_registration_hash": self.study_registration_hash,
+                    "study_run_lock_hash": self.study_run_lock_hash,
+                }
+            )
+        return record
 
 
 @dataclass(frozen=True)
@@ -2096,6 +2110,46 @@ def parse_exploration_config(
             "source_commit must be a full 40-character hexadecimal commit"
         )
 
+    study_fields = (
+        "study_id",
+        "study_slot_number",
+        "study_registration_hash",
+        "study_run_lock_hash",
+    )
+    present_study_fields = [payload.get(field) is not None for field in study_fields]
+    if any(present_study_fields) and not all(present_study_fields):
+        raise ExplorationConfigurationError(
+            "registered study binding fields must be supplied together"
+        )
+    study_id = None
+    study_slot_number = None
+    study_registration_hash = None
+    study_run_lock_hash = None
+    if all(present_study_fields):
+        study_id = _required_string(payload, "study_id")
+        if not _SESSION_ID_RE.fullmatch(study_id):
+            raise ExplorationConfigurationError(
+                "study_id contains unsupported characters"
+            )
+        study_slot_number = _bounded_integer(
+            payload.get("study_slot_number"),
+            "study_slot_number",
+            minimum=1,
+            maximum=1_000_000,
+        )
+        study_registration_hash = _required_string(
+            payload, "study_registration_hash"
+        ).lower()
+        study_run_lock_hash = _required_string(payload, "study_run_lock_hash").lower()
+        if not re.fullmatch(r"[0-9a-f]{64}", study_registration_hash):
+            raise ExplorationConfigurationError(
+                "study_registration_hash must be a SHA-256 hash"
+            )
+        if not re.fullmatch(r"[0-9a-f]{64}", study_run_lock_hash):
+            raise ExplorationConfigurationError(
+                "study_run_lock_hash must be a SHA-256 hash"
+            )
+
     resolved_config_path = None
     if config_path is not None:
         resolved_config_path = Path(config_path).resolve()
@@ -2115,6 +2169,10 @@ def parse_exploration_config(
         manifest_path=manifest_path,
         source_commit=source_commit.lower(),
         source_path=resolved_config_path,
+        study_id=study_id,
+        study_slot_number=study_slot_number,
+        study_registration_hash=study_registration_hash,
+        study_run_lock_hash=study_run_lock_hash,
     )
 
 
