@@ -777,7 +777,7 @@ def test_conservative_run_join_count_requires_unique_nearby_run_files():
     ) == 2
     assert module.conservative_run_join_count(
         marker_timestamps=[100, 200],
-        run_timestamps=[99, 101, 198],
+        run_timestamps=[98, 99, 198],
         tolerance_seconds=10,
     ) == 1
 

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import fnmatch
 import hashlib
 import json
 import os
@@ -21,8 +20,10 @@ from typing import Any
 from analysis_scripts.noncombat_outcome_evidence_expansion import (
     OutcomeEvidenceRegistration,
     RegisteredSlot,
+    conservative_marker_run_pairs,
     create_run_lock,
     load_registration,
+    manifest_isolation_matches_run_lock,
     validate_run_lock,
 )
 from spirecomm.ai.noncombat_exploration import (
@@ -286,25 +287,16 @@ def conservative_run_join_count(
     tolerance_seconds: int = 10,
 ) -> int:
     """Count only markers with one unique, unused nearby run filename."""
-
-    tolerance = _exact_int(tolerance_seconds, "tolerance_seconds")
-    if tolerance < 0:
-        raise OutcomeEvidenceRunnerError("tolerance_seconds must be nonnegative")
-    markers = [_exact_int(value, "marker timestamp") for value in marker_timestamps]
-    runs = [_exact_int(value, "run timestamp") for value in run_timestamps]
-    unused = set(range(len(runs)))
-    matched = 0
-    for marker in markers:
-        candidates = [
-            index
-            for index in sorted(unused)
-            if abs(runs[index] - marker) <= tolerance
-        ]
-        if len(candidates) != 1:
-            continue
-        unused.remove(candidates[0])
-        matched += 1
-    return matched
+    try:
+        return len(
+            conservative_marker_run_pairs(
+                marker_timestamps=marker_timestamps,
+                run_timestamps=run_timestamps,
+                tolerance_seconds=tolerance_seconds,
+            )
+        )
+    except ValueError as exc:
+        raise OutcomeEvidenceRunnerError(str(exc)) from exc
 
 
 def build_blinded_monitor(
@@ -706,83 +698,6 @@ def collect_structural_observations(
             observation["structural_valid"] = False
         observations.append(observation)
     return observations
-
-
-def manifest_isolation_matches_run_lock(
-    manifest: Mapping[str, Any], run_lock: Mapping[str, Any]
-) -> bool:
-    pre_session = manifest.get("pre_session_isolation_hashes")
-    communication = run_lock.get("communication_mod")
-    checkpoints = run_lock.get("checkpoints")
-    if not all(
-        isinstance(value, Mapping)
-        for value in (pre_session, communication, checkpoints)
-    ):
-        return False
-
-    communication_path = communication.get("path")
-    communication_semantic_hash = communication.get("semantic_sha256")
-    if not isinstance(communication_path, str) or not isinstance(
-        communication_semantic_hash, str
-    ):
-        return False
-    pre_by_path = {
-        str(path).casefold(): value
-        for path, value in pre_session.items()
-        if isinstance(path, str) and isinstance(value, Mapping)
-    }
-    observed_communication = pre_by_path.get(communication_path.casefold())
-    if (
-        not isinstance(observed_communication, Mapping)
-        or observed_communication.get("semantic_sha256")
-        != communication_semantic_hash
-    ):
-        return False
-
-    root_value = checkpoints.get("root")
-    patterns = checkpoints.get("patterns")
-    files = checkpoints.get("files")
-    if (
-        not isinstance(root_value, str)
-        or isinstance(patterns, (str, bytes))
-        or not isinstance(patterns, Sequence)
-        or not all(isinstance(pattern, str) and pattern for pattern in patterns)
-        or isinstance(files, (str, bytes))
-        or not isinstance(files, Sequence)
-    ):
-        return False
-    checkpoint_root = Path(root_value).resolve()
-    expected_files: dict[str, Mapping[str, Any]] = {}
-    for record in files:
-        if not isinstance(record, Mapping) or not isinstance(record.get("path"), str):
-            return False
-        expected_files[str(Path(record["path"]).resolve()).casefold()] = record
-    if not expected_files:
-        return False
-
-    observed_checkpoint_paths = set()
-    for raw_path in pre_session:
-        if not isinstance(raw_path, str):
-            continue
-        path = Path(raw_path).resolve()
-        try:
-            path.relative_to(checkpoint_root)
-        except ValueError:
-            continue
-        if any(fnmatch.fnmatchcase(path.name, pattern) for pattern in patterns):
-            observed_checkpoint_paths.add(str(path).casefold())
-    if observed_checkpoint_paths != set(expected_files):
-        return False
-    for normalized_path, expected in expected_files.items():
-        observed = pre_by_path.get(normalized_path)
-        if not isinstance(observed, Mapping):
-            return False
-        if (
-            observed.get("sha256") != expected.get("sha256")
-            or observed.get("size") != expected.get("size")
-        ):
-            return False
-    return True
 
 
 def write_blinded_monitor_artifacts(

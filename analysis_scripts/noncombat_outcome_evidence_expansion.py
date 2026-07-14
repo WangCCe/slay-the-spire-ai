@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import hashlib
+import fnmatch
 import json
 import os
 import re
 import subprocess
 import tempfile
 import time
+from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
+from copy import deepcopy
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -17,6 +20,7 @@ from typing import Any
 
 REGISTRATION_SCHEMA_VERSION = "noncombat-outcome-evidence-registration-v1"
 RUN_LOCK_SCHEMA_VERSION = "noncombat-outcome-evidence-run-lock-v1"
+POOL_SCHEMA_VERSION = "noncombat-outcome-evidence-pool-v1"
 SLOT_COUNT = 24
 GAMES_PER_SLOT = 25
 SCHEDULED_ATTEMPTS = SLOT_COUNT * GAMES_PER_SLOT
@@ -69,6 +73,10 @@ class OutcomeEvidenceRunLockError(RuntimeError):
     """Raised when the immutable study run lock cannot be proven valid."""
 
 
+class OutcomeEvidencePoolError(ValueError):
+    """Raised when registered evidence cannot form one canonical pool."""
+
+
 @dataclass(frozen=True)
 class GitSourceSnapshot:
     commit: str
@@ -112,6 +120,583 @@ class OutcomeEvidenceRegistration:
         record = _registration_body(self)
         record["registration_hash"] = self.registration_hash
         return record
+
+
+@dataclass(frozen=True)
+class RegisteredSessionEvidence:
+    slot_number: int
+    session_id: str
+    run_lock_hash: str
+    config_sha256: str
+    manifest_sha256: str
+    manifest_hash: str
+    trace_sha256: str
+    marker_trajectory_count: int
+    joined_run_files: tuple[str, ...]
+    samples: tuple[Mapping[str, Any], ...]
+    exclusions: tuple[Mapping[str, Any], ...]
+    validation_summary: Mapping[str, Any]
+    provenance_verified: bool
+    isolation_verified: bool
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "joined_run_files", tuple(self.joined_run_files))
+        object.__setattr__(
+            self,
+            "samples",
+            tuple(_pool_json_copy(sample, "session sample") for sample in self.samples),
+        )
+        object.__setattr__(
+            self,
+            "exclusions",
+            tuple(
+                _pool_json_copy(exclusion, "session exclusion")
+                for exclusion in self.exclusions
+            ),
+        )
+        object.__setattr__(
+            self,
+            "validation_summary",
+            _pool_json_copy(self.validation_summary, "validation summary"),
+        )
+
+
+@dataclass(frozen=True)
+class RegisteredPool:
+    samples: tuple[dict[str, Any], ...]
+    manifest: dict[str, Any]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "samples",
+            tuple(_pool_json_copy(sample, "pool sample") for sample in self.samples),
+        )
+        object.__setattr__(
+            self,
+            "manifest",
+            _pool_json_copy(self.manifest, "pool manifest"),
+        )
+
+
+def build_registered_pool(
+    registration: OutcomeEvidenceRegistration,
+    *,
+    run_lock_hash: str,
+    ledger_snapshot: Mapping[str, Any],
+    sessions: Sequence[RegisteredSessionEvidence],
+) -> RegisteredPool:
+    """Build one deterministic pool from every terminal registered slot."""
+
+    validated_registration = validate_registration(registration.to_record())
+    expected_run_lock_hash = _pool_sha256(run_lock_hash, "run_lock_hash")
+    terminal_by_slot = _pool_terminal_slots(
+        validated_registration,
+        ledger_snapshot,
+    )
+    evidence_by_slot = _pool_session_set(validated_registration, sessions)
+
+    from analysis_scripts.noncombat_exploration_evidence import (
+        behavior_evidence_status,
+    )
+    from analysis_scripts.noncombat_ope_readiness import audit_trajectories
+
+    sample_ids: set[str] = set()
+    run_owners: dict[str, int] = {}
+    included_samples: list[dict[str, Any]] = []
+    excluded_trajectories: list[dict[str, Any]] = []
+    slot_records: list[dict[str, Any]] = []
+
+    for slot in validated_registration.slots:
+        evidence = evidence_by_slot[slot.slot_number]
+        terminal = terminal_by_slot[slot.slot_number]
+        _validate_registered_session_evidence(
+            evidence,
+            slot=slot,
+            terminal=terminal,
+            run_lock_hash=expected_run_lock_hash,
+        )
+        joined_run_files = tuple(
+            sorted(evidence.joined_run_files, key=_run_file_sort_key)
+        )
+        for run_file in joined_run_files:
+            previous_slot = run_owners.setdefault(run_file, slot.slot_number)
+            if previous_slot != slot.slot_number:
+                raise OutcomeEvidencePoolError(
+                    "duplicate trajectory run across registered sessions: "
+                    f"{run_file}"
+                )
+
+        by_trajectory_session: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for raw_sample in evidence.samples:
+            sample = _pool_json_copy(raw_sample, "session sample")
+            sample_id = sample.get("sample_id")
+            if not isinstance(sample_id, str) or not sample_id:
+                raise OutcomeEvidencePoolError("session sample_id is invalid")
+            if sample_id in sample_ids:
+                raise OutcomeEvidencePoolError(f"duplicate sample_id: {sample_id}")
+            sample_ids.add(sample_id)
+            exploration = sample.get("exploration")
+            if not isinstance(exploration, Mapping) or exploration.get(
+                "session_id"
+            ) != slot.session_id:
+                raise OutcomeEvidencePoolError(
+                    f"slot {slot.slot_number}: sample session identity mismatch"
+                )
+            status = behavior_evidence_status(sample)
+            if status.get("verified") is not True:
+                raise OutcomeEvidencePoolError(
+                    f"{sample_id}: behavior evidence is not verified: "
+                    f"{status.get('reason')}"
+                )
+            trajectory_session_id = sample.get("trajectory_session_id")
+            if not isinstance(trajectory_session_id, str) or not trajectory_session_id:
+                raise OutcomeEvidencePoolError(
+                    f"{sample_id}: trajectory_session_id is invalid"
+                )
+            by_trajectory_session[trajectory_session_id].append(sample)
+
+        slot_included: list[dict[str, Any]] = []
+        unattributed_sample_groups: list[dict[str, Any]] = []
+        for trajectory_session_id in sorted(by_trajectory_session):
+            rows = by_trajectory_session[trajectory_session_id]
+            matched = all(_sample_has_registered_outcome(row) for row in rows)
+            group_ids = {str(row.get("trajectory_group_id")) for row in rows}
+            if not matched or len(group_ids) != 1:
+                unattributed_sample_groups.append(
+                    {
+                        "decision_count": len(rows),
+                        "reason": (
+                            "outcome_join_incomplete"
+                            if not matched
+                            else "trajectory_group_conflict"
+                        ),
+                        "trajectory_session_id": trajectory_session_id,
+                    }
+                )
+                continue
+            group_id = next(iter(group_ids))
+            run_file = f"{group_id.removeprefix('run:')}.run"
+            if run_file not in joined_run_files:
+                raise OutcomeEvidencePoolError(
+                    f"{trajectory_session_id}: matched outcome is outside the "
+                    "registered conservative run join"
+                )
+            slot_included.extend(rows)
+
+        included_run_files = {
+            str(sample["outcome"]["run_file"]) for sample in slot_included
+        }
+        for run_file in joined_run_files:
+            if run_file not in included_run_files:
+                excluded_trajectories.append(
+                    {
+                        "reason": "no_complete_confirmed_decision",
+                        "run_file": run_file,
+                        "session_id": slot.session_id,
+                        "slot_number": slot.slot_number,
+                        "trajectory_session_id": None,
+                    }
+                )
+        unresolved_join_count = evidence.marker_trajectory_count - len(
+            joined_run_files
+        )
+        if unresolved_join_count:
+            excluded_trajectories.append(
+                {
+                    "count": unresolved_join_count,
+                    "reason": "run_join_missing_or_ambiguous",
+                    "run_file": None,
+                    "session_id": slot.session_id,
+                    "slot_number": slot.slot_number,
+                    "trajectory_session_id": None,
+                }
+            )
+
+        included_samples.extend(slot_included)
+        slot_records.append(
+            {
+                "artifact_hashes": {
+                    "config_sha256": evidence.config_sha256,
+                    "manifest_hash": evidence.manifest_hash,
+                    "manifest_sha256": evidence.manifest_sha256,
+                    "trace_sha256": evidence.trace_sha256,
+                },
+                "export_exclusions": [
+                    _pool_json_copy(row, "export exclusion")
+                    for row in sorted(
+                        evidence.exclusions,
+                        key=lambda row: _canonical_json(row),
+                    )
+                ],
+                "included_decision_count": len(slot_included),
+                "included_trajectory_count": len(included_run_files),
+                "excluded_trajectory_count": (
+                    evidence.marker_trajectory_count - len(included_run_files)
+                ),
+                "joined_run_count": len(joined_run_files),
+                "marker_trajectory_count": evidence.marker_trajectory_count,
+                "process_exit_code": terminal.get("process_exit_code"),
+                "session_id": slot.session_id,
+                "slot_number": slot.slot_number,
+                "terminal_status": terminal.get("terminal_status"),
+                "unattributed_sample_groups": unattributed_sample_groups,
+                "unresolved_join_count": unresolved_join_count,
+            }
+        )
+
+    ordered_samples = tuple(sorted(included_samples, key=_pool_sample_sort_key))
+    try:
+        audit = audit_trajectories(ordered_samples)
+    except Exception as exc:
+        raise OutcomeEvidencePoolError(f"trajectory audit failed: {exc}") from exc
+    if audit.blocked_trajectories:
+        reasons = sorted(
+            {
+                reason
+                for blocked in audit.blocked_trajectories
+                for reason in blocked.reasons
+            }
+        )
+        raise OutcomeEvidencePoolError(
+            "terminal outcome conflict or incomplete trajectory: "
+            + ",".join(reasons)
+        )
+    if audit.complete_decision_count != len(ordered_samples):
+        raise OutcomeEvidencePoolError("selective pool omission detected")
+
+    support = Counter(
+        (
+            str(sample.get("category")),
+            str(sample["exploration"].get("selected_arm")),
+        )
+        for sample in ordered_samples
+    )
+    aggregate_support = {
+        category: {
+            arm: support[(category, arm)]
+            for arm in ("alternative", "baseline")
+        }
+        for category in ("card_reward", "shop")
+    }
+    sample_text = _render_pool_sample_rows(ordered_samples)
+    marker_trajectory_count = sum(
+        record["marker_trajectory_count"] for record in slot_records
+    )
+    excluded_trajectory_count = (
+        marker_trajectory_count - audit.complete_trajectory_count
+    )
+    if sum(int(row.get("count", 1)) for row in excluded_trajectories) != (
+        excluded_trajectory_count
+    ):
+        raise OutcomeEvidencePoolError(
+            "pool trajectory exclusion accounting does not close"
+        )
+    manifest = {
+        "accounting": {
+            "conservative_joined_run_count": sum(
+                record["joined_run_count"] for record in slot_records
+            ),
+            "excluded_trajectory_count": excluded_trajectory_count,
+            "included_decision_count": len(ordered_samples),
+            "included_trajectory_count": audit.complete_trajectory_count,
+            "marker_trajectory_count": marker_trajectory_count,
+            "registered_slot_count": len(slot_records),
+        },
+        "aggregate_arm_support": aggregate_support,
+        "excluded_trajectories": sorted(
+            excluded_trajectories,
+            key=lambda row: (
+                int(row["slot_number"]),
+                str(row.get("run_file") or ""),
+                str(row.get("trajectory_session_id") or ""),
+                str(row["reason"]),
+            ),
+        ),
+        "included_trajectories": [
+            {
+                "decision_count": len(trajectory.decisions),
+                "group_id": trajectory.group_id,
+                "run_file": trajectory.outcome.run_file,
+                "session_id": str(
+                    trajectory.decisions[0]["exploration"]["session_id"]
+                ),
+                "trajectory_session_id": trajectory.trajectory_session_id,
+            }
+            for trajectory in audit.trajectories
+        ],
+        "pool_manifest_hash": None,
+        "registration_hash": validated_registration.registration_hash,
+        "run_lock_hash": expected_run_lock_hash,
+        "sample_jsonl_sha256": hashlib.sha256(
+            sample_text.encode("utf-8")
+        ).hexdigest(),
+        "schema_version": POOL_SCHEMA_VERSION,
+        "slots": slot_records,
+        "study_id": validated_registration.study_id,
+    }
+    manifest["pool_manifest_hash"] = _pool_manifest_hash(manifest)
+    return RegisteredPool(samples=ordered_samples, manifest=manifest)
+
+
+def render_registered_pool_samples(pool: RegisteredPool) -> str:
+    if not isinstance(pool, RegisteredPool):
+        raise OutcomeEvidencePoolError("pool must be a RegisteredPool")
+    rendered = _render_pool_sample_rows(pool.samples)
+    expected = pool.manifest.get("sample_jsonl_sha256")
+    if hashlib.sha256(rendered.encode("utf-8")).hexdigest() != expected:
+        raise OutcomeEvidencePoolError("pool sample hash mismatch")
+    return rendered
+
+
+def render_registered_pool_manifest(pool: RegisteredPool) -> str:
+    if not isinstance(pool, RegisteredPool):
+        raise OutcomeEvidencePoolError("pool must be a RegisteredPool")
+    supplied_hash = pool.manifest.get("pool_manifest_hash")
+    if supplied_hash != _pool_manifest_hash(pool.manifest):
+        raise OutcomeEvidencePoolError("pool manifest hash mismatch")
+    return _canonical_json(pool.manifest) + "\n"
+
+
+def conservative_marker_run_pairs(
+    *,
+    marker_timestamps: Sequence[int],
+    run_timestamps: Sequence[int],
+    tolerance_seconds: int = 10,
+) -> tuple[tuple[int, int], ...]:
+    """Return only mutually unique marker-index/run-timestamp pairs."""
+
+    if type(tolerance_seconds) is not int or tolerance_seconds < 0:
+        raise OutcomeEvidencePoolError(
+            "tolerance_seconds must be a nonnegative integer"
+        )
+    markers = tuple(
+        _pool_timestamp(value, "marker timestamp") for value in marker_timestamps
+    )
+    runs = tuple(_pool_timestamp(value, "run timestamp") for value in run_timestamps)
+    marker_candidates = [
+        tuple(
+            run_index
+            for run_index, run_timestamp in enumerate(runs)
+            if 0 <= marker_timestamp - run_timestamp <= tolerance_seconds
+        )
+        for marker_timestamp in markers
+    ]
+    run_candidate_counts = Counter(
+        run_index
+        for candidates in marker_candidates
+        for run_index in candidates
+    )
+    pairs = []
+    for marker_index, candidates in enumerate(marker_candidates):
+        if len(candidates) != 1:
+            continue
+        run_index = candidates[0]
+        if run_candidate_counts[run_index] != 1:
+            continue
+        pairs.append((marker_index, runs[run_index]))
+    return tuple(pairs)
+
+
+def manifest_isolation_matches_run_lock(
+    manifest: Mapping[str, Any],
+    run_lock: Mapping[str, Any],
+) -> bool:
+    """Compare one runtime pre-session snapshot to the registered live lock."""
+
+    pre_session = manifest.get("pre_session_isolation_hashes")
+    communication = run_lock.get("communication_mod")
+    checkpoints = run_lock.get("checkpoints")
+    if not all(
+        isinstance(value, Mapping)
+        for value in (pre_session, communication, checkpoints)
+    ):
+        return False
+
+    communication_path = communication.get("path")
+    communication_semantic_hash = communication.get("semantic_sha256")
+    if not isinstance(communication_path, str) or not isinstance(
+        communication_semantic_hash, str
+    ):
+        return False
+    pre_by_path = {
+        str(path).casefold(): value
+        for path, value in pre_session.items()
+        if isinstance(path, str) and isinstance(value, Mapping)
+    }
+    observed_communication = pre_by_path.get(communication_path.casefold())
+    if (
+        not isinstance(observed_communication, Mapping)
+        or observed_communication.get("semantic_sha256")
+        != communication_semantic_hash
+    ):
+        return False
+
+    root_value = checkpoints.get("root")
+    patterns = checkpoints.get("patterns")
+    files = checkpoints.get("files")
+    if (
+        not isinstance(root_value, str)
+        or isinstance(patterns, (str, bytes))
+        or not isinstance(patterns, Sequence)
+        or not all(isinstance(pattern, str) and pattern for pattern in patterns)
+        or isinstance(files, (str, bytes))
+        or not isinstance(files, Sequence)
+    ):
+        return False
+    checkpoint_root = Path(root_value).resolve()
+    expected_files: dict[str, Mapping[str, Any]] = {}
+    for record in files:
+        if not isinstance(record, Mapping) or not isinstance(record.get("path"), str):
+            return False
+        expected_files[str(Path(record["path"]).resolve()).casefold()] = record
+    if not expected_files:
+        return False
+
+    observed_checkpoint_paths = set()
+    for raw_path in pre_session:
+        if not isinstance(raw_path, str):
+            continue
+        path = Path(raw_path).resolve()
+        try:
+            path.relative_to(checkpoint_root)
+        except ValueError:
+            continue
+        if any(fnmatch.fnmatchcase(path.name, pattern) for pattern in patterns):
+            observed_checkpoint_paths.add(str(path).casefold())
+    if observed_checkpoint_paths != set(expected_files):
+        return False
+    for normalized_path, expected in expected_files.items():
+        observed = pre_by_path.get(normalized_path)
+        if not isinstance(observed, Mapping):
+            return False
+        if (
+            observed.get("sha256") != expected.get("sha256")
+            or observed.get("size") != expected.get("size")
+        ):
+            return False
+    return True
+
+
+def collect_registered_session_evidence(
+    registration: OutcomeEvidenceRegistration,
+    *,
+    run_lock: Mapping[str, Any],
+    ledger_snapshot: Mapping[str, Any],
+    marker_path: Path | str | None = None,
+    runs_root: Path | str | None = None,
+) -> tuple[RegisteredSessionEvidence, ...]:
+    """Replay every registered session against one global conservative run join."""
+
+    validated_registration = validate_registration(registration.to_record())
+    binding = _pool_run_lock_binding(validated_registration, run_lock)
+    terminal_by_slot = _pool_terminal_slots(
+        validated_registration,
+        ledger_snapshot,
+    )
+    game_root = Path(validated_registration.checkpoint_root).resolve().parent
+    resolved_runs_root = (
+        Path(runs_root).resolve() if runs_root is not None else game_root / "runs"
+    )
+    resolved_marker_path = (
+        Path(marker_path).resolve()
+        if marker_path is not None
+        else resolved_runs_root / "ai_games.txt"
+    )
+    markers = _load_pool_markers(resolved_marker_path)
+    run_timestamps = sorted(
+        int(path.stem)
+        for path in (resolved_runs_root / "IRONCLAD").glob("*.run")
+        if path.stem.isdigit()
+    )
+    joined_by_marker = dict(
+        conservative_marker_run_pairs(
+            marker_timestamps=markers,
+            run_timestamps=run_timestamps,
+        )
+    )
+
+    from analysis_scripts.noncombat_exploration_evidence import (
+        export_confirmed_exploration_samples,
+    )
+    from analysis_scripts.noncombat_rl_decision_loop import load_run_outcomes
+
+    sessions = []
+    for slot in validated_registration.slots:
+        terminal = terminal_by_slot[slot.slot_number]
+        marker_start = int(terminal["marker_start_count"])
+        marker_end = int(terminal["marker_end_count"])
+        if marker_end > len(markers):
+            raise OutcomeEvidencePoolError(
+                f"slot {slot.slot_number}: marker slice exceeds marker file"
+            )
+        joined_run_files = tuple(
+            f"{joined_by_marker[index]}.run"
+            for index in range(marker_start, marker_end)
+            if index in joined_by_marker
+        )
+        manifest_path = Path(slot.manifest_path)
+        manifest = _load_pool_json_object(manifest_path, "session manifest")
+        _validate_pool_manifest_binding(
+            validated_registration,
+            slot=slot,
+            manifest=manifest,
+            run_lock=run_lock,
+            binding=binding,
+        )
+        pre_isolation = manifest.get("pre_session_isolation_hashes")
+        if not isinstance(pre_isolation, Mapping):
+            raise OutcomeEvidencePoolError(
+                f"slot {slot.slot_number}: pre-session isolation snapshot is invalid"
+            )
+        outcomes = load_run_outcomes(
+            resolved_runs_root,
+            character="IRONCLAD",
+            limit=0,
+            ai_markers_path=resolved_marker_path,
+            run_files=joined_run_files,
+        )
+        export = export_confirmed_exploration_samples(
+            Path(slot.trace_path),
+            manifest_path,
+            outcomes=outcomes,
+            expected_pre_isolation_hashes=pre_isolation,
+            expected_source_commit=binding["source_commit"],
+        )
+        if _pool_json_copy(export.manifest, "export manifest") != manifest:
+            raise OutcomeEvidencePoolError(
+                f"slot {slot.slot_number}: exporter manifest changed during replay"
+            )
+        sessions.append(
+            RegisteredSessionEvidence(
+                slot_number=slot.slot_number,
+                session_id=slot.session_id,
+                run_lock_hash=binding["run_lock_hash"],
+                config_sha256=_pool_file_sha256(
+                    Path(slot.config_path), "slot config"
+                ),
+                manifest_sha256=_pool_file_sha256(
+                    manifest_path, "session manifest"
+                ),
+                manifest_hash=_pool_sha256(
+                    manifest.get("manifest_hash"), "manifest_hash"
+                ),
+                trace_sha256=_pool_file_sha256(
+                    Path(slot.trace_path), "session trace"
+                ),
+                marker_trajectory_count=int(terminal["complete_trajectories"]),
+                joined_run_files=joined_run_files,
+                samples=tuple(export.samples),
+                exclusions=tuple(export.exclusions),
+                validation_summary=export.validation_summary,
+                provenance_verified=export.provenance_verified is True,
+                isolation_verified=manifest_isolation_matches_run_lock(
+                    manifest,
+                    run_lock,
+                ),
+            )
+        )
+    return tuple(sessions)
 
 
 def build_registration(
@@ -893,6 +1478,308 @@ def _hash_run_lock_record(record: Mapping[str, Any]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _pool_json_copy(value: Any, field: str) -> Any:
+    try:
+        return json.loads(_canonical_json(value))
+    except (OutcomeEvidenceRegistrationError, json.JSONDecodeError) as exc:
+        raise OutcomeEvidencePoolError(f"{field} is not canonical JSON: {exc}") from exc
+
+
+def _pool_sha256(value: Any, field: str) -> str:
+    if not isinstance(value, str) or not _SHA256_PATTERN.fullmatch(value):
+        raise OutcomeEvidencePoolError(f"{field} must be a lowercase SHA-256 hash")
+    return value
+
+
+def _pool_timestamp(value: Any, field: str) -> int:
+    if type(value) is not int or value < 0:
+        raise OutcomeEvidencePoolError(f"{field} must be a nonnegative integer")
+    return value
+
+
+def _pool_run_lock_binding(
+    registration: OutcomeEvidenceRegistration,
+    run_lock: Mapping[str, Any],
+) -> dict[str, str]:
+    if not isinstance(run_lock, Mapping):
+        raise OutcomeEvidencePoolError("run lock must be an object")
+    run_lock_hash = _pool_sha256(run_lock.get("run_lock_hash"), "run_lock_hash")
+    if run_lock.get("study_id") != registration.study_id:
+        raise OutcomeEvidencePoolError("run lock study_id mismatch")
+    registration_binding = run_lock.get("registration")
+    if not isinstance(registration_binding, Mapping) or registration_binding.get(
+        "canonical_hash"
+    ) != registration.registration_hash:
+        raise OutcomeEvidencePoolError("run lock registration hash mismatch")
+    source = run_lock.get("source")
+    source_commit = source.get("commit") if isinstance(source, Mapping) else None
+    if not isinstance(source_commit, str) or not re.fullmatch(
+        r"[0-9a-f]{40}", source_commit
+    ):
+        raise OutcomeEvidencePoolError("run lock source commit is invalid")
+    return {"run_lock_hash": run_lock_hash, "source_commit": source_commit}
+
+
+def _load_pool_markers(path: Path) -> tuple[int, ...]:
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError) as exc:
+        raise OutcomeEvidencePoolError(f"cannot read AI marker file: {exc}") from exc
+    markers = []
+    for line in lines:
+        value = line.strip()
+        if not value:
+            continue
+        if not value.isdigit():
+            raise OutcomeEvidencePoolError("AI marker file contains an invalid marker")
+        markers.append(int(value))
+    return tuple(markers)
+
+
+def _load_pool_json_object(path: Path, label: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_json_constant,
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+        raise OutcomeEvidencePoolError(f"cannot load {label}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise OutcomeEvidencePoolError(f"{label} must be an object")
+    return payload
+
+
+def _validate_pool_manifest_binding(
+    registration: OutcomeEvidenceRegistration,
+    *,
+    slot: RegisteredSlot,
+    manifest: Mapping[str, Any],
+    run_lock: Mapping[str, Any],
+    binding: Mapping[str, str],
+) -> None:
+    effective = manifest.get("effective_config")
+    source = manifest.get("source")
+    if (
+        manifest.get("session_id") != slot.session_id
+        or manifest.get("manifest_path") != slot.manifest_path
+        or manifest.get("trace_path") != slot.trace_path
+        or not isinstance(effective, Mapping)
+        or effective.get("study_id") != registration.study_id
+        or effective.get("study_slot_number") != slot.slot_number
+        or effective.get("study_registration_hash")
+        != registration.registration_hash
+        or effective.get("study_run_lock_hash") != binding["run_lock_hash"]
+        or not isinstance(source, Mapping)
+        or source.get("commit") != binding["source_commit"]
+    ):
+        raise OutcomeEvidencePoolError(
+            f"slot {slot.slot_number}: manifest study binding mismatch"
+        )
+    _pool_sha256(manifest.get("manifest_hash"), "manifest_hash")
+    if not manifest_isolation_matches_run_lock(manifest, run_lock):
+        raise OutcomeEvidencePoolError(
+            f"slot {slot.slot_number}: manifest isolation differs from run lock"
+        )
+
+
+def _pool_file_sha256(path: Path, label: str) -> str:
+    try:
+        content = path.read_bytes()
+    except OSError as exc:
+        raise OutcomeEvidencePoolError(f"cannot read {label} {path}: {exc}") from exc
+    return hashlib.sha256(content).hexdigest()
+
+
+def _pool_terminal_slots(
+    registration: OutcomeEvidenceRegistration,
+    ledger_snapshot: Mapping[str, Any],
+) -> dict[int, Mapping[str, Any]]:
+    if not isinstance(ledger_snapshot, Mapping):
+        raise OutcomeEvidencePoolError("ledger snapshot must be an object")
+    if (
+        ledger_snapshot.get("initialized") is not True
+        or ledger_snapshot.get("all_slots_terminal") is not True
+        or ledger_snapshot.get("active_slot") is not None
+        or ledger_snapshot.get("global_stop") is not None
+    ):
+        raise OutcomeEvidencePoolError(
+            "registered pooling requires every slot terminal without a global stop"
+        )
+    records = ledger_snapshot.get("terminal_slots")
+    if isinstance(records, (str, bytes)) or not isinstance(records, Sequence):
+        raise OutcomeEvidencePoolError("ledger terminal_slots must be a sequence")
+    if ledger_snapshot.get("terminal_slot_count") != len(registration.slots):
+        raise OutcomeEvidencePoolError("ledger terminal slot count mismatch")
+    terminal_by_slot: dict[int, Mapping[str, Any]] = {}
+    for record in records:
+        if not isinstance(record, Mapping):
+            raise OutcomeEvidencePoolError("ledger terminal slot is invalid")
+        slot_number = record.get("slot_number")
+        if type(slot_number) is not int or not 1 <= slot_number <= len(
+            registration.slots
+        ):
+            raise OutcomeEvidencePoolError("ledger terminal slot identity is invalid")
+        if slot_number in terminal_by_slot:
+            raise OutcomeEvidencePoolError("duplicate ledger terminal slot")
+        slot = registration.slots[slot_number - 1]
+        if record.get("session_id") != slot.session_id:
+            raise OutcomeEvidencePoolError("ledger terminal session mismatch")
+        complete = record.get("complete_trajectories")
+        marker_start = record.get("marker_start_count")
+        marker_end = record.get("marker_end_count")
+        if (
+            type(complete) is not int
+            or not 0 <= complete <= GAMES_PER_SLOT
+            or type(marker_start) is not int
+            or type(marker_end) is not int
+            or marker_start < 0
+            or marker_end - marker_start != complete
+        ):
+            raise OutcomeEvidencePoolError("ledger terminal marker accounting mismatch")
+        status = record.get("terminal_status")
+        exit_code = record.get("process_exit_code")
+        if status not in {"completed", "interrupted"} or (
+            exit_code is not None and type(exit_code) is not int
+        ):
+            raise OutcomeEvidencePoolError("ledger terminal status is invalid")
+        if (status == "completed") != (
+            exit_code == 0 and complete == GAMES_PER_SLOT
+        ):
+            raise OutcomeEvidencePoolError("ledger terminal status contradicts evidence")
+        terminal_by_slot[slot_number] = record
+    if set(terminal_by_slot) != set(range(1, len(registration.slots) + 1)):
+        raise OutcomeEvidencePoolError("ledger omits a registered terminal slot")
+    return terminal_by_slot
+
+
+def _pool_session_set(
+    registration: OutcomeEvidenceRegistration,
+    sessions: Sequence[RegisteredSessionEvidence],
+) -> dict[int, RegisteredSessionEvidence]:
+    if isinstance(sessions, (str, bytes)) or not isinstance(sessions, Sequence):
+        raise OutcomeEvidencePoolError("sessions must be a sequence")
+    by_slot: dict[int, RegisteredSessionEvidence] = {}
+    for evidence in sessions:
+        if not isinstance(evidence, RegisteredSessionEvidence):
+            raise OutcomeEvidencePoolError(
+                "every session must be RegisteredSessionEvidence"
+            )
+        if evidence.slot_number in by_slot:
+            raise OutcomeEvidencePoolError("duplicate registered session slot")
+        by_slot[evidence.slot_number] = evidence
+    expected = set(range(1, len(registration.slots) + 1))
+    actual = set(by_slot)
+    if actual != expected:
+        raise OutcomeEvidencePoolError(
+            "registered session set mismatch: "
+            f"missing={sorted(expected - actual)}, extra={sorted(actual - expected)}"
+        )
+    return by_slot
+
+
+def _validate_registered_session_evidence(
+    evidence: RegisteredSessionEvidence,
+    *,
+    slot: RegisteredSlot,
+    terminal: Mapping[str, Any],
+    run_lock_hash: str,
+) -> None:
+    if evidence.slot_number != slot.slot_number or evidence.session_id != slot.session_id:
+        raise OutcomeEvidencePoolError("registered session identity mismatch")
+    if evidence.run_lock_hash != run_lock_hash:
+        raise OutcomeEvidencePoolError("registered session run lock mismatch")
+    for field in (
+        "config_sha256",
+        "manifest_sha256",
+        "manifest_hash",
+        "trace_sha256",
+    ):
+        _pool_sha256(getattr(evidence, field), field)
+    if type(evidence.marker_trajectory_count) is not int or (
+        evidence.marker_trajectory_count != terminal.get("complete_trajectories")
+    ):
+        raise OutcomeEvidencePoolError("session marker trajectory count mismatch")
+    if len(evidence.joined_run_files) > evidence.marker_trajectory_count:
+        raise OutcomeEvidencePoolError("session run joins exceed marker trajectories")
+    if len(set(evidence.joined_run_files)) != len(evidence.joined_run_files):
+        raise OutcomeEvidencePoolError("duplicate joined run file within session")
+    for run_file in evidence.joined_run_files:
+        _run_file_sort_key(run_file)
+    summary = evidence.validation_summary
+    if not isinstance(summary, Mapping):
+        raise OutcomeEvidencePoolError("session validation summary is invalid")
+    counts: dict[str, int] = {}
+    for field in ("candidate_legal", "confirmed", "exported", "replay_valid"):
+        value = summary.get(field)
+        if type(value) is not int or value < 0:
+            raise OutcomeEvidencePoolError(
+                f"session validation summary {field} is invalid"
+            )
+        counts[field] = value
+    if not (
+        counts["confirmed"]
+        >= counts["replay_valid"]
+        >= counts["candidate_legal"]
+        == counts["exported"]
+        == len(evidence.samples)
+    ):
+        raise OutcomeEvidencePoolError(
+            "session exported sample accounting indicates selective omission"
+        )
+    if evidence.provenance_verified is not True:
+        raise OutcomeEvidencePoolError("session provenance is not verified")
+    if evidence.isolation_verified is not True:
+        raise OutcomeEvidencePoolError("session isolation is not verified")
+
+
+def _run_file_sort_key(value: Any) -> int:
+    if not isinstance(value, str):
+        raise OutcomeEvidencePoolError("joined run file must be a string")
+    path = Path(value)
+    if path.name != value or path.suffix != ".run" or not path.stem.isdigit():
+        raise OutcomeEvidencePoolError(f"joined run file is invalid: {value}")
+    return int(path.stem)
+
+
+def _sample_has_registered_outcome(sample: Mapping[str, Any]) -> bool:
+    group_id = sample.get("trajectory_group_id")
+    outcome = sample.get("outcome")
+    if (
+        not isinstance(group_id, str)
+        or not group_id.startswith("run:")
+        or not group_id.removeprefix("run:").isdigit()
+        or not isinstance(outcome, Mapping)
+    ):
+        return False
+    return (
+        outcome.get("included_in_gate") is True
+        and outcome.get("join_status") == "matched"
+        and outcome.get("run_file")
+        == f"{group_id.removeprefix('run:')}.run"
+    )
+
+
+def _pool_sample_sort_key(sample: Mapping[str, Any]) -> tuple[int, int, str]:
+    group_id = str(sample["trajectory_group_id"])
+    exploration = sample["exploration"]
+    return (
+        int(group_id.removeprefix("run:")),
+        int(exploration["decision_index"]),
+        str(sample["sample_id"]),
+    )
+
+
+def _render_pool_sample_rows(samples: Sequence[Mapping[str, Any]]) -> str:
+    return "".join(_canonical_json(sample) + "\n" for sample in samples)
+
+
+def _pool_manifest_hash(manifest: Mapping[str, Any]) -> str:
+    record = dict(manifest)
+    record["pool_manifest_hash"] = None
+    return hashlib.sha256(_canonical_json(record).encode("utf-8")).hexdigest()
+
+
 def _build_slot(
     *, study_id: str, artifact_root: Path, seed_base: int, slot_number: int
 ) -> RegisteredSlot:
@@ -949,6 +1836,8 @@ def _registration_body(registration: OutcomeEvidenceRegistration) -> dict[str, A
             "manifest_suffix": "-manifest.json",
             "monitor_json_filename": "blinded-monitor.json",
             "monitor_markdown_filename": "blinded-monitor.md",
+            "pool_manifest_filename": "registered-pool-manifest.json",
+            "pool_samples_filename": "registered-pool-samples.jsonl",
             "run_lock_filename": "run-lock.json",
             "study_ledger_filename": "study-ledger.jsonl",
             "trace_suffix": "-trace.jsonl",
