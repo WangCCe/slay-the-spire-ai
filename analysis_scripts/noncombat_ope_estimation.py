@@ -22,6 +22,8 @@ ESTIMATE_ARTIFACT_SCHEMA_VERSION = "noncombat-ope-estimate-v1"
 CALIBRATION_ARTIFACT_SCHEMA_VERSION = (
     "noncombat-ope-estimator-calibration-v1"
 )
+BOOTSTRAP_DRAW_SCHEMA_VERSION = "noncombat-ope-bootstrap-draw-v1"
+MAX_BOOTSTRAP_REPLICATES = 100_000
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -59,6 +61,67 @@ class EstimatorBundle:
     readiness_audit: Mapping[str, Any]
     calibration: Mapping[str, Any]
     hashes: Mapping[str, str]
+
+
+@dataclass(frozen=True)
+class PercentileInterval:
+    lower: Fraction
+    upper: Fraction
+    lower_index: int
+    upper_index: int
+
+
+@dataclass(frozen=True)
+class UndefinedBootstrapReplicate:
+    replicate_index: int
+    reason: str
+    draw_indices: tuple[int, ...]
+    draw_group_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class BootstrapReplicate:
+    replicate_index: int
+    draw_indices: tuple[int, ...]
+    draw_group_ids: tuple[str, ...]
+    estimates: Mapping[str, OutcomeEstimate] | None
+
+
+@dataclass(frozen=True)
+class BootstrapResult:
+    schema_version: str
+    seed: str
+    replicate_count: int
+    confidence_level: Fraction
+    replicates: tuple[BootstrapReplicate, ...]
+    intervals: Mapping[str, Mapping[str, PercentileInterval]]
+    undefined_replicates: tuple[UndefinedBootstrapReplicate, ...]
+    ready: bool
+    blockers: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class LeaveOneOutRow:
+    excluded_group_id: str
+    estimates: Mapping[str, OutcomeEstimate] | None
+    blocker: str | None
+    absolute_changes: Mapping[str, Mapping[str, Fraction]]
+    sign_changes: Mapping[str, Mapping[str, bool]]
+
+
+@dataclass(frozen=True)
+class LeaveOneOutDiagnostics:
+    full_sample_estimates: Mapping[str, OutcomeEstimate]
+    rows: tuple[LeaveOneOutRow, ...]
+    undefined_group_ids: tuple[str, ...]
+    max_absolute_changes: Mapping[str, Mapping[str, Fraction]]
+
+
+@dataclass(frozen=True)
+class PolicyComparisonGate:
+    ready: bool
+    conditions: Mapping[str, bool]
+    blockers: tuple[str, ...]
 
 
 def estimator_implementation_sha256() -> str:
@@ -153,6 +216,312 @@ def fraction_record(value: Fraction) -> dict[str, int | float]:
     }
 
 
+def hash_draw_index(
+    trajectory_count: int,
+    seed: str,
+    replicate_index: int,
+    draw_index: int,
+) -> int:
+    """Map one versioned SHA-256 digest to a trajectory index."""
+
+    if type(trajectory_count) is not int or trajectory_count <= 0:
+        raise EstimatorInputError("trajectory_count must be positive")
+    if not isinstance(seed, str) or not seed:
+        raise EstimatorInputError("bootstrap seed must be a nonempty string")
+    if type(replicate_index) is not int or replicate_index < 0:
+        raise EstimatorInputError("replicate_index must be nonnegative")
+    if type(draw_index) is not int or draw_index < 0:
+        raise EstimatorInputError("draw_index must be nonnegative")
+    payload = (
+        f"{BOOTSTRAP_DRAW_SCHEMA_VERSION}\0{seed}\0"
+        f"{replicate_index}\0{draw_index}"
+    ).encode("utf-8")
+    return int.from_bytes(hashlib.sha256(payload).digest(), "big") % trajectory_count
+
+
+def percentile_interval(
+    values: Sequence[Fraction],
+    *,
+    confidence_level: Fraction = Fraction(95, 100),
+) -> PercentileInterval:
+    """Return the pre-specified exact two-sided percentile interval."""
+
+    if not isinstance(confidence_level, Fraction) or not 0 < confidence_level < 1:
+        raise EstimatorInputError("confidence_level must be an exact fraction in (0, 1)")
+    if not values or any(not isinstance(value, Fraction) for value in values):
+        raise EstimatorInputError("percentile values must be nonempty exact fractions")
+    ordered = tuple(sorted(values))
+    alpha = (Fraction(1, 1) - confidence_level) / 2
+    last_index = len(ordered) - 1
+    lower_position = last_index * alpha
+    upper_position = last_index * (1 - alpha)
+    lower_index = lower_position.numerator // lower_position.denominator
+    upper_index = -(-upper_position.numerator // upper_position.denominator)
+    return PercentileInterval(
+        lower=ordered[lower_index],
+        upper=ordered[upper_index],
+        lower_index=lower_index,
+        upper_index=upper_index,
+    )
+
+
+def bootstrap_trajectory_estimates(
+    trajectories: Sequence[WeightedTrajectory],
+    *,
+    seed: str,
+    replicate_count: int,
+    confidence_level: Fraction = Fraction(95, 100),
+) -> BootstrapResult:
+    """Bootstrap paired complete trajectories with deterministic hash draws."""
+
+    ordered = _validate_trajectories(trajectories)
+    if not isinstance(seed, str) or not seed:
+        raise EstimatorInputError("bootstrap seed must be a nonempty string")
+    if (
+        type(replicate_count) is not int
+        or replicate_count <= 0
+        or replicate_count > MAX_BOOTSTRAP_REPLICATES
+    ):
+        raise EstimatorInputError(
+            f"replicate_count must be between 1 and {MAX_BOOTSTRAP_REPLICATES}"
+        )
+    if not isinstance(confidence_level, Fraction) or not 0 < confidence_level < 1:
+        raise EstimatorInputError("confidence_level must be an exact fraction in (0, 1)")
+
+    replicate_rows: list[BootstrapReplicate] = []
+    undefined_rows: list[UndefinedBootstrapReplicate] = []
+    interval_values: dict[str, dict[str, list[Fraction]]] = {
+        channel: {
+            field: []
+            for field in (
+                "behavior",
+                "ordinary_is",
+                "ordinary_uplift",
+                "self_normalized_is",
+                "self_normalized_uplift",
+            )
+        }
+        for channel in ("floor_reached", "victory")
+    }
+    for replicate_index in range(replicate_count):
+        draw_indices = tuple(
+            hash_draw_index(
+                len(ordered),
+                seed,
+                replicate_index,
+                draw_index,
+            )
+            for draw_index in range(len(ordered))
+        )
+        selected = tuple(ordered[index] for index in draw_indices)
+        draw_group_ids = tuple(row.group_id for row in selected)
+        if sum((row.weight for row in selected), Fraction(0, 1)) <= 0:
+            replicate_rows.append(
+                BootstrapReplicate(
+                    replicate_index=replicate_index,
+                    draw_indices=draw_indices,
+                    draw_group_ids=draw_group_ids,
+                    estimates=None,
+                )
+            )
+            undefined_rows.append(
+                UndefinedBootstrapReplicate(
+                    replicate_index=replicate_index,
+                    reason="self_normalized_denominator_zero",
+                    draw_indices=draw_indices,
+                    draw_group_ids=draw_group_ids,
+                )
+            )
+            continue
+        estimates = _estimate_resampled_outcome_channels(selected)
+        replicate_rows.append(
+            BootstrapReplicate(
+                replicate_index=replicate_index,
+                draw_indices=draw_indices,
+                draw_group_ids=draw_group_ids,
+                estimates=estimates,
+            )
+        )
+        for channel, estimate in estimates.items():
+            for field in interval_values[channel]:
+                interval_values[channel][field].append(getattr(estimate, field))
+
+    if undefined_rows:
+        intervals: dict[str, dict[str, PercentileInterval]] = {}
+        blockers = ("bootstrap_undefined_replicates",)
+    else:
+        intervals = {
+            channel: {
+                field: percentile_interval(
+                    values,
+                    confidence_level=confidence_level,
+                )
+                for field, values in sorted(fields.items())
+            }
+            for channel, fields in sorted(interval_values.items())
+        }
+        blockers = ()
+    return BootstrapResult(
+        schema_version=BOOTSTRAP_DRAW_SCHEMA_VERSION,
+        seed=seed,
+        replicate_count=replicate_count,
+        confidence_level=confidence_level,
+        replicates=tuple(replicate_rows),
+        intervals=intervals,
+        undefined_replicates=tuple(undefined_rows),
+        ready=not undefined_rows,
+        blockers=blockers,
+    )
+
+
+def leave_one_trajectory_out(
+    trajectories: Sequence[WeightedTrajectory],
+) -> LeaveOneOutDiagnostics:
+    """Recompute exact estimates after excluding every trajectory in turn."""
+
+    ordered = _validate_trajectories(trajectories)
+    if len(ordered) < 2:
+        raise EstimatorInputError("leave-one-out requires at least two trajectories")
+    full_sample = estimate_outcome_channels(ordered)
+    rows: list[LeaveOneOutRow] = []
+    undefined_group_ids: list[str] = []
+    estimate_fields = (
+        "behavior",
+        "ordinary_is",
+        "ordinary_uplift",
+        "self_normalized_is",
+        "self_normalized_uplift",
+    )
+    for excluded in ordered:
+        remaining = tuple(
+            row for row in ordered if row.group_id != excluded.group_id
+        )
+        if sum((row.weight for row in remaining), Fraction(0, 1)) <= 0:
+            rows.append(
+                LeaveOneOutRow(
+                    excluded_group_id=excluded.group_id,
+                    estimates=None,
+                    blocker="self_normalized_denominator_zero",
+                    absolute_changes={},
+                    sign_changes={},
+                )
+            )
+            undefined_group_ids.append(excluded.group_id)
+            continue
+        estimates = _estimate_resampled_outcome_channels(remaining)
+        absolute_changes = {
+            channel: {
+                field: abs(
+                    getattr(estimate, field)
+                    - getattr(full_sample[channel], field)
+                )
+                for field in estimate_fields
+            }
+            for channel, estimate in sorted(estimates.items())
+        }
+        sign_changes = {
+            channel: {
+                field: _sign(getattr(estimate, field))
+                != _sign(getattr(full_sample[channel], field))
+                for field in ("ordinary_uplift", "self_normalized_uplift")
+            }
+            for channel, estimate in sorted(estimates.items())
+        }
+        rows.append(
+            LeaveOneOutRow(
+                excluded_group_id=excluded.group_id,
+                estimates=estimates,
+                blocker=None,
+                absolute_changes=absolute_changes,
+                sign_changes=sign_changes,
+            )
+        )
+
+    defined_rows = tuple(row for row in rows if row.estimates is not None)
+    max_absolute_changes = {
+        channel: {
+            field: max(
+                row.absolute_changes[channel][field] for row in defined_rows
+            )
+            for field in estimate_fields
+        }
+        for channel in ("floor_reached", "victory")
+    }
+    return LeaveOneOutDiagnostics(
+        full_sample_estimates=full_sample,
+        rows=tuple(rows),
+        undefined_group_ids=tuple(undefined_group_ids),
+        max_absolute_changes=max_absolute_changes,
+    )
+
+
+def evaluate_policy_comparison(
+    *,
+    estimator_validation_ready: bool,
+    dataset_estimation_ready: bool,
+    estimates: Mapping[str, OutcomeEstimate],
+    bootstrap: BootstrapResult,
+    influence: LeaveOneOutDiagnostics,
+) -> PolicyComparisonGate:
+    """Apply the pre-specified victory-only candidate comparison gate."""
+
+    victory = estimates.get("victory")
+    victory_intervals = bootstrap.intervals.get("victory", {})
+    primary_interval = victory_intervals.get("self_normalized_uplift")
+    leave_one_out_defined = not influence.undefined_group_ids
+    leave_one_out_positive = leave_one_out_defined and all(
+        row.estimates is not None
+        and row.estimates["victory"].self_normalized_uplift > 0
+        for row in influence.rows
+    )
+    conditions = {
+        "bootstrap_ready": bootstrap.ready,
+        "dataset_estimation_ready": dataset_estimation_ready is True,
+        "estimator_validation_ready": estimator_validation_ready is True,
+        "leave_one_out_defined": leave_one_out_defined,
+        "leave_one_out_victory_snis_positive": leave_one_out_positive,
+        "primary_victory_snis_interval_positive": (
+            isinstance(primary_interval, PercentileInterval)
+            and primary_interval.lower > 0
+        ),
+        "victory_ordinary_uplift_positive": (
+            isinstance(victory, OutcomeEstimate) and victory.ordinary_uplift > 0
+        ),
+        "victory_self_normalized_uplift_positive": (
+            isinstance(victory, OutcomeEstimate)
+            and victory.self_normalized_uplift > 0
+        ),
+    }
+    blocker_by_condition = {
+        "bootstrap_ready": "bootstrap_not_ready",
+        "dataset_estimation_ready": "dataset_estimation_not_ready",
+        "estimator_validation_ready": "estimator_validation_not_ready",
+        "leave_one_out_defined": "leave_one_out_undefined",
+        "leave_one_out_victory_snis_positive": (
+            "leave_one_out_victory_snis_not_positive"
+        ),
+        "primary_victory_snis_interval_positive": (
+            "primary_victory_snis_interval_not_positive"
+        ),
+        "victory_ordinary_uplift_positive": (
+            "victory_ordinary_uplift_not_positive"
+        ),
+        "victory_self_normalized_uplift_positive": (
+            "victory_self_normalized_uplift_not_positive"
+        ),
+    }
+    blockers = tuple(
+        blocker_by_condition[name]
+        for name, passed in sorted(conditions.items())
+        if not passed
+    )
+    return PolicyComparisonGate(
+        ready=not blockers,
+        conditions=conditions,
+        blockers=blockers,
+    )
+
+
 def build_estimator_diagnostics(
     trajectories: Sequence[WeightedTrajectory],
     estimates: Mapping[str, OutcomeEstimate] | None = None,
@@ -209,6 +578,21 @@ def _estimate_channel(
         ordinary_uplift=ordinary_is - behavior,
         self_normalized_uplift=self_normalized_is - behavior,
     )
+
+
+def _estimate_resampled_outcome_channels(
+    trajectories: Sequence[WeightedTrajectory],
+) -> dict[str, OutcomeEstimate]:
+    return {
+        "victory": _estimate_channel(
+            trajectories,
+            tuple(Fraction(int(row.victory), 1) for row in trajectories),
+        ),
+        "floor_reached": _estimate_channel(
+            trajectories,
+            tuple(Fraction(row.floor_reached, 1) for row in trajectories),
+        ),
+    }
 
 
 def _sign(value: Fraction) -> str:

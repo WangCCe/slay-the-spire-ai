@@ -12,9 +12,9 @@
 
 ## 3. Deterministic Bootstrap And Influence
 
-- [ ] 3.1 Add red tests for SHA-256 trajectory draws, paired resampling, exact percentile endpoints, row-order invariance, and undefined-replicate blockers.
-- [ ] 3.2 Implement bounded whole-trajectory bootstrap with required seed, configurable replicate count, exact replicate estimates, and 95 percent paired intervals.
-- [ ] 3.3 Add red/green leave-one-trajectory-out diagnostics and the pre-specified primary interval, estimator-direction, and sign-stability comparison gate.
+- [x] 3.1 Add red tests for SHA-256 trajectory draws, paired resampling, exact percentile endpoints, row-order invariance, and undefined-replicate blockers.
+- [x] 3.2 Implement bounded whole-trajectory bootstrap with required seed, configurable replicate count, exact replicate estimates, and 95 percent paired intervals.
+- [x] 3.3 Add red/green leave-one-trajectory-out diagnostics and the pre-specified primary interval, estimator-direction, and sign-stability comparison gate.
 
 ## 4. Synthetic Estimator Calibration
 
