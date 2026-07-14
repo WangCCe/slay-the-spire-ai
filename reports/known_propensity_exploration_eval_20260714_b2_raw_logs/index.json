@@ -1,0 +1,38 @@
+[
+  {
+    "captured_at": null,
+    "gzip_file": "ai_debug_0001.log.gz",
+    "gzip_sha256": "15b4f4ac29172e744285c1cfa3684820a8cb059ba9bc79fbf4ac77b1c72f656d",
+    "source": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\ai_debug.log.1",
+    "source_mtime_ns": null,
+    "source_sha256": "b3dccf200ec4e553d77c60949e24c335ecf8c77f4b94cd4274e9410253d73ab5",
+    "source_size": 10485691
+  },
+  {
+    "captured_at": "2026-07-14T01:13:35.586805+00:00",
+    "gzip_file": "ai_debug_0002_rotated.log.gz",
+    "gzip_sha256": "354185ca5379999bdfa6a79f1fe5c7a0af45e0cfa6e9c193ca9716ab6b39dc45",
+    "source": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\ai_debug.log.1",
+    "source_mtime_ns": 1783991613468791500,
+    "source_sha256": "7a28e1b407035a824b2e238e5566b3b4081df34e30f9b04dff743071f3477863",
+    "source_size": 10485707
+  },
+  {
+    "captured_at": "2026-07-14T01:27:29.364153+00:00",
+    "gzip_file": "ai_debug_0003_rotated.log.gz",
+    "gzip_sha256": "036863860aa9a252e4a38ae16a278d1e2c2bd5140083acc4cac45688ca691bc4",
+    "source": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\ai_debug.log.1",
+    "source_mtime_ns": 1783992447758894400,
+    "source_sha256": "fddeddfb9ee3249335f398e0dd595ee55b902b8b4b5c3d04348642c0a86eebe8",
+    "source_size": 10485760
+  },
+  {
+    "captured_at": "2026-07-14T01:39:42.000085+00:00",
+    "gzip_file": "ai_debug_0004_final.log.gz",
+    "gzip_sha256": "08e691102fc419003e54cf510c94f69672f16468d0a00d200082cc2a649d9d86",
+    "source": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\ai_debug.log",
+    "source_mtime_ns": 1783993179747637600,
+    "source_sha256": "c2006bd61457bad79c4a9295b2623cec63e0b2ad92fd114b0da8364d1a1425ed",
+    "source_size": 8822541
+  }
+]

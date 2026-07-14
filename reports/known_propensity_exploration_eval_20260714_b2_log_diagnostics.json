@@ -1,0 +1,75 @@
+{
+  "ai_debug_scan_pattern": " - (ERROR|CRITICAL) - |Traceback",
+  "ai_debug_slice": {
+    "canonical_newlines": "LF",
+    "compressed_sha256": "afc3b549948b78e315c1863b3238466fcadf7644faf18e2a8e67897f01d8b841",
+    "compressed_size": 3092228,
+    "compression": "gzip",
+    "first_line": "2026-07-14 08:46:13,834 - INFO - Startup: main=D:\\PycharmProjects\\slay-the-spire-ai\\main.py python=D:\\anaconda\\envs\\stsai\\python.exe cwd=D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire pid=18732",
+    "last_line": "2026-07-14 09:39:39,746 - INFO - Max games reached (25); exiting.",
+    "line_count": 424492,
+    "path": "known_propensity_exploration_eval_20260714_b2_ai_debug_slice.log.gz",
+    "payload_sha256": "19d41d9e552469d15e8179fe5d77d62857162386c3a95fdc15d5dabed2fb7a87",
+    "payload_size": 39855207,
+    "source_chunks": [
+      {
+        "capture_path": "reports/known_propensity_exploration_eval_20260714_b2_raw_logs/ai_debug_0001.log.gz",
+        "gzip_sha256": "15b4f4ac29172e744285c1cfa3684820a8cb059ba9bc79fbf4ac77b1c72f656d",
+        "payload_sha256": "b3dccf200ec4e553d77c60949e24c335ecf8c77f4b94cd4274e9410253d73ab5",
+        "payload_size": 10485691
+      },
+      {
+        "capture_path": "reports/known_propensity_exploration_eval_20260714_b2_raw_logs/ai_debug_0002_rotated.log.gz",
+        "gzip_sha256": "354185ca5379999bdfa6a79f1fe5c7a0af45e0cfa6e9c193ca9716ab6b39dc45",
+        "payload_sha256": "7a28e1b407035a824b2e238e5566b3b4081df34e30f9b04dff743071f3477863",
+        "payload_size": 10485707
+      },
+      {
+        "capture_path": "reports/known_propensity_exploration_eval_20260714_b2_raw_logs/ai_debug_0003_rotated.log.gz",
+        "gzip_sha256": "036863860aa9a252e4a38ae16a278d1e2c2bd5140083acc4cac45688ca691bc4",
+        "payload_sha256": "fddeddfb9ee3249335f398e0dd595ee55b902b8b4b5c3d04348642c0a86eebe8",
+        "payload_size": 10485760
+      },
+      {
+        "capture_path": "reports/known_propensity_exploration_eval_20260714_b2_raw_logs/ai_debug_0004_final.log.gz",
+        "gzip_sha256": "08e691102fc419003e54cf510c94f69672f16468d0a00d200082cc2a649d9d86",
+        "payload_sha256": "c2006bd61457bad79c4a9295b2623cec63e0b2ad92fd114b0da8364d1a1425ed",
+        "payload_size": 8822541
+      }
+    ]
+  },
+  "ai_debug_strict_error_count": 2,
+  "ai_debug_strict_errors": [
+    "2026-07-14 08:46:32,017 - ERROR - CombatRLAgent error: Invalid command: start. Possible commands: [choose, key, click, wait, state]",
+    "2026-07-14 08:46:32,018 - ERROR - Game error: Invalid command: start. Possible commands: [choose, key, click, wait, state]"
+  ],
+  "communication_mod_marker": "noncombat exploration config: D:\\PycharmProjects\\slay-the-spire-ai\\reports\\known_propensity_exploration_eval_20260714_b2_config.json",
+  "communication_mod_slice": {
+    "canonical_newlines": "LF",
+    "first_line": "[training-batch] noncombat exploration config: D:\\PycharmProjects\\slay-the-spire-ai\\reports\\known_propensity_exploration_eval_20260714_b2_config.json",
+    "included_first_line": 8861,
+    "included_last_line": 8875,
+    "last_line": "  Keep batches small enough to inspect plateau diagnostics before raising route risk.",
+    "line_count": 15,
+    "path": "known_propensity_exploration_eval_20260714_b2_communication_mod_errors_slice.log",
+    "sha256": "c2e6e3c7155837b1e0d19080fbe53afa6927c31fd98e43b5e6f7f1980a99871b",
+    "size": 1853,
+    "source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\communication_mod_errors.log",
+    "source_sha256": "8357f976222f914c5dde251ec4c135ff3dea6a5b1b4826d18662b051846c9753",
+    "source_size": 1151380
+  },
+  "communication_mod_suspicious_count": 0,
+  "communication_mod_suspicious_lines": [],
+  "communication_mod_suspicious_pattern": "Traceback|Exception|ERROR|Error",
+  "schema_version": "known-propensity-log-diagnostics-v2",
+  "session_end_evidence": [
+    "2026-07-14 09:39:39,746 - INFO - Max games reached (25); exiting."
+  ],
+  "session_start_local": "2026-07-14 08:46:13",
+  "startup_race_context": [
+    "2026-07-14 08:46:32,015 - INFO - [STATE_UPDATE] game_is_ready: True\u2192True, action_queue_size=0",
+    "2026-07-14 08:46:32,017 - INFO - [CALLBACK_CHECK] perform_callbacks=True, last_error=Invalid command: start. Possible commands: [choose, key, click, wait, state], in_game=True, queue_size=0, screen=ScreenType.EVENT",
+    "2026-07-14 08:46:32,017 - ERROR - CombatRLAgent error: Invalid command: start. Possible commands: [choose, key, click, wait, state]",
+    "2026-07-14 08:46:32,018 - ERROR - Game error: Invalid command: start. Possible commands: [choose, key, click, wait, state]"
+  ]
+}

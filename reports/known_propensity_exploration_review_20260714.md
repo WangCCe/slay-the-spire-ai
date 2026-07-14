@@ -4,9 +4,10 @@
 
 This review closes OpenSpec change
 `add-known-propensity-noncombat-exploration`. It covers the implementation,
-the 25-run B1 evidence package, accepted review fixes, and the post-fix R6 live
-smoke. Formal non-combat RL, OPE, causal uplift, and live promotion remain out
-of scope and blocked.
+the 25-run B1 evidence package, accepted review fixes, the post-fix R6 live
+smoke, and the post-closure B2 bounded qualification follow-up. Formal
+non-combat RL, OPE, causal uplift, and live promotion remain out of scope and
+blocked.
 
 ## Findings And Resolutions
 
@@ -72,6 +73,26 @@ two selected-action rows from the original 2.08 GB decision trace.
 R6 proves the repaired routing, confirmation, and externally visible state. It
 does not qualify the data loop or establish policy quality or outcome uplift.
 
+## Post-Review B2 Qualification
+
+B2 ran 25 fresh trajectories from final archived source commit `99dd44a6`
+without training or parameter escalation. All 230 proposal/resolution pairs
+confirmed, replayed, remained candidate-legal, and matched an exact AI-marked
+run. Source provenance and post-session isolation both verify.
+
+Joined support is card-reward baseline `174`, card-reward alternative `19`,
+shop baseline `30`, and shop alternative `7`. B2 therefore passes every
+registered structural collection gate and sets
+`known_propensity_exploration_data_ready=true` with no blockers. A separate
+118-check reconstruction verified the run hashes and markers, manifest hashes,
+trace bijection, trajectory budget, deterministic sample/qualification replay,
+four rotating-log chunks, and report hashes.
+
+This supersedes the earlier data-readiness result, not the downstream safety
+boundary. B2 still reports OPE, causal uplift, formal non-combat RL training,
+and live promotion as false. It contains no victories and only seven shop
+alternatives, so it is not policy-quality or effect evidence.
+
 ## Verification
 
 - Review regressions: `6 failed` before the final two fixes, then `71 passed`.
@@ -79,8 +100,10 @@ does not qualify the data loop or establish policy quality or outcome uplift.
 - Final full pytest suite: `2527 passed`.
 - `openspec validate add-known-propensity-noncombat-exploration --strict`:
   passed.
+- B2 independent evidence reconstruction: `118 checks passed`.
 - `git diff --check`: passed.
 - Remaining game, ModTheSpire, and AI processes after R6: none.
+- Remaining game, ModTheSpire, and AI processes after B2: none.
 
 ## Residual Risks
 
@@ -91,14 +114,18 @@ does not qualify the data loop or establish policy quality or outcome uplift.
 - R6 repeated the recoverable stale `start` startup error and began a second
   trajectory before controlled shutdown; both limitations are frozen and do
   not contribute matched outcome support.
+- B2 repeated the recoverable stale `start` startup error. It completed all 25
+  trajectories, but produced no victory and only seven shop alternatives.
 - Standalone-CR Properties input and `limit=true` are not separate committed
   exporter cases, but direct review probes passed and the shared strict parser
   and integer helper cover those paths.
 
 ## Decision
 
-The change is complete as a bounded known-propensity data-collection loop.
-`known_propensity_exploration_data_ready`, `ope_ready`, `causal_uplift_ready`,
-`formal_noncombat_rl_training_ready`, and `live_policy_promotion_ready` remain
-false. Any attempt to qualify a new batch must start from the post-review code
-and fresh trajectories; B1 cannot be promoted retroactively.
+The change is complete as a bounded known-propensity data-collection loop. B2
+qualifies the structural collection dataset, so
+`known_propensity_exploration_data_ready` is now true. `ope_ready`,
+`causal_uplift_ready`, `formal_noncombat_rl_training_ready`, and
+`live_policy_promotion_ready` remain false. B1 cannot be promoted
+retroactively; the next change must define outcome and OPE readiness before
+training or promotion is considered.

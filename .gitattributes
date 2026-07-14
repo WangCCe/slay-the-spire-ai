@@ -4,3 +4,5 @@
 reports/known_propensity_exploration_* text eol=lf
 reports/known_propensity_exploration_*_runs/** text eol=lf
 reports/known_propensity_exploration_*.gz -text
+reports/known_propensity_exploration_*_raw_logs/** text eol=lf
+reports/known_propensity_exploration_*_raw_logs/*.gz -text

@@ -1,0 +1,53 @@
+{
+  "blocking_conditions": [],
+  "causal_uplift_ready": false,
+  "formal_noncombat_rl_training_ready": false,
+  "isolation_verified": true,
+  "known_propensity_exploration_data_ready": true,
+  "live_policy_promotion_ready": false,
+  "metrics": {
+    "candidate_legal": 230,
+    "category_arm_support": {
+      "card_reward": {
+        "alternative": 19,
+        "baseline": 174
+      },
+      "shop": {
+        "alternative": 7,
+        "baseline": 30
+      }
+    },
+    "confirmed": 230,
+    "eligible_proposals": 230,
+    "exported_samples": 230,
+    "floor_distribution": {
+      "16": 15,
+      "18": 1,
+      "24": 1,
+      "27": 3,
+      "30": 1,
+      "33": 3,
+      "38": 1
+    },
+    "killed_by_distribution": {
+      "2 Orb Walkers": 1,
+      "3 Cultists": 1,
+      "Automaton": 2,
+      "Centurion and Healer": 2,
+      "Collector": 1,
+      "Gremlin Leader": 1,
+      "Hexaghost": 8,
+      "Shell Parasite": 1,
+      "Slime Boss": 4,
+      "Snake Plant": 1,
+      "The Guardian": 3
+    },
+    "outcome_matched_samples": 230,
+    "replay_valid": 230,
+    "unique_joined_trajectories": 25,
+    "verified_propensities": 230,
+    "victories": 0
+  },
+  "ope_ready": false,
+  "provenance_verified": true
+}

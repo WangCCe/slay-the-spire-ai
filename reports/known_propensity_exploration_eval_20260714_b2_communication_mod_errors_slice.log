@@ -1,0 +1,15 @@
+[training-batch] noncombat exploration config: D:\PycharmProjects\slay-the-spire-ai\reports\known_propensity_exploration_eval_20260714_b2_config.json
+[training-batch] restart guidance:
+  If the game UI becomes sluggish, close Slay the Spire and ModTheSpire, then start the next bounded batch after the game returns to the main menu.
+  Keep batches small enough to inspect plateau diagnostics before raising route risk.
+[training-batch] checkpoint backup: checkpoints\rl_combat_model_ep9_steps11848.pth -> checkpoints_archive\training_batches\rl_combat_model_ep9_steps11848.pth.20260714-084613.bak
+[training-batch] checkpoint backup: checkpoints\rl_model_ep50.pth -> checkpoints_archive\training_batches\rl_model_ep50.pth.20260714-084613.bak
+[training-batch] log backup: D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug.log -> D:\SteamLibrary\steamapps\common\SlayTheSpire\logs_archive\ai_debug.log.20260714-084613.bak
+[training-batch] log rotation: truncated D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug.log
+Enhanced monster database loaded: 56 monsters
+Loaded wiki data for 364 cards
+[training-batch] maintenance: D:\anaconda\envs\stsai\python.exe D:\PycharmProjects\slay-the-spire-ai\analysis_scripts\archive_old_runs.py --game-dir D:\SteamLibrary\steamapps\common\SlayTheSpire --character IRONCLAD --keep 1000
+[training-batch] post-analysis: D:\anaconda\envs\stsai\python.exe D:\PycharmProjects\slay-the-spire-ai\analysis_scripts\analyze_training_plateau.py --runs-dir D:\SteamLibrary\steamapps\common\SlayTheSpire\runs --character IRONCLAD --count 500 --bucket 50
+[training-batch] restart guidance:
+  If the game UI becomes sluggish, close Slay the Spire and ModTheSpire, then start the next bounded batch after the game returns to the main menu.
+  Keep batches small enough to inspect plateau diagnostics before raising route risk.
