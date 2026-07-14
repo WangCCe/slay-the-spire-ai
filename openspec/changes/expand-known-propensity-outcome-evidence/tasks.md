@@ -1,9 +1,9 @@
 ## 1. Registration And Immutable Schedule
 
-- [ ] 1.1 Add failing registration tests in `tests/test_noncombat_outcome_evidence_expansion.py` for the exact 24-by-25 schedule, fixed session IDs and seeds, `card_reward=300`, `shop=1000`, two-attempt budget, executable-category boundary, canonical hash, duplicate slots, changed thresholds, and non-integer exact fields; run the focused file with Windows pytest and preserve the red result.
-- [ ] 1.2 Implement the versioned registration model, strict JSON loader, canonical renderer/hash, and deterministic slot table in `analysis_scripts/noncombat_outcome_evidence_expansion.py` without importing gameplay, Bottled, PyTorch, or checkpoint-loading modules; make the registration tests pass.
-- [ ] 1.3 Add failing tests for a tracked-dirty start, registration-byte tampering, unsupported Python path, command drift, source-file hash drift, CommunicationMod semantic drift, checkpoint drift, and two locks for one study.
-- [ ] 1.4 Implement atomic run-lock creation and validation in `analysis_scripts/noncombat_outcome_evidence_expansion.py`, binding the clean HEAD, registration bytes, hash-bound implementation files, exact eval command, Windows Python, CommunicationMod semantic snapshot, and checkpoint snapshot.
+- [x] 1.1 Add failing registration tests in `tests/test_noncombat_outcome_evidence_expansion.py` for the exact 24-by-25 schedule, fixed session IDs and seeds, `card_reward=300`, `shop=1000`, two-attempt budget, executable-category boundary, canonical hash, duplicate slots, changed thresholds, and non-integer exact fields; run the focused file with Windows pytest and preserve the red result.
+- [x] 1.2 Implement the versioned registration model, strict JSON loader, canonical renderer/hash, and deterministic slot table in `analysis_scripts/noncombat_outcome_evidence_expansion.py` without importing gameplay, Bottled, PyTorch, or checkpoint-loading modules; make the registration tests pass.
+- [x] 1.3 Add failing tests for a tracked-dirty start, registration-byte tampering, unsupported Python path, command drift, source-file hash drift, CommunicationMod semantic drift, checkpoint drift, and two locks for one study.
+- [x] 1.4 Implement atomic run-lock creation and validation in `analysis_scripts/noncombat_outcome_evidence_expansion.py`, binding the clean HEAD, registration bytes, hash-bound implementation files, exact eval command, Windows Python, CommunicationMod semantic snapshot, and checkpoint snapshot.
 
 ## 2. Fixed Runner And Append-Only Ledger
 
