@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+import analysis_scripts.noncombat_ope_readiness as ope_readiness_module
 from analysis_scripts.noncombat_ope_readiness import (
     OUTCOME_CONTRACT_VERSION,
     OpeReadinessError,
@@ -154,6 +155,18 @@ def test_loads_canonical_samples_and_orders_complete_trajectories(tmp_path):
     assert audit.trajectories[1].outcome.floor_reached == 16
 
 
+def test_canonical_loader_rejects_duplicate_json_keys(tmp_path):
+    source = tmp_path / "samples.jsonl"
+    source.write_text(
+        '{"schema_version":"noncombat-rl-decision-v3",'
+        '"schema_version":"noncombat-rl-decision-v3"}\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(OpeReadinessError, match="duplicate JSON key: schema_version"):
+        load_canonical_samples(source)
+
+
 def test_duplicate_sample_identity_is_invalid():
     first = _sample(run_id="100", decision_index=0, sample_id="duplicate")
     second = _sample(run_id="200", decision_index=0, sample_id="duplicate")
@@ -263,6 +276,54 @@ def test_behavior_identity_manifest_binds_exact_logged_distributions():
         },
     ]
     assert manifest["manifest_hash"]
+
+
+def _rehash_target_manifest(manifest):
+    payload = deepcopy(manifest)
+    payload["manifest_hash"] = None
+    manifest["manifest_hash"] = hashlib.sha256(
+        json.dumps(
+            payload,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def test_behavior_identity_manifest_requires_exact_copy_and_diagnostic_mode():
+    sample = _sample()
+    manifest = build_behavior_identity_manifest(
+        (sample,),
+        source_sample_sha256="b" * 64,
+    )
+
+    changed_distribution = deepcopy(manifest)
+    changed_distribution["entries"][0]["probabilities"][0]["numerator"] = 2
+    changed_distribution["entries"][0]["probabilities"][1]["numerator"] = 8
+    _rehash_target_manifest(changed_distribution)
+    with pytest.raises(
+        OpeReadinessError,
+        match="behavior identity distribution mismatch",
+    ):
+        validate_target_policy_manifest(
+            changed_distribution,
+            (sample,),
+            source_sample_sha256="b" * 64,
+        )
+
+    candidate_identity = deepcopy(manifest)
+    candidate_identity["diagnostic_only"] = False
+    _rehash_target_manifest(candidate_identity)
+    with pytest.raises(
+        OpeReadinessError,
+        match="behavior identity must be diagnostic-only",
+    ):
+        validate_target_policy_manifest(
+            candidate_identity,
+            (sample,),
+            source_sample_sha256="b" * 64,
+        )
 
 
 def test_target_manifest_rejects_source_hash_mismatch_and_missing_rows():
@@ -769,6 +830,92 @@ def test_invalid_input_preserves_prior_complete_artifact_pair(tmp_path, invalid_
         )
 
     assert (json_path.read_bytes(), markdown_path.read_bytes()) == before
+
+
+def test_duplicate_target_key_preserves_prior_complete_artifact_pair(tmp_path):
+    source = tmp_path / "samples.jsonl"
+    _write_jsonl(source, [_sample()])
+    target_path = tmp_path / "target.json"
+    write_target_manifest(
+        source,
+        mode="behavior_identity",
+        output_path=target_path,
+    )
+    prefix = tmp_path / "readiness"
+    json_path, markdown_path = write_readiness_artifacts(
+        source,
+        target_manifest_path=target_path,
+        output_prefix=prefix,
+    )
+    before = (json_path.read_bytes(), markdown_path.read_bytes())
+    target_text = target_path.read_text(encoding="utf-8")
+    target_path.write_text(
+        target_text.replace(
+            '"schema_version": "noncombat-ope-target-policy-v1"',
+            '"schema_version": "noncombat-ope-target-policy-v1",\n'
+            '  "schema_version": "noncombat-ope-target-policy-v1"',
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(OpeReadinessError, match="duplicate JSON key: schema_version"):
+        write_readiness_artifacts(
+            source,
+            target_manifest_path=target_path,
+            output_prefix=prefix,
+        )
+
+    assert (json_path.read_bytes(), markdown_path.read_bytes()) == before
+
+
+def test_incomplete_rollback_retains_recovery_backup(tmp_path, monkeypatch):
+    source = tmp_path / "samples.jsonl"
+    _write_jsonl(source, [_sample()])
+    target_path = tmp_path / "target.json"
+    write_target_manifest(
+        source,
+        mode="behavior_identity",
+        output_path=target_path,
+    )
+    prefix = tmp_path / "readiness"
+    json_path, markdown_path = write_readiness_artifacts(
+        source,
+        target_manifest_path=target_path,
+        output_prefix=prefix,
+    )
+    before_json = json_path.read_bytes()
+    before_markdown = markdown_path.read_bytes()
+    real_replace = ope_readiness_module.os.replace
+    calls = 0
+
+    def fail_install_then_one_restore(source_path, destination_path):
+        nonlocal calls
+        calls += 1
+        if calls == 4:
+            raise OSError("simulated second install failure")
+        if calls == 5:
+            raise OSError("simulated first restore failure")
+        return real_replace(source_path, destination_path)
+
+    monkeypatch.setattr(
+        ope_readiness_module.os,
+        "replace",
+        fail_install_then_one_restore,
+    )
+
+    with pytest.raises(OpeReadinessError, match="rollback incomplete"):
+        write_readiness_artifacts(
+            source,
+            target_manifest_path=target_path,
+            output_prefix=prefix,
+        )
+
+    retained = list(tmp_path.glob(".readiness.json.*.bak"))
+    assert len(retained) == 1
+    assert retained[0].read_bytes() == before_json
+    assert not json_path.exists()
+    assert markdown_path.read_bytes() == before_markdown
 
 
 def test_module_cli_exposes_real_subcommands():

@@ -1,0 +1,103 @@
+{
+  "schema_version": "noncombat-ope-b2-artifact-audit-v1",
+  "passed": true,
+  "readiness_generated_from_commit": "94ae36c326bdbf16f1d3d8c65ed01570dd963d08",
+  "sample_source_policy_commit": "99dd44a6bec3a8fea64af76ddcc8fa587b06e5fd",
+  "source": {
+    "sample_file": "known_propensity_exploration_eval_20260714_b2_samples.jsonl",
+    "sample_sha256": "b7436b5a7ef12f345e54172f56ecb05b7aefe59f4ed9007805cc20aa4e90820f",
+    "run_allowlist_sha256": "c1443104e56759ba2d48553346c69054b2eb8a12769830567779f286b1f96942",
+    "qualification_sha256": "dd64a5144b23c6083f2a0f24f1ca544ff966c12cecc2b4147b1dc99623641891"
+  },
+  "behavior_identity": {
+    "passed": true,
+    "check_count": 21918,
+    "target_file_sha256": "b52ec6184b21862cb533e10b2bc7e04a95755cf2f5b3a72ea55abe82e738fdee",
+    "target_manifest_hash": "f8f30a56ab7c4881b574723195624410351531e0dc67c3b022239ee5293815c6",
+    "readiness_file_sha256": "d582bbc14fe729f20c7b915934091a4a5357d82a84599d40f7598a7aa8a402fd",
+    "readiness_markdown_sha256": "1fa01fdc9a1c38c48e37eccec96fc084929d7612b75ef1a3edbf95ae61c8bb65",
+    "decision_count": 230,
+    "trajectory_count": 25,
+    "nonzero_weight_count": 25,
+    "zero_weight_count": 0,
+    "effective_sample_size": {"numerator": 25, "denominator": 1},
+    "ess_fraction": {"numerator": 1, "denominator": 1},
+    "max_normalized_weight": {"numerator": 1, "denominator": 25},
+    "identity_invariants_passed": true,
+    "overlap_blockers": [
+      "complete_trajectory_count_below_minimum",
+      "nonzero_weight_trajectory_count_below_minimum",
+      "effective_sample_size_below_minimum",
+      "primary_outcome_degenerate"
+    ],
+    "downstream_gates_closed": true
+  },
+  "current_deterministic": {
+    "passed": true,
+    "check_count": 21684,
+    "target_file_sha256": "3deef91e8a082843ff35e118f2b69784f4d8845d25cf8d318d9fa5e3b7a485a7",
+    "target_manifest_hash": "91f97cb7edf1872fed009bf12043dfb3e4b5cd3a10982f0e5de15da1d1432e48",
+    "readiness_file_sha256": "81b7410cf49b8b285711251a1d52f2a2902b4146ecc7c200c830f65340a1c747",
+    "readiness_markdown_sha256": "d9482bf36c12f8d1c65ba5aee36407c31e3a08a3959baf91988b2bea349f0f34",
+    "decision_count": 230,
+    "trajectory_count": 25,
+    "nonzero_weight_count": 8,
+    "zero_weight_count": 17,
+    "effective_sample_size": {
+      "numerator": 1936291079828224375201,
+      "denominator": 270073503359154748801
+    },
+    "ess_fraction": {
+      "numerator": 1936291079828224375201,
+      "denominator": 6751837583978868720025
+    },
+    "max_normalized_weight": {
+      "numerator": 10000000000,
+      "denominator": 44003307601
+    },
+    "identity_invariants_passed": false,
+    "overlap_blockers": [
+      "complete_trajectory_count_below_minimum",
+      "nonzero_weight_trajectory_count_below_minimum",
+      "effective_sample_size_below_minimum",
+      "ess_fraction_below_minimum",
+      "max_normalized_weight_above_maximum",
+      "primary_outcome_degenerate"
+    ],
+    "downstream_gates_closed": true
+  },
+  "live_isolation": {
+    "pre": {
+      "communication_mod_config": {
+        "size": 505,
+        "mtime_ns": 1783989973180761900,
+        "sha256": "f1bc7000795e225d08393490ddd53ed523a15ad2903c5b0b464b0b20af4e2ed1"
+      },
+      "checkpoints": {
+        "file_count": 208,
+        "inventory_sha256": "65b31a1a0b7de8eaebd63bc2bf382fa18d29f0b8ad0f50e026cfacfae83f366b"
+      },
+      "run_records": {
+        "file_count": 1060,
+        "inventory_sha256": "4bac8d9d77bc4afde2005694cee6d71d055193669f33c8656a14d14be2b5edcf"
+      }
+    },
+    "post": {
+      "communication_mod_config": {
+        "size": 505,
+        "mtime_ns": 1783989973180761900,
+        "sha256": "f1bc7000795e225d08393490ddd53ed523a15ad2903c5b0b464b0b20af4e2ed1"
+      },
+      "checkpoints": {
+        "file_count": 208,
+        "inventory_sha256": "65b31a1a0b7de8eaebd63bc2bf382fa18d29f0b8ad0f50e026cfacfae83f366b"
+      },
+      "run_records": {
+        "file_count": 1060,
+        "inventory_sha256": "4bac8d9d77bc4afde2005694cee6d71d055193669f33c8656a14d14be2b5edcf"
+      }
+    },
+    "unchanged": true,
+    "matched_gameplay_or_training_process_count": 0
+  }
+}

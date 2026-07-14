@@ -41,6 +41,12 @@ class OpeReadinessError(ValueError):
     """Raised when input cannot be interpreted without inventing evidence."""
 
 
+class _DuplicateJsonKeyError(ValueError):
+    def __init__(self, key: str) -> None:
+        super().__init__(key)
+        self.key = key
+
+
 @dataclass(frozen=True)
 class TerminalOutcome:
     run_file: str
@@ -144,10 +150,14 @@ def load_canonical_samples(path: Path | str) -> tuple[dict[str, Any], ...]:
             if not line.strip():
                 continue
             try:
-                value = json.loads(line)
+                value = _strict_json_loads(line)
             except json.JSONDecodeError as exc:
                 raise OpeReadinessError(
                     f"{source}:{line_number}: malformed JSON ({exc.msg})"
+                ) from exc
+            except _DuplicateJsonKeyError as exc:
+                raise OpeReadinessError(
+                    f"{source}:{line_number}: duplicate JSON key: {exc.key}"
                 ) from exc
             if not isinstance(value, dict):
                 raise OpeReadinessError(
@@ -390,6 +400,16 @@ def validate_target_policy_manifest(
         raise OpeReadinessError("target construction mode is invalid")
     if not isinstance(manifest.get("diagnostic_only"), bool):
         raise OpeReadinessError("target diagnostic_only flag is invalid")
+    if (
+        construction_mode == "behavior_identity"
+        and manifest.get("diagnostic_only") is not True
+    ):
+        raise OpeReadinessError("behavior identity must be diagnostic-only")
+    if (
+        construction_mode == "current_deterministic"
+        and manifest.get("diagnostic_only") is not False
+    ):
+        raise OpeReadinessError("deterministic Current cannot be diagnostic-only")
     if construction_mode == "current_deterministic" and manifest.get(
         "label_provenance"
     ) != {
@@ -460,15 +480,25 @@ def validate_target_policy_manifest(
                 sample_id=sample_id,
             )
 
-        logged_support = {
-            str(probability["action_id"])
+        logged_probabilities = {
+            str(probability["action_id"]): _target_probability_fraction(
+                probability,
+                sample_id=sample_id,
+            )
             for probability in exploration["candidate_distribution"]
         }
-        if set(exact_probabilities) != logged_support:
+        if set(exact_probabilities) != set(logged_probabilities):
             raise OpeReadinessError(f"{sample_id}: target support mismatch")
         if sum(exact_probabilities.values(), Fraction(0, 1)) != Fraction(1, 1):
             raise OpeReadinessError(
                 f"{sample_id}: target probabilities do not sum to one"
+            )
+        if (
+            construction_mode == "behavior_identity"
+            and exact_probabilities != logged_probabilities
+        ):
+            raise OpeReadinessError(
+                f"{sample_id}: behavior identity distribution mismatch"
             )
         if construction_mode == "current_deterministic":
             provenance = entry.get("label_provenance")
@@ -1234,9 +1264,13 @@ def _exact_text(record: Mapping[str, Any]) -> str:
 
 def _load_json_mapping(path: Path, *, description: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = _strict_json_loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, UnicodeError) as exc:
         raise OpeReadinessError(f"{path}: malformed {description}") from exc
+    except _DuplicateJsonKeyError as exc:
+        raise OpeReadinessError(
+            f"{path}: duplicate JSON key: {exc.key}"
+        ) from exc
     if not isinstance(value, dict):
         raise OpeReadinessError(f"{path}: {description} must be a JSON object")
     return value
@@ -1254,6 +1288,7 @@ def _replace_files_transactionally(
     temporary_files: dict[Path, Path] = {}
     backups: dict[Path, Path] = {}
     installed: list[Path] = []
+    completed = False
     try:
         for destination, data in payloads:
             temporary_files[destination] = _write_temporary_file(destination, data)
@@ -1265,21 +1300,46 @@ def _replace_files_transactionally(
         for destination in destinations:
             os.replace(temporary_files[destination], destination)
             installed.append(destination)
-    except Exception:
+        completed = True
+    except Exception as original_error:
+        rollback_errors: list[str] = []
         for destination in reversed(installed):
-            if destination.exists():
-                destination.unlink()
+            try:
+                if destination.exists():
+                    destination.unlink()
+            except OSError as exc:
+                rollback_errors.append(f"remove {destination}: {exc}")
         for destination, backup in backups.items():
-            if backup.exists():
-                os.replace(backup, destination)
+            try:
+                if backup.exists():
+                    os.replace(backup, destination)
+            except OSError as exc:
+                rollback_errors.append(f"restore {destination}: {exc}")
+        if rollback_errors:
+            retained = sorted(
+                str(backup) for backup in backups.values() if backup.exists()
+            )
+            details = "; ".join(rollback_errors)
+            recovery = ", ".join(retained) if retained else "none"
+            raise OpeReadinessError(
+                "artifact transaction rollback incomplete; "
+                f"recovery backups retained: {recovery}; {details}"
+            ) from original_error
         raise
     finally:
         for temporary in temporary_files.values():
-            if temporary.exists():
-                temporary.unlink()
-        for backup in backups.values():
-            if backup.exists():
-                backup.unlink()
+            try:
+                if temporary.exists():
+                    temporary.unlink()
+            except OSError:
+                pass
+        if completed:
+            for backup in backups.values():
+                try:
+                    if backup.exists():
+                        backup.unlink()
+                except OSError:
+                    pass
 
 
 def _write_temporary_file(destination: Path, data: bytes) -> Path:
@@ -1306,6 +1366,18 @@ def _reserve_backup_path(destination: Path) -> Path:
     backup = Path(raw_path)
     backup.unlink()
     return backup
+
+
+def _strict_json_loads(text: str) -> Any:
+    def reject_duplicates(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise _DuplicateJsonKeyError(str(key))
+            result[key] = value
+        return result
+
+    return json.loads(text, object_pairs_hook=reject_duplicates)
 
 
 def _validate_sample_identity(sample: Mapping[str, Any], *, source: str) -> None:

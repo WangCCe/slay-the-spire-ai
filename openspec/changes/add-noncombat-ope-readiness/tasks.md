@@ -24,13 +24,13 @@
 
 ## 5. B2 Proof Of Concept
 
-- [ ] 5.1 Generate frozen behavior-identity and deterministic-Current target manifests from the B2 sample allowlist.
-- [ ] 5.2 Generate B2 readiness JSON/Markdown artifacts that reconstruct exactly 25 trajectories and 230 decisions while keeping every downstream gate false.
-- [ ] 5.3 Independently replay target hashes, trajectory weights, identity invariants, overlap metrics, blockers, and live isolation hashes; record the audit result.
+- [x] 5.1 Generate frozen behavior-identity and deterministic-Current target manifests from the B2 sample allowlist.
+- [x] 5.2 Generate B2 readiness JSON/Markdown artifacts that reconstruct exactly 25 trajectories and 230 decisions while keeping every downstream gate false.
+- [x] 5.3 Independently replay target hashes, trajectory weights, identity invariants, overlap metrics, blockers, and live isolation hashes; record the audit result.
 
 ## 6. Verification And Closeout
 
-- [ ] 6.1 Run focused trajectory/target/weight/CLI tests with the Windows development environment and record the result.
-- [ ] 6.2 Run the full pytest suite, `openspec validate --all --strict`, and `git diff --check`.
-- [ ] 6.3 Confirm CommunicationMod configuration, production checkpoints, run records, and live processes were not changed by the offline workflow.
-- [ ] 6.4 Update the change artifacts and durable report with final limitations, residual risks, and the next estimator-validation gate; commit and push coherent milestones.
+- [x] 6.1 Run focused trajectory/target/weight/CLI tests with the Windows development environment and record the result.
+- [x] 6.2 Run the full pytest suite, `openspec validate --all --strict`, and `git diff --check`.
+- [x] 6.3 Confirm CommunicationMod configuration, production checkpoints, run records, and live processes were not changed by the offline workflow.
+- [x] 6.4 Update the change artifacts and durable report with final limitations, residual risks, and the next estimator-validation gate; commit and push coherent milestones.
