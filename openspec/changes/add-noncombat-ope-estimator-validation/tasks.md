@@ -18,9 +18,9 @@
 
 ## 4. Synthetic Estimator Calibration
 
-- [ ] 4.1 Add red tests for identity exactness, balanced one-step and multi-decision known-truth fixtures, exact bootstrap enumeration, and deterministic ordering.
-- [ ] 4.2 Implement the versioned calibration runner and transactional JSON/Markdown artifact with every fixture, threshold, hash, and blocker recorded.
-- [ ] 4.3 Run the fixed 200-dataset by 200-trajectory by 500-bootstrap coverage experiment and require target/uplift coverage in `[0.90, 0.99]` plus absolute mean bias at most `0.02`.
+- [x] 4.1 Add red tests for identity exactness, balanced one-step and multi-decision known-truth fixtures, exact bootstrap enumeration, and deterministic ordering.
+- [x] 4.2 Implement the versioned calibration runner and transactional JSON/Markdown artifact with every fixture, threshold, hash, and blocker recorded.
+- [x] 4.3 Run the fixed 200-dataset by 200-trajectory by 500-bootstrap coverage experiment and require target/uplift coverage in `[0.90, 0.99]` plus absolute mean bias at most `0.02`.
 
 ## 5. Estimate Artifacts And Independent Replay
 

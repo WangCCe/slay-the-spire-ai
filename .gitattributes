@@ -1,4 +1,6 @@
 .gitattributes text eol=lf
+analysis_scripts/noncombat_ope_calibration.py text eol=lf
+analysis_scripts/noncombat_ope_estimation.py text eol=lf
 
 # Preserve exact bytes for frozen evidence and derived OPE artifacts.
 reports/known_propensity_exploration_* -text whitespace=cr-at-eol
