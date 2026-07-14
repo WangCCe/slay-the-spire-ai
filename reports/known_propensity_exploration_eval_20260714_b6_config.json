@@ -1,0 +1,17 @@
+{
+  "schema_version": "noncombat-exploration-config-v1",
+  "session_id": "known-propensity-eval-20260714-b6",
+  "seed": 2026071418,
+  "enabled_categories": [
+    "card_reward",
+    "shop"
+  ],
+  "category_rates_bps": {
+    "card_reward": 300,
+    "shop": 300
+  },
+  "per_run_alternative_budget": 2,
+  "trace_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\known_propensity_exploration_eval_20260714_b6.jsonl",
+  "manifest_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\known_propensity_exploration_eval_20260714_b6_manifest.json",
+  "source_commit": "2006df2be20151afd759e9fc4deef320bc1f599d"
+}

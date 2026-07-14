@@ -1,0 +1,4176 @@
+{
+  "construction_mode": "behavior_identity",
+  "diagnostic_only": true,
+  "entries": [
+    {
+      "behavior_distribution_hash": "3dbb82fa12a31e1b4ee3ef8af46f9abf9d2274a2ef5ae4c667a18a15ef6f1506",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:true_grit",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-0038c2bd2a5082354f88637cb70f0faa",
+      "state_hash": "ef8f180adb82aba0116acd96d8495e322da7a5c07194681452975a63688d105c"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-009159feb2f0602e1db1e78a02e485b2",
+      "state_hash": "0f4f49c82ba72383dab7d212d1493a46c2643bfc611cd36aa6618f88ae044f38"
+    },
+    {
+      "behavior_distribution_hash": "97c9b54a700a7fc5197b73ebda637392b2c8ffb5146bbe4a04a6016460ddadd3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:cleave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-010e7791e46fada2d6b141e752d2fd83",
+      "state_hash": "ce2241492156edde2dd2cc443453cdf65d4145996f5f9fd44ce5d81185cab8e1"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-012224dfec8635c4fccb1774eb8c4d47",
+      "state_hash": "24bee29640335de200421d57f12d39058934e332c9347ff9aa22b613091c362b"
+    },
+    {
+      "behavior_distribution_hash": "3c1b3a6e7a92c67f3586fcc9d26ab9056edf5f68164ac0c230fe016e3f8b63af",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:seeing_red",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-0548a7e69419d814b9868959304a0853",
+      "state_hash": "d5debc07c32e4a065eb141ab5609a302099f7c3a0ac53084d8df5c7a81e7cf1b"
+    },
+    {
+      "behavior_distribution_hash": "a59039d2aa5527ec4ce1186ecd717a0e1364b3ed0dc4834133986962dc6d8dfe",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:sever_soul",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-0592140fa9372f83c81981eb5d6af47c",
+      "state_hash": "403d56f33af2b7f24051f12cab04009adadce7ecb121eaa343b68412ff6ffab2"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-05d73594bde687519de5d6c0c3ea1866",
+      "state_hash": "1915963c125dc0dbda14aa4e22be47ca52bb20ca58f579bb57b90eb128221fee"
+    },
+    {
+      "behavior_distribution_hash": "4a96a6a640653241583eb5b7e536a50c4a5be041c6a1c40225fac21bad2282da",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:rampage",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-08d72ef39dacad73442b0133aff5470b",
+      "state_hash": "0dd3a6d8f5cf4c156219853f19b54b0abe45a9210d6142d496462cae38f28d14"
+    },
+    {
+      "behavior_distribution_hash": "c55c275f2ed5a8314a99fb2970167224403ff16a37d30002e0f3a39678c47399",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:anger",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-0c407041a00f2f4af2742d6cb88f2bef",
+      "state_hash": "7aa92829b1c4fd53e5708129c90b6c6c5870ac8f6d910697ac7f9c1c6018ab2f"
+    },
+    {
+      "behavior_distribution_hash": "6b781aedecfd92b1968a618f2fa944e9873191fe968b75c2e8e89a7b2cf0558e",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shrug_it_off",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-0d265e7d37703cfe858a726fa4a49f34",
+      "state_hash": "440110b2c41d2bde57f29bf6f1a60745260ffefc52a028bb447d8772153911bf"
+    },
+    {
+      "behavior_distribution_hash": "a8587bb2f78c8916cc631e98a34e7e0efead7decdc5e1336f6765fe8d9cd2e89",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_relic:toy_ornithopter",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-0dc175cb91028e8cfdc8355a6830b8dc",
+      "state_hash": "25a54552260bb90e1635e76a97e0dcf933d364bd0dd410538fe98cccf94b25e6"
+    },
+    {
+      "behavior_distribution_hash": "92fe24ad6c38e10886105e045c0ecacf497831fdaa9dcd020cfdaaf991f6a536",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:combust",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-0e7a82ecf981f85a13fb866354354c65",
+      "state_hash": "95bf0a9c548ff6b261cda4d12fd70d2b6a07540efefad9e27d28baca0c51079e"
+    },
+    {
+      "behavior_distribution_hash": "fcdd0c7dbee8fc9e82e25ef8bf7c5a86010c5376cf790ae3409270940d367b6f",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:burning_pact",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-0eba8e30fe823f1b5e438537c6b255a4",
+      "state_hash": "7bf087c44e5ea3ff7d8078fa409015438d79798bd88e0eb64c6abf1486364685"
+    },
+    {
+      "behavior_distribution_hash": "3b2dbe2dd507c148cd64b63b6ac1bbbc40707242f972d0542f20a755bf2f4310",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:heavy_blade",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-0ece3f9cb43c57b594d6324b8277cb58",
+      "state_hash": "88053f6ea4f1a399b4cfc97edfacbb435a8507f4578e0e5c59505e5548e166ec"
+    },
+    {
+      "behavior_distribution_hash": "5df6931c91ebba732a6f5117cbac53da20b485d9ce485d4919ad7d32221dd58a",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:armaments",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-0ee1899373b5efc4fdefb26657642692",
+      "state_hash": "308c49f8a43fc4c4a1bf1814fc4dc2ea5cdb453aa056596f0d80c35d91abc70e"
+    },
+    {
+      "behavior_distribution_hash": "7a1b0ba299cf52ce27f9945ad894ca57792b2750605aa280d022c3ba1ed57868",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_relic:dream_catcher",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-1061bf9dd024785cb6cd046708b991ca",
+      "state_hash": "2fcd5e573e816e20241947caf111a75e144e796d4f3e10dded211cef0a4b9a12"
+    },
+    {
+      "behavior_distribution_hash": "f8efcb3caac44dbc963ac14434350160b007e1bc063b184bed52b79233056c58",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:wild_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-10bedfa92caeda5cffcc21d3a9a8705f",
+      "state_hash": "b963e75b7c21f5d7665b8308f767b77f1dc7453d50e2df1b52a407368aa3b72a"
+    },
+    {
+      "behavior_distribution_hash": "9437e7765b5c8c625465519dab24d34954e188139dd326ac366b1cce5c78c51d",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_card:shockwave",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-10de26cff4373726ae2984ab818cd233",
+      "state_hash": "1460233cadec5979f56d1b4aff40d889448a60332021c9fb24631149145e9eb6"
+    },
+    {
+      "behavior_distribution_hash": "a407b13927eab15fe70aa4e05fbb5475e4c65bdd275fae3a06f81c88f10f92fd",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:perfected_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-10eddc2301253352d215ee458b7ed1d9",
+      "state_hash": "5be93280ad612b07d0292844005b481da62041e8f958e9f8645e37198a7c8fcb"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-111befa7c3715a067e550774960b06bd",
+      "state_hash": "cd08b518bc474d8b1a0b7955a8909b439c9622359565d8737ed681deb7709d6c"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-11e759a64add418bd9339798db67f15d",
+      "state_hash": "1bbdc043cd981a3c84ed2fd273dad1a77f95c9bfd38e1ae20ad09ff2568418f8"
+    },
+    {
+      "behavior_distribution_hash": "c55c275f2ed5a8314a99fb2970167224403ff16a37d30002e0f3a39678c47399",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:anger",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-14a34abed7f0b28b9ba9c64536441c16",
+      "state_hash": "965f4fca2e30725dbc4d824f1c6565057f84f9ff7c359f562c72e5dc8b71a7b2"
+    },
+    {
+      "behavior_distribution_hash": "f98b45cf76b5731a0fda2578eabefdfa4924fc7d1f784f4e557f4032ad5a8ac7",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:second_wind",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-14fb32d19c9f14017e05935ec75f0b8e",
+      "state_hash": "8d94a8b4b20d0a1dc96b8683920adf11fbe39fdeb48a63cf29fbcef28b4bfccf"
+    },
+    {
+      "behavior_distribution_hash": "b2e3f6c241ab378eb125686110a68ddc0efc2cbfe2e4dcecc3116c8649d5d3bf",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:whirlwind",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-1523caf4ff6e0c02beb695c385ae5719",
+      "state_hash": "585e2876d0142c4ad403f5ffbfce14d5e18b715c1bbf8df293ae10e6f4795841"
+    },
+    {
+      "behavior_distribution_hash": "5df6931c91ebba732a6f5117cbac53da20b485d9ce485d4919ad7d32221dd58a",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:armaments",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-1631f8e86d528fac4e50337f586714e3",
+      "state_hash": "39fa1e072bf51f73d9eb175ef0a67e5992cedb8168f484186fab82eb7bb055e7"
+    },
+    {
+      "behavior_distribution_hash": "51358793497a35f7b07e666ad2f51310b17cabdc59062b81b0a69b4db5eb471b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:carnage",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-16bdf2b4fcedafcd7ce5075339b6ee3a",
+      "state_hash": "d78b70ab84c42100716fa9da74b27d8531ce7219384f5e0c2d97d69a6ea0359f"
+    },
+    {
+      "behavior_distribution_hash": "b2e3f6c241ab378eb125686110a68ddc0efc2cbfe2e4dcecc3116c8649d5d3bf",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:whirlwind",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-16e5cf775b602f5a099ea4c0d96f8f2d",
+      "state_hash": "f404a9545526456cc5f8a85df426faf84fc0e9aa5a577c7f1dab7bbe9ddd985e"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-184f09a0e12605cd84364ed4dad73ad9",
+      "state_hash": "cbeb60787a04ef1c5a64a84058279b5c8b40c1957fe504593f022332758df43d"
+    },
+    {
+      "behavior_distribution_hash": "38faecfd47391e762689c688da1a42967c43f7c54699259dee269f7a22045921",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:impervious",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-18616861b35b6aaa1e33f946cf7a7bde",
+      "state_hash": "f231e0a12eab0dd1439e3eeab74a6d471a71115b2c66f4c0df59754e6e0628c8"
+    },
+    {
+      "behavior_distribution_hash": "e9a943d4a727c1d8fa0cf91b37556488527ca45d6f48b0c9e411d35c004b32b7",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:bludgeon",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-1ae60366d5ae5499349d9df42a4b7203",
+      "state_hash": "0e215421d888e7b1002df70e93273ccbfdf28820d314803580aef6d70325ed0a"
+    },
+    {
+      "behavior_distribution_hash": "fcdd0c7dbee8fc9e82e25ef8bf7c5a86010c5376cf790ae3409270940d367b6f",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:burning_pact",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-1f1122f875ba844d2c46674aefdb398f",
+      "state_hash": "ff7c20047c2e3fbce0e1925a80fab48bbfa39712a9a72bb98b33a225cbc6a747"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-202cdb9491a4d70b10d89b68b34e8abb",
+      "state_hash": "5ed8c7f7499692ab08e6a026a5f54635de33be21e668d5f671eb3dc546e8aad9"
+    },
+    {
+      "behavior_distribution_hash": "a407b13927eab15fe70aa4e05fbb5475e4c65bdd275fae3a06f81c88f10f92fd",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:perfected_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-2035a88488865a6bc0a7ef2bfaf662ac",
+      "state_hash": "25063760c8633790be318212edd6de5841b6f76c5382581700c7feffc794e38f"
+    },
+    {
+      "behavior_distribution_hash": "97c9b54a700a7fc5197b73ebda637392b2c8ffb5146bbe4a04a6016460ddadd3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:cleave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-20723c52ebde47a213e4e275221ae7cb",
+      "state_hash": "77733e494b60c78b59c6d881aa18b4a5dc70668d2d6e2d77676daa309ec923a9"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-21d05c2fd342d5f479b4ebdbfc16465c",
+      "state_hash": "166e6fb86a3a3a94922d170b3273e57189163233416f96b10c158520b17e75f7"
+    },
+    {
+      "behavior_distribution_hash": "c55c275f2ed5a8314a99fb2970167224403ff16a37d30002e0f3a39678c47399",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:anger",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-229aa102c3f9c0de9a18600faa5f788e",
+      "state_hash": "de8b0c2962743a81ffdc43f4e0a82adee5cb53370c7a275f0607ec9157fb6e33"
+    },
+    {
+      "behavior_distribution_hash": "aa3405e44d160918ae3bae19bd23229ad1d614c3d93858e3c014e01ad32e41e9",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:uppercut",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-22ef83f9f7040c059f6e3fd6f3e7bcc6",
+      "state_hash": "202d22717f7f543c217fffd4f61f3b27a65dc473619e4010f6aa78172269c233"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-266a18b269bf5ad851d90c80ba77e4f7",
+      "state_hash": "3717d49fa02b73025a3a12f38b7354476397721a7c12d094ee063ef0196d0eff"
+    },
+    {
+      "behavior_distribution_hash": "78bae42554e13dd5945a58503f18ec07389ef8fbdca3a991d61600e198b3d9f8",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:sword_boomerang",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-27c12f3297dc894ac450c1df918dc625",
+      "state_hash": "f9909018172a01addfea1d6d41d35aec1e09522f80e15c5961453b803d29f5be"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-29186d739d7c16b95c879bf41ff5058f",
+      "state_hash": "14102187aeb485a8523e325371e5b0088c7aac244782162a65f68a955df6ae04"
+    },
+    {
+      "behavior_distribution_hash": "a8c7e4f8ccd658f76b57696a09fedd444b4f96d02dc3810b48919cfb0dafe434",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:headbutt",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-2981085f823f49d0ced774b15482567a",
+      "state_hash": "157d552264498a7de8cf317252e3e6a613764ebfae0318297da94aea2bf4ec54"
+    },
+    {
+      "behavior_distribution_hash": "5df6931c91ebba732a6f5117cbac53da20b485d9ce485d4919ad7d32221dd58a",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:armaments",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-2a4b4fafba3aaec4de4fa9bf8d2c4f45",
+      "state_hash": "a5fa85ac532e960faf08575f9f035360498300ff5f28e1c40fff66432555cab9"
+    },
+    {
+      "behavior_distribution_hash": "877eea48ac5ad7074047a559a995de5bb376106aef2cda958b847c053fa7a2c3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:ghostly_armor",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-2d2c7a68ae270a4d13fe2b6d1f65d2d3",
+      "state_hash": "a626e10e0d6d83ba8ca8f50c2d1f29afcd0f1a60c83e1cb5173be93a02218e43"
+    },
+    {
+      "behavior_distribution_hash": "7082a4083e808cc9db034f93b868e2e5111c37d311c3f30fa6e7a1be5b216b52",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_card:battle_trance",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-2fa43a225cd778ae176a1737bcbe1155",
+      "state_hash": "28222d00cce6da600ff27c93a1cd4b3d3fdd3295c6c91e36318c8f5a71021390"
+    },
+    {
+      "behavior_distribution_hash": "b2e3f6c241ab378eb125686110a68ddc0efc2cbfe2e4dcecc3116c8649d5d3bf",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:whirlwind",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-30d17e421c422225a27544ce96507438",
+      "state_hash": "59e0358842db50b704425fd1eba06c1308312ff34a4cbe1d6e28b25c36e7696b"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-31f478f98eb98f08bcd18c44616bb7d5",
+      "state_hash": "1b71dde2b1201698869605f431a8a36fcce08564ed865662c2d520e7a6e9c1ea"
+    },
+    {
+      "behavior_distribution_hash": "6376efefa95145d26acabfa988ede616a4ad6e0f812671598638c07a7f2318ea",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:twin_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-353a030bcccbde5f85fd4d60ebc90043",
+      "state_hash": "ed1d1a548038d36db22e56b30f5cfa82d53be1a78313aecd48021968496461b0"
+    },
+    {
+      "behavior_distribution_hash": "35fd326228f67f4e1b0d4548143018f593456579884a87eca4bb7d405e990c0b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:inflame",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-373eca2a82e49ddb82e45ffd15e48855",
+      "state_hash": "e4394dd9ed46b3e29957fa7cf5bda8a65dcc301e3ed7ba3d3c76a04d07b0ad64"
+    },
+    {
+      "behavior_distribution_hash": "97c9b54a700a7fc5197b73ebda637392b2c8ffb5146bbe4a04a6016460ddadd3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:cleave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-3771e9b7646d356e6e10b78f899562a0",
+      "state_hash": "97d22547ef1c644fb2fcadb772f04f454b6e110e62cf2a50ed7911af78fabd53"
+    },
+    {
+      "behavior_distribution_hash": "f62584db853d619aae57bbe2a9b84eaa9d025764034e099c533f734fc1c03039",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_card:armaments",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-38ded22a7c302d6c30c9adc936ed4f9b",
+      "state_hash": "045e53c389ac66c1f5e568fc7ee5ab89adcb71f67986e121635b6d99127f8447"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-394f6ca36209afaf3ea45a1050851992",
+      "state_hash": "78a20ac87eb4a90b0d6df79e2788b92a27a61bdd4a57202f899ccb10fe561d2e"
+    },
+    {
+      "behavior_distribution_hash": "998213d7cb58f1c803233d95a7fb81a6bec97390cfe6de08b98d1acb89540366",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shockwave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-39f2ef3147b85b90b674e821a75a5e0a",
+      "state_hash": "eae9e11a84d3e1376a26f5fa2521959b1d6bc370beea04a807d9c9b329ecfb0b"
+    },
+    {
+      "behavior_distribution_hash": "a8c7e4f8ccd658f76b57696a09fedd444b4f96d02dc3810b48919cfb0dafe434",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:headbutt",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-3a62007cd8ddfa24b79b79ff8cc7611c",
+      "state_hash": "9bd915e74c02ff5c093c7d706cedd05fdb147b56a68663bf5343039099c9c900"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-3b589c173096bd7cb43e34d63639eb6c",
+      "state_hash": "059d138d561dea6bef3ff19a703886ab0c162ee278dc3ddb7e800ba3680f44e7"
+    },
+    {
+      "behavior_distribution_hash": "3dbb82fa12a31e1b4ee3ef8af46f9abf9d2274a2ef5ae4c667a18a15ef6f1506",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:true_grit",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-3c0cad4f2aebf653e7d053479122d434",
+      "state_hash": "3830b6de2ac46d101dacb47a6b5ad4fb2d661e1f700467c698871a89cdfba7a8"
+    },
+    {
+      "behavior_distribution_hash": "d2c8105c223a5791f36d319933755d4c8e4418a2e4e38cf617f51e8d1d631417",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:dark_embrace",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-3c24b10bbb987dffa2e13035d7e5032a",
+      "state_hash": "8c2209d0101abc75f5df977971db3ba4390f8859c3e60ad1d5062c47de407607"
+    },
+    {
+      "behavior_distribution_hash": "3dbb82fa12a31e1b4ee3ef8af46f9abf9d2274a2ef5ae4c667a18a15ef6f1506",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:true_grit",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-3e4be4f7c824afb936104217fdf38913",
+      "state_hash": "47d2a3f3697595432fae166faf60e152f403e5e3294e20b59c600fc13d864827"
+    },
+    {
+      "behavior_distribution_hash": "6376efefa95145d26acabfa988ede616a4ad6e0f812671598638c07a7f2318ea",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:twin_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-3edcddfa717c9f23265b2e8ef0b6512c",
+      "state_hash": "cc0a5454f07f43acee5de2b2b887f413647d722a2afa619d6d1af82c0769637b"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-3f2f13596d9069c67378af0128961327",
+      "state_hash": "b9ade52d75156535d04dd272df8306f78db25f8fa49bee1f90a9651b751fcb89"
+    },
+    {
+      "behavior_distribution_hash": "f8efcb3caac44dbc963ac14434350160b007e1bc063b184bed52b79233056c58",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:wild_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-42cc6bdfc15a3b652f01034e2c4d9531",
+      "state_hash": "3dc8cc09f0f7d353260e30489b2f213c48920ff1e3f8aa1c34b94f1ae2976da9"
+    },
+    {
+      "behavior_distribution_hash": "3b2dbe2dd507c148cd64b63b6ac1bbbc40707242f972d0542f20a755bf2f4310",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:heavy_blade",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-437c337da95d47368680ee6d4158992d",
+      "state_hash": "221408c3071424dd1e7b4ee22f7993271be8d667f0b396455dd7d21c1823da32"
+    },
+    {
+      "behavior_distribution_hash": "de8735a1cca864eea96beead7b1511bfb9ce129a8a5b2277148d0f7023260b68",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_relic:membership_card",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-440ab8176a98c9e2ca39704a5df75db5",
+      "state_hash": "a9e791b04a3410bd88b18120dfe6837055af76aa18648581a791866a7fbd3a7d"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-4505e1c6d5f37c15212825d5e522adc3",
+      "state_hash": "e34883fb7f7915a81c8424292b1e08f5cc6c2a6ce301e5299120a85846c3e925"
+    },
+    {
+      "behavior_distribution_hash": "3b2dbe2dd507c148cd64b63b6ac1bbbc40707242f972d0542f20a755bf2f4310",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:heavy_blade",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-4586af673d3f857fb2d61519c9f7ebb9",
+      "state_hash": "2114e3de45309eb167559a59d373fcc3099aa59e356a9e8745123f6359093533"
+    },
+    {
+      "behavior_distribution_hash": "8f5ee88f13f7a6a6547f4ffe395b5fd5dd4e023d437d51e5aaf6125386dc35b4",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:offering",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-45ffa1cd2e8f1fdf90bb15fc721acce3",
+      "state_hash": "3f43c067dad3f1063b8ee315a9c3d32d039a49c20df872a7122e7536b6c9ba50"
+    },
+    {
+      "behavior_distribution_hash": "3dbb82fa12a31e1b4ee3ef8af46f9abf9d2274a2ef5ae4c667a18a15ef6f1506",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:true_grit",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-472661a0db5b58fc4db8acd960aa507e",
+      "state_hash": "7c49aa569fb88cf1dd167570bbac82e1f4549dfae7e1ee43b7d0182a4fe4e800"
+    },
+    {
+      "behavior_distribution_hash": "0dc94194bf97ff5f8300b509aa8aae198a8b2b79d4ab79e0631db6b82437d57a",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:thunderclap",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-47b12ac8430ba11da2e4f2f348cc9403",
+      "state_hash": "380d2f637bdbcd81b9fec922ff8f9033357a9c059d5cd80d9c3325947f4c2376"
+    },
+    {
+      "behavior_distribution_hash": "3b2dbe2dd507c148cd64b63b6ac1bbbc40707242f972d0542f20a755bf2f4310",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:heavy_blade",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-47e0861620fb43b7c891d8ab038f251f",
+      "state_hash": "18b50dc98c1f495b32ef27dfcdff886dec2803b974134c0308e8a76c9ebbf9f4"
+    },
+    {
+      "behavior_distribution_hash": "998213d7cb58f1c803233d95a7fb81a6bec97390cfe6de08b98d1acb89540366",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shockwave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-48f19b4c4608a5b4b2d24e7d0d9c9223",
+      "state_hash": "967c17f6765152be135fcd5d2334ef721c039e1295695a25eee53037fd6c2818"
+    },
+    {
+      "behavior_distribution_hash": "6aadca114dfe88420d9b81b3f78609213c3c08f5ba4491e0f9cfde8bd4f43172",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:disarm",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-495e2d8a6b82c272bd52b02fba2f4c82",
+      "state_hash": "bb68f609575de9456a0ca34b5608e6854893d4369c22f0aa9b0bb0b6b1b6e6f8"
+    },
+    {
+      "behavior_distribution_hash": "c55c275f2ed5a8314a99fb2970167224403ff16a37d30002e0f3a39678c47399",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:anger",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-4ad0d382ae9be7e2a6c074668f17dfdb",
+      "state_hash": "0469e5c90c16e93341757eb7b4ddd2c30872d18620309c345950c3df668e1729"
+    },
+    {
+      "behavior_distribution_hash": "a8c7e4f8ccd658f76b57696a09fedd444b4f96d02dc3810b48919cfb0dafe434",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:headbutt",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-4c296994c7c1e7dd3a317436b3b9eae4",
+      "state_hash": "54a478cc9f5514d1fcda017cfb480a19091007cf295b6d0a839ffb772725fbf9"
+    },
+    {
+      "behavior_distribution_hash": "3dbb82fa12a31e1b4ee3ef8af46f9abf9d2274a2ef5ae4c667a18a15ef6f1506",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:true_grit",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-4cb38f72068043f06b355f760ba153f2",
+      "state_hash": "354fe3505d2637ce39aaeda7deafd7a502129618ee32b1a6243da3b42db3f398"
+    },
+    {
+      "behavior_distribution_hash": "c55c275f2ed5a8314a99fb2970167224403ff16a37d30002e0f3a39678c47399",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:anger",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-4e3288914d73890c2a43faf2fab11b8a",
+      "state_hash": "13a328c604d29fc43083c59f2e9d4964cc3a7ccaed2d0bee1e3bd45be6886fe4"
+    },
+    {
+      "behavior_distribution_hash": "6b781aedecfd92b1968a618f2fa944e9873191fe968b75c2e8e89a7b2cf0558e",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shrug_it_off",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-4f316d64fa00b7b9afd72395e048cccd",
+      "state_hash": "83a035654ab2a4dfef366522164e275d43e3d6e675e0329aa9a29cec46ed289e"
+    },
+    {
+      "behavior_distribution_hash": "0dc94194bf97ff5f8300b509aa8aae198a8b2b79d4ab79e0631db6b82437d57a",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:thunderclap",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-4f87e3ecab3b0e47e690864f516bc6fb",
+      "state_hash": "6f6771795aa59921b24911a13588410fc3cd7b5b3521cd66ce750dad84f703a5"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-4ffe9933a8de5b7d90846c30fb7fa4fb",
+      "state_hash": "c89b8a1fd577e2bef9ad67af407483d1482cd0d509bd5fd36e65e59f1ed1acb1"
+    },
+    {
+      "behavior_distribution_hash": "a8c7e4f8ccd658f76b57696a09fedd444b4f96d02dc3810b48919cfb0dafe434",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:headbutt",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-5041e35f125bd89f47171c3e61106916",
+      "state_hash": "b830c750eba1aaa9229a2dd0093eb688607eab29613ed4406cb11a1cb5bd95c6"
+    },
+    {
+      "behavior_distribution_hash": "97c9b54a700a7fc5197b73ebda637392b2c8ffb5146bbe4a04a6016460ddadd3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:cleave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-52711a7d2e23756fdfab70d1875363e9",
+      "state_hash": "c50779247c7dfd1d3c1db275be449ece4ad957f9a2b56008c9dc21c84eaa621a"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-52cf1ee8ddf79883847cff7591fcc19f",
+      "state_hash": "2dc32ed96711405f3676adb8fc7d96d25a9ab3fad86a102857f506dfa517238f"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-5329c06caeffe69a65fec83d2c87d823",
+      "state_hash": "3505a8a1cb0e9c8078044dc087327e07357052b7e5f13875e8769ef83637a0e2"
+    },
+    {
+      "behavior_distribution_hash": "a407b13927eab15fe70aa4e05fbb5475e4c65bdd275fae3a06f81c88f10f92fd",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:perfected_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-560ef7d08ce147f7a708168723eeca34",
+      "state_hash": "65db52d150ade35a09a85d06319b1fd441575931f20b2c9c0e95b7eb1ce55897"
+    },
+    {
+      "behavior_distribution_hash": "6b781aedecfd92b1968a618f2fa944e9873191fe968b75c2e8e89a7b2cf0558e",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shrug_it_off",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-57ac589926d5cc1d109eb12adb0661bb",
+      "state_hash": "a687dc481399933811b8683000715dde77ed4447edc7ea5ef6fad32e687c19cf"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-57f0bf7b8f3a1b94cf5bf3f71c20eafd",
+      "state_hash": "6993fa80b23c979e8ae259ca807209bb6a8eaeafd1d3e8d24bbae119c94f644e"
+    },
+    {
+      "behavior_distribution_hash": "51358793497a35f7b07e666ad2f51310b17cabdc59062b81b0a69b4db5eb471b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:carnage",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-586fa2219654c82222b8a00ec5a61eb8",
+      "state_hash": "0980567b85e3ec80d1367e472c2e01b9390a7fc40df2ae943e21e1ae522880ed"
+    },
+    {
+      "behavior_distribution_hash": "531f9db44173eb19c0fff416f146b9a5a95601c03848e3d3fffd66a02fca64ce",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:infernal_blade",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-58ea388738acf6acf20fd352bb833133",
+      "state_hash": "13b60583a39ac18912933d4048f8e8218e40b3fb96a1103c66ecfd22e2d3e5d2"
+    },
+    {
+      "behavior_distribution_hash": "97c9b54a700a7fc5197b73ebda637392b2c8ffb5146bbe4a04a6016460ddadd3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:cleave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-5978583f3ec4c2adf7804246e8c07cc5",
+      "state_hash": "1cb746da285c26b4ee23418c862d65c4cc55d512acec532ea45970371476134f"
+    },
+    {
+      "behavior_distribution_hash": "6376efefa95145d26acabfa988ede616a4ad6e0f812671598638c07a7f2318ea",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:twin_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-5a4069ab2972e1e5d0e26c826aa93a11",
+      "state_hash": "d8f969dc660da36e773c4900d12a3763a739e3397b7cdbf837fc976e512ec151"
+    },
+    {
+      "behavior_distribution_hash": "6b781aedecfd92b1968a618f2fa944e9873191fe968b75c2e8e89a7b2cf0558e",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shrug_it_off",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-5efdb427e2de8af84f7b693767adf0a8",
+      "state_hash": "d422b1ec5af5976bb1a3ae63d040f6acdb48506b5bc5e6089506e7f88619b62c"
+    },
+    {
+      "behavior_distribution_hash": "3dbb82fa12a31e1b4ee3ef8af46f9abf9d2274a2ef5ae4c667a18a15ef6f1506",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:true_grit",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-5fd4b181a8b86821e571e385cf74bd0d",
+      "state_hash": "23a619c11c4791a8c6c9fbf19322dbe2f937815c3afb18f7542f67dd32b6996c"
+    },
+    {
+      "behavior_distribution_hash": "6b781aedecfd92b1968a618f2fa944e9873191fe968b75c2e8e89a7b2cf0558e",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shrug_it_off",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-60e4d6da89ffebc821c0a5ab4e8d5d12",
+      "state_hash": "b3c13a6fa0c2dbf1056142106b1c266f3a3e4e7b8b8a5a9b0c55996b12b2ac43"
+    },
+    {
+      "behavior_distribution_hash": "6b781aedecfd92b1968a618f2fa944e9873191fe968b75c2e8e89a7b2cf0558e",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shrug_it_off",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-61ebed83744ff9c6dd726a9557467b07",
+      "state_hash": "d043ac2dfaf3d2ca4236a13df79aace0c4f79e39d3252247d814d3b64904dffa"
+    },
+    {
+      "behavior_distribution_hash": "a8c7e4f8ccd658f76b57696a09fedd444b4f96d02dc3810b48919cfb0dafe434",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:headbutt",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-648a86c0f74a355b63615f430e31cb8e",
+      "state_hash": "ed897062e26ecce876b2ae1b474581105b8cac036973cd63ac02e1cc2d67cad5"
+    },
+    {
+      "behavior_distribution_hash": "6b781aedecfd92b1968a618f2fa944e9873191fe968b75c2e8e89a7b2cf0558e",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shrug_it_off",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-654d525eb5c9d400df9206543f51cddd",
+      "state_hash": "c703e7de559b6d5f42f610af332c5c0750e43d49d2b5698c8f357b1d8fc8cea1"
+    },
+    {
+      "behavior_distribution_hash": "998213d7cb58f1c803233d95a7fb81a6bec97390cfe6de08b98d1acb89540366",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shockwave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-698ebf67792837cb24fac4a7e7bd30a7",
+      "state_hash": "1d16333f9257acb7f14a812e589d919a5de743158ecfe058db96416a61611ea2"
+    },
+    {
+      "behavior_distribution_hash": "86fded57da3b6d683edf74f787fdf5b687ad62c24ec55dcd68d81f4b0798264b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:pommel_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-69cd5dcc5493aa3f7e8525c4dae5851c",
+      "state_hash": "feefd560186d97f84e1407411f30993faad80124163d21687b3c55dea57d3e3a"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-6a55acf283982b8d85678bc96ab42928",
+      "state_hash": "506dc0033132d130d669a4dc146c193cc8d42f60146a267d483daf2d911b3690"
+    },
+    {
+      "behavior_distribution_hash": "66e446860c89eed45435d81c7597847574e465a57168cb5476d04a1ac22aa0e1",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_relic:red_skull",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-6b09e520336eb06a2ce1b6d2394696d7",
+      "state_hash": "8c984b0b48278018bc66ba42bfb1aa7594cec293ef2b508b204d864fc45bad33"
+    },
+    {
+      "behavior_distribution_hash": "f98b45cf76b5731a0fda2578eabefdfa4924fc7d1f784f4e557f4032ad5a8ac7",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:second_wind",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-6b5a5c102f0b22960acbb57fa1bfee9e",
+      "state_hash": "2cc1b756d76ac9d8e420e449562d4a5394e3b656871e7a7e90993f0f7751dc83"
+    },
+    {
+      "behavior_distribution_hash": "62909b51abf8bae18c8bd3732398403f580522e719e3728cbb227162de4f4864",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:battle_trance",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-6d3122db8e502377aaa062eaa6b00d2b",
+      "state_hash": "1c9991f6c4af6cdf456febef680a37764a2b49fb441d0358345b8f9090e67cdf"
+    },
+    {
+      "behavior_distribution_hash": "97c9b54a700a7fc5197b73ebda637392b2c8ffb5146bbe4a04a6016460ddadd3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:cleave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-6d9530e68e79bf7a908caf6157387d93",
+      "state_hash": "ab6ca942fd018ddc090e78a118b9999a468b8f453f0eff14ed76ee92a19fc369"
+    },
+    {
+      "behavior_distribution_hash": "2ee6e967c07c291825adc1674c861bd9f88c680053e8a0e804a7abbe3970a91b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:flame_barrier",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-6eb318d7bf670d3d2d8c96c8333a3d7d",
+      "state_hash": "bbb4efcfc0e58fffa92e14cdfadf3a584b4e619af5cc8472e19b98deaf8de01e"
+    },
+    {
+      "behavior_distribution_hash": "c71ce55e9d1c393563b95d6138c956333789713492d00d63954ac3ad82e281f0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:reaper",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-6f411945bb438c99cdaa1af567116c5b",
+      "state_hash": "71b2b2b7610323433e884b31c7e83a892683224e854dce1e9762ff7a406be816"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-6f5eb6dda8da1f0f0c67e7db90771359",
+      "state_hash": "98556b6364384dd0d5bebd1a442964345237e2271b8933cf5d8367dbc75d12b6"
+    },
+    {
+      "behavior_distribution_hash": "0dc94194bf97ff5f8300b509aa8aae198a8b2b79d4ab79e0631db6b82437d57a",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:thunderclap",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-6f783d8fede50004a28d4c52f021999d",
+      "state_hash": "adc0ea2407106433e41a66a4876f9e83dd6a00625ded72597f5f2f0d96fe111b"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-728490f77d8d91af5e415f4ecfe4078d",
+      "state_hash": "c282e5033078c4cb674b88d84d5b8ac84585396292ab7ab4949b50ee95bdb540"
+    },
+    {
+      "behavior_distribution_hash": "a407b13927eab15fe70aa4e05fbb5475e4c65bdd275fae3a06f81c88f10f92fd",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:perfected_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-72c958ddfe8edbf1ece2467d9eab000f",
+      "state_hash": "bb535a7d3084df8648e0cf9fdcf8b6faa66856c447ccb650350ac26675387cf6"
+    },
+    {
+      "behavior_distribution_hash": "998213d7cb58f1c803233d95a7fb81a6bec97390cfe6de08b98d1acb89540366",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shockwave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-733ee7ed657aa4914b12bbb5c0afc329",
+      "state_hash": "7b275adbf970b7edae67e3cffee00a3bd5e9f35b66cc78c9eecf849f090fde29"
+    },
+    {
+      "behavior_distribution_hash": "a8c7e4f8ccd658f76b57696a09fedd444b4f96d02dc3810b48919cfb0dafe434",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:headbutt",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-73b1bf22fc613fb7fef21070699a329e",
+      "state_hash": "2ed0de3852eededbc9abe0dcee7dcb771a714bbbf60aeb485619bd59a9d8dae2"
+    },
+    {
+      "behavior_distribution_hash": "998213d7cb58f1c803233d95a7fb81a6bec97390cfe6de08b98d1acb89540366",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shockwave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-77343fe2966fe527171f4ad8f51f67e4",
+      "state_hash": "000bf99a64b14fbbbc7d340a3be63523bcab42d0811915583634815d16bb19d2"
+    },
+    {
+      "behavior_distribution_hash": "f1cb20e2af9baf9308c00e3479ece26f4506bcb3dc5d81316b7fe4efc886645b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:havoc",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-78c8b90b147eb6d939d93c282a38e0d1",
+      "state_hash": "373836836627648e020fb2d6a3484053a2d649d79f295035ec3a46ba938e0e90"
+    },
+    {
+      "behavior_distribution_hash": "c71ce55e9d1c393563b95d6138c956333789713492d00d63954ac3ad82e281f0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:reaper",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-79178dd61f6d0865933c986324486b05",
+      "state_hash": "dcb9237de8cf8299802f223b369ab78b26a36abd4cbcfdd571a94a76a253cb6f"
+    },
+    {
+      "behavior_distribution_hash": "a407b13927eab15fe70aa4e05fbb5475e4c65bdd275fae3a06f81c88f10f92fd",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:perfected_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-7919af6310761131084c0239693742b7",
+      "state_hash": "28dbb378cf56a5981bbdedc1e81797f0239c574caaf21315d9ef87df169faa7d"
+    },
+    {
+      "behavior_distribution_hash": "2ee6e967c07c291825adc1674c861bd9f88c680053e8a0e804a7abbe3970a91b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:flame_barrier",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-7b3aaff5af024a2a18cdcddab92fbf10",
+      "state_hash": "b51f29fc69d7600a8abef73fe9a6d1ba47bdf70d75cf04135464809e251dc94f"
+    },
+    {
+      "behavior_distribution_hash": "6b781aedecfd92b1968a618f2fa944e9873191fe968b75c2e8e89a7b2cf0558e",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shrug_it_off",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-7d1a926e44712cc7223973fc5303bdcf",
+      "state_hash": "fe6540d21fd0d12c0592f5107d28c6d2b1b7830a4307d05eecb10775e38f2da1"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-7d2390c712458479f2797c2d63129982",
+      "state_hash": "cfea91721a8022f766545feb7416146edae03b865d2da9c7777f6d74b4687032"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-7d3343e1d1d09e96917d0dbb94cc92cc",
+      "state_hash": "e5f4bd40f4dd2ecbd6c87aef892f1e84a8ef6353e198b0618af6c9ea9d4aab64"
+    },
+    {
+      "behavior_distribution_hash": "8f5ee88f13f7a6a6547f4ffe395b5fd5dd4e023d437d51e5aaf6125386dc35b4",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:offering",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-7de16168fdde9362c01871bcf1c197a3",
+      "state_hash": "4f2e936dc5d5ad6d4451037a55aaec4bb37061147f3c4ae3b1941bc43b65a99a"
+    },
+    {
+      "behavior_distribution_hash": "c71ce55e9d1c393563b95d6138c956333789713492d00d63954ac3ad82e281f0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:reaper",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-80894855f936a0dde5b998d5f999051d",
+      "state_hash": "8bf9e6f2befb98245b5a4ff428cc738ff37f695060d0c20eb8a36aa70a70dd47"
+    },
+    {
+      "behavior_distribution_hash": "0dc94194bf97ff5f8300b509aa8aae198a8b2b79d4ab79e0631db6b82437d57a",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:thunderclap",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-814965558059a057c432610d06c11409",
+      "state_hash": "a45699f3936cdf215cd2911998a086200917a79f67271c0b87abcd1a372d2372"
+    },
+    {
+      "behavior_distribution_hash": "6d8507d91f6337e4225d0ba56f7cf5c318c2517b84e66802de2bf71c62c4840d",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:hemokinesis",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-81b844d3959227f9ac9d6caec45280a8",
+      "state_hash": "60dc77a13d3ecc931eab640b08b9a9f7becf39452ae9924241576f95d80fee42"
+    },
+    {
+      "behavior_distribution_hash": "c55c275f2ed5a8314a99fb2970167224403ff16a37d30002e0f3a39678c47399",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:anger",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-81d7b6a958a04f512d4434699314631b",
+      "state_hash": "ed44d27df6bba706493e0aec23591e6fd3dc3740346529f1a0fdf32719359238"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-82c0c62646b3bff23ba8d75fa7c45815",
+      "state_hash": "0262b9314b41a31ce36f26730d1e1896c8afb6b2a8088ee02b843f1d6fba4a3d"
+    },
+    {
+      "behavior_distribution_hash": "92ed8a06af19829b8dcc2870c350304eaafa29c9a0f3e2d74f40ef01e6403f01",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:iron_wave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-84f42b08cfc452377cfe212b42a9046b",
+      "state_hash": "385ebe0ae5c0446d1b1d7ba367273ae2abd9b083f5bbe1470fcdc0afc94efaa7"
+    },
+    {
+      "behavior_distribution_hash": "92ed8a06af19829b8dcc2870c350304eaafa29c9a0f3e2d74f40ef01e6403f01",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:iron_wave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-85709947c43ce1a10fdc2d9c8675bd8a",
+      "state_hash": "994b97af1240aa4a0499580d80e865962fe1423ed6e515578b8a372c7e52e5ab"
+    },
+    {
+      "behavior_distribution_hash": "a8c7e4f8ccd658f76b57696a09fedd444b4f96d02dc3810b48919cfb0dafe434",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:headbutt",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-86af2dd1fa7d75d0792cf14f8dac8ab7",
+      "state_hash": "44c3c8bf6c8d71dbd3a55a9b72fe3b24f47f6a8aa4f47b165503b4e3be9d2e6e"
+    },
+    {
+      "behavior_distribution_hash": "92ed8a06af19829b8dcc2870c350304eaafa29c9a0f3e2d74f40ef01e6403f01",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:iron_wave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-86e05fc2d202ac6f8467ea5a62162d2b",
+      "state_hash": "340f582a2c893e74cf968edcf8c03301917dc753d8b88ae2d58ed1651f5fc7df"
+    },
+    {
+      "behavior_distribution_hash": "a8c7e4f8ccd658f76b57696a09fedd444b4f96d02dc3810b48919cfb0dafe434",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:headbutt",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-88b4b8b18308d7fc6ed1ad4ebf362734",
+      "state_hash": "29c23fcf600431d34ecaa6cec028d1ebddb233fecc47a08611195199edceae57"
+    },
+    {
+      "behavior_distribution_hash": "97c9b54a700a7fc5197b73ebda637392b2c8ffb5146bbe4a04a6016460ddadd3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:cleave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-891204002c6ceaccc002d38d55e70244",
+      "state_hash": "f196a1cf181ea77aa97b0c4b94d6ee5ed338b97a0d094fc9c2862db5a45f6c72"
+    },
+    {
+      "behavior_distribution_hash": "2ee6e967c07c291825adc1674c861bd9f88c680053e8a0e804a7abbe3970a91b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:flame_barrier",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-893e28a733e15fd34feddcc3c2b89d55",
+      "state_hash": "f0720d9ecfc6bcbaf9b21ddadbe351fb9ee0e55a3c3f5060bd80abd241b87f1d"
+    },
+    {
+      "behavior_distribution_hash": "5df6931c91ebba732a6f5117cbac53da20b485d9ce485d4919ad7d32221dd58a",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:armaments",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-89947d1e4a50025e2369306b8346138d",
+      "state_hash": "bbb9c72f236420829f4d402fee10abdb8c17df8c7f89ca15c9471d3a698aeb45"
+    },
+    {
+      "behavior_distribution_hash": "877eea48ac5ad7074047a559a995de5bb376106aef2cda958b847c053fa7a2c3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:ghostly_armor",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-89a599221bd29ea10d7deeb1cdc5728b",
+      "state_hash": "e06f6a2c61c82c2b6819095dcc5b61f6a866d95ae498e25127122bbfbd84ee14"
+    },
+    {
+      "behavior_distribution_hash": "0dc94194bf97ff5f8300b509aa8aae198a8b2b79d4ab79e0631db6b82437d57a",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:thunderclap",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-8a3c2d5c3e16312990842e2c465b9ea3",
+      "state_hash": "6321957617f7778a42d3feeec70118a9bcd7495402136f45e5144e875d192da2"
+    },
+    {
+      "behavior_distribution_hash": "24ae71c035fe3d75dd84e8f0cf5d747260619fef3817ae2286d678779fe92513",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:bloodletting",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-8b399620bc16e32385712f6397e88165",
+      "state_hash": "a754a7a21931bd19be0dd713281ae6274652e9a781f2ba137fc7f889bdfe5bd4"
+    },
+    {
+      "behavior_distribution_hash": "fcdd0c7dbee8fc9e82e25ef8bf7c5a86010c5376cf790ae3409270940d367b6f",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:burning_pact",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-8ec3b0fc916039b7fe463cc269713a03",
+      "state_hash": "51a818083df4c1f344346653c2860dc117b8e1842ff5e31b714fdf5f28910c01"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-8efedbc781a52b541259b7ee8ec1b6e4",
+      "state_hash": "f362b03a5d062383aa5b41f681cf8fd41ebfaf1fa740e7bfcd7a6c8188baa578"
+    },
+    {
+      "behavior_distribution_hash": "998213d7cb58f1c803233d95a7fb81a6bec97390cfe6de08b98d1acb89540366",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shockwave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-8f13d253c6e141b1c6b64b0114389080",
+      "state_hash": "4054e62f9c9178d4beca97426a167f9132d5981201199a18d326a59d130465f6"
+    },
+    {
+      "behavior_distribution_hash": "aa3405e44d160918ae3bae19bd23229ad1d614c3d93858e3c014e01ad32e41e9",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:uppercut",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-8f85e0a4fc30d579a9d6ae12e0cefa09",
+      "state_hash": "f1c89ee52d038d9801a26aa5cb4aef2717e8684f38d6bd4debc6ee8925a00d01"
+    },
+    {
+      "behavior_distribution_hash": "a59039d2aa5527ec4ce1186ecd717a0e1364b3ed0dc4834133986962dc6d8dfe",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:sever_soul",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-8fd99eadd222f7e5c519652093dd2530",
+      "state_hash": "d0966798982c525832ecd4d5aa738b8a655dde143153c55fef606681b3dd9bcb"
+    },
+    {
+      "behavior_distribution_hash": "a8c7e4f8ccd658f76b57696a09fedd444b4f96d02dc3810b48919cfb0dafe434",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:headbutt",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-9182b710828513ac6811dbd589278e3f",
+      "state_hash": "4e00bfc6fd5a561697ce835cb973b060fd03404e96fa47ae1ef20ee29a77f9a8"
+    },
+    {
+      "behavior_distribution_hash": "998213d7cb58f1c803233d95a7fb81a6bec97390cfe6de08b98d1acb89540366",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shockwave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-92380e1e4dda054dc9b613328a21a490",
+      "state_hash": "d3b003eda436aa3e2b8613ad6af0fb185af60f6b1242e0519f08b1bb589c0f05"
+    },
+    {
+      "behavior_distribution_hash": "62909b51abf8bae18c8bd3732398403f580522e719e3728cbb227162de4f4864",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:battle_trance",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-92ea8a4d71c4e26eb7cb3e4df515128e",
+      "state_hash": "e0ba82b130f6068b4a56923d4291e4cfb7ffccf7c71b27fbfa5092d38c89cce3"
+    },
+    {
+      "behavior_distribution_hash": "92ed8a06af19829b8dcc2870c350304eaafa29c9a0f3e2d74f40ef01e6403f01",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:iron_wave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-92f9ae9aa0f61252c8e98408a6b8fd25",
+      "state_hash": "ba37e3a86fd57a85fecb231c9bdf308a298bddc463be146148796c9adbb05d46"
+    },
+    {
+      "behavior_distribution_hash": "877eea48ac5ad7074047a559a995de5bb376106aef2cda958b847c053fa7a2c3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:ghostly_armor",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-934ea3babe7bff2066c12ca285d28ffa",
+      "state_hash": "60870eacdfdb2d087a548b27d8d784338a7178b0ad9021950c24758928a7e090"
+    },
+    {
+      "behavior_distribution_hash": "e9a943d4a727c1d8fa0cf91b37556488527ca45d6f48b0c9e411d35c004b32b7",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:bludgeon",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-95e98319d73c671017ab35ade8f918ed",
+      "state_hash": "9e1fe604bd99bd4ce029d92ed3c19d6ef166bf269e0a22140131a6290eaaf9f7"
+    },
+    {
+      "behavior_distribution_hash": "ca23722f9665713f91c7385c5f23a0ed9bb083e2005e854e150c780e18866d97",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:immolate",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-97e39275351e53b5fbfb35ab8bffa681",
+      "state_hash": "b9c77415c2a25b70f90e2492b3884585aa818562c7b69448765e369f02be93c1"
+    },
+    {
+      "behavior_distribution_hash": "c55c275f2ed5a8314a99fb2970167224403ff16a37d30002e0f3a39678c47399",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:anger",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-987f71f11fc498712960d7bf50000dc3",
+      "state_hash": "7a5f2de08bffcc95d1b1d787ad59b6d21826788cf2d54ea65251e6edd30ee855"
+    },
+    {
+      "behavior_distribution_hash": "97c9b54a700a7fc5197b73ebda637392b2c8ffb5146bbe4a04a6016460ddadd3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:cleave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-98ae6663e6a88cb100df8f58618a814a",
+      "state_hash": "619cf944d07fcb63ff94a15c0d68dcfd24f43c702d63d20051655cd89e7e3985"
+    },
+    {
+      "behavior_distribution_hash": "998213d7cb58f1c803233d95a7fb81a6bec97390cfe6de08b98d1acb89540366",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shockwave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-993b814d3dce01a75135c4071ced9ae2",
+      "state_hash": "1c1074b80e7c07f6610876c102aadd5aa61f0232e748d9ebd4e17a8af1176cef"
+    },
+    {
+      "behavior_distribution_hash": "97c9b54a700a7fc5197b73ebda637392b2c8ffb5146bbe4a04a6016460ddadd3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:cleave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-9949ac771a0c2c08bf27826a846ec42a",
+      "state_hash": "37cb59b41a77efeec7985c6cee48b9a659089d778ac25f223e4dc1b7469cc15e"
+    },
+    {
+      "behavior_distribution_hash": "3dbb82fa12a31e1b4ee3ef8af46f9abf9d2274a2ef5ae4c667a18a15ef6f1506",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:true_grit",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-999cc666513c5e4b6c262c11cdee4d10",
+      "state_hash": "782c7aef1fd53c216281d0044bd4a5c1ef4f988e795d1bd92d4ef6c48e3762c7"
+    },
+    {
+      "behavior_distribution_hash": "55ed3f282a5e8f017a4ce33b96e1a51ebb1490b30634c89f62144fa5325d471c",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:corruption",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-9a061186dec82c0838c6a011d0ac0728",
+      "state_hash": "a70a6c22847689240c28414fdfbbeff9b6c181b2b565cf40d4b81a880e05ef72"
+    },
+    {
+      "behavior_distribution_hash": "c55c275f2ed5a8314a99fb2970167224403ff16a37d30002e0f3a39678c47399",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:anger",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-9a50e9ee21bb02bc32592691dde92ee4",
+      "state_hash": "6fd6d47a6d71e57cdcf68d5baa819a27d364d5ab3bc16fe539a797d77f1291b8"
+    },
+    {
+      "behavior_distribution_hash": "3dbb82fa12a31e1b4ee3ef8af46f9abf9d2274a2ef5ae4c667a18a15ef6f1506",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:true_grit",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-9e06e7e5125580f64737342374e8c2b2",
+      "state_hash": "51df67bfdf1884041594c708a3b2b95814ad5b4cc068af16f2ccfb6de4cc1e8a"
+    },
+    {
+      "behavior_distribution_hash": "3dbb82fa12a31e1b4ee3ef8af46f9abf9d2274a2ef5ae4c667a18a15ef6f1506",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:true_grit",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-9fa54ef0c6ddfd323ed4fa1cfa78133d",
+      "state_hash": "d31e7331c6b3a72d8edc5867b3d739fda9628e52be08757cc12872f74772c95d"
+    },
+    {
+      "behavior_distribution_hash": "2ee6e967c07c291825adc1674c861bd9f88c680053e8a0e804a7abbe3970a91b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:flame_barrier",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-a1d200a005cb3fc0d7e1f4407f7aa8f0",
+      "state_hash": "fa3b7eae50847d324badcedcb7ae56ae7e1a3b76ed4677f117b574474056d7be"
+    },
+    {
+      "behavior_distribution_hash": "c55c275f2ed5a8314a99fb2970167224403ff16a37d30002e0f3a39678c47399",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:anger",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-a36a1686a7d6274eb709e77799659706",
+      "state_hash": "d956d7edd73d2f15b95607c5cac08f5313bbf8ca1508517725a781a558ed9a0d"
+    },
+    {
+      "behavior_distribution_hash": "27691c231f393d7b669ff241259ad5061090af786dbe222fae2dcca93df65c3b",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_potion:block_potion",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-a5fd8d33442518aab9cd62bb382b48e7",
+      "state_hash": "ecdff22cae7b13156b9d8d561d47996486720d02fbfec7b03fa5bbd463737fb3"
+    },
+    {
+      "behavior_distribution_hash": "3dbb82fa12a31e1b4ee3ef8af46f9abf9d2274a2ef5ae4c667a18a15ef6f1506",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:true_grit",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-a61dc7d4efd1811500534767daf5625e",
+      "state_hash": "02a3434afc814369525117f31326032ccaff86a032b867a70b2f8b7ca1d3e28b"
+    },
+    {
+      "behavior_distribution_hash": "3b2dbe2dd507c148cd64b63b6ac1bbbc40707242f972d0542f20a755bf2f4310",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:heavy_blade",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-a640e52cf2166595cc51c14abde70ea2",
+      "state_hash": "e679db218ce332d7472b0d0f30ff3261c09e005397aee5452d64c58475d048dc"
+    },
+    {
+      "behavior_distribution_hash": "c55c275f2ed5a8314a99fb2970167224403ff16a37d30002e0f3a39678c47399",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:anger",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-a6dd910b170b0127471ddcf319c82606",
+      "state_hash": "4cbcf1f5000c9a886721e6e50ae6e46d226af55d2554ba275963988817b15ad5"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-a7848d70fc687e3602617caf90428653",
+      "state_hash": "d4d7ffed51360005f35fb33f73ea0947eb0e1949fc82400350b6f076825e6143"
+    },
+    {
+      "behavior_distribution_hash": "27691c231f393d7b669ff241259ad5061090af786dbe222fae2dcca93df65c3b",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_potion:block_potion",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-a8922cb47cdbfd846e80c15684e0e31c",
+      "state_hash": "26825ac5772639be21440cb963b26b8a012317305329ba9bc9259a6f071ef933"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-ab1cce3a6b49cba344e34c7acf498a0e",
+      "state_hash": "46aaa1bc3ba80f7203f9fd230c4564f886ea16abdf87278cf84f0dac2c5df2ab"
+    },
+    {
+      "behavior_distribution_hash": "2537334d102c91799b6ed2125cd737700b35ec7458f0107d0b592f8a204be453",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:panacea",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-ab5aa6cb77a6f127eb3035b3b9650796",
+      "state_hash": "92b1b4b430b25e8c9b8f70b0ccf0354dfc2544166705846005c3111bbc858508"
+    },
+    {
+      "behavior_distribution_hash": "c55c275f2ed5a8314a99fb2970167224403ff16a37d30002e0f3a39678c47399",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:anger",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-abdc3dae99cd490b41f9dead2e0c688c",
+      "state_hash": "0bd3cea0f0d5bf728c8be92e5db5e1ea2d5991487f7171cfb7535d1fec12f167"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-abe3da12ffcb1ba62f6137a28e2c3c66",
+      "state_hash": "0932cd34016c0bb5c316b4d5e012bc11d7484db42d325a6acb42c75e73bd8f0b"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-ac51ac6d1121b7a153bc3c9e9c6e217d",
+      "state_hash": "fdebf2764b8651775056c1d4d944d5773f75961b26412c59137ddf163dda1ee4"
+    },
+    {
+      "behavior_distribution_hash": "1c1354eb35a731f64916578a1dd8c76d1e906351404afecc97ed054eabf8546a",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:demon_form",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-aca310da708e946610b6da3ac1effd11",
+      "state_hash": "34d984e3657c075ced0fec60ab3ecbf9371b89ef385f7afa6e778d0e2bcb7e40"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-ace1d4e5c24200b4c5b340fabd8277b6",
+      "state_hash": "27014788c935914b87b7fa273ce7c10cad1f13d99fcba0369e7a529844481986"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-b01f675695d25d4890b9acf9077f731f",
+      "state_hash": "0568de6839dc276fd3f344922c77027df36d8c1b37d96c0b4f4c848f1157ed34"
+    },
+    {
+      "behavior_distribution_hash": "f98b45cf76b5731a0fda2578eabefdfa4924fc7d1f784f4e557f4032ad5a8ac7",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:second_wind",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-b1314f0ee74b663c5a410499aec9b5ce",
+      "state_hash": "374e5c5949c22e92b6e7fcc6e636f3c2dabbd713d49caa4988b8cc273d864460"
+    },
+    {
+      "behavior_distribution_hash": "35fd326228f67f4e1b0d4548143018f593456579884a87eca4bb7d405e990c0b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:inflame",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-b2fcc76e140b9d658967d6fbd40a56a4",
+      "state_hash": "a4d5cb54ef4b0482bc3669a3e19fa52eba1285af04db6d27d5e98540d168ffc3"
+    },
+    {
+      "behavior_distribution_hash": "b2e3f6c241ab378eb125686110a68ddc0efc2cbfe2e4dcecc3116c8649d5d3bf",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:whirlwind",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-b3226b01b2d8daf051904ba82c0e8956",
+      "state_hash": "2fe2494ac6e590bd96bd83a496494e7305f1bc5c54d78b029b2b3c402a74e47e"
+    },
+    {
+      "behavior_distribution_hash": "62909b51abf8bae18c8bd3732398403f580522e719e3728cbb227162de4f4864",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:battle_trance",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-baba9295a851eeb6d5a86ba98f423568",
+      "state_hash": "8abee03d42a56da9fcd51d5b2a250c76c6cc4eef94e7d40f135c14e479448ae3"
+    },
+    {
+      "behavior_distribution_hash": "3dbb82fa12a31e1b4ee3ef8af46f9abf9d2274a2ef5ae4c667a18a15ef6f1506",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:true_grit",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-babb519b1458e04d93f73195edd51dae",
+      "state_hash": "017222dafe525bd7f9aadee871b12eccfa7f94481eb76fe67c7b20398e8b40a6"
+    },
+    {
+      "behavior_distribution_hash": "6aadca114dfe88420d9b81b3f78609213c3c08f5ba4491e0f9cfde8bd4f43172",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:disarm",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-bb7b38d74c36d3836aa03be79190e3f8",
+      "state_hash": "ed432f3c2c3926b191e2fd10150cc17bc46bd64a62df8a0a99182b34b460f8da"
+    },
+    {
+      "behavior_distribution_hash": "877eea48ac5ad7074047a559a995de5bb376106aef2cda958b847c053fa7a2c3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:ghostly_armor",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-bf63903759b18364701611735905a856",
+      "state_hash": "443d8be0792198ae60933faae661912e4b4255199b66ed259aaef676e79256d4"
+    },
+    {
+      "behavior_distribution_hash": "86fded57da3b6d683edf74f787fdf5b687ad62c24ec55dcd68d81f4b0798264b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:pommel_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-bf90a3370db445ddf176a8eb33583673",
+      "state_hash": "5c17239cbdc09c6a0d38a17ae1c1b67290f8ebd52b901bf02c2cd1b6ee9609b3"
+    },
+    {
+      "behavior_distribution_hash": "b67322fa2c8e2598640fcafaf873f175ae7d651dd5aefa86ef362d41deebe18c",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:power_through",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-bfd149fc244d6bce2dfdcb3a20fd1f04",
+      "state_hash": "4691590ebbab5b047af516e2f6665874d476c42c9284adb2067f41ca9a9ab95d"
+    },
+    {
+      "behavior_distribution_hash": "24ae71c035fe3d75dd84e8f0cf5d747260619fef3817ae2286d678779fe92513",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:bloodletting",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-c082290933541cc049fbed316950676d",
+      "state_hash": "2f8a4d5a565063c4ddc020edbae216e8cd40b1b75cbec88818601f0b3ca33600"
+    },
+    {
+      "behavior_distribution_hash": "2ee6e967c07c291825adc1674c861bd9f88c680053e8a0e804a7abbe3970a91b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:flame_barrier",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-c0a7a0db2d85aebdca2141e38e777dbe",
+      "state_hash": "49395bca23cc5477aaa409428e06922e5f0b118a22ae9226714622f204367efe"
+    },
+    {
+      "behavior_distribution_hash": "3dbb82fa12a31e1b4ee3ef8af46f9abf9d2274a2ef5ae4c667a18a15ef6f1506",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:true_grit",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-c0bae2c64cf99a9f0255dec967613a1e",
+      "state_hash": "8948c1a4576bf99c47c6bcb200aa9b2c1ced06c0f8d18c93763d2a9edfddd2e4"
+    },
+    {
+      "behavior_distribution_hash": "67ee9a51bbad58450a7363c0a604cd509e0df5db993e655a73670f12b9e99d71",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:spot_weakness",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-c13c5a9d3d1a9756122737a34928bae8",
+      "state_hash": "41e566c0be8101ebb7d41e0f9d64e03eb88cad23d8b0cbc1abb82b0d1cd9002c"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-c23c8af260fea0a95f74146605a3ee8c",
+      "state_hash": "9da210b0cb3602f93b2bff2eb0d6001c5ae75f9003ef4aba0e0e648536cc99c6"
+    },
+    {
+      "behavior_distribution_hash": "c55c275f2ed5a8314a99fb2970167224403ff16a37d30002e0f3a39678c47399",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:anger",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-c2866dfad0e434881a5ca6050f83f6eb",
+      "state_hash": "e6956e9f1cad19a2f4bfb31e916f640e425a66e31022292261812b7f979ae605"
+    },
+    {
+      "behavior_distribution_hash": "a8c7e4f8ccd658f76b57696a09fedd444b4f96d02dc3810b48919cfb0dafe434",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:headbutt",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-c2c7ba29c8d689d87c104e1f73df6d80",
+      "state_hash": "d133a42ef990cfd47274bce472411e080e23a910fea8bce3d05e79724c236104"
+    },
+    {
+      "behavior_distribution_hash": "6b781aedecfd92b1968a618f2fa944e9873191fe968b75c2e8e89a7b2cf0558e",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shrug_it_off",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-c3df61e7d6cdf170198929f2c95e0543",
+      "state_hash": "7985b297ec5829126400f90e9efb72ee2f7506d9e507f1efa8aeaa4b86d5cfbf"
+    },
+    {
+      "behavior_distribution_hash": "1c1354eb35a731f64916578a1dd8c76d1e906351404afecc97ed054eabf8546a",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:demon_form",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-c455bc5fffb27726a6beb7edf0dc6c86",
+      "state_hash": "d4a13c6dec053a137c05d0706b97b74685099c4417e4566b322f7ac625d0e731"
+    },
+    {
+      "behavior_distribution_hash": "97c9b54a700a7fc5197b73ebda637392b2c8ffb5146bbe4a04a6016460ddadd3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:cleave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-c467e1815998c9153d4b375f8799bbc5",
+      "state_hash": "5fb486c57a067d215afe03db3a49e26c3f33ed760e1bc6522ef63ae246ee6b0b"
+    },
+    {
+      "behavior_distribution_hash": "4a96a6a640653241583eb5b7e536a50c4a5be041c6a1c40225fac21bad2282da",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:rampage",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-c562d5f1398148dde6fd93f06600a3d0",
+      "state_hash": "40e96a15f521a1611e17a14adfab8be80a6b32b03273a4fc4f8e4727fa8c9d84"
+    },
+    {
+      "behavior_distribution_hash": "0182b1c546370fea1ea3f489d175bf504b0e881cc4266d9683da636a03a1f98b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:bandage_up",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-c6965351cdf899cc76f8d2d051c2e166",
+      "state_hash": "0f58bc702a967234b059c4df75594eb2118a5411743061e391d0be67352b79ca"
+    },
+    {
+      "behavior_distribution_hash": "97c9b54a700a7fc5197b73ebda637392b2c8ffb5146bbe4a04a6016460ddadd3",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:cleave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-c852d1f7e8fa5d808c0104ba15fc2138",
+      "state_hash": "ff38ffc6c27e6b26ee92cc63f13e638cc001779c4b7deef04a9f2c0e6ac3e64b"
+    },
+    {
+      "behavior_distribution_hash": "c2cfaab3f42e7c708907e1d22d46c86e455b24d16e8984716fadde5b4a33fe7f",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:double_tap",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-c98c13047f1dacfe084d5a88133c64b3",
+      "state_hash": "564a41977877f4a25667b81839ea01f881fdd5f2fae500951b7d1883c070535d"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-c9f71bec9e7ab787e5afd0302c1fd2b9",
+      "state_hash": "7723d1653f5b445d6599f565cab25e34fa7a6bd6f5eb30f589cb9e0f42622990"
+    },
+    {
+      "behavior_distribution_hash": "40128acec72011fbe183941b136f52c7a3646bb7e101a00cab69283b56030acf",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_card:trip",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-ca16efe5a8b9f221730ea240ade78acb",
+      "state_hash": "4a3938800abceeb271a57d8d0d1555033f1bc4180415159bcb2c094cb5b32122"
+    },
+    {
+      "behavior_distribution_hash": "f98b45cf76b5731a0fda2578eabefdfa4924fc7d1f784f4e557f4032ad5a8ac7",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:second_wind",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-cb8631baa1c9db8f9a78c2de1d2c6ac5",
+      "state_hash": "ba73ea71978f9be72044df9a30914a228862a2abbeefd200119308cf56c269d1"
+    },
+    {
+      "behavior_distribution_hash": "f98b45cf76b5731a0fda2578eabefdfa4924fc7d1f784f4e557f4032ad5a8ac7",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:second_wind",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-cc3a97e9128fdaca7589efe8936ce7a3",
+      "state_hash": "02579d949edeb2dffbf8ff51bf531ca3bf8302eb414abccda6a27464f26cf469"
+    },
+    {
+      "behavior_distribution_hash": "86fded57da3b6d683edf74f787fdf5b687ad62c24ec55dcd68d81f4b0798264b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:pommel_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-cdc6582e5383c223bacc5514dd324290",
+      "state_hash": "60a183a84f8033404312c7c23d2debd7df56c66c35eab9201a1ca0b5ea9f2ecf"
+    },
+    {
+      "behavior_distribution_hash": "92fe24ad6c38e10886105e045c0ecacf497831fdaa9dcd020cfdaaf991f6a536",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:combust",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-ce27feed0c5d00be1ac71d404eda16fd",
+      "state_hash": "5a96207eca3486c948be9e9a47380f26d83d744a8389d57819aaafc50dc33e84"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-ce57a144032818be4aa2912263b933a4",
+      "state_hash": "b87582df313fa2e9f4537ba8280ed72ada9fe01f3dbbe74470d6e31828de2702"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-d0af01d8f14bb908bd97ad2334daa2ff",
+      "state_hash": "f33786063bfba636edb22eacda2b36de30a98942ac87164f12f7fcad91a1f07b"
+    },
+    {
+      "behavior_distribution_hash": "6aadca114dfe88420d9b81b3f78609213c3c08f5ba4491e0f9cfde8bd4f43172",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:disarm",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-d3e001d19533f53f11641d934394f88b",
+      "state_hash": "eb2357fc7fb3f2785f38132efc70ee88726f3eae53b80842976e8330940b2571"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-d42f6f660cd397c9ff368ebb68689aa5",
+      "state_hash": "bebc9609b5b5dc11901512fbb686a90c01cd55185f733e83092806df1f9b89e0"
+    },
+    {
+      "behavior_distribution_hash": "d37a04fa4e521797ac4eb59c848cafc0f7c1311d4c28dd9d36f5cfb4c4be0375",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:metallicize",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-d7745d1f6b52961e27597fccdab56436",
+      "state_hash": "71d6bc89f4d132c23c857bb026d0120b56d5730c316fa24ce19794394f9eb5ee"
+    },
+    {
+      "behavior_distribution_hash": "f98b45cf76b5731a0fda2578eabefdfa4924fc7d1f784f4e557f4032ad5a8ac7",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:second_wind",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-d7780f99aaf22f6ae505f2bf3320a50d",
+      "state_hash": "d73a55ef1da8e708c25bc8363d2d353220896d5654e352bf499e8d2fbaba9037"
+    },
+    {
+      "behavior_distribution_hash": "f98b45cf76b5731a0fda2578eabefdfa4924fc7d1f784f4e557f4032ad5a8ac7",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:second_wind",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-d7e954c18680c3f37a8397b1c4f0b649",
+      "state_hash": "fda9958bcd4dc4a81857d17458628b937a82a6219dc1c78724078316f529f3b6"
+    },
+    {
+      "behavior_distribution_hash": "3b2dbe2dd507c148cd64b63b6ac1bbbc40707242f972d0542f20a755bf2f4310",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:heavy_blade",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-d884a5b3b04a514ac8a330dd32eb9823",
+      "state_hash": "2b926168b572977ba3040573140365c8f0a17dedde14caaa75e1c1111c4d3d4a"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-d9a86b8e4f55dbe120592eb30cdccfb4",
+      "state_hash": "f087f3ea511496d0401a9468e9c5b949b585aa890d0af37ea3d84464f8998d4a"
+    },
+    {
+      "behavior_distribution_hash": "78e83672bdf6625cffe77698e6fc9c8586bd9b297f27a52b2bb818b302854189",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:brutality",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-d9aa2ab481ee2a5c97181c0376fd5139",
+      "state_hash": "a75b28ff7a6c523d37586ca0047b2e002ca43d8b77ee5b4be4c8b6186b0cc3c8"
+    },
+    {
+      "behavior_distribution_hash": "c71ce55e9d1c393563b95d6138c956333789713492d00d63954ac3ad82e281f0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:reaper",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-da9d469c4e4219704822da2018905292",
+      "state_hash": "19e65bf3ebf3b0a9669d535d44f75bcee0192706a5571a8c3c381d5fab3c8131"
+    },
+    {
+      "behavior_distribution_hash": "82059f7e1c286936400d61896d204b0ee5759dc375f5677b2ae52be0164b3a86",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_card:anger",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-dc695ce8c976dd93e6961bb92f6c5250",
+      "state_hash": "3945ecaeb68c64a62c5fd3dc6b72c53106c7ab062d8ebfd3d3dd56ece26ef0aa"
+    },
+    {
+      "behavior_distribution_hash": "3dbb82fa12a31e1b4ee3ef8af46f9abf9d2274a2ef5ae4c667a18a15ef6f1506",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:true_grit",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-ddfab47e33f9578ac9ef47da66f90831",
+      "state_hash": "67542fb58edc4fbeada08d81b256959af3256b2e829768ec74363c4791ca454e"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-e00ba4a319f792ded1ce9e63c67eb9d1",
+      "state_hash": "f3f88b8c907edb1fd9b77b67928109c0381b8993f9f62ecea11d2df1f0ea1694"
+    },
+    {
+      "behavior_distribution_hash": "35fd326228f67f4e1b0d4548143018f593456579884a87eca4bb7d405e990c0b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:inflame",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-e103a370a6edcb8187b8363595f49a47",
+      "state_hash": "2258afa32ceeeb3eca4fa1783e7636a38c51374a94d540a949dc99ab12cfbcd8"
+    },
+    {
+      "behavior_distribution_hash": "b2e3f6c241ab378eb125686110a68ddc0efc2cbfe2e4dcecc3116c8649d5d3bf",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:whirlwind",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-e263c5ea989177249469dc6e30beabc4",
+      "state_hash": "8848cf5642a828d69263e60251dbfd0e076ff6f9f4e67421df07e151b1c6a4e3"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-e3a54a2a4614770407119963a47c3822",
+      "state_hash": "1b434200b15d16950ea365e1e96bb193e16540dd5ab55040f2517f8763e270d2"
+    },
+    {
+      "behavior_distribution_hash": "6b781aedecfd92b1968a618f2fa944e9873191fe968b75c2e8e89a7b2cf0558e",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shrug_it_off",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-e5665ebef6aa7b90149e2a4204d2c8b9",
+      "state_hash": "da6579060ab2cb80f75d8f1d3709702f36d4e5c2b54c3657562e7cfcfa33ac54"
+    },
+    {
+      "behavior_distribution_hash": "0dc94194bf97ff5f8300b509aa8aae198a8b2b79d4ab79e0631db6b82437d57a",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:thunderclap",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-e5f3dc5f477b1b7d171dc7f8b38d1b38",
+      "state_hash": "3c98d9e0ffe93970d8baf14ecb92f88bbcacffe41f4f97d71e2ad01e08bc9aac"
+    },
+    {
+      "behavior_distribution_hash": "86fded57da3b6d683edf74f787fdf5b687ad62c24ec55dcd68d81f4b0798264b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:pommel_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-e6fe0a977e3fabf8cc7f68de1d697fa1",
+      "state_hash": "2188b2c4c65445d3401d460f0e4ecc83f58375c2850fed199014f854134d3332"
+    },
+    {
+      "behavior_distribution_hash": "86fded57da3b6d683edf74f787fdf5b687ad62c24ec55dcd68d81f4b0798264b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:pommel_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-e7274ea33cd18cc5c1ef2011e9702f4f",
+      "state_hash": "da9c9cfe890cc57d2f3e4d8760e1ff9ebd9f6a9e021b8ffe05959560ad2b1c72"
+    },
+    {
+      "behavior_distribution_hash": "e50c2fec9d97a0a810680b1bf6c0fac46f0f6d67e20862056c434661420494e5",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:pummel",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-e97360833ef378a8514c2388b2d60e48",
+      "state_hash": "308b5c238189f993c3294f297c1200c846a1bed81bf14641d7424fdbf83ad24b"
+    },
+    {
+      "behavior_distribution_hash": "92fe24ad6c38e10886105e045c0ecacf497831fdaa9dcd020cfdaaf991f6a536",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:combust",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-e97b996a6975c850b6bd1cf448e99c72",
+      "state_hash": "1fb889d8e3fd22c7e849976e27caa73e2935f6781e6645e56d6d8d5650dcd8bd"
+    },
+    {
+      "behavior_distribution_hash": "5cc80c8c339fcc62e9c48e939f13f65e27f07485036900e444ee9bd5a20734e0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:dropkick",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-ea0d6be57376e886dc8ed62202011dab",
+      "state_hash": "d926c488fca86bc95ec0bff57784224f4c5636b4509108bc1e2ece4670c49a39"
+    },
+    {
+      "behavior_distribution_hash": "a59039d2aa5527ec4ce1186ecd717a0e1364b3ed0dc4834133986962dc6d8dfe",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:sever_soul",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-ea935f442304f10ffbe123e00a4aa134",
+      "state_hash": "f07a470f48ea17261ec51dd6efa7841e575736d125a8a4f74f65513cf17ed634"
+    },
+    {
+      "behavior_distribution_hash": "67ee9a51bbad58450a7363c0a604cd509e0df5db993e655a73670f12b9e99d71",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:spot_weakness",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-ebb7bc09b1dc4e7debd61c19a02573ec",
+      "state_hash": "53139b16874718fe8713548ca433d2ff4a9f69a98c2204a24f6863caa35bf2e9"
+    },
+    {
+      "behavior_distribution_hash": "86fded57da3b6d683edf74f787fdf5b687ad62c24ec55dcd68d81f4b0798264b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:pommel_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-f4b4d90f45781cc79e79ad9049a362c0",
+      "state_hash": "9d110e70245971e61347983d30fb1bff6199dbccd7811b08ca6a14cdfb1f8b64"
+    },
+    {
+      "behavior_distribution_hash": "5481a5e939bd345c502900fff2ea5808e658f559d2a55c633a08b4c3a0192ea9",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_relic:whetstone",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-f50b90cb3de75fd09bb8cbb66d9e49de",
+      "state_hash": "bbe488b36dc2c99e4957ff8d3ae4c92a1bec603d7d56426475e08e879d7c17e6"
+    },
+    {
+      "behavior_distribution_hash": "a407b13927eab15fe70aa4e05fbb5475e4c65bdd275fae3a06f81c88f10f92fd",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:perfected_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-f584d514ed07b11b0d8c8fe5268f8f17",
+      "state_hash": "ebfde34d1c0f8b9e19a89a7005ab10df61ac6ad8fbb6699ca575ab55a211bbe9"
+    },
+    {
+      "behavior_distribution_hash": "6471f265daabcd7f75a39413a2a9958cfd83720a36dfd0177ddce7f7a41b93b7",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_relic:war_paint",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-f5c1f6eef6cc2a5ec5c35e38dfa48eab",
+      "state_hash": "67892ec7dc1e6d21f7424c5d4270ddf6306edaa73afd77b74f09e2d7af42f3c2"
+    },
+    {
+      "behavior_distribution_hash": "6aadca114dfe88420d9b81b3f78609213c3c08f5ba4491e0f9cfde8bd4f43172",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:disarm",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-f67826911c6f6b300bb6b54fafaa4e1e",
+      "state_hash": "a9af5db16a08d43064d8bb0e176787ca3aa65960c0f4aed9b96a27e38df2e252"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-f6c0afc94f7b82be9655cdc98b172982",
+      "state_hash": "adc992e96a3f5012ecfc2810746f95ec68b1a8aa0fa5710ddd50c965d9121dea"
+    },
+    {
+      "behavior_distribution_hash": "6b781aedecfd92b1968a618f2fa944e9873191fe968b75c2e8e89a7b2cf0558e",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shrug_it_off",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-f743c0dccaca0d6d22817f78534ae00f",
+      "state_hash": "ca32c01d85ff36528bbfdaad3cd695c91fd396cd5b9a40464f9285c7b00ff8c0"
+    },
+    {
+      "behavior_distribution_hash": "ec72864dea6ae5c543db891c5d11ffb858d288dd26d46c0173004db3342b041e",
+      "probabilities": [
+        {
+          "action_id": "shop:buy_card:pommel_strike",
+          "denominator": 10000,
+          "numerator": 9500
+        },
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        }
+      ],
+      "sample_id": "decision-f7bfde2b2a0c84c64a98b01b7cb9bef8",
+      "state_hash": "9e14e3c3f1b69d3e7da0e52250a1ca82f76de173f28f226e0f7dffa21e0bfdf9"
+    },
+    {
+      "behavior_distribution_hash": "c55c275f2ed5a8314a99fb2970167224403ff16a37d30002e0f3a39678c47399",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:anger",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-f7ca27c864ceca4bff1f3ce7dc5cbb6c",
+      "state_hash": "4977eb1cf665451e48d8bd36d658f656d7b6ffe60ef41d457e5c3d5bf254ecc0"
+    },
+    {
+      "behavior_distribution_hash": "3c1b3a6e7a92c67f3586fcc9d26ab9056edf5f68164ac0c230fe016e3f8b63af",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:seeing_red",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-f80a51aa451026da60bdba19d104c9fe",
+      "state_hash": "7c9969c099d0d3eff06e4585b9bb103bcd0e24a5334b7ae209b31a476acd58d2"
+    },
+    {
+      "behavior_distribution_hash": "f98b45cf76b5731a0fda2578eabefdfa4924fc7d1f784f4e557f4032ad5a8ac7",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:second_wind",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-f8656704a406617bd42befe6b8416e26",
+      "state_hash": "8c958246cba7c82fc9ded23e91f6c2c46068b64fa84f68ced03e5dd2faeff6a8"
+    },
+    {
+      "behavior_distribution_hash": "d12aea745d5615212b5e2fc39337511f884b918cc2330fd500578288a21afbc0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:clothesline",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-f8b005b88e6241cfa92f4e5e59f98a9e",
+      "state_hash": "c7d1a310f5a051d22c2be7c94e90d3a88b3743d9015c4e9e3667452835711f18"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-f9152d82fe525d3fc4a4499d3a6d9d7b",
+      "state_hash": "679a789abfde2983b7b318f9f2b64b6d900a6e381100aa839b6b406c0cd3fd6f"
+    },
+    {
+      "behavior_distribution_hash": "998213d7cb58f1c803233d95a7fb81a6bec97390cfe6de08b98d1acb89540366",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:shockwave",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-fbfbb69f3b05c4969efff17b539b7569",
+      "state_hash": "25b5ac06ab8901964a158e7e94089e019508a874089d239e176088b31aa1d999"
+    },
+    {
+      "behavior_distribution_hash": "693d475de9cd7ae90714120a67cde1da9044beca3eff9530d2024ea53d43d761",
+      "probabilities": [
+        {
+          "action_id": "shop:leave",
+          "denominator": 10000,
+          "numerator": 500
+        },
+        {
+          "action_id": "shop:purge",
+          "denominator": 10000,
+          "numerator": 9500
+        }
+      ],
+      "sample_id": "decision-fd875026c69c5209c76c58bf399e96b1",
+      "state_hash": "70a25c482d926e3e24ceb08530ae83bb3469937fabd39771bb119c42b66ee768"
+    },
+    {
+      "behavior_distribution_hash": "6376efefa95145d26acabfa988ede616a4ad6e0f812671598638c07a7f2318ea",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:twin_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-fe31f754e273cc4b7ee8c727f8e349e2",
+      "state_hash": "688818b82256da9a330eed182483ec3b4c32a504b28858c2a5fa20994ca94fd3"
+    },
+    {
+      "behavior_distribution_hash": "5cc80c8c339fcc62e9c48e939f13f65e27f07485036900e444ee9bd5a20734e0",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:dropkick",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-feb4b513671d9f3aa1a56ccbddbf71f1",
+      "state_hash": "23ad37aad578b7bd87666d45d862d38cfdf7c8da665660291b5d40d91fcbb05d"
+    },
+    {
+      "behavior_distribution_hash": "3b2dbe2dd507c148cd64b63b6ac1bbbc40707242f972d0542f20a755bf2f4310",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:heavy_blade",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-ff317363b0cea8b839387520dc4e669b",
+      "state_hash": "03e36e27826fe166541eab50bc032c372d323a95bbc8a50f7e1377f7c1d2f7b7"
+    },
+    {
+      "behavior_distribution_hash": "86fded57da3b6d683edf74f787fdf5b687ad62c24ec55dcd68d81f4b0798264b",
+      "probabilities": [
+        {
+          "action_id": "card_reward:skip",
+          "denominator": 10000,
+          "numerator": 300
+        },
+        {
+          "action_id": "card_reward:take:pommel_strike",
+          "denominator": 10000,
+          "numerator": 9700
+        }
+      ],
+      "sample_id": "decision-ffa0edb4847428801a93ee4ce256d597",
+      "state_hash": "5aa105b153944715caf8c0af5dc0e29a61d8534f590e16c56a353f1d21c542c1"
+    }
+  ],
+  "manifest_hash": "712f8506313b5844cf80978899fbc9d7fbd80d6df2f5422888029a15315d7b29",
+  "schema_version": "noncombat-ope-target-policy-v1",
+  "source_sample_sha256": "fbd4d9ea8251254bc0780db9682b7b7afc813c07c0b9c98d64c93a54e0c3ad98",
+  "target_policy_commit": null,
+  "target_policy_id": "behavior_identity"
+}

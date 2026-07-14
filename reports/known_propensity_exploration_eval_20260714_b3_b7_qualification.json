@@ -1,0 +1,79 @@
+{
+  "blocking_conditions": [],
+  "causal_uplift_ready": false,
+  "formal_noncombat_rl_training_ready": false,
+  "isolation_verified": true,
+  "known_propensity_exploration_data_ready": true,
+  "live_policy_promotion_ready": false,
+  "metrics": {
+    "candidate_legal": 1253,
+    "category_arm_support": {
+      "card_reward": {
+        "alternative": 45,
+        "baseline": 1007
+      },
+      "shop": {
+        "alternative": 5,
+        "baseline": 196
+      }
+    },
+    "confirmed": 1253,
+    "eligible_proposals": 1253,
+    "exported_samples": 1253,
+    "floor_distribution": {
+      "10": 1,
+      "11": 1,
+      "12": 2,
+      "13": 1,
+      "14": 1,
+      "16": 68,
+      "19": 2,
+      "20": 4,
+      "21": 2,
+      "22": 4,
+      "23": 1,
+      "24": 3,
+      "25": 1,
+      "27": 2,
+      "28": 1,
+      "29": 1,
+      "30": 2,
+      "31": 1,
+      "33": 22,
+      "51": 1,
+      "7": 3,
+      "8": 1
+    },
+    "killed_by_distribution": {
+      "3 Cultists": 3,
+      "3 Sentries": 2,
+      "Automaton": 9,
+      "Centurion and Healer": 7,
+      "Champ": 6,
+      "Collector": 7,
+      "Cultist and Chosen": 3,
+      "Exordium Thugs": 2,
+      "Gremlin Nob": 1,
+      "Hexaghost": 29,
+      "Lagavulin": 2,
+      "Large Slime": 1,
+      "Lots of Slimes": 1,
+      "Masked Bandits": 1,
+      "Sentry and Sphere": 1,
+      "Shelled Parasite and Fungi": 1,
+      "Slime Boss": 21,
+      "Snake Plant": 3,
+      "Snecko": 4,
+      "Spheric Guardian": 1,
+      "The Guardian": 18,
+      "The Mushroom Lair": 1
+    },
+    "outcome_matched_samples": 1253,
+    "replay_valid": 1253,
+    "unique_joined_trajectories": 125,
+    "verified_propensities": 1253,
+    "victories": 1
+  },
+  "ope_ready": false,
+  "provenance_verified": true
+}

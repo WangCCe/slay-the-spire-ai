@@ -1,8 +1,9 @@
 .gitattributes text eol=lf
 
-# Preserve byte-stable hashes for frozen known-propensity evidence.
-reports/known_propensity_exploration_* text eol=lf
-reports/known_propensity_exploration_*_runs/** text eol=lf
+# Preserve exact bytes for frozen evidence and derived OPE artifacts.
+reports/known_propensity_exploration_* -text whitespace=cr-at-eol
+reports/known_propensity_exploration_*_runs/** -text whitespace=cr-at-eol
 reports/known_propensity_exploration_*.gz -text
-reports/known_propensity_exploration_*_raw_logs/** text eol=lf
+reports/known_propensity_exploration_*_raw_logs/** -text whitespace=cr-at-eol
 reports/known_propensity_exploration_*_raw_logs/*.gz -text
+reports/noncombat_ope_* -text whitespace=cr-at-eol

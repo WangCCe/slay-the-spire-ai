@@ -1,0 +1,59 @@
+{
+  "blocking_conditions": [
+    "insufficient_shop_alternative_support"
+  ],
+  "causal_uplift_ready": false,
+  "formal_noncombat_rl_training_ready": false,
+  "isolation_verified": true,
+  "known_propensity_exploration_data_ready": false,
+  "live_policy_promotion_ready": false,
+  "metrics": {
+    "candidate_legal": 230,
+    "category_arm_support": {
+      "card_reward": {
+        "alternative": 22,
+        "baseline": 176
+      },
+      "shop": {
+        "alternative": 2,
+        "baseline": 30
+      }
+    },
+    "confirmed": 230,
+    "eligible_proposals": 230,
+    "exported_samples": 230,
+    "floor_distribution": {
+      "11": 1,
+      "14": 1,
+      "16": 11,
+      "19": 1,
+      "21": 1,
+      "22": 1,
+      "27": 1,
+      "33": 7,
+      "7": 1
+    },
+    "killed_by_distribution": {
+      "3 Cultists": 1,
+      "3 Sentries": 1,
+      "Automaton": 5,
+      "Champ": 1,
+      "Collector": 1,
+      "Exordium Thugs": 1,
+      "Hexaghost": 5,
+      "Sentry and Sphere": 1,
+      "Slime Boss": 3,
+      "Snecko": 1,
+      "Spheric Guardian": 1,
+      "The Guardian": 3,
+      "The Mushroom Lair": 1
+    },
+    "outcome_matched_samples": 230,
+    "replay_valid": 230,
+    "unique_joined_trajectories": 25,
+    "verified_propensities": 230,
+    "victories": 0
+  },
+  "ope_ready": false,
+  "provenance_verified": true
+}

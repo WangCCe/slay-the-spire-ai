@@ -1,0 +1,147 @@
+{
+  "all_passed": true,
+  "entries": [
+    {
+      "label": "preliminary_behavior_identity",
+      "pool": "b3_b6",
+      "result": {
+        "check_count": 94506,
+        "construction_mode": "behavior_identity",
+        "decision_count": 996,
+        "downstream_gates_closed": true,
+        "effective_sample_size": {
+          "denominator": 1,
+          "numerator": 100
+        },
+        "ess_fraction": {
+          "denominator": 1,
+          "numerator": 1
+        },
+        "identity_invariants_passed": true,
+        "max_normalized_weight": {
+          "denominator": 100,
+          "numerator": 1
+        },
+        "nonzero_weight_count": 100,
+        "overlap_blockers": [],
+        "passed": true,
+        "readiness_file_sha256": "a31bde7d888f104a9b33e458b983e0959cac6b060585758b1c32525d419ab253",
+        "sample_sha256": "9e50338e28a5402b91be000943ce561a4948f968708ac8d46b7a9b54d3b16df1",
+        "schema_version": "noncombat-ope-artifact-audit-v1",
+        "target_file_sha256": "552b534e24ae4368d5673160e9578ad04600edc4813da7203c7ef576c7498678",
+        "target_manifest_hash": "0309dd48d30013d718bea445f17ea2f4c24d0f2c1607cf55c183a87b2de21f0d",
+        "trajectory_count": 100,
+        "zero_weight_count": 0
+      },
+      "target": "behavior_identity"
+    },
+    {
+      "label": "preliminary_current_deterministic",
+      "pool": "b3_b6",
+      "result": {
+        "check_count": 93506,
+        "construction_mode": "current_deterministic",
+        "decision_count": 996,
+        "downstream_gates_closed": true,
+        "effective_sample_size": {
+          "denominator": 45931652770543192602273015161100053739179511482075721380171930524016630441924637918077671363374114956920400925939030107301128912089773439,
+          "numerator": 2216731162588355773273204392521470155432702473868974655923809032910510833991344109868415447554642407850568913324447762599910031076472323889
+        },
+        "ess_fraction": {
+          "denominator": 4593165277054319260227301516110005373917951148207572138017193052401663044192463791807767136337411495692040092593903010730112891208977343900,
+          "numerator": 2216731162588355773273204392521470155432702473868974655923809032910510833991344109868415447554642407850568913324447762599910031076472323889
+        },
+        "identity_invariants_passed": false,
+        "max_normalized_weight": {
+          "denominator": 1488869088465589634518770627048624622398144729998273246769613698024583,
+          "numerator": 81633930507242669951883230137372732258884216840502960607500000000000
+        },
+        "nonzero_weight_count": 62,
+        "overlap_blockers": [
+          "effective_sample_size_below_minimum",
+          "ess_fraction_below_minimum"
+        ],
+        "passed": true,
+        "readiness_file_sha256": "b320d97e32b6d25a59581c42bc8f78d6628aa93b83b556096e81a1a4c8a4cd3f",
+        "sample_sha256": "9e50338e28a5402b91be000943ce561a4948f968708ac8d46b7a9b54d3b16df1",
+        "schema_version": "noncombat-ope-artifact-audit-v1",
+        "target_file_sha256": "f33a57e922bd9b67cd24e8d67e6217f88b30a334c5aae28e78915ba7b2163363",
+        "target_manifest_hash": "9eabfc9e4193851067a712602b56e3931595ec09ab268f78dbb7b4fc6fc4023a",
+        "trajectory_count": 100,
+        "zero_weight_count": 38
+      },
+      "target": "current_deterministic"
+    },
+    {
+      "label": "final_behavior_identity",
+      "pool": "b3_b7",
+      "result": {
+        "check_count": 118857,
+        "construction_mode": "behavior_identity",
+        "decision_count": 1253,
+        "downstream_gates_closed": true,
+        "effective_sample_size": {
+          "denominator": 1,
+          "numerator": 125
+        },
+        "ess_fraction": {
+          "denominator": 1,
+          "numerator": 1
+        },
+        "identity_invariants_passed": true,
+        "max_normalized_weight": {
+          "denominator": 125,
+          "numerator": 1
+        },
+        "nonzero_weight_count": 125,
+        "overlap_blockers": [],
+        "passed": true,
+        "readiness_file_sha256": "5152b3c0edbb325f869cd9b6c01bce8fe06d1aada328e14cb205ceb623e2b5a0",
+        "sample_sha256": "aa61da25c93cdfa24ec57f787fbd41b5e4921c1a1a2bf9cb75f799133159b292",
+        "schema_version": "noncombat-ope-artifact-audit-v1",
+        "target_file_sha256": "99def5e7158ea95283f00bdc69a2bd767f31335c12d4e1560e492535498cd8a2",
+        "target_manifest_hash": "25955774b5792078317a7e43c54971355ba073b50fc7436d78e53ee9672a6af5",
+        "trajectory_count": 125,
+        "zero_weight_count": 0
+      },
+      "target": "behavior_identity"
+    },
+    {
+      "label": "final_current_deterministic",
+      "pool": "b3_b7",
+      "result": {
+        "check_count": 117600,
+        "construction_mode": "current_deterministic",
+        "decision_count": 1253,
+        "downstream_gates_closed": true,
+        "effective_sample_size": {
+          "denominator": 176060220481926174501219885514334929392332964608173791230776577567991357133476189877083748714043044228303074280794531077144585699024402388434933801423127927497965482377578389578741711280465242560773275407199,
+          "numerator": 11673079824237089342264870705478235386875310064266702866023892622409715670118151751565894013851239379643893145910848687336923252108131455436842378171694833144210619615230106019134423779568912469766090315085649
+        },
+        "ess_fraction": {
+          "denominator": 22007527560240771812652485689291866174041620576021723903847072195998919641684523734635468589255380528537884285099316384643073212378050298554366725177890990937245685297197298697342713910058155320096659425899875,
+          "numerator": 11673079824237089342264870705478235386875310064266702866023892622409715670118151751565894013851239379643893145910848687336923252108131455436842378171694833144210619615230106019134423779568912469766090315085649
+        },
+        "identity_invariants_passed": false,
+        "max_normalized_weight": {
+          "denominator": 108042028045742872117193414566173844171335631904433112617518727560152371225378816241977938794552479219593,
+          "numerator": 4812395885060423559113662354719889416168411159250806723216145507817438874205920085240598632500000000000
+        },
+        "nonzero_weight_count": 87,
+        "overlap_blockers": [],
+        "passed": true,
+        "readiness_file_sha256": "29fbd3543f718c34a626a27e1fad90b92465de4a53f30ef3f726002eca09abb8",
+        "sample_sha256": "aa61da25c93cdfa24ec57f787fbd41b5e4921c1a1a2bf9cb75f799133159b292",
+        "schema_version": "noncombat-ope-artifact-audit-v1",
+        "target_file_sha256": "f4cdce84382ed09747943594d140649700e5a98c9a05a3829c3d782410b0de8e",
+        "target_manifest_hash": "4a4dd3d1f2cd6b740ae8ce8f90d29e7f907cb8eb34a25ed2bbcc9d365dde256b",
+        "trajectory_count": 125,
+        "zero_weight_count": 38
+      },
+      "target": "current_deterministic"
+    }
+  ],
+  "schema_version": "noncombat-ope-independent-verification-summary-v1",
+  "source_commit": "2006df2be20151afd759e9fc4deef320bc1f599d",
+  "total_check_count": 424469
+}

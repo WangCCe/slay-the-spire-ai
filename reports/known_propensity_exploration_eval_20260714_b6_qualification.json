@@ -1,0 +1,56 @@
+{
+  "blocking_conditions": [
+    "insufficient_card_reward_alternative_support",
+    "insufficient_shop_alternative_support"
+  ],
+  "causal_uplift_ready": false,
+  "formal_noncombat_rl_training_ready": false,
+  "isolation_verified": true,
+  "known_propensity_exploration_data_ready": false,
+  "live_policy_promotion_ready": false,
+  "metrics": {
+    "candidate_legal": 249,
+    "category_arm_support": {
+      "card_reward": {
+        "alternative": 1,
+        "baseline": 212
+      },
+      "shop": {
+        "alternative": 0,
+        "baseline": 36
+      }
+    },
+    "confirmed": 249,
+    "eligible_proposals": 249,
+    "exported_samples": 249,
+    "floor_distribution": {
+      "12": 1,
+      "16": 13,
+      "20": 2,
+      "25": 1,
+      "30": 1,
+      "33": 5,
+      "7": 2
+    },
+    "killed_by_distribution": {
+      "3 Sentries": 1,
+      "Automaton": 2,
+      "Centurion and Healer": 3,
+      "Champ": 2,
+      "Collector": 1,
+      "Cultist and Chosen": 1,
+      "Hexaghost": 6,
+      "Lagavulin": 1,
+      "Large Slime": 1,
+      "Slime Boss": 5,
+      "The Guardian": 2
+    },
+    "outcome_matched_samples": 249,
+    "replay_valid": 249,
+    "unique_joined_trajectories": 25,
+    "verified_propensities": 249,
+    "victories": 0
+  },
+  "ope_ready": false,
+  "provenance_verified": true
+}

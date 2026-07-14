@@ -1,0 +1,380 @@
+{
+  "run_count": 25,
+  "runs": [
+    {
+      "ai_marker_unix": 1784025693,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784025689,
+        "floor_reached": 33,
+        "killed_by": "Automaton",
+        "playtime": 194,
+        "run_file": "1784025689.run",
+        "start_unix": 1784025495,
+        "victory": false
+      },
+      "run_file": "1784025689.run",
+      "run_sha256": "7817ecc1e718f0d9a97468beb3e072553f7fdf1b81f26c7322eb2a74626d2a61"
+    },
+    {
+      "ai_marker_unix": 1784025818,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784025814,
+        "floor_reached": 25,
+        "killed_by": "Centurion and Healer",
+        "playtime": 119,
+        "run_file": "1784025814.run",
+        "start_unix": 1784025695,
+        "victory": false
+      },
+      "run_file": "1784025814.run",
+      "run_sha256": "1a85652ad9d9b50aebb82633a3ccdb0bbd4c6deef8578f8c08515bbc8f7aa032"
+    },
+    {
+      "ai_marker_unix": 1784025912,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784025908,
+        "floor_reached": 16,
+        "killed_by": "The Guardian",
+        "playtime": 89,
+        "run_file": "1784025908.run",
+        "start_unix": 1784025819,
+        "victory": false
+      },
+      "run_file": "1784025908.run",
+      "run_sha256": "e5494fc9a5c58dd176ea1c4c13a49b64b79a777dbb03395ee5877be34ccef25c"
+    },
+    {
+      "ai_marker_unix": 1784026010,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784026007,
+        "floor_reached": 16,
+        "killed_by": "Hexaghost",
+        "playtime": 94,
+        "run_file": "1784026007.run",
+        "start_unix": 1784025913,
+        "victory": false
+      },
+      "run_file": "1784026007.run",
+      "run_sha256": "1c05ab137050abdbe63853d9852ea12c1a518c40a777f496f728a0845bf09dc7"
+    },
+    {
+      "ai_marker_unix": 1784026129,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784026126,
+        "floor_reached": 16,
+        "killed_by": "Hexaghost",
+        "playtime": 115,
+        "run_file": "1784026126.run",
+        "start_unix": 1784026011,
+        "victory": false
+      },
+      "run_file": "1784026126.run",
+      "run_sha256": "d8ccc20de5338830e843acc55a9eecd20222d60b672b4315ab1db07c0955ad37"
+    },
+    {
+      "ai_marker_unix": 1784026187,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784026185,
+        "floor_reached": 12,
+        "killed_by": "Large Slime",
+        "playtime": 54,
+        "run_file": "1784026185.run",
+        "start_unix": 1784026131,
+        "victory": false
+      },
+      "run_file": "1784026185.run",
+      "run_sha256": "9394e74ae337f6949e089d56ed220a2fc327604e4c86e366e4806366a6d11026"
+    },
+    {
+      "ai_marker_unix": 1784026283,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784026280,
+        "floor_reached": 20,
+        "killed_by": "Cultist and Chosen",
+        "playtime": 90,
+        "run_file": "1784026280.run",
+        "start_unix": 1784026190,
+        "victory": false
+      },
+      "run_file": "1784026280.run",
+      "run_sha256": "78ff89f82a768d56d882cc49c6fe6828f30cbb5963ff17bef681a54e35f91937"
+    },
+    {
+      "ai_marker_unix": 1784026373,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784026370,
+        "floor_reached": 16,
+        "killed_by": "Hexaghost",
+        "playtime": 86,
+        "run_file": "1784026370.run",
+        "start_unix": 1784026284,
+        "victory": false
+      },
+      "run_file": "1784026370.run",
+      "run_sha256": "9d23043058d22c292e5bb0598f3e4d5711057197392f3c1b7952489b8228938a"
+    },
+    {
+      "ai_marker_unix": 1784026409,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784026406,
+        "floor_reached": 7,
+        "killed_by": "Lagavulin",
+        "playtime": 31,
+        "run_file": "1784026406.run",
+        "start_unix": 1784026375,
+        "victory": false
+      },
+      "run_file": "1784026406.run",
+      "run_sha256": "f30cbad46f56bde43439e3e191cade4256fc0042f9bb16706cc749d955ec4c4e"
+    },
+    {
+      "ai_marker_unix": 1784026461,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784026458,
+        "floor_reached": 16,
+        "killed_by": "Hexaghost",
+        "playtime": 48,
+        "run_file": "1784026458.run",
+        "start_unix": 1784026410,
+        "victory": false
+      },
+      "run_file": "1784026458.run",
+      "run_sha256": "9b51a316bf3460db08d0e2a01b4b83a898f1845d5541c1f8aeeaf4875702221f"
+    },
+    {
+      "ai_marker_unix": 1784026522,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784026519,
+        "floor_reached": 16,
+        "killed_by": "Slime Boss",
+        "playtime": 56,
+        "run_file": "1784026519.run",
+        "start_unix": 1784026463,
+        "victory": false
+      },
+      "run_file": "1784026519.run",
+      "run_sha256": "e1163b24df37af9586c1937b608f84704a8207cc05d9298b0cba6398717f7e8c"
+    },
+    {
+      "ai_marker_unix": 1784026672,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784026668,
+        "floor_reached": 30,
+        "killed_by": "Centurion and Healer",
+        "playtime": 144,
+        "run_file": "1784026668.run",
+        "start_unix": 1784026524,
+        "victory": false
+      },
+      "run_file": "1784026668.run",
+      "run_sha256": "8869a0805c279975941f94a195b97aa6f298460ed84573a977f734ee2ca484e2"
+    },
+    {
+      "ai_marker_unix": 1784026804,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784026801,
+        "floor_reached": 16,
+        "killed_by": "Slime Boss",
+        "playtime": 128,
+        "run_file": "1784026801.run",
+        "start_unix": 1784026673,
+        "victory": false
+      },
+      "run_file": "1784026801.run",
+      "run_sha256": "7b880acb69492b9a7d7cc03d7a1e4ac2227de7add644eaf5d6b79727fb0d4ef8"
+    },
+    {
+      "ai_marker_unix": 1784027037,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784027034,
+        "floor_reached": 33,
+        "killed_by": "Champ",
+        "playtime": 227,
+        "run_file": "1784027034.run",
+        "start_unix": 1784026807,
+        "victory": false
+      },
+      "run_file": "1784027034.run",
+      "run_sha256": "9e03f0a21f914520a119d0fb1339298fb617ee0d68b384ec242e27ee58ba9330"
+    },
+    {
+      "ai_marker_unix": 1784027098,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784027095,
+        "floor_reached": 16,
+        "killed_by": "Slime Boss",
+        "playtime": 57,
+        "run_file": "1784027095.run",
+        "start_unix": 1784027038,
+        "victory": false
+      },
+      "run_file": "1784027095.run",
+      "run_sha256": "34822ae1284d314a5eaa303a273f6bde09860a74880decfc955c9c023caa380e"
+    },
+    {
+      "ai_marker_unix": 1784027202,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784027199,
+        "floor_reached": 16,
+        "killed_by": "Slime Boss",
+        "playtime": 99,
+        "run_file": "1784027199.run",
+        "start_unix": 1784027100,
+        "victory": false
+      },
+      "run_file": "1784027199.run",
+      "run_sha256": "07c0bff60f34f8785e915b5b7229e84f915407eca564baa851106cb641bf91c5"
+    },
+    {
+      "ai_marker_unix": 1784027397,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784027394,
+        "floor_reached": 33,
+        "killed_by": "Automaton",
+        "playtime": 190,
+        "run_file": "1784027394.run",
+        "start_unix": 1784027204,
+        "victory": false
+      },
+      "run_file": "1784027394.run",
+      "run_sha256": "9d71652a128d12d0156d6ebdf8fc4a6f20fb8e2633f9adfb1fad2cf453662a6b"
+    },
+    {
+      "ai_marker_unix": 1784027481,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784027478,
+        "floor_reached": 16,
+        "killed_by": "Slime Boss",
+        "playtime": 79,
+        "run_file": "1784027478.run",
+        "start_unix": 1784027399,
+        "victory": false
+      },
+      "run_file": "1784027478.run",
+      "run_sha256": "e4aeb952d354bd55394295bb8c16b9eff5183bceac590d3e7569408930a70cb5"
+    },
+    {
+      "ai_marker_unix": 1784027598,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784027594,
+        "floor_reached": 20,
+        "killed_by": "Centurion and Healer",
+        "playtime": 111,
+        "run_file": "1784027594.run",
+        "start_unix": 1784027483,
+        "victory": false
+      },
+      "run_file": "1784027594.run",
+      "run_sha256": "c86e25358099098dbadfeb556be0c7246494d285e1fd4c8719717c478318ef5c"
+    },
+    {
+      "ai_marker_unix": 1784027883,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784027879,
+        "floor_reached": 33,
+        "killed_by": "Champ",
+        "playtime": 279,
+        "run_file": "1784027879.run",
+        "start_unix": 1784027600,
+        "victory": false
+      },
+      "run_file": "1784027879.run",
+      "run_sha256": "edb667c7130cf163db1cc38624abba67ee9566fbf4f7c1124a3e726848fc642d"
+    },
+    {
+      "ai_marker_unix": 1784027965,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784027962,
+        "floor_reached": 16,
+        "killed_by": "Hexaghost",
+        "playtime": 78,
+        "run_file": "1784027962.run",
+        "start_unix": 1784027884,
+        "victory": false
+      },
+      "run_file": "1784027962.run",
+      "run_sha256": "c812b3ba20cc141e64c78d8c418d7012450e44dbcd5ad78fc7ddc14b05cf7816"
+    },
+    {
+      "ai_marker_unix": 1784028017,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784028013,
+        "floor_reached": 16,
+        "killed_by": "The Guardian",
+        "playtime": 47,
+        "run_file": "1784028013.run",
+        "start_unix": 1784027966,
+        "victory": false
+      },
+      "run_file": "1784028013.run",
+      "run_sha256": "8ea48175ed7de007c658f9ecb0760be19b5e7cf52320b7614e785c3e18fa6f76"
+    },
+    {
+      "ai_marker_unix": 1784028193,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784028190,
+        "floor_reached": 33,
+        "killed_by": "Collector",
+        "playtime": 171,
+        "run_file": "1784028190.run",
+        "start_unix": 1784028019,
+        "victory": false
+      },
+      "run_file": "1784028190.run",
+      "run_sha256": "d1ccfd4e0c40eca95625da992e26f0d2a886cb88aa225bca3cadc499133bfff7"
+    },
+    {
+      "ai_marker_unix": 1784028297,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784028294,
+        "floor_reached": 16,
+        "killed_by": "Hexaghost",
+        "playtime": 100,
+        "run_file": "1784028294.run",
+        "start_unix": 1784028194,
+        "victory": false
+      },
+      "run_file": "1784028294.run",
+      "run_sha256": "f324ad9c097f352c41c5f6ecc7ac666369886f056db42a90764fb87b7eb04ae5"
+    },
+    {
+      "ai_marker_unix": 1784028335,
+      "outcome": {
+        "ai_marked": true,
+        "end_unix": 1784028331,
+        "floor_reached": 7,
+        "killed_by": "3 Sentries",
+        "playtime": 32,
+        "run_file": "1784028331.run",
+        "start_unix": 1784028299,
+        "victory": false
+      },
+      "run_file": "1784028331.run",
+      "run_sha256": "e4777cb7efebb52704a1ec260d3ea39e5e03e90fddb341042d489bfcc44d3398"
+    }
+  ]
+}

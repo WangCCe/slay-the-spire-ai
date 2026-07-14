@@ -1,0 +1,56 @@
+{
+  "blocking_conditions": [
+    "insufficient_shop_alternative_support"
+  ],
+  "causal_uplift_ready": false,
+  "formal_noncombat_rl_training_ready": false,
+  "isolation_verified": true,
+  "known_propensity_exploration_data_ready": false,
+  "live_policy_promotion_ready": false,
+  "metrics": {
+    "candidate_legal": 272,
+    "category_arm_support": {
+      "card_reward": {
+        "alternative": 15,
+        "baseline": 211
+      },
+      "shop": {
+        "alternative": 0,
+        "baseline": 46
+      }
+    },
+    "confirmed": 272,
+    "eligible_proposals": 272,
+    "exported_samples": 272,
+    "floor_distribution": {
+      "16": 15,
+      "20": 1,
+      "24": 1,
+      "27": 1,
+      "29": 1,
+      "33": 4,
+      "51": 1,
+      "8": 1
+    },
+    "killed_by_distribution": {
+      "Automaton": 1,
+      "Champ": 2,
+      "Collector": 1,
+      "Cultist and Chosen": 1,
+      "Hexaghost": 8,
+      "Lagavulin": 1,
+      "Shelled Parasite and Fungi": 1,
+      "Slime Boss": 4,
+      "Snake Plant": 1,
+      "Snecko": 1,
+      "The Guardian": 3
+    },
+    "outcome_matched_samples": 272,
+    "replay_valid": 272,
+    "unique_joined_trajectories": 25,
+    "verified_propensities": 272,
+    "victories": 1
+  },
+  "ope_ready": false,
+  "provenance_verified": true
+}

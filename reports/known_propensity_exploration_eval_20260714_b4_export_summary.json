@@ -1,0 +1,316 @@
+{
+  "exclusions": [],
+  "isolation_comparison": {
+    "mismatches": [],
+    "verified": true
+  },
+  "isolation_verified": true,
+  "outcomes": [
+    {
+      "ai_marked": true,
+      "end_unix": 1784018890,
+      "floor_reached": 24,
+      "killed_by": "Snake Plant",
+      "playtime": 132,
+      "run_file": "1784018890.run",
+      "start_unix": 1784018758,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784018960,
+      "floor_reached": 16,
+      "killed_by": "Slime Boss",
+      "playtime": 65,
+      "run_file": "1784018960.run",
+      "start_unix": 1784018895,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784019036,
+      "floor_reached": 16,
+      "killed_by": "The Guardian",
+      "playtime": 71,
+      "run_file": "1784019036.run",
+      "start_unix": 1784018965,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784019188,
+      "floor_reached": 29,
+      "killed_by": "Cultist and Chosen",
+      "playtime": 147,
+      "run_file": "1784019188.run",
+      "start_unix": 1784019041,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784019404,
+      "floor_reached": 33,
+      "killed_by": "Champ",
+      "playtime": 211,
+      "run_file": "1784019404.run",
+      "start_unix": 1784019193,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784019505,
+      "floor_reached": 16,
+      "killed_by": "Hexaghost",
+      "playtime": 96,
+      "run_file": "1784019505.run",
+      "start_unix": 1784019409,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784019619,
+      "floor_reached": 16,
+      "killed_by": "Slime Boss",
+      "playtime": 109,
+      "run_file": "1784019619.run",
+      "start_unix": 1784019510,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784019695,
+      "floor_reached": 16,
+      "killed_by": "Hexaghost",
+      "playtime": 72,
+      "run_file": "1784019695.run",
+      "start_unix": 1784019623,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784019948,
+      "floor_reached": 51,
+      "killed_by": "",
+      "playtime": 245,
+      "run_file": "1784019948.run",
+      "start_unix": 1784019703,
+      "victory": true
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784020099,
+      "floor_reached": 20,
+      "killed_by": "Snecko",
+      "playtime": 145,
+      "run_file": "1784020099.run",
+      "start_unix": 1784019954,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784020372,
+      "floor_reached": 33,
+      "killed_by": "Automaton",
+      "playtime": 268,
+      "run_file": "1784020372.run",
+      "start_unix": 1784020104,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784020460,
+      "floor_reached": 16,
+      "killed_by": "Slime Boss",
+      "playtime": 83,
+      "run_file": "1784020460.run",
+      "start_unix": 1784020377,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784020758,
+      "floor_reached": 33,
+      "killed_by": "Champ",
+      "playtime": 293,
+      "run_file": "1784020758.run",
+      "start_unix": 1784020465,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784020842,
+      "floor_reached": 16,
+      "killed_by": "Slime Boss",
+      "playtime": 79,
+      "run_file": "1784020842.run",
+      "start_unix": 1784020763,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784020891,
+      "floor_reached": 8,
+      "killed_by": "Lagavulin",
+      "playtime": 45,
+      "run_file": "1784020891.run",
+      "start_unix": 1784020846,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784020955,
+      "floor_reached": 16,
+      "killed_by": "Hexaghost",
+      "playtime": 59,
+      "run_file": "1784020955.run",
+      "start_unix": 1784020896,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784021144,
+      "floor_reached": 33,
+      "killed_by": "Collector",
+      "playtime": 183,
+      "run_file": "1784021144.run",
+      "start_unix": 1784020961,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784021236,
+      "floor_reached": 16,
+      "killed_by": "The Guardian",
+      "playtime": 87,
+      "run_file": "1784021236.run",
+      "start_unix": 1784021149,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784021340,
+      "floor_reached": 16,
+      "killed_by": "Hexaghost",
+      "playtime": 99,
+      "run_file": "1784021340.run",
+      "start_unix": 1784021241,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784021442,
+      "floor_reached": 16,
+      "killed_by": "Hexaghost",
+      "playtime": 97,
+      "run_file": "1784021442.run",
+      "start_unix": 1784021345,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784021613,
+      "floor_reached": 27,
+      "killed_by": "Shelled Parasite and Fungi",
+      "playtime": 166,
+      "run_file": "1784021613.run",
+      "start_unix": 1784021447,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784021729,
+      "floor_reached": 16,
+      "killed_by": "Hexaghost",
+      "playtime": 111,
+      "run_file": "1784021729.run",
+      "start_unix": 1784021618,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784021825,
+      "floor_reached": 16,
+      "killed_by": "The Guardian",
+      "playtime": 91,
+      "run_file": "1784021825.run",
+      "start_unix": 1784021734,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784021933,
+      "floor_reached": 16,
+      "killed_by": "Hexaghost",
+      "playtime": 103,
+      "run_file": "1784021933.run",
+      "start_unix": 1784021830,
+      "victory": false
+    },
+    {
+      "ai_marked": true,
+      "end_unix": 1784021999,
+      "floor_reached": 16,
+      "killed_by": "Hexaghost",
+      "playtime": 62,
+      "run_file": "1784021999.run",
+      "start_unix": 1784021937,
+      "victory": false
+    }
+  ],
+  "provenance_comparison": {
+    "expected_source_commit": "2006df2be20151afd759e9fc4deef320bc1f599d",
+    "manifest_source_commit": "2006df2be20151afd759e9fc4deef320bc1f599d",
+    "mismatches": [],
+    "verified": true
+  },
+  "provenance_verified": true,
+  "run_allowlist": [
+    "1784018890.run",
+    "1784018960.run",
+    "1784019036.run",
+    "1784019188.run",
+    "1784019404.run",
+    "1784019505.run",
+    "1784019619.run",
+    "1784019695.run",
+    "1784019948.run",
+    "1784020099.run",
+    "1784020372.run",
+    "1784020460.run",
+    "1784020758.run",
+    "1784020842.run",
+    "1784020891.run",
+    "1784020955.run",
+    "1784021144.run",
+    "1784021236.run",
+    "1784021340.run",
+    "1784021442.run",
+    "1784021613.run",
+    "1784021729.run",
+    "1784021825.run",
+    "1784021933.run",
+    "1784021999.run"
+  ],
+  "schema_version": "known-propensity-bounded-eval-export-v1",
+  "session_id": "known-propensity-eval-20260714-b4",
+  "source_commit": "2006df2be20151afd759e9fc4deef320bc1f599d",
+  "validation_summary": {
+    "candidate_legal": 272,
+    "confirmed": 272,
+    "eligible_proposals": 272,
+    "enabled_categories": [
+      "card_reward",
+      "shop"
+    ],
+    "excluded": 0,
+    "exclusion_reasons": {},
+    "exported": 272,
+    "isolation_verified": true,
+    "outcome_matched": 272,
+    "proposed_records": 272,
+    "provenance_verified": true,
+    "replay_valid": 272,
+    "resolution_records": 272,
+    "shadow_only": 0
+  }
+}

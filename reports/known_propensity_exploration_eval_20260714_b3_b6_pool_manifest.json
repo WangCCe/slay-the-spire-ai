@@ -1,0 +1,49 @@
+{
+  "behavior_policy_commits": [
+    "2006df2be20151afd759e9fc4deef320bc1f599d"
+  ],
+  "behavior_policy_ids": [
+    "known-propensity-epsilon-v1:known-propensity-eval-20260714-b3",
+    "known-propensity-epsilon-v1:known-propensity-eval-20260714-b4",
+    "known-propensity-epsilon-v1:known-propensity-eval-20260714-b5",
+    "known-propensity-epsilon-v1:known-propensity-eval-20260714-b6"
+  ],
+  "category_arm_support": {
+    "card_reward:alternative": 45,
+    "card_reward:baseline": 796,
+    "shop:alternative": 5,
+    "shop:baseline": 150
+  },
+  "output_file": "known_propensity_exploration_eval_20260714_b3_b6_samples.jsonl",
+  "output_sha256": "9e50338e28a5402b91be000943ce561a4948f968708ac8d46b7a9b54d3b16df1",
+  "sample_count": 996,
+  "schema_version": "known-propensity-sample-pool-v1",
+  "sources": [
+    {
+      "file": "known_propensity_exploration_eval_20260714_b3_samples.jsonl",
+      "sample_count": 230,
+      "sha256": "b7f8f88e2b418e54cee8c1d8a646e613122b0be531b9d068ea5a16966ddf87f2",
+      "trajectory_count": 25
+    },
+    {
+      "file": "known_propensity_exploration_eval_20260714_b4_samples.jsonl",
+      "sample_count": 272,
+      "sha256": "2ec6a286299a0bda0f5cd4c09638c975aefe81df17e1452356293c44b148ef5a",
+      "trajectory_count": 25
+    },
+    {
+      "file": "known_propensity_exploration_eval_20260714_b5_samples.jsonl",
+      "sample_count": 245,
+      "sha256": "fbd4d9ea8251254bc0780db9682b7b7afc813c07c0b9c98d64c93a54e0c3ad98",
+      "trajectory_count": 25
+    },
+    {
+      "file": "known_propensity_exploration_eval_20260714_b6_samples.jsonl",
+      "sample_count": 249,
+      "sha256": "3a04a11bd2cf0c6e5a84713afcda043586b9ad4f5efc1418922d62b703990729",
+      "trajectory_count": 25
+    }
+  ],
+  "trajectory_count": 100,
+  "victories": 1
+}

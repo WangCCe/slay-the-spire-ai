@@ -1,0 +1,11 @@
+{
+  "ai_marker_count": 14825,
+  "captured_at_unix": 1784014916,
+  "ironclad_run_count": 1000,
+  "latest_ai_marker": 1783993179,
+  "latest_ironclad_run": "1783993176.run",
+  "pre_isolation_file": "known_propensity_exploration_eval_20260714_b3_pre_isolation.json",
+  "schema_version": "known-propensity-launch-baseline-v1",
+  "session_id": "known-propensity-eval-20260714-b3",
+  "source_commit": "2006df2be20151afd759e9fc4deef320bc1f599d"
+}

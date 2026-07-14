@@ -1,0 +1,6145 @@
+{
+  "blockers": [
+    "complete_trajectory_count_below_minimum",
+    "effective_sample_size_below_minimum",
+    "estimator_validation_not_implemented",
+    "nonzero_weight_trajectory_count_below_minimum",
+    "primary_outcome_degenerate"
+  ],
+  "contracts": {
+    "canonical_sample_schema_version": "noncombat-rl-decision-v3",
+    "outcome_contract_version": "noncombat-ope-outcome-contract-v1",
+    "overlap_screen_policy_version": "noncombat-ope-overlap-screen-v1",
+    "primary_outcome": "victory",
+    "secondary_outcome": "floor_reached",
+    "target_policy_schema_version": "noncombat-ope-target-policy-v1",
+    "terminal_horizon": "complete_run"
+  },
+  "diagnostics": {
+    "category_arm_support": {
+      "card_reward": {
+        "baseline": {
+          "decision_count": 211,
+          "trajectory_count": 25
+        }
+      },
+      "shop": {
+        "baseline": {
+          "decision_count": 46,
+          "trajectory_count": 24
+        }
+      }
+    },
+    "decision_count": 257,
+    "effective_sample_size": {
+      "denominator": 1,
+      "numerator": 25,
+      "value": 25.0
+    },
+    "ess_fraction": {
+      "denominator": 1,
+      "numerator": 1,
+      "value": 1.0
+    },
+    "max_normalized_weight": {
+      "denominator": 25,
+      "numerator": 1,
+      "value": 0.04
+    },
+    "nonzero_weight_count": 25,
+    "outcome_variation": {
+      "floor_reached": {
+        "maximum": 33,
+        "minimum": 10,
+        "unique_count": 10
+      },
+      "victory": {
+        "false": 25,
+        "true": 0,
+        "unique_count": 1
+      }
+    },
+    "trajectory_count": 25,
+    "trajectory_weights": [
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-4e01e2d2f1a90596f86a6782c41942fe",
+            "selected_action_id": "card_reward:take:heavy_blade",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-f41ca788eb58d8487adbb247ff1bca29",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-6c7f7f99bb93d98d04692071abee4e15",
+            "selected_action_id": "card_reward:take:hemokinesis",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-e0de4e7f81802be98277ab50238389e3",
+            "selected_action_id": "card_reward:take:heavy_blade",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-73dce64dd107cd47c200ba90708d1749",
+            "selected_action_id": "card_reward:take:immolate",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-1c58a83b4666bd8ceacf9e5e91117676",
+            "selected_action_id": "card_reward:take:ghostly_armor",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-8f3f7eec4c02bc33d928e778747c6468",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-d04b428fedea84946b4c0a7ef2ce8026",
+            "selected_action_id": "card_reward:take:metallicize",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784028772",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-0e836e77263537d98db3b47cbabc5175",
+            "selected_action_id": "card_reward:take:uppercut",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-2b5450c774408aa6966d1dc7084aefb4",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-f0c8602598ad69da9c340da7fbfa79a7",
+            "selected_action_id": "shop:buy_card:perfected_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-db45c58e5c39390d431cf94c0d58c47f",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-0fe932532edb9fefb46ccfc871eebb4d",
+            "selected_action_id": "card_reward:take:twin_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-429eeacd9eaa3a90653428037b2ae99e",
+            "selected_action_id": "card_reward:take:burning_pact",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-cd69e102def506ca88e3feb6a1d30421",
+            "selected_action_id": "card_reward:take:flame_barrier",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-1ce5cd10deeb9260dc97b765805de237",
+            "selected_action_id": "card_reward:take:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-1c7545ca32544aed1901eefa4ef963bd",
+            "selected_action_id": "card_reward:take:clothesline",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-cc439cc09bf5dd46494c694580124661",
+            "selected_action_id": "card_reward:take:corruption",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-889207a44eba92c165613187d1f6730e",
+            "selected_action_id": "card_reward:take:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784028927",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-b4a4990b27ef440b85291872d5d190bf",
+            "selected_action_id": "card_reward:take:perfected_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-8dae429a2fc694dc2424fce7a4382da0",
+            "selected_action_id": "card_reward:take:rage",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-6e5cb617c18af8cbabc85048d4e3f73d",
+            "selected_action_id": "shop:buy_card:rampage",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-6dd5e6708792de79d7347831f6526354",
+            "selected_action_id": "card_reward:take:twin_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-2a5e8f7e7f50982d0e08dcf66234f780",
+            "selected_action_id": "card_reward:take:clothesline",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-852eff7e9416fcf6fe5626ef23c1b581",
+            "selected_action_id": "card_reward:take:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-033101edecfb39b40f9d9448a2413ab5",
+            "selected_action_id": "card_reward:take:true_grit",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-84941f73eecb42323d9bb5b3649ceb88",
+            "selected_action_id": "card_reward:take:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-6bbf4c78b6dfd2e093f454a3e73b06d3",
+            "selected_action_id": "card_reward:take:immolate",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-96e7a4ccc30c44080626a2035628be23",
+            "selected_action_id": "card_reward:take:power_through",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784029031",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-5a20121022603d6b88ecccd3c980c4c6",
+            "selected_action_id": "card_reward:take:heavy_blade",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-17f68fa4145d91d32ea8a6cc6f4bab58",
+            "selected_action_id": "card_reward:take:true_grit",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-d93ef923ef08f16dc219bf57f4eb23f2",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-dc34f0d8ee9958a0e53924519923a46d",
+            "selected_action_id": "card_reward:take:twin_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-41af6a444b4bd8796a7d242208613dcd",
+            "selected_action_id": "card_reward:take:carnage",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-e7eab144d033fec064ecd73b886d05cc",
+            "selected_action_id": "card_reward:take:bludgeon",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-d076f288fa44209f590160aa8135980e",
+            "selected_action_id": "card_reward:take:iron_wave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-2bfea91fa05dbcfc356558daa818859b",
+            "selected_action_id": "card_reward:take:fiend_fire",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-027d4cfea25a2f3dab784235f0701f87",
+            "selected_action_id": "card_reward:take:combust",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-c20ac8a9cda89db7584f3e2a6a33476d",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784029141",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-c8aa8b49a4c4d09f4602111615926f64",
+            "selected_action_id": "card_reward:take:dramatic_entrance",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-67b57cb425ab5c628191b6756dfa464b",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-c6a7b09d186fd780c14db6d9a2158277",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-27fe8154f60e4941a539cf8261ea1525",
+            "selected_action_id": "card_reward:take:rage",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-06f9f92e2c5807e1664bb0b1327c3add",
+            "selected_action_id": "card_reward:take:uppercut",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-9628cb6bfcb0f315205f890d21f8f794",
+            "selected_action_id": "card_reward:take:clothesline",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-0d26d61ca5fe80b6e893c58262c963ca",
+            "selected_action_id": "shop:buy_card:perfected_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-8ff0c9965e67f5a2ad0f1ff7629a800b",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-4c3355ab25d7bf84d8b2f8375054b9ed",
+            "selected_action_id": "card_reward:take:spot_weakness",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-a5d69749851a2812bce0e0b0a652d3cf",
+            "selected_action_id": "card_reward:take:headbutt",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-57e3cc5fcf7cca2ad1449d0d17ed5705",
+            "selected_action_id": "card_reward:take:hemokinesis",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-4d76bda1d704e2f62a2c24e18d59f355",
+            "selected_action_id": "card_reward:take:disarm",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-ef2b4bd692183dfa94c464685076a685",
+            "selected_action_id": "card_reward:take:immolate",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-d3cdb2e81f840517f5f4357a5d9d9522",
+            "selected_action_id": "card_reward:take:spot_weakness",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-9724a6c47b90b1a4df3dd37d5f34ec12",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-2301a0a715ec87e6bec5643ea865d89f",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-ce993a78e78730afb547447789b5eea4",
+            "selected_action_id": "card_reward:take:thunderclap",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784029281",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-9774cb8acb7bffc719254665366502a3",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-4ed3c40ca1a3039e09b04e23de8c43a2",
+            "selected_action_id": "card_reward:take:perfected_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-883497200b48f25358e662a149feee31",
+            "selected_action_id": "card_reward:take:true_grit",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-608b52c6ccc351a25f8a8264cc59d1c6",
+            "selected_action_id": "card_reward:take:second_wind",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-5ba982d67d9fd0d08c069f7cf2643fb1",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-23f36636448e04849b2c40d481cd1e06",
+            "selected_action_id": "card_reward:take:clothesline",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-2402c439447ab0b3ac7a755dd9c83a0a",
+            "selected_action_id": "card_reward:take:iron_wave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-06a58b8d9baced4548f0f52d97588fb9",
+            "selected_action_id": "card_reward:take:immolate",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-bdc754c2c7437f7983fc547bce8adb5a",
+            "selected_action_id": "card_reward:take:cleave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-bfa77898466dc14b3f645d4d37d8c3a0",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-b02f8e7c881e7d84c7ce3568eed69dba",
+            "selected_action_id": "shop:buy_relic:preserved_insect",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-7f15a9f39d58c54fbaaf22264450c506",
+            "selected_action_id": "card_reward:take:armaments",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-3f4b2d36d9573ba158387add5becb190",
+            "selected_action_id": "card_reward:take:shockwave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-9cc5007f4829466cfd4ef43b7346b0ee",
+            "selected_action_id": "card_reward:take:cleave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784029456",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-f054c3d3d42d0a38d3b61a397a7a3c34",
+            "selected_action_id": "card_reward:take:power_through",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-f29a9a13b6068f363006b4bfb7c3a36c",
+            "selected_action_id": "card_reward:take:thunderclap",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-f0a590b0c6377e52695a4324ac768c87",
+            "selected_action_id": "card_reward:take:clothesline",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-3d89e2209e461dc2ac8b43f78f78ebba",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-6dad5745dd45abc3512ab046ec31ad7c",
+            "selected_action_id": "card_reward:take:bloodletting",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-272da0b3d7063473a9313f21b0eab0d6",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-2aeec1c53052c4e345f29712b6e2e96d",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-23c4cded6fd9cb2266729aa0d2f2b2a3",
+            "selected_action_id": "card_reward:take:seeing_red",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-521ee30274b84f3a2ebeb2ea06bf91b9",
+            "selected_action_id": "card_reward:take:true_grit",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784029563",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-3dfc5c786324f7d36f11ace73ff9c03b",
+            "selected_action_id": "card_reward:take:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-cf497997eb9938e783623d84637e72a9",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-f83c9312fbf4c1fdcdab2c2c3766bc47",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-a02c0beef7f39e28baa47760f0d2930c",
+            "selected_action_id": "card_reward:take:clothesline",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-cfe9717e5fb817334eb2f1dcf6b51d23",
+            "selected_action_id": "card_reward:take:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-30b09696ffcaef611cea1b661bc75729",
+            "selected_action_id": "card_reward:take:heavy_blade",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-461d1aa03d6a9ee3ec6e3bebbf129026",
+            "selected_action_id": "card_reward:take:armaments",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-93217ea64ddd69f3627a54555e8167be",
+            "selected_action_id": "shop:buy_card:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-4959ea4cee842edd1ecb8632163ef2a5",
+            "selected_action_id": "card_reward:take:second_wind",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-b80bbe81bbb11dbc648b70c175e4f999",
+            "selected_action_id": "card_reward:take:double_tap",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-611c8ed122367d88398e365d4f9072ec",
+            "selected_action_id": "card_reward:take:armaments",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-e555dd09a70a9fcc0fbf6c67813178f9",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-c540b04ce975fd97659e1b6aba38729f",
+            "selected_action_id": "card_reward:take:heavy_blade",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784029723",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-cc64e73c014afd8930475ba8a3776e72",
+            "selected_action_id": "card_reward:take:cleave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-307d3deb46e8431e80765cf9f8e5b7f8",
+            "selected_action_id": "card_reward:take:dual_wield",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-3511d6dee6146245603a500f7d1a751e",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-8213c08bc60b04edd92ec8f347e5aded",
+            "selected_action_id": "card_reward:take:ghostly_armor",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-df3b73ce7e116c6b3b9aafc7dc9565e5",
+            "selected_action_id": "card_reward:take:twin_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-1ccd39f79a2e31d4bb06fcaaabc66204",
+            "selected_action_id": "card_reward:take:dual_wield",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-f0ebcbcd08785faf06d51522dcd7f98c",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-3d1bf9d1162d652d1104ed2e4ea381dc",
+            "selected_action_id": "card_reward:take:thunderclap",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784029806",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-ce00cf61903a66c0488082ad9b862883",
+            "selected_action_id": "card_reward:take:headbutt",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-49cac20854d480cf717e77efe47ac30c",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-359437282fc0328a1740b71bc0a81313",
+            "selected_action_id": "card_reward:take:clothesline",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-f46e8318dd272174f33e13441a0af421",
+            "selected_action_id": "card_reward:take:clothesline",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-a372707c5f4e457a66ac563a47444cef",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-9c249a25603635185d44a2445523f319",
+            "selected_action_id": "card_reward:take:ghostly_armor",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-bf5e179f848eaf5d18ca069391f9c318",
+            "selected_action_id": "card_reward:take:cleave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-1be4eb2b12a0cf148b2516667343e8cb",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-87f391ec0c177f03ec2629788e8897cb",
+            "selected_action_id": "card_reward:take:ghostly_armor",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784029890",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-e2eea2a3e2466b4759f36826d1edfe6e",
+            "selected_action_id": "card_reward:take:panacea",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-99ace8e734ea4fc3a4d08908a0672391",
+            "selected_action_id": "card_reward:take:whirlwind",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-1477802eaca01ddcd79c30a91834a210",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-1f4de4f73ed4d18723715fb44144d112",
+            "selected_action_id": "card_reward:take:clothesline",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-3f1973fb619ac5bf460ff8d77b4bd977",
+            "selected_action_id": "card_reward:take:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-3864d775cac36ecbfc4238146276b33e",
+            "selected_action_id": "card_reward:take:uppercut",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-0534d2969f41ec152841d7282317f566",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-5da7c196bce83da6403985a578fe47e0",
+            "selected_action_id": "card_reward:take:immolate",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784029963",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-b5517247a1c8bfdfdb8152f2d249f93e",
+            "selected_action_id": "card_reward:take:blood_for_blood",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-292fcfabe37ca8b869aa947f7e6dfec7",
+            "selected_action_id": "card_reward:take:disarm",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-2968e4fe7fba1a16189a24614b3be840",
+            "selected_action_id": "card_reward:take:heavy_blade",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-cf79e787d1bdfa46b4840e3a229e233c",
+            "selected_action_id": "card_reward:take:uppercut",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-30547c2c7a3d1534551a1373a035a508",
+            "selected_action_id": "card_reward:take:shockwave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-dbebb3b08240acc73dbe54b51390aa3b",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-c4d0b07e80ba0180cc9773e060d97652",
+            "selected_action_id": "card_reward:take:iron_wave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-990a19a869247a8e2ea987044bf51b39",
+            "selected_action_id": "card_reward:take:spot_weakness",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-4ce3c3c5a53d7d285eab6211ed7ec947",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-b191c3822b0196f2b56795887718c71d",
+            "selected_action_id": "shop:buy_card:battle_trance",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-fdd10d3a51c7eb841433f33f98af2bd3",
+            "selected_action_id": "card_reward:take:bludgeon",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-aea1ecfdbd1db489f2d5e48dceca3885",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-c13c100172290e1dc626e59be9d2b591",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-66f96bcf54cd7f24b53fa2f5f83c3642",
+            "selected_action_id": "card_reward:take:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-cf12a0362e024fa9075ce59ef776d86e",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784030130",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-b59a86ab37fab78803c42dbf91bb5985",
+            "selected_action_id": "card_reward:take:finesse",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-0bbd80c845dd64c4ef90b5d00b25a7ef",
+            "selected_action_id": "card_reward:take:cleave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-14ef3e530ae80b6d794479a641ce7465",
+            "selected_action_id": "card_reward:take:iron_wave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-44fbc4e748b445dc8ff3da2513dc09d1",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-4a390a576fef8905ea16fe4ccb425b65",
+            "selected_action_id": "card_reward:take:clothesline",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-99f93c4d17eaa55288ea513fc6d8ef49",
+            "selected_action_id": "card_reward:take:hemokinesis",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-fb761ea99a3a6cc2b49c60113acf7231",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-d753d421dea88579d15ef0992b388690",
+            "selected_action_id": "card_reward:take:carnage",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784030211",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-ffc9191bf70d8b8bb4b7d2cccbdca039",
+            "selected_action_id": "card_reward:take:dramatic_entrance",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-e9daf1e38ed59d00577ceb4cd6818d09",
+            "selected_action_id": "card_reward:take:twin_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-f95f1972a9b89837ab2f165c1fed6ea5",
+            "selected_action_id": "card_reward:take:carnage",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-58015d25951dc0d0268cd098a6a274bb",
+            "selected_action_id": "card_reward:take:headbutt",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-fe046334f68b1e4bc67d2ab55d5d4acf",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-afa84df37bce912b188059d9ef764b8e",
+            "selected_action_id": "card_reward:take:uppercut",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-4cc6d9bc04b2d7b3d8e6fe14beaae146",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784030271",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-49c4925bb2bd396284271f6eb195b74d",
+            "selected_action_id": "card_reward:take:thunderclap",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-50ef1dbef6b4d2d928b8f025d2aa719f",
+            "selected_action_id": "card_reward:take:twin_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-8a2a20060e80b838db2457050fdc04ae",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-87174cea21f8c5148fadeeceb239cf28",
+            "selected_action_id": "card_reward:take:true_grit",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-2b1d36a5da41d37cdedd43e85773a0ea",
+            "selected_action_id": "card_reward:take:twin_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-dfc53e194c0e64076b5c2ae45068440a",
+            "selected_action_id": "card_reward:take:intimidate",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-6373147b0d0274c3eaaf02fb0433c3fe",
+            "selected_action_id": "card_reward:take:offering",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-454c922d77af42d70bf2d48ea6f95a93",
+            "selected_action_id": "card_reward:take:battle_trance",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784030357",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-5b681ded101257b4ec2b7edc26e8ed6f",
+            "selected_action_id": "card_reward:take:second_wind",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-fb50289b45ff8c7e8913b1935290ffbb",
+            "selected_action_id": "card_reward:take:heavy_blade",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-8e717ea660795ff92d5536cddeba38ee",
+            "selected_action_id": "card_reward:take:twin_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-5a72f6733be7f9f9ae358a52007700d9",
+            "selected_action_id": "card_reward:take:offering",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-f697b60fe5837c2d248f4a3cbefdda11",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-5cec6ac60742e66a56ab2a3636bb6957",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-3ab0bbb8b96a5fd7e247eef3fc02ab3c",
+            "selected_action_id": "card_reward:take:havoc",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-cf025dfb1cea5070a477a34f6f35c717",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-c917cb30ef68cf7e9581661992bbba9b",
+            "selected_action_id": "shop:buy_card:shockwave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-d0760b9592d4e9c8da99f790debe974f",
+            "selected_action_id": "shop:buy_potion:block_potion",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-27b1bae3d10224e6f615e09571f6b01a",
+            "selected_action_id": "card_reward:take:disarm",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784030455",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-542f03547ba3eaa671ca102c840e1a6a",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-5c752e5bf6bf0d046530c0105d0f54ce",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-19136cc344f365fc6a9e9eac25668e9d",
+            "selected_action_id": "card_reward:take:power_through",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-672cc88a3fba4abb5c2d39a0e3b68e6b",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-2228241d6803d91f187ecd11d2de7083",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-05781a5fd0eb806c3fb41391a9495d98",
+            "selected_action_id": "card_reward:take:sword_boomerang",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-3496f944d037039f1d5bc3ca5484d96a",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-3ce3460f39210440948566f0ab23f4ad",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-69c344369c092198e3c8a15cd328b63a",
+            "selected_action_id": "card_reward:take:flame_barrier",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784030544",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-5b4d31694764786006b02837d08e6932",
+            "selected_action_id": "card_reward:take:dramatic_entrance",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-de1de9c496eff15bbc3139604b89e8bb",
+            "selected_action_id": "card_reward:take:perfected_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-2312d07717ab92c1d8e93641060e5ca5",
+            "selected_action_id": "card_reward:take:burning_pact",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-1984e71802acf5a651cfb5a3142ae367",
+            "selected_action_id": "card_reward:take:rampage",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-fca315e046a381198527a3f942d5c0d2",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-755bb1ed4efbd620d0bca0306932f1a3",
+            "selected_action_id": "card_reward:take:reaper",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-9f07061b1c0517007e700e5c1bb0c58f",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-edd2af5d280b9694c70cb540aa2fcdcb",
+            "selected_action_id": "card_reward:take:twin_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-b59c186b6986da2c79f0ff4d4e16fea3",
+            "selected_action_id": "card_reward:take:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784030625",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-3918f7c0b69c47724c41ea60cd031616",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-29317977c05fe2bb167da18962f85379",
+            "selected_action_id": "card_reward:take:iron_wave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-87f1cb31ee3fb83f8acf553ec408a127",
+            "selected_action_id": "card_reward:take:hemokinesis",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-909ae7dd40f991f47e1231bc077f801f",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-61176ea28c75d7c00e05d4723827e8fb",
+            "selected_action_id": "card_reward:take:headbutt",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-2a888e15e62fb07ba5d1c68f3b2cbefe",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-456d2875f38fd70a8436c03c0d00ed5a",
+            "selected_action_id": "card_reward:take:flame_barrier",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-c7cad8d57d50e202f6d2202f497ec072",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-b53c1a1680bb98d00a2888371137237f",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784030706",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-b1fcbfbd9014d71f1efdb4d2e4a2ec22",
+            "selected_action_id": "card_reward:take:uppercut",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-e62365ee68c5175eb73f13b397b52601",
+            "selected_action_id": "card_reward:take:disarm",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-12ec102bf14b80dd94f5c5868c809200",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-37d225d562a866fff5171734b2a2dba0",
+            "selected_action_id": "card_reward:take:armaments",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-5c9763460bf1fbde593eee2fc706ebf3",
+            "selected_action_id": "card_reward:take:true_grit",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-72af81707453dc4a0aa9f602c765e8c3",
+            "selected_action_id": "card_reward:take:flame_barrier",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-d0854c896d44787c8fe64faeb664bbe7",
+            "selected_action_id": "card_reward:take:sever_soul",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-54c65acb0ce8ab840c8c03a3ab1b56a6",
+            "selected_action_id": "card_reward:take:twin_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784030786",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-893ffe6c93a42bf016424d301bd6d947",
+            "selected_action_id": "card_reward:take:intimidate",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-412e9b5e135b481de9f2a6a7d2558131",
+            "selected_action_id": "card_reward:take:perfected_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-1f9749bb36cc2ef03837cb1eefceddf6",
+            "selected_action_id": "card_reward:take:sword_boomerang",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-a2ea4f83f10281c1b8afacdfe9151c88",
+            "selected_action_id": "card_reward:take:carnage",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-59336f814ddbca36474ad3827ce83af1",
+            "selected_action_id": "card_reward:take:whirlwind",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-80ae6ec88d2c2b3b20664fc166aa43af",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-c7e4700f47c7798e0fefe04b6ec38b50",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-cc31477c187bb085f4f7de6f97d53bd8",
+            "selected_action_id": "shop:buy_card:battle_trance",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-f03730a58b10e67de524e3b874a6a1e1",
+            "selected_action_id": "card_reward:take:impervious",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-351e930bd0ff93dbec89b3d38496888a",
+            "selected_action_id": "card_reward:take:headbutt",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-4e7a3cce6ee659e62206aa8b581454d6",
+            "selected_action_id": "card_reward:take:second_wind",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-796613c2c9caf54e47a4ab42e3ef10a0",
+            "selected_action_id": "card_reward:take:thunderclap",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784030894",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-275fd5c0d8fb022feb71d2d2d0782723",
+            "selected_action_id": "card_reward:take:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-15a805d8d1cf85c8fefad23a4c226b90",
+            "selected_action_id": "shop:buy_card:perfected_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-43cde20e828d2aa3a9c12cb21c866de3",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-fa0ce8d4925f9f343dda1b9de25588d9",
+            "selected_action_id": "shop:buy_card:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-7bb5ace8944436c182398cd05219d650",
+            "selected_action_id": "card_reward:take:cleave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-7c3bbf3e1ed72c0adaa5055e650569ed",
+            "selected_action_id": "card_reward:take:carnage",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-d9e524171bf0740e3a1c5f5c3e22ade6",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-3da4bbbd1a4c654e88804117751de350",
+            "selected_action_id": "card_reward:take:twin_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-64495da0ac166aee845a4860cae2a6b4",
+            "selected_action_id": "card_reward:take:immolate",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-c0b8a00a209953e93d19ce0a0190655f",
+            "selected_action_id": "card_reward:take:second_wind",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-815cdfab49cac9e1d455b7fc210a4f37",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-9fa1f03f47544ca084d2648ac1ec1fe2",
+            "selected_action_id": "card_reward:take:pommel_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-feb255c72789f63f1da5de045cc9290d",
+            "selected_action_id": "card_reward:take:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-02631658672b2b9471c115609feb3d08",
+            "selected_action_id": "card_reward:take:clothesline",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-2972cae47021d3fb4c21af7ff8b073f5",
+            "selected_action_id": "card_reward:take:battle_trance",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-92b086bc50d3618da04b76f8c1e7efd2",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-4c87a270fe3a1cecb8b9c9520c2ba851",
+            "selected_action_id": "shop:buy_relic:bag_of_preparation",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784031108",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-dbbed343e5d964bc7c9be25bbd2eebdd",
+            "selected_action_id": "card_reward:take:mind_blast",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-9eeb3a3e6a0aeface69bc5d3e2005d04",
+            "selected_action_id": "card_reward:take:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-c1b5bbe74dc0ddfe7b24397d071b3166",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-e308df0d4a2116a30030001186a9e0ad",
+            "selected_action_id": "card_reward:take:shrug_it_off",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-ba573bd2187187b358570f2ec810a273",
+            "selected_action_id": "card_reward:take:second_wind",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-1a12fb4595b6bdf916a9c70fe8e3c440",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784031152",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-19f5ee761906f5aaf78a39f2d3a350b1",
+            "selected_action_id": "card_reward:take:uppercut",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-a12ca45794d13c6770764d85b0e8f972",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-6559b93979a102fe192db09f516ee190",
+            "selected_action_id": "card_reward:take:second_wind",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-65a134713a457f0c47a4f2c4740f4713",
+            "selected_action_id": "card_reward:take:iron_wave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-61b49c4193b998b4b9998c8c202e4d2a",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-53af0d68cfc614df2220320df7aabfaa",
+            "selected_action_id": "card_reward:take:carnage",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-dba2e806ef55a5dfd39d274cb235cc25",
+            "selected_action_id": "card_reward:take:twin_strike",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-b5ae551c8479ee062daa068082520158",
+            "selected_action_id": "card_reward:take:thunderclap",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-df248ffd936cd767d240114b01b4cc32",
+            "selected_action_id": "card_reward:take:bloodletting",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784031241",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      },
+      {
+        "decisions": [
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-5ea2482ba5ce2e6eacef69577d9bac31",
+            "selected_action_id": "card_reward:take:whirlwind",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-5ca2b976ae720c2a32217f6c0e6c0e90",
+            "selected_action_id": "card_reward:take:armaments",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-7dae6391b50416701088e194aec28c70",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-cd88bbbb25445b98255616013f6d377c",
+            "selected_action_id": "card_reward:take:anger",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-4b7d4c60af248d35d84ae2f9fe2fc438",
+            "selected_action_id": "card_reward:take:iron_wave",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-092f4fb1f4b4199529267c0d4a1d56ca",
+            "selected_action_id": "card_reward:take:headbutt",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "shop",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-b25860e6e576b00dc9636bb5510b5251",
+            "selected_action_id": "shop:purge",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-a228944a97ceeb7d4d8d3e96abbab9ff",
+            "selected_action_id": "card_reward:take:burning_pact",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-12b16724eb24765220e2061649e7b8f5",
+            "selected_action_id": "card_reward:take:bludgeon",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-c19c33d029763eaf6ed7438e41aa9cb4",
+            "selected_action_id": "card_reward:take:reaper",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-82dad2cba6d0cf023f0eb976d9bf4f03",
+            "selected_action_id": "card_reward:take:sever_soul",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          },
+          {
+            "behavior_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            },
+            "category": "card_reward",
+            "ratio": {
+              "denominator": 1,
+              "numerator": 1,
+              "value": 1.0
+            },
+            "sample_id": "decision-6b58ed38c1278519b21a9ea23bdc116a",
+            "selected_action_id": "card_reward:take:headbutt",
+            "selected_arm": "baseline",
+            "target_probability": {
+              "denominator": 1000,
+              "numerator": 999,
+              "value": 0.999
+            }
+          }
+        ],
+        "group_id": "run:1784031392",
+        "weight": {
+          "denominator": 1,
+          "numerator": 1,
+          "value": 1.0
+        }
+      }
+    ],
+    "weight_sum": {
+      "denominator": 1,
+      "numerator": 25,
+      "value": 25.0
+    },
+    "zero_weight_count": 0,
+    "zero_weight_fraction": {
+      "denominator": 1,
+      "numerator": 0,
+      "value": 0.0
+    }
+  },
+  "identity_self_check": {
+    "applicable": true,
+    "mismatches": [],
+    "passed": true,
+    "unweighted_outcomes": {
+      "floor_reached_mean": {
+        "denominator": 25,
+        "numerator": 487,
+        "value": 19.48
+      },
+      "victory_mean": {
+        "denominator": 1,
+        "numerator": 0,
+        "value": 0.0
+      }
+    },
+    "weighted_outcomes": {
+      "floor_reached_mean": {
+        "denominator": 25,
+        "numerator": 487,
+        "value": 19.48
+      },
+      "victory_mean": {
+        "denominator": 1,
+        "numerator": 0,
+        "value": 0.0
+      }
+    }
+  },
+  "limitations": [
+    "No OPE estimator, policy value, uplift, or confidence interval is computed.",
+    "Overlap screens reject weak support but do not validate an estimator.",
+    "Terminal outcomes remain separate diagnostics, not a formal RL reward."
+  ],
+  "overlap_screens": {
+    "blockers": [
+      {
+        "code": "complete_trajectory_count_below_minimum",
+        "observed": 25,
+        "required": 100
+      },
+      {
+        "code": "nonzero_weight_trajectory_count_below_minimum",
+        "observed": 25,
+        "required": 50
+      },
+      {
+        "code": "effective_sample_size_below_minimum",
+        "observed": {
+          "denominator": 1,
+          "numerator": 25,
+          "value": 25.0
+        },
+        "required": {
+          "denominator": 1,
+          "numerator": 50,
+          "value": 50.0
+        }
+      },
+      {
+        "code": "primary_outcome_degenerate",
+        "observed": 1,
+        "required": 2
+      }
+    ],
+    "policy": {
+      "maximum_normalized_weight": {
+        "denominator": 10,
+        "numerator": 1,
+        "value": 0.1
+      },
+      "minimum_complete_trajectories": 100,
+      "minimum_effective_sample_size": {
+        "denominator": 1,
+        "numerator": 50,
+        "value": 50.0
+      },
+      "minimum_ess_fraction": {
+        "denominator": 2,
+        "numerator": 1,
+        "value": 0.5
+      },
+      "minimum_nonzero_weight_trajectories": 50,
+      "required_primary_outcome_unique_count": 2
+    },
+    "ready": false
+  },
+  "readiness": {
+    "causal_uplift_ready": false,
+    "estimator_validation_ready": false,
+    "formal_noncombat_rl_training_ready": false,
+    "identity_self_check_passed": true,
+    "input_valid": true,
+    "live_policy_promotion_ready": false,
+    "ope_ready": false,
+    "outcome_contract_ready": true,
+    "overlap_ready": false,
+    "target_policy_ready": true
+  },
+  "schema_version": "noncombat-ope-readiness-v1",
+  "source": {
+    "sample_file": "known_propensity_exploration_eval_20260714_b7_samples.jsonl",
+    "sample_sha256": "efd2deaa1a182b5c609561b11f9f799a471c95ce17d5585c7cebb84c235bbcbf",
+    "sample_size_bytes": 1632887,
+    "target_manifest_content_sha256": "f888af268fbd2bc5dbfeb6f30e36dd7f3dd56e775c71a86d9fdc0ff886b713a5",
+    "target_manifest_hash": "14f7f3613ecf399a40e3bebd95ce79b4db8c133f293aba59a313507a4e9d75fe"
+  },
+  "target_policy": {
+    "construction_mode": "behavior_identity",
+    "diagnostic_only": true,
+    "target_policy_commit": null,
+    "target_policy_id": "behavior_identity"
+  },
+  "trajectory_audit": {
+    "blocked_trajectories": [],
+    "complete_decision_count": 257,
+    "complete_trajectories": [
+      {
+        "decision_count": 8,
+        "group_id": "run:1784028772",
+        "outcome": {
+          "floor_reached": 16,
+          "killed_by": "Hexaghost",
+          "playtime": 54,
+          "run_file": "1784028772.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-3e62e56df0ec92f2043851dd21497040"
+      },
+      {
+        "decision_count": 11,
+        "group_id": "run:1784028927",
+        "outcome": {
+          "floor_reached": 22,
+          "killed_by": "Centurion and Healer",
+          "playtime": 149,
+          "run_file": "1784028927.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-a7570cc2cd8d02728c3cb30ecef7c90d"
+      },
+      {
+        "decision_count": 10,
+        "group_id": "run:1784029031",
+        "outcome": {
+          "floor_reached": 16,
+          "killed_by": "Hexaghost",
+          "playtime": 99,
+          "run_file": "1784029031.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-eb8c4aa0c6d3cf4e47eb78ea9144196e"
+      },
+      {
+        "decision_count": 10,
+        "group_id": "run:1784029141",
+        "outcome": {
+          "floor_reached": 21,
+          "killed_by": "Snake Plant",
+          "playtime": 105,
+          "run_file": "1784029141.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-734ac58a288935eb5da6fd42d3fea7cc"
+      },
+      {
+        "decision_count": 17,
+        "group_id": "run:1784029281",
+        "outcome": {
+          "floor_reached": 33,
+          "killed_by": "Collector",
+          "playtime": 135,
+          "run_file": "1784029281.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-0c7f296dd38ded833b344cc0a804f899"
+      },
+      {
+        "decision_count": 14,
+        "group_id": "run:1784029456",
+        "outcome": {
+          "floor_reached": 33,
+          "killed_by": "Collector",
+          "playtime": 170,
+          "run_file": "1784029456.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-81bd5f873d52c43ace26aab8a071f466"
+      },
+      {
+        "decision_count": 9,
+        "group_id": "run:1784029563",
+        "outcome": {
+          "floor_reached": 16,
+          "killed_by": "Slime Boss",
+          "playtime": 102,
+          "run_file": "1784029563.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-2ede56a88fcc741d7cf0eb47341b5452"
+      },
+      {
+        "decision_count": 13,
+        "group_id": "run:1784029723",
+        "outcome": {
+          "floor_reached": 24,
+          "killed_by": "Centurion and Healer",
+          "playtime": 154,
+          "run_file": "1784029723.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-be1fd4c2db2cf4a8155537edc4d3af27"
+      },
+      {
+        "decision_count": 8,
+        "group_id": "run:1784029806",
+        "outcome": {
+          "floor_reached": 16,
+          "killed_by": "The Guardian",
+          "playtime": 78,
+          "run_file": "1784029806.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-d0b46f305ed93436d51e24a80668e4af"
+      },
+      {
+        "decision_count": 9,
+        "group_id": "run:1784029890",
+        "outcome": {
+          "floor_reached": 16,
+          "killed_by": "Slime Boss",
+          "playtime": 79,
+          "run_file": "1784029890.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-a24728bd8da16376f562646bcd4e86da"
+      },
+      {
+        "decision_count": 8,
+        "group_id": "run:1784029963",
+        "outcome": {
+          "floor_reached": 16,
+          "killed_by": "The Guardian",
+          "playtime": 69,
+          "run_file": "1784029963.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-5136a044ebf79789d133a2c4284a7f07"
+      },
+      {
+        "decision_count": 15,
+        "group_id": "run:1784030130",
+        "outcome": {
+          "floor_reached": 30,
+          "killed_by": "Centurion and Healer",
+          "playtime": 161,
+          "run_file": "1784030130.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-8e393bc1acada3f9c2c31912d946640f"
+      },
+      {
+        "decision_count": 8,
+        "group_id": "run:1784030211",
+        "outcome": {
+          "floor_reached": 16,
+          "killed_by": "The Guardian",
+          "playtime": 77,
+          "run_file": "1784030211.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-b9930bd1215abfdbd7ec4eb60abd2124"
+      },
+      {
+        "decision_count": 7,
+        "group_id": "run:1784030271",
+        "outcome": {
+          "floor_reached": 16,
+          "killed_by": "Slime Boss",
+          "playtime": 55,
+          "run_file": "1784030271.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-1e9b5db05fed1ac1a6bf2c9cc4d9d7bb"
+      },
+      {
+        "decision_count": 8,
+        "group_id": "run:1784030357",
+        "outcome": {
+          "floor_reached": 19,
+          "killed_by": "Masked Bandits",
+          "playtime": 81,
+          "run_file": "1784030357.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-c26c45c6f5c452a290646dc964268a97"
+      },
+      {
+        "decision_count": 11,
+        "group_id": "run:1784030455",
+        "outcome": {
+          "floor_reached": 16,
+          "killed_by": "Hexaghost",
+          "playtime": 94,
+          "run_file": "1784030455.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-0551b11d781202c38949535340640f32"
+      },
+      {
+        "decision_count": 9,
+        "group_id": "run:1784030544",
+        "outcome": {
+          "floor_reached": 16,
+          "killed_by": "Hexaghost",
+          "playtime": 84,
+          "run_file": "1784030544.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-c5f0daabf611641ffd28dd5f77f336dd"
+      },
+      {
+        "decision_count": 9,
+        "group_id": "run:1784030625",
+        "outcome": {
+          "floor_reached": 16,
+          "killed_by": "The Guardian",
+          "playtime": 77,
+          "run_file": "1784030625.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-3f1d2b22247b4b7ce7ea65ceca536956"
+      },
+      {
+        "decision_count": 9,
+        "group_id": "run:1784030706",
+        "outcome": {
+          "floor_reached": 16,
+          "killed_by": "Slime Boss",
+          "playtime": 77,
+          "run_file": "1784030706.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-12bb5b0d0d800362e26ccf2bd044f7bc"
+      },
+      {
+        "decision_count": 8,
+        "group_id": "run:1784030786",
+        "outcome": {
+          "floor_reached": 12,
+          "killed_by": "Lots of Slimes",
+          "playtime": 75,
+          "run_file": "1784030786.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-31e7ff25b5a9d021c402445c8dd27981"
+      },
+      {
+        "decision_count": 12,
+        "group_id": "run:1784030894",
+        "outcome": {
+          "floor_reached": 22,
+          "killed_by": "Cultist and Chosen",
+          "playtime": 103,
+          "run_file": "1784030894.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-19a2672c45221ae2b30d1e70bc916a61"
+      },
+      {
+        "decision_count": 17,
+        "group_id": "run:1784031108",
+        "outcome": {
+          "floor_reached": 33,
+          "killed_by": "Automaton",
+          "playtime": 208,
+          "run_file": "1784031108.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-ef456ea92a6b289cd377616e06615a50"
+      },
+      {
+        "decision_count": 6,
+        "group_id": "run:1784031152",
+        "outcome": {
+          "floor_reached": 10,
+          "killed_by": "Exordium Thugs",
+          "playtime": 39,
+          "run_file": "1784031152.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-e94f90aa1f7794b0fad86fee954215d9"
+      },
+      {
+        "decision_count": 9,
+        "group_id": "run:1784031241",
+        "outcome": {
+          "floor_reached": 16,
+          "killed_by": "The Guardian",
+          "playtime": 84,
+          "run_file": "1784031241.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-35ced355b738623c5edd643e915e0f94"
+      },
+      {
+        "decision_count": 12,
+        "group_id": "run:1784031392",
+        "outcome": {
+          "floor_reached": 20,
+          "killed_by": "Snecko",
+          "playtime": 145,
+          "run_file": "1784031392.run",
+          "victory": false
+        },
+        "trajectory_session_id": "trajectory-cc70f5196356cce6abe38aebf00b7057"
+      }
+    ],
+    "complete_trajectory_count": 25,
+    "input_decision_count": 257
+  }
+}
