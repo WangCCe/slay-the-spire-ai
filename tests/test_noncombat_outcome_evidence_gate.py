@@ -269,13 +269,14 @@ def test_closeout_distinguishes_inconclusive_from_integrity_blocked(tmp_path):
     blocked = build_outcome_evidence_closeout(
         registration,
         run_lock_hash=RUN_LOCK_HASH,
-        pool_manifest_hash=POOL_HASH,
-        target_manifest_hash=TARGET_HASH,
+        pool_manifest_hash=None,
+        target_manifest_hash=None,
         slot_statuses=blocked_slots,
         metrics=_metrics(
             all_registered_slots_accounted=False,
             global_integrity_stop=True,
         ),
+        integrity_stop_reason="test integrity stop",
     )
 
     assert inconclusive["status"] == "inconclusive"
@@ -283,3 +284,31 @@ def test_closeout_distinguishes_inconclusive_from_integrity_blocked(tmp_path):
     assert blocked["gates"]["outcome_evidence_expansion_ready"] is False
     assert blocked["gates"]["formal_noncombat_rl_training_ready"] is False
     assert blocked["gates"]["live_policy_promotion_ready"] is False
+
+
+def test_global_stop_closeout_rejects_pool_or_ope_artifacts(tmp_path):
+    registration = _registration(tmp_path)
+    slots = [
+        {
+            "session_id": slot.session_id,
+            "slot_number": slot.slot_number,
+            "terminal_status": "unlaunched",
+        }
+        for slot in registration.slots
+    ]
+
+    with pytest.raises(OutcomeEvidencePoolError, match="must not bind"):
+        build_outcome_evidence_closeout(
+            registration,
+            run_lock_hash=RUN_LOCK_HASH,
+            pool_manifest_hash=POOL_HASH,
+            target_manifest_hash=TARGET_HASH,
+            slot_statuses=slots,
+            metrics=_metrics(
+                all_registered_slots_accounted=False,
+                global_integrity_stop=True,
+            ),
+            readiness_artifact={"readiness": {"overlap_ready": True}},
+            estimate_artifact={"gates": {"ope_estimate_ready": True}},
+            integrity_stop_reason="source lock drift",
+        )

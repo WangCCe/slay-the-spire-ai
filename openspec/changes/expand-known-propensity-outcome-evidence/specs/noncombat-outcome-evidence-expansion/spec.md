@@ -6,6 +6,7 @@ The system SHALL require a committed, versioned registration that fixes the outc
 #### Scenario: Registration is valid
 - **WHEN** the study registration is created
 - **THEN** it SHALL contain exactly 24 ordered slots of 25 games, deterministic session IDs and seeds, the fixed eval command contract, `card_reward=300` basis points, `shop=1000` basis points, a two-attempt per-run alternative budget, output naming rules, integrity rules, final evidence thresholds, and a canonical registration hash
+- **AND** it SHALL fix deterministic Current, the committed calibration artifact path, the deterministic bootstrap seed, the 95 percent confidence level, and exactly 10,000 production bootstrap replicates
 - **AND** it SHALL identify `card_reward:skip` and `shop:leave` as the only executable alternatives while event and route remain shadow-only
 
 #### Scenario: Registration-controlled value changes
@@ -78,6 +79,11 @@ The system SHALL finalize the registered study exactly once from every registere
 - **THEN** finalization SHALL enumerate the committed slot table, verify every launched session, and include every structurally eligible trajectory from those sessions
 - **AND** it SHALL write deterministic pool, target, readiness, estimate, verification, and closeout artifacts with complete inclusion and exclusion accounting
 
+#### Scenario: Finalization is claimed exactly once
+- **WHEN** finalization is ready to publish its registered artifacts
+- **THEN** it SHALL atomically and exclusively create the registered finalization claim before replacing any final artifact
+- **AND** an existing claim or final artifact SHALL reject the attempt before pool or outcome processing, while a failed artifact transaction SHALL retain the claim and fail closed
+
 #### Scenario: Operator supplies a selective input set
 - **WHEN** requested finalization omits a registered launched slot, adds an unregistered slot, duplicates a trajectory, or changes canonical input order
 - **THEN** selective omission, addition, or duplication SHALL fail closed
@@ -86,6 +92,7 @@ The system SHALL finalize the registered study exactly once from every registere
 #### Scenario: Study stopped globally
 - **WHEN** a global integrity stop has made later collection invalid
 - **THEN** finalization SHALL be allowed only as a blocked closeout that preserves collected source evidence
+- **AND** it SHALL write no pool, target, readiness, estimate, bootstrap, influence, or comparison artifact and SHALL represent those unavailable source bindings as null
 - **AND** it SHALL NOT emit a passing outcome-evidence gate
 
 ### Requirement: Outcome-Evidence Authority Boundary

@@ -468,6 +468,227 @@ def test_cli_exposes_only_registered_study_subcommands(tmp_path, subcommand):
     assert args.registration == registration_path
 
 
+def test_finalize_command_replays_every_registered_slot_and_runs_pipeline(
+    tmp_path, monkeypatch
+):
+    module = _module()
+    registration, run_lock = _study(tmp_path)
+    registration_path = tmp_path / "registration.json"
+    registration_path.write_text(
+        render_registration_json(registration),
+        encoding="utf-8",
+    )
+    ledger_snapshot = {
+        "all_slots_terminal": True,
+        "global_stop": None,
+        "terminal_slots": [
+            {
+                "session_id": slot.session_id,
+                "slot_number": slot.slot_number,
+                "terminal_status": "completed",
+            }
+            for slot in registration.slots
+        ],
+    }
+    sessions = tuple(object() for _slot in registration.slots)
+    pool = object()
+    finalization = {
+        "closeout": {"status": "ready"},
+        "paths": {"closeout_json": "closeout.json"},
+        "study_id": STUDY_ID,
+    }
+    calls = {}
+
+    class FakeLedger:
+        run_lock_hash = RUN_LOCK_HASH
+
+        def snapshot(self):
+            return ledger_snapshot
+
+    monkeypatch.setattr(module, "load_registration", lambda _path: registration)
+    monkeypatch.setattr(
+        module.StudyLedger,
+        "open_existing",
+        lambda **_kwargs: FakeLedger(),
+    )
+    monkeypatch.setattr(module, "_load_run_lock_record", lambda _path: run_lock)
+
+    def validate_lock(**kwargs):
+        calls["validate_lock"] = kwargs
+        return run_lock
+
+    def collect(registration_value, **kwargs):
+        assert registration_value is registration
+        calls["collect"] = kwargs
+        return sessions
+
+    def build_pool(registration_value, **kwargs):
+        assert registration_value is registration
+        assert kwargs["sessions"] is sessions
+        calls["pool"] = kwargs
+        return pool
+
+    def finalize(registration_value, **kwargs):
+        assert registration_value is registration
+        assert kwargs["pool"] is pool
+        calls["finalize"] = kwargs
+        return finalization
+
+    monkeypatch.setattr(module, "validate_run_lock", validate_lock)
+    monkeypatch.setattr(module, "collect_registered_session_evidence", collect)
+    monkeypatch.setattr(module, "build_registered_pool", build_pool)
+    monkeypatch.setattr(module, "finalize_registered_outcome_evidence", finalize)
+
+    result = module._finalize_gate_command(registration_path)
+
+    assert result is finalization
+    assert calls["collect"]["run_lock"] is run_lock
+    assert calls["collect"]["ledger_snapshot"] is ledger_snapshot
+    assert calls["pool"] == {
+        "ledger_snapshot": ledger_snapshot,
+        "run_lock_hash": RUN_LOCK_HASH,
+        "sessions": sessions,
+    }
+    assert calls["finalize"] == {
+        "ledger_snapshot": ledger_snapshot,
+        "pool": pool,
+        "run_lock_hash": RUN_LOCK_HASH,
+    }
+
+
+def test_finalize_command_writes_blocked_closeout_after_global_stop(
+    tmp_path, monkeypatch
+):
+    module = _module()
+    registration, _run_lock = _study(tmp_path)
+    registration_path = tmp_path / "registration.json"
+    snapshot = {
+        "active_slot": None,
+        "all_slots_terminal": False,
+        "global_stop": {"reason": "checkpoint drift"},
+        "initialized": True,
+        "terminal_slot_count": 0,
+        "terminal_slots": [],
+    }
+    blocked = {
+        "closeout": {"status": "blocked"},
+        "paths": {"closeout_json": "closeout.json"},
+        "study_id": STUDY_ID,
+    }
+    calls = {}
+
+    class FakeLedger:
+        run_lock_hash = RUN_LOCK_HASH
+
+        def snapshot(self):
+            return snapshot
+
+    monkeypatch.setattr(module, "load_registration", lambda _path: registration)
+    monkeypatch.setattr(
+        module.StudyLedger,
+        "open_existing",
+        lambda **_kwargs: FakeLedger(),
+    )
+
+    def finalize(registration_value, **kwargs):
+        assert registration_value is registration
+        calls.update(kwargs)
+        return blocked
+
+    monkeypatch.setattr(module, "finalize_registered_integrity_stop", finalize)
+    monkeypatch.setattr(
+        module,
+        "collect_registered_session_evidence",
+        lambda *_args, **_kwargs: pytest.fail("blocked closeout must not pool"),
+    )
+
+    result = module._finalize_gate_command(registration_path)
+
+    assert result is blocked
+    assert calls == {
+        "ledger_snapshot": snapshot,
+        "run_lock_hash": RUN_LOCK_HASH,
+    }
+
+
+@pytest.mark.parametrize(
+    "validation_result",
+    [
+        pytest.param(RuntimeError("source drift"), id="validation-error"),
+        pytest.param({"run_lock_hash": "c" * 64}, id="ledger-hash-mismatch"),
+    ],
+)
+def test_finalize_command_converts_late_run_lock_failure_to_blocked_closeout(
+    tmp_path, monkeypatch, validation_result
+):
+    module = _module()
+    registration, _run_lock = _study(tmp_path)
+    registration_path = tmp_path / "registration.json"
+    terminal_slots = [
+        {
+            "session_id": slot.session_id,
+            "slot_number": slot.slot_number,
+            "terminal_status": "completed",
+        }
+        for slot in registration.slots
+    ]
+
+    class FakeLedger:
+        run_lock_hash = RUN_LOCK_HASH
+
+        def __init__(self):
+            self.stop = None
+
+        def snapshot(self):
+            return {
+                "all_slots_terminal": True,
+                "global_stop": self.stop,
+                "initialized": True,
+                "terminal_slot_count": len(terminal_slots),
+                "terminal_slots": terminal_slots,
+            }
+
+        def global_stop(self, *, reason):
+            self.stop = {"reason": reason}
+
+    ledger = FakeLedger()
+    blocked = {"closeout": {"status": "blocked"}}
+    calls = {}
+
+    monkeypatch.setattr(module, "load_registration", lambda _path: registration)
+    monkeypatch.setattr(
+        module.StudyLedger,
+        "open_existing",
+        lambda **_kwargs: ledger,
+    )
+
+    def validate_lock(**_kwargs):
+        if isinstance(validation_result, Exception):
+            raise validation_result
+        return validation_result
+
+    def finalize(registration_value, **kwargs):
+        assert registration_value is registration
+        calls.update(kwargs)
+        return blocked
+
+    monkeypatch.setattr(module, "validate_run_lock", validate_lock)
+    monkeypatch.setattr(module, "finalize_registered_integrity_stop", finalize)
+    monkeypatch.setattr(
+        module,
+        "collect_registered_session_evidence",
+        lambda *_args, **_kwargs: pytest.fail("failed lock must not pool"),
+    )
+
+    result = module._finalize_gate_command(registration_path)
+
+    assert result is blocked
+    assert calls["run_lock_hash"] == RUN_LOCK_HASH
+    assert calls["ledger_snapshot"]["global_stop"]["reason"].startswith(
+        "run lock validation failed"
+    )
+
+
 def _structural_observation(slot, **extra):
     observation = {
         "candidate_legal_records": 4,

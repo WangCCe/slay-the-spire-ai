@@ -27,7 +27,7 @@ The next experiment must increase independent terminal-outcome evidence without 
 
 ### Commit a registration, then create a source-bound run lock
 
-A versioned registration JSON is committed with the implementation before collection. It contains the study ID, schema, exact 24-slot schedule, deterministic seeds and session IDs, fixed command contract, behavior rates, alternative budget, output naming rules, integrity rules, final evidence thresholds, and hashes of all registration-controlled values. It intentionally does not contain the Git commit that contains itself.
+A versioned registration JSON is committed with the implementation before collection. It contains the study ID, schema, exact 24-slot schedule, deterministic seeds and session IDs, fixed command contract, behavior rates, alternative budget, output naming rules, integrity rules, final evidence thresholds, and hashes of all registration-controlled values. The registered analysis rules also fix deterministic Current, the committed calibration artifact path, a study-derived bootstrap seed, the 95 percent confidence level, and exactly 10,000 production replicates. It intentionally does not contain the Git commit that contains itself.
 
 Immediately before the first slot, a start command requires a tracked-clean tree and creates an immutable run lock. The lock binds the registration file bytes and canonical hash to the actual clean HEAD, hash-bound collection and analysis implementations, Windows Python path, exact child command, CommunicationMod semantic configuration, and checkpoint isolation snapshot. Every slot config and manifest references the same run-lock hash. A later source, registration, command, configuration, or checkpoint mismatch is a global integrity stop.
 
@@ -74,6 +74,8 @@ Alternative: calculate the full pool after every slot and merely promise not to 
 ### Build one deterministic all-slot pool at unblinding
 
 Finalization enumerates the registration slot table rather than accepting an operator-provided allowlist. It verifies each slot's config, run lock, session manifest, append-only trace, confirmation joins, canonical samples, and run joins, then writes one pool manifest containing included and excluded sessions and trajectories with reasons. Input order cannot change the canonical pool bytes or qualification result.
+
+Immediately before publishing final artifacts, the finalizer creates one registered `finalization-claim.json` with an exclusive same-directory hard-link operation. A pre-existing claim or final artifact rejects the attempt before pool or outcome processing. The claim remains if the artifact transaction fails, making a partial or concurrent finalization fail closed instead of permitting an opaque retry. A global integrity stop uses the same claim but writes only a blocked closeout with null pool, target, readiness, estimate, and calibration bindings; it does not read outcomes or invoke OPE.
 
 Aggregate support is evaluated across the complete registered pool rather than requiring each 25-run operational slot to realize 50 alternatives. Included evidence must be 100 percent replay-valid, candidate-legal, transition-confirmed, and provenance-consistent. Each of `card_reward` and `shop` must contain at least 50 confirmed baseline and 50 confirmed alternative decisions.
 

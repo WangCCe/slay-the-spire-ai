@@ -81,11 +81,33 @@ def test_registration_fixes_exact_schedule_behavior_and_command(tmp_path):
         "minimum_nonzero_weight_fraction": {"denominator": 2, "numerator": 1},
         "minimum_supported_victories": 3,
     }
+    assert record["analysis_rules"] == {
+        "bootstrap_confidence_level": {"denominator": 100, "numerator": 95},
+        "bootstrap_replicates": 10_000,
+        "bootstrap_seed": f"{STUDY_ID}:current-deterministic-bootstrap-v1",
+        "calibration_artifact_relative_path": (
+            "reports/noncombat_ope_estimator_calibration_20260714.json"
+        ),
+        "target_policy_mode": "current_deterministic",
+    }
     assert record["registration_hash"] is not None
     assert len(record["registration_hash"]) == 64
 
     with pytest.raises(FrozenInstanceError):
         registration.study_id = "changed"
+
+
+def test_registration_rejects_changed_production_analysis_contract(tmp_path):
+    module = _module()
+    record = _record(tmp_path)
+    record["analysis_rules"]["bootstrap_replicates"] = 9_999
+    record["registration_hash"] = module.canonical_registration_hash(record)
+
+    with pytest.raises(
+        module.OutcomeEvidenceRegistrationError,
+        match="analysis_rules",
+    ):
+        module.validate_registration(record)
 
 
 def test_registration_slots_have_fixed_ids_seeds_and_distinct_absolute_paths(tmp_path):

@@ -24,6 +24,18 @@ RUN_LOCK_SCHEMA_VERSION = "noncombat-outcome-evidence-run-lock-v1"
 POOL_SCHEMA_VERSION = "noncombat-outcome-evidence-pool-v1"
 EVIDENCE_GATE_SCHEMA_VERSION = "noncombat-outcome-evidence-gate-v1"
 CLOSEOUT_SCHEMA_VERSION = "noncombat-outcome-evidence-closeout-v1"
+BLOCKED_ESTIMATE_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-estimate-blocked-v1"
+)
+FINALIZATION_CLAIM_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-finalization-claim-v1"
+)
+CALIBRATION_ARTIFACT_RELATIVE_PATH = (
+    "reports/noncombat_ope_estimator_calibration_20260714.json"
+)
+TARGET_POLICY_MODE = "current_deterministic"
+PRODUCTION_BOOTSTRAP_REPLICATES = 10_000
+PRODUCTION_BOOTSTRAP_CONFIDENCE_LEVEL = Fraction(95, 100)
 SLOT_COUNT = 24
 GAMES_PER_SLOT = 25
 SCHEDULED_ATTEMPTS = SLOT_COUNT * GAMES_PER_SLOT
@@ -321,23 +333,77 @@ def build_outcome_evidence_closeout(
     registration: OutcomeEvidenceRegistration,
     *,
     run_lock_hash: str,
-    pool_manifest_hash: str,
-    target_manifest_hash: str,
+    pool_manifest_hash: str | None,
+    target_manifest_hash: str | None,
     slot_statuses: Sequence[Mapping[str, Any]],
     metrics: OutcomeEvidenceGateMetrics,
     readiness_artifact: Mapping[str, Any] | None = None,
     estimate_artifact: Mapping[str, Any] | None = None,
+    readiness_file_hash: str | None = None,
+    estimate_file_hash: str | None = None,
+    calibration_file_hash: str | None = None,
+    integrity_stop_reason: str | None = None,
 ) -> dict[str, Any]:
     """Compose one deterministic closeout without widening authority."""
 
     validated_registration = validate_registration(registration.to_record())
     resolved_run_lock_hash = _pool_sha256(run_lock_hash, "run_lock_hash")
-    resolved_pool_hash = _pool_sha256(
-        pool_manifest_hash, "pool_manifest_hash"
-    )
-    resolved_target_hash = _pool_sha256(
-        target_manifest_hash, "target_manifest_hash"
-    )
+    if metrics.global_integrity_stop:
+        blocked_bindings = {
+            "calibration_file_hash": calibration_file_hash,
+            "estimate_artifact": estimate_artifact,
+            "estimate_file_hash": estimate_file_hash,
+            "pool_manifest_hash": pool_manifest_hash,
+            "readiness_artifact": readiness_artifact,
+            "readiness_file_hash": readiness_file_hash,
+            "target_manifest_hash": target_manifest_hash,
+        }
+        bound_names = sorted(
+            name for name, value in blocked_bindings.items() if value is not None
+        )
+        if bound_names:
+            raise OutcomeEvidencePoolError(
+                "global-stop closeout must not bind pool or OPE artifacts: "
+                + ", ".join(bound_names)
+            )
+        resolved_pool_hash = None
+        resolved_target_hash = None
+        resolved_readiness_hash = None
+        resolved_estimate_hash = None
+        resolved_calibration_hash = None
+        if not isinstance(integrity_stop_reason, str) or not (
+            integrity_stop_reason.strip()
+        ):
+            raise OutcomeEvidencePoolError(
+                "blocked closeout requires an integrity stop reason"
+            )
+        normalized_stop_reason = integrity_stop_reason.strip()
+    else:
+        resolved_pool_hash = _pool_sha256(
+            pool_manifest_hash,
+            "pool_manifest_hash",
+        )
+        resolved_target_hash = _pool_sha256(
+            target_manifest_hash,
+            "target_manifest_hash",
+        )
+        resolved_readiness_hash = _optional_pool_sha256(
+            readiness_file_hash,
+            "readiness_file_hash",
+        )
+        resolved_estimate_hash = _optional_pool_sha256(
+            estimate_file_hash,
+            "estimate_file_hash",
+        )
+        resolved_calibration_hash = _optional_pool_sha256(
+            calibration_file_hash,
+            "calibration_file_hash",
+        )
+        if integrity_stop_reason is not None:
+            raise OutcomeEvidencePoolError(
+                "non-blocked closeout cannot contain an integrity stop reason"
+            )
+        normalized_stop_reason = None
     slots = _validate_closeout_slots(validated_registration, slot_statuses)
     lifecycles = {str(slot["terminal_status"]) for slot in slots}
     if metrics.all_registered_slots_accounted and not lifecycles <= {
@@ -404,6 +470,11 @@ def build_outcome_evidence_closeout(
             "policy_comparison_ready": policy_comparison_ready,
             "reward_design_ready": False,
         },
+        "integrity_stop": (
+            {"reason": normalized_stop_reason}
+            if normalized_stop_reason is not None
+            else None
+        ),
         "limitations": [
             "Evidence readiness is separate from policy comparison.",
             (
@@ -416,7 +487,10 @@ def build_outcome_evidence_closeout(
         "schema_version": CLOSEOUT_SCHEMA_VERSION,
         "slots": slots,
         "source": {
+            "calibration_file_sha256": resolved_calibration_hash,
+            "estimate_file_sha256": resolved_estimate_hash,
             "pool_manifest_hash": resolved_pool_hash,
+            "readiness_file_sha256": resolved_readiness_hash,
             "target_manifest_hash": resolved_target_hash,
         },
         "status": status,
@@ -440,12 +514,26 @@ def render_outcome_evidence_closeout_markdown(
         "",
         f"- Study: `{closeout.get('study_id')}`",
         f"- Status: `{closeout.get('status')}`",
-        "",
-        "## Evidence gate",
-        "",
-        "| Condition | Observed | Required | Passed |",
-        "|---|---|---|---|",
     ]
+    integrity_stop = closeout.get("integrity_stop")
+    if isinstance(integrity_stop, Mapping):
+        lines.extend(
+            [
+                "",
+                "## Integrity stop",
+                "",
+                f"- Reason: {_canonical_json(integrity_stop.get('reason'))}",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "## Evidence gate",
+            "",
+            "| Condition | Observed | Required | Passed |",
+            "|---|---|---|---|",
+        ]
+    )
     conditions = closeout["evidence_gate"]["conditions"]
     for code in sorted(conditions):
         condition = conditions[code]
@@ -584,6 +672,318 @@ def derive_outcome_evidence_gate_metrics(
         max_normalized_weight=diagnostics.max_normalized_weight,
         supported_victory_count=int(supported_victories),
     )
+
+
+def finalize_registered_integrity_stop(
+    registration: OutcomeEvidenceRegistration,
+    *,
+    run_lock_hash: str,
+    ledger_snapshot: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Publish a blocked closeout without pooling or reading outcomes."""
+
+    validated_registration = validate_registration(registration.to_record())
+    resolved_run_lock_hash = _pool_sha256(run_lock_hash, "run_lock_hash")
+    slot_statuses, stop_reason = _blocked_closeout_slots(
+        validated_registration,
+        ledger_snapshot,
+    )
+    metrics = OutcomeEvidenceGateMetrics(
+        all_registered_slots_accounted=False,
+        global_integrity_stop=True,
+        complete_trajectory_count=0,
+        category_arm_support={
+            "card_reward": {"alternative": 0, "baseline": 0},
+            "shop": {"alternative": 0, "baseline": 0},
+        },
+        nonzero_weight_trajectory_count=0,
+        ess_fraction=Fraction(0, 1),
+        max_normalized_weight=Fraction(0, 1),
+        supported_victory_count=0,
+    )
+    closeout = build_outcome_evidence_closeout(
+        validated_registration,
+        run_lock_hash=resolved_run_lock_hash,
+        pool_manifest_hash=None,
+        target_manifest_hash=None,
+        slot_statuses=slot_statuses,
+        metrics=metrics,
+        integrity_stop_reason=stop_reason,
+    )
+    output_rules = validated_registration.to_record()["output_rules"]
+    all_output_paths = _finalization_output_paths(
+        validated_registration,
+        output_rules,
+    )
+    existing_outputs = [
+        path for path in all_output_paths.values() if path.exists()
+    ]
+    if existing_outputs:
+        raise OutcomeEvidencePoolError(
+            "study is already finalized or has final artifacts: "
+            + ", ".join(sorted(path.name for path in existing_outputs))
+        )
+    output_paths = {
+        name: all_output_paths[name]
+        for name in ("closeout_json", "closeout_markdown")
+    }
+    payloads = {
+        "closeout_json": render_outcome_evidence_closeout_json(closeout),
+        "closeout_markdown": render_outcome_evidence_closeout_markdown(closeout),
+    }
+
+    from analysis_scripts.noncombat_ope_readiness import (
+        _replace_files_transactionally,
+    )
+
+    _publish_finalization_claim_once(
+        all_output_paths["finalization_claim"],
+        _finalization_claim_text(
+            validated_registration,
+            run_lock_hash=resolved_run_lock_hash,
+            mode="integrity_stop",
+        ),
+    )
+    _replace_files_transactionally(
+        tuple(
+            (output_paths[name], payloads[name].encode("utf-8"))
+            for name in sorted(payloads)
+        )
+    )
+    return {
+        "closeout": closeout,
+        "paths": {
+            name: str(path)
+            for name, path in sorted(output_paths.items())
+        },
+        "study_id": validated_registration.study_id,
+    }
+
+
+def finalize_registered_outcome_evidence(
+    registration: OutcomeEvidenceRegistration,
+    *,
+    run_lock_hash: str,
+    ledger_snapshot: Mapping[str, Any],
+    pool: RegisteredPool,
+) -> dict[str, Any]:
+    """Run the frozen production OPE pipeline and publish one closeout."""
+
+    validated_registration = validate_registration(registration.to_record())
+    resolved_run_lock_hash = _pool_sha256(run_lock_hash, "run_lock_hash")
+    _pool_terminal_slots(validated_registration, ledger_snapshot)
+    registration_record = validated_registration.to_record()
+    analysis_rules = registration_record["analysis_rules"]
+    output_rules = registration_record["output_rules"]
+    output_paths = _finalization_output_paths(
+        validated_registration,
+        output_rules,
+    )
+    existing_outputs = [path for path in output_paths.values() if path.exists()]
+    if existing_outputs:
+        raise OutcomeEvidencePoolError(
+            "study is already finalized or has final artifacts: "
+            + ", ".join(sorted(path.name for path in existing_outputs))
+        )
+    sample_text = render_registered_pool_samples(pool)
+    pool_manifest_text = render_registered_pool_manifest(pool)
+    if pool.manifest.get("run_lock_hash") != resolved_run_lock_hash:
+        raise OutcomeEvidencePoolError("pool run lock hash mismatch")
+    if (
+        pool.manifest.get("registration_hash")
+        != validated_registration.registration_hash
+    ):
+        raise OutcomeEvidencePoolError("pool registration hash mismatch")
+
+    from analysis_scripts import noncombat_ope_estimate_artifacts as estimate_artifacts
+    from analysis_scripts import noncombat_ope_estimation as estimation
+    from analysis_scripts import noncombat_ope_readiness as readiness
+
+    confidence_level = _registered_fraction(
+        analysis_rules["bootstrap_confidence_level"],
+        "bootstrap_confidence_level",
+    )
+    replicate_count = int(analysis_rules["bootstrap_replicates"])
+    if (
+        analysis_rules["target_policy_mode"] != TARGET_POLICY_MODE
+        or replicate_count != PRODUCTION_BOOTSTRAP_REPLICATES
+        or confidence_level != PRODUCTION_BOOTSTRAP_CONFIDENCE_LEVEL
+        or replicate_count != estimate_artifacts.PRODUCTION_BOOTSTRAP_REPLICATES
+        or confidence_level != estimate_artifacts.PRODUCTION_CONFIDENCE_LEVEL
+    ):
+        raise OutcomeEvidencePoolError("registered production OPE contract drifted")
+
+    repo_root = Path(validated_registration.repo_root).resolve()
+    calibration_path = (
+        repo_root / analysis_rules["calibration_artifact_relative_path"]
+    ).resolve()
+    try:
+        calibration_path.relative_to(repo_root)
+    except ValueError as exc:
+        raise OutcomeEvidencePoolError(
+            "calibration artifact escapes registered repository"
+        ) from exc
+    try:
+        calibration_bytes = calibration_path.read_bytes()
+    except OSError as exc:
+        raise OutcomeEvidencePoolError(
+            f"cannot read registered calibration artifact: {exc}"
+        ) from exc
+
+    source_sample_sha256 = hashlib.sha256(sample_text.encode("utf-8")).hexdigest()
+    try:
+        target_manifest = readiness.build_current_deterministic_manifest(
+            pool.samples,
+            source_sample_sha256=source_sample_sha256,
+        )
+        target_text = readiness.render_target_manifest_json(target_manifest)
+        with tempfile.TemporaryDirectory(
+            prefix="noncombat-outcome-evidence-finalize-"
+        ) as temporary_root:
+            stage_root = Path(temporary_root)
+            sample_path = stage_root / output_rules["pool_samples_filename"]
+            target_path = stage_root / output_rules["target_manifest_filename"]
+            readiness_path = stage_root / output_rules["readiness_json_filename"]
+            sample_path.write_bytes(sample_text.encode("utf-8"))
+            target_path.write_bytes(target_text.encode("utf-8"))
+
+            readiness_artifact = readiness.build_readiness_artifact(
+                sample_path,
+                target_manifest,
+            )
+            readiness_json = readiness.render_readiness_json(readiness_artifact)
+            readiness_markdown = readiness.render_readiness_markdown(
+                readiness_artifact
+            )
+            readiness_path.write_bytes(readiness_json.encode("utf-8"))
+
+            try:
+                bundle = estimation.load_estimator_bundle(
+                    sample_path=sample_path,
+                    target_manifest_path=target_path,
+                    readiness_path=readiness_path,
+                    calibration_path=calibration_path,
+                )
+            except estimation.EstimatorInputError as exc:
+                readiness_gates = readiness_artifact.get("readiness")
+                recognized_overlap_blocker = (
+                    isinstance(readiness_gates, Mapping)
+                    and readiness_gates.get("overlap_ready") is False
+                    and str(exc)
+                    == "independent readiness replay found overlap blockers"
+                )
+                if not recognized_overlap_blocker:
+                    raise
+                estimate_artifact = _build_blocked_estimate_artifact(
+                    readiness_artifact=readiness_artifact,
+                    sample_bytes=sample_text.encode("utf-8"),
+                    target_bytes=target_text.encode("utf-8"),
+                    readiness_bytes=readiness_json.encode("utf-8"),
+                    calibration_bytes=calibration_bytes,
+                    bootstrap_seed=analysis_rules["bootstrap_seed"],
+                    replicate_count=replicate_count,
+                    confidence_level=confidence_level,
+                    estimator_implementation_hash=(
+                        estimation.estimator_implementation_sha256()
+                    ),
+                    estimate_implementation_hash=(
+                        estimate_artifacts.estimate_artifact_implementation_sha256()
+                    ),
+                )
+                estimate_json = _canonical_json(estimate_artifact) + "\n"
+                estimate_markdown = _render_blocked_estimate_markdown(
+                    estimate_artifact
+                )
+            else:
+                estimate_artifact = estimate_artifacts.build_estimate_artifact(
+                    bundle,
+                    seed=analysis_rules["bootstrap_seed"],
+                    replicate_count=replicate_count,
+                    confidence_level=confidence_level,
+                )
+                estimate_json = estimate_artifacts.render_estimate_json(
+                    estimate_artifact
+                )
+                estimate_markdown = estimate_artifacts.render_estimate_markdown(
+                    estimate_artifact
+                )
+            _reject_downstream_authority(
+                readiness_artifact,
+                estimate_artifact,
+            )
+    except OutcomeEvidencePoolError:
+        raise
+    except Exception as exc:
+        raise OutcomeEvidencePoolError(
+            f"registered production OPE finalization failed: {exc}"
+        ) from exc
+
+    metrics = derive_outcome_evidence_gate_metrics(
+        validated_registration,
+        pool=pool,
+        target_manifest=target_manifest,
+        ledger_snapshot=ledger_snapshot,
+    )
+    slot_statuses = [
+        {
+            "session_id": terminal["session_id"],
+            "slot_number": terminal["slot_number"],
+            "terminal_status": terminal["terminal_status"],
+        }
+        for terminal in ledger_snapshot["terminal_slots"]
+    ]
+    closeout = build_outcome_evidence_closeout(
+        validated_registration,
+        run_lock_hash=resolved_run_lock_hash,
+        pool_manifest_hash=str(pool.manifest["pool_manifest_hash"]),
+        target_manifest_hash=str(target_manifest["manifest_hash"]),
+        slot_statuses=slot_statuses,
+        metrics=metrics,
+        readiness_artifact=readiness_artifact,
+        estimate_artifact=estimate_artifact,
+        readiness_file_hash=hashlib.sha256(
+            readiness_json.encode("utf-8")
+        ).hexdigest(),
+        estimate_file_hash=hashlib.sha256(
+            estimate_json.encode("utf-8")
+        ).hexdigest(),
+        calibration_file_hash=hashlib.sha256(calibration_bytes).hexdigest(),
+    )
+    closeout_json = render_outcome_evidence_closeout_json(closeout)
+    closeout_markdown = render_outcome_evidence_closeout_markdown(closeout)
+    payloads = {
+        "closeout_json": closeout_json,
+        "closeout_markdown": closeout_markdown,
+        "estimate_json": estimate_json,
+        "estimate_markdown": estimate_markdown,
+        "pool_manifest": pool_manifest_text,
+        "pool_samples": sample_text,
+        "readiness_json": readiness_json,
+        "readiness_markdown": readiness_markdown,
+        "target_manifest": target_text,
+    }
+    _publish_finalization_claim_once(
+        output_paths["finalization_claim"],
+        _finalization_claim_text(
+            validated_registration,
+            run_lock_hash=resolved_run_lock_hash,
+            mode="complete",
+        ),
+    )
+    readiness._replace_files_transactionally(
+        tuple(
+            (output_paths[name], payloads[name].encode("utf-8"))
+            for name in sorted(payloads)
+        )
+    )
+    return {
+        "closeout": closeout,
+        "paths": {
+            name: str(path)
+            for name, path in sorted(output_paths.items())
+        },
+        "study_id": validated_registration.study_id,
+    }
 
 
 def build_registered_pool(
@@ -1171,6 +1571,7 @@ def validate_registration(
 
     record = _require_mapping(payload, "registration")
     expected_top_level = {
+        "analysis_rules",
         "artifact_root",
         "behavior",
         "blinding_rules",
@@ -1826,7 +2227,9 @@ def _load_run_lock(path: Path) -> Mapping[str, Any]:
     except OutcomeEvidenceRegistrationError as exc:
         raise OutcomeEvidenceRunLockError(str(exc)) from exc
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise OutcomeEvidenceRunLockError(f"cannot load run lock {path}: {exc}") from exc
+        raise OutcomeEvidenceRunLockError(
+            f"cannot load run lock {path}: {exc}"
+        ) from exc
     if not isinstance(payload, Mapping):
         raise OutcomeEvidenceRunLockError("run lock must be a JSON object")
     return payload
@@ -1850,7 +2253,9 @@ def _publish_json_once(path: Path, text: str) -> None:
             f"run lock already exists for this study: {path}"
         ) from exc
     except OSError as exc:
-        raise OutcomeEvidenceRunLockError(f"cannot publish run lock {path}: {exc}") from exc
+        raise OutcomeEvidenceRunLockError(
+            f"cannot publish run lock {path}: {exc}"
+        ) from exc
     finally:
         if temporary_path is not None:
             try:
@@ -1896,6 +2301,298 @@ def _pool_sha256(value: Any, field: str) -> str:
     if not isinstance(value, str) or not _SHA256_PATTERN.fullmatch(value):
         raise OutcomeEvidencePoolError(f"{field} must be a lowercase SHA-256 hash")
     return value
+
+
+def _optional_pool_sha256(value: Any, field: str) -> str | None:
+    if value is None:
+        return None
+    return _pool_sha256(value, field)
+
+
+def _finalization_output_paths(
+    registration: OutcomeEvidenceRegistration,
+    output_rules: Mapping[str, Any],
+) -> dict[str, Path]:
+    root = Path(registration.artifact_root)
+    paths = {
+        "closeout_json": root / output_rules["closeout_json_filename"],
+        "closeout_markdown": root / output_rules["closeout_markdown_filename"],
+        "estimate_json": root / output_rules["estimate_json_filename"],
+        "estimate_markdown": root / output_rules["estimate_markdown_filename"],
+        "finalization_claim": root / output_rules["finalization_claim_filename"],
+        "pool_manifest": root / output_rules["pool_manifest_filename"],
+        "pool_samples": root / output_rules["pool_samples_filename"],
+        "readiness_json": root / output_rules["readiness_json_filename"],
+        "readiness_markdown": root / output_rules["readiness_markdown_filename"],
+        "target_manifest": root / output_rules["target_manifest_filename"],
+    }
+    if len(set(paths.values())) != len(paths):
+        raise OutcomeEvidencePoolError("finalization output paths are not unique")
+    return paths
+
+
+def _finalization_claim_text(
+    registration: OutcomeEvidenceRegistration,
+    *,
+    run_lock_hash: str,
+    mode: str,
+) -> str:
+    if mode not in {"complete", "integrity_stop"}:
+        raise OutcomeEvidencePoolError("finalization claim mode is invalid")
+    record = {
+        "claim_hash": None,
+        "mode": mode,
+        "registration_hash": registration.registration_hash,
+        "run_lock_hash": _pool_sha256(run_lock_hash, "run_lock_hash"),
+        "schema_version": FINALIZATION_CLAIM_SCHEMA_VERSION,
+        "study_id": registration.study_id,
+    }
+    record["claim_hash"] = hashlib.sha256(
+        _canonical_json(record).encode("utf-8")
+    ).hexdigest()
+    return _canonical_json(record) + "\n"
+
+
+def _publish_finalization_claim_once(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path: Path | None = None
+    try:
+        descriptor, name = tempfile.mkstemp(
+            dir=str(path.parent),
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+        )
+        temporary_path = Path(name)
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.link(temporary_path, path)
+    except FileExistsError as exc:
+        raise OutcomeEvidencePoolError(
+            f"study is already finalized or claimed: {path}"
+        ) from exc
+    except OSError as exc:
+        raise OutcomeEvidencePoolError(
+            f"cannot publish finalization claim {path}: {exc}"
+        ) from exc
+    finally:
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+def _blocked_closeout_slots(
+    registration: OutcomeEvidenceRegistration,
+    ledger_snapshot: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], str]:
+    if not isinstance(ledger_snapshot, Mapping):
+        raise OutcomeEvidencePoolError("ledger snapshot must be an object")
+    if ledger_snapshot.get("initialized") is not True:
+        raise OutcomeEvidencePoolError(
+            "blocked closeout requires an initialized ledger"
+        )
+    global_stop = ledger_snapshot.get("global_stop")
+    if not isinstance(global_stop, Mapping):
+        raise OutcomeEvidencePoolError("blocked closeout requires a global stop")
+    reason = global_stop.get("reason")
+    if not isinstance(reason, str) or not reason.strip():
+        raise OutcomeEvidencePoolError("global stop reason must be nonempty")
+    terminal_records = ledger_snapshot.get("terminal_slots")
+    if isinstance(terminal_records, (str, bytes)) or not isinstance(
+        terminal_records,
+        Sequence,
+    ):
+        raise OutcomeEvidencePoolError("ledger terminal_slots must be a sequence")
+    if ledger_snapshot.get("terminal_slot_count") != len(terminal_records):
+        raise OutcomeEvidencePoolError("ledger terminal slot count mismatch")
+
+    terminals: dict[int, dict[str, Any]] = {}
+    for raw_terminal in terminal_records:
+        if not isinstance(raw_terminal, Mapping):
+            raise OutcomeEvidencePoolError("ledger terminal slot is invalid")
+        slot_number = raw_terminal.get("slot_number")
+        if type(slot_number) is not int or not 1 <= slot_number <= len(
+            registration.slots
+        ):
+            raise OutcomeEvidencePoolError("ledger terminal slot identity is invalid")
+        if slot_number in terminals:
+            raise OutcomeEvidencePoolError("duplicate ledger terminal slot")
+        slot = registration.slots[slot_number - 1]
+        status = raw_terminal.get("terminal_status")
+        if (
+            raw_terminal.get("session_id") != slot.session_id
+            or status not in {"completed", "interrupted"}
+        ):
+            raise OutcomeEvidencePoolError("ledger terminal slot is inconsistent")
+        terminals[slot_number] = {
+            "session_id": slot.session_id,
+            "slot_number": slot_number,
+            "terminal_status": status,
+        }
+
+    active_record = ledger_snapshot.get("active_slot")
+    active_slot_number = None
+    if active_record is not None:
+        if not isinstance(active_record, Mapping):
+            raise OutcomeEvidencePoolError("ledger active slot is invalid")
+        active_slot_number = active_record.get("slot_number")
+        if type(active_slot_number) is not int or not 1 <= active_slot_number <= len(
+            registration.slots
+        ):
+            raise OutcomeEvidencePoolError("ledger active slot identity is invalid")
+        active_slot = registration.slots[active_slot_number - 1]
+        if (
+            active_slot_number in terminals
+            or active_record.get("session_id") != active_slot.session_id
+        ):
+            raise OutcomeEvidencePoolError("ledger active slot is inconsistent")
+
+    statuses = []
+    for slot in registration.slots:
+        if slot.slot_number in terminals:
+            statuses.append(terminals[slot.slot_number])
+        else:
+            statuses.append(
+                {
+                    "session_id": slot.session_id,
+                    "slot_number": slot.slot_number,
+                    "terminal_status": (
+                        "blocked"
+                        if slot.slot_number == active_slot_number
+                        else "unlaunched"
+                    ),
+                }
+            )
+    return statuses, reason.strip()
+
+
+def _reject_downstream_authority(
+    readiness_artifact: Mapping[str, Any],
+    estimate_artifact: Mapping[str, Any],
+) -> None:
+    authority_fields = {
+        "causal_uplift_ready",
+        "formal_noncombat_rl_training_ready",
+        "live_policy_promotion_ready",
+        "reward_design_ready",
+    }
+    for artifact_name, artifact, gate_field in (
+        ("readiness", readiness_artifact, "readiness"),
+        ("estimate", estimate_artifact, "gates"),
+    ):
+        gates = artifact.get(gate_field)
+        if not isinstance(gates, Mapping):
+            raise OutcomeEvidencePoolError(
+                f"{artifact_name} artifact authority gates are missing"
+            )
+        authorized = sorted(
+            field for field in authority_fields if gates.get(field) is True
+        )
+        if authorized:
+            raise OutcomeEvidencePoolError(
+                f"{artifact_name} artifact exceeds offline authority: "
+                + ", ".join(authorized)
+            )
+
+
+def _build_blocked_estimate_artifact(
+    *,
+    readiness_artifact: Mapping[str, Any],
+    sample_bytes: bytes,
+    target_bytes: bytes,
+    readiness_bytes: bytes,
+    calibration_bytes: bytes,
+    bootstrap_seed: str,
+    replicate_count: int,
+    confidence_level: Fraction,
+    estimator_implementation_hash: str,
+    estimate_implementation_hash: str,
+) -> dict[str, Any]:
+    blockers = readiness_artifact.get("blockers")
+    if isinstance(blockers, (str, bytes)) or not isinstance(blockers, Sequence):
+        readiness_blockers: list[str] = []
+    else:
+        readiness_blockers = sorted(
+            str(blocker) for blocker in blockers if isinstance(blocker, str)
+        )
+    return {
+        "blockers": ["dataset_estimation_not_ready"],
+        "bootstrap": None,
+        "comparison": {
+            "blockers": ["ope_estimate_not_ready"],
+            "conditions": {"ope_estimate_ready": False},
+            "ready": False,
+        },
+        "contracts": {
+            "bootstrap_confidence_level": _pool_fraction_record(
+                confidence_level
+            ),
+            "bootstrap_seed": bootstrap_seed,
+            "primary_outcome": "victory",
+            "production_bootstrap_replicates": replicate_count,
+            "terminal_horizon": "complete_run",
+        },
+        "estimates": None,
+        "gates": {
+            "causal_uplift_ready": False,
+            "dataset_estimation_ready": False,
+            "formal_noncombat_rl_training_ready": False,
+            "live_policy_promotion_ready": False,
+            "ope_estimate_ready": False,
+            "policy_comparison_ready": False,
+            "reward_design_ready": False,
+        },
+        "influence": None,
+        "limitations": [
+            "The validated estimator rejected a dataset that was not OPE-ready.",
+            "No estimate, bootstrap, influence, training, or promotion result exists.",
+        ],
+        "readiness_blockers": readiness_blockers,
+        "schema_version": BLOCKED_ESTIMATE_SCHEMA_VERSION,
+        "source": {
+            "calibration_file_sha256": hashlib.sha256(
+                calibration_bytes
+            ).hexdigest(),
+            "estimate_artifact_implementation_sha256": (
+                _pool_sha256(
+                    estimate_implementation_hash,
+                    "estimate_implementation_hash",
+                )
+            ),
+            "estimator_implementation_sha256": _pool_sha256(
+                estimator_implementation_hash,
+                "estimator_implementation_hash",
+            ),
+            "readiness_file_sha256": hashlib.sha256(readiness_bytes).hexdigest(),
+            "sample_file_sha256": hashlib.sha256(sample_bytes).hexdigest(),
+            "target_file_sha256": hashlib.sha256(target_bytes).hexdigest(),
+        },
+    }
+
+
+def _render_blocked_estimate_markdown(artifact: Mapping[str, Any]) -> str:
+    blockers = artifact["readiness_blockers"]
+    lines = [
+        "# Non-combat OPE estimate",
+        "",
+        "Status: BLOCKED",
+        "",
+        "## Blockers",
+        "",
+        "- `dataset_estimation_not_ready`",
+        "",
+        "## Readiness blockers",
+        "",
+    ]
+    lines.extend(f"- `{blocker}`" for blocker in blockers)
+    if not blockers:
+        lines.append("- none reported")
+    lines.extend(["", "## Limitations", ""])
+    lines.extend(f"- {item}" for item in artifact["limitations"])
+    return "\n".join(lines) + "\n"
 
 
 def _pool_timestamp(value: Any, field: str) -> int:
@@ -2210,7 +2907,9 @@ def _pool_terminal_slots(
         if (status == "completed") != (
             exit_code == 0 and complete == GAMES_PER_SLOT
         ):
-            raise OutcomeEvidencePoolError("ledger terminal status contradicts evidence")
+            raise OutcomeEvidencePoolError(
+                "ledger terminal status contradicts evidence"
+            )
         terminal_by_slot[slot_number] = record
     if set(terminal_by_slot) != set(range(1, len(registration.slots) + 1)):
         raise OutcomeEvidencePoolError("ledger omits a registered terminal slot")
@@ -2249,7 +2948,10 @@ def _validate_registered_session_evidence(
     terminal: Mapping[str, Any],
     run_lock_hash: str,
 ) -> None:
-    if evidence.slot_number != slot.slot_number or evidence.session_id != slot.session_id:
+    if (
+        evidence.slot_number != slot.slot_number
+        or evidence.session_id != slot.session_id
+    ):
         raise OutcomeEvidencePoolError("registered session identity mismatch")
     if evidence.run_lock_hash != run_lock_hash:
         raise OutcomeEvidencePoolError("registered session run lock mismatch")
@@ -2361,6 +3063,20 @@ def _build_slot(
 
 def _registration_body(registration: OutcomeEvidenceRegistration) -> dict[str, Any]:
     return {
+        "analysis_rules": {
+            "bootstrap_confidence_level": {
+                "denominator": 100,
+                "numerator": 95,
+            },
+            "bootstrap_replicates": PRODUCTION_BOOTSTRAP_REPLICATES,
+            "bootstrap_seed": (
+                f"{registration.study_id}:current-deterministic-bootstrap-v1"
+            ),
+            "calibration_artifact_relative_path": (
+                CALIBRATION_ARTIFACT_RELATIVE_PATH
+            ),
+            "target_policy_mode": TARGET_POLICY_MODE,
+        },
         "artifact_root": registration.artifact_root,
         "behavior": {
             "category_rates_bps": {"card_reward": 300, "shop": 1000},
@@ -2401,6 +3117,7 @@ def _registration_body(registration: OutcomeEvidenceRegistration) -> dict[str, A
             "config_suffix": "-config.json",
             "estimate_json_filename": "ope-estimate.json",
             "estimate_markdown_filename": "ope-estimate.md",
+            "finalization_claim_filename": "finalization-claim.json",
             "manifest_suffix": "-manifest.json",
             "monitor_json_filename": "blinded-monitor.json",
             "monitor_markdown_filename": "blinded-monitor.md",
@@ -2494,7 +3211,9 @@ def _require_exact_int(value: Any, field: str) -> int:
 def _assert_exact_value(actual: Any, expected: Any, path: str) -> None:
     if isinstance(expected, Mapping):
         if not isinstance(actual, Mapping):
-            raise OutcomeEvidenceRegistrationError(f"{_field_label(path)} must be an object")
+            raise OutcomeEvidenceRegistrationError(
+                f"{_field_label(path)} must be an object"
+            )
         _require_exact_fields(actual, set(expected), path)
         for key in sorted(expected):
             _assert_exact_value(actual[key], expected[key], f"{path}.{key}")
@@ -2502,7 +3221,9 @@ def _assert_exact_value(actual: Any, expected: Any, path: str) -> None:
 
     if isinstance(expected, list):
         if not isinstance(actual, list):
-            raise OutcomeEvidenceRegistrationError(f"{_field_label(path)} must be a list")
+            raise OutcomeEvidenceRegistrationError(
+                f"{_field_label(path)} must be a list"
+            )
         if len(actual) != len(expected):
             raise OutcomeEvidenceRegistrationError(
                 f"{_field_label(path)} must contain exactly {len(expected)} entries"
@@ -2518,6 +3239,8 @@ def _assert_exact_value(actual: Any, expected: Any, path: str) -> None:
 
 
 def _field_label(path: str) -> str:
+    if path.startswith("analysis_rules."):
+        return path
     leaf = path.rsplit(".", 1)[-1]
     if leaf == "per_run_alternative_budget":
         return "alternative budget"

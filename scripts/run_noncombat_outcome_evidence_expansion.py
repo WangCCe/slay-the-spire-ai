@@ -20,8 +20,12 @@ from typing import Any
 from analysis_scripts.noncombat_outcome_evidence_expansion import (
     OutcomeEvidenceRegistration,
     RegisteredSlot,
+    build_registered_pool,
+    collect_registered_session_evidence,
     conservative_marker_run_pairs,
     create_run_lock,
+    finalize_registered_integrity_stop,
+    finalize_registered_outcome_evidence,
     load_registration,
     manifest_isolation_matches_run_lock,
     validate_run_lock,
@@ -55,7 +59,11 @@ class RegisteredSlotLaunch:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "command", tuple(self.command))
-        object.__setattr__(self, "environment", MappingProxyType(dict(self.environment)))
+        object.__setattr__(
+            self,
+            "environment",
+            MappingProxyType(dict(self.environment)),
+        )
         object.__setattr__(
             self,
             "config_record",
@@ -107,7 +115,9 @@ def validate_registered_command(
     if isinstance(command, (str, bytes)) or not isinstance(command, Sequence):
         raise OutcomeEvidenceRunnerError("command must be a sequence of strings")
     normalized = tuple(command)
-    if not normalized or any(not isinstance(part, str) or not part for part in normalized):
+    if not normalized or any(
+        not isinstance(part, str) or not part for part in normalized
+    ):
         raise OutcomeEvidenceRunnerError("command contains an invalid argument")
     expected = tuple(_registered_command(registration))
     if normalized != expected:
@@ -873,7 +883,8 @@ class StudyLedger:
             expected = self._next_slot_from_snapshot(snapshot)
             if requested_slot != expected.slot_number:
                 raise OutcomeEvidenceRunnerError(
-                    f"out of order launch: next registered slot is {expected.slot_number}"
+                    "out of order launch: next registered slot is "
+                    f"{expected.slot_number}"
                 )
             if session_id != expected.session_id:
                 raise OutcomeEvidenceRunnerError(
@@ -1141,7 +1152,11 @@ class StudyLedger:
                     )
                 initialized = True
             elif event == "slot_started":
-                if not initialized or active_slot is not None or global_stop is not None:
+                if (
+                    not initialized
+                    or active_slot is not None
+                    or global_stop is not None
+                ):
                     raise OutcomeEvidenceRunnerError("invalid slot_started lifecycle")
                 expected = len(terminal_slots) + 1
                 if record["slot_number"] != expected:
@@ -1152,7 +1167,9 @@ class StudyLedger:
                 }
             elif event == "slot_terminal":
                 if active_slot is None:
-                    raise OutcomeEvidenceRunnerError("terminal record has no active slot")
+                    raise OutcomeEvidenceRunnerError(
+                        "terminal record has no active slot"
+                    )
                 if record["slot_number"] != active_slot["slot_number"]:
                     raise OutcomeEvidenceRunnerError("terminal record slot mismatch")
                 terminal_slots.append(
@@ -1449,7 +1466,9 @@ def _required_sha256(value: Any, field: str) -> str:
 
 
 def _is_lower_hex(value: str, length: int) -> bool:
-    return len(value) == length and all(character in "0123456789abcdef" for character in value)
+    return len(value) == length and all(
+        character in "0123456789abcdef" for character in value
+    )
 
 
 def _reject_duplicate_keys(pairs: Sequence[tuple[str, Any]]) -> dict[str, Any]:
@@ -1713,12 +1732,58 @@ def _finalize_gate_command(registration_path: Path) -> dict[str, Any]:
         raise OutcomeEvidenceRunnerError(
             "finalization requires all slots terminal or a global stop"
         )
-    return {
-        "all_slots_terminal": snapshot["all_slots_terminal"],
-        "finalization_allowed": True,
-        "global_integrity_stop": snapshot["global_stop"] is not None,
-        "study_id": registration.study_id,
-    }
+    if snapshot["global_stop"] is not None:
+        return finalize_registered_integrity_stop(
+            registration,
+            run_lock_hash=ledger.run_lock_hash,
+            ledger_snapshot=snapshot,
+        )
+
+    command = _registered_command(registration)
+    try:
+        run_lock = validate_run_lock_or_stop(
+            ledger,
+            validator=lambda: validate_run_lock(
+                lock_path=_run_lock_path(registration),
+                registration_path=registration_path,
+                repo_root=registration.repo_root,
+                child_command=command,
+            ),
+        )
+    except OutcomeEvidenceRunnerError:
+        snapshot = ledger.snapshot()
+        if snapshot["global_stop"] is None:
+            raise
+        return finalize_registered_integrity_stop(
+            registration,
+            run_lock_hash=ledger.run_lock_hash,
+            ledger_snapshot=snapshot,
+        )
+    snapshot = ledger.snapshot()
+    if snapshot["global_stop"] is not None:
+        return finalize_registered_integrity_stop(
+            registration,
+            run_lock_hash=ledger.run_lock_hash,
+            ledger_snapshot=snapshot,
+        )
+    sessions = collect_registered_session_evidence(
+        registration,
+        run_lock=run_lock,
+        ledger_snapshot=snapshot,
+    )
+    run_lock_hash = str(run_lock["run_lock_hash"])
+    pool = build_registered_pool(
+        registration,
+        run_lock_hash=run_lock_hash,
+        ledger_snapshot=snapshot,
+        sessions=sessions,
+    )
+    return finalize_registered_outcome_evidence(
+        registration,
+        run_lock_hash=run_lock_hash,
+        ledger_snapshot=snapshot,
+        pool=pool,
+    )
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
