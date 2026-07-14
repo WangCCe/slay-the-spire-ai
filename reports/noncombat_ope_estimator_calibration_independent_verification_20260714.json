@@ -1,0 +1,9 @@
+{
+  "calibration_file_sha256": "a7ac2ca9c2a0644125323769c6fcf6225295d4d6ec903995a5d332300a0eaf3f",
+  "check_count": 8523,
+  "coverage_datasets_replayed": 200,
+  "exact_calibration_replayed": true,
+  "full_replay": true,
+  "passed": true,
+  "verifier_implementation_sha256": "de0e85eca294725adc9553e7870528f69777f248a39630891e253c39a1e52991"
+}

@@ -20,6 +20,8 @@ from analysis_scripts.noncombat_ope_estimation import (
     estimate_outcome_channels,
     estimator_implementation_sha256,
     fraction_record,
+    hash_draw_index,
+    percentile_interval,
 )
 from analysis_scripts.noncombat_ope_readiness import _replace_files_transactionally
 
@@ -46,6 +48,62 @@ def calibration_implementation_sha256() -> str:
     return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
+def coverage_bootstrap_victory_intervals(
+    trajectories: Sequence[WeightedTrajectory],
+    *,
+    seed: str,
+    replicate_count: int,
+    confidence_level: Fraction,
+) -> dict[str, Any]:
+    """Stream the exact victory SNIS intervals used by coverage calibration."""
+
+    ordered = tuple(sorted(trajectories, key=lambda row: row.group_id))
+    if not ordered:
+        raise ValueError("coverage bootstrap requires trajectories")
+    if len({row.group_id for row in ordered}) != len(ordered):
+        raise ValueError("coverage bootstrap trajectory ids must be unique")
+    weight_units: list[int] = []
+    for row in ordered:
+        units = row.weight * 5
+        if units.denominator != 1 or units <= 0:
+            raise ValueError("coverage bootstrap requires positive fifth-unit weights")
+        weight_units.append(units.numerator)
+    target_values: list[Fraction] = []
+    uplift_values: list[Fraction] = []
+    trajectory_count = len(ordered)
+    for replicate_index in range(replicate_count):
+        sampled_weight = 0
+        sampled_weighted_victory = 0
+        sampled_victory = 0
+        for draw_index in range(trajectory_count):
+            selected_index = hash_draw_index(
+                trajectory_count,
+                seed,
+                replicate_index,
+                draw_index,
+            )
+            row = ordered[selected_index]
+            units = weight_units[selected_index]
+            sampled_weight += units
+            if row.victory:
+                sampled_victory += 1
+                sampled_weighted_victory += units
+        target = Fraction(sampled_weighted_victory, sampled_weight)
+        behavior = Fraction(sampled_victory, trajectory_count)
+        target_values.append(target)
+        uplift_values.append(target - behavior)
+    return {
+        "target": percentile_interval(
+            target_values,
+            confidence_level=confidence_level,
+        ),
+        "uplift": percentile_interval(
+            uplift_values,
+            confidence_level=confidence_level,
+        ),
+    }
+
+
 def run_coverage_experiment(config: CalibrationConfig) -> dict[str, Any]:
     """Run the deterministic repeated-sample SNIS coverage experiment."""
 
@@ -63,28 +121,14 @@ def run_coverage_experiment(config: CalibrationConfig) -> dict[str, Any]:
     for dataset_index in range(config.dataset_count):
         trajectories = _coverage_dataset(config, dataset_index)
         point_estimates = estimate_outcome_channels(trajectories)["victory"]
-        bootstrap = bootstrap_trajectory_estimates(
+        intervals = coverage_bootstrap_victory_intervals(
             trajectories,
             seed=f"{config.seed}:dataset:{dataset_index}",
             replicate_count=config.bootstrap_replicates,
             confidence_level=config.confidence_level,
         )
-        if not bootstrap.ready:
-            undefined_dataset_count += 1
-            dataset_rows.append(
-                {
-                    "bootstrap_ready": False,
-                    "dataset_index": dataset_index,
-                    "undefined_replicate_count": len(
-                        bootstrap.undefined_replicates
-                    ),
-                }
-            )
-            continue
-        target_interval = bootstrap.intervals["victory"]["self_normalized_is"]
-        uplift_interval = bootstrap.intervals["victory"][
-            "self_normalized_uplift"
-        ]
+        target_interval = intervals["target"]
+        uplift_interval = intervals["uplift"]
         target_covered = target_interval.lower <= truth_target <= target_interval.upper
         uplift_covered = uplift_interval.lower <= truth_uplift <= uplift_interval.upper
         target_covered_count += int(target_covered)

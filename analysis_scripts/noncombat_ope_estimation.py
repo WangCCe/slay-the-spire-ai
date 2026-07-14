@@ -729,6 +729,42 @@ def _validate_calibration(calibration: Mapping[str, Any]) -> None:
             raise EstimatorInputError(f"invalid calibration hash: {key}")
     if source["estimator_implementation_sha256"] != estimator_implementation_sha256():
         raise EstimatorInputError("stale calibration estimator implementation hash")
+    calibration_implementation = Path(__file__).with_name(
+        "noncombat_ope_calibration.py"
+    )
+    if not calibration_implementation.is_file():
+        raise EstimatorInputError("calibration implementation is missing")
+    if source["calibration_implementation_sha256"] != _file_sha256(
+        calibration_implementation
+    ):
+        raise EstimatorInputError("stale calibration implementation hash")
+
+    configuration = calibration.get("configuration")
+    exact = calibration.get("exact_calibration")
+    coverage = calibration.get("coverage_calibration")
+    downstream = calibration.get("downstream_gates")
+    if not isinstance(configuration, Mapping):
+        raise EstimatorInputError("calibration configuration is missing")
+    if not isinstance(exact, Mapping):
+        raise EstimatorInputError("exact calibration evidence is missing")
+    if not isinstance(coverage, Mapping):
+        raise EstimatorInputError("coverage calibration evidence is missing")
+    if downstream != {
+        "causal_uplift_ready": False,
+        "formal_noncombat_rl_training_ready": False,
+        "live_policy_promotion_ready": False,
+    }:
+        raise EstimatorInputError("calibration downstream gates are invalid")
+    if source["configuration_sha256"] != _canonical_mapping_sha256(
+        configuration
+    ):
+        raise EstimatorInputError("calibration configuration hash mismatch")
+    if source["fixtures_sha256"] != _canonical_mapping_sha256(exact):
+        raise EstimatorInputError("calibration fixture hash mismatch")
+    _validate_production_calibration_configuration(configuration)
+    _validate_exact_calibration_evidence(exact)
+    _validate_coverage_calibration_evidence(coverage)
+
     gates = calibration.get("gates")
     if not isinstance(gates, Mapping):
         raise EstimatorInputError("calibration gates are missing")
@@ -736,6 +772,123 @@ def _validate_calibration(calibration: Mapping[str, Any]) -> None:
         raise EstimatorInputError("calibration is not estimator-validation-ready")
     if calibration.get("blockers") != []:
         raise EstimatorInputError("calibration contains blockers")
+
+
+def _validate_production_calibration_configuration(
+    configuration: Mapping[str, Any],
+) -> None:
+    expected_scalars = {
+        "bootstrap_replicates": 500,
+        "dataset_count": 200,
+        "seed": "noncombat-ope-fixed-coverage-v1",
+        "trajectories_per_dataset": 200,
+    }
+    for key, expected in expected_scalars.items():
+        if configuration.get(key) != expected:
+            raise EstimatorInputError(f"calibration production contract mismatch: {key}")
+    expected_fractions = {
+        "confidence_level": Fraction(19, 20),
+        "maximum_absolute_mean_bias": Fraction(1, 50),
+        "maximum_coverage": Fraction(99, 100),
+        "minimum_coverage": Fraction(9, 10),
+    }
+    for key, expected in expected_fractions.items():
+        if _fraction_from_record(configuration.get(key), f"calibration:{key}") != expected:
+            raise EstimatorInputError(f"calibration production contract mismatch: {key}")
+    fixture = configuration.get("coverage_fixture")
+    if not isinstance(fixture, Mapping):
+        raise EstimatorInputError("calibration coverage fixture is missing")
+    expected_fixture = {
+        "behavior_action_probabilities": (Fraction(1, 2), Fraction(1, 2)),
+        "outcome_probabilities": (Fraction(1, 5), Fraction(1, 10)),
+        "target_action_probabilities": (Fraction(4, 5), Fraction(1, 5)),
+    }
+    for key, expected in expected_fixture.items():
+        values = fixture.get(key)
+        if not isinstance(values, list) or tuple(
+            _fraction_from_record(value, f"calibration:{key}") for value in values
+        ) != expected:
+            raise EstimatorInputError(f"calibration coverage fixture mismatch: {key}")
+
+
+def _validate_exact_calibration_evidence(exact: Mapping[str, Any]) -> None:
+    if exact.get("passed") is not True:
+        raise EstimatorInputError("exact calibration did not pass")
+    checks = exact.get("checks")
+    required = {
+        "balanced_one_step_known_truth",
+        "behavior_identity",
+        "bootstrap_exact_enumeration",
+        "multi_decision_known_truth",
+        "ordering_invariance",
+    }
+    if not isinstance(checks, Mapping) or set(checks) != required:
+        raise EstimatorInputError("exact calibration checks are incomplete")
+    if any(
+        not isinstance(checks[name], Mapping)
+        or checks[name].get("passed") is not True
+        for name in required
+    ):
+        raise EstimatorInputError("an exact calibration check did not pass")
+
+
+def _validate_coverage_calibration_evidence(coverage: Mapping[str, Any]) -> None:
+    if coverage.get("schema_version") != "noncombat-ope-coverage-fixture-v1":
+        raise EstimatorInputError("coverage calibration schema mismatch")
+    if coverage.get("passed") is not True or coverage.get("blockers") != []:
+        raise EstimatorInputError("coverage calibration did not pass")
+    if coverage.get("dataset_count") != 200:
+        raise EstimatorInputError("coverage dataset count mismatch")
+    if coverage.get("trajectories_per_dataset") != 200:
+        raise EstimatorInputError("coverage trajectory count mismatch")
+    if coverage.get("bootstrap_replicates") != 500:
+        raise EstimatorInputError("coverage bootstrap count mismatch")
+    if coverage.get("undefined_dataset_count") != 0:
+        raise EstimatorInputError("coverage contains undefined datasets")
+    datasets = coverage.get("datasets")
+    if not isinstance(datasets, list) or len(datasets) != 200:
+        raise EstimatorInputError("coverage dataset evidence is incomplete")
+    if any(
+        not isinstance(row, Mapping)
+        or row.get("bootstrap_ready") is not True
+        or row.get("undefined_replicate_count") != 0
+        for row in datasets
+    ):
+        raise EstimatorInputError("coverage dataset evidence contains blockers")
+    truth = coverage.get("truth")
+    if not isinstance(truth, Mapping):
+        raise EstimatorInputError("coverage truth is missing")
+    expected_truth = {
+        "behavior_victory": Fraction(15, 100),
+        "target_victory": Fraction(18, 100),
+        "uplift_victory": Fraction(3, 100),
+    }
+    for key, expected in expected_truth.items():
+        if _fraction_from_record(truth.get(key), f"coverage truth:{key}") != expected:
+            raise EstimatorInputError(f"coverage truth mismatch: {key}")
+    coverage_rows = coverage.get("coverage")
+    if not isinstance(coverage_rows, Mapping):
+        raise EstimatorInputError("coverage results are missing")
+    for key in ("target", "uplift"):
+        row = coverage_rows.get(key)
+        if not isinstance(row, Mapping) or type(row.get("covered_count")) is not int:
+            raise EstimatorInputError(f"coverage result is invalid: {key}")
+        exact_fraction = _fraction_from_record(
+            row.get("fraction"),
+            f"coverage fraction:{key}",
+        )
+        if exact_fraction != Fraction(row["covered_count"], 200):
+            raise EstimatorInputError(f"coverage count mismatch: {key}")
+        if not Fraction(9, 10) <= exact_fraction <= Fraction(99, 100):
+            raise EstimatorInputError(f"coverage result out of bounds: {key}")
+    bias = coverage.get("bias")
+    if not isinstance(bias, Mapping):
+        raise EstimatorInputError("coverage bias results are missing")
+    for key in ("target", "uplift"):
+        if abs(
+            _fraction_from_record(bias.get(key), f"coverage bias:{key}")
+        ) > Fraction(1, 50):
+            raise EstimatorInputError(f"coverage bias exceeds limit: {key}")
 
 
 def _load_json_mapping(path: Path, description: str) -> dict[str, Any]:
@@ -782,3 +935,16 @@ def _required_string(value: Any, field: str) -> str:
 
 def _file_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _canonical_mapping_sha256(value: Mapping[str, Any]) -> str:
+    payload = (
+        json.dumps(
+            value,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()

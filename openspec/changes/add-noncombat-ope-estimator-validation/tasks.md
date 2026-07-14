@@ -1,8 +1,8 @@
 ## 1. Verified Estimator Input Boundary
 
 - [x] 1.1 Add red tests requiring canonical sample, target, readiness, calibration, and implementation hashes plus a successful independent readiness replay.
-- [ ] 1.2 Implement the estimator bundle loader with complete-trajectory, overlap-ready, calibration-ready, duplicate-key, and transactional failure guards.
-- [ ] 1.3 Add regressions proving changed source bytes, stale calibration, blocked overlap, invalid outcomes, and zero required denominators fail closed without replacing prior artifacts.
+- [x] 1.2 Implement the estimator bundle loader with complete-trajectory, overlap-ready, calibration-ready, duplicate-key, and transactional failure guards.
+- [x] 1.3 Add regressions proving changed source bytes, stale calibration, blocked overlap, invalid outcomes, and zero required denominators fail closed without replacing prior artifacts.
 
 ## 2. Exact OIS And SNIS Accounting
 
@@ -24,15 +24,15 @@
 
 ## 5. Estimate Artifacts And Independent Replay
 
-- [ ] 5.1 Add red tests for deterministic estimate JSON/Markdown, separated estimator/dataset/estimate/comparison/downstream gates, and no causal or training claim.
-- [ ] 5.2 Implement the offline estimation CLI with 10,000 production bootstrap replicates, explicit output paths, atomic pair replacement, and no gameplay imports.
-- [ ] 5.3 Implement an independent estimate verifier that recomputes source hashes, exact estimates, hash draws, intervals, influence rows, and gates without importing the main estimator module.
-- [ ] 5.4 Add tamper regressions for calibration evidence, point estimates, bootstrap draws, interval endpoints, influence diagnostics, and downstream booleans.
+- [x] 5.1 Add red tests for deterministic estimate JSON/Markdown, separated estimator/dataset/estimate/comparison/downstream gates, and no causal or training claim.
+- [x] 5.2 Implement the offline estimation CLI with 10,000 production bootstrap replicates, explicit output paths, atomic pair replacement, and no gameplay imports.
+- [x] 5.3 Implement an independent estimate verifier that recomputes source hashes, exact estimates, hash draws, intervals, influence rows, and gates without importing the main estimator module.
+- [x] 5.4 Add tamper regressions for calibration evidence, point estimates, bootstrap draws, interval endpoints, influence diagnostics, and downstream booleans.
 
 ## 6. B3-B7 Proof Of Concept And Closeout
 
-- [ ] 6.1 Generate and independently replay the frozen full calibration artifact before processing real evidence.
-- [ ] 6.2 Generate B3-B7 Current estimate artifacts bound to pool SHA-256 `aa61da25c93cdfa24ec57f787fbd41b5e4921c1a1a2bf9cb75f799133159b292` and preserve all one-victory limitations.
-- [ ] 6.3 Confirm the proof of concept reconstructs 125 trajectories, 1,253 decisions, 87 nonzero weights, existing overlap metrics, and unmodified pre-specified comparison thresholds.
-- [ ] 6.4 Run focused estimator/calibration/verifier tests, full Windows pytest, OpenSpec strict validation, Git whitespace/byte checks, and a completion code review.
-- [ ] 6.5 Record live isolation, final gates, residual risks, and next evidence or policy-learning gate in a durable report; commit and push coherent milestones without starting training.
+- [x] 6.1 Generate and independently replay the frozen full calibration artifact before processing real evidence.
+- [x] 6.2 Generate B3-B7 Current estimate artifacts bound to pool SHA-256 `aa61da25c93cdfa24ec57f787fbd41b5e4921c1a1a2bf9cb75f799133159b292` and preserve all one-victory limitations.
+- [x] 6.3 Confirm the proof of concept reconstructs 125 trajectories, 1,253 decisions, 87 nonzero weights, existing overlap metrics, and unmodified pre-specified comparison thresholds.
+- [x] 6.4 Run focused estimator/calibration/verifier tests, full Windows pytest, OpenSpec strict validation, Git whitespace/byte checks, and a completion code review.
+- [x] 6.5 Record live isolation, final gates, residual risks, and next evidence or policy-learning gate in a durable report; commit and push coherent milestones without starting training.

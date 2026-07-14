@@ -8,6 +8,7 @@ from analysis_scripts.noncombat_ope_calibration import (
     CalibrationConfig,
     build_calibration_artifact,
     calibration_implementation_sha256,
+    coverage_bootstrap_victory_intervals,
     main,
     render_calibration_json,
     render_calibration_markdown,
@@ -16,6 +17,8 @@ from analysis_scripts.noncombat_ope_calibration import (
     write_calibration_artifacts,
 )
 from analysis_scripts.noncombat_ope_estimation import (
+    WeightedTrajectory,
+    bootstrap_trajectory_estimates,
     estimator_implementation_sha256,
 )
 
@@ -237,3 +240,50 @@ def test_hash_bound_implementation_sources_have_checkout_stable_lf_bytes():
 
     assert "analysis_scripts/noncombat_ope_estimation.py text eol=lf\n" in attributes
     assert "analysis_scripts/noncombat_ope_calibration.py text eol=lf\n" in attributes
+    assert (
+        "analysis_scripts/noncombat_ope_estimate_artifacts.py text eol=lf\n"
+        in attributes
+    )
+    assert (
+        "analysis_scripts/verify_noncombat_ope_estimates.py text eol=lf\n"
+        in attributes
+    )
+
+
+def test_streaming_coverage_bootstrap_matches_general_exact_estimator():
+    trajectories = tuple(
+        WeightedTrajectory(
+            group_id=f"stream-{index}",
+            weight=weight,
+            victory=victory,
+            floor_reached=50 if victory else 10,
+            sample_ids=(f"sample-stream-{index}",),
+        )
+        for index, (weight, victory) in enumerate(
+            (
+                (Fraction(8, 5), True),
+                (Fraction(2, 5), False),
+                (Fraction(8, 5), False),
+                (Fraction(2, 5), True),
+            )
+        )
+    )
+    general = bootstrap_trajectory_estimates(
+        trajectories,
+        seed="stream-equivalence-v1",
+        replicate_count=64,
+    )
+
+    streaming = coverage_bootstrap_victory_intervals(
+        trajectories,
+        seed="stream-equivalence-v1",
+        replicate_count=64,
+        confidence_level=Fraction(95, 100),
+    )
+
+    assert streaming["target"] == general.intervals["victory"][
+        "self_normalized_is"
+    ]
+    assert streaming["uplift"] == general.intervals["victory"][
+        "self_normalized_uplift"
+    ]

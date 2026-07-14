@@ -4,8 +4,11 @@ import math
 from fractions import Fraction
 from pathlib import Path
 
+import pytest
+
 from analysis_scripts.noncombat_ope_estimation import (
     CALIBRATION_ARTIFACT_SCHEMA_VERSION,
+    EstimatorInputError,
     WeightedTrajectory,
     build_estimator_diagnostics,
     estimate_outcome_channels,
@@ -19,7 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 REPORTS = REPO_ROOT / "reports"
 
 
-def _write_passing_calibration(path: Path) -> None:
+def _write_self_asserted_calibration(path: Path) -> None:
     artifact = {
         "schema_version": CALIBRATION_ARTIFACT_SCHEMA_VERSION,
         "source": {
@@ -38,7 +41,7 @@ def _write_passing_calibration(path: Path) -> None:
     )
 
 
-def test_loader_requires_verified_hash_bound_bundle(tmp_path):
+def test_loader_requires_verified_hash_bound_bundle():
     sample_path = (
         REPORTS
         / "known_propensity_exploration_eval_20260714_b3_b7_samples.jsonl"
@@ -50,8 +53,9 @@ def test_loader_requires_verified_hash_bound_bundle(tmp_path):
         REPORTS
         / "noncombat_ope_b3_b7_current_deterministic_readiness_20260714.json"
     )
-    calibration_path = tmp_path / "calibration.json"
-    _write_passing_calibration(calibration_path)
+    calibration_path = (
+        REPORTS / "noncombat_ope_estimator_calibration_20260714.json"
+    )
 
     bundle = load_estimator_bundle(
         sample_path=sample_path,
@@ -77,6 +81,28 @@ def test_loader_requires_verified_hash_bound_bundle(tmp_path):
         ),
         "target_file_sha256": hashlib.sha256(target_path.read_bytes()).hexdigest(),
     }
+
+
+def test_loader_rejects_self_asserted_incomplete_calibration(tmp_path):
+    calibration_path = tmp_path / "calibration.json"
+    _write_self_asserted_calibration(calibration_path)
+
+    with pytest.raises(EstimatorInputError, match="calibration"):
+        load_estimator_bundle(
+            sample_path=(
+                REPORTS
+                / "known_propensity_exploration_eval_20260714_b3_b7_samples.jsonl"
+            ),
+            target_manifest_path=(
+                REPORTS
+                / "noncombat_ope_b3_b7_current_deterministic_target_20260714.json"
+            ),
+            readiness_path=(
+                REPORTS
+                / "noncombat_ope_b3_b7_current_deterministic_readiness_20260714.json"
+            ),
+            calibration_path=calibration_path,
+        )
 
 
 def test_exact_estimators_preserve_zero_and_extreme_trajectory_weights():
