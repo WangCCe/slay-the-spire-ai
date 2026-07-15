@@ -35,11 +35,11 @@
 
 ## 6. Freeze The Pre-Registered Implementation
 
-- [ ] 6.1 Generate `reports/noncombat_outcome_evidence_expansion_20260715_registration.json` and its review Markdown from the implemented canonical renderer; verify exactly 24 slots, 600 scheduled attempts, fixed rates/budget, thresholds, and no outcome-derived field.
-- [ ] 6.2 Run focused Windows pytest for the new expansion, runner, exploration-evidence, OPE-readiness, estimator, and verifier tests using `-p no:cacheprovider --basetemp <writable-repo-path>`; fix only failures attributable to this change.
-- [ ] 6.3 Run the full Windows pytest suite, `openspec validate --all --strict`, `git diff --check`, and registration byte/hash replay; preserve exact command results in the pre-collection report.
-- [ ] 6.4 Obtain code and spec review, resolve accepted Critical or Important findings with red regressions, rerun focused/full verification, and commit the implementation plus registration before any registered game starts.
-- [ ] 6.5 Confirm the committed source is tracked-clean and that no gameplay, report, or configuration artifact predates or differs from the committed registration; record the clean implementation commit as the only allowed run-lock HEAD.
+- [x] 6.1 Generate `reports/noncombat_outcome_evidence_expansion_20260715_registration.json` and its review Markdown from the implemented canonical renderer; verify exactly 24 slots, 600 scheduled attempts, fixed rates/budget, thresholds, and no outcome-derived field.
+- [x] 6.2 Run focused Windows pytest for the new expansion, runner, exploration-evidence, OPE-readiness, estimator, and verifier tests using `-p no:cacheprovider --basetemp <writable-repo-path>`; fix only failures attributable to this change.
+- [x] 6.3 Run the full Windows pytest suite, `openspec validate --all --strict`, `git diff --check`, and registration byte/hash replay; preserve exact command results in the pre-collection report.
+- [x] 6.4 Obtain code and spec review, resolve accepted Critical or Important findings with red regressions, rerun focused/full verification, and commit the implementation plus registration before any registered game starts.
+- [x] 6.5 Confirm the committed source is tracked-clean and that no gameplay, report, or configuration artifact predates or differs from the committed registration; record the clean implementation commit as the only allowed run-lock HEAD.
 
 ## 7. Execute The Blinded 600-Attempt Schedule
 

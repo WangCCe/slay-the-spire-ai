@@ -17,6 +17,26 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _contains_project_package(search_root: str) -> bool:
+    try:
+        root = Path(search_root or os.getcwd()).resolve()
+    except OSError:
+        return False
+    return any(
+        (root / name).exists() for name in ("analysis_scripts", "spirecomm")
+    )
+
+
+sys.path[:] = [
+    search_root
+    for search_root in sys.path
+    if not _contains_project_package(search_root)
+]
+sys.path.insert(0, str(REPO_ROOT))
+
 from analysis_scripts.noncombat_outcome_evidence_expansion import (
     OutcomeEvidenceRegistration,
     RegisteredSlot,
@@ -1518,8 +1538,21 @@ def _blocked_monitor_run_lock(
     }
 
 
-def _start_command(registration_path: Path) -> dict[str, Any]:
+def _load_runner_registration(
+    registration_path: Path,
+) -> OutcomeEvidenceRegistration:
     registration = load_registration(registration_path)
+    registered_root = Path(registration.repo_root).resolve()
+    if registered_root != REPO_ROOT:
+        raise OutcomeEvidenceRunnerError(
+            "registration repo_root does not match the runner checkout: "
+            f"registered={registered_root}, runner={REPO_ROOT}"
+        )
+    return registration
+
+
+def _start_command(registration_path: Path) -> dict[str, Any]:
+    registration = _load_runner_registration(registration_path)
     command = _registered_command(registration)
     run_lock = create_run_lock(
         registration_path=registration_path,
@@ -1547,7 +1580,7 @@ def _start_command(registration_path: Path) -> dict[str, Any]:
 
 
 def _dry_run_command(registration_path: Path) -> dict[str, Any]:
-    registration = load_registration(registration_path)
+    registration = _load_runner_registration(registration_path)
     command = _registered_command(registration)
     run_lock_path = _run_lock_path(registration)
     ledger_path = _ledger_path(registration)
@@ -1602,7 +1635,7 @@ def _dry_run_command(registration_path: Path) -> dict[str, Any]:
 
 
 def _run_next_command(registration_path: Path) -> dict[str, Any]:
-    registration = load_registration(registration_path)
+    registration = _load_runner_registration(registration_path)
     command = _registered_command(registration)
     run_lock_path = _run_lock_path(registration)
     ledger = StudyLedger.open_existing(
@@ -1649,7 +1682,7 @@ def _run_next_command(registration_path: Path) -> dict[str, Any]:
 
 
 def _monitor_command(registration_path: Path) -> dict[str, Any]:
-    registration = load_registration(registration_path)
+    registration = _load_runner_registration(registration_path)
     command = _registered_command(registration)
     run_lock_path = _run_lock_path(registration)
     ledger = StudyLedger.open_existing(
@@ -1720,7 +1753,7 @@ def _monitor_command(registration_path: Path) -> dict[str, Any]:
 
 
 def _finalize_gate_command(registration_path: Path) -> dict[str, Any]:
-    registration = load_registration(registration_path)
+    registration = _load_runner_registration(registration_path)
     ledger = StudyLedger.open_existing(
         path=_ledger_path(registration),
         registration=registration,

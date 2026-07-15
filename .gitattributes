@@ -4,6 +4,21 @@ analysis_scripts/noncombat_ope_estimate_artifacts.py text eol=lf
 analysis_scripts/noncombat_ope_estimation.py text eol=lf
 analysis_scripts/verify_noncombat_ope_estimates.py text eol=lf
 
+# Preserve exact LF bytes for every run-lock-controlled implementation.
+analysis_scripts/__init__.py text eol=lf
+analysis_scripts/noncombat_exploration_evidence.py text eol=lf
+analysis_scripts/noncombat_ope_readiness.py text eol=lf
+analysis_scripts/noncombat_outcome_evidence_expansion.py text eol=lf
+analysis_scripts/verify_noncombat_ope_artifacts.py text eol=lf
+analysis_scripts/verify_noncombat_outcome_evidence_expansion.py text eol=lf
+main.py text eol=lf
+scripts/run_noncombat_outcome_evidence_expansion.py text eol=lf
+spirecomm/ai/noncombat_exploration.py text eol=lf
+spirecomm/ai/noncombat_exploration_runtime.py text eol=lf
+
+# Preserve canonical registration and review artifact bytes.
+reports/noncombat_outcome_evidence_expansion_20260715_* text eol=lf
+
 # Preserve exact bytes for frozen evidence and derived OPE artifacts.
 reports/known_propensity_exploration_* -text whitespace=cr-at-eol
 reports/known_propensity_exploration_*_runs/** -text whitespace=cr-at-eol

@@ -1,5 +1,9 @@
 import importlib
 import json
+import os
+import subprocess
+import sys
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -20,6 +24,7 @@ SEED_BASE = 2_026_071_500
 WINDOWS_PYTHON = Path(r"D:\anaconda\envs\stsai\python.exe")
 SOURCE_COMMIT = "a" * 40
 RUN_LOCK_HASH = "b" * 64
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _module():
@@ -31,11 +36,73 @@ def _module():
         pytest.fail(f"outcome evidence runner is missing: {exc}")
 
 
+def test_runner_supports_direct_script_execution(tmp_path):
+    script_path = (
+        REPO_ROOT / "scripts" / "run_noncombat_outcome_evidence_expansion.py"
+    )
+    shadow_root = tmp_path / "shadow"
+    shadow_package = shadow_root / "analysis_scripts"
+    shadow_package.mkdir(parents=True)
+    (shadow_package / "__init__.py").write_text("", encoding="utf-8")
+    (shadow_package / "noncombat_outcome_evidence_expansion.py").write_text(
+        "raise RuntimeError('shadowed analysis_scripts import')\n",
+        encoding="utf-8",
+    )
+    shadow_archive = tmp_path / "shadow.zip"
+    with zipfile.ZipFile(shadow_archive, "w") as archive:
+        archive.writestr("analysis_scripts/__init__.py", "")
+        archive.writestr(
+            "analysis_scripts/noncombat_outcome_evidence_expansion.py",
+            "raise RuntimeError('shadowed zipped analysis_scripts import')\n",
+        )
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = os.pathsep.join(
+        (str(shadow_root), str(shadow_archive), str(REPO_ROOT))
+    )
+
+    completed = subprocess.run(
+        [sys.executable, str(script_path), "--help"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=False,
+        env=environment,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "dry-run" in completed.stdout
+
+
+def test_dry_run_rejects_registration_for_another_checkout(tmp_path):
+    module = _module()
+    registration = build_registration(
+        study_id=STUDY_ID,
+        artifact_root=tmp_path / "study",
+        repo_root=tmp_path / "other-checkout",
+        seed_base=SEED_BASE,
+        python_executable=WINDOWS_PYTHON,
+        communication_config_path=tmp_path / "config.properties",
+        checkpoint_root=tmp_path / "checkpoints",
+    )
+    registration_path = tmp_path / "registration.json"
+    registration_path.write_text(
+        render_registration_json(registration),
+        encoding="utf-8",
+        newline="",
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="runner checkout",
+    ):
+        module._dry_run_command(registration_path)
+
+
 def _study(tmp_path):
     registration = build_registration(
         study_id=STUDY_ID,
         artifact_root=tmp_path / "study",
-        repo_root=tmp_path / "repo",
+        repo_root=REPO_ROOT,
         seed_base=SEED_BASE,
         python_executable=WINDOWS_PYTHON,
         communication_config_path=tmp_path / "config.properties",

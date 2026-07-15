@@ -65,6 +65,7 @@ DEFAULT_CHECKPOINT_ROOT = str(
 )
 CHECKPOINT_PATTERNS = ("rl_combat_model_*.pth", "rl_model_*.pth")
 RUN_LOCK_IMPLEMENTATION_PATHS = (
+    "analysis_scripts/__init__.py",
     "analysis_scripts/noncombat_exploration_evidence.py",
     "analysis_scripts/noncombat_ope_estimate_artifacts.py",
     "analysis_scripts/noncombat_ope_estimation.py",

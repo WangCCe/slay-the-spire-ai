@@ -10,6 +10,16 @@ import pytest
 STUDY_ID = "noncombat-outcome-evidence-expansion-20260715"
 SEED_BASE = 2_026_071_500
 WINDOWS_PYTHON = Path(r"D:\anaconda\envs\stsai\python.exe")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+PRODUCTION_ARTIFACT_ROOT = Path(
+    r"D:\SteamLibrary\steamapps\common\SlayTheSpire"
+    r"\noncombat_outcome_evidence_expansion_20260715"
+)
+COMMITTED_REGISTRATION_PATH = (
+    REPO_ROOT
+    / "reports"
+    / "noncombat_outcome_evidence_expansion_20260715_registration.json"
+)
 
 
 def _module():
@@ -162,6 +172,48 @@ def test_registration_render_and_load_are_byte_stable(tmp_path):
     loaded = module.load_registration(path)
     assert loaded == registration
     assert module.render_registration_json(loaded) == first
+
+
+def test_committed_production_registration_matches_canonical_bytes():
+    module = _module()
+    expected = module.build_registration(
+        study_id=STUDY_ID,
+        artifact_root=PRODUCTION_ARTIFACT_ROOT,
+        repo_root=REPO_ROOT,
+        seed_base=SEED_BASE,
+        python_executable=WINDOWS_PYTHON,
+    )
+    expected_bytes = module.render_registration_json(expected).encode("utf-8")
+    actual_bytes = COMMITTED_REGISTRATION_PATH.read_bytes()
+
+    assert actual_bytes == expected_bytes
+    assert module.load_registration(COMMITTED_REGISTRATION_PATH) == expected
+
+
+def test_run_lock_controlled_paths_are_forced_to_lf():
+    module = _module()
+    controlled_paths = [
+        *module.RUN_LOCK_IMPLEMENTATION_PATHS,
+        "reports/noncombat_outcome_evidence_expansion_20260715_registration.json",
+        "reports/noncombat_outcome_evidence_expansion_20260715_registration_review.md",
+    ]
+
+    completed = subprocess.run(
+        ["git", "check-attr", "text", "eol", "--", *controlled_paths],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    observed = {}
+    for line in completed.stdout.splitlines():
+        path, attribute, value = line.split(": ", 2)
+        observed[(path, attribute)] = value
+    for path in controlled_paths:
+        assert observed[(path, "text")] == "set"
+        assert observed[(path, "eol")] == "lf"
 
 
 def test_registration_load_rejects_duplicate_json_keys(tmp_path):
