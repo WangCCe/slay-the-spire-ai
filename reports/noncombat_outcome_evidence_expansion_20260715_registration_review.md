@@ -75,18 +75,18 @@ manifest, trace, run-lock, ledger, or gameplay artifact.
 Focused Windows pytest:
 
 ```text
-D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp D:\PycharmProjects\slay-the-spire-ai\.pytest-outcome-freeze-focused-final-20260715 tests/test_noncombat_outcome_evidence_expansion.py tests/test_noncombat_outcome_evidence_runner.py tests/test_noncombat_outcome_evidence_pool.py tests/test_noncombat_outcome_evidence_gate.py tests/test_noncombat_outcome_evidence_finalizer.py tests/test_noncombat_outcome_evidence_verifier.py tests/test_noncombat_exploration_evidence.py tests/test_noncombat_ope_readiness.py tests/test_noncombat_ope_estimation.py tests/test_noncombat_ope_bootstrap.py tests/test_noncombat_ope_influence.py tests/test_noncombat_ope_estimate_artifacts.py tests/test_noncombat_ope_artifact_verifier.py tests/test_noncombat_ope_estimate_verifier.py tests/test_noncombat_ope_calibration.py
+D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp D:\PycharmProjects\slay-the-spire-ai\.pytest-outcome-prelock-focused-20260715 tests/test_noncombat_outcome_evidence_expansion.py tests/test_noncombat_outcome_evidence_runner.py tests/test_noncombat_outcome_evidence_pool.py tests/test_noncombat_outcome_evidence_gate.py tests/test_noncombat_outcome_evidence_finalizer.py tests/test_noncombat_outcome_evidence_verifier.py tests/test_noncombat_exploration_evidence.py tests/test_noncombat_ope_readiness.py tests/test_noncombat_ope_estimation.py tests/test_noncombat_ope_bootstrap.py tests/test_noncombat_ope_influence.py tests/test_noncombat_ope_estimate_artifacts.py tests/test_noncombat_ope_artifact_verifier.py tests/test_noncombat_ope_estimate_verifier.py tests/test_noncombat_ope_calibration.py
 ```
 
-Result: `298 passed in 283.81s`.
+Result: `299 passed in 263.75s`.
 
 Full Windows pytest:
 
 ```text
-D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp D:\PycharmProjects\slay-the-spire-ai\.pytest-outcome-freeze-full-final-20260715
+D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp D:\PycharmProjects\slay-the-spire-ai\.pytest-outcome-prelock-full-20260715
 ```
 
-Result: `2776 passed in 344.69s`.
+Result: `2777 passed in 306.31s`.
 
 Additional checks:
 
@@ -96,6 +96,7 @@ Additional checks:
   registration report paths resolve to `text: set`, `eol: lf`.
 - Canonical registration byte/hash replay: exact.
 - No-game dry-run: 24/24 registered slots, exact command/config replay.
+- Complete runner file: `53 passed in 10.27s`.
 
 The previously frozen inputs remain byte-identical:
 
@@ -117,24 +118,55 @@ Accepted review findings were resolved with regressions:
 The ZIP-shadow regression was observed failing before the fix and then passed.
 Final independent review reported no remaining Critical or Important finding.
 
+## Pre-Lock Protocol Correction
+
+Task 7.1 inspection of the local CommunicationMod source found that every line
+from child stdout is queued as a game command. The registered `run-next` wrapper
+previously printed its final audit JSON to stdout after the AI child exited,
+which would inject one invalid command at the end of each slot. A regression was
+observed failing, then `run-next` alone was changed to emit its final audit JSON
+to stderr. The other offline subcommands retain machine-readable stdout.
+
+The correction changes a run-lock-controlled implementation byte but does not
+change registration fields, schedule, behavior, thresholds, or analysis rules.
+Canonical registration replay remains exact with registration hash
+`adf850f96537f01ae29f99d45a56c1d9ffcddecc33665e4c76680515ca6631c2`
+and file SHA-256
+`c0a0b2cf1545965ebca8b24aa2193cc70c8d173ffc71fd993b839b7dbf30f215`.
+
+## Task 7.1 Preflight
+
+- Stale Slay the Spire, Java, and Python processes: none.
+- CommunicationMod config semantic SHA-256:
+  `961d8df7edd68461feebb830ee700a012f8bccf994ed00ea4eeae5a978c6d06d`.
+- CommunicationMod outer command: Windows production Python plus the registered
+  `run-next` wrapper and canonical registration path.
+- Registered child command: Windows production Python, `--max-games 25`,
+  `--eval`, and no `--train` or mutation flag.
+- Checkpoint inventory: 208 files, 1,356,047,034 bytes.
+- Checkpoint snapshot SHA-256:
+  `4d5c96bebb9f441f9f19479835f17a193edefb6fb279e24e47743e790825f20c`.
+- Previous CommunicationMod config backup:
+  `C:\Users\20571\AppData\Local\ModTheSpire\CommunicationMod\config.properties.pre-outcome-evidence-20260715.bak`.
+
 ## Collection Boundary
 
 The only allowed future run-lock HEAD is the clean commit containing this report,
-the canonical registration, the implementation, and the completed Task 6
-checklist. Its SHA is intentionally not embedded in tracked content because that
+the canonical registration, the implementation, and completed Task 7.1
+bookkeeping. Its SHA is intentionally not embedded in tracked content because that
 would be self-referential; Task 7.2 must capture and verify the actual clean HEAD
 in the external immutable run lock. No earlier commit and no later dirty or changed
 tree is eligible.
 
-At this freeze point:
+At the completed Task 7.1 pre-lock boundary:
 
 - external artifact root: absent
 - run lock: absent
 - study ledger: absent
 - registered games launched: zero
 - gameplay or training process started by this work: no
-- CommunicationMod configuration changed by this work: no
+- CommunicationMod configuration: study wrapper, captured by semantic hash above
 - checkpoint changed by this work: no
 
-Task 7 remains a separate live-collection transition. This report does not
+Task 7.2 remains a separate run-lock transition. This report does not
 authorize training, gameplay-policy edits, causal uplift claims, or promotion.

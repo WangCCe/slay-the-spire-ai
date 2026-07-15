@@ -43,7 +43,7 @@
 
 ## 7. Execute The Blinded 600-Attempt Schedule
 
-- [ ] 7.1 Verify no stale Slay the Spire, Java, or production Python process is active; capture the pre-study CommunicationMod semantic configuration and checkpoint snapshot; confirm the live command uses `D:\anaconda\envs\stsai\python.exe`, `--eval`, and no `--train`; finish and commit all tracked pre-lock bookkeeping so the source is clean.
+- [x] 7.1 Verify no stale Slay the Spire, Java, or production Python process is active; capture the pre-study CommunicationMod semantic configuration and checkpoint snapshot; confirm the live command uses `D:\anaconda\envs\stsai\python.exe`, `--eval`, and no `--train`; finish and commit all tracked pre-lock bookkeeping so the source is clean.
 - [ ] 7.2 Create the immutable run lock from the tracked-clean registration commit, rerun no-game dry-run for all 24 slots, and independently verify the lock before launching slot 01.
 - [ ] 7.3 Execute registered slots 01-04 in order; after each slot run only the blinded structural monitor, preserve logs and artifacts, and stop immediately on a global integrity blocker.
 - [ ] 7.4 Execute registered slots 05-08 under the unchanged lock and repeat the per-slot blinded structural checks without reading or reporting outcomes.

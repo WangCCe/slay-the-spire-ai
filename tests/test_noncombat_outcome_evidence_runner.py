@@ -535,6 +535,27 @@ def test_cli_exposes_only_registered_study_subcommands(tmp_path, subcommand):
     assert args.registration == registration_path
 
 
+def test_run_next_cli_keeps_audit_json_off_communication_stdout(
+    tmp_path, monkeypatch, capsys
+):
+    module = _module()
+    registration_path = tmp_path / "registration.json"
+    result = {"slot_number": 1, "status": "completed"}
+    monkeypatch.setattr(module, "_run_next_command", lambda _path: result)
+
+    assert module.main(
+        ["run-next", "--registration", str(registration_path)]
+    ) == 0
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == json.dumps(
+        result,
+        sort_keys=True,
+        separators=(",", ":"),
+    ) + "\n"
+
+
 def test_finalize_command_replays_every_registered_slot_and_runs_pipeline(
     tmp_path, monkeypatch
 ):

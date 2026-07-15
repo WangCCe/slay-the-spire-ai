@@ -1843,7 +1843,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = _monitor_command(args.registration)
         else:
             result = _finalize_gate_command(args.registration)
-        print(_canonical_json(result))
+        output_stream = sys.stderr if args.subcommand == "run-next" else sys.stdout
+        print(_canonical_json(result), file=output_stream)
         return 0
     except Exception as exc:
         print(f"[outcome-evidence] {exc}", file=sys.stderr)
