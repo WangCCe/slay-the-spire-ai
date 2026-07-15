@@ -44,13 +44,20 @@
 ## 7. Execute The Blinded 600-Attempt Schedule
 
 - [x] 7.1 Verify no stale Slay the Spire, Java, or production Python process is active; capture the pre-study CommunicationMod semantic configuration and checkpoint snapshot; confirm the live command uses `D:\anaconda\envs\stsai\python.exe`, `--eval`, and no `--train`; finish and commit all tracked pre-lock bookkeeping so the source is clean.
-- [ ] 7.2 Create the immutable run lock from the tracked-clean registration commit, rerun no-game dry-run for all 24 slots, and independently verify the lock before launching slot 01.
-- [ ] 7.3 Execute registered slots 01-04 in order; after each slot run only the blinded structural monitor, preserve logs and artifacts, and stop immediately on a global integrity blocker.
-- [ ] 7.4 Execute registered slots 05-08 under the unchanged lock and repeat the per-slot blinded structural checks without reading or reporting outcomes.
-- [ ] 7.5 Execute registered slots 09-12 under the unchanged lock and repeat the per-slot blinded structural checks without adapting schedule, rates, thresholds, or source.
+- [x] 7.2 Create the immutable run lock from the tracked-clean registration commit, rerun no-game dry-run for all 24 slots, and independently verify the lock before launching slot 01.
+- [x] 7.3 Execute registered slots 01-04 in order; after each slot run only the blinded structural monitor, preserve logs and artifacts, and stop immediately on a global integrity blocker.
+- [x] 7.4 Execute registered slots 05-08 under the unchanged lock and repeat the per-slot blinded structural checks without reading or reporting outcomes.
+- [x] 7.5 Execute registered slots 09-12 under the unchanged lock and repeat the per-slot blinded structural checks without adapting schedule, rates, thresholds, or source.
 - [ ] 7.6 Execute registered slots 13-16 under the unchanged lock and mark any early process exit interrupted without restarting or replacing its slot.
 - [ ] 7.7 Execute registered slots 17-20 under the unchanged lock and repeat the per-slot blinded structural checks; do not generate target, OPE, bootstrap, influence, or comparison artifacts.
 - [ ] 7.8 Execute registered slots 21-24 under the unchanged lock, then verify that every registered slot is terminal and that no unregistered or replacement slot was launched.
+
+Collection stopped fail-closed on 2026-07-16. Slots 01-12 are terminal, slot 13
+was recovered as interrupted after the host reboot, and slot 14 was marked
+interrupted after its CommunicationMod process exited without a trace. The
+blinded monitor identified `terminal_slot_structure_invalid_14`, the ledger
+recorded that exact global stop, and slots 15-24 remain unlaunched by contract.
+Tasks 7.6-7.8 therefore cannot be completed from this registration.
 
 From the start of task 7.2 through completion of task 8.3, do not edit any tracked file, including this checklist. Record progress only in the append-only external study ledger and defer checkbox updates until the run-lock window closes.
 
@@ -58,6 +65,13 @@ From the start of task 7.2 through completion of task 8.3, do not edit any track
 
 - [ ] 8.1 After all slots are terminal, run finalization exactly once to build the all-slot canonical pool, deterministic-Current target, OPE readiness, 10,000-replicate estimate, influence diagnostics, evidence gate, and closeout artifacts.
 - [ ] 8.2 Run the standalone verifier over every registration-through-closeout artifact and require exact replay of pool membership, target weights, ESS, supported victories, estimates, intervals, influence, hashes, and readiness booleans.
-- [ ] 8.3 Capture the post-study CommunicationMod and checkpoint snapshot, compare it to the pre-study snapshot, and inspect fresh `ai_debug.log` plus `communication_mod_errors.log` for collection or protocol failures.
-- [ ] 8.4 After the run-lock window closes, update deferred task checkboxes, then run focused and full Windows pytest, strict OpenSpec validation, Git whitespace and byte checks, and an independent final review; fix accepted issues only with regressions and never by altering registered evidence or thresholds.
-- [ ] 8.5 Commit the deterministic closeout and state the result as ready, inconclusive, or blocked; keep causal uplift, formal non-combat RL, reward design, gameplay-policy edits, and live promotion unauthorized regardless of the observed comparison.
+- [x] 8.3 Capture the post-study CommunicationMod and checkpoint snapshot, compare it to the pre-study snapshot, and inspect fresh `ai_debug.log` plus `communication_mod_errors.log` for collection or protocol failures.
+- [x] 8.4 After the run-lock window closes, update deferred task checkboxes, then run focused and full Windows pytest, strict OpenSpec validation, Git whitespace and byte checks, and an independent final review; fix accepted issues only with regressions and never by altering registered evidence or thresholds.
+- [x] 8.5 Commit the deterministic closeout and state the result as ready, inconclusive, or blocked; keep causal uplift, formal non-combat RL, reward design, gameplay-policy edits, and live promotion unauthorized regardless of the observed comparison.
+
+The global-stop finalization path was claimed exactly once and wrote only the
+registered blocked closeout; it intentionally produced no pool or OPE artifact.
+Task 8.1's normal all-slot path was therefore ineligible. The frozen standalone
+verifier then failed with `normal closeout has a global stop`, exposing that it
+does not implement the registered blocked-closeout branch. Task 8.2 remains
+incomplete and must be repaired before any fresh registration.
