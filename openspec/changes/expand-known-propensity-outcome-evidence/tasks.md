@@ -29,9 +29,9 @@
 
 ## 5. Independent Verification
 
-- [ ] 5.1 Add failing tests in `tests/test_noncombat_outcome_evidence_verifier.py` for tampered registration, run lock, ledger, manifest, trace, pool membership, terminal outcome, target probability, readiness diagnostic, estimate, supported-victory count, and closeout gate.
-- [ ] 5.2 Implement `analysis_scripts/verify_noncombat_outcome_evidence_expansion.py` as a standalone verifier that does not import the study builder/finalizer and independently recomputes hashes, slot accounting, pool membership, exact support, deterministic-Current weights, ESS screens, supported victories, and readiness booleans.
-- [ ] 5.3 Add static import-independence and deterministic replay tests, record the verifier implementation hash in its audit, and verify that source or verifier byte changes invalidate the audit.
+- [x] 5.1 Add failing tests in `tests/test_noncombat_outcome_evidence_verifier.py` for tampered registration, run lock, ledger, manifest, trace, pool membership, terminal outcome, target probability, readiness diagnostic, estimate, supported-victory count, and closeout gate.
+- [x] 5.2 Implement `analysis_scripts/verify_noncombat_outcome_evidence_expansion.py` as a standalone verifier that does not import the study builder/finalizer and independently recomputes hashes, slot accounting, pool membership, exact support, deterministic-Current weights, ESS screens, supported victories, and readiness booleans.
+- [x] 5.3 Add static import-independence and deterministic replay tests, record the verifier implementation hash in its audit, and verify that source or verifier byte changes invalidate the audit.
 
 ## 6. Freeze The Pre-Registered Implementation
 
