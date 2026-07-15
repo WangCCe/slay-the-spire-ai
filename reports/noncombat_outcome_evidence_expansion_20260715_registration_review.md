@@ -75,18 +75,18 @@ manifest, trace, run-lock, ledger, or gameplay artifact.
 Focused Windows pytest:
 
 ```text
-D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp D:\PycharmProjects\slay-the-spire-ai\.pytest-outcome-prelock-focused-20260715 tests/test_noncombat_outcome_evidence_expansion.py tests/test_noncombat_outcome_evidence_runner.py tests/test_noncombat_outcome_evidence_pool.py tests/test_noncombat_outcome_evidence_gate.py tests/test_noncombat_outcome_evidence_finalizer.py tests/test_noncombat_outcome_evidence_verifier.py tests/test_noncombat_exploration_evidence.py tests/test_noncombat_ope_readiness.py tests/test_noncombat_ope_estimation.py tests/test_noncombat_ope_bootstrap.py tests/test_noncombat_ope_influence.py tests/test_noncombat_ope_estimate_artifacts.py tests/test_noncombat_ope_artifact_verifier.py tests/test_noncombat_ope_estimate_verifier.py tests/test_noncombat_ope_calibration.py
+D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp D:\PycharmProjects\slay-the-spire-ai\.pytest_tmp\outcome_prelock_focused_fix_20260715 tests/test_noncombat_outcome_evidence_expansion.py tests/test_noncombat_outcome_evidence_runner.py tests/test_noncombat_outcome_evidence_pool.py tests/test_noncombat_outcome_evidence_gate.py tests/test_noncombat_outcome_evidence_finalizer.py tests/test_noncombat_outcome_evidence_verifier.py tests/test_noncombat_exploration_evidence.py tests/test_noncombat_ope_readiness.py tests/test_noncombat_ope_estimation.py tests/test_noncombat_ope_bootstrap.py tests/test_noncombat_ope_influence.py tests/test_noncombat_ope_estimate_artifacts.py tests/test_noncombat_ope_artifact_verifier.py tests/test_noncombat_ope_estimate_verifier.py tests/test_noncombat_ope_calibration.py
 ```
 
-Result: `299 passed in 263.75s`.
+Result: `300 passed in 239.18s`.
 
 Full Windows pytest:
 
 ```text
-D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp D:\PycharmProjects\slay-the-spire-ai\.pytest-outcome-prelock-full-20260715
+D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp D:\PycharmProjects\slay-the-spire-ai\.pytest_tmp\outcome_prelock_full_fix_20260715
 ```
 
-Result: `2777 passed in 306.31s`.
+Result: `2778 passed in 296.91s`.
 
 Additional checks:
 
@@ -97,6 +97,8 @@ Additional checks:
 - Canonical registration byte/hash replay: exact.
 - No-game dry-run: 24/24 registered slots, exact command/config replay.
 - Complete runner file: `53 passed in 10.27s`.
+- Complete expansion file after the raw-byte lock correction:
+  `33 passed in 11.90s`.
 
 The previously frozen inputs remain byte-identical:
 
@@ -148,6 +150,40 @@ and file SHA-256
   `4d5c96bebb9f441f9f19479835f17a193edefb6fb279e24e47743e790825f20c`.
 - Previous CommunicationMod config backup:
   `C:\Users\20571\AppData\Local\ModTheSpire\CommunicationMod\config.properties.pre-outcome-evidence-20260715.bak`.
+
+## Rejected Prelaunch Lock
+
+The first Task 7.2 lock attempt used source commit
+`4d02bb5354f772b3538ea5dd7767cda28c1c1a44` and produced canonical run-lock
+hash `36f942078698fe568972fe1cfb6465913128948f378f9589cd0680cbe6fa2a26`.
+Before slot 01, the standalone verifier rejected it with
+`committed implementation bytes differ: main.py`. The ledger contained exactly
+one `study_started` record with null slot and session identifiers. No slot,
+game, gameplay child, outcome inspection, or replacement attempt occurred.
+
+The builder had accepted Git clean-filter equivalence while recording raw
+working-tree bytes; the verifier correctly required both the recorded bytes and
+committed bytes to match. `main.py` was the sole mismatch: its committed LF
+SHA-256 was
+`f19de6a91ed1137a15f9e9a935b9faf71c5740b14ee82b98b82748f1fb54bf42`,
+while its CRLF working copy had SHA-256
+`bf8a954beac54669f296af5ff0a9c3972dd3e0ae2bb45aafc7f28d14d8ea18f0`.
+
+A failing regression reproduced publication of a lock from filter-equivalent
+but raw-different bytes. The builder now requires exact raw equality to `HEAD`,
+and the working `main.py` bytes were normalized back to the committed LF bytes.
+The zero-launch invalid root was moved intact to:
+
+```text
+D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260715-invalid-prelaunch-36f94207
+```
+
+Its `run-lock.json` file SHA-256 is
+`c5488ec32ebd41f529d1583fa346d0194d3561c7f8f2ea7a8b5e5c5c4c155a57`.
+The canonical artifact root is absent again. This quarantined lock is invalid,
+is not registered evidence, and cannot be resumed or counted. Task 7.2 requires
+a new lock from the next tracked-clean commit plus a fresh independent
+verification before any gameplay process starts.
 
 ## Collection Boundary
 

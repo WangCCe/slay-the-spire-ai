@@ -2003,42 +2003,8 @@ def _verify_head_file(
     head_bytes = _head_blob_bytes(repo_root, relative_path)
     if head_bytes is None:
         raise OutcomeEvidenceRunLockError(f"{label} must be committed at HEAD")
-    if working_bytes != head_bytes and _filtered_working_blob_oid(
-        repo_root, relative_path, working_bytes
-    ) != _git_blob_oid(head_bytes):
+    if working_bytes != head_bytes:
         raise OutcomeEvidenceRunLockError(f"{label} bytes differ from HEAD")
-
-
-def _filtered_working_blob_oid(
-    repo_root: Path, relative_path: Path, working_bytes: bytes
-) -> str:
-    try:
-        result = subprocess.run(
-            [
-                "git",
-                "hash-object",
-                f"--path={relative_path.as_posix()}",
-                "--stdin",
-            ],
-            cwd=str(repo_root),
-            check=False,
-            capture_output=True,
-            input=working_bytes,
-        )
-    except OSError as exc:
-        raise OutcomeEvidenceRunLockError(f"unable to run git: {exc}") from exc
-    oid = result.stdout.decode("ascii", errors="strict").strip().lower()
-    if result.returncode != 0 or not re.fullmatch(r"[0-9a-f]{40}", oid):
-        detail = result.stderr.decode("utf-8", errors="replace").strip()
-        raise OutcomeEvidenceRunLockError(
-            f"git hash-object failed for {relative_path}: {detail}"
-        )
-    return oid
-
-
-def _git_blob_oid(content: bytes) -> str:
-    header = f"blob {len(content)}\0".encode("ascii")
-    return hashlib.sha1(header + content).hexdigest()
 
 
 def _implementation_snapshot(repo_root: Path) -> list[dict[str, Any]]:

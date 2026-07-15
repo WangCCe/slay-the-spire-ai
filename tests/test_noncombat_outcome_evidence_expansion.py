@@ -358,7 +358,9 @@ def _run_lock_fixture(tmp_path, monkeypatch, *, python_executable=WINDOWS_PYTHON
     for relative_path in module.RUN_LOCK_IMPLEMENTATION_PATHS:
         path = repo_root / relative_path
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(f"implementation:{relative_path}\n", encoding="utf-8")
+        path.write_text(
+            f"implementation:{relative_path}\n", encoding="utf-8", newline=""
+        )
 
     communication_config_path.write_text(
         "command=python main.py\nclientTimeout=30\n",
@@ -488,6 +490,43 @@ def test_run_lock_rejects_source_file_hash_drift(tmp_path, monkeypatch):
         _validate_run_lock(inputs)
 
 
+def test_run_lock_rejects_filter_equivalent_raw_byte_drift_before_publish(
+    tmp_path, monkeypatch
+):
+    inputs = _run_lock_fixture(tmp_path, monkeypatch)
+    module = inputs["module"]
+    relative_path = Path(module.RUN_LOCK_IMPLEMENTATION_PATHS[0])
+    source_path = inputs["repo_root"] / relative_path
+    source_path.write_bytes(source_path.read_bytes().replace(b"\n", b"\r\n"))
+
+    def head_blob_bytes(repo_root, candidate_path):
+        working_bytes = (repo_root / candidate_path).read_bytes()
+        if candidate_path == relative_path:
+            return working_bytes.replace(b"\r\n", b"\n")
+        return working_bytes
+
+    monkeypatch.setattr(module, "_head_blob_bytes", head_blob_bytes)
+    monkeypatch.setattr(
+        module,
+        "_filtered_working_blob_oid",
+        lambda *_args: "f" * 40,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        module,
+        "_git_blob_oid",
+        lambda *_args: "f" * 40,
+        raising=False,
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunLockError,
+        match="implementation file.*bytes differ from HEAD",
+    ):
+        _create_run_lock(inputs)
+    assert not inputs["lock_path"].exists()
+
+
 def test_run_lock_rejects_communication_mod_semantic_drift(tmp_path, monkeypatch):
     inputs = _run_lock_fixture(tmp_path, monkeypatch)
     _create_run_lock(inputs)
@@ -592,7 +631,9 @@ def test_run_lock_rejects_untracked_controlled_file_in_real_git_repo(
     for relative_path in module.RUN_LOCK_IMPLEMENTATION_PATHS:
         path = repo_root / relative_path
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(f"implementation:{relative_path}\n", encoding="utf-8")
+        path.write_text(
+            f"implementation:{relative_path}\n", encoding="utf-8", newline=""
+        )
     registration_path = repo_root / "reports" / "registration.json"
     registration_path.parent.mkdir(parents=True)
     registration_path.write_text(
