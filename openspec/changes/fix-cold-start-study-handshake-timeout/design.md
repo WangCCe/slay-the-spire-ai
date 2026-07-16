@@ -10,7 +10,7 @@ The immutable r2 failure record proves that no study-ready or release file, run 
 
 **Goals:**
 
-- Make the fixed launchable handshake tolerate a cold first CommunicationMod state that arrives after 30 seconds but no later than 120 seconds.
+- Make the fixed launchable handshake tolerate a cold first CommunicationMod state that arrives after 30 seconds but strictly before the 120-second deadline.
 - Keep the parent and child on one exact hash-bound readiness deadline.
 - Preserve callback suppression, preclaim ordering, exclusive handshake artifacts, process-exit checks, and all existing fail-closed paths.
 - Prove the fix with a deterministic fake-clock regression before changing production code.
@@ -28,6 +28,8 @@ The immutable r2 failure record proves that no study-ready or release file, run 
 ### 1. Replace the shared 30-second readiness deadline with 120 seconds
 
 `READINESS_TIMEOUT_SECONDS` remains a single fixed protocol constant and changes from 30 to 120. Both the child wait and parent wait continue to use the attempt-bound value, so neither side can silently wait longer than the value committed into the registration.
+
+The monotonic deadline is an exclusive upper bound: state or ready first observed at or after 120 seconds is rejected, and release first observed at or after 10 seconds is rejected. This keeps exact-deadline races fail-closed instead of allowing a late success to bypass the timeout check.
 
 The observed cold-start path exceeded 39 seconds before CommunicationMod post-initialization. A 120-second bound provides roughly three times that observed interval while remaining short relative to a 25-game slot and preserving deterministic failure.
 

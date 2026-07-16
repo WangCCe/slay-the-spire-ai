@@ -870,7 +870,7 @@ def test_handshake_timeout_stops_without_claim_or_retry(tmp_path):
         return child
 
     def sleep(_seconds):
-        clock[0] = 31.0
+        clock[0] = 121.0
 
     with pytest.raises(module.OutcomeEvidenceRunnerError, match="readiness.*deadline"):
         module.execute_handshaken_registered_slot(
@@ -884,6 +884,46 @@ def test_handshake_timeout_stops_without_claim_or_retry(tmp_path):
 
     snapshot = ledger.snapshot()
     assert starts == [child.pid]
+    assert child.terminated is True
+    assert snapshot["active_slot"] is None
+    assert snapshot["terminal_slot_count"] == 0
+    assert "readiness" in snapshot["global_stop"]["reason"]
+
+
+@pytest.mark.parametrize("ready_at", (120.0, 121.0))
+def test_handshake_rejects_ready_at_or_after_readiness_deadline(
+    tmp_path,
+    ready_at,
+):
+    module, ledger, _registration, _run_lock, launch, marker_path = (
+        _handshake_slot(tmp_path)
+    )
+    child = _FakeHandshakeChild()
+    clock = [0.0]
+    attempt_environment = {}
+
+    def process_starter(_launch, environment):
+        attempt_environment.update(environment)
+        return child
+
+    def publish_late_ready(_seconds):
+        clock[0] = ready_at
+        _publish_ready_from_environment(
+            attempt_environment,
+            child_pid=child.pid,
+        )
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="readiness.*deadline"):
+        module.execute_handshaken_registered_slot(
+            ledger=ledger,
+            launch=launch,
+            marker_path=marker_path,
+            process_starter=process_starter,
+            monotonic=lambda: clock[0],
+            sleep=publish_late_ready,
+        )
+
+    snapshot = ledger.snapshot()
     assert child.terminated is True
     assert snapshot["active_slot"] is None
     assert snapshot["terminal_slot_count"] == 0
@@ -1865,7 +1905,7 @@ def test_no_game_dry_run_enumerates_exact_registered_24_slot_plan(
                 (artifact_root / f"{session_id}-communication-attempt.json").resolve()
             ),
             "protocol_version": "noncombat-outcome-evidence-handshake-v1",
-            "readiness_timeout_seconds": 30,
+            "readiness_timeout_seconds": 120,
             "ready_path": str(
                 (artifact_root / f"{session_id}-communication-ready.json").resolve()
             ),

@@ -56,7 +56,7 @@ def _attempt(tmp_path, **overrides):
         "config_sha256": _sha256(config_path),
         "marker_start_count": 10,
         "paths": paths,
-        "readiness_timeout_seconds": 30,
+        "readiness_timeout_seconds": 120,
         "release_timeout_seconds": 10,
         "created_unix_ns": 100,
     }
@@ -115,7 +115,7 @@ def test_attempt_record_has_exact_fixed_contract(tmp_path):
     }
     assert attempt["schema_version"] == ATTEMPT_SCHEMA_VERSION
     assert attempt["protocol_version"] == HANDSHAKE_SCHEMA_VERSION
-    assert attempt["readiness_timeout_seconds"] == 30
+    assert attempt["readiness_timeout_seconds"] == 120
     assert attempt["release_timeout_seconds"] == 10
     assert attempt["slot_token"] == derive_slot_token(
         registration_hash=attempt["registration_hash"],
@@ -132,7 +132,7 @@ def test_attempt_record_has_exact_fixed_contract(tmp_path):
         ({"slot_number": True}, "slot_number"),
         ({"created_unix_ns": 1.0}, "created_unix_ns"),
         ({"marker_start_count": "10"}, "marker_start_count"),
-        ({"readiness_timeout_seconds": 29}, "readiness timeout"),
+        ({"readiness_timeout_seconds": 30}, "readiness timeout"),
         ({"release_timeout_seconds": 11}, "release timeout"),
         (
             {
@@ -324,6 +324,59 @@ def test_child_publishes_ready_after_one_callback_free_state_then_waits_for_rele
     )
 
 
+def test_child_handshake_accepts_cold_state_after_45_seconds(tmp_path):
+    paths = _paths(tmp_path)
+    attempt = _attempt(tmp_path)
+    publish_record_once(paths.attempt, attempt)
+    clock = SimpleNamespace(value=0.0)
+    receive_times = []
+
+    class ColdStartCoordinator:
+        last_error = None
+        last_game_state = None
+
+        def start_input_thread(self):
+            pass
+
+        def receive_game_state_update(self, *, block, perform_callbacks):
+            assert block is False
+            assert perform_callbacks is False
+            receive_times.append(clock.value)
+            if clock.value < 45.0:
+                return False
+            self.last_game_state = object()
+            return True
+
+    def sleep(_seconds):
+        if paths.ready.exists():
+            ready = load_ready_record(paths.ready)
+            release = build_release_record(attempt, ready, created_unix_ns=300)
+            publish_record_once(paths.release, release)
+            return
+        clock.value += 15.0
+
+    coordinator = ColdStartCoordinator()
+    result = perform_child_handshake_if_configured(
+        coordinator,
+        environ={HANDSHAKE_ATTEMPT_ENV: str(paths.attempt)},
+        monotonic=lambda: clock.value,
+        sleep=sleep,
+        child_pid=4321,
+        created_unix_ns=lambda: 200,
+    )
+
+    assert result is True
+    assert receive_times == [0.0, 15.0, 30.0, 45.0]
+    assert coordinator.last_game_state is not None
+    ready = load_ready_record(paths.ready)
+    assert ready["child_pid"] == 4321
+    assert load_release_record(paths.release) == build_release_record(
+        attempt,
+        ready,
+        created_unix_ns=300,
+    )
+
+
 def test_released_retained_in_game_state_is_processed_exactly_once():
     coordinator = Coordinator(start_input_thread=False)
     retained_state = SimpleNamespace(screen_type="EVENT")
@@ -363,7 +416,91 @@ class _Clock:
         return self.value
 
     def sleep_past_deadline(self, _seconds):
-        self.value = 31.0
+        self.value = 121.0
+
+
+@pytest.mark.parametrize("received_at", (120.0, 121.0))
+def test_child_rejects_state_at_or_after_readiness_deadline(
+    tmp_path,
+    received_at,
+):
+    paths = _paths(tmp_path)
+    attempt = _attempt(tmp_path)
+    publish_record_once(paths.attempt, attempt)
+    clock = SimpleNamespace(value=0.0)
+
+    class LateStateCoordinator:
+        last_error = None
+        last_game_state = None
+
+        def start_input_thread(self):
+            pass
+
+        def receive_game_state_update(self, *, block, perform_callbacks):
+            assert block is False
+            assert perform_callbacks is False
+            clock.value = received_at
+            self.last_game_state = object()
+            return True
+
+    def publish_release_if_ready(_seconds):
+        if paths.ready.exists() and not paths.release.exists():
+            ready = load_ready_record(paths.ready)
+            release = build_release_record(attempt, ready, created_unix_ns=300)
+            publish_record_once(paths.release, release)
+
+    with pytest.raises(StudyHandshakeError, match="readiness deadline"):
+        perform_child_handshake_if_configured(
+            LateStateCoordinator(),
+            environ={HANDSHAKE_ATTEMPT_ENV: str(paths.attempt)},
+            monotonic=lambda: clock.value,
+            sleep=publish_release_if_ready,
+            child_pid=4321,
+            created_unix_ns=lambda: 200,
+        )
+    assert not paths.ready.exists()
+    assert not paths.release.exists()
+
+
+@pytest.mark.parametrize("released_at", (10.0, 11.0))
+def test_child_rejects_release_at_or_after_release_deadline(
+    tmp_path,
+    released_at,
+):
+    paths = _paths(tmp_path)
+    attempt = _attempt(tmp_path)
+    publish_record_once(paths.attempt, attempt)
+    clock = SimpleNamespace(value=0.0)
+
+    class ReadyCoordinator:
+        last_error = None
+        last_game_state = object()
+
+        def start_input_thread(self):
+            pass
+
+        def receive_game_state_update(self, *, block, perform_callbacks):
+            assert block is False
+            assert perform_callbacks is False
+            return True
+
+    def publish_late_release(_seconds):
+        clock.value = released_at
+        ready = load_ready_record(paths.ready)
+        release = build_release_record(attempt, ready, created_unix_ns=300)
+        publish_record_once(paths.release, release)
+
+    with pytest.raises(StudyHandshakeError, match="release deadline"):
+        perform_child_handshake_if_configured(
+            ReadyCoordinator(),
+            environ={HANDSHAKE_ATTEMPT_ENV: str(paths.attempt)},
+            monotonic=lambda: clock.value,
+            sleep=publish_late_release,
+            child_pid=4321,
+            created_unix_ns=lambda: 200,
+        )
+    assert paths.ready.exists()
+    assert paths.release.exists()
 
 
 def test_child_readiness_timeout_fails_without_ready(tmp_path):

@@ -404,7 +404,7 @@ def _expected_registration(record: Mapping[str, Any]) -> dict[str, Any]:
             "attempt_suffix": "-communication-attempt.json",
             "orphaned_attempt_global_stop": True,
             "protocol_version": "noncombat-outcome-evidence-handshake-v1",
-            "readiness_timeout_seconds": 30,
+            "readiness_timeout_seconds": 120,
             "ready_suffix": "-communication-ready.json",
             "release_suffix": "-communication-release.json",
             "release_timeout_seconds": 10,

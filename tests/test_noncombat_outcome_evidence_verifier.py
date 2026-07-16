@@ -427,6 +427,38 @@ def _publish_preclaim_handshake(registration, run_lock, slot, launch, marker_sta
     return paths, attempt, ready
 
 
+def test_verifier_requires_independent_120_second_handshake_contract(tmp_path):
+    verifier = _verifier()
+    registration = expansion.build_registration(
+        study_id=STUDY_ID,
+        artifact_root=tmp_path / "study",
+        repo_root=tmp_path / "repo",
+        seed_base=SEED_BASE,
+        python_executable=Path(r"D:\anaconda\envs\stsai\python.exe"),
+    )
+    record = registration.to_record()
+
+    verifier._verify_registration(record, verifier._Checks())
+    expected = verifier._expected_registration(record)
+    assert expected["integrity_rules"]["communication_handshake"][
+        "readiness_timeout_seconds"
+    ] == 120
+
+    historical = deepcopy(record)
+    historical["integrity_rules"]["communication_handshake"][
+        "readiness_timeout_seconds"
+    ] = 30
+    historical["registration_hash"] = _self_hash(
+        historical,
+        "registration_hash",
+    )
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="registered study contract mismatch",
+    ):
+        verifier._verify_registration(historical, verifier._Checks())
+
+
 def _build_study(
     tmp_path,
     monkeypatch,

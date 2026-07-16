@@ -18,7 +18,7 @@ HANDSHAKE_SCHEMA_VERSION = "noncombat-outcome-evidence-handshake-v1"
 ATTEMPT_SCHEMA_VERSION = "noncombat-outcome-evidence-handshake-attempt-v1"
 READY_SCHEMA_VERSION = "noncombat-outcome-evidence-handshake-ready-v1"
 RELEASE_SCHEMA_VERSION = "noncombat-outcome-evidence-handshake-release-v1"
-READINESS_TIMEOUT_SECONDS = 30
+READINESS_TIMEOUT_SECONDS = 120
 RELEASE_TIMEOUT_SECONDS = 10
 POLL_INTERVAL_SECONDS = 0.05
 
@@ -349,6 +349,8 @@ def perform_child_handshake_if_configured(
             raise StudyHandshakeError(
                 f"CommunicationMod state receive failed: {exc}"
             ) from exc
+        if monotonic() >= readiness_deadline:
+            raise StudyHandshakeError("child readiness deadline exceeded")
         if received:
             if getattr(coordinator, "last_error", None) is not None:
                 raise StudyHandshakeError(
@@ -360,8 +362,6 @@ def perform_child_handshake_if_configured(
                     "CommunicationMod state was not retained before child readiness"
                 )
             break
-        if monotonic() >= readiness_deadline:
-            raise StudyHandshakeError("child readiness deadline exceeded")
         sleep(POLL_INTERVAL_SECONDS)
 
     ready = build_ready_record(
@@ -375,12 +375,14 @@ def perform_child_handshake_if_configured(
     publish_record_once(ready_path, ready)
     release_deadline = monotonic() + attempt["release_timeout_seconds"]
     while True:
+        if monotonic() >= release_deadline:
+            raise StudyHandshakeError("child release deadline exceeded")
         if release_path.exists():
+            if monotonic() >= release_deadline:
+                raise StudyHandshakeError("child release deadline exceeded")
             release = load_release_record(release_path)
             validate_release_record(release, attempt=attempt, ready=ready)
             return True
-        if monotonic() >= release_deadline:
-            raise StudyHandshakeError("child release deadline exceeded")
         sleep(POLL_INTERVAL_SECONDS)
 
 

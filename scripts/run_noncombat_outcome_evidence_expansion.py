@@ -489,7 +489,11 @@ def _wait_for_child_readiness(
 ) -> dict[str, Any]:
     deadline = monotonic() + timeout_seconds
     while True:
+        if monotonic() >= deadline:
+            raise OutcomeEvidenceRunnerError("child readiness deadline exceeded")
         if ready_path.exists():
+            if monotonic() >= deadline:
+                raise OutcomeEvidenceRunnerError("child readiness deadline exceeded")
             if process.poll() is not None:
                 raise OutcomeEvidenceRunnerError(
                     "child exited before readiness verification"
@@ -510,8 +514,6 @@ def _wait_for_child_readiness(
             raise OutcomeEvidenceRunnerError(
                 f"child exited before readiness with code {exit_code}"
             )
-        if monotonic() >= deadline:
-            raise OutcomeEvidenceRunnerError("child readiness deadline exceeded")
         sleep(POLL_INTERVAL_SECONDS)
 
 

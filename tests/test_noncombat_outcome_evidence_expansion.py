@@ -124,7 +124,7 @@ def test_registration_fixes_exact_schedule_behavior_and_command(tmp_path):
         "attempt_suffix": "-communication-attempt.json",
         "orphaned_attempt_global_stop": True,
         "protocol_version": "noncombat-outcome-evidence-handshake-v1",
-        "readiness_timeout_seconds": 30,
+        "readiness_timeout_seconds": 120,
         "ready_suffix": "-communication-ready.json",
         "release_suffix": "-communication-release.json",
         "release_timeout_seconds": 10,
@@ -224,28 +224,35 @@ def test_committed_production_registration_matches_canonical_bytes():
     assert module.load_registration(COMMITTED_REGISTRATION_PATH) == expected
 
 
-def test_committed_v2_registration_is_canonical_and_isolated_from_v1():
+def test_pending_v2_registration_is_canonical_historical_and_isolated_from_v1():
     module = _module()
-    expected = module.build_registration(
-        study_id=V2_STUDY_ID,
-        artifact_root=V2_PRODUCTION_ARTIFACT_ROOT,
-        repo_root=REPO_ROOT,
-        seed_base=V2_SEED_BASE,
-        python_executable=WINDOWS_PYTHON,
-    )
-    expected_bytes = module.render_registration_json(expected).encode("utf-8")
     actual_bytes = COMMITTED_V2_REGISTRATION_PATH.read_bytes()
     actual_text = actual_bytes.decode("utf-8")
-    actual = module.load_registration(COMMITTED_V2_REGISTRATION_PATH)
-    record = actual.to_record()
+    record = json.loads(actual_text)
 
+    expected_bytes = (
+        json.dumps(
+            record,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode("utf-8")
     assert actual_bytes == expected_bytes
-    assert actual == expected
     assert len(actual_bytes) == V2_REGISTRATION_BYTE_COUNT
     assert hashlib.sha256(actual_bytes).hexdigest() == V2_REGISTRATION_FILE_SHA256
     assert record["schema_version"] == "noncombat-outcome-evidence-registration-v2"
     assert record["registration_hash"] == V2_REGISTRATION_HASH
     assert module.canonical_registration_hash(record) == V2_REGISTRATION_HASH
+    assert record["integrity_rules"]["communication_handshake"][
+        "readiness_timeout_seconds"
+    ] == 30
+    with pytest.raises(
+        module.OutcomeEvidenceRegistrationError,
+        match="readiness_timeout_seconds",
+    ):
+        module.load_registration(COMMITTED_V2_REGISTRATION_PATH)
 
     expected_slots = []
     for slot_number in range(1, 25):
