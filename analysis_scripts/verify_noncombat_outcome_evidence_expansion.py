@@ -117,7 +117,7 @@ def verify_outcome_evidence_expansion(
         paths = _artifact_paths(registration)
 
         run_lock = _load_mapping(paths["run_lock"])
-        live_isolation = _verify_run_lock(
+        locked_isolation = _verify_run_lock(
             run_lock,
             registration=registration,
             registration_path=registration_path,
@@ -130,10 +130,54 @@ def verify_outcome_evidence_expansion(
             run_lock=run_lock,
             checks=checks,
         )
-        _verify_claim(
+        claim = _verify_claim(
             paths["claim"],
             registration=registration,
             run_lock=run_lock,
+            checks=checks,
+        )
+        blocked = ledger["global_stop"] is not None
+        expected_claim_mode = "integrity_stop" if blocked else "complete"
+        checks.require(
+            claim["mode"] == expected_claim_mode,
+            "ledger and finalization claim mode mismatch",
+        )
+        implementation_hashes = {
+            str(row["relative_path"]): str(row["sha256"])
+            for row in run_lock["implementation_files"]
+        }
+        if blocked:
+            blocked_result = _verify_blocked_closeout(
+                registration=registration,
+                run_lock=run_lock,
+                ledger=ledger,
+                paths=paths,
+                checks=checks,
+            )
+            return {
+                "check_count": checks.count,
+                "closeout_hash": blocked_result["closeout_hash"],
+                "closeout_mode": "integrity_stop",
+                "ledger_final_record_hash": ledger["final_record_hash"],
+                "passed": True,
+                "registration_hash": registration["registration_hash"],
+                "run_lock_hash": run_lock["run_lock_hash"],
+                "run_lock_isolation": locked_isolation,
+                "schema_version": AUDIT_SCHEMA_VERSION,
+                "source_implementation_sha256": implementation_hashes,
+                "study_id": registration["study_id"],
+                "verifier_implementation_sha256": _file_sha256(Path(__file__)),
+            }
+
+        checks.require(
+            len(ledger["terminal_slots"]) == SLOT_COUNT,
+            "not every registered slot is terminal",
+        )
+        live_isolation = _verify_live_run_lock_state(
+            run_lock,
+            registration=registration,
+            registration_path=registration_path,
+            registration_bytes=registration_bytes,
             checks=checks,
         )
 
@@ -193,15 +237,12 @@ def verify_outcome_evidence_expansion(
             checks=checks,
         )
 
-        implementation_hashes = {
-            str(row["relative_path"]): str(row["sha256"])
-            for row in run_lock["implementation_files"]
-        }
         return {
             "ai_marker_file_sha256": pool_result[
                 "ai_marker_file_sha256"
             ],
             "check_count": checks.count,
+            "closeout_mode": "complete",
             "conservative_join_run_file_sha256": pool_result[
                 "conservative_join_run_file_sha256"
             ],
@@ -414,11 +455,17 @@ def _artifact_paths(registration: Mapping[str, Any]) -> dict[str, Path]:
         / str(analysis["calibration_artifact_relative_path"]),
         "claim": root / str(rules["finalization_claim_filename"]),
         "closeout": root / str(rules["closeout_json_filename"]),
+        "closeout_markdown": root
+        / str(rules["closeout_markdown_filename"]),
         "estimate": root / str(rules["estimate_json_filename"]),
+        "estimate_markdown": root
+        / str(rules["estimate_markdown_filename"]),
         "ledger": root / str(rules["study_ledger_filename"]),
         "pool_manifest": root / str(rules["pool_manifest_filename"]),
         "pool_samples": root / str(rules["pool_samples_filename"]),
         "readiness": root / str(rules["readiness_json_filename"]),
+        "readiness_markdown": root
+        / str(rules["readiness_markdown_filename"]),
         "run_lock": root / str(rules["run_lock_filename"]),
         "target": root / str(rules["target_manifest_filename"]),
     }
@@ -483,7 +530,12 @@ def _verify_run_lock(
         },
         "run lock registration binding mismatch",
     )
-    _verify_implementation_files(record, registration, checks)
+    _verify_implementation_files(
+        record,
+        registration,
+        source_commit=str(source["commit"]),
+        checks=checks,
+    )
     _verify_git_anchor(
         source,
         registration=registration,
@@ -491,34 +543,27 @@ def _verify_run_lock(
         registration_bytes=registration_bytes,
         checks=checks,
     )
-    observed_checkpoints = _verify_checkpoint_files(
+    locked_checkpoints = _verify_locked_checkpoint_inventory(
         record,
         registration,
         checks,
     )
-    communication = _mapping(record.get("communication_mod"), "communication_mod")
-    expected_communication_path = registration["integrity_rules"][
-        "communication_config_path"
-    ]
-    observed_communication = {
-        "path": expected_communication_path,
-        "semantic_sha256": _properties_semantic_sha256(
-            Path(expected_communication_path)
-        ),
-    }
-    checks.require(
-        communication == observed_communication,
-        "CommunicationMod semantic configuration drift",
+    locked_communication = _verify_locked_communication(
+        record,
+        registration,
+        checks,
     )
     return {
-        "checkpoints": observed_checkpoints,
-        "communication_mod": observed_communication,
+        "checkpoints": locked_checkpoints,
+        "communication_mod": locked_communication,
     }
 
 
 def _verify_implementation_files(
     run_lock: Mapping[str, Any],
     registration: Mapping[str, Any],
+    *,
+    source_commit: str,
     checks: _Checks,
 ) -> None:
     rows = _sequence(run_lock.get("implementation_files"), "implementation_files")
@@ -527,7 +572,7 @@ def _verify_implementation_files(
     for relative_path, raw_row in zip(IMPLEMENTATION_PATHS, rows, strict=True):
         row = _mapping(raw_row, "implementation file")
         path = (repo_root / relative_path).resolve()
-        content = path.read_bytes()
+        content = _git_blob(repo_root, source_commit, relative_path)
         checks.require(
             row
             == {
@@ -538,13 +583,6 @@ def _verify_implementation_files(
             },
             f"implementation source drift: {relative_path}",
         )
-        if relative_path.endswith(
-            "verify_noncombat_outcome_evidence_expansion.py"
-        ):
-            checks.require(
-                row["sha256"] == _file_sha256(Path(__file__)),
-                "verifier implementation differs from the run lock",
-            )
 
 
 def _verify_git_anchor(
@@ -560,6 +598,156 @@ def _verify_git_anchor(
         _git_text(repo_root, "rev-parse", "--show-toplevel")
     ).resolve()
     checks.require(observed_root == repo_root, "Git repository root mismatch")
+    commit = str(source["commit"])
+    checks.require(
+        _git_text(repo_root, "rev-parse", f"{commit}^{{commit}}") == commit,
+        "run lock source commit is unavailable",
+    )
+    try:
+        registration_relative = registration_path.relative_to(repo_root).as_posix()
+    except ValueError as exc:
+        raise OutcomeEvidenceVerificationError(
+            "registration file is outside the locked repository"
+        ) from exc
+    checks.require(
+        _git_blob(repo_root, commit, registration_relative) == registration_bytes,
+        "committed registration bytes differ from the verified file",
+    )
+
+
+def _verify_locked_checkpoint_inventory(
+    run_lock: Mapping[str, Any],
+    registration: Mapping[str, Any],
+    checks: _Checks,
+) -> dict[str, Any]:
+    checkpoints = _mapping(run_lock.get("checkpoints"), "checkpoints")
+    inventory = registration["integrity_rules"]["checkpoint_inventory"]
+    root = Path(str(inventory["root"])).resolve()
+    patterns = list(inventory["patterns"])
+    checks.require(
+        set(checkpoints) == {"files", "patterns", "root"}
+        and checkpoints.get("patterns") == patterns
+        and checkpoints.get("root") == str(root),
+        "run lock checkpoint contract mismatch",
+    )
+    rows = _sequence(checkpoints.get("files"), "checkpoint files")
+    normalized_rows = []
+    observed_paths = []
+    for raw_row in rows:
+        row = _mapping(raw_row, "checkpoint file")
+        path = _absolute_path(row.get("path"), "checkpoint path")
+        size = _exact_int(row.get("size"), "checkpoint size")
+        checks.require(
+            set(row) == {"path", "sha256", "size"}
+            and path.parent == root
+            and any(fnmatch.fnmatch(path.name, pattern) for pattern in patterns)
+            and _is_sha256(row.get("sha256"))
+            and size >= 0,
+            "run lock checkpoint row mismatch",
+        )
+        observed_paths.append(str(path))
+        normalized_rows.append(dict(row))
+    checks.require(
+        len(observed_paths) == len(set(observed_paths))
+        and observed_paths == sorted(observed_paths, key=str.casefold),
+        "run lock checkpoint order mismatch",
+    )
+    return {
+        "files": normalized_rows,
+        "patterns": patterns,
+        "root": str(root),
+    }
+
+
+def _verify_locked_communication(
+    run_lock: Mapping[str, Any],
+    registration: Mapping[str, Any],
+    checks: _Checks,
+) -> dict[str, Any]:
+    communication = _mapping(run_lock.get("communication_mod"), "communication_mod")
+    expected_path = registration["integrity_rules"]["communication_config_path"]
+    checks.require(
+        set(communication) == {"path", "semantic_sha256"}
+        and communication.get("path") == expected_path
+        and _is_sha256(communication.get("semantic_sha256")),
+        "run lock CommunicationMod contract mismatch",
+    )
+    return dict(communication)
+
+
+def _verify_live_run_lock_state(
+    run_lock: Mapping[str, Any],
+    *,
+    registration: Mapping[str, Any],
+    registration_path: Path,
+    registration_bytes: bytes,
+    checks: _Checks,
+) -> dict[str, Any]:
+    source = _mapping(run_lock.get("source"), "run lock source")
+    _verify_live_implementation_files(run_lock, registration, checks)
+    _verify_live_git_anchor(
+        source,
+        registration=registration,
+        registration_path=registration_path,
+        registration_bytes=registration_bytes,
+        checks=checks,
+    )
+    observed_checkpoints = _verify_checkpoint_files(
+        run_lock,
+        registration,
+        checks,
+    )
+    expected_communication_path = registration["integrity_rules"][
+        "communication_config_path"
+    ]
+    observed_communication = {
+        "path": expected_communication_path,
+        "semantic_sha256": _properties_semantic_sha256(
+            Path(expected_communication_path)
+        ),
+    }
+    checks.require(
+        run_lock.get("communication_mod") == observed_communication,
+        "CommunicationMod semantic configuration drift",
+    )
+    return {
+        "checkpoints": observed_checkpoints,
+        "communication_mod": observed_communication,
+    }
+
+
+def _verify_live_implementation_files(
+    run_lock: Mapping[str, Any],
+    registration: Mapping[str, Any],
+    checks: _Checks,
+) -> None:
+    rows = _sequence(run_lock.get("implementation_files"), "implementation_files")
+    repo_root = Path(str(registration["repo_root"])).resolve()
+    for relative_path, raw_row in zip(IMPLEMENTATION_PATHS, rows, strict=True):
+        row = _mapping(raw_row, "implementation file")
+        path = (repo_root / relative_path).resolve()
+        content = path.read_bytes()
+        checks.require(
+            row
+            == {
+                "path": str(path),
+                "relative_path": relative_path,
+                "sha256": hashlib.sha256(content).hexdigest(),
+                "size": len(content),
+            },
+            f"implementation source drift: {relative_path}",
+        )
+
+
+def _verify_live_git_anchor(
+    source: Mapping[str, Any],
+    *,
+    registration: Mapping[str, Any],
+    registration_path: Path,
+    registration_bytes: bytes,
+    checks: _Checks,
+) -> None:
+    repo_root = Path(str(registration["repo_root"])).resolve()
     commit = str(source["commit"])
     checks.require(
         _git_text(repo_root, "rev-parse", "HEAD") == commit,
@@ -703,6 +891,10 @@ def _verify_ledger(
         )
         event = record.get("event")
         payload = _mapping(record.get("payload"), "ledger payload")
+        checks.require(
+            global_stop is None,
+            "ledger event follows the global stop",
+        )
         if event == "study_started":
             checks.require(
                 not initialized
@@ -780,8 +972,15 @@ def _verify_ledger(
             marker_end_cursor = marker_end
             next_slot += 1
         elif event == "global_stop":
-            checks.require(global_stop is None, "duplicate ledger global stop")
             reason = _required_string(payload.get("reason"), "global stop reason")
+            checks.require(
+                initialized
+                and active is None
+                and record.get("slot_number") is None
+                and record.get("session_id") is None
+                and payload == {"reason": reason},
+                "ledger global stop structure mismatch",
+            )
             global_stop = {"reason": reason}
         else:
             raise OutcomeEvidenceVerificationError(
@@ -790,11 +989,6 @@ def _verify_ledger(
         previous_hash = record["record_hash"]
     checks.require(initialized, "ledger was not initialized")
     checks.require(active is None, "ledger has an active final slot")
-    checks.require(global_stop is None, "normal closeout has a global stop")
-    checks.require(
-        len(terminals) == SLOT_COUNT,
-        "not every registered slot is terminal",
-    )
     return {
         "final_record_hash": previous_hash,
         "global_stop": global_stop,
@@ -808,8 +1002,20 @@ def _verify_claim(
     registration: Mapping[str, Any],
     run_lock: Mapping[str, Any],
     checks: _Checks,
-) -> None:
+) -> Mapping[str, Any]:
     claim = _load_mapping(path)
+    checks.require(
+        set(claim)
+        == {
+            "claim_hash",
+            "mode",
+            "registration_hash",
+            "run_lock_hash",
+            "schema_version",
+            "study_id",
+        },
+        "finalization claim fields mismatch",
+    )
     checks.require(
         claim.get("schema_version") == CLAIM_SCHEMA_VERSION,
         "finalization claim schema mismatch",
@@ -819,12 +1025,189 @@ def _verify_claim(
         "finalization claim hash mismatch",
     )
     checks.require(
-        claim.get("mode") == "complete"
+        claim.get("mode") in {"complete", "integrity_stop"}
         and claim.get("study_id") == registration["study_id"]
         and claim.get("registration_hash") == registration["registration_hash"]
         and claim.get("run_lock_hash") == run_lock["run_lock_hash"],
         "finalization claim binding mismatch",
     )
+    return claim
+
+
+def _verify_blocked_closeout(
+    *,
+    registration: Mapping[str, Any],
+    run_lock: Mapping[str, Any],
+    ledger: Mapping[str, Any],
+    paths: Mapping[str, Path],
+    checks: _Checks,
+) -> dict[str, Any]:
+    stop = _mapping(ledger.get("global_stop"), "ledger global stop")
+    stop_reason = _required_string(stop.get("reason"), "global stop reason")
+    terminal_slots = _sequence(
+        ledger.get("terminal_slots"),
+        "ledger terminal slots",
+    )
+    expected_slots = [
+        {
+            "session_id": str(row["session_id"]),
+            "slot_number": int(row["slot_number"]),
+            "terminal_status": str(row["terminal_status"]),
+        }
+        for row in terminal_slots
+    ]
+    for raw_slot in registration["slots"][len(expected_slots) :]:
+        slot = _mapping(raw_slot, "registered slot")
+        expected_slots.append(
+            {
+                "session_id": str(slot["session_id"]),
+                "slot_number": int(slot["slot_number"]),
+                "terminal_status": "unlaunched",
+            }
+        )
+    checks.require(
+        len(expected_slots) == SLOT_COUNT
+        and [row["slot_number"] for row in expected_slots]
+        == list(range(1, SLOT_COUNT + 1)),
+        "blocked closeout slot accounting mismatch",
+    )
+
+    metrics = {
+        "all_registered_slots_accounted": False,
+        "category_arm_support": {
+            "card_reward": {"alternative": 0, "baseline": 0},
+            "shop": {"alternative": 0, "baseline": 0},
+        },
+        "complete_trajectory_count": 0,
+        "ess_fraction": Fraction(0, 1),
+        "global_integrity_stop": True,
+        "max_normalized_weight": Fraction(0, 1),
+        "nonzero_weight_trajectory_count": 0,
+        "supported_victory_count": 0,
+    }
+    gate = _build_evidence_gate(registration, metrics)
+    expected = {
+        "blockers": list(gate["blockers"]),
+        "closeout_hash": None,
+        "evidence_gate": gate,
+        "gates": {
+            "causal_uplift_ready": False,
+            "dataset_ope_readiness_ready": False,
+            "formal_noncombat_rl_training_ready": False,
+            "live_policy_promotion_ready": False,
+            "ope_estimate_ready": False,
+            "outcome_evidence_expansion_ready": False,
+            "policy_comparison_ready": False,
+            "reward_design_ready": False,
+        },
+        "integrity_stop": {"reason": stop_reason},
+        "limitations": [
+            "Evidence readiness is separate from policy comparison.",
+            (
+                "No closeout gate authorizes causal claims, training, reward "
+                "design, or live promotion."
+            ),
+        ],
+        "registration_hash": registration["registration_hash"],
+        "run_lock_hash": run_lock["run_lock_hash"],
+        "schema_version": CLOSEOUT_SCHEMA_VERSION,
+        "slots": expected_slots,
+        "source": {
+            "calibration_file_sha256": None,
+            "estimate_file_sha256": None,
+            "pool_manifest_hash": None,
+            "readiness_file_sha256": None,
+            "target_manifest_hash": None,
+        },
+        "status": "blocked",
+        "study_id": registration["study_id"],
+    }
+    expected["closeout_hash"] = _self_hash(expected, "closeout_hash")
+    observed = _load_mapping(paths["closeout"])
+    checks.require(
+        observed == expected,
+        "blocked closeout differs from independent reconstruction",
+    )
+    checks.require(
+        paths["closeout"].read_bytes()
+        == (_canonical_json(expected) + "\n").encode("utf-8"),
+        "blocked closeout JSON rendering mismatch",
+    )
+    checks.require(
+        paths["closeout_markdown"].read_bytes()
+        == _render_blocked_closeout_markdown(expected).encode("utf-8"),
+        "blocked closeout Markdown rendering mismatch",
+    )
+    forbidden = (
+        "pool_manifest",
+        "pool_samples",
+        "target",
+        "readiness",
+        "readiness_markdown",
+        "estimate",
+        "estimate_markdown",
+    )
+    existing = sorted(paths[name].name for name in forbidden if paths[name].exists())
+    checks.require(
+        not existing,
+        "blocked closeout has forbidden normal artifacts: " + ", ".join(existing),
+    )
+    return expected
+
+
+def _render_blocked_closeout_markdown(closeout: Mapping[str, Any]) -> str:
+    lines = [
+        "# Non-combat outcome-evidence closeout",
+        "",
+        f"- Study: `{closeout.get('study_id')}`",
+        f"- Status: `{closeout.get('status')}`",
+        "",
+        "## Integrity stop",
+        "",
+        (
+            "- Reason: "
+            + _canonical_json(
+                _mapping(closeout.get("integrity_stop"), "integrity stop").get(
+                    "reason"
+                )
+            )
+        ),
+        "",
+        "## Evidence gate",
+        "",
+        "| Condition | Observed | Required | Passed |",
+        "|---|---|---|---|",
+    ]
+    conditions = closeout["evidence_gate"]["conditions"]
+    for code in sorted(conditions):
+        condition = conditions[code]
+        lines.append(
+            f"| `{code}` | `{_canonical_json(condition['observed'])}` | "
+            f"`{_canonical_json(condition['required'])}` | "
+            f"{'yes' if condition['passed'] else 'no'} |"
+        )
+    lines.extend(["", "## Blockers", ""])
+    lines.extend(f"- `{blocker}`" for blocker in closeout["blockers"])
+    if not closeout["blockers"]:
+        lines.append("- none")
+    lines.extend(
+        [
+            "",
+            "## Slot status",
+            "",
+            "| Slot | Session | Status |",
+            "|---:|---|---|",
+        ]
+    )
+    for slot in closeout["slots"]:
+        lines.append(
+            f"| {slot['slot_number']:02d} | `{slot['session_id']}` | "
+            f"{slot['terminal_status']} |"
+        )
+    lines.extend(["", "## Authority gates", ""])
+    for gate_name, ready in sorted(closeout["gates"].items()):
+        lines.append(f"- `{gate_name}`: `{'true' if ready else 'false'}`")
+    return "\n".join(lines) + "\n"
 
 
 def _verify_pool(

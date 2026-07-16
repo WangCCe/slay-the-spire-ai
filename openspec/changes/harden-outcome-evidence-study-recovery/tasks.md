@@ -1,16 +1,16 @@
 ## 1. Freeze The Recovery Baseline
 
-- [ ] 1.1 Record the current verifier failure against the immutable 2026-07-15 blocked artifact, its registration/run-lock/ledger/claim/closeout hashes, and the exact set of absent normal OPE artifacts without modifying the external root.
-- [ ] 1.2 Add a repository fixture builder for normal and blocked study shapes that preserves v1 field semantics while keeping tests independent of the external game directory.
-- [ ] 1.3 Add red verifier regressions proving the valid blocked fixture currently fails at `normal closeout has a global stop` and that the existing normal fixture remains the control.
+- [x] 1.1 Record the current verifier failure against the immutable 2026-07-15 blocked artifact, its registration/run-lock/ledger/claim/closeout hashes, and the exact set of absent normal OPE artifacts without modifying the external root.
+- [x] 1.2 Add a repository fixture builder for normal and blocked study shapes that preserves v1 field semantics while keeping tests independent of the external game directory.
+- [x] 1.3 Add red verifier regressions proving the valid blocked fixture currently fails at `normal closeout has a global stop` and that the existing normal fixture remains the control.
 
 ## 2. Independently Verify Blocked Closeouts
 
-- [ ] 2.1 Refactor ledger replay to return a validated terminal prefix and optional global stop without weakening chain, ordering, marker, active-slot, or duplicate-stop checks.
-- [ ] 2.2 Return the validated finalization claim and select normal versus blocked verification only from ledger state plus claim mode; reject every mixed combination.
-- [ ] 2.3 Implement independent blocked JSON and Markdown reconstruction, exact slot/source/blocker/limitation/all-false-gate checks, and required absence of every normal pool/OPE output.
-- [ ] 2.4 Add deterministic tamper regressions for stop reason, claim mode, slot accounting, source binding, closeout hash, blocker, gate, limitation, Markdown, forbidden artifact, and normal-path fallback.
-- [ ] 2.5 Run the standalone verifier read-only against the immutable 2026-07-15 artifact and record the passing blocked-branch summary; commit the verifier behavior as one cohesive risk-class change.
+- [x] 2.1 Refactor ledger replay to return a validated terminal prefix and optional global stop without weakening chain, ordering, marker, active-slot, or duplicate-stop checks.
+- [x] 2.2 Return the validated finalization claim and select normal versus blocked verification only from ledger state plus claim mode; reject every mixed combination.
+- [x] 2.3 Implement independent blocked JSON and Markdown reconstruction, exact slot/source/blocker/limitation/all-false-gate checks, and required absence of every normal pool/OPE output.
+- [x] 2.4 Add deterministic tamper regressions for stop reason, claim mode, slot accounting, source binding, closeout hash, blocker, gate, limitation, Markdown, forbidden artifact, and normal-path fallback.
+- [x] 2.5 Run the standalone verifier read-only against the immutable 2026-07-15 artifact and record the passing blocked-branch summary; commit the verifier behavior as one cohesive risk-class change.
 
 ## 3. Define The Two-Phase Handshake
 

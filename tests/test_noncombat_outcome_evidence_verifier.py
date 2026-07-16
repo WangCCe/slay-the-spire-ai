@@ -698,6 +698,102 @@ def _build_study(
     }
 
 
+def _build_blocked_study(tmp_path, monkeypatch):
+    repo_root = tmp_path / "repo"
+    artifact_root = tmp_path / "study"
+    checkpoint_root = tmp_path / "game" / "checkpoints"
+    communication_path = tmp_path / "config.properties"
+    checkpoint_root.mkdir(parents=True)
+    communication_path.write_text(
+        "command=python main.py\nclientTimeout=30\n",
+        encoding="iso-8859-1",
+    )
+    (checkpoint_root / "rl_combat_model_ep1.pth").write_bytes(b"checkpoint-v1")
+    _copy_registered_sources(repo_root)
+
+    registration = expansion.build_registration(
+        study_id=STUDY_ID,
+        artifact_root=artifact_root,
+        repo_root=repo_root,
+        seed_base=SEED_BASE,
+        python_executable=Path(r"D:\anaconda\envs\stsai\python.exe"),
+        communication_config_path=communication_path,
+        checkpoint_root=checkpoint_root,
+    )
+    registration_path = repo_root / "reports" / "registration.json"
+    registration_path.parent.mkdir(parents=True, exist_ok=True)
+    registration_path.write_text(
+        expansion.render_registration_json(registration),
+        encoding="utf-8",
+        newline="",
+    )
+    _git(repo_root, "init", "--object-format=sha1")
+    _git(repo_root, "config", "core.autocrlf", "false")
+    _git(repo_root, "config", "user.email", "verifier-fixture@example.invalid")
+    _git(repo_root, "config", "user.name", "Verifier Fixture")
+    _git(repo_root, "add", ".")
+    _git(repo_root, "commit", "-m", "build blocked verifier fixture")
+
+    command_record = registration.to_record()["command"]
+    child_command = [
+        command_record["python_executable"],
+        command_record["main_path"],
+        *command_record["arguments"],
+    ]
+    run_lock_path = artifact_root / "run-lock.json"
+    run_lock = expansion.create_run_lock(
+        registration_path=registration_path,
+        lock_path=run_lock_path,
+        repo_root=repo_root,
+        child_command=child_command,
+        created_unix_ns=1_750_000_000_000_000_000,
+    )
+    ledger_path = artifact_root / "study-ledger.jsonl"
+    ledger = runner.StudyLedger(
+        path=ledger_path,
+        registration=registration,
+        run_lock_hash=run_lock["run_lock_hash"],
+    )
+    ledger.initialize(created_unix_ns=1)
+    for slot_number, complete_trajectories in ((1, 25), (2, 22)):
+        slot = registration.slots[slot_number - 1]
+        marker_start = 25 * (slot_number - 1)
+        ledger.start_slot(
+            slot_number,
+            slot.session_id,
+            started_unix_ns=slot_number * 2,
+        )
+        ledger.finish_slot(
+            slot_number,
+            process_exit_code=0,
+            complete_trajectories=complete_trajectories,
+            marker_start_count=marker_start,
+            marker_end_count=marker_start + complete_trajectories,
+            ended_unix_ns=slot_number * 2 + 1,
+        )
+    ledger.global_stop(
+        reason="terminal_slot_structure_invalid_03",
+        created_unix_ns=10,
+    )
+    finalization = expansion.finalize_registered_integrity_stop(
+        registration,
+        run_lock_hash=run_lock["run_lock_hash"],
+        ledger_snapshot=ledger.snapshot(),
+    )
+    paths = {name: Path(path) for name, path in finalization["paths"].items()}
+    return {
+        "artifact_root": artifact_root,
+        "claim_path": artifact_root / "finalization-claim.json",
+        "closeout_markdown_path": paths["closeout_markdown"],
+        "closeout_path": paths["closeout_json"],
+        "ledger_path": ledger_path,
+        "registration": registration,
+        "registration_path": registration_path,
+        "repo_root": repo_root,
+        "run_lock_path": run_lock_path,
+    }
+
+
 def _rehash_ledger(path):
     records = [
         json.loads(line)
@@ -710,6 +806,58 @@ def _rehash_ledger(path):
         record["record_hash"] = _self_hash(record, "record_hash")
         previous_hash = record["record_hash"]
     _write_jsonl(path, records)
+
+
+def _tamper_blocked(artifacts, case):
+    if case in {"stop_reason", "ledger_without_stop"}:
+        path = artifacts["ledger_path"]
+        records = [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+        ]
+        if case == "stop_reason":
+            records[-1]["payload"]["reason"] = "tampered_stop_reason"
+        else:
+            records.pop()
+        _write_jsonl(path, records)
+        _rehash_ledger(path)
+        return
+    if case == "claim_mode":
+        path = artifacts["claim_path"]
+        claim = json.loads(path.read_text(encoding="utf-8"))
+        claim["mode"] = "complete"
+        claim["claim_hash"] = _self_hash(claim, "claim_hash")
+        _write_json(path, claim)
+        return
+    if case == "markdown":
+        path = artifacts["closeout_markdown_path"]
+        path.write_text(
+            path.read_text(encoding="utf-8") + "tampered\n",
+            encoding="utf-8",
+            newline="",
+        )
+        return
+
+    path = artifacts["closeout_path"]
+    closeout = json.loads(path.read_text(encoding="utf-8"))
+    if case == "terminal_slot":
+        closeout["slots"][0]["terminal_status"] = "interrupted"
+    elif case == "source":
+        closeout["source"]["pool_manifest_hash"] = "a" * 64
+    elif case == "blocker":
+        closeout["blockers"].pop()
+    elif case == "gate":
+        closeout["gates"]["reward_design_ready"] = True
+    elif case == "limitation":
+        closeout["limitations"].append("tampered")
+    elif case == "closeout_hash":
+        closeout["closeout_hash"] = "0" * 64
+        _write_json(path, closeout)
+        return
+    else:
+        raise AssertionError(case)
+    closeout["closeout_hash"] = _self_hash(closeout, "closeout_hash")
+    _write_json(path, closeout)
 
 
 def _tamper(artifacts, case):
@@ -912,6 +1060,89 @@ def _tamper(artifacts, case):
         raise AssertionError(case)
     closeout["closeout_hash"] = _self_hash(closeout, "closeout_hash")
     _write_json(closeout_path, closeout)
+
+
+def test_verifier_replays_registered_blocked_closeout(tmp_path, monkeypatch):
+    artifacts = _build_blocked_study(tmp_path, monkeypatch)
+
+    audit = _verifier().verify_outcome_evidence_expansion(
+        artifacts["registration_path"]
+    )
+
+    assert audit["passed"] is True
+    assert audit["closeout_mode"] == "integrity_stop"
+    assert audit["study_id"] == STUDY_ID
+
+
+def test_blocked_verifier_replays_locked_commit_after_checkout_moves(
+    tmp_path,
+    monkeypatch,
+):
+    artifacts = _build_blocked_study(tmp_path, monkeypatch)
+    _git(
+        artifacts["repo_root"],
+        "commit",
+        "--allow-empty",
+        "-m",
+        "move checkout after blocked finalization",
+    )
+
+    audit = _verifier().verify_outcome_evidence_expansion(
+        artifacts["registration_path"]
+    )
+
+    assert audit["passed"] is True
+    assert audit["closeout_mode"] == "integrity_stop"
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "stop_reason",
+        "ledger_without_stop",
+        "claim_mode",
+        "terminal_slot",
+        "source",
+        "blocker",
+        "gate",
+        "limitation",
+        "closeout_hash",
+        "markdown",
+    ),
+)
+def test_blocked_verifier_rejects_tamper(tmp_path, monkeypatch, case):
+    artifacts = _build_blocked_study(tmp_path, monkeypatch)
+    _tamper_blocked(artifacts, case)
+
+    with pytest.raises(_verifier().OutcomeEvidenceVerificationError):
+        _verifier().verify_outcome_evidence_expansion(
+            artifacts["registration_path"]
+        )
+
+
+def test_blocked_verifier_rejects_each_normal_output(tmp_path, monkeypatch):
+    artifacts = _build_blocked_study(tmp_path, monkeypatch)
+    output_rules = artifacts["registration"].to_record()["output_rules"]
+    forbidden_filenames = (
+        output_rules["pool_manifest_filename"],
+        output_rules["pool_samples_filename"],
+        output_rules["target_manifest_filename"],
+        output_rules["readiness_json_filename"],
+        output_rules["readiness_markdown_filename"],
+        output_rules["estimate_json_filename"],
+        output_rules["estimate_markdown_filename"],
+    )
+    for filename in forbidden_filenames:
+        path = artifacts["artifact_root"] / filename
+        path.write_text("{}\n", encoding="utf-8", newline="")
+        with pytest.raises(
+            _verifier().OutcomeEvidenceVerificationError,
+            match="forbidden normal artifacts",
+        ):
+            _verifier().verify_outcome_evidence_expansion(
+                artifacts["registration_path"]
+            )
+        path.unlink()
 
 
 def test_independent_verifier_replays_registered_study(tmp_path, monkeypatch):
