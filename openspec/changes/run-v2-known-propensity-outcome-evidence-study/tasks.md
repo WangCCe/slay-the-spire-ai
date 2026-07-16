@@ -1,17 +1,17 @@
 ## 1. Freeze The Historical Boundary And V2 Identity
 
-- [ ] 1.1 Replay the standalone verifier against the immutable 2026-07-15 v1 root, record its registration/run-lock/ledger/claim/closeout and root-inventory hashes, and confirm every normal pool/OPE artifact remains absent without modifying any historical byte.
-- [ ] 1.2 Confirm the approved v2 study ID, registration path, seed base, study root, and qualification root are unused; verify no stale Slay the Spire, Java, runner, or production Python process can contaminate the candidate.
-- [ ] 1.3 Generate `reports/noncombat_outcome_evidence_expansion_20260716_v2_registration.json` canonically with schema v2, study ID `noncombat-outcome-evidence-expansion-20260716-v2`, seed base `2026071600`, the approved new root, and the unchanged 24-by-25 behavior, analysis, threshold, command, and handshake contracts.
-- [ ] 1.4 Add an exact-artifact regression that loads the committed v2 registration, reproduces its canonical bytes and hash, verifies all 24 unique slots and paths, and proves no v1 root, ID, seed, or evidence binding appears.
-- [ ] 1.5 Generate the registration review Markdown with the exact schedule, rates, budget, thresholds, implementation paths, v2 handshake fields, authority boundary, and explicit statement that no game, run lock, ledger, OPE, or training has started.
+- [x] 1.1 Replay the standalone verifier against the immutable 2026-07-15 v1 root, record its registration/run-lock/ledger/claim/closeout and root-inventory hashes, and confirm every normal pool/OPE artifact remains absent without modifying any historical byte.
+- [x] 1.2 Confirm the approved v2 study ID, registration path, seed base, study root, and qualification root are unused; verify no stale Slay the Spire, Java, runner, or production Python process can contaminate the candidate.
+- [x] 1.3 Generate `reports/noncombat_outcome_evidence_expansion_20260716_v2_registration.json` canonically with schema v2, study ID `noncombat-outcome-evidence-expansion-20260716-v2`, seed base `2026071600`, the approved new root, and the unchanged 24-by-25 behavior, analysis, threshold, command, and handshake contracts.
+- [x] 1.4 Add an exact-artifact regression that loads the committed v2 registration, reproduces its canonical bytes and hash, verifies all 24 unique slots and paths, and proves no v1 root, ID, seed, or evidence binding appears.
+- [x] 1.5 Generate the registration review Markdown with the exact schedule, rates, budget, thresholds, implementation paths, v2 handshake fields, authority boundary, and explicit statement that no game, run lock, ledger, OPE, or training has started.
 
 ## 2. Verify And Review The Candidate Offline
 
-- [ ] 2.1 Run focused Windows pytest for registration, runner dry-run, handshake, monitor, finalizer, and independent verifier using `-p no:cacheprovider` and a fresh writable repository basetemp; fix only registration-artifact or test defects attributable to this change.
-- [ ] 2.2 Run the full Windows pytest suite, `openspec validate --all --strict`, `git diff --check`, Python compile/import checks, registration byte replay, and v1 blocked-verifier replay; preserve exact results in the pre-collection review.
-- [ ] 2.3 Obtain independent code/spec/registration review for identity isolation, v2 schema bindings, command safety, blinding, thresholds, and normal/blocked closeout behavior. Resolve documentation or exact-artifact test findings; stop for a separate regression-backed change if any runtime implementation defect is found.
-- [ ] 2.4 Commit the candidate registration, review, tests, archived v1 change, and this OpenSpec change as one pre-collection planning commit; require tracked-clean source before operational qualification.
+- [x] 2.1 Run focused Windows pytest for registration, runner dry-run, handshake, monitor, finalizer, and independent verifier using `-p no:cacheprovider` and a fresh writable repository basetemp; fix only registration-artifact or test defects attributable to this change.
+- [x] 2.2 Run the full Windows pytest suite, `openspec validate --all --strict`, `git diff --check`, Python compile/import checks, registration byte replay, and v1 blocked-verifier replay; preserve exact results in the pre-collection review.
+- [x] 2.3 Obtain independent code/spec/registration review for identity isolation, v2 schema bindings, command safety, blinding, thresholds, and normal/blocked closeout behavior. Resolve documentation or exact-artifact test findings; stop for a separate regression-backed change if any runtime implementation defect is found.
+- [x] 2.4 Commit the candidate registration, review, tests, archived v1 change, and this OpenSpec change as one pre-collection planning commit; require tracked-clean source before operational qualification.
 
 ## 3. Qualify The Real Child Without Creating Evidence
 

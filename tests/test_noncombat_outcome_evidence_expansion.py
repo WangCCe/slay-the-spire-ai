@@ -1,5 +1,7 @@
+import hashlib
 import importlib
 import json
+import ntpath
 import subprocess
 from dataclasses import FrozenInstanceError
 from pathlib import Path
@@ -20,6 +22,24 @@ COMMITTED_REGISTRATION_PATH = (
     / "reports"
     / "noncombat_outcome_evidence_expansion_20260715_registration.json"
 )
+V2_STUDY_ID = "noncombat-outcome-evidence-expansion-20260716-v2"
+V2_SEED_BASE = 2_026_071_600
+V2_PRODUCTION_ARTIFACT_ROOT = Path(
+    r"D:\SteamLibrary\steamapps\common\SlayTheSpire"
+    r"\noncombat_outcome_evidence_expansion_20260716_v2"
+)
+COMMITTED_V2_REGISTRATION_PATH = (
+    REPO_ROOT
+    / "reports"
+    / "noncombat_outcome_evidence_expansion_20260716_v2_registration.json"
+)
+V2_REGISTRATION_HASH = (
+    "86cb17077fe5dc7123307660eef4c1986dc11f48837308fed714faf88c73f22a"
+)
+V2_REGISTRATION_FILE_SHA256 = (
+    "2a7e937da2c63d6c235452349d3f66de5870525d578c51deccbb87a522baef6a"
+)
+V2_REGISTRATION_BYTE_COUNT = 19_795
 
 
 def _module():
@@ -204,6 +224,76 @@ def test_committed_production_registration_matches_canonical_bytes():
     assert module.load_registration(COMMITTED_REGISTRATION_PATH) == expected
 
 
+def test_committed_v2_registration_is_canonical_and_isolated_from_v1():
+    module = _module()
+    expected = module.build_registration(
+        study_id=V2_STUDY_ID,
+        artifact_root=V2_PRODUCTION_ARTIFACT_ROOT,
+        repo_root=REPO_ROOT,
+        seed_base=V2_SEED_BASE,
+        python_executable=WINDOWS_PYTHON,
+    )
+    expected_bytes = module.render_registration_json(expected).encode("utf-8")
+    actual_bytes = COMMITTED_V2_REGISTRATION_PATH.read_bytes()
+    actual_text = actual_bytes.decode("utf-8")
+    actual = module.load_registration(COMMITTED_V2_REGISTRATION_PATH)
+    record = actual.to_record()
+
+    assert actual_bytes == expected_bytes
+    assert actual == expected
+    assert len(actual_bytes) == V2_REGISTRATION_BYTE_COUNT
+    assert hashlib.sha256(actual_bytes).hexdigest() == V2_REGISTRATION_FILE_SHA256
+    assert record["schema_version"] == "noncombat-outcome-evidence-registration-v2"
+    assert record["registration_hash"] == V2_REGISTRATION_HASH
+    assert module.canonical_registration_hash(record) == V2_REGISTRATION_HASH
+
+    expected_slots = []
+    for slot_number in range(1, 25):
+        session_id = f"{V2_STUDY_ID}-s{slot_number:02d}"
+        expected_slots.append(
+            {
+                "config_path": ntpath.join(
+                    str(V2_PRODUCTION_ARTIFACT_ROOT), f"{session_id}-config.json"
+                ),
+                "manifest_path": ntpath.join(
+                    str(V2_PRODUCTION_ARTIFACT_ROOT), f"{session_id}-manifest.json"
+                ),
+                "seed": V2_SEED_BASE + slot_number,
+                "session_id": session_id,
+                "slot_number": slot_number,
+                "trace_path": ntpath.join(
+                    str(V2_PRODUCTION_ARTIFACT_ROOT), f"{session_id}-trace.jsonl"
+                ),
+            }
+        )
+    assert record["slots"] == expected_slots
+
+    slot_paths = [
+        slot[path_key]
+        for slot in record["slots"]
+        for path_key in ("config_path", "manifest_path", "trace_path")
+    ]
+    assert len(slot_paths) == 72
+    assert len({ntpath.normcase(path) for path in slot_paths}) == 72
+    assert all(
+        Path(path).is_relative_to(V2_PRODUCTION_ARTIFACT_ROOT)
+        for path in slot_paths
+    )
+
+    forbidden_v1_bindings = (
+        STUDY_ID,
+        str(PRODUCTION_ARTIFACT_ROOT),
+        str(SEED_BASE),
+        "adf850f96537f01ae29f99d45a56c1d9ffcddecc33665e4c76680515ca6631c2",
+        "b6c1a48dfb0c3ba479fe58d4c7d7d280821dd065dc4f9afacdd5ba39fadfd27f",
+        "bcc971070a7b3a78fedab01b7b6c8f998e8648cb9a97ebba0ca0b9d724e868cf",
+        "329d85ae12f3a5233d7a9dfcb289ba651f4fa60159c5e95f909f6d4bb163f03c",
+        "9aec815b0e5812eedd093a49f325a566260b459df752f5a88e39fca158483252",
+        "84acbb819b90761cd532a5b6bbf158e5a518141cf51fe39dbe863d0ff9d0c2e3",
+    )
+    assert not [value for value in forbidden_v1_bindings if value in actual_text]
+
+
 def test_legacy_registration_is_read_only_and_byte_distinct_from_v2(tmp_path):
     module = _module()
     legacy = module.build_registration(
@@ -256,6 +346,8 @@ def test_run_lock_controlled_paths_are_forced_to_lf():
         *module.RUN_LOCK_IMPLEMENTATION_PATHS,
         "reports/noncombat_outcome_evidence_expansion_20260715_registration.json",
         "reports/noncombat_outcome_evidence_expansion_20260715_registration_review.md",
+        "reports/noncombat_outcome_evidence_expansion_20260716_v2_registration.json",
+        "reports/noncombat_outcome_evidence_expansion_20260716_v2_registration_review.md",
     ]
 
     completed = subprocess.run(

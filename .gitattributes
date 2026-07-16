@@ -19,6 +19,11 @@ spirecomm/communication/study_handshake.py text eol=lf
 
 # Preserve canonical registration and review artifact bytes.
 reports/noncombat_outcome_evidence_expansion_20260715_* text eol=lf
+reports/noncombat_outcome_evidence_expansion_20260716_v2_* text eol=lf
+
+# Preserve reviewed v2 candidate test and OpenSpec bytes across Windows checkouts.
+tests/test_noncombat_outcome_evidence_expansion.py text eol=lf
+openspec/changes/run-v2-known-propensity-outcome-evidence-study/** text eol=lf
 
 # Preserve exact bytes for frozen evidence and derived OPE artifacts.
 reports/known_propensity_exploration_* -text whitespace=cr-at-eol

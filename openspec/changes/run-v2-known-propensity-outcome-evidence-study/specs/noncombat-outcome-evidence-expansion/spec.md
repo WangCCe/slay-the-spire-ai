@@ -66,3 +66,8 @@ The fresh v2 study SHALL preserve the registered schedule and authority boundary
 - **WHEN** any registered global integrity condition prevents later slot launch or normal all-slot attribution
 - **THEN** later slots SHALL remain unlaunched and finalization SHALL emit only the registered blocked closeout
 - **AND** the standalone verifier SHALL replay the blocked branch without permitting repair, retry, replacement, extension, pooling, OPE, training, or promotion under that registration
+
+#### Scenario: All-terminal rule is scoped to normal finalization
+- **WHEN** the registration contains `finalization_requires_all_slots_terminal=true`
+- **THEN** that rule SHALL gate only normal pool/OPE finalization in the absence of a global stop
+- **AND** a recorded global stop SHALL select the blocked-closeout exception with a terminal slot prefix followed only by registered unlaunched slots
