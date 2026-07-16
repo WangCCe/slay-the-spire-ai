@@ -18,8 +18,17 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
+from spirecomm.communication.study_handshake import (
+    HANDSHAKE_SCHEMA_VERSION,
+    READINESS_TIMEOUT_SECONDS,
+    RELEASE_TIMEOUT_SECONDS,
+)
 
-REGISTRATION_SCHEMA_VERSION = "noncombat-outcome-evidence-registration-v1"
+
+LEGACY_REGISTRATION_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-registration-v1"
+)
+REGISTRATION_SCHEMA_VERSION = "noncombat-outcome-evidence-registration-v2"
 RUN_LOCK_SCHEMA_VERSION = "noncombat-outcome-evidence-run-lock-v1"
 POOL_SCHEMA_VERSION = "noncombat-outcome-evidence-pool-v1"
 EVIDENCE_GATE_SCHEMA_VERSION = "noncombat-outcome-evidence-gate-v1"
@@ -64,7 +73,7 @@ DEFAULT_CHECKPOINT_ROOT = str(
     Path(r"D:\SteamLibrary\steamapps\common\SlayTheSpire\checkpoints").resolve()
 )
 CHECKPOINT_PATTERNS = ("rl_combat_model_*.pth", "rl_model_*.pth")
-RUN_LOCK_IMPLEMENTATION_PATHS = (
+LEGACY_RUN_LOCK_IMPLEMENTATION_PATHS = (
     "analysis_scripts/__init__.py",
     "analysis_scripts/noncombat_exploration_evidence.py",
     "analysis_scripts/noncombat_ope_estimate_artifacts.py",
@@ -78,6 +87,10 @@ RUN_LOCK_IMPLEMENTATION_PATHS = (
     "scripts/run_noncombat_outcome_evidence_expansion.py",
     "spirecomm/ai/noncombat_exploration.py",
     "spirecomm/ai/noncombat_exploration_runtime.py",
+)
+RUN_LOCK_IMPLEMENTATION_PATHS = (
+    *LEGACY_RUN_LOCK_IMPLEMENTATION_PATHS,
+    "spirecomm/communication/study_handshake.py",
 )
 
 
@@ -122,6 +135,7 @@ class RegisteredSlot:
 
 @dataclass(frozen=True)
 class OutcomeEvidenceRegistration:
+    schema_version: str
     study_id: str
     artifact_root: str
     repo_root: str
@@ -1516,6 +1530,7 @@ def build_registration(
     python_executable: Path | str,
     communication_config_path: Path | str = DEFAULT_COMMUNICATION_CONFIG_PATH,
     checkpoint_root: Path | str = DEFAULT_CHECKPOINT_ROOT,
+    schema_version: str = REGISTRATION_SCHEMA_VERSION,
 ) -> OutcomeEvidenceRegistration:
     """Build the one fixed 24-by-25 registration used by this study."""
 
@@ -1524,6 +1539,13 @@ def build_registration(
             "study_id must contain only lowercase letters, digits, and hyphens"
         )
     _require_exact_int(seed_base, "seed_base")
+    if schema_version not in {
+        LEGACY_REGISTRATION_SCHEMA_VERSION,
+        REGISTRATION_SCHEMA_VERSION,
+    }:
+        raise OutcomeEvidenceRegistrationError(
+            "unsupported registration schema_version"
+        )
 
     normalized_artifact_root = str(Path(artifact_root).resolve())
     normalized_repo_root = str(Path(repo_root).resolve())
@@ -1541,6 +1563,7 @@ def build_registration(
         for slot_number in range(1, SLOT_COUNT + 1)
     )
     registration = OutcomeEvidenceRegistration(
+        schema_version=schema_version,
         study_id=study_id,
         artifact_root=normalized_artifact_root,
         repo_root=normalized_repo_root,
@@ -1592,6 +1615,7 @@ def validate_registration(
     }
     _require_exact_fields(record, expected_top_level, "registration")
 
+    schema_version = _require_string(record["schema_version"], "schema_version")
     study_id = _require_string(record["study_id"], "study_id")
     artifact_root = _require_string(record["artifact_root"], "artifact_root")
     repo_root = _require_string(record["repo_root"], "repo_root")
@@ -1625,6 +1649,7 @@ def validate_registration(
         python_executable=python_executable,
         communication_config_path=communication_config_path,
         checkpoint_root=checkpoint_root,
+        schema_version=schema_version,
     )
     expected_record = expected.to_record()
 
@@ -1640,6 +1665,37 @@ def validate_registration(
     if supplied_hash != canonical_hash:
         raise OutcomeEvidenceRegistrationError("registration hash mismatch")
     return expected
+
+
+def registration_handshake_rules(
+    registration: OutcomeEvidenceRegistration | Mapping[str, Any],
+) -> dict[str, Any] | None:
+    if isinstance(registration, OutcomeEvidenceRegistration):
+        validated = validate_registration(registration.to_record())
+    else:
+        validated = validate_registration(registration)
+    if validated.schema_version == LEGACY_REGISTRATION_SCHEMA_VERSION:
+        return None
+    rules = validated.to_record()["integrity_rules"]["communication_handshake"]
+    return deepcopy(rules)
+
+
+def require_launchable_registration(
+    registration: OutcomeEvidenceRegistration | Mapping[str, Any],
+) -> OutcomeEvidenceRegistration:
+    if isinstance(registration, OutcomeEvidenceRegistration):
+        validated = validate_registration(registration.to_record())
+    else:
+        validated = validate_registration(registration)
+    if validated.schema_version == LEGACY_REGISTRATION_SCHEMA_VERSION:
+        raise OutcomeEvidenceRegistrationError(
+            "v1 registration is read-only and cannot start or run-next"
+        )
+    if registration_handshake_rules(validated) is None:
+        raise OutcomeEvidenceRegistrationError(
+            "launchable registration is missing the communication handshake"
+        )
+    return validated
 
 
 def render_registration_json(
@@ -1714,7 +1770,10 @@ def create_run_lock(
             Path(registration.communication_config_path)
         ),
         "created_unix_ns": created_unix_ns,
-        "implementation_files": _implementation_snapshot(Path(repo_root)),
+        "implementation_files": _implementation_snapshot(
+            Path(repo_root),
+            _registration_implementation_paths(registration),
+        ),
         "python_executable": registration.python_executable,
         "registration": {
             "canonical_hash": registration.registration_hash,
@@ -1809,7 +1868,10 @@ def validate_run_lock(
         "source",
     )
 
-    expected_implementation = _implementation_snapshot(Path(repo_root))
+    expected_implementation = _implementation_snapshot(
+        Path(repo_root),
+        _registration_implementation_paths(registration),
+    )
     if record["implementation_files"] != expected_implementation:
         raise OutcomeEvidenceRunLockError("source file hash drift detected")
     expected_communication = _communication_mod_snapshot(
@@ -1899,7 +1961,7 @@ def _validate_run_lock_inputs(
         working_bytes=registration_bytes,
         label="registration file",
     )
-    for relative_path in RUN_LOCK_IMPLEMENTATION_PATHS:
+    for relative_path in _registration_implementation_paths(registration):
         resolved_path = (resolved_repo_root / relative_path).resolve()
         try:
             working_bytes = resolved_path.read_bytes()
@@ -2007,9 +2069,25 @@ def _verify_head_file(
         raise OutcomeEvidenceRunLockError(f"{label} bytes differ from HEAD")
 
 
-def _implementation_snapshot(repo_root: Path) -> list[dict[str, Any]]:
+def _registration_implementation_paths(
+    registration: OutcomeEvidenceRegistration,
+) -> tuple[str, ...]:
+    raw_paths = registration.to_record()["integrity_rules"]["implementation_paths"]
+    if not isinstance(raw_paths, list) or any(
+        not isinstance(path, str) or not path for path in raw_paths
+    ):
+        raise OutcomeEvidenceRunLockError(
+            "registration implementation paths are invalid"
+        )
+    return tuple(raw_paths)
+
+
+def _implementation_snapshot(
+    repo_root: Path,
+    implementation_paths: Sequence[str],
+) -> list[dict[str, Any]]:
     snapshot = []
-    for relative_path in RUN_LOCK_IMPLEMENTATION_PATHS:
+    for relative_path in implementation_paths:
         path = (repo_root / relative_path).resolve()
         try:
             path.relative_to(repo_root.resolve())
@@ -3029,6 +3107,36 @@ def _build_slot(
 
 
 def _registration_body(registration: OutcomeEvidenceRegistration) -> dict[str, Any]:
+    if registration.schema_version == LEGACY_REGISTRATION_SCHEMA_VERSION:
+        implementation_paths = LEGACY_RUN_LOCK_IMPLEMENTATION_PATHS
+    elif registration.schema_version == REGISTRATION_SCHEMA_VERSION:
+        implementation_paths = RUN_LOCK_IMPLEMENTATION_PATHS
+    else:
+        raise OutcomeEvidenceRegistrationError(
+            "unsupported registration schema_version"
+        )
+    integrity_rules = {
+        "checkpoint_inventory": {
+            "patterns": list(CHECKPOINT_PATTERNS),
+            "root": registration.checkpoint_root,
+        },
+        "communication_config_path": registration.communication_config_path,
+        "implementation_paths": list(implementation_paths),
+        "launches_per_slot": 1,
+        "replacement_slots_forbidden": True,
+        "tracked_source_frozen_during_run_lock": True,
+    }
+    if registration.schema_version == REGISTRATION_SCHEMA_VERSION:
+        integrity_rules["communication_handshake"] = {
+            "attempt_suffix": "-communication-attempt.json",
+            "orphaned_attempt_global_stop": True,
+            "protocol_version": HANDSHAKE_SCHEMA_VERSION,
+            "readiness_timeout_seconds": READINESS_TIMEOUT_SECONDS,
+            "ready_suffix": "-communication-ready.json",
+            "release_suffix": "-communication-release.json",
+            "release_timeout_seconds": RELEASE_TIMEOUT_SECONDS,
+            "required_before_slot_claim": True,
+        }
     return {
         "analysis_rules": {
             "bootstrap_confidence_level": {
@@ -3066,17 +3174,7 @@ def _registration_body(registration: OutcomeEvidenceRegistration) -> dict[str, A
             "python_executable": registration.python_executable,
         },
         "games_per_slot": GAMES_PER_SLOT,
-        "integrity_rules": {
-            "checkpoint_inventory": {
-                "patterns": list(CHECKPOINT_PATTERNS),
-                "root": registration.checkpoint_root,
-            },
-            "communication_config_path": registration.communication_config_path,
-            "implementation_paths": list(RUN_LOCK_IMPLEMENTATION_PATHS),
-            "launches_per_slot": 1,
-            "replacement_slots_forbidden": True,
-            "tracked_source_frozen_during_run_lock": True,
-        },
+        "integrity_rules": integrity_rules,
         "output_rules": {
             "canonical_json_line_ending": "LF",
             "closeout_json_filename": "outcome-evidence-closeout.json",
@@ -3099,7 +3197,7 @@ def _registration_body(registration: OutcomeEvidenceRegistration) -> dict[str, A
         },
         "repo_root": registration.repo_root,
         "scheduled_attempts": SCHEDULED_ATTEMPTS,
-        "schema_version": REGISTRATION_SCHEMA_VERSION,
+        "schema_version": registration.schema_version,
         "seed_base": registration.seed_base,
         "slot_count": SLOT_COUNT,
         "slots": [slot.to_record() for slot in registration.slots],

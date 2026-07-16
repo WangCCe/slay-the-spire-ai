@@ -39,6 +39,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from analysis_scripts.noncombat_outcome_evidence_expansion import (
     OutcomeEvidenceRegistration,
+    OutcomeEvidenceRegistrationError,
     RegisteredSlot,
     build_registered_pool,
     collect_registered_session_evidence,
@@ -48,6 +49,8 @@ from analysis_scripts.noncombat_outcome_evidence_expansion import (
     finalize_registered_outcome_evidence,
     load_registration,
     manifest_isolation_matches_run_lock,
+    registration_handshake_rules,
+    require_launchable_registration,
     validate_run_lock,
 )
 from spirecomm.ai.noncombat_exploration import (
@@ -56,12 +59,24 @@ from spirecomm.ai.noncombat_exploration import (
     load_exploration_config,
     parse_exploration_config,
 )
+from spirecomm.communication.study_handshake import (
+    HANDSHAKE_ATTEMPT_ENV,
+    POLL_INTERVAL_SECONDS,
+    HandshakePaths,
+    build_attempt_record,
+    build_release_record,
+    load_attempt_record,
+    load_ready_record,
+    publish_record_once,
+    validate_ready_record,
+)
 
 
 LEDGER_SCHEMA_VERSION = "noncombat-outcome-evidence-ledger-v1"
-MONITOR_SCHEMA_VERSION = "noncombat-outcome-evidence-blinded-monitor-v1"
+MONITOR_SCHEMA_VERSION = "noncombat-outcome-evidence-blinded-monitor-v2"
 _SHA256_LENGTH = 64
 _GIT_COMMIT_LENGTH = 40
+_PROCESS_TERMINATION_TIMEOUT_SECONDS = 5
 
 
 class OutcomeEvidenceRunnerError(RuntimeError):
@@ -265,6 +280,368 @@ def execute_registered_slot(
     )
 
 
+def execute_handshaken_registered_slot(
+    *,
+    ledger: "StudyLedger",
+    launch: RegisteredSlotLaunch,
+    marker_path: Path | str,
+    process_starter: Callable[[RegisteredSlotLaunch, Mapping[str, str]], Any],
+    monotonic: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+    time_ns: Callable[[], int] = time.time_ns,
+) -> dict[str, Any]:
+    """Claim a registered slot only after its real child proves readiness."""
+
+    expected = ledger.next_slot()
+    if (
+        launch.slot_number != expected.slot_number
+        or launch.session_id != expected.session_id
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "launch does not match the next registered ledger slot"
+        )
+    if not callable(process_starter):
+        raise OutcomeEvidenceRunnerError("process_starter must be callable")
+    marker_file = Path(marker_path).resolve()
+    rules = registration_handshake_rules(ledger.registration)
+    if rules is None:
+        raise OutcomeEvidenceRunnerError(
+            "launchable registration has no handshake rules"
+        )
+    paths = _handshake_paths_from_rules(
+        config_path=launch.config_path,
+        session_id=launch.session_id,
+        rules=rules,
+    )
+    slot = _registered_slot(ledger.registration, launch.slot_number)
+    output_paths = (Path(slot.manifest_path), Path(slot.trace_path))
+    process = None
+    marker_start_count: int | None = None
+    try:
+        _require_paths_absent(
+            (paths.attempt, paths.ready, paths.release),
+            "handshake artifact exists before launch",
+        )
+        _require_paths_absent(
+            output_paths,
+            "gameplay output exists before launch",
+        )
+        marker_start_count = _ai_marker_count(marker_file)
+        config_path = Path(launch.config_path).resolve()
+        config_sha256 = _handshake_file_sha256(
+            config_path,
+            "registered slot config",
+        )
+        attempt = build_attempt_record(
+            study_id=ledger.registration.study_id,
+            registration_hash=ledger.registration.registration_hash,
+            run_lock_hash=ledger.run_lock_hash,
+            slot_number=launch.slot_number,
+            session_id=launch.session_id,
+            config_path=config_path,
+            config_sha256=config_sha256,
+            marker_start_count=marker_start_count,
+            paths=paths,
+            readiness_timeout_seconds=rules["readiness_timeout_seconds"],
+            release_timeout_seconds=rules["release_timeout_seconds"],
+            created_unix_ns=_positive_time_ns(time_ns),
+        )
+        publish_record_once(paths.attempt, attempt)
+        child_environment = dict(launch.environment)
+        child_environment[HANDSHAKE_ATTEMPT_ENV] = str(paths.attempt)
+        process = process_starter(
+            launch,
+            MappingProxyType(child_environment),
+        )
+        child_pid = _child_process_pid(process)
+        ready = _wait_for_child_readiness(
+            process=process,
+            child_pid=child_pid,
+            attempt=attempt,
+            ready_path=paths.ready,
+            timeout_seconds=rules["readiness_timeout_seconds"],
+            monotonic=monotonic,
+            sleep=sleep,
+        )
+        _validate_preclaim_handshake_state(
+            attempt=attempt,
+            paths=paths,
+            output_paths=output_paths,
+            marker_path=marker_file,
+            marker_start_count=marker_start_count,
+            config_path=config_path,
+            config_sha256=config_sha256,
+        )
+        ledger.start_slot(
+            launch.slot_number,
+            launch.session_id,
+            marker_start_count=marker_start_count,
+            started_unix_ns=_positive_time_ns(time_ns),
+        )
+        release = build_release_record(
+            attempt,
+            ready,
+            created_unix_ns=_positive_time_ns(time_ns),
+        )
+        publish_record_once(paths.release, release)
+    except BaseException as exc:
+        active = _ledger_has_active_slot(ledger)
+        stage = "postclaim release failed" if active else "preclaim handshake failed"
+        reason = f"{stage}: {type(exc).__name__}: {exc}"
+        _terminate_child_process(process)
+        if active:
+            _recover_claimed_slot_for_stop(
+                ledger=ledger,
+                marker_path=marker_file,
+                marker_start_count=marker_start_count,
+                reason=reason,
+                ended_unix_ns=_safe_time_ns(time_ns),
+            )
+        _record_global_stop_once(ledger, reason)
+        raise OutcomeEvidenceRunnerError(reason) from exc
+
+    try:
+        exit_code = process.wait()
+    except BaseException as exc:
+        reason = f"released child wait failed: {type(exc).__name__}: {exc}"
+        _terminate_child_process(process)
+        _recover_claimed_slot_for_stop(
+            ledger=ledger,
+            marker_path=marker_file,
+            marker_start_count=marker_start_count,
+            reason=reason,
+            ended_unix_ns=_safe_time_ns(time_ns),
+        )
+        _record_global_stop_once(ledger, reason)
+        raise OutcomeEvidenceRunnerError(reason) from exc
+    complete, marker_end_count = _safe_marker_delta_or_stop(
+        ledger=ledger,
+        marker_path=marker_file,
+        before_count=marker_start_count,
+        ended_unix_ns=_safe_time_ns(time_ns),
+    )
+    if type(exit_code) is not int:
+        reason = "released child process returned a non-integer exit code"
+        ledger.recover_active_slot(
+            reason=reason,
+            complete_trajectories=complete,
+            marker_start_count=marker_start_count,
+            marker_end_count=marker_end_count,
+            ended_unix_ns=_safe_time_ns(time_ns),
+        )
+        _record_global_stop_once(ledger, reason)
+        raise OutcomeEvidenceRunnerError(reason)
+    return ledger.finish_slot(
+        launch.slot_number,
+        process_exit_code=exit_code,
+        complete_trajectories=complete,
+        marker_start_count=marker_start_count,
+        marker_end_count=marker_end_count,
+        ended_unix_ns=_safe_time_ns(time_ns),
+    )
+
+
+def _handshake_paths_from_rules(
+    *,
+    config_path: Path | str,
+    session_id: str,
+    rules: Mapping[str, Any],
+) -> HandshakePaths:
+    parent = Path(config_path).resolve().parent
+    return HandshakePaths(
+        attempt=(parent / f"{session_id}{rules['attempt_suffix']}").resolve(),
+        ready=(parent / f"{session_id}{rules['ready_suffix']}").resolve(),
+        release=(parent / f"{session_id}{rules['release_suffix']}").resolve(),
+    )
+
+
+def _wait_for_child_readiness(
+    *,
+    process: Any,
+    child_pid: int,
+    attempt: Mapping[str, Any],
+    ready_path: Path,
+    timeout_seconds: int,
+    monotonic: Callable[[], float],
+    sleep: Callable[[float], None],
+) -> dict[str, Any]:
+    deadline = monotonic() + timeout_seconds
+    while True:
+        if ready_path.exists():
+            if process.poll() is not None:
+                raise OutcomeEvidenceRunnerError(
+                    "child exited before readiness verification"
+                )
+            ready = load_ready_record(ready_path)
+            validated = validate_ready_record(
+                ready,
+                attempt=attempt,
+                child_pid=child_pid,
+            )
+            if process.poll() is not None:
+                raise OutcomeEvidenceRunnerError(
+                    "child exited before readiness verification"
+                )
+            return validated
+        exit_code = process.poll()
+        if exit_code is not None:
+            raise OutcomeEvidenceRunnerError(
+                f"child exited before readiness with code {exit_code}"
+            )
+        if monotonic() >= deadline:
+            raise OutcomeEvidenceRunnerError("child readiness deadline exceeded")
+        sleep(POLL_INTERVAL_SECONDS)
+
+
+def _validate_preclaim_handshake_state(
+    *,
+    attempt: Mapping[str, Any],
+    paths: HandshakePaths,
+    output_paths: Sequence[Path],
+    marker_path: Path,
+    marker_start_count: int,
+    config_path: Path,
+    config_sha256: str,
+) -> None:
+    if load_attempt_record(paths.attempt) != dict(attempt):
+        raise OutcomeEvidenceRunnerError("handshake attempt changed before claim")
+    if paths.release.exists():
+        raise OutcomeEvidenceRunnerError("release exists before slot claim")
+    _require_paths_absent(
+        output_paths,
+        "gameplay output was created before slot claim",
+    )
+    if _ai_marker_count(marker_path) != marker_start_count:
+        raise OutcomeEvidenceRunnerError("AI marker count changed before slot claim")
+    if (
+        _handshake_file_sha256(config_path, "registered slot config")
+        != config_sha256
+    ):
+        raise OutcomeEvidenceRunnerError("registered slot config changed before claim")
+
+
+def _recover_active_slot_after_host_failure(
+    *,
+    ledger: "StudyLedger",
+    marker_path: Path | str,
+    ended_unix_ns: int | None = None,
+) -> None:
+    snapshot = ledger.snapshot()
+    active = snapshot["active_slot"]
+    if active is None:
+        return
+    reason = "active slot recovery after parent or host failure"
+    _recover_claimed_slot_for_stop(
+        ledger=ledger,
+        marker_path=Path(marker_path).resolve(),
+        marker_start_count=active.get("marker_start_count"),
+        reason=reason,
+        ended_unix_ns=ended_unix_ns,
+    )
+    _record_global_stop_once(ledger, reason)
+    raise OutcomeEvidenceRunnerError(reason)
+
+
+def _recover_claimed_slot_for_stop(
+    *,
+    ledger: "StudyLedger",
+    marker_path: Path,
+    marker_start_count: Any,
+    reason: str,
+    ended_unix_ns: int | None,
+) -> None:
+    marker_end_count = None
+    complete = 0
+    recovery_reason = reason
+    if type(marker_start_count) is int and marker_start_count >= 0:
+        try:
+            observed_end = _ai_marker_count(marker_path)
+            observed_complete = observed_end - marker_start_count
+            if observed_complete < 0 or observed_complete > 25:
+                raise OutcomeEvidenceRunnerError(
+                    "AI marker delta is outside the registered slot"
+                )
+            marker_end_count = observed_end
+            complete = observed_complete
+        except OutcomeEvidenceRunnerError as exc:
+            recovery_reason = f"{reason}; marker recovery failed: {exc}"
+            marker_start_count = None
+            marker_end_count = None
+            complete = 0
+    else:
+        marker_start_count = None
+        recovery_reason = f"{reason}; marker start boundary is unavailable"
+    ledger.recover_active_slot(
+        reason=recovery_reason,
+        complete_trajectories=complete,
+        marker_start_count=marker_start_count,
+        marker_end_count=marker_end_count,
+        ended_unix_ns=ended_unix_ns,
+    )
+
+
+def _terminate_child_process(process: Any) -> None:
+    if process is None:
+        return
+    try:
+        if process.poll() is not None:
+            return
+        process.terminate()
+        try:
+            process.wait(timeout=_PROCESS_TERMINATION_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=_PROCESS_TERMINATION_TIMEOUT_SECONDS)
+    except BaseException:
+        return
+
+
+def _ledger_has_active_slot(ledger: "StudyLedger") -> bool:
+    try:
+        return ledger.snapshot()["active_slot"] is not None
+    except OutcomeEvidenceRunnerError:
+        return False
+
+
+def _record_global_stop_once(ledger: "StudyLedger", reason: str) -> None:
+    if ledger.snapshot()["global_stop"] is None:
+        ledger.global_stop(reason=reason)
+
+
+def _child_process_pid(process: Any) -> int:
+    pid = getattr(process, "pid", None)
+    if type(pid) is not int or pid <= 0:
+        raise OutcomeEvidenceRunnerError("child process PID is invalid")
+    return pid
+
+
+def _require_paths_absent(paths: Sequence[Path], message: str) -> None:
+    existing = [str(path) for path in paths if path.exists()]
+    if existing:
+        raise OutcomeEvidenceRunnerError(f"{message}: {existing[0]}")
+
+
+def _handshake_file_sha256(path: Path, label: str) -> str:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError as exc:
+        raise OutcomeEvidenceRunnerError(f"cannot read {label}: {exc}") from exc
+
+
+def _positive_time_ns(clock: Callable[[], int]) -> int:
+    value = clock()
+    if type(value) is not int or value <= 0:
+        raise OutcomeEvidenceRunnerError("clock returned an invalid timestamp")
+    return value
+
+
+def _safe_time_ns(clock: Callable[[], int]) -> int | None:
+    try:
+        return _positive_time_ns(clock)
+    except BaseException:
+        return None
+
+
 def _safe_marker_delta_or_stop(
     *,
     ledger: "StudyLedger",
@@ -340,6 +717,7 @@ def build_blinded_monitor(
     """Build an allowlisted collection monitor with no outcome surface."""
 
     binding = _validate_run_lock_binding(registration, run_lock)
+    handshake_rules = registration_handshake_rules(registration)
     if isinstance(structural_observations, (str, bytes)) or not isinstance(
         structural_observations, Sequence
     ):
@@ -412,6 +790,51 @@ def build_blinded_monitor(
             slot_number=slot.slot_number,
             blockers=blockers,
         )
+        handshake_paths = (
+            None
+            if handshake_rules is None
+            else _handshake_paths_from_rules(
+                config_path=slot.config_path,
+                session_id=slot.session_id,
+                rules=handshake_rules,
+            )
+        )
+        structural.update(
+            {
+                "handshake_attempt_path": (
+                    str(handshake_paths.attempt)
+                    if handshake_paths is not None
+                    else None
+                ),
+                "handshake_ready_path": (
+                    str(handshake_paths.ready)
+                    if handshake_paths is not None
+                    else None
+                ),
+                "handshake_release_path": (
+                    str(handshake_paths.release)
+                    if handshake_paths is not None
+                    else None
+                ),
+            }
+        )
+        handshake_status = structural["handshake_status"]
+        if handshake_rules is not None and handshake_status == "invalid":
+            blockers.add(f"invalid_handshake_sequence_slot_{slot.slot_number:02d}")
+        if handshake_rules is not None and lifecycle in {
+            "active",
+            "completed",
+            "interrupted",
+        } and (
+            handshake_status != "released"
+        ):
+            blockers.add(f"launched_slot_handshake_missing_{slot.slot_number:02d}")
+        if (
+            handshake_rules is not None
+            and lifecycle == "unlaunched"
+            and handshake_status != "not_started"
+        ):
+            blockers.add(f"unlaunched_slot_handshake_{slot.slot_number:02d}")
         if lifecycle == "active" and not structural["config_exists"]:
             blockers.add(f"active_slot_config_missing_{slot.slot_number:02d}")
         if lifecycle in {"completed", "interrupted"} and (
@@ -465,6 +888,13 @@ def _sanitize_structural_observation(
         "config_exists": False,
         "config_sha256": None,
         "confirmed_records": 0,
+        "handshake_attempt_exists": False,
+        "handshake_attempt_sha256": None,
+        "handshake_ready_exists": False,
+        "handshake_ready_sha256": None,
+        "handshake_release_exists": False,
+        "handshake_release_sha256": None,
+        "handshake_status": "not_started",
         "isolation_verified": False,
         "manifest_exists": False,
         "manifest_hash": None,
@@ -480,6 +910,9 @@ def _sanitize_structural_observation(
     valid = observation.get("structural_valid", True) is True
     boolean_fields = (
         "config_exists",
+        "handshake_attempt_exists",
+        "handshake_ready_exists",
+        "handshake_release_exists",
         "isolation_verified",
         "manifest_exists",
         "trace_exists",
@@ -493,6 +926,9 @@ def _sanitize_structural_observation(
     )
     hash_fields = (
         "config_sha256",
+        "handshake_attempt_sha256",
+        "handshake_ready_sha256",
+        "handshake_release_sha256",
         "manifest_hash",
         "manifest_sha256",
         "trace_sha256",
@@ -523,6 +959,12 @@ def _sanitize_structural_observation(
         or result["replay_valid_records"] > result["confirmed_records"]
         or result["candidate_legal_records"] > result["replay_valid_records"]
         or (result["config_exists"] and result["config_sha256"] is None)
+        or result["handshake_attempt_exists"]
+        != (result["handshake_attempt_sha256"] is not None)
+        or result["handshake_ready_exists"]
+        != (result["handshake_ready_sha256"] is not None)
+        or result["handshake_release_exists"]
+        != (result["handshake_release_sha256"] is not None)
         or (
             result["manifest_exists"]
             and (
@@ -536,6 +978,17 @@ def _sanitize_structural_observation(
     if not valid:
         blockers.add(f"invalid_structural_observation_slot_{slot_number:02d}")
         return defaults
+    handshake_shape = (
+        result["handshake_attempt_exists"],
+        result["handshake_ready_exists"],
+        result["handshake_release_exists"],
+    )
+    result["handshake_status"] = {
+        (False, False, False): "not_started",
+        (True, False, False): "attempted",
+        (True, True, False): "ready",
+        (True, True, True): "released",
+    }.get(handshake_shape, "invalid")
     return result
 
 
@@ -556,15 +1009,16 @@ def render_blinded_monitor_markdown(monitor: Mapping[str, Any]) -> str:
             f"{monitor.get('slot_count')} terminal slots"
         ),
         "",
-        "| Slot | Session | Lifecycle | Exit | Config | Manifest | Trace | "
+        "| Slot | Session | Lifecycle | Handshake | Exit | Config | Manifest | Trace | "
         "Proposed | Confirmed | Replay valid | Candidate legal | "
         "Complete joins | Isolation |",
-        "|---:|---|---|---:|---|---|---|---:|---:|---:|---:|---:|---|",
+        "|---:|---|---|---|---:|---|---|---|---:|---:|---:|---:|---:|---|",
     ]
     slots = monitor.get("slots", [])
     for slot in slots:
         lines.append(
             "| {slot_number:02d} | `{session_id}` | {lifecycle} | "
+            "{handshake_status} | "
             "{process_exit_code} | {config} | "
             "{manifest} | {trace} | {proposed_records} | {confirmed_records} | "
             "{replay_valid_records} | {candidate_legal_records} | "
@@ -592,6 +1046,7 @@ def collect_structural_observations(
     """Inspect launched artifacts while retaining only structural fields."""
 
     binding = _validate_run_lock_binding(registration, run_lock)
+    handshake_rules = registration_handshake_rules(registration)
     active = ledger_snapshot.get("active_slot")
     active_number = active.get("slot_number") if isinstance(active, Mapping) else None
     terminal_records = ledger_snapshot.get("terminal_slots", [])
@@ -603,6 +1058,28 @@ def collect_structural_observations(
     launched_numbers = set(terminal_by_slot)
     if type(active_number) is int:
         launched_numbers.add(active_number)
+    handshake_paths_by_slot = {}
+    observed_numbers = set(launched_numbers)
+    for registered_slot in registration.slots:
+        registered_paths = (
+            None
+            if handshake_rules is None
+            else _handshake_paths_from_rules(
+                config_path=registered_slot.config_path,
+                session_id=registered_slot.session_id,
+                rules=handshake_rules,
+            )
+        )
+        handshake_paths_by_slot[registered_slot.slot_number] = registered_paths
+        if registered_paths is not None and any(
+            path.exists()
+            for path in (
+                registered_paths.attempt,
+                registered_paths.ready,
+                registered_paths.release,
+            )
+        ):
+            observed_numbers.add(registered_slot.slot_number)
 
     game_root = Path(registration.checkpoint_root).resolve().parent
     join_inputs_valid = True
@@ -620,8 +1097,9 @@ def collect_structural_observations(
         join_inputs_valid = False
 
     observations = []
-    for slot_number in sorted(launched_numbers):
+    for slot_number in sorted(observed_numbers):
         slot = _registered_slot(registration, slot_number)
+        handshake_paths = handshake_paths_by_slot[slot_number]
         terminal = terminal_by_slot.get(slot_number, {})
         marker_start = terminal.get("marker_start_count")
         marker_end = terminal.get("marker_end_count")
@@ -644,6 +1122,12 @@ def collect_structural_observations(
             "config_exists": False,
             "config_sha256": None,
             "confirmed_records": 0,
+            "handshake_attempt_exists": False,
+            "handshake_attempt_sha256": None,
+            "handshake_ready_exists": False,
+            "handshake_ready_sha256": None,
+            "handshake_release_exists": False,
+            "handshake_release_sha256": None,
             "isolation_verified": False,
             "manifest_exists": False,
             "manifest_hash": None,
@@ -661,6 +1145,21 @@ def collect_structural_observations(
         manifest_path = Path(slot.manifest_path)
         trace_path = Path(slot.trace_path)
         try:
+            if handshake_paths is not None:
+                for name, handshake_path in (
+                    ("attempt", handshake_paths.attempt),
+                    ("ready", handshake_paths.ready),
+                    ("release", handshake_paths.release),
+                ):
+                    if handshake_path.exists():
+                        observation[f"handshake_{name}_exists"] = True
+                        if not handshake_path.is_file():
+                            raise OutcomeEvidenceRunnerError(
+                                f"handshake {name} artifact is not a file"
+                            )
+                        observation[f"handshake_{name}_sha256"] = _sha256_file(
+                            handshake_path
+                        )
             if config_path.is_file():
                 observation["config_exists"] = True
                 observation["config_sha256"] = _sha256_file(config_path)
@@ -894,10 +1393,17 @@ class StudyLedger:
         slot_number: int,
         session_id: str,
         *,
+        marker_start_count: int | None = None,
         started_unix_ns: int | None = None,
     ) -> dict[str, Any]:
         created = _timestamp(started_unix_ns)
         requested_slot = _exact_int(slot_number, "slot_number")
+        if marker_start_count is not None and (
+            type(marker_start_count) is not int or marker_start_count < 0
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "marker_start_count must be a nonnegative integer"
+            )
 
         def validate(snapshot: Mapping[str, Any]) -> None:
             expected = self._next_slot_from_snapshot(snapshot)
@@ -915,7 +1421,11 @@ class StudyLedger:
             event="slot_started",
             created_unix_ns=created,
             slot=self._slots.get(requested_slot),
-            payload={},
+            payload=(
+                {}
+                if marker_start_count is None
+                else {"marker_start_count": marker_start_count}
+            ),
             validate=validate,
         )
 
@@ -1182,6 +1692,9 @@ class StudyLedger:
                 if record["slot_number"] != expected:
                     raise OutcomeEvidenceRunnerError("ledger slot order mismatch")
                 active_slot = {
+                    "marker_start_count": record["payload"].get(
+                        "marker_start_count"
+                    ),
                     "session_id": record["session_id"],
                     "slot_number": record["slot_number"],
                 }
@@ -1192,6 +1705,14 @@ class StudyLedger:
                     )
                 if record["slot_number"] != active_slot["slot_number"]:
                     raise OutcomeEvidenceRunnerError("terminal record slot mismatch")
+                if (
+                    active_slot["marker_start_count"] is not None
+                    and record["payload"].get("marker_start_count")
+                    != active_slot["marker_start_count"]
+                ):
+                    raise OutcomeEvidenceRunnerError(
+                        "terminal marker start differs from slot claim"
+                    )
                 terminal_slots.append(
                     {
                         "complete_trajectories": record["payload"].get(
@@ -1345,8 +1866,15 @@ def _validate_ledger_record(
         if payload != {"slot_count": len(registration.slots)}:
             raise OutcomeEvidenceRunnerError("study_started payload mismatch")
     elif record["event"] == "slot_started":
-        if payload:
-            raise OutcomeEvidenceRunnerError("slot_started payload must be empty")
+        if set(payload) not in (set(), {"marker_start_count"}):
+            raise OutcomeEvidenceRunnerError("slot_started payload fields mismatch")
+        if "marker_start_count" in payload and (
+            type(payload["marker_start_count"]) is not int
+            or payload["marker_start_count"] < 0
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "slot_started marker_start_count is invalid"
+            )
     elif record["event"] == "slot_terminal":
         required_payload_fields = {
             "complete_trajectories",
@@ -1551,8 +2079,18 @@ def _load_runner_registration(
     return registration
 
 
+def _require_launchable_runner_registration(
+    registration: OutcomeEvidenceRegistration,
+) -> OutcomeEvidenceRegistration:
+    try:
+        return require_launchable_registration(registration)
+    except OutcomeEvidenceRegistrationError as exc:
+        raise OutcomeEvidenceRunnerError(str(exc)) from exc
+
+
 def _start_command(registration_path: Path) -> dict[str, Any]:
     registration = _load_runner_registration(registration_path)
+    registration = _require_launchable_runner_registration(registration)
     command = _registered_command(registration)
     run_lock = create_run_lock(
         registration_path=registration_path,
@@ -1617,6 +2155,7 @@ def _dry_run_command(registration_path: Path) -> dict[str, Any]:
         build_slot_launch(registration, run_lock, slot.slot_number)
         for slot in registration.slots
     ]
+    handshake_rules = registration_handshake_rules(registration)
     return {
         "launch_count": len(launches),
         "launches": [
@@ -1625,6 +2164,10 @@ def _dry_run_command(registration_path: Path) -> dict[str, Any]:
                 "config_path": launch.config_path,
                 "config_record": dict(launch.config_record),
                 "environment": dict(launch.environment),
+                "handshake": _dry_run_handshake_record(
+                    launch,
+                    handshake_rules,
+                ),
                 "session_id": launch.session_id,
                 "slot_number": launch.slot_number,
             }
@@ -1634,8 +2177,30 @@ def _dry_run_command(registration_path: Path) -> dict[str, Any]:
     }
 
 
+def _dry_run_handshake_record(
+    launch: RegisteredSlotLaunch,
+    rules: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    if rules is None:
+        return None
+    paths = _handshake_paths_from_rules(
+        config_path=launch.config_path,
+        session_id=launch.session_id,
+        rules=rules,
+    )
+    return {
+        "attempt_path": str(paths.attempt),
+        "protocol_version": rules["protocol_version"],
+        "readiness_timeout_seconds": rules["readiness_timeout_seconds"],
+        "ready_path": str(paths.ready),
+        "release_path": str(paths.release),
+        "release_timeout_seconds": rules["release_timeout_seconds"],
+    }
+
+
 def _run_next_command(registration_path: Path) -> dict[str, Any]:
     registration = _load_runner_registration(registration_path)
+    registration = _require_launchable_runner_registration(registration)
     command = _registered_command(registration)
     run_lock_path = _run_lock_path(registration)
     ledger = StudyLedger.open_existing(
@@ -1651,6 +2216,13 @@ def _run_next_command(registration_path: Path) -> dict[str, Any]:
             child_command=command,
         ),
     )
+    marker_path = (
+        Path(registration.checkpoint_root).parent / "runs" / "ai_games.txt"
+    )
+    _recover_active_slot_after_host_failure(
+        ledger=ledger,
+        marker_path=marker_path,
+    )
     slot = ledger.next_slot()
     launch = build_slot_launch(registration, run_lock, slot.slot_number)
     config_path = Path(launch.config_path)
@@ -1658,11 +2230,13 @@ def _run_next_command(registration_path: Path) -> dict[str, Any]:
         raise OutcomeEvidenceRunnerError(
             f"registered slot config is missing: {config_path}"
         )
-    environment = os.environ.copy()
-    environment.update(launch.environment)
-
-    def process_runner(_launch: RegisteredSlotLaunch) -> int:
-        return subprocess.call(
+    def process_starter(
+        _launch: RegisteredSlotLaunch,
+        child_environment: Mapping[str, str],
+    ) -> subprocess.Popen:
+        environment = os.environ.copy()
+        environment.update(child_environment)
+        return subprocess.Popen(
             list(launch.command),
             env=environment,
             cwd=str(Path(registration.checkpoint_root).parent),
@@ -1671,13 +2245,11 @@ def _run_next_command(registration_path: Path) -> dict[str, Any]:
             stderr=sys.stderr,
         )
 
-    return execute_registered_slot(
+    return execute_handshaken_registered_slot(
         ledger=ledger,
         launch=launch,
-        marker_path=Path(registration.checkpoint_root).parent
-        / "runs"
-        / "ai_games.txt",
-        process_runner=process_runner,
+        marker_path=marker_path,
+        process_starter=process_starter,
     )
 
 

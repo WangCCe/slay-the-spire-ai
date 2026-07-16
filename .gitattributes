@@ -15,6 +15,7 @@ main.py text eol=lf
 scripts/run_noncombat_outcome_evidence_expansion.py text eol=lf
 spirecomm/ai/noncombat_exploration.py text eol=lf
 spirecomm/ai/noncombat_exploration_runtime.py text eol=lf
+spirecomm/communication/study_handshake.py text eol=lf
 
 # Preserve canonical registration and review artifact bytes.
 reports/noncombat_outcome_evidence_expansion_20260715_* text eol=lf

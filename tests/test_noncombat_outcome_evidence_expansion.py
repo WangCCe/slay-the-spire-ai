@@ -50,7 +50,7 @@ def test_registration_fixes_exact_schedule_behavior_and_command(tmp_path):
     registration = _registration(tmp_path)
     record = registration.to_record()
 
-    assert record["schema_version"] == "noncombat-outcome-evidence-registration-v1"
+    assert record["schema_version"] == "noncombat-outcome-evidence-registration-v2"
     assert record["study_id"] == STUDY_ID
     assert record["slot_count"] == 24
     assert record["games_per_slot"] == 25
@@ -100,6 +100,19 @@ def test_registration_fixes_exact_schedule_behavior_and_command(tmp_path):
         ),
         "target_policy_mode": "current_deterministic",
     }
+    assert record["integrity_rules"]["communication_handshake"] == {
+        "attempt_suffix": "-communication-attempt.json",
+        "orphaned_attempt_global_stop": True,
+        "protocol_version": "noncombat-outcome-evidence-handshake-v1",
+        "readiness_timeout_seconds": 30,
+        "ready_suffix": "-communication-ready.json",
+        "release_suffix": "-communication-release.json",
+        "release_timeout_seconds": 10,
+        "required_before_slot_claim": True,
+    }
+    assert record["integrity_rules"]["implementation_paths"][-1] == (
+        "spirecomm/communication/study_handshake.py"
+    )
     assert record["registration_hash"] is not None
     assert len(record["registration_hash"]) == 64
 
@@ -182,12 +195,59 @@ def test_committed_production_registration_matches_canonical_bytes():
         repo_root=REPO_ROOT,
         seed_base=SEED_BASE,
         python_executable=WINDOWS_PYTHON,
+        schema_version=module.LEGACY_REGISTRATION_SCHEMA_VERSION,
     )
     expected_bytes = module.render_registration_json(expected).encode("utf-8")
     actual_bytes = COMMITTED_REGISTRATION_PATH.read_bytes()
 
     assert actual_bytes == expected_bytes
     assert module.load_registration(COMMITTED_REGISTRATION_PATH) == expected
+
+
+def test_legacy_registration_is_read_only_and_byte_distinct_from_v2(tmp_path):
+    module = _module()
+    legacy = module.build_registration(
+        study_id=STUDY_ID,
+        artifact_root=tmp_path / "study",
+        repo_root=tmp_path / "repo",
+        seed_base=SEED_BASE,
+        python_executable=WINDOWS_PYTHON,
+        schema_version=module.LEGACY_REGISTRATION_SCHEMA_VERSION,
+    )
+    current = _registration(tmp_path)
+
+    legacy_record = legacy.to_record()
+    assert legacy_record["schema_version"] == (
+        "noncombat-outcome-evidence-registration-v1"
+    )
+    assert "communication_handshake" not in legacy_record["integrity_rules"]
+    assert legacy_record["integrity_rules"]["implementation_paths"] == list(
+        module.LEGACY_RUN_LOCK_IMPLEMENTATION_PATHS
+    )
+    assert module.validate_registration(legacy_record) == legacy
+    assert module.render_registration_json(legacy) != module.render_registration_json(
+        current
+    )
+
+
+def test_launch_guard_accepts_v2_and_rejects_v1(tmp_path):
+    module = _module()
+    current = _registration(tmp_path)
+    legacy = module.build_registration(
+        study_id=STUDY_ID,
+        artifact_root=tmp_path / "legacy-study",
+        repo_root=tmp_path / "repo",
+        seed_base=SEED_BASE,
+        python_executable=WINDOWS_PYTHON,
+        schema_version=module.LEGACY_REGISTRATION_SCHEMA_VERSION,
+    )
+
+    assert module.require_launchable_registration(current) == current
+    with pytest.raises(
+        module.OutcomeEvidenceRegistrationError,
+        match="v1 registration is read-only",
+    ):
+        module.require_launchable_registration(legacy)
 
 
 def test_run_lock_controlled_paths_are_forced_to_lf():

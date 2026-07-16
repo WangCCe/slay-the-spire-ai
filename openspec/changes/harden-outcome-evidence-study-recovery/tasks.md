@@ -14,19 +14,19 @@
 
 ## 3. Define The Two-Phase Handshake
 
-- [ ] 3.1 Add red tests for strict handshake environment parsing, deterministic slot token binding, exclusive canonical attempt/ready/release publication, PID/config/run-lock validation, deadline handling, and stale-file rejection.
-- [ ] 3.2 Implement a focused shared handshake module with no effect when its explicit environment is absent.
-- [ ] 3.3 Add red `main.py` startup-order tests proving the child receives one parseable state with callbacks disabled, emits no action, waits for release before exploration/agent initialization, and retains the state for exactly-once normal processing.
-- [ ] 3.4 Integrate the child gate before exploration runtime and agent creation while preserving ordinary and non-study combat-RL coordinator startup behavior.
+- [x] 3.1 Add red tests for strict handshake environment parsing, deterministic slot token binding, exclusive canonical attempt/ready/release publication, PID/config/run-lock validation, deadline handling, and stale-file rejection.
+- [x] 3.2 Implement a focused shared handshake module with no effect when its explicit environment is absent.
+- [x] 3.3 Add red `main.py` startup-order tests proving the child receives one parseable state with callbacks disabled, emits no action, waits for release before exploration/agent initialization, and retains the state for exactly-once normal processing.
+- [x] 3.4 Integrate the child gate before exploration runtime and agent creation while preserving ordinary and non-study combat-RL coordinator startup behavior.
 
 ## 4. Claim Slots Only After Readiness
 
-- [ ] 4.1 Add registration v2 tests and generation for the fixed protocol version, 30-second readiness and 10-second release deadlines, attempt/ready/release names, implementation binding, and fail-closed continuation rule; preserve v1 read-only verification and reject v1 `start` or `run-next`.
-- [ ] 4.2 Add red runner tests that publish an exclusive attempt and capture the marker baseline before the exact child starts while holding the ledger unlaunched, then assert unchanged markers and `slot_started` after verified readiness and immediately before release.
-- [ ] 4.3 Replace the synchronous child call with a bounded process lifecycle that validates readiness, publishes release, waits for terminal accounting, and cleans up the child on every failure path.
-- [ ] 4.4 Cover timeout, early exit, malformed or mismatched readiness, orphaned or duplicate attempts, marker growth, premature manifest/trace creation, release failure, host-style recovery before and after claim, global-stop launch blocking, and no retry/replacement behavior.
-- [ ] 4.5 Extend dry-run and blinded structural monitoring with handshake paths and safe existence/hash/status fields only; keep outcome and policy-evaluation fields forbidden.
-- [ ] 4.6 Commit the handshake, registration, runner, and monitor behavior as one cohesive risk-class change.
+- [x] 4.1 Add registration v2 tests and generation for the fixed protocol version, 30-second readiness and 10-second release deadlines, attempt/ready/release names, implementation binding, and fail-closed continuation rule; preserve v1 read-only verification and reject v1 `start` or `run-next`.
+- [x] 4.2 Add red runner tests that publish an exclusive attempt and capture the marker baseline before the exact child starts while holding the ledger unlaunched, then assert unchanged markers and `slot_started` after verified readiness and immediately before release.
+- [x] 4.3 Replace the synchronous child call with a bounded process lifecycle that validates readiness, publishes release, waits for terminal accounting, and cleans up the child on every failure path.
+- [x] 4.4 Cover timeout, early exit, malformed or mismatched readiness, orphaned or duplicate attempts, marker growth, premature manifest/trace creation, release failure, host-style recovery before and after claim, global-stop launch blocking, and no retry/replacement behavior.
+- [x] 4.5 Extend dry-run and blinded structural monitoring with handshake paths and safe existence/hash/status fields only; keep outcome and policy-evaluation fields forbidden.
+- [x] 4.6 Commit the handshake, registration, runner, and monitor behavior as one cohesive risk-class change.
 
 ## 5. Verify Without Starting A Study
 

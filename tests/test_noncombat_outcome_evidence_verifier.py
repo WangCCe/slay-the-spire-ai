@@ -719,6 +719,7 @@ def _build_blocked_study(tmp_path, monkeypatch):
         python_executable=Path(r"D:\anaconda\envs\stsai\python.exe"),
         communication_config_path=communication_path,
         checkpoint_root=checkpoint_root,
+        schema_version=expansion.LEGACY_REGISTRATION_SCHEMA_VERSION,
     )
     registration_path = repo_root / "reports" / "registration.json"
     registration_path.parent.mkdir(parents=True, exist_ok=True)

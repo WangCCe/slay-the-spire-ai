@@ -7,8 +7,12 @@ import main
 from main import (
     create_ready_coordinator,
     initialize_noncombat_exploration_if_configured,
+    initialize_pre_agent_runtime,
+    initialize_study_handshake_if_configured,
+    is_study_handshake_configured,
     is_unrecoverable_run_error,
 )
+from spirecomm.communication import study_handshake
 
 
 def test_stuck_game_error_is_unrecoverable():
@@ -65,6 +69,130 @@ def test_non_rl_ready_coordinator_starts_stdin_reader_immediately(monkeypatch):
 
     assert input_thread_deferred is False
     assert calls == [("init", True), ("ready", None)]
+
+
+def test_rl_ready_coordinator_can_force_stdin_for_study_handshake(monkeypatch):
+    calls = []
+
+    class FakeCoordinator:
+        def __init__(self, *, start_input_thread=True):
+            calls.append(("init", start_input_thread))
+
+        def signal_ready(self):
+            calls.append(("ready", None))
+
+    monkeypatch.setattr(main, "Coordinator", FakeCoordinator)
+
+    coordinator, input_thread_deferred = create_ready_coordinator(
+        "combat_rl",
+        force_input_thread=True,
+    )
+
+    assert isinstance(coordinator, FakeCoordinator)
+    assert input_thread_deferred is False
+    assert calls == [("init", True), ("ready", None)]
+
+
+def test_study_handshake_configuration_uses_environment_key_presence():
+    key = study_handshake.HANDSHAKE_ATTEMPT_ENV
+
+    assert is_study_handshake_configured({}) is False
+    assert is_study_handshake_configured({key: ""}) is True
+    assert is_study_handshake_configured({key: "C:\\attempt.json"}) is True
+
+
+def test_study_handshake_initializer_delegates_with_same_environment(monkeypatch):
+    captured = {}
+    sentinel = object()
+    coordinator = object()
+    environ = {study_handshake.HANDSHAKE_ATTEMPT_ENV: "C:\\attempt.json"}
+
+    def fake_perform(received_coordinator, *, environ):
+        captured["coordinator"] = received_coordinator
+        captured["environ"] = environ
+        return sentinel
+
+    monkeypatch.setattr(
+        study_handshake,
+        "perform_child_handshake_if_configured",
+        fake_perform,
+    )
+
+    assert (
+        initialize_study_handshake_if_configured(
+            coordinator,
+            environ=environ,
+        )
+        is sentinel
+    )
+    assert captured == {"coordinator": coordinator, "environ": environ}
+
+
+def test_pre_agent_runtime_keeps_normal_startup_order():
+    events = []
+    coordinator = object()
+
+    def initialize_exploration(**kwargs):
+        events.append(("exploration", kwargs["environ"]))
+        return "runtime"
+
+    def create_coordinator(agent_type, *, force_input_thread):
+        events.append(("coordinator", agent_type, force_input_thread))
+        return coordinator, True
+
+    def initialize_handshake(*args, **kwargs):
+        raise AssertionError("normal startup entered study handshake")
+
+    result = initialize_pre_agent_runtime(
+        agent_type="combat_rl",
+        environ={},
+        exploration_kwargs={"training": False},
+        exploration_initializer=initialize_exploration,
+        coordinator_factory=create_coordinator,
+        handshake_initializer=initialize_handshake,
+    )
+
+    assert result == (coordinator, True, "runtime")
+    assert events == [
+        ("exploration", {}),
+        ("coordinator", "combat_rl", False),
+    ]
+
+
+def test_pre_agent_runtime_gates_study_before_exploration():
+    events = []
+    coordinator = object()
+    key = study_handshake.HANDSHAKE_ATTEMPT_ENV
+    environ = {key: "C:\\attempt.json"}
+
+    def create_coordinator(agent_type, *, force_input_thread):
+        events.append(("coordinator", agent_type, force_input_thread))
+        return coordinator, False
+
+    def initialize_handshake(received_coordinator, *, environ):
+        assert received_coordinator is coordinator
+        events.append(("handshake", environ))
+        return True
+
+    def initialize_exploration(**kwargs):
+        events.append(("exploration", kwargs["environ"]))
+        return "runtime"
+
+    result = initialize_pre_agent_runtime(
+        agent_type="combat_rl",
+        environ=environ,
+        exploration_kwargs={"training": False},
+        exploration_initializer=initialize_exploration,
+        coordinator_factory=create_coordinator,
+        handshake_initializer=initialize_handshake,
+    )
+
+    assert result == (coordinator, False, "runtime")
+    assert events == [
+        ("coordinator", "combat_rl", True),
+        ("handshake", environ),
+        ("exploration", environ),
+    ]
 
 
 def test_absent_noncombat_config_skips_runtime_import(monkeypatch, tmp_path):

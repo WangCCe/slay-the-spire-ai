@@ -316,8 +316,10 @@ def load_seed_pool(seed_pool_path):
     return seeds
 
 
-def create_ready_coordinator(agent_type):
-    defer_input_thread = agent_type in {"rl", "combat_rl"}
+def create_ready_coordinator(agent_type, *, force_input_thread=False):
+    defer_input_thread = (
+        agent_type in {"rl", "combat_rl"} and not force_input_thread
+    )
     logging.info("Creating CommunicationMod coordinator")
     coordinator = Coordinator(start_input_thread=not defer_input_thread)
     logging.info("CommunicationMod coordinator created; signaling ready")
@@ -536,6 +538,79 @@ def initialize_noncombat_exploration_if_configured(
         agent_type=str(agent_type),
         isolation_hashes=isolation_hashes,
     )
+
+
+def is_study_handshake_configured(environ=None):
+    environment = os.environ if environ is None else environ
+    from spirecomm.communication.study_handshake import HANDSHAKE_ATTEMPT_ENV
+
+    return HANDSHAKE_ATTEMPT_ENV in environment
+
+
+def initialize_study_handshake_if_configured(coordinator, *, environ=None):
+    environment = os.environ if environ is None else environ
+    from spirecomm.communication.study_handshake import (
+        perform_child_handshake_if_configured,
+    )
+
+    return perform_child_handshake_if_configured(
+        coordinator,
+        environ=environment,
+    )
+
+
+def initialize_pre_agent_runtime(
+    *,
+    agent_type,
+    environ=None,
+    exploration_kwargs=None,
+    exploration_initializer=None,
+    coordinator_factory=None,
+    handshake_initializer=None,
+):
+    """Preserve normal ordering while gating explicit study children first."""
+
+    environment = os.environ if environ is None else environ
+    exploration_initializer = (
+        initialize_noncombat_exploration_if_configured
+        if exploration_initializer is None
+        else exploration_initializer
+    )
+    coordinator_factory = (
+        create_ready_coordinator
+        if coordinator_factory is None
+        else coordinator_factory
+    )
+    handshake_initializer = (
+        initialize_study_handshake_if_configured
+        if handshake_initializer is None
+        else handshake_initializer
+    )
+    exploration_arguments = dict(exploration_kwargs or {})
+    if "environ" in exploration_arguments:
+        raise ValueError("exploration_kwargs must not override environ")
+
+    handshake_configured = is_study_handshake_configured(environment)
+    if handshake_configured:
+        coordinator, input_thread_deferred = coordinator_factory(
+            agent_type,
+            force_input_thread=True,
+        )
+        handshake_initializer(coordinator, environ=environment)
+        exploration_runtime = exploration_initializer(
+            environ=environment,
+            **exploration_arguments,
+        )
+    else:
+        exploration_runtime = exploration_initializer(
+            environ=environment,
+            **exploration_arguments,
+        )
+        coordinator, input_thread_deferred = coordinator_factory(
+            agent_type,
+            force_input_thread=False,
+        )
+    return coordinator, input_thread_deferred, exploration_runtime
 
 
 if __name__ == "__main__":
@@ -847,23 +922,36 @@ if __name__ == "__main__":
     elite_route_mode = args.elite_route
     logging.info(f"Elite route mode: {elite_route_mode}")
 
-    try:
-        exploration_runtime = initialize_noncombat_exploration_if_configured(
-            environ=os.environ,
-            repo_root=Path(__file__).resolve().parent,
-            command=[sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]],
-            python_executable=sys.executable,
-            training=training,
-            agent_type=agent_type,
-        )
-    except Exception as exc:
-        logging.critical(
-            "Non-combat exploration startup rejected: %s: %s",
-            type(exc).__name__,
-            exc,
-        )
-        sys.exit(2)
+    handshake_configured = is_study_handshake_configured(os.environ)
+    exploration_kwargs = {
+        "repo_root": Path(__file__).resolve().parent,
+        "command": [
+            sys.executable,
+            str(Path(__file__).resolve()),
+            *sys.argv[1:],
+        ],
+        "python_executable": sys.executable,
+        "training": training,
+        "agent_type": agent_type,
+    }
     if args.noncombat_exploration_dry_run:
+        if handshake_configured:
+            logging.critical(
+                "--noncombat-exploration-dry-run cannot use a study handshake"
+            )
+            sys.exit(2)
+        try:
+            exploration_runtime = initialize_noncombat_exploration_if_configured(
+                environ=os.environ,
+                **exploration_kwargs,
+            )
+        except Exception as exc:
+            logging.critical(
+                "Non-combat exploration startup rejected: %s: %s",
+                type(exc).__name__,
+                exc,
+            )
+            sys.exit(2)
         if exploration_runtime is None:
             logging.critical(
                 "--noncombat-exploration-dry-run requires "
@@ -876,9 +964,21 @@ if __name__ == "__main__":
     # Define player class before creating agent
     chosen_class = PlayerClass.IRONCLAD  # Fixed to Ironclad for testing
 
-    # Signal ready before slow RL loading, but do not block on stdin while
-    # importing PyTorch on Windows.
-    coordinator, input_thread_deferred = create_ready_coordinator(agent_type)
+    try:
+        coordinator, input_thread_deferred, exploration_runtime = (
+            initialize_pre_agent_runtime(
+                agent_type=agent_type,
+                environ=os.environ,
+                exploration_kwargs=exploration_kwargs,
+            )
+        )
+    except Exception as exc:
+        logging.critical(
+            "Pre-agent runtime startup rejected: %s: %s",
+            type(exc).__name__,
+            exc,
+        )
+        sys.exit(2)
 
     # Create agent with player class and RL-specific options
     # This may take several seconds for RL agents (PyTorch, model loading)

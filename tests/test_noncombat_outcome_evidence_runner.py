@@ -1,4 +1,5 @@
 import importlib
+import hashlib
 import json
 import os
 import subprocess
@@ -9,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from analysis_scripts.noncombat_outcome_evidence_expansion import (
+    LEGACY_REGISTRATION_SCHEMA_VERSION,
     build_registration,
     render_registration_json,
 )
@@ -16,6 +18,12 @@ from spirecomm.ai.noncombat_exploration import (
     ExplorationConfigurationError,
     create_exploration_session_manifest,
     parse_exploration_config,
+)
+from spirecomm.communication.study_handshake import (
+    HANDSHAKE_ATTEMPT_ENV,
+    build_ready_record,
+    load_attempt_record,
+    publish_record_once as publish_handshake_record_once,
 )
 
 
@@ -98,6 +106,52 @@ def test_dry_run_rejects_registration_for_another_checkout(tmp_path):
         module._dry_run_command(registration_path)
 
 
+def _legacy_registration_path(tmp_path):
+    module = _module()
+    registration = build_registration(
+        study_id=STUDY_ID,
+        artifact_root=tmp_path / "legacy-study",
+        repo_root=REPO_ROOT,
+        seed_base=SEED_BASE,
+        python_executable=WINDOWS_PYTHON,
+        communication_config_path=tmp_path / "config.properties",
+        checkpoint_root=tmp_path / "checkpoints",
+        schema_version=LEGACY_REGISTRATION_SCHEMA_VERSION,
+    )
+    path = tmp_path / "legacy-registration.json"
+    path.write_text(
+        render_registration_json(registration),
+        encoding="utf-8",
+        newline="",
+    )
+    return path
+
+
+@pytest.mark.parametrize("command_name", ("_start_command", "_run_next_command"))
+def test_launch_commands_reject_legacy_v1_before_writing_state(
+    tmp_path,
+    command_name,
+):
+    module = _module()
+    registration_path = _legacy_registration_path(tmp_path)
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="v1 registration is read-only",
+    ):
+        getattr(module, command_name)(registration_path)
+
+    artifact_root = tmp_path / "legacy-study"
+    assert not (artifact_root / "run-lock.json").exists()
+    assert not (artifact_root / "study-ledger.jsonl").exists()
+
+
+def test_dry_run_keeps_legacy_v1_read_only_support(tmp_path):
+    result = _module()._dry_run_command(_legacy_registration_path(tmp_path))
+
+    assert result["launch_count"] == 24
+
+
 def _study(tmp_path):
     registration = build_registration(
         study_id=STUDY_ID,
@@ -127,6 +181,65 @@ def _ledger(tmp_path):
     )
     ledger.initialize(created_unix_ns=100)
     return ledger, registration
+
+
+class _FakeHandshakeChild:
+    def __init__(self, *, pid=321, exit_code=0, initial_returncode=None, on_wait=None):
+        self.pid = pid
+        self.exit_code = exit_code
+        self.returncode = initial_returncode
+        self.on_wait = on_wait
+        self.terminated = False
+        self.killed = False
+        self.wait_calls = []
+
+    def poll(self):
+        return self.returncode
+
+    def wait(self, timeout=None):
+        self.wait_calls.append(timeout)
+        if timeout is not None:
+            if self.returncode is None:
+                raise subprocess.TimeoutExpired("fake-child", timeout)
+            return self.returncode
+        if self.on_wait is not None:
+            callback, self.on_wait = self.on_wait, None
+            callback()
+        self.returncode = self.exit_code
+        return self.returncode
+
+    def terminate(self):
+        self.terminated = True
+        self.returncode = -15
+
+    def kill(self):
+        self.killed = True
+        self.returncode = -9
+
+
+def _handshake_slot(tmp_path):
+    module = _module()
+    ledger, registration = _ledger(tmp_path)
+    _registration, run_lock = _study(tmp_path)
+    launch = module.build_slot_launch(registration, run_lock, 1)
+    module.write_slot_config_once(launch)
+    marker_path = tmp_path / "runs" / "ai_games.txt"
+    marker_path.parent.mkdir()
+    marker_path.write_text("10\n11\n", encoding="utf-8")
+    return module, ledger, registration, run_lock, launch, marker_path
+
+
+def _publish_ready_from_environment(environment, *, child_pid, mutate=None):
+    attempt = load_attempt_record(Path(environment[HANDSHAKE_ATTEMPT_ENV]))
+    ready = build_ready_record(
+        attempt,
+        child_pid=child_pid,
+        created_unix_ns=175,
+    )
+    if mutate is not None:
+        ready = mutate(attempt, ready)
+    publish_handshake_record_once(Path(attempt["ready_path"]), ready)
+    return attempt
 
 
 def test_slot_launch_uses_exact_registered_eval_command_and_config(tmp_path):
@@ -520,6 +633,281 @@ def test_execute_slot_rejects_marker_truncation_as_global_stop(tmp_path):
     assert snapshot["active_slot"] is None
 
 
+def test_handshaken_slot_claims_only_after_verified_child_readiness(
+    tmp_path,
+    monkeypatch,
+):
+    module, ledger, registration, _run_lock, launch, marker_path = (
+        _handshake_slot(tmp_path)
+    )
+    events = []
+
+    def add_complete_markers():
+        with marker_path.open("a", encoding="utf-8") as handle:
+            for index in range(25):
+                handle.write(f"{100 + index}\n")
+
+    child = _FakeHandshakeChild(on_wait=add_complete_markers)
+    original_start_slot = ledger.start_slot
+
+    def recording_start_slot(*args, **kwargs):
+        events.append("claim")
+        return original_start_slot(*args, **kwargs)
+
+    monkeypatch.setattr(ledger, "start_slot", recording_start_slot)
+
+    def recording_publish(path, record):
+        schema = record["schema_version"]
+        events.append("attempt" if "attempt" in schema else "release")
+        publish_handshake_record_once(path, record)
+
+    monkeypatch.setattr(module, "publish_record_once", recording_publish)
+
+    def process_starter(observed_launch, environment):
+        events.append("popen")
+        assert observed_launch is launch
+        assert ledger.snapshot()["active_slot"] is None
+        attempt = load_attempt_record(Path(environment[HANDSHAKE_ATTEMPT_ENV]))
+        assert attempt["marker_start_count"] == 2
+        assert Path(attempt["attempt_path"]).is_file()
+        assert not Path(registration.slots[0].manifest_path).exists()
+        assert not Path(registration.slots[0].trace_path).exists()
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter((150, 200, 225, 300))
+    terminal = module.execute_handshaken_registered_slot(
+        ledger=ledger,
+        launch=launch,
+        marker_path=marker_path,
+        process_starter=process_starter,
+        time_ns=lambda: next(timestamps),
+    )
+
+    assert events == ["attempt", "popen", "claim", "release"]
+    assert child.wait_calls == [None]
+    assert terminal == {
+        "complete_trajectories": 25,
+        "marker_end_count": 27,
+        "marker_start_count": 2,
+        "process_exit_code": 0,
+        "terminal_status": "completed",
+    }
+    records = [
+        json.loads(line)
+        for line in ledger.path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert records[1]["event"] == "slot_started"
+    assert records[1]["payload"] == {"marker_start_count": 2}
+    attempt = load_attempt_record(
+        Path(launch.config_path).with_name(
+            f"{launch.session_id}-communication-attempt.json"
+        )
+    )
+    assert Path(attempt["release_path"]).is_file()
+
+
+def test_handshake_timeout_stops_without_claim_or_retry(tmp_path):
+    module, ledger, _registration, _run_lock, launch, marker_path = (
+        _handshake_slot(tmp_path)
+    )
+    child = _FakeHandshakeChild()
+    starts = []
+    clock = [0.0]
+
+    def process_starter(_launch, _environment):
+        starts.append(child.pid)
+        return child
+
+    def sleep(_seconds):
+        clock[0] = 31.0
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="readiness.*deadline"):
+        module.execute_handshaken_registered_slot(
+            ledger=ledger,
+            launch=launch,
+            marker_path=marker_path,
+            process_starter=process_starter,
+            monotonic=lambda: clock[0],
+            sleep=sleep,
+        )
+
+    snapshot = ledger.snapshot()
+    assert starts == [child.pid]
+    assert child.terminated is True
+    assert snapshot["active_slot"] is None
+    assert snapshot["terminal_slot_count"] == 0
+    assert "readiness" in snapshot["global_stop"]["reason"]
+
+
+def test_handshake_early_child_exit_stops_before_claim(tmp_path):
+    module, ledger, _registration, _run_lock, launch, marker_path = (
+        _handshake_slot(tmp_path)
+    )
+    child = _FakeHandshakeChild(initial_returncode=17)
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="exited.*readiness"):
+        module.execute_handshaken_registered_slot(
+            ledger=ledger,
+            launch=launch,
+            marker_path=marker_path,
+            process_starter=lambda _launch, _environment: child,
+        )
+
+    snapshot = ledger.snapshot()
+    assert snapshot["active_slot"] is None
+    assert snapshot["terminal_slot_count"] == 0
+    assert snapshot["global_stop"] is not None
+
+
+@pytest.mark.parametrize(
+    "failure_mode",
+    ("malformed", "pid_mismatch", "marker_growth", "manifest", "trace"),
+)
+def test_handshake_rejects_invalid_preclaim_evidence(
+    tmp_path,
+    failure_mode,
+):
+    module, ledger, registration, _run_lock, launch, marker_path = (
+        _handshake_slot(tmp_path)
+    )
+    child = _FakeHandshakeChild()
+
+    def process_starter(_launch, environment):
+        attempt = load_attempt_record(Path(environment[HANDSHAKE_ATTEMPT_ENV]))
+        if failure_mode == "malformed":
+            Path(attempt["ready_path"]).write_text("{broken\n", encoding="utf-8")
+            return child
+        ready_pid = child.pid + 1 if failure_mode == "pid_mismatch" else child.pid
+        _publish_ready_from_environment(environment, child_pid=ready_pid)
+        if failure_mode == "marker_growth":
+            with marker_path.open("a", encoding="utf-8") as handle:
+                handle.write("12\n")
+        elif failure_mode == "manifest":
+            Path(registration.slots[0].manifest_path).write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+        elif failure_mode == "trace":
+            Path(registration.slots[0].trace_path).write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+        return child
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError):
+        module.execute_handshaken_registered_slot(
+            ledger=ledger,
+            launch=launch,
+            marker_path=marker_path,
+            process_starter=process_starter,
+        )
+
+    snapshot = ledger.snapshot()
+    assert child.terminated is True
+    assert snapshot["active_slot"] is None
+    assert snapshot["terminal_slot_count"] == 0
+    assert snapshot["global_stop"] is not None
+
+
+@pytest.mark.parametrize("artifact", ("attempt", "ready", "release"))
+def test_stale_handshake_artifact_is_an_orphaned_global_stop_without_popen(
+    tmp_path,
+    artifact,
+):
+    module, ledger, _registration, _run_lock, launch, marker_path = (
+        _handshake_slot(tmp_path)
+    )
+    suffix = {
+        "attempt": "-communication-attempt.json",
+        "ready": "-communication-ready.json",
+        "release": "-communication-release.json",
+    }[artifact]
+    stale_path = Path(launch.config_path).with_name(f"{launch.session_id}{suffix}")
+    stale_path.write_text("{}\n", encoding="utf-8")
+    starts = []
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="handshake artifact"):
+        module.execute_handshaken_registered_slot(
+            ledger=ledger,
+            launch=launch,
+            marker_path=marker_path,
+            process_starter=lambda *_args: starts.append(True),
+        )
+
+    assert starts == []
+    snapshot = ledger.snapshot()
+    assert snapshot["terminal_slot_count"] == 0
+    assert snapshot["global_stop"] is not None
+
+
+def test_release_publication_failure_consumes_claimed_slot_and_stops(
+    tmp_path,
+    monkeypatch,
+):
+    module, ledger, _registration, _run_lock, launch, marker_path = (
+        _handshake_slot(tmp_path)
+    )
+    child = _FakeHandshakeChild()
+
+    def process_starter(_launch, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    def fail_release(path, record):
+        if "release" in record["schema_version"]:
+            raise module.OutcomeEvidenceRunnerError("forced release publication failure")
+        publish_handshake_record_once(path, record)
+
+    monkeypatch.setattr(module, "publish_record_once", fail_release)
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="release"):
+        module.execute_handshaken_registered_slot(
+            ledger=ledger,
+            launch=launch,
+            marker_path=marker_path,
+            process_starter=process_starter,
+        )
+
+    snapshot = ledger.snapshot()
+    assert child.terminated is True
+    assert snapshot["active_slot"] is None
+    assert snapshot["terminal_slot_count"] == 1
+    assert snapshot["terminal_slots"][0]["terminal_status"] == "interrupted"
+    assert snapshot["terminal_slots"][0]["marker_start_count"] == 2
+    assert snapshot["terminal_slots"][0]["marker_end_count"] == 2
+    assert "release" in snapshot["global_stop"]["reason"]
+
+
+def test_host_recovery_consumes_active_handshaken_slot_before_global_stop(tmp_path):
+    module, ledger, registration, _run_lock, _launch, marker_path = (
+        _handshake_slot(tmp_path)
+    )
+    ledger.start_slot(
+        1,
+        registration.slots[0].session_id,
+        marker_start_count=2,
+        started_unix_ns=200,
+    )
+    with marker_path.open("a", encoding="utf-8") as handle:
+        handle.write("12\n")
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="active slot recovery"):
+        module._recover_active_slot_after_host_failure(
+            ledger=ledger,
+            marker_path=marker_path,
+            ended_unix_ns=300,
+        )
+
+    snapshot = ledger.snapshot()
+    assert snapshot["active_slot"] is None
+    assert snapshot["terminal_slot_count"] == 1
+    assert snapshot["terminal_slots"][0]["complete_trajectories"] == 1
+    assert snapshot["terminal_slots"][0]["marker_start_count"] == 2
+    assert snapshot["terminal_slots"][0]["marker_end_count"] == 3
+    assert snapshot["global_stop"] is not None
+
+
 @pytest.mark.parametrize(
     "subcommand",
     ["start", "dry-run", "run-next", "monitor", "finalize"],
@@ -783,6 +1171,12 @@ def _structural_observation(slot, **extra):
         "config_exists": True,
         "config_sha256": "1" * 64,
         "confirmed_records": 4,
+        "handshake_attempt_exists": True,
+        "handshake_attempt_sha256": "5" * 64,
+        "handshake_ready_exists": True,
+        "handshake_ready_sha256": "6" * 64,
+        "handshake_release_exists": True,
+        "handshake_release_sha256": "7" * 64,
         "isolation_verified": True,
         "manifest_exists": True,
         "manifest_hash": "2" * 64,
@@ -872,6 +1266,61 @@ def test_blinded_monitor_reports_only_structural_validity_and_process_exit(
     )
     assert blocked["integrity_valid"] is False
     assert "run_lock_invalid" in blocked["blockers"]
+
+
+def test_blinded_monitor_reports_unlaunched_handshake_artifact_progress(tmp_path):
+    module = _module()
+    ledger, registration = _ledger(tmp_path)
+    _registration, run_lock = _study(tmp_path)
+    launch = module.build_slot_launch(registration, run_lock, 1)
+    module.write_slot_config_once(launch)
+    attempt_path = Path(launch.config_path).with_name(
+        f"{launch.session_id}-communication-attempt.json"
+    )
+    ready_path = Path(launch.config_path).with_name(
+        f"{launch.session_id}-communication-ready.json"
+    )
+    release_path = Path(launch.config_path).with_name(
+        f"{launch.session_id}-communication-release.json"
+    )
+    attempt_bytes = b'{"stage":"attempt"}\n'
+    attempt_path.write_bytes(attempt_bytes)
+    ledger.global_stop(reason="orphaned preclaim attempt", created_unix_ns=200)
+
+    observations = module.collect_structural_observations(
+        registration=registration,
+        run_lock=run_lock,
+        ledger_snapshot=ledger.snapshot(),
+    )
+    monitor = module.build_blinded_monitor(
+        registration=registration,
+        run_lock=run_lock,
+        ledger_snapshot=ledger.snapshot(),
+        structural_observations=observations,
+    )
+
+    assert monitor["schema_version"] == (
+        "noncombat-outcome-evidence-blinded-monitor-v2"
+    )
+    assert len(observations) == 1
+    slot = monitor["slots"][0]
+    assert slot["lifecycle"] == "unlaunched"
+    assert slot["handshake_status"] == "attempted"
+    assert slot["handshake_attempt_path"] == str(attempt_path.resolve())
+    assert slot["handshake_attempt_exists"] is True
+    assert slot["handshake_attempt_sha256"] == hashlib.sha256(
+        attempt_bytes
+    ).hexdigest()
+    assert slot["handshake_ready_path"] == str(ready_path.resolve())
+    assert slot["handshake_ready_exists"] is False
+    assert slot["handshake_ready_sha256"] is None
+    assert slot["handshake_release_path"] == str(release_path.resolve())
+    assert slot["handshake_release_exists"] is False
+    assert slot["handshake_release_sha256"] is None
+    rendered = module.render_blinded_monitor_json(monitor)
+    assert '"victory":' not in rendered
+    assert '"ope_estimate":' not in rendered
+    assert "| attempted |" in module.render_blinded_monitor_markdown(monitor)
 
 
 def test_blinded_monitor_is_byte_stable_under_observation_reordering(tmp_path):
@@ -1204,6 +1653,22 @@ def test_no_game_dry_run_enumerates_exact_registered_24_slot_plan(
         assert launch["config_record"]["per_run_alternative_budget"] == 2
         assert launch["environment"] == {
             "STS_NONCOMBAT_EXPLORATION_CONFIG": launch["config_path"]
+        }
+        session_id = launch["session_id"]
+        artifact_root = Path(registration.artifact_root)
+        assert launch["handshake"] == {
+            "attempt_path": str(
+                (artifact_root / f"{session_id}-communication-attempt.json").resolve()
+            ),
+            "protocol_version": "noncombat-outcome-evidence-handshake-v1",
+            "readiness_timeout_seconds": 30,
+            "ready_path": str(
+                (artifact_root / f"{session_id}-communication-ready.json").resolve()
+            ),
+            "release_path": str(
+                (artifact_root / f"{session_id}-communication-release.json").resolve()
+            ),
+            "release_timeout_seconds": 10,
         }
         assert "--max-games" in launch["command"]
         assert launch["command"][launch["command"].index("--max-games") + 1] == "25"

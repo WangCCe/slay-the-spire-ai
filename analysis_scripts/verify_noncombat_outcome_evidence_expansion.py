@@ -33,7 +33,10 @@ from analysis_scripts.verify_noncombat_ope_estimates import (
 
 
 AUDIT_SCHEMA_VERSION = "noncombat-outcome-evidence-verification-audit-v1"
-REGISTRATION_SCHEMA_VERSION = "noncombat-outcome-evidence-registration-v1"
+LEGACY_REGISTRATION_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-registration-v1"
+)
+REGISTRATION_SCHEMA_VERSION = "noncombat-outcome-evidence-registration-v2"
 RUN_LOCK_SCHEMA_VERSION = "noncombat-outcome-evidence-run-lock-v1"
 LEDGER_SCHEMA_VERSION = "noncombat-outcome-evidence-ledger-v1"
 POOL_SCHEMA_VERSION = "noncombat-outcome-evidence-pool-v1"
@@ -64,7 +67,7 @@ COMMAND_ARGUMENTS = (
     "v2",
     "--eval",
 )
-IMPLEMENTATION_PATHS = (
+LEGACY_IMPLEMENTATION_PATHS = (
     "analysis_scripts/__init__.py",
     "analysis_scripts/noncombat_exploration_evidence.py",
     "analysis_scripts/noncombat_ope_estimate_artifacts.py",
@@ -78,6 +81,10 @@ IMPLEMENTATION_PATHS = (
     "scripts/run_noncombat_outcome_evidence_expansion.py",
     "spirecomm/ai/noncombat_exploration.py",
     "spirecomm/ai/noncombat_exploration_runtime.py",
+)
+IMPLEMENTATION_PATHS = (
+    *LEGACY_IMPLEMENTATION_PATHS,
+    "spirecomm/communication/study_handshake.py",
 )
 CHECKPOINT_PATTERNS = ("rl_combat_model_*.pth", "rl_model_*.pth")
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -310,6 +317,18 @@ def _verify_registration(record: Mapping[str, Any], checks: _Checks) -> None:
 
 
 def _expected_registration(record: Mapping[str, Any]) -> dict[str, Any]:
+    schema_version = _required_string(
+        record.get("schema_version"),
+        "schema_version",
+    )
+    if schema_version == LEGACY_REGISTRATION_SCHEMA_VERSION:
+        implementation_paths = LEGACY_IMPLEMENTATION_PATHS
+    elif schema_version == REGISTRATION_SCHEMA_VERSION:
+        implementation_paths = IMPLEMENTATION_PATHS
+    else:
+        raise OutcomeEvidenceVerificationError(
+            "registration schema_version is unsupported"
+        )
     study_id = _required_string(record.get("study_id"), "study_id")
     if _STUDY_PATTERN.fullmatch(study_id) is None:
         raise OutcomeEvidenceVerificationError("study_id is invalid")
@@ -355,6 +374,28 @@ def _expected_registration(record: Mapping[str, Any]) -> dict[str, Any]:
                 ),
             }
         )
+    integrity_rules = {
+        "checkpoint_inventory": {
+            "patterns": list(CHECKPOINT_PATTERNS),
+            "root": str(checkpoint_root),
+        },
+        "communication_config_path": str(communication_path),
+        "implementation_paths": list(implementation_paths),
+        "launches_per_slot": 1,
+        "replacement_slots_forbidden": True,
+        "tracked_source_frozen_during_run_lock": True,
+    }
+    if schema_version == REGISTRATION_SCHEMA_VERSION:
+        integrity_rules["communication_handshake"] = {
+            "attempt_suffix": "-communication-attempt.json",
+            "orphaned_attempt_global_stop": True,
+            "protocol_version": "noncombat-outcome-evidence-handshake-v1",
+            "readiness_timeout_seconds": 30,
+            "ready_suffix": "-communication-ready.json",
+            "release_suffix": "-communication-release.json",
+            "release_timeout_seconds": 10,
+            "required_before_slot_claim": True,
+        }
     return {
         "analysis_rules": {
             "bootstrap_confidence_level": {
@@ -392,17 +433,7 @@ def _expected_registration(record: Mapping[str, Any]) -> dict[str, Any]:
             "python_executable": python_executable,
         },
         "games_per_slot": GAMES_PER_SLOT,
-        "integrity_rules": {
-            "checkpoint_inventory": {
-                "patterns": list(CHECKPOINT_PATTERNS),
-                "root": str(checkpoint_root),
-            },
-            "communication_config_path": str(communication_path),
-            "implementation_paths": list(IMPLEMENTATION_PATHS),
-            "launches_per_slot": 1,
-            "replacement_slots_forbidden": True,
-            "tracked_source_frozen_during_run_lock": True,
-        },
+        "integrity_rules": integrity_rules,
         "output_rules": {
             "canonical_json_line_ending": "LF",
             "closeout_json_filename": "outcome-evidence-closeout.json",
@@ -426,7 +457,7 @@ def _expected_registration(record: Mapping[str, Any]) -> dict[str, Any]:
         "registration_hash": None,
         "repo_root": str(repo_root),
         "scheduled_attempts": SCHEDULED_ATTEMPTS,
-        "schema_version": REGISTRATION_SCHEMA_VERSION,
+        "schema_version": schema_version,
         "seed_base": seed_base,
         "slot_count": SLOT_COUNT,
         "slots": slots,
@@ -469,6 +500,21 @@ def _artifact_paths(registration: Mapping[str, Any]) -> dict[str, Path]:
         "run_lock": root / str(rules["run_lock_filename"]),
         "target": root / str(rules["target_manifest_filename"]),
     }
+
+
+def _registered_implementation_paths(
+    registration: Mapping[str, Any],
+) -> tuple[str, ...]:
+    integrity = _mapping(registration.get("integrity_rules"), "integrity_rules")
+    raw_paths = _sequence(
+        integrity.get("implementation_paths"),
+        "implementation_paths",
+    )
+    if any(not isinstance(path, str) or not path for path in raw_paths):
+        raise OutcomeEvidenceVerificationError(
+            "registration implementation paths are invalid"
+        )
+    return tuple(raw_paths)
 
 
 def _verify_run_lock(
@@ -567,9 +613,13 @@ def _verify_implementation_files(
     checks: _Checks,
 ) -> None:
     rows = _sequence(run_lock.get("implementation_files"), "implementation_files")
-    checks.require(len(rows) == len(IMPLEMENTATION_PATHS), "source file count mismatch")
+    implementation_paths = _registered_implementation_paths(registration)
+    checks.require(
+        len(rows) == len(implementation_paths),
+        "source file count mismatch",
+    )
     repo_root = Path(str(registration["repo_root"])).resolve()
-    for relative_path, raw_row in zip(IMPLEMENTATION_PATHS, rows, strict=True):
+    for relative_path, raw_row in zip(implementation_paths, rows, strict=True):
         row = _mapping(raw_row, "implementation file")
         path = (repo_root / relative_path).resolve()
         content = _git_blob(repo_root, source_commit, relative_path)
@@ -722,8 +772,9 @@ def _verify_live_implementation_files(
     checks: _Checks,
 ) -> None:
     rows = _sequence(run_lock.get("implementation_files"), "implementation_files")
+    implementation_paths = _registered_implementation_paths(registration)
     repo_root = Path(str(registration["repo_root"])).resolve()
-    for relative_path, raw_row in zip(IMPLEMENTATION_PATHS, rows, strict=True):
+    for relative_path, raw_row in zip(implementation_paths, rows, strict=True):
         row = _mapping(raw_row, "implementation file")
         path = (repo_root / relative_path).resolve()
         content = path.read_bytes()
@@ -769,7 +820,8 @@ def _verify_live_git_anchor(
         raise OutcomeEvidenceVerificationError(
             "registration file is outside the locked repository"
         ) from exc
-    relative_paths = [registration_relative, *IMPLEMENTATION_PATHS]
+    implementation_paths = _registered_implementation_paths(registration)
+    relative_paths = [registration_relative, *implementation_paths]
     _git_text(
         repo_root,
         "ls-files",
@@ -781,7 +833,7 @@ def _verify_live_git_anchor(
         _git_blob(repo_root, commit, registration_relative) == registration_bytes,
         "committed registration bytes differ from the verified file",
     )
-    for relative_path in IMPLEMENTATION_PATHS:
+    for relative_path in implementation_paths:
         checks.require(
             _git_blob(repo_root, commit, relative_path)
             == (repo_root / relative_path).read_bytes(),
