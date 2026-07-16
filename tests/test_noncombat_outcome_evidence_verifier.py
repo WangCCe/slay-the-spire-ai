@@ -16,6 +16,13 @@ from spirecomm.ai.noncombat_exploration import (
     create_exploration_session_manifest,
     parse_exploration_config,
 )
+from spirecomm.communication.study_handshake import (
+    HandshakePaths,
+    build_attempt_record,
+    build_ready_record,
+    build_release_record,
+    publish_record_once,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -387,6 +394,39 @@ def _pre_session_isolation(run_lock):
     return isolation
 
 
+def _publish_preclaim_handshake(registration, run_lock, slot, launch, marker_start):
+    rules = registration.to_record()["integrity_rules"]["communication_handshake"]
+    config_path = Path(launch.config_path).resolve()
+    parent = config_path.parent
+    paths = HandshakePaths(
+        attempt=parent / f"{slot.session_id}{rules['attempt_suffix']}",
+        ready=parent / f"{slot.session_id}{rules['ready_suffix']}",
+        release=parent / f"{slot.session_id}{rules['release_suffix']}",
+    )
+    attempt = build_attempt_record(
+        study_id=registration.study_id,
+        registration_hash=registration.registration_hash,
+        run_lock_hash=run_lock["run_lock_hash"],
+        slot_number=slot.slot_number,
+        session_id=slot.session_id,
+        config_path=config_path,
+        config_sha256=hashlib.sha256(config_path.read_bytes()).hexdigest(),
+        marker_start_count=marker_start,
+        paths=paths,
+        readiness_timeout_seconds=rules["readiness_timeout_seconds"],
+        release_timeout_seconds=rules["release_timeout_seconds"],
+        created_unix_ns=slot.slot_number * 10 + 1,
+    )
+    publish_record_once(paths.attempt, attempt)
+    ready = build_ready_record(
+        attempt,
+        child_pid=10_000 + slot.slot_number,
+        created_unix_ns=slot.slot_number * 10 + 2,
+    )
+    publish_record_once(paths.ready, ready)
+    return paths, attempt, ready
+
+
 def _build_study(
     tmp_path,
     monkeypatch,
@@ -469,19 +509,7 @@ def _build_study(
     isolation = _pre_session_isolation(run_lock)
     marker_timestamps = []
     for slot in registration.slots:
-        ledger.start_slot(
-            slot.slot_number,
-            slot.session_id,
-            started_unix_ns=slot.slot_number * 2,
-        )
-        ledger.finish_slot(
-            slot.slot_number,
-            process_exit_code=0,
-            complete_trajectories=25,
-            marker_start_count=(slot.slot_number - 1) * 25,
-            marker_end_count=slot.slot_number * 25,
-            ended_unix_ns=slot.slot_number * 2 + 1,
-        )
+        marker_start = (slot.slot_number - 1) * 25
         launch = runner.build_slot_launch(
             registration,
             run_lock,
@@ -491,6 +519,33 @@ def _build_study(
             runner.render_slot_config(launch),
             encoding="utf-8",
             newline="",
+        )
+        handshake_paths, attempt, ready = _publish_preclaim_handshake(
+            registration,
+            run_lock,
+            slot,
+            launch,
+            marker_start,
+        )
+        ledger.start_slot(
+            slot.slot_number,
+            slot.session_id,
+            marker_start_count=marker_start,
+            started_unix_ns=slot.slot_number * 2,
+        )
+        release = build_release_record(
+            attempt,
+            ready,
+            created_unix_ns=slot.slot_number * 10 + 3,
+        )
+        publish_record_once(handshake_paths.release, release)
+        ledger.finish_slot(
+            slot.slot_number,
+            process_exit_code=0,
+            complete_trajectories=25,
+            marker_start_count=marker_start,
+            marker_end_count=slot.slot_number * 25,
+            ended_unix_ns=slot.slot_number * 2 + 1,
         )
         config = parse_exploration_config(
             launch.config_record,
@@ -1192,6 +1247,24 @@ def test_independent_verifier_replays_registered_study(tmp_path, monkeypatch):
     ).hexdigest()
 
 
+def test_v2_verifier_rejects_missing_release_handshake(tmp_path, monkeypatch):
+    verifier = _verifier()
+    artifacts = _build_study(tmp_path, monkeypatch)
+    slot = artifacts["registration"].slots[0]
+    release_path = Path(slot.config_path).with_name(
+        f"{slot.session_id}-communication-release.json"
+    )
+    release_path.unlink()
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="handshake release",
+    ):
+        verifier.verify_outcome_evidence_expansion(
+            artifacts["registration_path"]
+        )
+
+
 def test_verifier_rejects_confirmed_eligible_decision_laundered_as_exclusion(
     tmp_path,
     monkeypatch,
@@ -1348,6 +1421,7 @@ def test_verifier_has_static_import_independence():
         {
             "analysis_scripts.noncombat_outcome_evidence_expansion",
             "scripts.run_noncombat_outcome_evidence_expansion",
+            "spirecomm.communication.study_handshake",
         }
     )
 

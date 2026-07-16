@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from spirecomm.communication import study_handshake
 from spirecomm.communication.coordinator import Coordinator
 from spirecomm.communication.study_handshake import (
     ATTEMPT_SCHEMA_VERSION,
@@ -171,6 +172,43 @@ def test_record_publication_is_canonical_and_exclusive(tmp_path):
     with pytest.raises(StudyHandshakeError, match="already exists"):
         publish_record_once(paths.attempt, attempt)
     assert paths.attempt.read_bytes() == before
+
+
+def test_record_publication_exposes_final_path_only_after_complete_bytes(
+    tmp_path,
+    monkeypatch,
+):
+    paths = _paths(tmp_path)
+    attempt = _attempt(tmp_path)
+    expected = (
+        json.dumps(
+            attempt,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode("utf-8")
+    observed = []
+    real_link = study_handshake.os.link
+
+    def inspect_complete_source_before_link(source, destination):
+        assert Path(destination) == paths.attempt
+        assert not paths.attempt.exists()
+        assert Path(source).read_bytes() == expected
+        observed.append(Path(source))
+        return real_link(source, destination)
+
+    monkeypatch.setattr(
+        study_handshake.os,
+        "link",
+        inspect_complete_source_before_link,
+    )
+
+    publish_record_once(paths.attempt, attempt)
+
+    assert len(observed) == 1
+    assert paths.attempt.read_bytes() == expected
 
 
 def test_attempt_loader_rejects_self_hash_tamper(tmp_path):

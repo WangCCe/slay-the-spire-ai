@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import tempfile
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -255,35 +256,37 @@ def publish_record_once(path: Path | str, record: Mapping[str, Any]) -> None:
         raise StudyHandshakeError("publication path does not match record")
     payload = (_canonical_json(validated) + "\n").encode("utf-8")
     resolved_path.parent.mkdir(parents=True, exist_ok=True)
-    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
-    if hasattr(os, "O_BINARY"):
-        flags |= os.O_BINARY
     descriptor = None
-    created = False
+    temporary_path: Path | None = None
     try:
-        descriptor = os.open(resolved_path, flags, 0o600)
-        created = True
+        descriptor, raw_temporary_path = tempfile.mkstemp(
+            prefix=f".{resolved_path.name}.",
+            suffix=".tmp",
+            dir=resolved_path.parent,
+        )
+        temporary_path = Path(raw_temporary_path)
         with os.fdopen(descriptor, "wb") as handle:
             descriptor = None
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
+        os.link(temporary_path, resolved_path)
     except FileExistsError as exc:
         raise StudyHandshakeError(
             f"handshake artifact already exists: {resolved_path}"
         ) from exc
     except OSError as exc:
-        if created:
-            try:
-                resolved_path.unlink(missing_ok=True)
-            except OSError:
-                pass
         raise StudyHandshakeError(
             f"cannot publish handshake artifact {resolved_path}: {exc}"
         ) from exc
     finally:
         if descriptor is not None:
             os.close(descriptor)
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
 def load_attempt_record(path: Path | str) -> dict[str, Any]:

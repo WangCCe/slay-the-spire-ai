@@ -30,9 +30,9 @@
 
 ## 5. Verify Without Starting A Study
 
-- [ ] 5.1 Run focused Windows pytest for verifier, finalizer, registration, runner, handshake, `main.py` startup, exploration runtime, and monitor regressions with a writable repo basetemp.
-- [ ] 5.2 Run the full Windows pytest suite with cache disabled and a writable repo basetemp; fix only failures caused by this change.
-- [ ] 5.3 Run strict OpenSpec validation, `git diff --check`, Python compile/import checks, handshake schema byte checks, and confirm the old external artifact hashes remain unchanged.
-- [ ] 5.4 Perform one bounded no-action CommunicationMod handshake smoke outside any registered study: require attempt/ready/release success with no ledger slot, exploration manifest, trace, AI marker, checkpoint mutation, or persistent config drift, then stop the game process.
-- [ ] 5.5 Obtain an independent final review of verifier independence, branch fail-closed behavior, process/reboot races, normal-runtime inertness, test coverage, and authority boundaries; address accepted findings with regressions.
-- [ ] 5.6 Write and commit a closeout report stating implementation evidence and remaining limits; do not generate a fresh registration or authorize OPE, training, reward design, gameplay-policy edits, or live promotion.
+- [x] 5.1 Run focused Windows pytest for verifier, finalizer, registration, runner, handshake, `main.py` startup, exploration runtime, and monitor regressions with a writable repo basetemp.
+- [x] 5.2 Run the full Windows pytest suite with cache disabled and a writable repo basetemp; fix only failures caused by this change.
+- [x] 5.3 Run strict OpenSpec validation, `git diff --check`, Python compile/import checks, handshake schema byte checks, and confirm the old external artifact hashes remain unchanged.
+- [x] 5.4 Perform one bounded no-action CommunicationMod handshake smoke outside any registered study: require attempt/ready/release success with no ledger slot, exploration manifest, trace, AI marker, checkpoint mutation, or persistent config drift, then stop the game process.
+- [x] 5.5 Obtain an independent final review of verifier independence, branch fail-closed behavior, process/reboot races, normal-runtime inertness, test coverage, and authority boundaries; address accepted findings with regressions.
+- [x] 5.6 Write and commit a closeout report stating implementation evidence and remaining limits; do not generate a fresh registration or authorize OPE, training, reward design, gameplay-policy edits, or live promotion.

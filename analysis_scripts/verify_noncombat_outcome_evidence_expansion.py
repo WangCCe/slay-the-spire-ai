@@ -43,6 +43,14 @@ POOL_SCHEMA_VERSION = "noncombat-outcome-evidence-pool-v1"
 CLOSEOUT_SCHEMA_VERSION = "noncombat-outcome-evidence-closeout-v1"
 EVIDENCE_GATE_SCHEMA_VERSION = "noncombat-outcome-evidence-gate-v1"
 CLAIM_SCHEMA_VERSION = "noncombat-outcome-evidence-finalization-claim-v1"
+HANDSHAKE_SCHEMA_VERSION = "noncombat-outcome-evidence-handshake-v1"
+HANDSHAKE_ATTEMPT_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-handshake-attempt-v1"
+)
+HANDSHAKE_READY_SCHEMA_VERSION = "noncombat-outcome-evidence-handshake-ready-v1"
+HANDSHAKE_RELEASE_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-handshake-release-v1"
+)
 BLOCKED_ESTIMATE_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-estimate-blocked-v1"
 )
@@ -135,6 +143,12 @@ def verify_outcome_evidence_expansion(
             paths["ledger"],
             registration=registration,
             run_lock=run_lock,
+            checks=checks,
+        )
+        _verify_handshake_evidence(
+            registration=registration,
+            run_lock=run_lock,
+            ledger=ledger,
             checks=checks,
         )
         claim = _verify_claim(
@@ -500,6 +514,328 @@ def _artifact_paths(registration: Mapping[str, Any]) -> dict[str, Path]:
         "run_lock": root / str(rules["run_lock_filename"]),
         "target": root / str(rules["target_manifest_filename"]),
     }
+
+
+def _verify_handshake_evidence(
+    *,
+    registration: Mapping[str, Any],
+    run_lock: Mapping[str, Any],
+    ledger: Mapping[str, Any],
+    checks: _Checks,
+) -> None:
+    if registration["schema_version"] == LEGACY_REGISTRATION_SCHEMA_VERSION:
+        return
+
+    rules = _mapping(
+        registration["integrity_rules"].get("communication_handshake"),
+        "communication_handshake",
+    )
+    terminals = list(ledger["terminal_slots"])
+    terminal_count = len(terminals)
+    blocked = ledger["global_stop"] is not None
+    for raw_slot in registration["slots"]:
+        slot = _mapping(raw_slot, "registered slot")
+        slot_number = _exact_int(slot.get("slot_number"), "slot_number")
+        paths = _handshake_paths(slot, rules)
+        if slot_number <= terminal_count:
+            terminal = terminals[slot_number - 1]
+            checks.require(
+                paths["attempt"].is_file(),
+                f"slot {slot_number} handshake attempt is missing",
+            )
+            attempt = _verify_handshake_attempt(
+                _load_canonical_handshake_record(
+                    paths["attempt"],
+                    f"slot {slot_number} handshake attempt",
+                ),
+                registration=registration,
+                run_lock=run_lock,
+                slot=slot,
+                paths=paths,
+                rules=rules,
+                expected_marker_start=terminal["marker_start_count"],
+                checks=checks,
+            )
+            checks.require(
+                paths["ready"].is_file(),
+                f"slot {slot_number} handshake ready record is missing",
+            )
+            ready = _verify_handshake_ready(
+                _load_canonical_handshake_record(
+                    paths["ready"],
+                    f"slot {slot_number} handshake ready",
+                ),
+                attempt=attempt,
+                checks=checks,
+            )
+            release_exists = paths["release"].exists()
+            if terminal["terminal_status"] == "completed":
+                checks.require(
+                    paths["release"].is_file(),
+                    f"slot {slot_number} handshake release is missing",
+                )
+            if release_exists:
+                _verify_handshake_release(
+                    _load_canonical_handshake_record(
+                        paths["release"],
+                        f"slot {slot_number} handshake release",
+                    ),
+                    attempt=attempt,
+                    ready=ready,
+                    checks=checks,
+                )
+            continue
+
+        is_next_blocked_slot = blocked and slot_number == terminal_count + 1
+        if is_next_blocked_slot:
+            checks.require(
+                not paths["release"].exists(),
+                f"unlaunched slot {slot_number} has a handshake release",
+            )
+            checks.require(
+                not paths["ready"].exists() or paths["attempt"].exists(),
+                f"unlaunched slot {slot_number} ready has no attempt",
+            )
+            attempt = None
+            if paths["attempt"].exists():
+                attempt = _verify_handshake_attempt(
+                    _load_canonical_handshake_record(
+                        paths["attempt"],
+                        f"slot {slot_number} handshake attempt",
+                    ),
+                    registration=registration,
+                    run_lock=run_lock,
+                    slot=slot,
+                    paths=paths,
+                    rules=rules,
+                    expected_marker_start=None,
+                    checks=checks,
+                )
+            if paths["ready"].exists():
+                _verify_handshake_ready(
+                    _load_canonical_handshake_record(
+                        paths["ready"],
+                        f"slot {slot_number} handshake ready",
+                    ),
+                    attempt=attempt,
+                    checks=checks,
+                )
+            continue
+
+        checks.require(
+            not any(path.exists() for path in paths.values()),
+            f"later unlaunched slot {slot_number} has handshake artifacts",
+        )
+
+
+def _handshake_paths(
+    slot: Mapping[str, Any],
+    rules: Mapping[str, Any],
+) -> dict[str, Path]:
+    config_path = Path(str(slot["config_path"])).resolve()
+    session_id = str(slot["session_id"])
+    return {
+        "attempt": (
+            config_path.parent / f"{session_id}{rules['attempt_suffix']}"
+        ).resolve(),
+        "ready": (
+            config_path.parent / f"{session_id}{rules['ready_suffix']}"
+        ).resolve(),
+        "release": (
+            config_path.parent / f"{session_id}{rules['release_suffix']}"
+        ).resolve(),
+    }
+
+
+def _verify_handshake_attempt(
+    record: Mapping[str, Any],
+    *,
+    registration: Mapping[str, Any],
+    run_lock: Mapping[str, Any],
+    slot: Mapping[str, Any],
+    paths: Mapping[str, Path],
+    rules: Mapping[str, Any],
+    expected_marker_start: int | None,
+    checks: _Checks,
+) -> dict[str, Any]:
+    slot_number = _exact_int(slot.get("slot_number"), "slot_number")
+    created_unix_ns = _exact_int(
+        record.get("created_unix_ns"),
+        "handshake attempt created_unix_ns",
+    )
+    marker_start = _exact_int(
+        record.get("marker_start_count"),
+        "handshake attempt marker_start_count",
+    )
+    checks.require(
+        created_unix_ns >= 0 and marker_start >= 0,
+        f"slot {slot_number} handshake attempt counters are invalid",
+    )
+    if expected_marker_start is not None:
+        checks.require(
+            marker_start == expected_marker_start,
+            f"slot {slot_number} handshake marker boundary mismatch",
+        )
+    config_path = Path(str(slot["config_path"])).resolve()
+    try:
+        config_sha256 = _file_sha256(config_path)
+    except OSError as exc:
+        raise OutcomeEvidenceVerificationError(
+            f"slot {slot_number} handshake config is unreadable: {exc}"
+        ) from exc
+    token = _derive_handshake_slot_token(
+        registration_hash=str(registration["registration_hash"]),
+        run_lock_hash=str(run_lock["run_lock_hash"]),
+        slot_number=slot_number,
+        session_id=str(slot["session_id"]),
+        config_sha256=config_sha256,
+    )
+    expected = {
+        "attempt_hash": None,
+        "attempt_path": str(paths["attempt"]),
+        "config_path": str(config_path),
+        "config_sha256": config_sha256,
+        "created_unix_ns": created_unix_ns,
+        "marker_start_count": marker_start,
+        "protocol_version": HANDSHAKE_SCHEMA_VERSION,
+        "readiness_timeout_seconds": rules["readiness_timeout_seconds"],
+        "ready_path": str(paths["ready"]),
+        "registration_hash": registration["registration_hash"],
+        "release_path": str(paths["release"]),
+        "release_timeout_seconds": rules["release_timeout_seconds"],
+        "run_lock_hash": run_lock["run_lock_hash"],
+        "schema_version": HANDSHAKE_ATTEMPT_SCHEMA_VERSION,
+        "session_id": slot["session_id"],
+        "slot_number": slot_number,
+        "slot_token": token,
+        "study_id": registration["study_id"],
+    }
+    expected["attempt_hash"] = _self_hash(expected, "attempt_hash")
+    checks.require(
+        record == expected,
+        f"slot {slot_number} handshake attempt mismatch",
+    )
+    return expected
+
+
+def _verify_handshake_ready(
+    record: Mapping[str, Any],
+    *,
+    attempt: Mapping[str, Any] | None,
+    checks: _Checks,
+) -> dict[str, Any]:
+    if attempt is None:
+        raise OutcomeEvidenceVerificationError(
+            "handshake ready cannot be verified without an attempt"
+        )
+    slot_number = int(attempt["slot_number"])
+    child_pid = _exact_int(record.get("child_pid"), "handshake ready child_pid")
+    created_unix_ns = _exact_int(
+        record.get("created_unix_ns"),
+        "handshake ready created_unix_ns",
+    )
+    checks.require(
+        child_pid > 0 and created_unix_ns >= 0,
+        f"slot {slot_number} handshake ready counters are invalid",
+    )
+    expected = {
+        "attempt_hash": attempt["attempt_hash"],
+        "child_pid": child_pid,
+        "communication_state_received": True,
+        "config_path": attempt["config_path"],
+        "config_sha256": attempt["config_sha256"],
+        "created_unix_ns": created_unix_ns,
+        "protocol_version": HANDSHAKE_SCHEMA_VERSION,
+        "ready_hash": None,
+        "ready_path": attempt["ready_path"],
+        "registration_hash": attempt["registration_hash"],
+        "run_lock_hash": attempt["run_lock_hash"],
+        "schema_version": HANDSHAKE_READY_SCHEMA_VERSION,
+        "session_id": attempt["session_id"],
+        "slot_number": slot_number,
+        "slot_token": attempt["slot_token"],
+        "study_id": attempt["study_id"],
+    }
+    expected["ready_hash"] = _self_hash(expected, "ready_hash")
+    checks.require(
+        record == expected,
+        f"slot {slot_number} handshake ready mismatch",
+    )
+    return expected
+
+
+def _verify_handshake_release(
+    record: Mapping[str, Any],
+    *,
+    attempt: Mapping[str, Any],
+    ready: Mapping[str, Any],
+    checks: _Checks,
+) -> None:
+    slot_number = int(attempt["slot_number"])
+    created_unix_ns = _exact_int(
+        record.get("created_unix_ns"),
+        "handshake release created_unix_ns",
+    )
+    checks.require(
+        created_unix_ns >= 0,
+        f"slot {slot_number} handshake release time is invalid",
+    )
+    expected = {
+        "attempt_hash": attempt["attempt_hash"],
+        "child_pid": ready["child_pid"],
+        "created_unix_ns": created_unix_ns,
+        "protocol_version": HANDSHAKE_SCHEMA_VERSION,
+        "ready_hash": ready["ready_hash"],
+        "registration_hash": attempt["registration_hash"],
+        "release_hash": None,
+        "release_path": attempt["release_path"],
+        "run_lock_hash": attempt["run_lock_hash"],
+        "schema_version": HANDSHAKE_RELEASE_SCHEMA_VERSION,
+        "session_id": attempt["session_id"],
+        "slot_number": slot_number,
+        "slot_token": attempt["slot_token"],
+        "study_id": attempt["study_id"],
+    }
+    expected["release_hash"] = _self_hash(expected, "release_hash")
+    checks.require(
+        record == expected,
+        f"slot {slot_number} handshake release mismatch",
+    )
+
+
+def _derive_handshake_slot_token(
+    *,
+    registration_hash: str,
+    run_lock_hash: str,
+    slot_number: int,
+    session_id: str,
+    config_sha256: str,
+) -> str:
+    payload = {
+        "config_sha256": config_sha256,
+        "protocol_version": HANDSHAKE_SCHEMA_VERSION,
+        "registration_hash": registration_hash,
+        "run_lock_hash": run_lock_hash,
+        "session_id": session_id,
+        "slot_number": slot_number,
+    }
+    return hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
+
+
+def _load_canonical_handshake_record(
+    path: Path,
+    label: str,
+) -> dict[str, Any]:
+    try:
+        data = path.read_bytes()
+    except OSError as exc:
+        raise OutcomeEvidenceVerificationError(
+            f"{label} is missing or unreadable: {exc}"
+        ) from exc
+    value = _load_mapping_bytes(data, path)
+    if data != (_canonical_json(value) + "\n").encode("utf-8"):
+        raise OutcomeEvidenceVerificationError(f"{label} is not canonical JSON")
+    return value
 
 
 def _registered_implementation_paths(
@@ -960,14 +1296,27 @@ def _verify_ledger(
                 initialized and active is None and global_stop is None,
                 "invalid ledger slot start state",
             )
+            marker_start_count = None
+            if registration["schema_version"] == REGISTRATION_SCHEMA_VERSION:
+                marker_start_count = _exact_int(
+                    payload.get("marker_start_count"),
+                    "slot_started marker_start_count",
+                )
+                expected_start_payload = {
+                    "marker_start_count": marker_start_count
+                }
+            else:
+                expected_start_payload = {}
             checks.require(
                 record.get("slot_number") == next_slot
                 and record.get("session_id")
                 == registration["slots"][next_slot - 1]["session_id"]
-                and payload == {},
+                and payload == expected_start_payload
+                and (marker_start_count is None or marker_start_count >= 0),
                 "ledger slot start order mismatch",
             )
             active = {
+                "marker_start_count": marker_start_count,
                 "session_id": record["session_id"],
                 "slot_number": next_slot,
             }
@@ -1002,7 +1351,11 @@ def _verify_ledger(
                 0 <= complete <= GAMES_PER_SLOT
                 and marker_start >= 0
                 and marker_end >= marker_start
-                and marker_end - marker_start == complete,
+                and marker_end - marker_start == complete
+                and (
+                    active["marker_start_count"] is None
+                    or marker_start == active["marker_start_count"]
+                ),
                 "ledger marker accounting mismatch",
             )
             checks.require(

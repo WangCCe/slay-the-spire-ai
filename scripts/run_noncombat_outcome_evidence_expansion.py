@@ -286,6 +286,7 @@ def execute_handshaken_registered_slot(
     launch: RegisteredSlotLaunch,
     marker_path: Path | str,
     process_starter: Callable[[RegisteredSlotLaunch, Mapping[str, str]], Any],
+    preclaim_validator: Callable[[], Mapping[str, Any]] | None = None,
     monotonic: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
     time_ns: Callable[[], int] = time.time_ns,
@@ -372,12 +373,29 @@ def execute_handshaken_registered_slot(
             config_path=config_path,
             config_sha256=config_sha256,
         )
+        _validate_preclaim_run_lock(
+            preclaim_validator,
+            expected_run_lock_hash=ledger.run_lock_hash,
+        )
+        _require_child_running(process, stage="slot claim")
         ledger.start_slot(
             launch.slot_number,
             launch.session_id,
             marker_start_count=marker_start_count,
             started_unix_ns=_positive_time_ns(time_ns),
         )
+        _require_child_running(process, stage="postclaim validation")
+        _validate_preclaim_handshake_state(
+            attempt=attempt,
+            paths=paths,
+            output_paths=output_paths,
+            marker_path=marker_file,
+            marker_start_count=marker_start_count,
+            config_path=config_path,
+            config_sha256=config_sha256,
+            boundary="child release",
+        )
+        _require_child_running(process, stage="child release")
         release = build_release_record(
             attempt,
             ready,
@@ -388,7 +406,9 @@ def execute_handshaken_registered_slot(
         active = _ledger_has_active_slot(ledger)
         stage = "postclaim release failed" if active else "preclaim handshake failed"
         reason = f"{stage}: {type(exc).__name__}: {exc}"
-        _terminate_child_process(process)
+        cleanup_error = _terminate_child_process(process)
+        if cleanup_error is not None:
+            reason = f"{reason}; child cleanup failed: {cleanup_error}"
         if active:
             _recover_claimed_slot_for_stop(
                 ledger=ledger,
@@ -404,7 +424,9 @@ def execute_handshaken_registered_slot(
         exit_code = process.wait()
     except BaseException as exc:
         reason = f"released child wait failed: {type(exc).__name__}: {exc}"
-        _terminate_child_process(process)
+        cleanup_error = _terminate_child_process(process)
+        if cleanup_error is not None:
+            reason = f"{reason}; child cleanup failed: {cleanup_error}"
         _recover_claimed_slot_for_stop(
             ledger=ledger,
             marker_path=marker_file,
@@ -502,22 +524,57 @@ def _validate_preclaim_handshake_state(
     marker_start_count: int,
     config_path: Path,
     config_sha256: str,
+    boundary: str = "slot claim",
 ) -> None:
     if load_attempt_record(paths.attempt) != dict(attempt):
-        raise OutcomeEvidenceRunnerError("handshake attempt changed before claim")
+        raise OutcomeEvidenceRunnerError(
+            f"handshake attempt changed before {boundary}"
+        )
     if paths.release.exists():
-        raise OutcomeEvidenceRunnerError("release exists before slot claim")
+        raise OutcomeEvidenceRunnerError(f"release exists before {boundary}")
     _require_paths_absent(
         output_paths,
-        "gameplay output was created before slot claim",
+        f"gameplay output was created before {boundary}",
     )
     if _ai_marker_count(marker_path) != marker_start_count:
-        raise OutcomeEvidenceRunnerError("AI marker count changed before slot claim")
+        raise OutcomeEvidenceRunnerError(
+            f"AI marker count changed before {boundary}"
+        )
     if (
         _handshake_file_sha256(config_path, "registered slot config")
         != config_sha256
     ):
-        raise OutcomeEvidenceRunnerError("registered slot config changed before claim")
+        raise OutcomeEvidenceRunnerError(
+            f"registered slot config changed before {boundary}"
+        )
+
+
+def _validate_preclaim_run_lock(
+    validator: Callable[[], Mapping[str, Any]] | None,
+    *,
+    expected_run_lock_hash: str,
+) -> None:
+    if validator is None:
+        return
+    if not callable(validator):
+        raise OutcomeEvidenceRunnerError("preclaim_validator must be callable")
+    observed = validator()
+    if not isinstance(observed, Mapping):
+        raise OutcomeEvidenceRunnerError(
+            "preclaim run lock validator returned a non-object"
+        )
+    if observed.get("run_lock_hash") != expected_run_lock_hash:
+        raise OutcomeEvidenceRunnerError(
+            "preclaim run lock differs from the ledger binding"
+        )
+
+
+def _require_child_running(process: Any, *, stage: str) -> None:
+    exit_code = process.poll()
+    if exit_code is not None:
+        raise OutcomeEvidenceRunnerError(
+            f"child exited before {stage} with code {exit_code}"
+        )
 
 
 def _recover_active_slot_after_host_failure(
@@ -580,20 +637,38 @@ def _recover_claimed_slot_for_stop(
     )
 
 
-def _terminate_child_process(process: Any) -> None:
+def _terminate_child_process(process: Any) -> str | None:
     if process is None:
-        return
+        return None
+    failures = []
     try:
         if process.poll() is not None:
-            return
+            return None
+    except BaseException as exc:
+        failures.append(f"poll failed: {type(exc).__name__}: {exc}")
+    try:
         process.terminate()
         try:
             process.wait(timeout=_PROCESS_TERMINATION_TIMEOUT_SECONDS)
+            return None
         except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=_PROCESS_TERMINATION_TIMEOUT_SECONDS)
-    except BaseException:
-        return
+            failures.append("terminate deadline exceeded")
+        except BaseException as exc:
+            failures.append(f"terminate wait failed: {type(exc).__name__}: {exc}")
+    except BaseException as exc:
+        failures.append(f"terminate failed: {type(exc).__name__}: {exc}")
+    try:
+        process.kill()
+        process.wait(timeout=_PROCESS_TERMINATION_TIMEOUT_SECONDS)
+        return None
+    except BaseException as exc:
+        failures.append(f"kill failed: {type(exc).__name__}: {exc}")
+    try:
+        if process.poll() is not None:
+            return None
+    except BaseException as exc:
+        failures.append(f"final poll failed: {type(exc).__name__}: {exc}")
+    return "; ".join(failures) or "child process remains live"
 
 
 def _ledger_has_active_slot(ledger: "StudyLedger") -> bool:
@@ -2207,6 +2282,13 @@ def _run_next_command(registration_path: Path) -> dict[str, Any]:
         path=_ledger_path(registration),
         registration=registration,
     )
+    marker_path = (
+        Path(registration.checkpoint_root).parent / "runs" / "ai_games.txt"
+    )
+    _recover_active_slot_after_host_failure(
+        ledger=ledger,
+        marker_path=marker_path,
+    )
     run_lock = validate_run_lock_or_stop(
         ledger,
         validator=lambda: validate_run_lock(
@@ -2215,13 +2297,6 @@ def _run_next_command(registration_path: Path) -> dict[str, Any]:
             repo_root=registration.repo_root,
             child_command=command,
         ),
-    )
-    marker_path = (
-        Path(registration.checkpoint_root).parent / "runs" / "ai_games.txt"
-    )
-    _recover_active_slot_after_host_failure(
-        ledger=ledger,
-        marker_path=marker_path,
     )
     slot = ledger.next_slot()
     launch = build_slot_launch(registration, run_lock, slot.slot_number)
@@ -2250,6 +2325,12 @@ def _run_next_command(registration_path: Path) -> dict[str, Any]:
         launch=launch,
         marker_path=marker_path,
         process_starter=process_starter,
+        preclaim_validator=lambda: validate_run_lock(
+            lock_path=run_lock_path,
+            registration_path=registration_path,
+            repo_root=registration.repo_root,
+            child_command=command,
+        ),
     )
 
 

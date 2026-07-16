@@ -707,6 +707,156 @@ def test_handshaken_slot_claims_only_after_verified_child_readiness(
     assert Path(attempt["release_path"]).is_file()
 
 
+def test_handshake_revalidates_run_lock_after_readiness_before_claim(tmp_path):
+    module, ledger, _registration, _run_lock, launch, marker_path = (
+        _handshake_slot(tmp_path)
+    )
+    child = _FakeHandshakeChild()
+
+    def process_starter(_launch, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    def fail_preclaim_validation():
+        raise module.OutcomeEvidenceRunnerError("forced run-lock drift")
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="forced run-lock drift"):
+        module.execute_handshaken_registered_slot(
+            ledger=ledger,
+            launch=launch,
+            marker_path=marker_path,
+            process_starter=process_starter,
+            preclaim_validator=fail_preclaim_validation,
+        )
+
+    snapshot = ledger.snapshot()
+    assert child.terminated is True
+    assert snapshot["active_slot"] is None
+    assert snapshot["terminal_slot_count"] == 0
+    assert "forced run-lock drift" in snapshot["global_stop"]["reason"]
+
+
+def test_handshake_rejects_child_exit_between_ready_validation_and_claim(
+    tmp_path,
+    monkeypatch,
+):
+    module, ledger, _registration, _run_lock, launch, marker_path = (
+        _handshake_slot(tmp_path)
+    )
+    child = _FakeHandshakeChild()
+
+    def process_starter(_launch, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    original_validate = module._validate_preclaim_handshake_state
+
+    def exit_after_preclaim_validation(**kwargs):
+        original_validate(**kwargs)
+        child.returncode = 17
+
+    monkeypatch.setattr(
+        module,
+        "_validate_preclaim_handshake_state",
+        exit_after_preclaim_validation,
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="exited.*slot claim",
+    ):
+        module.execute_handshaken_registered_slot(
+            ledger=ledger,
+            launch=launch,
+            marker_path=marker_path,
+            process_starter=process_starter,
+        )
+
+    snapshot = ledger.snapshot()
+    assert snapshot["active_slot"] is None
+    assert snapshot["terminal_slot_count"] == 0
+    assert snapshot["global_stop"] is not None
+
+
+def test_handshake_rechecks_outputs_after_claim_before_release(
+    tmp_path,
+    monkeypatch,
+):
+    module, ledger, registration, _run_lock, launch, marker_path = (
+        _handshake_slot(tmp_path)
+    )
+    child = _FakeHandshakeChild()
+    manifest_path = Path(registration.slots[0].manifest_path)
+    release_path = Path(launch.config_path).with_name(
+        f"{launch.session_id}-communication-release.json"
+    )
+
+    def process_starter(_launch, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    original_start_slot = ledger.start_slot
+
+    def create_output_after_claim(*args, **kwargs):
+        result = original_start_slot(*args, **kwargs)
+        manifest_path.write_text("{}\n", encoding="utf-8", newline="")
+        return result
+
+    monkeypatch.setattr(ledger, "start_slot", create_output_after_claim)
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="gameplay output"):
+        module.execute_handshaken_registered_slot(
+            ledger=ledger,
+            launch=launch,
+            marker_path=marker_path,
+            process_starter=process_starter,
+        )
+
+    snapshot = ledger.snapshot()
+    assert child.terminated is True
+    assert release_path.exists() is False
+    assert snapshot["active_slot"] is None
+    assert snapshot["terminal_slot_count"] == 1
+    assert snapshot["terminal_slots"][0]["terminal_status"] == "interrupted"
+    assert snapshot["global_stop"] is not None
+
+
+def test_handshake_surfaces_child_cleanup_failure_in_global_stop(tmp_path):
+    module, ledger, registration, _run_lock, launch, marker_path = (
+        _handshake_slot(tmp_path)
+    )
+
+    class UnkillableChild(_FakeHandshakeChild):
+        def terminate(self):
+            raise OSError("terminate denied")
+
+        def kill(self):
+            raise OSError("kill denied")
+
+    child = UnkillableChild()
+
+    def process_starter(_launch, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        Path(registration.slots[0].manifest_path).write_text(
+            "{}\n",
+            encoding="utf-8",
+            newline="",
+        )
+        return child
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError) as error:
+        module.execute_handshaken_registered_slot(
+            ledger=ledger,
+            launch=launch,
+            marker_path=marker_path,
+            process_starter=process_starter,
+        )
+
+    assert "child cleanup failed" in str(error.value)
+    snapshot = ledger.snapshot()
+    assert "child cleanup failed" in snapshot["global_stop"]["reason"]
+
+
 def test_handshake_timeout_stops_without_claim_or_retry(tmp_path):
     module, ledger, _registration, _run_lock, launch, marker_path = (
         _handshake_slot(tmp_path)
@@ -905,6 +1055,60 @@ def test_host_recovery_consumes_active_handshaken_slot_before_global_stop(tmp_pa
     assert snapshot["terminal_slots"][0]["complete_trajectories"] == 1
     assert snapshot["terminal_slots"][0]["marker_start_count"] == 2
     assert snapshot["terminal_slots"][0]["marker_end_count"] == 3
+    assert snapshot["global_stop"] is not None
+
+
+def test_run_next_recovers_active_slot_before_revalidating_run_lock(
+    tmp_path,
+    monkeypatch,
+):
+    module, ledger, registration, _run_lock, _launch, marker_path = (
+        _handshake_slot(tmp_path)
+    )
+    ledger.start_slot(
+        1,
+        registration.slots[0].session_id,
+        marker_start_count=2,
+        started_unix_ns=200,
+    )
+    validation_calls = []
+
+    monkeypatch.setattr(
+        module,
+        "_load_runner_registration",
+        lambda _path: registration,
+    )
+    monkeypatch.setattr(
+        module,
+        "_require_launchable_runner_registration",
+        lambda value: value,
+    )
+    monkeypatch.setattr(module, "_registered_command", lambda _value: ["python"])
+    monkeypatch.setattr(module, "_run_lock_path", lambda _value: tmp_path / "lock")
+    monkeypatch.setattr(
+        module.StudyLedger,
+        "open_existing",
+        classmethod(lambda cls, **_kwargs: ledger),
+    )
+
+    def unexpected_run_lock_validation(*_args, **_kwargs):
+        validation_calls.append(True)
+        pytest.fail("run lock validation ran before active-slot recovery")
+
+    monkeypatch.setattr(
+        module,
+        "validate_run_lock_or_stop",
+        unexpected_run_lock_validation,
+    )
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="active slot recovery"):
+        module._run_next_command(tmp_path / "registration.json")
+
+    snapshot = ledger.snapshot()
+    assert validation_calls == []
+    assert marker_path.read_text(encoding="utf-8") == "10\n11\n"
+    assert snapshot["active_slot"] is None
+    assert snapshot["terminal_slot_count"] == 1
     assert snapshot["global_stop"] is not None
 
 
