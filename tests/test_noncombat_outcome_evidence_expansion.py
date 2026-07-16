@@ -2,6 +2,7 @@ import hashlib
 import importlib
 import json
 import ntpath
+import re
 import subprocess
 from dataclasses import FrozenInstanceError
 from pathlib import Path
@@ -33,13 +34,25 @@ COMMITTED_V2_REGISTRATION_PATH = (
     / "reports"
     / "noncombat_outcome_evidence_expansion_20260716_v2_registration.json"
 )
-V2_REGISTRATION_HASH = (
+V2_REGISTRATION_REVIEW_PATH = (
+    REPO_ROOT
+    / "reports"
+    / "noncombat_outcome_evidence_expansion_20260716_v2_registration_review.md"
+)
+SUPERSEDED_V2_REGISTRATION_HASH = (
     "86cb17077fe5dc7123307660eef4c1986dc11f48837308fed714faf88c73f22a"
 )
-V2_REGISTRATION_FILE_SHA256 = (
+SUPERSEDED_V2_REGISTRATION_FILE_SHA256 = (
     "2a7e937da2c63d6c235452349d3f66de5870525d578c51deccbb87a522baef6a"
 )
-V2_REGISTRATION_BYTE_COUNT = 19_795
+SUPERSEDED_V2_REGISTRATION_BYTE_COUNT = 19_795
+V2_REGISTRATION_HASH = (
+    "7df8036e111fb55ece15154796d494ea857a74984c9d1a224c2b61f8fc710ace"
+)
+V2_REGISTRATION_FILE_SHA256 = (
+    "a0e282699ede7d1ea38b2d81f029ce5e823b924d81c5ca7cdbc9a45ddc2eb6c2"
+)
+V2_REGISTRATION_BYTE_COUNT = 19_796
 
 
 def _module():
@@ -224,22 +237,25 @@ def test_committed_production_registration_matches_canonical_bytes():
     assert module.load_registration(COMMITTED_REGISTRATION_PATH) == expected
 
 
-def test_pending_v2_registration_is_canonical_historical_and_isolated_from_v1():
+def test_committed_v2_registration_is_canonical_and_isolated_from_v1():
     module = _module()
+    expected = module.build_registration(
+        study_id=V2_STUDY_ID,
+        artifact_root=V2_PRODUCTION_ARTIFACT_ROOT,
+        repo_root=REPO_ROOT,
+        seed_base=V2_SEED_BASE,
+        python_executable=WINDOWS_PYTHON,
+    )
+    expected_bytes = module.render_registration_json(expected).encode("utf-8")
     actual_bytes = COMMITTED_V2_REGISTRATION_PATH.read_bytes()
-    actual_text = actual_bytes.decode("utf-8")
-    record = json.loads(actual_text)
 
-    expected_bytes = (
-        json.dumps(
-            record,
-            ensure_ascii=True,
-            sort_keys=True,
-            separators=(",", ":"),
-        )
-        + "\n"
-    ).encode("utf-8")
     assert actual_bytes == expected_bytes
+
+    actual_text = actual_bytes.decode("utf-8")
+    actual = module.load_registration(COMMITTED_V2_REGISTRATION_PATH)
+    record = actual.to_record()
+
+    assert actual == expected
     assert len(actual_bytes) == V2_REGISTRATION_BYTE_COUNT
     assert hashlib.sha256(actual_bytes).hexdigest() == V2_REGISTRATION_FILE_SHA256
     assert record["schema_version"] == "noncombat-outcome-evidence-registration-v2"
@@ -247,12 +263,13 @@ def test_pending_v2_registration_is_canonical_historical_and_isolated_from_v1():
     assert module.canonical_registration_hash(record) == V2_REGISTRATION_HASH
     assert record["integrity_rules"]["communication_handshake"][
         "readiness_timeout_seconds"
-    ] == 30
-    with pytest.raises(
-        module.OutcomeEvidenceRegistrationError,
-        match="readiness_timeout_seconds",
-    ):
-        module.load_registration(COMMITTED_V2_REGISTRATION_PATH)
+    ] == 120
+    assert record["registration_hash"] != SUPERSEDED_V2_REGISTRATION_HASH
+    assert (
+        hashlib.sha256(actual_bytes).hexdigest()
+        != SUPERSEDED_V2_REGISTRATION_FILE_SHA256
+    )
+    assert len(actual_bytes) != SUPERSEDED_V2_REGISTRATION_BYTE_COUNT
 
     expected_slots = []
     for slot_number in range(1, 25):
@@ -299,6 +316,33 @@ def test_pending_v2_registration_is_canonical_historical_and_isolated_from_v1():
         "84acbb819b90761cd532a5b6bbf158e5a518141cf51fe39dbe863d0ff9d0c2e3",
     )
     assert not [value for value in forbidden_v1_bindings if value in actual_text]
+
+
+def test_v2_registration_review_uses_complete_commit_and_sha_digests():
+    module = _module()
+    review = V2_REGISTRATION_REVIEW_PATH.read_text(encoding="utf-8")
+    long_hex_values = re.findall(r"`([0-9a-f]{32,})`", review)
+    registration = module.load_registration(COMMITTED_V2_REGISTRATION_PATH)
+    implementation_paths = registration.to_record()["integrity_rules"][
+        "implementation_paths"
+    ]
+    expected_implementation_rows = [
+        (
+            relative_path,
+            hashlib.sha256((REPO_ROOT / relative_path).read_bytes()).hexdigest(),
+            str((REPO_ROOT / relative_path).stat().st_size),
+        )
+        for relative_path in implementation_paths
+    ]
+    observed_implementation_rows = re.findall(
+        r"^\| `([^`]+)` \| `([0-9a-f]+)` \| `(\d+)` \|$",
+        review,
+        flags=re.MULTILINE,
+    )
+
+    assert long_hex_values
+    assert [value for value in long_hex_values if len(value) not in {40, 64}] == []
+    assert observed_implementation_rows == expected_implementation_rows
 
 
 def test_legacy_registration_is_read_only_and_byte_distinct_from_v2(tmp_path):

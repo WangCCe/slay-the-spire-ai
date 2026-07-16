@@ -1,16 +1,19 @@
 # Non-Combat Outcome Evidence Expansion V2 Registration Review
 
-Date: 2026-07-16
+Date: 2026-07-17
 
 OpenSpec change: `run-v2-known-propensity-outcome-evidence-study`
 
-Status: `FROZEN_PRE_QUALIFICATION_R2`
+Status: `FROZEN_PRE_QUALIFICATION_R3`
 
-This report records the amended pre-collection v2 candidate identity. One
-bounded qualification attempt started under the original external
-qualification identity and stopped before ready/release. No registered game,
-run lock, ledger, gameplay action, OPE calculation, training, reward change,
-gameplay-policy change, or live promotion has started.
+This report records the second amended pre-collection v2 candidate identity.
+Two bounded qualification identities are immutable failures: r1 stopped on an
+external Windows log-sharing error before protocol ready, while r2 exchanged
+protocol ready but exceeded the superseded 30-second child readiness deadline
+before the first callback-free state. The implementation defect was repaired
+and verified separately in commit `79cf98f892ec19294cc85cf592ae70b4be425fba`.
+No registered game, run lock, ledger, gameplay action, OPE calculation,
+training, reward change, gameplay-policy change, or live promotion has started.
 
 ## Historical Boundary
 
@@ -37,25 +40,32 @@ The blocked v1 root still contains none of
 - Schema: `noncombat-outcome-evidence-registration-v2`
 - Registration: `reports/noncombat_outcome_evidence_expansion_20260716_v2_registration.json`
 - Artifact root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2`
-- Active qualification root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification_r2`
-- Preserved failed qualification root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification`
-- Failed qualification record self-hash: `ccd76824c90a9726c57b48a7f71d8bc1d8da94df6c686ae36eff10a1b72db41f`
-- Failed qualification record file SHA-256: `0677212e139270219be597e26f9e79bab30ab2c74fc5c810c41360c2d7dd545a`
+- Active qualification root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification_r3`
+- Preserved r2 failure root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification_r2`
+- R2 failure-record self-hash: `8bb9b396e129e017fd84fb4aabe7fa6d02bb51b0c7c147836dbf29e7c289c95c`
+- R2 failure-record file SHA-256: `3fbace492dd0f849bdf86deff1df97dfc4ae3b77a427545413ac48170c9c2540`
+- R2 ten-file root inventory SHA-256: `d1bf1c7901e3a324b849337414ee12b2f900d086cbc110a6a93ca08545858833`
+- Preserved r1 failure root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification`
+- R1 failure-record self-hash: `ccd76824c90a9726c57b48a7f71d8bc1d8da94df6c686ae36eff10a1b72db41f`
+- R1 failure-record file SHA-256: `0677212e139270219be597e26f9e79bab30ab2c74fc5c810c41360c2d7dd545a`
+- R1 nine-file root inventory SHA-256: `7fcacefddd99573929aac654044f4ecbc898ef530062977e375696d6697db600`
 - Seed base: `2026071600`
-- Canonical registration hash: `86cb17077fe5dc7123307660eef4c1986dc11f48837308fed714faf88c73f22a`
-- Registration file SHA-256: `2a7e937da2c63d6c235452349d3f66de5870525d578c51deccbb87a522baef6a`
-- Registration bytes: `19795`
+- Canonical registration hash: `7df8036e111fb55ece15154796d494ea857a74984c9d1a224c2b61f8fc710ace`
+- Registration file SHA-256: `a0e282699ede7d1ea38b2d81f029ce5e823b924d81c5ca7cdbc9a45ddc2eb6c2`
+- Registration bytes: `19796`
+- Superseded registration hash: `86cb17077fe5dc7123307660eef4c1986dc11f48837308fed714faf88c73f22a`
+- Superseded registration file SHA-256: `2a7e937da2c63d6c235452349d3f66de5870525d578c51deccbb87a522baef6a`
+- Superseded registration bytes: `19795`
 - Canonical line ending: `LF`
 
-The registered study root and original qualification root were absent at
-candidate creation. The original qualification root is now immutable failed
-operational evidence; the active replacement root and registered study root
-are absent at this amendment. The exact-artifact regression reconstructs the
-unchanged registration bytes and hash, verifies 24 ordered unique slots and 72
-unique absolute output paths, and rejects every v1 study ID, root, seed,
-registration, run-lock, ledger, claim, closeout, and inventory binding. Its
-TDD transition was one expected missing-file failure followed by `1 passed, 35
-deselected` after canonical generation.
+The registered study root and r3 qualification root are absent at this
+amendment. The r1 and r2 roots are immutable failed operational evidence and
+cannot be retried or interpreted as launch authority. The exact-artifact
+regression first failed against the superseded 30-second bytes, then passed
+after deterministic regeneration under the 120-second builder. It reconstructs
+the current registration bytes and hash, verifies 24 ordered unique slots and
+72 unique absolute output paths, rejects every v1 binding, and proves the
+current identity differs from the superseded hash, file hash, and byte count.
 
 ## Schedule And Behavior
 
@@ -116,10 +126,32 @@ The future run lock must bind these exact repository paths:
 - `spirecomm/ai/noncombat_exploration_runtime.py`
 - `spirecomm/communication/study_handshake.py`
 
+The r3 candidate is regenerated from the post-fix implementation baseline
+`79cf98f892ec19294cc85cf592ae70b4be425fba`. The final tracked amendment
+commit will contain this registration and review; qualification must bind that
+final HEAD plus the following file hashes, and must reject any mismatch:
+
+| Registered implementation path | SHA-256 | Bytes |
+| --- | --- | ---: |
+| `analysis_scripts/__init__.py` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` | `0` |
+| `analysis_scripts/noncombat_exploration_evidence.py` | `ba6e46c2c8418e9d47f059c02d35e71a2d65165a27d5b3b68e43cb5c43d04016` | `44201` |
+| `analysis_scripts/noncombat_ope_estimate_artifacts.py` | `2486b7589b221193059e615ff3a6c5aa4573cd5017e800adfec8f51e9a52b98e` | `17242` |
+| `analysis_scripts/noncombat_ope_estimation.py` | `39e4b981348918ec8ab3e18c23f62f261be6a905d4b4c9826cfc3cae7e8bf370` | `36646` |
+| `analysis_scripts/noncombat_ope_readiness.py` | `b62bd274c41a56ad3721c5390736c9d19171fe6037fd8edb278f848f3adf677d` | `58877` |
+| `analysis_scripts/noncombat_outcome_evidence_expansion.py` | `f73708530251ff75b411eeb0ad8254b4782e2548fda257f530305b2de29d3256` | `125725` |
+| `analysis_scripts/verify_noncombat_ope_artifacts.py` | `5e5e4eb2b7090fb89e57b2634dc4289bbcb4b7c81857d05d15fd22bfea927519` | `33629` |
+| `analysis_scripts/verify_noncombat_ope_estimates.py` | `de0e85eca294725adc9553e7870528f69777f248a39630891e253c39a1e52991` | `52027` |
+| `analysis_scripts/verify_noncombat_outcome_evidence_expansion.py` | `14187beacdc02684343067f03c5299e21b4708a6522cc5b451219d200767f305` | `139874` |
+| `main.py` | `40631676035666c4255dbef2c75aa64c9ed5c282767c348b64684bbd8f10ba9c` | `50569` |
+| `scripts/run_noncombat_outcome_evidence_expansion.py` | `278f32689d59c9fe9e800e976f6f037dbf5b3353f0bdd5a44582bca188926c30` | `93196` |
+| `spirecomm/ai/noncombat_exploration.py` | `1a075b7fff8b46ab095af4d9a6bbf3dd4f2c7d12b7115d3004b64eeffded7dc5` | `82322` |
+| `spirecomm/ai/noncombat_exploration_runtime.py` | `ff013f04b6e00cbf11bf7e378fa4d72146f578d65f9c01519f68d92f1bc03030` | `19344` |
+| `spirecomm/communication/study_handshake.py` | `5d61573b4d5e590cffc94d015db88794a9582524d73f9bb1eb743eb78aa0ee0f` | `25473` |
+
 The v2 preclaim handshake is
 `noncombat-outcome-evidence-handshake-v1`. It requires an exclusive attempt
 record and child-published ready record before slot claim, followed by the
-parent release record. Readiness timeout is 30 seconds, release timeout is 10
+parent release record. Readiness timeout is 120 seconds, release timeout is 10
 seconds, and any orphaned attempt is a global stop. The exact filenames use
 attempt suffix `-communication-attempt.json`, ready suffix
 `-communication-ready.json`, and release suffix
@@ -127,11 +159,13 @@ attempt suffix `-communication-attempt.json`, ready suffix
 
 ## Candidate Isolation
 
-At registration time there was no Slay the Spire, Java, registered runner, or
-production Python process. The only PowerShell processes were Codex's parser
-and the read-only inventory command. The v2 registration path, study root, and
-original qualification root were unused before generation. The registered
-study root and active replacement qualification root remain absent.
+At this amendment boundary there is no Slay the Spire, Java, registered runner,
+or production Python process. Both failed qualification roots are preserved;
+the registered study root and active r3 qualification root remain absent. The
+CommunicationMod baseline is restored at raw SHA-256
+`374806e6386940a5945ffd03411b526d6a21c002b938bb4db253780f787b8e9a`
+and semantic SHA-256
+`7341f96c64a633ed3b037ef499dd5b81c3355400c28c0f74c2afb6e83b9bdf51`.
 
 The authority boundary is closed. This candidate does not authorize live
 collection until focused/full offline verification, independent review, a
@@ -173,6 +207,41 @@ the previously absent `qualification_r2` root. The replacement procedure polls
 condition files and process state before ready, retries transient live-log
 sharing violations, compares the active Java properties semantically, and
 still requires byte-for-byte baseline restoration afterward.
+
+## Second Qualification Failure And Timeout Repair
+
+The r2 qualification used source commit
+`0da07cdc4a23631aa06757da6af7a8386620fe2e`, the superseded registration
+hash `86cb17077fe5dc7123307660eef4c1986dc11f48837308fed714faf88c73f22a`,
+and dry-run digest
+`8f870da8a337be4dafd2ac609e46ff349aaf08a267e73a0ba571e0bcb3e3cdd6`.
+The child queued protocol ready and CommunicationMod received it, but the first
+callback-free state did not arrive before the registered 30-second deadline.
+The child failed closed before study ready/release, RL component loading, agent
+creation, gameplay, or registered slot claim.
+
+The r2 failure record replays at self-hash
+`8bb9b396e129e017fd84fb4aabe7fa6d02bb51b0c7c147836dbf29e7c289c95c`
+and file SHA-256
+`3fbace492dd0f849bdf86deff1df97dfc4ae3b77a427545413ac48170c9c2540`.
+The preserved game log has SHA-256
+`efe5b85ea7ff27689ded3eb082da81447950ebc3d675e27e43bb8955f42b8f29`;
+the complete ten-file root inventory has SHA-256
+`d1bf1c7901e3a324b849337414ee12b2f900d086cbc110a6a93ca08545858833`.
+The registered study root, run lock, ledger, gameplay evidence, AI-marker
+mutation, checkpoint mutation, global-log mutation, and surviving process were
+all absent. CommunicationMod was restored byte-for-byte to the 505-byte
+baseline with raw SHA-256
+`374806e6386940a5945ffd03411b526d6a21c002b938bb4db253780f787b8e9a`.
+
+Because r2 proved an implementation defect, its registration and root are
+immutable and grant no launch authority. The separate
+`fix-cold-start-study-handshake-timeout` change reproduced a 45-second cold
+state, raised the fixed readiness deadline to 120 seconds, preserved release
+10, made observations at or after either exact deadline fail closed, and
+completed in commit `79cf98f892ec19294cc85cf592ae70b4be425fba`.
+The current registration is therefore a newly rendered contract rather than a
+timeout override on the superseded bytes.
 
 ## Initial Offline Verification
 
@@ -223,7 +292,44 @@ No registration-bound implementation file changed.
 An independent amendment review reported no Critical or Important finding and
 approved transition to a tracked-clean replacement-qualification candidate.
 It explicitly did not authorize qualification, `start`, or collection. Those
-remain gated by tasks 3.3 through 3.6 and the pre-start replay in task 4.1.
+remained gated by tasks 3.3 through 3.6 and the pre-start replay in task 4.1 at
+that historical boundary.
+
+## 120-Second R3 Amendment
+
+After the r2 defect fix, the exact-artifact regression was restored to require
+the current builder output. It failed against the old committed artifact at the
+first changed handshake-bound byte, then passed after deterministic generation
+of the 19,796-byte LF-only artifact. The resulting identity is:
+
+- Registration hash: `7df8036e111fb55ece15154796d494ea857a74984c9d1a224c2b61f8fc710ace`
+- Registration file SHA-256: `a0e282699ede7d1ea38b2d81f029ce5e823b924d81c5ca7cdbc9a45ddc2eb6c2`
+- Readiness/release deadlines: `120/10` seconds
+- Implementation baseline: `79cf98f892ec19294cc85cf592ae70b4be425fba`
+- Authorized next qualification identity: `noncombat_outcome_evidence_expansion_20260716_v2_qualification_r3`
+
+The study ID, study root, seed schedule, 24-by-25 slot sequence, behavior rates,
+alternative budget, deterministic-Current target, estimator, thresholds,
+command, and release deadline are byte-for-byte or value-for-value unchanged.
+Only the reviewed readiness contract, affected registration hash, and
+registration file identity changed. Both failed roots and the superseded
+registration identity remain historical evidence.
+
+| Scope | R3 amendment result |
+| --- | --- |
+| Exact registration red/green | expected failure on superseded bytes; `1 passed in 1.28s` after regeneration |
+| Review digest red/green | expected failure on one malformed 62-character copied digest; `1 passed in 0.82s` after correction |
+| Registration, runner/monitor, handshake, finalizer, verifier | `201 passed in 506.06s` |
+| Full repository | `2851 passed in 666.10s` |
+| OpenSpec strict validation | `38 passed, 0 failed` |
+| Python compile/import checks | passed |
+| `git diff --check` | exit 0, no output |
+| External boundary replay and r3/study absence | both failed roots exact; baseline exact; r3/study absent; no target process |
+
+No r3 directory, live game process, run lock, ledger, registered slot, or study
+artifact may be created until every pending row passes, independent review has
+no unresolved Critical or Important finding, and the amendment is committed as
+a tracked-clean candidate.
 
 ## Independent Review
 
@@ -241,14 +347,27 @@ and OpenSpec checks passed. The same independent reviewer then reported no
 remaining Critical or Important finding and approved only the candidate commit
 transition, not qualification or collection.
 
-The later qualification-failure governance review found that the failed root
-must remain immutable, that a new registration is not required without a
-runtime implementation repair, and that the replacement root must be approved
-explicitly rather than selected ad hoc. This amendment implements that verdict
-without changing registration or runtime implementation bytes.
+The r1 qualification-failure governance review found that the failed root must
+remain immutable, that a new registration was not required while no runtime
+implementation binding changed, and that the replacement root had to be
+approved explicitly rather than selected ad hoc. The later r2 evidence changed
+that premise by proving a timeout implementation defect. The separate repair
+and this regenerated registration follow the stricter defect branch: preserve
+r2, fix under regression, regenerate all affected bindings, and explicitly
+authorize only a previously absent r3 identity.
+
+The first independent review of this 120-second r3 amendment found no Critical
+issue. Its one Important finding was that the recorded focused/full results
+predated the final review-digest regression; two Minor findings requested exact
+implementation-table replay and three independent superseded-identity
+inequalities. The tests were strengthened, the malformed digest regression was
+recorded, and the final tree then passed `201` focused tests and `2851` full
+repository tests. Final independent re-review reported no Critical, Important,
+or Minor finding and returned `Ready to commit: Yes`; this status therefore
+authorizes only the tracked-clean r3 candidate commit, not r3 execution.
 
 No registered game, run lock, ledger, successful qualification artifact, pool,
 OPE result, training, reward change, gameplay-policy change, or promotion
-exists or is authorized at this boundary. The failed qualification artifact is
-preserved but grants no authority. Replacement qualification remains a
-separate post-commit gate.
+exists or is authorized at this boundary. Both failed qualification artifacts
+are preserved but grant no authority. R3 qualification remains a separate
+post-commit gate.
