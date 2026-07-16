@@ -4,11 +4,13 @@ Date: 2026-07-16
 
 OpenSpec change: `run-v2-known-propensity-outcome-evidence-study`
 
-Status: `FROZEN_PRE_QUALIFICATION`
+Status: `FROZEN_PRE_QUALIFICATION_R2`
 
-This report records the pre-collection v2 candidate identity. No registered
-game, qualification smoke, run lock, ledger, OPE calculation, training,
-reward change, gameplay-policy change, or live promotion has started.
+This report records the amended pre-collection v2 candidate identity. One
+bounded qualification attempt started under the original external
+qualification identity and stopped before ready/release. No registered game,
+run lock, ledger, gameplay action, OPE calculation, training, reward change,
+gameplay-policy change, or live promotion has started.
 
 ## Historical Boundary
 
@@ -35,19 +37,25 @@ The blocked v1 root still contains none of
 - Schema: `noncombat-outcome-evidence-registration-v2`
 - Registration: `reports/noncombat_outcome_evidence_expansion_20260716_v2_registration.json`
 - Artifact root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2`
-- Qualification root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification`
+- Active qualification root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification_r2`
+- Preserved failed qualification root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification`
+- Failed qualification record self-hash: `ccd76824c90a9726c57b48a7f71d8bc1d8da94df6c686ae36eff10a1b72db41f`
+- Failed qualification record file SHA-256: `0677212e139270219be597e26f9e79bab30ab2c74fc5c810c41360c2d7dd545a`
 - Seed base: `2026071600`
 - Canonical registration hash: `86cb17077fe5dc7123307660eef4c1986dc11f48837308fed714faf88c73f22a`
 - Registration file SHA-256: `2a7e937da2c63d6c235452349d3f66de5870525d578c51deccbb87a522baef6a`
 - Registration bytes: `19795`
 - Canonical line ending: `LF`
 
-Both external roots were absent at candidate creation. The exact-artifact
-regression reconstructs the committed bytes and hash, verifies 24 ordered
-unique slots and 72 unique absolute output paths, and rejects every v1 study
-ID, root, seed, registration, run-lock, ledger, claim, closeout, and inventory
-binding. Its TDD transition was one expected missing-file failure followed by
-`1 passed, 35 deselected` after canonical generation.
+The registered study root and original qualification root were absent at
+candidate creation. The original qualification root is now immutable failed
+operational evidence; the active replacement root and registered study root
+are absent at this amendment. The exact-artifact regression reconstructs the
+unchanged registration bytes and hash, verifies 24 ordered unique slots and 72
+unique absolute output paths, and rejects every v1 study ID, root, seed,
+registration, run-lock, ledger, claim, closeout, and inventory binding. Its
+TDD transition was one expected missing-file failure followed by `1 passed, 35
+deselected` after canonical generation.
 
 ## Schedule And Behavior
 
@@ -121,8 +129,9 @@ attempt suffix `-communication-attempt.json`, ready suffix
 
 At registration time there was no Slay the Spire, Java, registered runner, or
 production Python process. The only PowerShell processes were Codex's parser
-and the read-only inventory command. The v2 registration path and both external
-roots were unused before generation; the external roots remain absent.
+and the read-only inventory command. The v2 registration path, study root, and
+original qualification root were unused before generation. The registered
+study root and active replacement qualification root remain absent.
 
 The authority boundary is closed. This candidate does not authorize live
 collection until focused/full offline verification, independent review, a
@@ -130,7 +139,42 @@ tracked-clean planning commit, dry-run replay, bounded no-action qualification,
 and separately attested qualification all pass. It never authorizes formal RL
 training, causal uplift claims, gameplay-policy changes, or promotion.
 
-## Offline Verification
+## First Qualification Failure
+
+The original post-commit qualification used source commit
+`fb1756815fd2f90bb70b6db4851aa44b8f2ad2cc`, canonical registration hash
+`86cb17077fe5dc7123307660eef4c1986dc11f48837308fed714faf88c73f22a`,
+and dry-run digest
+`abec063a4681b915ece7f4df089b94c22916058dd4d0c3f2bcea3a96f75abd04`.
+The child reached CommunicationMod coordinator construction, but the external
+PowerShell monitor called `File.ReadAllText` while the child log handler held
+the file and treated the resulting Windows sharing violation as fatal. The
+attempt stopped before ready or release and before RL component loading, agent
+creation, callbacks, gameplay, or registered slot claim.
+
+The fail-closed audit found the registered study root, run lock, ledger, ready,
+and release absent. The AI marker remained at 15,255 lines with SHA-256
+`88db1899d2b442c90380f74aefcf10eab21cc9e91c917295d8c0f3d02da67a76`;
+all 1,305 Ironclad run metadata records, 208 checkpoint files, and both global
+logs matched the pre-smoke snapshot. CommunicationMod added only its normal
+Java-properties timestamp: observed raw SHA-256
+`674bf681aa63032271725a902ce43bf0455af2cd452ff8970f077f0b006484ba`
+retained semantic SHA-256
+`242f4e7a7f9aaeacf477a1dde26d762d840a675e017d739d997e5fb9228727a3`.
+The original 505-byte baseline was restored at raw SHA-256
+`374806e6386940a5945ffd03411b526d6a21c002b938bb4db253780f787b8e9a`.
+
+The self-hashed failure record replays exactly and sets
+`study_start_allowed=false` and
+`same_qualification_identity_retry_allowed=false`. An independent governance
+review rejected an in-place retry, found no implementation defect requiring a
+new registration, and required this explicit reviewed amendment before using
+the previously absent `qualification_r2` root. The replacement procedure polls
+condition files and process state before ready, retries transient live-log
+sharing violations, compares the active Java properties semantically, and
+still requires byte-for-byte baseline restoration afterward.
+
+## Initial Offline Verification
 
 All Python commands used `D:\anaconda\envs\stsai\python.exe`, disabled the
 pytest cache provider, and used a fresh repository basetemp.
@@ -148,7 +192,8 @@ Canonical replay returned the same 19,795 LF-only bytes, file SHA-256
 and registration hash
 `86cb17077fe5dc7123307660eef4c1986dc11f48837308fed714faf88c73f22a`.
 The final historical replay again passed 534 checks and selected only the v1
-`integrity_stop` branch. Both v2 external roots remained absent.
+`integrity_stop` branch. At that initial verification boundary, both v2
+external roots remained absent.
 
 The exact-artifact regression was observed failing before registration
 generation and passing afterward. A second regression was observed failing
@@ -156,6 +201,29 @@ while the v2 registration/review paths had unspecified Git EOL semantics; the
 new LF rules then passed. The final test also pins the reviewed canonical hash,
 file hash, byte count, all 24 ordered slot records, all 72 exact paths, and
 Windows case-insensitive path uniqueness.
+
+## R2 Amendment Verification
+
+The replacement-root amendment changed only this review and the existing
+OpenSpec planning artifacts. The canonical registration remained 19,795 bytes
+with file SHA-256
+`2a7e937da2c63d6c235452349d3f66de5870525d578c51deccbb87a522baef6a`
+and canonical hash
+`86cb17077fe5dc7123307660eef4c1986dc11f48837308fed714faf88c73f22a`.
+No registration-bound implementation file changed.
+
+| Scope | R2 amendment result |
+| --- | --- |
+| Registration, runner/monitor, handshake, finalizer, verifier | `192 passed` (`178 in 467.41s` plus `14 in 6.27s`) |
+| Full repository | `2842 passed in 649.76s` |
+| OpenSpec strict validation | `37 passed, 0 failed` |
+| Registration file replay | unchanged |
+| Failed qualification record replay | self-hash `ccd76824c90a9726c57b48a7f71d8bc1d8da94df6c686ae36eff10a1b72db41f` |
+
+An independent amendment review reported no Critical or Important finding and
+approved transition to a tracked-clean replacement-qualification candidate.
+It explicitly did not authorize qualification, `start`, or collection. Those
+remain gated by tasks 3.3 through 3.6 and the pre-start replay in task 4.1.
 
 ## Independent Review
 
@@ -173,6 +241,14 @@ and OpenSpec checks passed. The same independent reviewer then reported no
 remaining Critical or Important finding and approved only the candidate commit
 transition, not qualification or collection.
 
-No game, run lock, ledger, qualification artifact, pool, OPE result, training,
-reward change, gameplay-policy change, or promotion exists or is authorized at
-this boundary. Qualification remains a separate post-commit gate.
+The later qualification-failure governance review found that the failed root
+must remain immutable, that a new registration is not required without a
+runtime implementation repair, and that the replacement root must be approved
+explicitly rather than selected ad hoc. This amendment implements that verdict
+without changing registration or runtime implementation bytes.
+
+No registered game, run lock, ledger, successful qualification artifact, pool,
+OPE result, training, reward change, gameplay-policy change, or promotion
+exists or is authorized at this boundary. The failed qualification artifact is
+preserved but grants no authority. Replacement qualification remains a
+separate post-commit gate.

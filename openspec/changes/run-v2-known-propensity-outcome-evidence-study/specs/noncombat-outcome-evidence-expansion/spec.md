@@ -14,17 +14,24 @@ The system SHALL keep a newly registered v2 outcome-evidence study independent f
 - **AND** no v1 decision, trajectory, slot, handshake, outcome, or artifact SHALL enter the v2 pool or satisfy a v2 gate
 
 #### Scenario: Candidate identity collides
-- **WHEN** the approved v2 study root, qualification root, study ID, session ID, or output path already contains unrelated or previously launched bytes
+- **WHEN** the approved v2 study root, active qualification root, study ID, session ID, or output path already contains unrelated or previously launched bytes
 - **THEN** qualification and launch SHALL fail before creating a run lock
 - **AND** the system SHALL NOT delete, overwrite, reinterpret, or silently rename the colliding evidence
+
+#### Scenario: A failed pre-lock qualification identity is preserved
+- **WHEN** a reviewed qualification attempt stops before ready/release because of an external operational monitor failure, no runtime implementation defect or registered study artifact exists, and its self-hashed failure record replays exactly
+- **THEN** the failed qualification root SHALL remain immutable and SHALL NOT be retried, reused, deleted, or interpreted as a successful qualification
+- **AND** one separately named, previously absent qualification root MAY be authorized only by an explicit reviewed planning amendment while the unchanged canonical registration, study root, seed schedule, behavior policy, thresholds, and runtime implementation remain fixed
+- **AND** the replacement root SHALL repeat the complete dry-run, snapshot, real-child attempt/ready/release smoke, restoration, isolation, and independent-attestation gate
 
 ### Requirement: Pre-Collection Launch Qualification
 The system SHALL require a source-bound, outcome-free launch qualification before creating the fresh v2 run lock or claiming a registered slot.
 
 #### Scenario: Candidate qualifies for launch
 - **WHEN** the canonical v2 registration and registration-bound implementation are ready for pre-collection review
-- **THEN** qualification SHALL replay the registration bytes, verify all 24 dry-run launches, and complete one real-child no-action CommunicationMod attempt/ready/release smoke outside the registered study root
+- **THEN** qualification SHALL replay the registration bytes, verify all 24 dry-run launches, and complete one real-child no-action CommunicationMod attempt/ready/release smoke in the active reviewed qualification root outside the registered study root
 - **AND** it SHALL prove that no ledger, exploration manifest, trace, gameplay action, AI marker, checkpoint mutation, persistent CommunicationMod drift, or surviving process resulted from the smoke
+- **AND** transient Windows sharing violations while reading a live child log SHALL be retried without changing handshake state, while CommunicationMod configuration SHALL be compared semantically during execution and restored byte-for-byte afterward
 
 #### Scenario: Qualification evidence is reviewed
 - **WHEN** the no-action qualification succeeds
@@ -42,6 +49,7 @@ The system SHALL require a source-bound, outcome-free launch qualification befor
 - **WHEN** canonical replay, dry-run, real-child readiness, release, isolation restoration, process cleanup, or independent review fails
 - **THEN** no run lock, study ledger, or registered slot SHALL be created
 - **AND** any implementation repair SHALL occur in a separate regression-backed change followed by a newly reviewed registration candidate
+- **AND** when no implementation or registration binding changed and no registered study artifact exists, any replacement qualification root SHALL still require an explicit reviewed amendment and a complete fresh qualification rather than retrying the failed identity
 - **AND** any temporarily applied CommunicationMod configuration SHALL be restored to the verified pre-study baseline before exit
 
 #### Scenario: Start fails before publishing study state
